@@ -5,33 +5,35 @@
 
 # Summary
 
-Add syntactic sugar for working with the `Result` type which models common exception handling constructs.
+Add syntactic sugar for working with the `Result` type which models common
+exception handling constructs.
 
 The new constructs are:
 
  * An `?` operator for explicitly propagating "exceptions".
 
- * A `try`..`catch` construct for conveniently catching and handling "exceptions".
+ * A `try`..`catch` construct for conveniently catching and handling
+   "exceptions".
 
-The idea for the `?` operator originates from [RFC PR 204][204] by [@aturon](https://github.com/aturon).
+The idea for the `?` operator originates from [RFC PR 204][204] by
+[@aturon](https://github.com/aturon).
 
 [204]: https://github.com/rust-lang/rfcs/pull/204
 
 
 # Motivation and overview
 
-Rust currently uses the `enum Result` type for error
-handling. This solution is simple, well-behaved, and easy to understand, but
-often gnarly and inconvenient to work with. We would like to solve the latter
-problem while retaining the other nice properties and avoiding duplication of
-functionality.
+Rust currently uses the `enum Result` type for error handling. This solution is
+simple, well-behaved, and easy to understand, but often gnarly and inconvenient
+to work with. We would like to solve the latter problem while retaining the
+other nice properties and avoiding duplication of functionality.
 
 We can accomplish this by adding constructs which mimic the exception-handling
 constructs of other languages in both appearance and behavior, while improving
-upon them in typically Rustic fashion. Their meaning can be specified by a straightforward
-source-to-source translation into existing language constructs, plus a very
-simple and obvious new one. (They may also, but need not necessarily, be
-implemented in this way.)
+upon them in typically Rustic fashion. Their meaning can be specified by a
+straightforward source-to-source translation into existing language constructs,
+plus a very simple and obvious new one. (They may also, but need not
+necessarily, be implemented in this way.)
 
 These constructs are strict additions to the existing language, and apart from
 the issue of keywords, the legality and behavior of all currently existing Rust
@@ -39,49 +41,58 @@ programs is entirely unaffected.
 
 The most important additions are a postfix `?` operator for propagating
 "exceptions" and a `try`..`catch` block for catching and handling them. By an
-"exception", we essentially just mean the `Err` variant of a `Result`. (See the "Detailed design" section for more
-precision.)
+"exception", we essentially just mean the `Err` variant of a `Result`. (See the
+"Detailed design" section for more precision.)
 
 
 ## `?` operator
 
-The postfix `?` operator can be applied to `Result` values and is equivalent to the current `try!()` macro. It either
-returns the `Ok` value directly, or performs an early exit and propagates
-the `Err` value further out. (So given `my_result: Result<Foo, Bar>`, we
-have `my_result?: Foo`.) This allows it to be used for e.g. conveniently
-chaining method calls which may each "throw an exception":
+The postfix `?` operator can be applied to `Result` values and is equivalent to
+the current `try!()` macro. It either returns the `Ok` value directly, or
+performs an early exit and propagates the `Err` value further out. (So given
+`my_result: Result<Foo, Bar>`, we have `my_result?: Foo`.) This allows it to be
+used for e.g. conveniently chaining method calls which may each "throw an
+exception":
 
     foo()?.bar()?.baz()
 
 Naturally, in this case the types of the "exceptions thrown by" `foo()` and
-`bar()` must unify. Like the current `try!()` macro, the `?` operator will also perform an implicit "upcast" on the exception type.
+`bar()` must unify. Like the current `try!()` macro, the `?` operator will also
+perform an implicit "upcast" on the exception type.
 
 When used outside of a `try` block, the `?` operator propagates the exception to
 the caller of the current function, just like the current `try!` macro does. (If
-the return type of the function isn't a `Result`, then this is a type error.) When used inside a `try`
-block, it propagates the exception up to the innermost `try` block, as one would
-expect.
+the return type of the function isn't a `Result`, then this is a type error.)
+When used inside a `try` block, it propagates the exception up to the innermost
+`try` block, as one would expect.
 
 Requiring an explicit `?` operator to propagate exceptions strikes a very
 pleasing balance between completely automatic exception propagation, which most
-languages have, and completely manual propagation, which we'd have apart from the `try!` macro. It means that function calls
-remain simply function calls which return a result to their caller, with no
-magic going on behind the scenes; and this also *increases* flexibility, because
-one gets to choose between propagation with `?` or consuming the returned
-`Result` directly.
+languages have, and completely manual propagation, which we'd have apart from
+the `try!` macro. It means that function calls remain simply function calls
+which return a result to their caller, with no magic going on behind the scenes;
+and this also *increases* flexibility, because one gets to choose between
+propagation with `?` or consuming the returned `Result` directly.
 
 The `?` operator itself is suggestive, syntactically lightweight enough to not
 be bothersome, and lets the reader determine at a glance where an exception may
 or may not be thrown. It also means that if the signature of a function changes
 with respect to exceptions, it will lead to type errors rather than silent
-behavior changes, which is a good thing. Finally, because exceptions are
-tracked in the type system, and there is no silent propagation of exceptions, and
-all points where an exception may be thrown are readily apparent visually, this
-also means that we do not have to worry very much about "exception safety".
+behavior changes, which is a good thing. Finally, because exceptions are tracked
+in the type system, and there is no silent propagation of exceptions, and all
+points where an exception may be thrown are readily apparent visually, this also
+means that we do not have to worry very much about "exception safety".
 
 ### Exception type upcasting
 
-In a language with checked exceptions and subtyping, it is clear that if a function is declared as throwing a particular type, its body should also be able to throw any of its subtypes. Similarly, in a language with structural sum types (a.k.a. anonymous `enum`s, polymorphic variants), one should be able to throw a type with fewer cases in a function declaring that it may throw a superset of those cases. This is essentially what is achieved by the common Rust practice of declaring a custom error `enum` with `From` `impl`s for each of the upstream error types which may be propagated:
+In a language with checked exceptions and subtyping, it is clear that if a
+function is declared as throwing a particular type, its body should also be able
+to throw any of its subtypes. Similarly, in a language with structural sum types
+(a.k.a. anonymous `enum`s, polymorphic variants), one should be able to throw a
+type with fewer cases in a function declaring that it may throw a superset of
+those cases. This is essentially what is achieved by the common Rust practice of
+declaring a custom error `enum` with `From` `impl`s for each of the upstream
+error types which may be propagated:
 
     enum MyError {
         IoError(io::Error),
@@ -92,9 +103,15 @@ In a language with checked exceptions and subtyping, it is clear that if a funct
     impl From<io::Error> for MyError { ... }
     impl From<json::Error> for MyError { ... }
 
-Here `io::Error` and `json::Error` can be thought of as subtypes of `MyError`, with a clear and direct embedding into the supertype.
+Here `io::Error` and `json::Error` can be thought of as subtypes of `MyError`,
+with a clear and direct embedding into the supertype.
 
-The `?` operator should therefore perform such an implicit conversion in the nature of a subtype-to-supertype coercion. The present RFC uses the `std::convert::Into` trait for this purpose (which has a blanket `impl` forwarding from `From`). The precise requirements for a conversion to be "like" a subtyping coercion are an open question; see the "Unresolved questions" section.
+The `?` operator should therefore perform such an implicit conversion in the
+nature of a subtype-to-supertype coercion. The present RFC uses the
+`std::convert::Into` trait for this purpose (which has a blanket `impl`
+forwarding from `From`). The precise requirements for a conversion to be "like"
+a subtyping coercion are an open question; see the "Unresolved questions"
+section.
 
 
 ## `try`..`catch`
@@ -106,16 +123,18 @@ thrown, it is passed to the `catch` block, and the `try`..`catch` evaluates to
 the value of the `catch` block. As with `if`..`else` expressions, the types of
 the `try` and `catch` blocks must therefore unify. Unlike other languages, only
 a single type of exception may be thrown in the `try` block (a `Result` only has
-a single `Err` type); all exceptions are always caught; and there may only be one `catch` block. This dramatically simplifies thinking about the behavior of exception-handling code.
+a single `Err` type); all exceptions are always caught; and there may only be
+one `catch` block. This dramatically simplifies thinking about the behavior of
+exception-handling code.
 
 There are two variations on this theme:
 
  1. `try { EXPR }`
 
-    In this case the `try` block evaluates directly to a `Result`
-    containing either the value of `EXPR`, or the exception which was thrown.
-    For instance, `try { foo()? }` is essentially equivalent to `foo()`.
-    This can be useful if you want to coalesce *multiple* potential exceptions -
+    In this case the `try` block evaluates directly to a `Result` containing
+    either the value of `EXPR`, or the exception which was thrown. For instance,
+    `try { foo()? }` is essentially equivalent to `foo()`. This can be useful if
+    you want to coalesce *multiple* potential exceptions -
     `try { foo()?.bar()?.baz()? }` - into a single `Result`, which you wish to
     then e.g. pass on as-is to another function, rather than analyze yourself.
 
@@ -130,10 +149,9 @@ There are two variations on this theme:
             Blue(bex) => quux(bex)
         }
 
-    Here the `catch`
-    performs a `match` on the caught exception directly, using any number of
-    refutable patterns. This form is convenient for checking and handling the
-    caught exception directly.
+    Here the `catch` performs a `match` on the caught exception directly, using
+    any number of refutable patterns. This form is convenient for checking and
+    handling the caught exception directly.
 
 
 # Detailed design
@@ -149,10 +167,10 @@ constructs, and is independently useful.
 The capability can be exposed either by generalizing `break` to take an optional
 value argument and break out of any block (not just loops), or by generalizing
 `return` to take an optional lifetime argument and return from any block, not
-just the outermost block of the function. This feature is only used in this RFC as an
-explanatory device, and implementing the RFC does not require exposing it, so I am
-going to arbitrarily choose the `break` syntax for the following and won't
-discuss the question further.
+just the outermost block of the function. This feature is only used in this RFC
+as an explanatory device, and implementing the RFC does not require exposing it,
+so I am going to arbitrarily choose the `break` syntax for the following and
+won't discuss the question further.
 
 So we are extending `break` with an optional value argument: `break 'a EXPR`.
 This is an expression of type `!` which causes an early return from the
@@ -174,10 +192,14 @@ A completely artificial example:
 
 Here if we don't have a thing, we escape from the block early with `None`.
 
-If no value is specified, it defaults to `()`: in other words, the current behavior.
-We can also imagine there is a magical lifetime `'fn` which refers to the lifetime of the whole function: in this case, `break 'fn` is equivalent to `return`.
+If no value is specified, it defaults to `()`: in other words, the current
+behavior. We can also imagine there is a magical lifetime `'fn` which refers to
+the lifetime of the whole function: in this case, `break 'fn` is equivalent to
+`return`.
 
-Again, this RFC does not propose generalizing `break` in this way at this time: it is only used as a way to explain the meaning of the constructs it does propose.
+Again, this RFC does not propose generalizing `break` in this way at this time:
+it is only used as a way to explain the meaning of the constructs it does
+propose.
 
 
 ## Definition of constructs
@@ -275,6 +297,9 @@ of their definitions.
 a source-to-source translation in this manner, they need not necessarily be
 *implemented* this way.)
 
+As a result of this RFC, both `Into` and `Result` would have to become lang
+items.
+
 
 ## Laws
 
@@ -286,16 +311,19 @@ Without any attempt at completeness, here are some things which should be true:
  * `try { Err(e)?        } catch { e => e      }` = `e.into()`
  * `try { Ok(try_foo()?) } catch { e => Err(e) }` = `try_foo().map_err(Into::into)`
 
-(In the above, `foo()` is a function returning any type, and `try_foo()` is a function returning a `Result`.)
+(In the above, `foo()` is a function returning any type, and `try_foo()` is a
+function returning a `Result`.)
 
 
 # Unresolved questions
 
-These questions should be satisfactorally resolved before stabilizing the relevant features, at the latest.
+These questions should be satisfactorally resolved before stabilizing the
+relevant features, at the latest.
 
 ## Choice of keywords
 
-The RFC to this point uses the keywords `try`..`catch`, but there are a number of other possibilities, each with different advantages and drawbacks:
+The RFC to this point uses the keywords `try`..`catch`, but there are a number
+of other possibilities, each with different advantages and drawbacks:
 
  * `try { ... } catch { ... }`
 
@@ -313,59 +341,85 @@ Among the considerations:
 
  * Simplicity. Brevity.
 
- * Following precedent from existing, popular languages, and familiarity with respect to analogous constructs in them.
+ * Following precedent from existing, popular languages, and familiarity with
+   respect to analogous constructs in them.
 
- * Fidelity to the constructs' actual behavior. For instance, the first clause always catches the "exception"; the second only branches on it.
+ * Fidelity to the constructs' actual behavior. For instance, the first clause
+   always catches the "exception"; the second only branches on it.
 
- * Consistency with the existing `try!()` macro. If the first clause is called `try`, then `try { }` and `try!()` would have essentially inverse meanings.
+ * Consistency with the existing `try!()` macro. If the first clause is called
+   `try`, then `try { }` and `try!()` would have essentially inverse meanings.
 
- * Language-level backwards compatibility when adding new keywords. I'm not sure how this could or should be handled.
+ * Language-level backwards compatibility when adding new keywords. I'm not sure
+   how this could or should be handled.
 
 
 ## Semantics for "upcasting"
 
-What should the contract for a `From`/`Into` `impl` be? Are these even the right `trait`s to use for this feature?
+What should the contract for a `From`/`Into` `impl` be? Are these even the right
+`trait`s to use for this feature?
 
 Two obvious, minimal requirements are:
 
- * It should be pure: no side effects, and no observation of side effects. (The result should depend *only* on the argument.)
+ * It should be pure: no side effects, and no observation of side effects. (The
+   result should depend *only* on the argument.)
 
- * It should be total: no panics or other divergence, except perhaps in the case of resource exhaustion (OOM, stack overflow).
+ * It should be total: no panics or other divergence, except perhaps in the case
+   of resource exhaustion (OOM, stack overflow).
 
-The other requirements for an implicit conversion to be well-behaved in the context of this feature should be thought through with care.
+The other requirements for an implicit conversion to be well-behaved in the
+context of this feature should be thought through with care.
 
 Some further thoughts and possibilities on this matter:
 
- * It should be "like a coercion from subtype to supertype", as described earlier. The precise meaning of this is not obvious.
+ * It should be "like a coercion from subtype to supertype", as described
+   earlier. The precise meaning of this is not obvious.
 
- * A common condition on subtyping coercions is coherence: if you can compound-coerce to go from `A` to `Z` indirectly along multiple different paths, they should all have the same end result.
+ * A common condition on subtyping coercions is coherence: if you can
+   compound-coerce to go from `A` to `Z` indirectly along multiple different
+   paths, they should all have the same end result.
 
- * It should be unambiguous, or preserve the meaning of the input: `impl From<u8> for u32` as `x as u32` feels right; as `(x as u32) * 12345` feels wrong, even though this is perfectly pure, total, and injective. What this means precisely in the general case is unclear.
+ * It should be unambiguous, or preserve the meaning of the input:
+   `impl From<u8> for u32` as `x as u32` feels right; as `(x as u32) * 12345`
+   feels wrong, even though this is perfectly pure, total, and injective. What
+   this means precisely in the general case is unclear.
 
- * It should be lossless, or in other words, injective: it should map each observably-different element of the input type to observably-different elements of the output type. (Observably-different means that it is possible to write a program which behaves differently depending on which one it gets, modulo things that "shouldn't count" like observing execution time or resource usage.)
+ * It should be lossless, or in other words, injective: it should map each
+   observably-different element of the input type to observably-different
+   elements of the output type. (Observably-different means that it is possible
+   to write a program which behaves differently depending on which one it gets,
+   modulo things that "shouldn't count" like observing execution time or
+   resource usage.)
 
- * The types converted between should the "same kind of thing": for instance, the *existing* `impl From<u32> for Ipv4Addr` is pretty suspect on this count. (This perhaps ties into the subtyping angle: `Ipv4Addr` is clearly not a supertype of `u32`.)
+ * The types converted between should the "same kind of thing": for instance,
+   the *existing* `impl From<u32> for Ipv4Addr` is pretty suspect on this count.
+   (This perhaps ties into the subtyping angle: `Ipv4Addr` is clearly not a
+   supertype of `u32`.)
 
 
 ## Forwards-compatibility
 
-If we later want to generalize this feature to other types such as `Option`, as described below, will we be able to do so while maintaining backwards-compatibility?
+If we later want to generalize this feature to other types such as `Option`, as
+described below, will we be able to do so while maintaining backwards-compatibility?
 
 
 # Drawbacks
 
  * Increases the syntactic surface area of the language.
 
- * No expressivity is added, only convenience. Some object to "there's more than one way to do it" on principle.
+ * No expressivity is added, only convenience. Some object to "there's more than
+   one way to do it" on principle.
 
- * If at some future point we were to add higher-kinded types and syntactic sugar
-   for monads, a la Haskell's `do` or Scala's `for`, their functionality may overlap and result in redundancy.
-   However, a number of challenges would have to be overcome for a generic monadic sugar to be able to
-   fully supplant these features: the integration of higher-kinded types into Rust's type system in the
-   first place, the shape of a `Monad` `trait` in a language with lifetimes and move semantics,
-   interaction between the monadic control flow and Rust's native control flow (the "ambient monad"),
-   automatic upcasting of exception types via `Into` (the exception (`Either`, `Result`) monad normally does not
-   do this, and it's not clear whether it can), and potentially others.
+ * If at some future point we were to add higher-kinded types and syntactic
+   sugar for monads, a la Haskell's `do` or Scala's `for`, their functionality
+   may overlap and result in redundancy. However, a number of challenges would
+   have to be overcome for a generic monadic sugar to be able to fully supplant
+   these features: the integration of higher-kinded types into Rust's type
+   system in the first place, the shape of a `Monad` `trait` in a language with
+   lifetimes and move semantics, interaction between the monadic control flow
+   and Rust's native control flow (the "ambient monad"), automatic upcasting of
+   exception types via `Into` (the exception (`Either`, `Result`) monad normally
+   does not do this, and it's not clear whether it can), and potentially others.
 
 
 # Alternatives
@@ -380,8 +434,9 @@ If we later want to generalize this feature to other types such as `Option`, as 
    macros. However, this is likely to be awkward because, at least, macros may
    only have their contents as a single block, rather than two. Furthermore,
    macros are excellent as a "safety net" for features which we forget to add
-   to the language itself, or which only have specialized use cases; but generally
-   useful control flow constructs still work better as language features.
+   to the language itself, or which only have specialized use cases; but
+   generally useful control flow constructs still work better as language
+   features.
 
  * Add [first-class checked exceptions][notes], which are propagated
    automatically (without an `?` operator).
@@ -408,9 +463,9 @@ This RFC doesn't propose doing so at this time, but as it would be an independen
 
 ## An additional `catch` form to bind the caught exception irrefutably
 
-The `catch` described above immediately passes the caught exception into a `match` block.
-It may sometimes be desirable to instead bind it directly to a single variable. That might
-look like this:
+The `catch` described above immediately passes the caught exception into a
+`match` block. It may sometimes be desirable to instead bind it directly to a
+single variable. That might look like this:
 
     try { EXPR } catch IRR-PAT { EXPR }
 
@@ -473,23 +528,25 @@ A `throws` clause on a function:
 
     fn foo(arg: Foo) -> Bar throws Baz { ... }
 
-would mean that instead of writing `return Ok(foo)` and
-`return Err(bar)` in the body of the function, one would write `return foo`
-and `throw bar`, and these are implicitly turned into `Ok` or `Err` for the caller. This removes syntactic overhead from
-both "normal" and "throwing" code paths and (apart from `?` to propagate
-exceptions) matches what code might look like in a language with native
-exceptions.
+would mean that instead of writing `return Ok(foo)` and `return Err(bar)` in the
+body of the function, one would write `return foo` and `throw bar`, and these
+are implicitly turned into `Ok` or `Err` for the caller. This removes syntactic
+overhead from both "normal" and "throwing" code paths and (apart from `?` to
+propagate exceptions) matches what code might look like in a language with
+native exceptions.
 
 ## Generalize over `Result`, `Option`, and other result-carrying types
 
-`Option<T>` is completely equivalent to `Result<T, ()>` modulo names, and many common APIs
-use the `Option` type, so it would be useful to extend all of the above syntax to `Option`,
-and other (potentially user-defined) equivalent-to-`Result` types, as well.
+`Option<T>` is completely equivalent to `Result<T, ()>` modulo names, and many
+common APIs use the `Option` type, so it would be useful to extend all of the
+above syntax to `Option`, and other (potentially user-defined)
+equivalent-to-`Result` types, as well.
 
-This can be done by specifying a trait for types which can be used to "carry" either a normal
-result or an exception. There are several different, equivalent ways
-to formulate it, which differ in the set of methods provided, but the meaning in any case is essentially just
-that you can choose some types `Normal` and `Exception` such that `Self` is isomorphic to `Result<Normal, Exception>`.
+This can be done by specifying a trait for types which can be used to "carry"
+either a normal result or an exception. There are several different, equivalent
+ways to formulate it, which differ in the set of methods provided, but the
+meaning in any case is essentially just that you can choose some types `Normal`
+and `Exception` such that `Self` is isomorphic to `Result<Normal, Exception>`.
 
 Here is one way:
 
@@ -502,13 +559,15 @@ Here is one way:
         fn translate<Other: ResultCarrier<Normal=Normal, Exception=Exception>>(from: Self) -> Other;
     }
 
-For greater clarity on how these methods work, see the section on `impl`s below. (For a
-simpler formulation of the trait using `Result` directly, see further below.)
+For greater clarity on how these methods work, see the section on `impl`s below.
+(For a simpler formulation of the trait using `Result` directly, see further
+below.)
 
 The `translate` method says that it should be possible to translate to any
 *other* `ResultCarrier` type which has the same `Normal` and `Exception` types.
-This may not appear to be very useful, but in fact, this is what can be used to inspect the result,
-by translating it to a concrete type such as `Result<Normal, Exception>` and then, for example, pattern matching on it.
+This may not appear to be very useful, but in fact, this is what can be used to
+inspect the result, by translating it to a concrete type such as `Result<Normal,
+Exception>` and then, for example, pattern matching on it.
 
 Laws:
 
@@ -519,9 +578,9 @@ Laws:
 Here I've used explicit type ascription syntax to make it clear that e.g. the
 types of `embed_` on the left and right hand sides are different.
 
-The first two laws say that embedding a result `x` into one result-carrying type and
-then translating it to a second result-carrying type should be the same as embedding it
-into the second type directly.
+The first two laws say that embedding a result `x` into one result-carrying type
+and then translating it to a second result-carrying type should be the same as
+embedding it into the second type directly.
 
 The third law says that translating to a different result-carrying type and then
 translating back should be a no-op.
@@ -577,7 +636,8 @@ The laws should be sufficient to rule out any "icky" impls. For example, an impl
 for `Vec` where an exception is represented as the empty vector, and a normal
 result as a single-element vector: here the third law fails, because if the
 `Vec` has more than one element *to begin with*, then it's not possible to
-translate to a different result-carrying type and then back without losing information.
+translate to a different result-carrying type and then back without losing
+information.
 
 The `bool` impl may be surprising, or not useful, but it *is* well-behaved:
 `bool` is, after all, isomorphic to `Result<(), ()>`.
@@ -587,12 +647,12 @@ The `bool` impl may be surprising, or not useful, but it *is* well-behaved:
  * Our current lint for unused results could be replaced by one which warns for
    any unused result of a type which implements `ResultCarrier`.
 
- * If there is ever ambiguity due to the result-carrying type being underdetermined
-   (experience should reveal whether this is a problem in practice), we could
-   resolve it by defaulting to `Result`.
+ * If there is ever ambiguity due to the result-carrying type being
+   underdetermined (experience should reveal whether this is a problem in
+   practice), we could resolve it by defaulting to `Result`.
 
- * Translating between different result-carrying types with the same `Normal` and
-   `Exception` types *should*, but may not necessarily *currently* be, a
+ * Translating between different result-carrying types with the same `Normal`
+   and `Exception` types *should*, but may not necessarily *currently* be, a
    machine-level no-op most of the time.
 
    We could/should make it so that:
@@ -630,8 +690,8 @@ This is, of course, the simplest possible formulation.
 The drawbacks are that it, in some sense, privileges `Result` over other
 potentially equivalent types, and that it may be less efficient for those types:
 for any non-`Result` type, every operation requires two method calls (one into
-`Result`, and one out), whereas with the `ResultCarrier` trait in the main text, they
-only require one.
+`Result`, and one out), whereas with the `ResultCarrier` trait in the main text,
+they only require one.
 
 Laws:
 
