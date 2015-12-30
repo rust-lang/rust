@@ -10,13 +10,13 @@
 
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
-use middle::subst::Substs;
+use middle::subst::{Subst, Substs};
 use middle::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use syntax::codemap::Span;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
 
-use super::{Obligation, ObligationCause, PredicateObligation};
+use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
 struct PredicateSet<'a,'tcx:'a> {
     tcx: &'a TyCtxt<'tcx>,
@@ -298,6 +298,38 @@ impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
 ///////////////////////////////////////////////////////////////////////////
 // Other
 ///////////////////////////////////////////////////////////////////////////
+
+/// Instantiate all bound parameters of the impl with the given substs,
+/// returning the resulting trait ref and all obligations that arise.
+/// The obligations are closed under normalization.
+pub fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
+                                         impl_def_id: DefId,
+                                         impl_substs: &Substs<'tcx>)
+                                         -> (ty::TraitRef<'tcx>,
+                                             Vec<PredicateObligation<'tcx>>)
+{
+    let impl_trait_ref =
+        selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
+    let impl_trait_ref =
+        impl_trait_ref.subst(selcx.tcx(), impl_substs);
+    let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
+        super::normalize(selcx, ObligationCause::dummy(), &impl_trait_ref);
+
+    let predicates = selcx.tcx().lookup_predicates(impl_def_id);
+    let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
+    let Normalized { value: predicates, obligations: normalization_obligations2 } =
+        super::normalize(selcx, ObligationCause::dummy(), &predicates);
+    let impl_obligations =
+        predicates_for_generics(ObligationCause::dummy(), 0, &predicates);
+
+    let impl_obligations: Vec<_> =
+        impl_obligations.into_iter()
+        .chain(normalization_obligations1)
+        .chain(normalization_obligations2)
+        .collect();
+
+    (impl_trait_ref, impl_obligations)
+}
 
 // determine the `self` type, using fresh variables for all variables
 // declared on the impl declaration e.g., `impl<A,B> for Box<[(A,B)]>`
