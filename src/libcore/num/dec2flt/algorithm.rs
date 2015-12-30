@@ -60,17 +60,13 @@ pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Opt
     if f > T::max_sig() {
         return None;
     }
-    let e = e as i16; // Can't overflow because e.abs() <= LOG5_OF_EXP_N
     // The case e < 0 cannot be folded into the other branch. Negative powers result in
     // a repeating fractional part in binary, which are rounded, which causes real
     // (and occasioally quite significant!) errors in the final result.
-    // The case `e == 0`, however, is unnecessary for correctness. It's just measurably faster.
-    if e == 0 {
-        Some(T::from_int(f))
-    } else if e > 0 {
-        Some(T::from_int(f) * fp_to_float(power_of_ten(e)))
+    if e >= 0 {
+        Some(T::from_int(f) * T::short_fast_pow10(e as usize))
     } else {
-        Some(T::from_int(f) / fp_to_float(power_of_ten(-e)))
+        Some(T::from_int(f) / T::short_fast_pow10(e.abs() as usize))
     }
 }
 

@@ -37,6 +37,7 @@ use num::diy_float::Fp;
 use num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
 use num::Float;
 use num::dec2flt::num::{self, Big};
+use num::dec2flt::table;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Unpacked {
@@ -72,6 +73,9 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
     /// Cast from a small integer that can be represented exactly.  Panic if the integer can't be
     /// represented, the other code in this module makes sure to never let that happen.
     fn from_int(x: u64) -> Self;
+
+    /// Get the value 10^e from a pre-computed table. Panics for e >= ceil_log5_of_max_sig().
+    fn short_fast_pow10(e: usize) -> Self;
 
     // FIXME Everything that follows should be associated constants, but taking the value of an
     // associated constant from a type parameter does not work (yet?)
@@ -175,6 +179,10 @@ impl RawFloat for f32 {
         x as f32
     }
 
+    fn short_fast_pow10(e: usize) -> Self {
+        table::F32_SHORT_POWERS[e]
+    }
+
     fn max_normal_digits() -> usize {
         35
     }
@@ -220,6 +228,10 @@ impl RawFloat for f64 {
         // rkruppe is uncertain whether `as` rounds correctly on all platforms.
         debug_assert!(x as f64 == fp_to_float(Fp { f: x, e: 0 }));
         x as f64
+    }
+
+    fn short_fast_pow10(e: usize) -> Self {
+        table::F64_SHORT_POWERS[e]
     }
 
     fn max_normal_digits() -> usize {
