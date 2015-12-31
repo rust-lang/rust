@@ -95,7 +95,14 @@
 
 #![feature(needs_allocator)]
 
+// Issue# 30592: Systematically use alloc_system during stage0 since jemalloc
+// might be unavailable or disabled
+#![cfg_attr(stage0, feature(alloc_system))]
+
 #![cfg_attr(test, feature(test, rustc_private, box_heap))]
+
+#[cfg(stage0)]
+extern crate alloc_system;
 
 // Allow testing this library
 
