@@ -164,18 +164,15 @@ impl Eq for Span {}
 
 impl Encodable for Span {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        // Encode spans as a single u64 in order to cut down on tagging overhead
-        // added by the RBML metadata encoding. The should be solved differently
-        // altogether some time (FIXME #21482)
-        s.emit_u64( (self.lo.0 as u64) | ((self.hi.0 as u64) << 32) )
+        try!(s.emit_u32(self.lo.0));
+        s.emit_u32(self.hi.0)
     }
 }
 
 impl Decodable for Span {
     fn decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
-        let lo_hi: u64 = try! { d.read_u64() };
-        let lo = BytePos(lo_hi as u32);
-        let hi = BytePos((lo_hi >> 32) as u32);
+        let lo = BytePos(try! { d.read_u32() });
+        let hi = BytePos(try! { d.read_u32() });
         Ok(mk_sp(lo, hi))
     }
 }
