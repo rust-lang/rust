@@ -1163,7 +1163,7 @@ fn core_lifetime_emit<'blk, 'tcx, F>(ccx: &'blk CrateContext<'blk, 'tcx>,
                                      emit: F)
     where F: FnOnce(&'blk CrateContext<'blk, 'tcx>, machine::llsize, ValueRef)
 {
-    if ccx.sess().opts.optimize == config::No {
+    if ccx.sess().opts.optimize == config::OptLevel::No {
         return;
     }
 

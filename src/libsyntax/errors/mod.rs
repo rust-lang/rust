@@ -276,6 +276,7 @@ pub struct Handler {
 }
 
 impl Handler {
+    // TODO remove
     pub fn new(color_config: ColorConfig,
                registry: Option<diagnostics::registry::Registry>,
                can_emit_warnings: bool,

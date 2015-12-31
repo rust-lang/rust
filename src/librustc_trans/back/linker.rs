@@ -149,8 +149,8 @@ impl<'a> Linker for GnuLinker<'a> {
 
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::Default ||
-           self.sess.opts.optimize == config::Aggressive {
+        if self.sess.opts.optimize == config::OptLevel::Default ||
+           self.sess.opts.optimize == config::OptLevel::Aggressive {
             self.cmd.arg("-Wl,-O1");
         }
     }

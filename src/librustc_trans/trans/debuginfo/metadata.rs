@@ -1020,7 +1020,7 @@ pub fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
             compile_unit_name,
             work_dir.as_ptr(),
             producer.as_ptr(),
-            cx.sess().opts.optimize != config::No,
+            cx.sess().opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
             0,
             split_name.as_ptr() as *const _)
