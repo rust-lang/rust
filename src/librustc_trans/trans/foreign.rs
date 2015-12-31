@@ -639,7 +639,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         let llfn = declare::define_internal_rust_fn(ccx, &ps, t);
         attributes::from_fn_attrs(ccx, attrs, llfn);
-        base::trans_fn(ccx, decl, body, llfn, param_substs, id, &[]);
+        base::trans_fn(ccx, decl, body, llfn, param_substs, id, attrs);
         llfn
     }
 
