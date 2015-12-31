@@ -138,28 +138,25 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      -> BlockAnd<Vec<ArgDecl<'tcx>>>
     {
         self.in_scope(argument_extent, block, |this| {
-            let arg_decls = {
-                let implicit_arg_decls = implicit_arguments.into_iter()
-                                                           .map(|ty| ArgDecl { ty: ty });
-
-                // to start, translate the argument patterns and collect the
-                // argument types.
-                let explicit_arg_decls =
-                    explicit_arguments
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, (ty, pattern))| {
+            // to start, translate the argument patterns and collect the argument types.
+            let implicits = implicit_arguments.into_iter().map(|ty| (ty, None));
+            let explicits = explicit_arguments.into_iter().map(|(ty, pat)| (ty, Some(pat)));
+            let arg_decls =
+                implicits
+                .chain(explicits)
+                .enumerate()
+                .map(|(index, (ty, pattern))| {
+                    if let Some(pattern) = pattern {
                         let lvalue = Lvalue::Arg(index as u32);
                         let pattern = this.hir.irrefutable_pat(pattern);
                         unpack!(block = this.lvalue_into_pattern(block,
                                                                  argument_extent,
                                                                  pattern,
                                                                  &lvalue));
-                        ArgDecl { ty: ty }
-                    });
-
-                implicit_arg_decls.chain(explicit_arg_decls).collect()
-            };
+                    }
+                    ArgDecl { ty: ty }
+                })
+                .collect();
 
             // start the first basic block and translate the body
             unpack!(block = this.ast_block(&Lvalue::ReturnPointer, block, ast_block));

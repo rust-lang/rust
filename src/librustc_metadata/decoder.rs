@@ -833,9 +833,11 @@ pub fn maybe_get_item_mir<'tcx>(cdata: Cmd,
         };
         let mut decoder = reader::Decoder::new(mir_doc);
 
-        let mut mir = tls::enter_decoding_context(&dcx, &mut decoder, |_, decoder| {
-            Decodable::decode(decoder).unwrap()
-        });
+        let mut mir = decoder.read_opaque(|opaque_decoder, _| {
+            tls::enter_decoding_context(&dcx, opaque_decoder, |_, opaque_decoder| {
+                Decodable::decode(opaque_decoder)
+            })
+        }).unwrap();
 
         let mut def_id_and_span_translator = MirDefIdAndSpanTranslator {
             crate_metadata: cdata,
@@ -1643,7 +1645,9 @@ pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<codemap::FileMap> {
 
     reader::tagged_docs(cm_doc, tag_codemap_filemap).map(|filemap_doc| {
         let mut decoder = reader::Decoder::new(filemap_doc);
-        Decodable::decode(&mut decoder).unwrap()
+        decoder.read_opaque(|opaque_decoder, _| {
+            Decodable::decode(opaque_decoder)
+        }).unwrap()
     }).collect()
 }
 
