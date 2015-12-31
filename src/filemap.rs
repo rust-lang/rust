@@ -43,8 +43,7 @@ pub fn write_all_files(file_map: &FileMap,
     Ok(())
 }
 
-pub fn output_heading(file_map: &FileMap,
-                      mode: WriteMode) -> Result<(), io::Error> {
+pub fn output_heading(file_map: &FileMap, mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
     match mode {
@@ -56,14 +55,11 @@ pub fn output_heading(file_map: &FileMap,
             try!(write!(stdout, "{}", xml_heading));
             Ok(())
         }
-        _ => {
-            Ok(())
-        }
+        _ => Ok(()),
     }
 }
 
-pub fn output_trailing(file_map: &FileMap,
-                       mode: WriteMode) -> Result<(), io::Error> {
+pub fn output_trailing(file_map: &FileMap, mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
     match mode {
@@ -73,15 +69,14 @@ pub fn output_trailing(file_map: &FileMap,
             try!(write!(stdout, "{}", xml_tail));
             Ok(())
         }
-        _ => {
-            Ok(())
-        }
+        _ => Ok(()),
     }
 }
 
 pub fn output_checkstyle_file<T>(mut writer: T,
                                  filename: &str,
-                                 diff: Vec<Mismatch>) -> Result<(), io::Error>
+                                 diff: Vec<Mismatch>)
+                                 -> Result<(), io::Error>
     where T: Write
 {
     try!(write!(writer, "<file name=\"{}\">", filename));
@@ -89,7 +84,11 @@ pub fn output_checkstyle_file<T>(mut writer: T,
         for line in mismatch.lines {
             match line {
                 DiffLine::Expected(ref str) => {
-                    try!(write!(writer, "<error line=\"{}\" severity=\"error\" message=\"Should be `{}`\" />", mismatch.line_number, str));
+                    try!(write!(writer,
+                                "<error line=\"{}\" severity=\"error\" message=\"Should be \
+                                 `{}`\" />",
+                                mismatch.line_number,
+                                str));
                 }
                 _ => {
                     // Do nothing with context and expected.
