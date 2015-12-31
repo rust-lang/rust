@@ -46,7 +46,7 @@
 #![feature(num_bits_bytes)]
 #![feature(oom)]
 #![feature(pattern)]
-#![feature(ptr_as_ref)]
+#![feature(shared)]
 #![feature(slice_bytes)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
