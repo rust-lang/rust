@@ -55,9 +55,9 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // inscrutable, particularly for cases where one method has no
     // self.
     match (&trait_m.explicit_self, &impl_m.explicit_self) {
-        (&ty::StaticExplicitSelfCategory,
-         &ty::StaticExplicitSelfCategory) => {}
-        (&ty::StaticExplicitSelfCategory, _) => {
+        (&ty::ExplicitSelfCategory::Static,
+         &ty::ExplicitSelfCategory::Static) => {}
+        (&ty::ExplicitSelfCategory::Static, _) => {
             span_err!(tcx.sess, impl_m_span, E0185,
                 "method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
@@ -65,7 +65,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                         impl_m.explicit_self);
             return;
         }
-        (_, &ty::StaticExplicitSelfCategory) => {
+        (_, &ty::ExplicitSelfCategory::Static) => {
             span_err!(tcx.sess, impl_m_span, E0186,
                 "method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",

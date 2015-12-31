@@ -1306,16 +1306,16 @@ impl Clean<Item> for hir::ImplItem {
 impl<'tcx> Clean<Item> for ty::Method<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         let (self_, sig) = match self.explicit_self {
-            ty::StaticExplicitSelfCategory => (hir::SelfStatic.clean(cx),
-                                               self.fty.sig.clone()),
+            ty::ExplicitSelfCategory::Static => (hir::SelfStatic.clean(cx),
+                                                 self.fty.sig.clone()),
             s => {
                 let sig = ty::Binder(ty::FnSig {
                     inputs: self.fty.sig.0.inputs[1..].to_vec(),
                     ..self.fty.sig.0.clone()
                 });
                 let s = match s {
-                    ty::ByValueExplicitSelfCategory => SelfValue,
-                    ty::ByReferenceExplicitSelfCategory(..) => {
+                    ty::ExplicitSelfCategory::ByValue => SelfValue,
+                    ty::ExplicitSelfCategory::ByReference(..) => {
                         match self.fty.sig.0.inputs[0].sty {
                             ty::TyRef(r, mt) => {
                                 SelfBorrowed(r.clean(cx), mt.mutbl.clean(cx))
@@ -1323,10 +1323,10 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                             _ => unreachable!(),
                         }
                     }
-                    ty::ByBoxExplicitSelfCategory => {
+                    ty::ExplicitSelfCategory::ByBox => {
                         SelfExplicit(self.fty.sig.0.inputs[0].clean(cx))
                     }
-                    ty::StaticExplicitSelfCategory => unreachable!(),
+                    ty::ExplicitSelfCategory::Static => unreachable!(),
                 };
                 (s, sig)
             }

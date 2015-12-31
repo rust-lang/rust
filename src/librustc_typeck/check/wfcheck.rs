@@ -399,15 +399,15 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                method.name, method.explicit_self, self_ty, sig);
 
         let rcvr_ty = match method.explicit_self {
-            ty::StaticExplicitSelfCategory => return,
-            ty::ByValueExplicitSelfCategory => self_ty,
-            ty::ByReferenceExplicitSelfCategory(region, mutability) => {
+            ty::ExplicitSelfCategory::Static => return,
+            ty::ExplicitSelfCategory::ByValue => self_ty,
+            ty::ExplicitSelfCategory::ByReference(region, mutability) => {
                 fcx.tcx().mk_ref(fcx.tcx().mk_region(region), ty::TypeAndMut {
                     ty: self_ty,
                     mutbl: mutability
                 })
             }
-            ty::ByBoxExplicitSelfCategory => fcx.tcx().mk_box(self_ty)
+            ty::ExplicitSelfCategory::ByBox => fcx.tcx().mk_box(self_ty)
         };
         let rcvr_ty = fcx.instantiate_type_scheme(span, free_substs, &rcvr_ty);
         let rcvr_ty = fcx.tcx().liberate_late_bound_regions(free_id_outlive,
