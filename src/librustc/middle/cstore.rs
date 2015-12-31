@@ -432,8 +432,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 /// Note, however, that this only works for RBML-based encoding and decoding at
 /// the moment.
 pub mod tls {
-    use rbml::writer::Encoder as RbmlEncoder;
-    use rbml::reader::Decoder as RbmlDecoder;
+    use rbml::opaque::Encoder as OpaqueEncoder;
+    use rbml::opaque::Decoder as OpaqueDecoder;
     use serialize;
     use std::mem;
     use middle::ty::{self, Ty};
@@ -442,8 +442,8 @@ pub mod tls {
 
     pub trait EncodingContext<'tcx> {
         fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
-        fn encode_ty(&self, rbml_w: &mut RbmlEncoder, t: Ty<'tcx>);
-        fn encode_substs(&self, rbml_w: &mut RbmlEncoder, substs: &Substs<'tcx>);
+        fn encode_ty(&self, encoder: &mut OpaqueEncoder, t: Ty<'tcx>);
+        fn encode_substs(&self, encoder: &mut OpaqueEncoder, substs: &Substs<'tcx>);
     }
 
     /// Marker type used for the scoped TLS slot.
@@ -455,13 +455,13 @@ pub mod tls {
 
     /// Execute f after pushing the given EncodingContext onto the TLS stack.
     pub fn enter_encoding_context<'tcx, F, R>(ecx: &EncodingContext<'tcx>,
-                                              rbml_w: &mut RbmlEncoder,
+                                              encoder: &mut OpaqueEncoder,
                                               f: F) -> R
-        where F: FnOnce(&EncodingContext<'tcx>, &mut RbmlEncoder) -> R
+        where F: FnOnce(&EncodingContext<'tcx>, &mut OpaqueEncoder) -> R
     {
-        let tls_payload = (ecx as *const _, rbml_w as *mut _);
+        let tls_payload = (ecx as *const _, encoder as *mut _);
         let tls_ptr = &tls_payload as *const _ as *const TlsPayload;
-        TLS_ENCODING.set(unsafe { &*tls_ptr }, || f(ecx, rbml_w))
+        TLS_ENCODING.set(unsafe { &*tls_ptr }, || f(ecx, encoder))
     }
 
     /// Execute f with access to the thread-local encoding context and
@@ -473,16 +473,16 @@ pub mod tls {
     /// possible to construct cases where the EncodingContext is exchanged
     /// while the same encoder is used, thus working with a wrong context.
     pub fn with_encoding_context<'tcx, E, F, R>(encoder: &mut E, f: F) -> R
-        where F: FnOnce(&EncodingContext<'tcx>, &mut RbmlEncoder) -> R,
+        where F: FnOnce(&EncodingContext<'tcx>, &mut OpaqueEncoder) -> R,
               E: serialize::Encoder
     {
         unsafe {
-            unsafe_with_encoding_context(|ecx, rbml_w| {
-                assert!(encoder as *mut _ as usize == rbml_w as *mut _ as usize);
+            unsafe_with_encoding_context(|ecx, tls_encoder| {
+                assert!(encoder as *mut _ as usize == tls_encoder as *mut _ as usize);
 
                 let ecx: &EncodingContext<'tcx> = mem::transmute(ecx);
 
-                f(ecx, rbml_w)
+                f(ecx, tls_encoder)
             })
         }
     }
@@ -490,19 +490,19 @@ pub mod tls {
     /// Execute f with access to the thread-local encoding context and
     /// rbml encoder.
     pub unsafe fn unsafe_with_encoding_context<F, R>(f: F) -> R
-        where F: FnOnce(&EncodingContext, &mut RbmlEncoder) -> R
+        where F: FnOnce(&EncodingContext, &mut OpaqueEncoder) -> R
     {
         TLS_ENCODING.with(|tls| {
             let tls_payload = (tls as *const TlsPayload)
-                                   as *mut (&EncodingContext, &mut RbmlEncoder);
+                                   as *mut (&EncodingContext, &mut OpaqueEncoder);
             f((*tls_payload).0, (*tls_payload).1)
         })
     }
 
     pub trait DecodingContext<'tcx> {
         fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
-        fn decode_ty(&self, rbml_r: &mut RbmlDecoder) -> ty::Ty<'tcx>;
-        fn decode_substs(&self, rbml_r: &mut RbmlDecoder) -> Substs<'tcx>;
+        fn decode_ty(&self, decoder: &mut OpaqueDecoder) -> ty::Ty<'tcx>;
+        fn decode_substs(&self, decoder: &mut OpaqueDecoder) -> Substs<'tcx>;
         fn translate_def_id(&self, def_id: DefId) -> DefId;
     }
 
@@ -510,13 +510,13 @@ pub mod tls {
 
     /// Execute f after pushing the given DecodingContext onto the TLS stack.
     pub fn enter_decoding_context<'tcx, F, R>(dcx: &DecodingContext<'tcx>,
-                                              rbml_r: &mut RbmlDecoder,
+                                              decoder: &mut OpaqueDecoder,
                                               f: F) -> R
-        where F: FnOnce(&DecodingContext<'tcx>, &mut RbmlDecoder) -> R
+        where F: FnOnce(&DecodingContext<'tcx>, &mut OpaqueDecoder) -> R
     {
-        let tls_payload = (dcx as *const _, rbml_r as *mut _);
+        let tls_payload = (dcx as *const _, decoder as *mut _);
         let tls_ptr = &tls_payload as *const _ as *const TlsPayload;
-        TLS_DECODING.set(unsafe { &*tls_ptr }, || f(dcx, rbml_r))
+        TLS_DECODING.set(unsafe { &*tls_ptr }, || f(dcx, decoder))
     }
 
     /// Execute f with access to the thread-local decoding context and
@@ -530,16 +530,16 @@ pub mod tls {
     pub fn with_decoding_context<'decoder, 'tcx, D, F, R>(d: &'decoder mut D, f: F) -> R
         where D: serialize::Decoder,
               F: FnOnce(&DecodingContext<'tcx>,
-                        &mut RbmlDecoder) -> R,
+                        &mut OpaqueDecoder) -> R,
               'tcx: 'decoder
     {
         unsafe {
-            unsafe_with_decoding_context(|dcx, rbml_r| {
-                assert!((d as *mut _ as usize) == (rbml_r as *mut _ as usize));
+            unsafe_with_decoding_context(|dcx, decoder| {
+                assert!((d as *mut _ as usize) == (decoder as *mut _ as usize));
 
                 let dcx: &DecodingContext<'tcx> = mem::transmute(dcx);
 
-                f(dcx, rbml_r)
+                f(dcx, decoder)
             })
         }
     }
@@ -547,11 +547,11 @@ pub mod tls {
     /// Execute f with access to the thread-local decoding context and
     /// rbml decoder.
     pub unsafe fn unsafe_with_decoding_context<F, R>(f: F) -> R
-        where F: FnOnce(&DecodingContext, &mut RbmlDecoder) -> R
+        where F: FnOnce(&DecodingContext, &mut OpaqueDecoder) -> R
     {
         TLS_DECODING.with(|tls| {
             let tls_payload = (tls as *const TlsPayload)
-                                   as *mut (&DecodingContext, &mut RbmlDecoder);
+                                   as *mut (&DecodingContext, &mut OpaqueDecoder);
             f((*tls_payload).0, (*tls_payload).1)
         })
     }

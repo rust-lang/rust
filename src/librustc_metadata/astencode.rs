@@ -292,7 +292,7 @@ impl<D:serialize::Decoder> def_id_decoder_helpers for D
 
 fn encode_ast(rbml_w: &mut Encoder, item: &InlinedItem) {
     rbml_w.start_tag(c::tag_tree as usize);
-    item.encode(rbml_w);
+    rbml_w.emit_opaque(|this| item.encode(this));
     rbml_w.end_tag();
 }
 
@@ -361,8 +361,8 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
 
 fn decode_ast(par_doc: rbml::Doc) -> InlinedItem {
     let chi_doc = par_doc.get(c::tag_tree as usize);
-    let mut d = reader::Decoder::new(chi_doc);
-    Decodable::decode(&mut d).unwrap()
+    let mut rbml_r = reader::Decoder::new(chi_doc);
+    rbml_r.read_opaque(|decoder, _| Decodable::decode(decoder)).unwrap()
 }
 
 // ______________________________________________________________________
@@ -509,21 +509,6 @@ pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
 // ______________________________________________________________________
 // Encoding and decoding the side tables
 
-trait get_ty_str_ctxt<'tcx> {
-    fn ty_str_ctxt<'a>(&'a self) -> tyencode::ctxt<'a, 'tcx>;
-}
-
-impl<'a, 'tcx> get_ty_str_ctxt<'tcx> for e::EncodeContext<'a, 'tcx> {
-    fn ty_str_ctxt<'b>(&'b self) -> tyencode::ctxt<'b, 'tcx> {
-        tyencode::ctxt {
-            diag: self.tcx.sess.diagnostic(),
-            ds: e::def_to_string,
-            tcx: self.tcx,
-            abbrevs: &self.type_abbrevs
-        }
-    }
-}
-
 trait rbml_writer_helpers<'tcx> {
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region);
     fn emit_ty<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, ty: Ty<'tcx>);
@@ -548,11 +533,15 @@ trait rbml_writer_helpers<'tcx> {
 
 impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_region(&mut self, ecx: &e::EncodeContext, r: ty::Region) {
-        self.emit_opaque(|this| Ok(e::write_region(ecx, this, r)));
+        self.emit_opaque(|this| Ok(tyencode::enc_region(&mut this.cursor,
+                                                        &ecx.ty_str_ctxt(),
+                                                        r)));
     }
 
     fn emit_ty<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>, ty: Ty<'tcx>) {
-        self.emit_opaque(|this| Ok(e::write_type(ecx, this, ty)));
+        self.emit_opaque(|this| Ok(tyencode::enc_ty(&mut this.cursor,
+                                                    &ecx.ty_str_ctxt(),
+                                                    ty)));
     }
 
     fn emit_tys<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>, tys: &[Ty<'tcx>]) {
@@ -561,13 +550,15 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_trait_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                           trait_ref: &ty::TraitRef<'tcx>) {
-        self.emit_opaque(|this| Ok(e::write_trait_ref(ecx, this, trait_ref)));
+        self.emit_opaque(|this| Ok(tyencode::enc_trait_ref(&mut this.cursor,
+                                                           &ecx.ty_str_ctxt(),
+                                                           *trait_ref)));
     }
 
     fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                           predicate: &ty::Predicate<'tcx>) {
         self.emit_opaque(|this| {
-            Ok(tyencode::enc_predicate(this,
+            Ok(tyencode::enc_predicate(&mut this.cursor,
                                        &ecx.ty_str_ctxt(),
                                        predicate))
         });
@@ -575,13 +566,13 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
                                    bounds: &ty::ExistentialBounds<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(this,
+        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(&mut this.cursor,
                                                                     &ecx.ty_str_ctxt(),
                                                                     bounds)));
     }
 
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds) {
-        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(this,
+        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(&mut this.cursor,
                                                                 &ecx.ty_str_ctxt(),
                                                                 bounds)));
     }
@@ -608,9 +599,9 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_substs<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                        substs: &subst::Substs<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_substs(this,
-                                                           &ecx.ty_str_ctxt(),
-                                                           substs)));
+        self.emit_opaque(|this| Ok(tyencode::enc_substs(&mut this.cursor,
+                                                        &ecx.ty_str_ctxt(),
+                                                        substs)));
     }
 
     fn emit_auto_adjustment<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
@@ -878,10 +869,6 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                    -> adjustment::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                             -> adjustment::AutoRef<'tcx>;
-    fn convert_def_id(&mut self,
-                      dcx: &DecodeContext,
-                      did: DefId)
-                      -> DefId;
 
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
@@ -933,12 +920,12 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_ty_encoded<'b, 'c, F, R>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>, op: F) -> R
         where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x,'tcx>) -> R
     {
-        return self.read_opaque(|this, doc| {
+        return self.read_opaque(|_, doc| {
             debug!("read_ty_encoded({})", type_string(doc));
             Ok(op(
                 &mut tydecode::TyDecoder::with_doc(
                     dcx.tcx, dcx.cdata.cnum, doc,
-                    &mut |a| this.convert_def_id(dcx, a))))
+                    &mut |d| convert_def_id(dcx, d))))
         }).unwrap();
 
         fn type_string(doc: rbml::Doc) -> String {
@@ -989,9 +976,9 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
     fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                            -> subst::Substs<'tcx> {
-        self.read_opaque(|this, doc| {
+        self.read_opaque(|_, doc| {
             Ok(tydecode::TyDecoder::with_doc(dcx.tcx, dcx.cdata.cnum, doc,
-                                             &mut |a| this.convert_def_id(dcx, a))
+                                             &mut |d| convert_def_id(dcx, d))
                .parse_substs())
         }).unwrap()
     }
@@ -1097,47 +1084,46 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     {
         Decodable::decode(self).unwrap()
     }
+}
 
-    /// Converts a def-id that appears in a type.  The correct
-    /// translation will depend on what kind of def-id this is.
-    /// This is a subtle point: type definitions are not
-    /// inlined into the current crate, so if the def-id names
-    /// a nominal type or type alias, then it should be
-    /// translated to refer to the source crate.
-    ///
-    /// However, *type parameters* are cloned along with the function
-    /// they are attached to.  So we should translate those def-ids
-    /// to refer to the new, cloned copy of the type parameter.
-    /// We only see references to free type parameters in the body of
-    /// an inlined function. In such cases, we need the def-id to
-    /// be a local id so that the TypeContents code is able to lookup
-    /// the relevant info in the ty_param_defs table.
-    ///
-    /// *Region parameters*, unfortunately, are another kettle of fish.
-    /// In such cases, def_id's can appear in types to distinguish
-    /// shadowed bound regions and so forth. It doesn't actually
-    /// matter so much what we do to these, since regions are erased
-    /// at trans time, but it's good to keep them consistent just in
-    /// case. We translate them with `tr_def_id()` which will map
-    /// the crate numbers back to the original source crate.
-    ///
-    /// Scopes will end up as being totally bogus. This can actually
-    /// be fixed though.
-    ///
-    /// Unboxed closures are cloned along with the function being
-    /// inlined, and all side tables use interned node IDs, so we
-    /// translate their def IDs accordingly.
-    ///
-    /// It'd be really nice to refactor the type repr to not include
-    /// def-ids so that all these distinctions were unnecessary.
-    fn convert_def_id(&mut self,
-                      dcx: &DecodeContext,
-                      did: DefId)
-                      -> DefId {
-        let r = dcx.tr_def_id(did);
-        debug!("convert_def_id(did={:?})={:?}", did, r);
-        return r;
-    }
+// Converts a def-id that appears in a type.  The correct
+// translation will depend on what kind of def-id this is.
+// This is a subtle point: type definitions are not
+// inlined into the current crate, so if the def-id names
+// a nominal type or type alias, then it should be
+// translated to refer to the source crate.
+//
+// However, *type parameters* are cloned along with the function
+// they are attached to.  So we should translate those def-ids
+// to refer to the new, cloned copy of the type parameter.
+// We only see references to free type parameters in the body of
+// an inlined function. In such cases, we need the def-id to
+// be a local id so that the TypeContents code is able to lookup
+// the relevant info in the ty_param_defs table.
+//
+// *Region parameters*, unfortunately, are another kettle of fish.
+// In such cases, def_id's can appear in types to distinguish
+// shadowed bound regions and so forth. It doesn't actually
+// matter so much what we do to these, since regions are erased
+// at trans time, but it's good to keep them consistent just in
+// case. We translate them with `tr_def_id()` which will map
+// the crate numbers back to the original source crate.
+//
+// Scopes will end up as being totally bogus. This can actually
+// be fixed though.
+//
+// Unboxed closures are cloned along with the function being
+// inlined, and all side tables use interned node IDs, so we
+// translate their def IDs accordingly.
+//
+// It'd be really nice to refactor the type repr to not include
+// def-ids so that all these distinctions were unnecessary.
+fn convert_def_id(dcx: &DecodeContext,
+                  did: DefId)
+                  -> DefId {
+    let r = dcx.tr_def_id(did);
+    debug!("convert_def_id(did={:?})={:?}", did, r);
+    return r;
 }
 
 fn decode_side_tables(dcx: &DecodeContext,
