@@ -50,7 +50,7 @@ fn option_methods() {
     // Check OPTION_MAP_UNWRAP_OR
     // single line case
     let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or(a)`
-                               //~| NOTE replace this
+                               //~| NOTE replace `map(|x| x + 1).unwrap_or(0)`
                .unwrap_or(0); // should lint even though this call is on a separate line
     // multi line cases
     let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or(a)`
@@ -67,7 +67,7 @@ fn option_methods() {
     // Check OPTION_MAP_UNWRAP_OR_ELSE
     // single line case
     let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or_else(g)`
-                               //~| NOTE replace this
+                               //~| NOTE replace `map(|x| x + 1).unwrap_or_else(|| 0)`
                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
     // multi line cases
     let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or_else(g)`
@@ -81,6 +81,98 @@ fn option_methods() {
     // macro case
     let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0); // should not lint
 
+}
+
+/// Struct to generate false positive for Iterator-based lints
+#[derive(Copy, Clone)]
+struct IteratorFalsePositives {
+    foo: u32,
+}
+
+impl IteratorFalsePositives {
+    fn filter(self) -> IteratorFalsePositives {
+        self
+    }
+
+    fn next(self) -> IteratorFalsePositives {
+        self
+    }
+
+    fn find(self) -> Option<u32> {
+        Some(self.foo)
+    }
+
+    fn position(self) -> Option<u32> {
+        Some(self.foo)
+    }
+
+    fn rposition(self) -> Option<u32> {
+        Some(self.foo)
+    }
+}
+
+/// Checks implementation of FILTER_NEXT lint
+fn filter_next() {
+    let v = vec![3, 2, 1, 0, -1, -2, -3];
+
+    // check single-line case
+    let _ = v.iter().filter(|&x| *x < 0).next();
+    //~^ ERROR called `filter(p).next()` on an Iterator.
+    //~| NOTE replace `filter(|&x| *x < 0).next()`
+
+    // check multi-line case
+    let _ = v.iter().filter(|&x| { //~ERROR called `filter(p).next()` on an Iterator.
+                                *x < 0
+                            }
+                   ).next();
+
+    // check that we don't lint if the caller is not an Iterator
+    let foo = IteratorFalsePositives { foo: 0 };
+    let _ = foo.filter().next();
+}
+
+/// Checks implementation of SEARCH_IS_SOME lint
+fn search_is_some() {
+    let v = vec![3, 2, 1, 0, -1, -2, -3];
+
+    // check `find().is_some()`, single-line
+    let _ = v.iter().find(|&x| *x < 0).is_some();
+    //~^ ERROR called `is_some()` after searching
+    //~| NOTE replace `find(|&x| *x < 0).is_some()`
+
+    // check `find().is_some()`, multi-line
+    let _ = v.iter().find(|&x| { //~ERROR called `is_some()` after searching
+                              *x < 0
+                          }
+                   ).is_some();
+
+    // check `position().is_some()`, single-line
+    let _ = v.iter().position(|&x| x < 0).is_some();
+    //~^ ERROR called `is_some()` after searching
+    //~| NOTE replace `position(|&x| x < 0).is_some()`
+
+    // check `position().is_some()`, multi-line
+    let _ = v.iter().position(|&x| { //~ERROR called `is_some()` after searching
+                                  x < 0
+                              }
+                   ).is_some();
+
+    // check `rposition().is_some()`, single-line
+    let _ = v.iter().rposition(|&x| x < 0).is_some();
+    //~^ ERROR called `is_some()` after searching
+    //~| NOTE replace `rposition(|&x| x < 0).is_some()`
+
+    // check `rposition().is_some()`, multi-line
+    let _ = v.iter().rposition(|&x| { //~ERROR called `is_some()` after searching
+                                   x < 0
+                               }
+                   ).is_some();
+
+    // check that we don't lint if the caller is not an Iterator
+    let foo = IteratorFalsePositives { foo: 0 };
+    let _ = foo.find().is_some();
+    let _ = foo.position().is_some();
+    let _ = foo.rposition().is_some();
 }
 
 fn main() {

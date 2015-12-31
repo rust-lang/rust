@@ -6,7 +6,7 @@ use std::iter;
 use std::borrow::Cow;
 
 use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args,
-            walk_ptrs_ty_depth, walk_ptrs_ty};
+            match_trait_method, walk_ptrs_ty_depth, walk_ptrs_ty};
 use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
 use utils::MethodArgs;
 
@@ -135,7 +135,7 @@ declare_lint!(pub OK_EXPECT, Warn,
 /// **Example:** `x.map(|a| a + 1).unwrap_or(0)`
 declare_lint!(pub OPTION_MAP_UNWRAP_OR, Warn,
               "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
-               `map_or(a, f)`)");
+               `map_or(a, f)`");
 
 /// **What it does:** This lint `Warn`s on `_.map(_).unwrap_or_else(_)`.
 ///
@@ -146,7 +146,29 @@ declare_lint!(pub OPTION_MAP_UNWRAP_OR, Warn,
 /// **Example:** `x.map(|a| a + 1).unwrap_or_else(some_function)`
 declare_lint!(pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
               "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
-               `map_or_else(g, f)`)");
+               `map_or_else(g, f)`");
+
+/// **What it does:** This lint `Warn`s on `_.filter(_).next()`.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as `_.find(_)`.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `iter.filter(|x| x == 0).next()`
+declare_lint!(pub FILTER_NEXT, Warn,
+              "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`");
+
+/// **What it does:** This lint `Warn`s on an iterator search (such as `find()`, `position()`, or
+/// `rposition()`) followed by a call to `is_some()`.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as `_.any(_)`.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `iter.find(|x| x == 0).is_some()`
+declare_lint!(pub SEARCH_IS_SOME, Warn,
+              "using an iterator search followed by `is_some()`, which is more succinctly \
+               expressed as a call to `any()`");
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
@@ -173,6 +195,18 @@ impl LateLintPass for MethodsPass {
             }
             else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
                 lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
+            }
+            else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
+                lint_filter_next(cx, expr, arglists[0]);
+            }
+            else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
+                lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
+            }
+            else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
+                lint_search_is_some(cx, expr, "position", arglists[0], arglists[1]);
+            }
+            else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
+                lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
             }
         }
     }
@@ -275,8 +309,8 @@ fn lint_ok_expect(cx: &LateContext, expr: &Expr, ok_args: &MethodArgs) {
 
 #[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or()` for `Option`s
-fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
-                      map_args: &MethodArgs) {
+fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
+                      unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
@@ -293,7 +327,8 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
         if same_span && !multiline {
             span_note_and_lint(
                 cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, expr.span,
-                &format!("replace this with map_or({1}, {0})", map_snippet, unwrap_snippet)
+                &format!("replace `map({0}).unwrap_or({1})` with `map_or({1}, {0})`", map_snippet,
+                         unwrap_snippet)
             );
         }
         else if same_span && multiline {
@@ -304,8 +339,8 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
 
 #[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or_else()` for `Option`s
-fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs,
-                           map_args: &MethodArgs) {
+fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
+                           unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
@@ -322,12 +357,51 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, unwrap_args: &MethodAr
         if same_span && !multiline {
             span_note_and_lint(
                 cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg, expr.span,
-                &format!("replace this with map_or_else({1}, {0})", map_snippet, unwrap_snippet)
+                &format!("replace `map({0}).unwrap_or_else({1})` with `with map_or_else({1}, {0})`",
+                          map_snippet, unwrap_snippet)
             );
         }
         else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg);
         };
+    }
+}
+
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+/// lint use of `filter().next() for Iterators`
+fn lint_filter_next(cx: &LateContext, expr: &Expr, filter_args: &MethodArgs) {
+    // lint if caller of `.filter().next()` is an Iterator
+    if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
+        let msg = "called `filter(p).next()` on an Iterator. This is more succinctly expressed by \
+                   calling `.find(p)` instead.";
+        let filter_snippet = snippet(cx, filter_args[1].span, "..");
+        if filter_snippet.lines().count() <= 1 { // add note if not multi-line
+            span_note_and_lint(cx, FILTER_NEXT, expr.span, msg, expr.span,
+                &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet));
+        }
+        else {
+            span_lint(cx, FILTER_NEXT, expr.span, msg);
+        }
+    }
+}
+
+#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+/// lint searching an Iterator followed by `is_some()`
+fn lint_search_is_some(cx: &LateContext, expr: &Expr, search_method: &str, search_args: &MethodArgs,
+                       is_some_args: &MethodArgs) {
+    // lint if caller of search is an Iterator
+    if match_trait_method(cx, &*is_some_args[0], &["core", "iter", "Iterator"]) {
+        let msg = format!("called `is_some()` after searching an iterator with {}. This is more \
+                           succinctly expressed by calling `any()`.", search_method);
+        let search_snippet = snippet(cx, search_args[1].span, "..");
+        if search_snippet.lines().count() <= 1 { // add note if not multi-line
+            span_note_and_lint(cx, SEARCH_IS_SOME, expr.span, &msg, expr.span,
+                &format!("replace `{0}({1}).is_some()` with `any({1})`", search_method,
+                         search_snippet));
+        }
+        else {
+            span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
+        }
     }
 }
 
