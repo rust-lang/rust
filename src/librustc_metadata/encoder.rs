@@ -498,16 +498,16 @@ fn encode_explicit_self(rbml_w: &mut Encoder,
 
     // Encode the base self type.
     match *explicit_self {
-        ty::StaticExplicitSelfCategory => {
+        ty::ExplicitSelfCategory::Static => {
             rbml_w.wr_tagged_bytes(tag, &['s' as u8]);
         }
-        ty::ByValueExplicitSelfCategory => {
+        ty::ExplicitSelfCategory::ByValue => {
             rbml_w.wr_tagged_bytes(tag, &['v' as u8]);
         }
-        ty::ByBoxExplicitSelfCategory => {
+        ty::ExplicitSelfCategory::ByBox => {
             rbml_w.wr_tagged_bytes(tag, &['~' as u8]);
         }
-        ty::ByReferenceExplicitSelfCategory(_, m) => {
+        ty::ExplicitSelfCategory::ByReference(_, m) => {
             // FIXME(#4846) encode custom lifetime
             let ch = encode_mutability(m);
             rbml_w.wr_tagged_bytes(tag, &['&' as u8, ch]);
@@ -675,7 +675,7 @@ fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_visibility(rbml_w, method_ty.vis);
     encode_explicit_self(rbml_w, &method_ty.explicit_self);
     match method_ty.explicit_self {
-        ty::StaticExplicitSelfCategory => {
+        ty::ExplicitSelfCategory::Static => {
             encode_family(rbml_w, STATIC_METHOD_FAMILY);
         }
         _ => encode_family(rbml_w, METHOD_FAMILY)
@@ -1340,7 +1340,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                 path.clone().chain(Some(elem)));
 
                     match method_ty.explicit_self {
-                        ty::StaticExplicitSelfCategory => {
+                        ty::ExplicitSelfCategory::Static => {
                             encode_family(rbml_w,
                                           STATIC_METHOD_FAMILY);
                         }
@@ -1353,7 +1353,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                                     ecx.local_id(method_def_id));
 
                     is_nonstatic_method = method_ty.explicit_self !=
-                        ty::StaticExplicitSelfCategory;
+                        ty::ExplicitSelfCategory::Static;
                 }
                 ty::TypeTraitItem(associated_type) => {
                     encode_name(rbml_w, associated_type.name);
