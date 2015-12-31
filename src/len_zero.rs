@@ -135,7 +135,7 @@ fn check_len_zero(cx: &LateContext, span: Span, name: &Name,
             has_is_empty(cx, &args[0]) {
                 span_lint(cx, LEN_ZERO, span, &format!(
                     "consider replacing the len comparison with `{}{}.is_empty()`",
-                    op, snippet(cx, args[0].span, "_")))
+                    op, snippet(cx, args[0].span, "_")));
             }
     }
 }

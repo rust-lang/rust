@@ -7,7 +7,7 @@ use rustc_front::intravisit::{Visitor, FnKind};
 use rustc::lint::*;
 use rustc::middle::def::Def::{DefVariant, DefStruct};
 
-use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint};
+use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint, DiagnosticWrapper};
 
 /// **What it does:** This lint checks for bindings that shadow other bindings already in scope, while just changing reference level or mutability. It is `Allow` by default.
 ///
@@ -180,39 +180,39 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span,
 
 fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, lspan: Span, init:
         &Option<T>, prev_span: Span) where T: Deref<Target=Expr> {
-    fn note_orig(cx: &LateContext, lint: &'static Lint, span: Span) {
+    fn note_orig(cx: &LateContext, mut db: DiagnosticWrapper, lint: &'static Lint, span: Span) {
         if cx.current_level(lint) != Level::Allow {
-            cx.sess().span_note(span, "previous binding is here");
+            db.span_note(span, "previous binding is here");
         }
     }
     if let Some(ref expr) = *init {
         if is_self_shadow(name, expr) {
-            span_lint(cx, SHADOW_SAME, span, &format!(
+            let db = span_lint(cx, SHADOW_SAME, span, &format!(
                 "{} is shadowed by itself in {}",
                 snippet(cx, lspan, "_"),
                 snippet(cx, expr.span, "..")));
-                note_orig(cx, SHADOW_SAME, prev_span);
+                note_orig(cx, db, SHADOW_SAME, prev_span);
         } else {
             if contains_self(name, expr) {
-                span_note_and_lint(cx, SHADOW_REUSE, lspan, &format!(
+                let db = span_note_and_lint(cx, SHADOW_REUSE, lspan, &format!(
                     "{} is shadowed by {} which reuses the original value",
                     snippet(cx, lspan, "_"),
                     snippet(cx, expr.span, "..")),
                     expr.span, "initialization happens here");
-                note_orig(cx, SHADOW_REUSE, prev_span);
+                note_orig(cx, db, SHADOW_REUSE, prev_span);
             } else {
-                span_note_and_lint(cx, SHADOW_UNRELATED, lspan, &format!(
+                let db = span_note_and_lint(cx, SHADOW_UNRELATED, lspan, &format!(
                     "{} is shadowed by {}",
                     snippet(cx, lspan, "_"),
                     snippet(cx, expr.span, "..")),
                     expr.span, "initialization happens here");
-                note_orig(cx, SHADOW_UNRELATED, prev_span);
+                note_orig(cx, db, SHADOW_UNRELATED, prev_span);
             }
         }
     } else {
-        span_lint(cx, SHADOW_UNRELATED, span, &format!(
+        let db = span_lint(cx, SHADOW_UNRELATED, span, &format!(
             "{} shadows a previous declaration", snippet(cx, lspan, "_")));
-        note_orig(cx, SHADOW_UNRELATED, prev_span);
+        note_orig(cx, db, SHADOW_UNRELATED, prev_span);
     }
 }
 

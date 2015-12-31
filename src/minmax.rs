@@ -37,7 +37,7 @@ impl LateLintPass for MinMaxPass {
                     (_, None) | (Max, Some(Less)) | (Min, Some(Greater)) => (),
                     _ => {
                         span_lint(cx, MIN_MAX, expr.span,
-                            "this min/max combination leads to constant result")
+                            "this min/max combination leads to constant result");
                     }
                 }
             }

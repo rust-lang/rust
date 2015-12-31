@@ -8,10 +8,12 @@ use rustc::middle::ty;
 use std::borrow::Cow;
 use syntax::ast::Lit_::*;
 use syntax::ast;
+use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 
 use rustc::session::Session;
 use std::str::FromStr;
+use std::ops::{Deref, DerefMut};
 
 pub type MethodArgs = HirVec<P<Expr>>;
 
@@ -307,63 +309,91 @@ pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c 
     } else { None }
 }
 
-#[cfg(not(feature="structured_logging"))]
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
-    cx.span_lint(lint, sp, msg);
-    if cx.current_level(lint) != Level::Allow {
-        cx.sess().fileline_help(sp, &format!("for further information visit \
-            https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+pub struct DiagnosticWrapper<'a>(pub DiagnosticBuilder<'a>);
+
+impl<'a> Drop for DiagnosticWrapper<'a> {
+    fn drop(&mut self) {
+        self.0.emit();
     }
+}
+
+impl<'a> DerefMut for DiagnosticWrapper<'a> {
+    fn deref_mut(&mut self) -> &mut DiagnosticBuilder<'a> {
+        &mut self.0
+    } 
+}
+
+impl<'a> Deref for DiagnosticWrapper<'a> {
+    type Target = DiagnosticBuilder<'a>;
+    fn deref(&self) -> &DiagnosticBuilder<'a> {
+        &self.0
+    } 
+}
+
+#[cfg(not(feature="structured_logging"))]
+pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint,
+                                     sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
+    let mut db = cx.struct_span_lint(lint, sp, msg);
+    if cx.current_level(lint) != Level::Allow {
+        db.fileline_help(sp, &format!("for further information visit \
+            https://github.com/Manishearth/rust-clippy/wiki#{}",
+            lint.name_lower()));
+    }
+    DiagnosticWrapper(db)
 }
 
 #[cfg(feature="structured_logging")]
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
+pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint,
+                                     sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
     // lint.name / lint.desc is can give details of the lint
     // cx.sess().codemap() has all these nice functions for line/column/snippet details
     // http://doc.rust-lang.org/syntax/codemap/struct.CodeMap.html#method.span_to_string
-    cx.span_lint(lint, sp, msg);
+    let mut db = cx.struct_span_lint(lint, sp, msg);
     if cx.current_level(lint) != Level::Allow {
-        cx.sess().fileline_help(sp, &format!("for further information visit \
+        db.fileline_help(sp, &format!("for further information visit \
             https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+            lint.name_lower()));
     }
+    DiagnosticWrapper(db)
 }
 
-pub fn span_help_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Span,
-        msg: &str, help: &str) {
-    cx.span_lint(lint, span, msg);
+pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span,
+        msg: &str, help: &str) -> DiagnosticWrapper<'a> {
+    let mut db = cx.struct_span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
-        cx.sess().fileline_help(span, &format!("{}\nfor further information \
+        db.fileline_help(span, &format!("{}\nfor further information \
             visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-            help, lint.name_lower()))
+            help, lint.name_lower()));
     }
+    DiagnosticWrapper(db)
 }
 
-pub fn span_note_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Span,
-        msg: &str, note_span: Span, note: &str) {
-    cx.span_lint(lint, span, msg);
+pub fn span_note_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span,
+        msg: &str, note_span: Span, note: &str) -> DiagnosticWrapper<'a> {
+    let mut db = cx.struct_span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
         if note_span == span {
-            cx.sess().fileline_note(note_span, note)
+            db.fileline_note(note_span, note);
         } else {
-            cx.sess().span_note(note_span, note)
+            db.span_note(note_span, note);
         }
-        cx.sess().fileline_help(span, &format!("for further information visit \
+        db.fileline_help(span, &format!("for further information visit \
             https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+            lint.name_lower()));
     }
+    DiagnosticWrapper(db)
 }
 
-pub fn span_lint_and_then<T: LintContext, F>(cx: &T, lint: &'static Lint, sp: Span,
-        msg: &str, f: F) where F: Fn() {
-    cx.span_lint(lint, sp, msg);
+pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span,
+        msg: &str, f: F) -> DiagnosticWrapper<'a> where F: Fn(&mut DiagnosticWrapper) {
+    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
-        f();
-        cx.sess().fileline_help(sp, &format!("for further information visit \
+        f(&mut db);
+        db.fileline_help(sp, &format!("for further information visit \
             https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+            lint.name_lower()));
     }
+    db
 }
 
 /// return the base type for references and raw pointers
