@@ -940,8 +940,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None => ErrorOutputType::default(),
 
             Some(arg) => {
-                early_error(ErrorOutputType::default(), &format!("argument for --output must be tty or \
-                                                                  json (instead was `{}`)",
+                early_error(ErrorOutputType::default(), &format!("argument for --output must be \
+                                                                  tty or json (instead was `{}`)",
                                                                  arg))
             }
         }
