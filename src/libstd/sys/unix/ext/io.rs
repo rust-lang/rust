@@ -33,7 +33,7 @@ pub trait AsRawFd {
     /// Extracts the raw file descriptor.
     ///
     /// This method does **not** pass ownership of the raw file descriptor
-    /// to the caller. The descriptor is only guarantee to be valid while
+    /// to the caller. The descriptor is only guaranteed to be valid while
     /// the original object has not yet been destroyed.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_raw_fd(&self) -> RawFd;
