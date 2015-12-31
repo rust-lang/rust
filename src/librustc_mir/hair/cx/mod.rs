@@ -88,11 +88,6 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         self.cmp_method_ref(eq_def_id, "eq", ty)
     }
 
-    pub fn partial_le(&mut self, ty: Ty<'tcx>) -> ItemRef<'tcx> {
-        let ord_def_id = self.tcx.lang_items.ord_trait().unwrap();
-        self.cmp_method_ref(ord_def_id, "le", ty)
-    }
-
     pub fn num_variants(&mut self, adt_def: ty::AdtDef<'tcx>) -> usize {
         adt_def.variants.len()
     }
