@@ -522,14 +522,14 @@ impl ToOwned for CStr {
     }
 }
 
-#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+#[stable(feature = "cstring_asref", since = "1.7.0")]
 impl<'a> From<&'a CStr> for CString {
     fn from(s: &'a CStr) -> CString {
         s.to_owned()
     }
 }
 
-#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+#[stable(feature = "cstring_asref", since = "1.7.0")]
 impl ops::Index<ops::RangeFull> for CString {
     type Output = CStr;
 
@@ -539,14 +539,14 @@ impl ops::Index<ops::RangeFull> for CString {
     }
 }
 
-#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+#[stable(feature = "cstring_asref", since = "1.7.0")]
 impl AsRef<CStr> for CStr {
     fn as_ref(&self) -> &CStr {
         self
     }
 }
 
-#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+#[stable(feature = "cstring_asref", since = "1.7.0")]
 impl AsRef<CStr> for CString {
     fn as_ref(&self) -> &CStr {
         self
