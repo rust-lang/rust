@@ -185,28 +185,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
 
             TestKind::Range { ref lo, ref hi, ty } => {
-                // Test `v` by computing `PartialOrd::le(lo, v) && PartialOrd::le(v, hi)`.
+                // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 let lo = self.literal_operand(test.span, ty.clone(), lo.clone());
                 let hi = self.literal_operand(test.span, ty.clone(), hi.clone());
-                let item_ref = self.hir.partial_le(ty);
+                let val = Operand::Consume(lvalue.clone());
 
-                let lo_blocks = self.call_comparison_fn(block,
-                                                        test.span,
-                                                        item_ref.clone(),
-                                                        lo,
-                                                        Operand::Consume(lvalue.clone()));
+                let fail = self.cfg.start_new_block();
+                let block = self.compare(block, fail, test.span, BinOp::Le, lo, val.clone());
+                let block = self.compare(block, fail, test.span, BinOp::Le, val, hi);
 
-                let hi_blocks = self.call_comparison_fn(lo_blocks[0],
-                                                        test.span,
-                                                        item_ref,
-                                                        Operand::Consume(lvalue.clone()),
-                                                        hi);
-
-                let failure = self.cfg.start_new_block();
-                self.cfg.terminate(lo_blocks[1], Terminator::Goto { target: failure });
-                self.cfg.terminate(hi_blocks[1], Terminator::Goto { target: failure });
-
-                vec![hi_blocks[0], failure]
+                vec![block, fail]
             }
 
             TestKind::Len { len, op } => {
@@ -238,6 +226,29 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 target_blocks
             }
         }
+    }
+
+    fn compare(&mut self,
+               block: BasicBlock,
+               fail_block: BasicBlock,
+               span: Span,
+               op: BinOp,
+               left: Operand<'tcx>,
+               right: Operand<'tcx>) -> BasicBlock {
+        let bool_ty = self.hir.bool_ty();
+        let result = self.temp(bool_ty);
+
+        // result = op(left, right)
+        self.cfg.push_assign(block, span, &result, Rvalue::BinaryOp(op, left, right));
+
+        // branch based on result
+        let target_block = self.cfg.start_new_block();
+        self.cfg.terminate(block, Terminator::If {
+            cond: Operand::Consume(result),
+            targets: (target_block, fail_block)
+        });
+
+        target_block
     }
 
     fn call_comparison_fn(&mut self,
