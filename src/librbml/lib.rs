@@ -128,9 +128,16 @@
 #![cfg_attr(test, feature(test))]
 
 extern crate serialize;
+
+#[cfg(test)]
+extern crate serialize as rustc_serialize; // Used by RustcEncodable
+
 #[macro_use] extern crate log;
 
 #[cfg(test)] extern crate test;
+
+pub mod opaque;
+pub mod leb128;
 
 pub use self::EbmlEncoderTag::*;
 pub use self::Error::*;
@@ -241,6 +248,7 @@ pub mod reader {
 
     use serialize;
 
+    use super::opaque;
     use super::{ ApplicationError, EsVec, EsMap, EsEnum, EsSub8, EsSub32,
         EsVecElt, EsMapKey, EsU64, EsU32, EsU16, EsU8, EsI64,
         EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
@@ -621,18 +629,16 @@ pub mod reader {
         }
 
         pub fn read_opaque<R, F>(&mut self, op: F) -> DecodeResult<R> where
-            F: FnOnce(&mut Decoder, Doc) -> DecodeResult<R>,
+            F: FnOnce(&mut opaque::Decoder, Doc) -> DecodeResult<R>,
         {
             let doc = try!(self.next_doc(EsOpaque));
 
-            let (old_parent, old_pos) = (self.parent, self.pos);
-            self.parent = doc;
-            self.pos = doc.start;
+            let result = {
+                let mut opaque_decoder = opaque::Decoder::new(doc.data,
+                                                              doc.start);
+                try!(op(&mut opaque_decoder, doc))
+            };
 
-            let result = try!(op(self, doc));
-
-            self.parent = old_parent;
-            self.pos = old_pos;
             Ok(result)
         }
 
@@ -877,6 +883,7 @@ pub mod writer {
     use std::io::prelude::*;
     use std::io::{self, SeekFrom, Cursor};
 
+    use super::opaque;
     use super::{ EsVec, EsMap, EsEnum, EsSub8, EsSub32, EsVecElt, EsMapKey,
         EsU64, EsU32, EsU16, EsU8, EsI64, EsI32, EsI16, EsI8,
         EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
@@ -1120,10 +1127,16 @@ pub mod writer {
         }
 
         pub fn emit_opaque<F>(&mut self, f: F) -> EncodeResult where
-            F: FnOnce(&mut Encoder) -> EncodeResult,
+            F: FnOnce(&mut opaque::Encoder) -> EncodeResult,
         {
             try!(self.start_tag(EsOpaque as usize));
-            try!(f(self));
+
+            {
+                let mut opaque_encoder = opaque::Encoder::new(self.writer);
+                try!(f(&mut opaque_encoder));
+            }
+
+            self.mark_stable_position();
             self.end_tag()
         }
     }
