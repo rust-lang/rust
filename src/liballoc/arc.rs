@@ -555,9 +555,9 @@ impl<T: ?Sized> Drop for Arc<T> {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
         // more than once (but it is guaranteed to be zeroed after the first if
         // it's run more than once)
-        let ptr = *self._ptr;
-        // if ptr.is_null() { return }
-        if ptr as *mut u8 as usize == 0 || ptr as *mut u8 as usize == mem::POST_DROP_USIZE {
+        let thin = *self._ptr as *const ();
+
+        if thin as usize == mem::POST_DROP_USIZE {
             return;
         }
 
@@ -710,9 +710,10 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         let ptr = *self._ptr;
+        let thin = ptr as *const ();
 
         // see comments above for why this check is here
-        if ptr as *mut u8 as usize == 0 || ptr as *mut u8 as usize == mem::POST_DROP_USIZE {
+        if thin as usize == mem::POST_DROP_USIZE {
             return;
         }
 
