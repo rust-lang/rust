@@ -24,6 +24,7 @@ use std::rc::Rc;
 use term;
 
 pub mod emitter;
+pub mod json;
 
 #[derive(Clone)]
 pub enum RenderSpan {
