@@ -248,7 +248,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                          kind: DropKind,
                          lvalue: &Lvalue<'tcx>,
                          lvalue_ty: Ty<'tcx>) {
-        if self.hir.needs_drop(lvalue_ty, span) {
+        if self.hir.needs_drop(lvalue_ty) {
             match self.scopes.iter_mut().rev().find(|s| s.extent == extent) {
                 Some(scope) => {
                     scope.drops.push((kind, span, lvalue.clone()));
