@@ -88,15 +88,15 @@ pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
     where F: Fn(u32) -> String
 {
     let mut t = term::stdout().unwrap();
+
     for mismatch in diff {
-        t.fg(term::color::BRIGHT_WHITE).unwrap();
         let title = get_section_title(mismatch.line_number);
         writeln!(t, "{}", title).unwrap();
 
         for line in mismatch.lines {
             match line {
                 DiffLine::Context(ref str) => {
-                    t.fg(term::color::WHITE).unwrap();
+                    t.reset().unwrap();
                     writeln!(t, " {}⏎", str).unwrap();
                 }
                 DiffLine::Expected(ref str) => {
@@ -109,6 +109,6 @@ pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F)
                 }
             }
         }
+        t.reset().unwrap();
     }
-    t.reset().unwrap();
 }
