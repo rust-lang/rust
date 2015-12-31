@@ -34,16 +34,16 @@ pub fn write_all_files(file_map: &FileMap,
                        mode: WriteMode,
                        config: &Config)
                        -> Result<(), io::Error> {
-    output_heading(&file_map, mode).ok();
+    output_heading(mode).ok();
     for filename in file_map.keys() {
         try!(write_file(&file_map[filename], filename, mode, config));
     }
-    output_trailing(&file_map, mode).ok();
+    output_trailing(mode).ok();
 
     Ok(())
 }
 
-pub fn output_heading(file_map: &FileMap, mode: WriteMode) -> Result<(), io::Error> {
+pub fn output_heading(mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
     match mode {
@@ -59,7 +59,7 @@ pub fn output_heading(file_map: &FileMap, mode: WriteMode) -> Result<(), io::Err
     }
 }
 
-pub fn output_trailing(file_map: &FileMap, mode: WriteMode) -> Result<(), io::Error> {
+pub fn output_trailing(mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
     match mode {
