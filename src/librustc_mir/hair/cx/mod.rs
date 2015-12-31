@@ -98,17 +98,8 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
             .collect()
     }
 
-    pub fn needs_drop(&mut self, ty: Ty<'tcx>, span: Span) -> bool {
-        if self.infcx.type_moves_by_default(ty, span) {
-            // FIXME(#21859) we should do an add'l check here to determine if
-            // any dtor will execute, but the relevant fn
-            // (`type_needs_drop`) is currently factored into
-            // `librustc_trans`, so we can't easily do so.
-            true
-        } else {
-            // if type implements Copy, cannot require drop
-            false
-        }
+    pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
+        self.tcx.type_needs_drop_given_env(ty, &self.infcx.parameter_environment)
     }
 
     pub fn span_bug(&mut self, span: Span, message: &str) -> ! {
