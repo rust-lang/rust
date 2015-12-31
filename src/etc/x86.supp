@@ -12,7 +12,7 @@
    fun:tlv_finalize
    fun:_pthread_tsd_cleanup
    fun:_pthread_exit
-   fun:_pthread_body
+   ...
    fun:_pthread_start
    fun:thread_start
 }
@@ -24,7 +24,7 @@
    fun:tlv_finalize
    fun:_pthread_tsd_cleanup
    fun:_pthread_exit
-   fun:_pthread_body
+   ...
    fun:_pthread_start
    fun:thread_start
 }
@@ -36,7 +36,7 @@
    fun:tlv_finalize
    fun:_pthread_tsd_cleanup
    fun:_pthread_exit
-   fun:_pthread_body
+   ...
    fun:_pthread_start
    fun:thread_start
 }
@@ -48,7 +48,7 @@
    fun:tlv_finalize
    fun:_pthread_tsd_cleanup
    fun:_pthread_exit
-   fun:_pthread_body
+   ...
    fun:_pthread_start
    fun:thread_start
 }
