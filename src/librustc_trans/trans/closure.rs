@@ -31,6 +31,7 @@ use session::config::FullDebugInfo;
 
 use syntax::abi::RustCall;
 use syntax::ast;
+use syntax::attr::{ThinAttributes, ThinAttributesExt};
 
 use rustc_front::hir;
 
@@ -176,7 +177,8 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                                     body: &hir::Block,
                                     id: ast::NodeId,
                                     closure_def_id: DefId, // (*)
-                                    closure_substs: &'tcx ty::ClosureSubsts<'tcx>)
+                                    closure_substs: &'tcx ty::ClosureSubsts<'tcx>,
+                                    closure_expr_attrs: &ThinAttributes)
                                     -> Option<Block<'a, 'tcx>>
 {
     // (*) Note that in the case of inlined functions, the `closure_def_id` will be the
@@ -218,7 +220,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   llfn,
                   param_substs,
                   id,
-                  &[],
+                  closure_expr_attrs.as_attr_slice(),
                   sig.output,
                   function_type.abi,
                   ClosureEnv::Closure(closure_def_id, &freevars));

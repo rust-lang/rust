@@ -74,8 +74,13 @@ pub fn trans_impl(ccx: &CrateContext,
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, impl_item.id);
                         let empty_substs = tcx.mk_substs(Substs::trans_empty());
-                        trans_fn(ccx, &sig.decl, body, llfn,
-                                 empty_substs, impl_item.id, &[]);
+                        trans_fn(ccx,
+                                 &sig.decl,
+                                 body,
+                                 llfn,
+                                 empty_substs,
+                                 impl_item.id,
+                                 &impl_item.attrs);
                         update_linkage(ccx,
                                        llfn,
                                        Some(impl_item.id),
