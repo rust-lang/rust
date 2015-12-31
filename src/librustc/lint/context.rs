@@ -28,7 +28,7 @@ use self::TargetLint::*;
 use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
 use middle::ty;
-use session::{early_error, Session};
+use session::{config, early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
 use lint::{EarlyLintPass, EarlyLintPassObject, LateLintPass, LateLintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
@@ -37,11 +37,12 @@ use util::nodemap::FnvHashMap;
 
 use std::cell::RefCell;
 use std::cmp;
+use std::default::Default as StdDefault;
 use std::mem;
 use syntax::ast_util::{self, IdVisitingOperation};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
-use syntax::errors::{self, DiagnosticBuilder};
+use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax::attr::ThinAttributesExt;
@@ -168,7 +169,7 @@ impl LintStore {
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
-                    (None, _) => early_error(errors::ColorConfig::Auto, &msg[..]),
+                    (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
                     (Some(sess), false) => sess.bug(&msg[..]),
 
                     // A duplicate name from a plugin is a user error.
@@ -192,7 +193,7 @@ impl LintStore {
             match (sess, from_plugin) {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
-                (None, _) => early_error(errors::ColorConfig::Auto, &msg[..]),
+                (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
                 (Some(sess), false) => sess.bug(&msg[..]),
 
                 // A duplicate name from a plugin is a user error.
