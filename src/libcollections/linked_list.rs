@@ -27,7 +27,7 @@ use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::iter::FromIterator;
 use core::mem;
-use core::ptr;
+use core::ptr::Shared;
 
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -40,7 +40,7 @@ pub struct LinkedList<T> {
 type Link<T> = Option<Box<Node<T>>>;
 
 struct Rawlink<T> {
-    p: *mut T,
+    p: Option<Shared<T>>,
 }
 
 impl<T> Copy for Rawlink<T> {}
@@ -93,12 +93,12 @@ pub struct IntoIter<T> {
 impl<T> Rawlink<T> {
     /// Like Option::None for Rawlink
     fn none() -> Rawlink<T> {
-        Rawlink { p: ptr::null_mut() }
+        Rawlink { p: None }
     }
 
     /// Like Option::Some for Rawlink
     fn some(n: &mut T) -> Rawlink<T> {
-        Rawlink { p: n }
+        unsafe { Rawlink { p: Some(Shared::new(n)) } }
     }
 
     /// Convert the `Rawlink` into an Option value
@@ -108,7 +108,7 @@ impl<T> Rawlink<T> {
     /// - Dereference of raw pointer.
     /// - Returns reference of arbitrary lifetime.
     unsafe fn resolve<'a>(&self) -> Option<&'a T> {
-        self.p.as_ref()
+        self.p.map(|p| &**p)
     }
 
     /// Convert the `Rawlink` into an Option value
@@ -118,7 +118,7 @@ impl<T> Rawlink<T> {
     /// - Dereference of raw pointer.
     /// - Returns reference of arbitrary lifetime.
     unsafe fn resolve_mut<'a>(&mut self) -> Option<&'a mut T> {
-        self.p.as_mut()
+        self.p.map(|p| &mut **p)
     }
 
     /// Return the `Rawlink` and replace with `Rawlink::none()`
@@ -982,6 +982,14 @@ impl<A: Hash> Hash for LinkedList<A> {
             elt.hash(state);
         }
     }
+}
+
+// Ensure that `LinkedList` and its read-only iterators are covariant in their type parameters.
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn a<'a>(x: LinkedList<&'static str>) -> LinkedList<&'a str> { x }
+    fn b<'i, 'a>(x: Iter<'i, &'static str>) -> Iter<'i, &'a str> { x }
+    fn c<'a>(x: IntoIter<&'static str>) -> IntoIter<&'a str> { x }
 }
 
 #[cfg(test)]
