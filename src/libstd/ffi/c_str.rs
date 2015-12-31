@@ -523,19 +523,19 @@ impl ToOwned for CStr {
 }
 
 #[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
+impl<'a> From<&'a CStr> for CString {
+    fn from(s: &'a CStr) -> CString {
+        s.to_owned()
+    }
+}
+
+#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
 impl ops::Index<ops::RangeFull> for CString {
     type Output = CStr;
 
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &CStr {
         self
-    }
-}
-
-#[unstable(feature = "cstring_asref", reason = "recently added", issue = "0")]
-impl<'a, T: ?Sized + AsRef<CStr>> From<&'a T> for CString {
-    fn from(s: &'a T) -> CString {
-        s.as_ref().to_owned()
     }
 }
 
