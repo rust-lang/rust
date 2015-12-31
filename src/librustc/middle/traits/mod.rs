@@ -49,7 +49,7 @@ pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
-pub use self::util::elaborate_predicates;
+pub use self::util::{elaborate_predicates, elaborate_super_predicates};
 pub use self::util::get_vtable_index_of_object_method;
 pub use self::util::trait_ref_for_builtin_bound;
 pub use self::util::predicate_for_trait_def;
@@ -416,7 +416,7 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
            unnormalized_env);
 
     let predicates: Vec<_> =
-        util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.clone())
+        util::elaborate_super_predicates(tcx, unnormalized_env.caller_bounds.clone())
         .filter(|p| !p.is_global()) // (*)
         .collect();
 

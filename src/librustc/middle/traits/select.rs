@@ -1043,7 +1043,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if candidates.vec.is_empty() {
             try!(self.assemble_candidates_from_default_impls(obligation, &mut candidates));
         }
-        debug!("candidate list size: {}", candidates.vec.len());
+        debug!("candidate list: len={}, vec={:?}", candidates.vec.len(), candidates.vec);
         Ok(candidates)
     }
 
@@ -1065,6 +1065,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             _ => { return; }
         };
+
+        debug!("assemble_candidates_from_projected_tys: obligation_type_space={:?}",
+               obligation.predicate.0.trait_ref.substs.types);
 
         debug!("assemble_candidates_for_projected_tys: trait_def_id={:?}",
                trait_def_id);
@@ -1094,8 +1097,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                skol_trait_predicate,
                skol_map);
 
-        let projection_trait_ref = match skol_trait_predicate.trait_ref.self_ty().sty {
-            ty::TyProjection(ref data) => &data.trait_ref,
+        let projection_trait_refs = match skol_trait_predicate.trait_ref.self_ty().sty {
+            ty::TyProjection(ref data) => data.parent_trait_refs(),
             _ => {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
@@ -1105,42 +1108,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
         debug!("match_projection_obligation_against_bounds_from_trait: \
-                projection_trait_ref={:?}",
-               projection_trait_ref);
+                projection_trait_refs={:?}",
+               projection_trait_refs);
 
-        let trait_predicates = self.tcx().lookup_predicates(projection_trait_ref.def_id);
-        let bounds = trait_predicates.instantiate(self.tcx(), projection_trait_ref.substs);
-        debug!("match_projection_obligation_against_bounds_from_trait: \
-                bounds={:?}",
-               bounds);
+        for projection_trait_ref in projection_trait_refs {
+            let trait_predicates = self.tcx().lookup_predicates(projection_trait_ref.def_id);
+            let bounds = trait_predicates.instantiate(self.tcx(), projection_trait_ref.substs);
+            debug!("match_projection_obligation_against_bounds_from_trait: \
+                    bounds={:?}",
+                   bounds);
 
-        let matching_bound =
-            util::elaborate_predicates(self.tcx(), bounds.predicates.into_vec())
-            .filter_to_traits()
-            .find(
-                |bound| self.infcx.probe(
-                    |_| self.match_projection(obligation,
-                                              bound.clone(),
-                                              skol_trait_predicate.trait_ref.clone(),
-                                              &skol_map,
-                                              snapshot)));
+            let matching_bound =
+                util::elaborate_predicates(self.tcx(), bounds.predicates.into_vec())
+                .filter_to_traits()
+                .find(
+                    |bound| self.infcx.probe(
+                        |_| self.match_projection(obligation,
+                                                  bound.clone(),
+                                                  skol_trait_predicate.trait_ref.clone(),
+                                                  &skol_map,
+                                                  snapshot)));
 
-        debug!("match_projection_obligation_against_bounds_from_trait: \
-                matching_bound={:?}",
-               matching_bound);
-        match matching_bound {
-            None => false,
-            Some(bound) => {
-                // Repeat the successful match, if any, this time outside of a probe.
-                let result = self.match_projection(obligation,
-                                                   bound,
-                                                   skol_trait_predicate.trait_ref.clone(),
-                                                   &skol_map,
-                                                   snapshot);
-                assert!(result);
-                true
+            debug!("match_projection_obligation_against_bounds_from_trait: \
+                    matching_bound={:?}",
+                   matching_bound);
+            match matching_bound {
+                None => continue,
+                Some(bound) => {
+                    // Repeat the successful match, if any, this time outside of a probe.
+                    let result = self.match_projection(obligation,
+                                                       bound,
+                                                       skol_trait_predicate.trait_ref.clone(),
+                                                       &skol_map,
+                                                       snapshot);
+                    assert!(result);
+                    return true;
+                }
             }
         }
+        false
     }
 
     fn match_projection(&mut self,

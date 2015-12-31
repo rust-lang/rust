@@ -392,7 +392,7 @@ impl<'tcx> ty::ctxt<'tcx> {
 
         assert!(!erased_self_ty.has_escaping_regions());
 
-        traits::elaborate_predicates(self, predicates)
+        traits::elaborate_super_predicates(self, predicates)
             .filter_map(|predicate| {
                 match predicate {
                     ty::Predicate::Projection(..) |

@@ -109,6 +109,8 @@ pub fn collect_item_types(tcx: &ty::ctxt) {
 
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
     ccx.tcx.map.krate().visit_all_items(&mut visitor);
+
+    *tcx.collection_finished.borrow_mut() = true;
 }
 
 ///////////////////////////////////////////////////////////////////////////

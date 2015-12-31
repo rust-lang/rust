@@ -438,6 +438,19 @@ impl<'tcx> ProjectionTy<'tcx> {
     pub fn sort_key(&self) -> (DefId, Name) {
         (self.trait_ref.def_id, self.item_name)
     }
+    // FIXME @reviewer: This feels weird. I have no idea if it should feel weird or not, though.
+    pub fn parent_trait_refs(&self) -> Vec<ty::TraitRef<'tcx>> {
+        let mut trait_refs = Vec::new();
+        let mut current = self.trait_ref;
+        loop {
+            trait_refs.push(current);
+            match current.self_ty().sty {
+                TyProjection(ref data) => { current = data.trait_ref },
+                _ => break
+            }
+        }
+        trait_refs
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

@@ -18,7 +18,7 @@
 //!   - not have generic type parameters
 
 use super::supertraits;
-use super::elaborate_predicates;
+use super::elaborate_super_predicates;
 
 use middle::def_id::DefId;
 use middle::subst::{self, SelfSpace, TypeSpace};
@@ -195,7 +195,7 @@ fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
     let free_substs = tcx.construct_free_substs(generics,
                                                 tcx.region_maps.node_extent(ast::DUMMY_NODE_ID));
     let predicates = predicates.instantiate(tcx, &free_substs).predicates.into_vec();
-    elaborate_predicates(tcx, predicates)
+    elaborate_super_predicates(tcx, predicates)
         .any(|predicate| {
             match predicate {
                 ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {

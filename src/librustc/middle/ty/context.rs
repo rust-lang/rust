@@ -257,6 +257,8 @@ pub struct ctxt<'tcx> {
     pub trait_defs: RefCell<DefIdMap<&'tcx ty::TraitDef<'tcx>>>,
     pub adt_defs: RefCell<DefIdMap<ty::AdtDefMaster<'tcx>>>,
 
+    pub collection_finished: RefCell<bool>, // cruft
+
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
     pub predicates: RefCell<DefIdMap<GenericPredicates<'tcx>>>,
@@ -485,6 +487,7 @@ impl<'tcx> ctxt<'tcx> {
         let common_types = CommonTypes::new(&arenas.type_, &interner);
 
         tls::enter(ctxt {
+            collection_finished: RefCell::new(false), // cruft
             arenas: arenas,
             interner: interner,
             substs_interner: RefCell::new(FnvHashMap()),
