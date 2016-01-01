@@ -27,6 +27,28 @@ runtime-initialisation for global variables.
 - Allow `const fn` to return types wth destructors.
 - Disallow constant expressions which would result in the destructor being called (if the code were run at runtime).
 
+## Examples
+Assuming that `RwLock` and `Vec` have `const fn new` methods, the following example is possible and avoids runtime validity checks.
+
+```rust
+/// Logging output handler
+trait LogHandler: Send + Sync {
+    // ...
+}
+/// List of registered logging handlers
+static S_LOGGERS: RwLock<Vec< Box<LogHandler> >> = RwLock::new( Vec::new() );
+```
+
+Disallowed code
+```rust
+static VAL: usize = (Vec::<u8>::new(), 0).1;	// The `Vec` would be dropped
+const EMPTY_BYTE_VEC: Vec<u8> = Vec::new();	// `const` items can't have destructors
+
+const fn sample(_v: Vec<u8>) -> usize {
+	0	// Discards the input vector, dropping it
+}
+```
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
