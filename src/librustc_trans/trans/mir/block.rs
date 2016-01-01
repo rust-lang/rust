@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::BasicBlockRef;
+use llvm::{BasicBlockRef, ValueRef};
 use rustc::mir::repr as mir;
 use trans::adt;
 use trans::base;
@@ -80,13 +80,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Terminator::Resume => {
-                if let Some(personalityslot) = self.llpersonalityslot {
-                    let lp = build::Load(bcx, personalityslot);
-                    base::call_lifetime_end(bcx, personalityslot);
-                    build::Resume(bcx, lp);
-                } else {
-                    panic!("resume terminator without personality slot set")
-                }
+                let ps = self.get_personality_slot(bcx);
+                let lp = build::Load(bcx, ps);
+                base::call_lifetime_end(bcx, ps);
+                base::trans_unwind_resume(bcx, lp);
             }
 
             mir::Terminator::Return => {
@@ -187,29 +184,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             build::Br(target, postinvoketarget.llbb, debugloc);
                         }
                     },
-                    // Everything else uses the regular `Call`, but we have to be careful to
-                    // generate landing pads for later, even if we do not use it.
-                    // FIXME: maybe just change Resume to not panic in that case?
-                    (_, k@&mir::CallKind::DivergingCleanup(_)) |
-                    (_, k@&mir::CallKind::Diverging) => {
-                        if let mir::CallKind::DivergingCleanup(_) = *k {
-                            // make a landing pad regardless, so it sets the personality slot.
-                            let block = self.unreachable_block();
-                            self.make_landing_pad(block);
-                        }
+                    (_, &mir::CallKind::DivergingCleanup(_)) |
+                    (_, &mir::CallKind::Diverging) => {
                         build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
                         build::Unreachable(bcx);
                     }
                     (_, k@&mir::CallKind::ConvergingCleanup { .. }) |
                     (_, k@&mir::CallKind::Converging { .. }) => {
-                        let ret = match *k {
+                        // Bug #20046
+                        let target = match *k {
+                            mir::CallKind::ConvergingCleanup { targets, .. } => targets.0,
                             mir::CallKind::Converging { target, .. } => target,
-                            mir::CallKind::ConvergingCleanup { targets, .. } => {
-                                // make a landing pad regardless (so it sets the personality slot.
-                                let block = self.unreachable_block();
-                                self.make_landing_pad(block);
-                                targets.0
-                            },
                             _ => unreachable!()
                         };
                         let llret = build::Call(bcx,
@@ -222,10 +207,23 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 .expect("return destination and type not set");
                             base::store_ty(bcx, llret, ret_dest.llval, ret_ty);
                         }
-                        build::Br(bcx, self.llblock(ret), debugloc)
+                        build::Br(bcx, self.llblock(target), debugloc);
                     }
                 }
             }
+        }
+    }
+
+    fn get_personality_slot(&mut self, bcx: Block<'bcx, 'tcx>) -> ValueRef {
+        let ccx = bcx.ccx();
+        if let Some(slot) = self.llpersonalityslot {
+            slot
+        } else {
+            let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
+            let slot = base::alloca(bcx, llretty, "personalityslot");
+            self.llpersonalityslot = Some(slot);
+            base::call_lifetime_start(bcx, slot);
+            slot
         }
     }
 
@@ -236,15 +234,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
         let llretval = build::LandingPad(bcx, llretty, llpersonality, 1);
         build::SetCleanup(bcx, llretval);
-        match self.llpersonalityslot {
-            Some(slot) => build::Store(bcx, llretval, slot),
-            None => {
-                let personalityslot = base::alloca(bcx, llretty, "personalityslot");
-                self.llpersonalityslot = Some(personalityslot);
-                base::call_lifetime_start(bcx, personalityslot);
-                build::Store(bcx, llretval, personalityslot)
-            }
-        };
+        let slot = self.get_personality_slot(bcx);
+        build::Store(bcx, llretval, slot);
         build::Br(bcx, cleanup.llbb, DebugLoc::None);
         bcx
     }
