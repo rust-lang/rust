@@ -136,9 +136,6 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
 
     // Translate the body of each block
     for &bb in &mir_blocks {
-        // NB that we do not handle the Resume terminator specially, because a block containing
-        // that terminator will have a higher block number than a function call which should take
-        // care of filling in that information.
         mircx.trans_block(bb);
     }
 }
