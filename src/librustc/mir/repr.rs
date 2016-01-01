@@ -727,10 +727,68 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Box(ref t) => write!(fmt, "Box({:?})", t),
-            Aggregate(ref kind, ref lvs) => write!(fmt, "Aggregate<{:?}>{:?}", kind, lvs),
             InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
             Slice { ref input, from_start, from_end } =>
                 write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
+
+            Aggregate(ref kind, ref lvs) => {
+                use self::AggregateKind::*;
+
+                fn fmt_tuple(fmt: &mut Formatter, name: &str, lvs: &[Operand]) -> fmt::Result {
+                    let mut tuple_fmt = fmt.debug_tuple(name);
+                    for lv in lvs {
+                        tuple_fmt.field(lv);
+                    }
+                    tuple_fmt.finish()
+                }
+
+                match *kind {
+                    Vec => write!(fmt, "{:?}", lvs),
+
+                    Tuple => {
+                        if lvs.len() == 1 {
+                            write!(fmt, "({:?},)", lvs[0])
+                        } else {
+                            fmt_tuple(fmt, "", lvs)
+                        }
+                    }
+
+                    Adt(adt_def, variant, _) => {
+                        let variant_def = &adt_def.variants[variant];
+                        let name = ty::tls::with(|tcx| tcx.item_path_str(variant_def.did));
+
+                        match variant_def.kind() {
+                            ty::VariantKind::Unit => write!(fmt, "{}", name),
+                            ty::VariantKind::Tuple => fmt_tuple(fmt, &name, lvs),
+                            ty::VariantKind::Struct => {
+                                let mut struct_fmt = fmt.debug_struct(&name);
+                                for (field, lv) in variant_def.fields.iter().zip(lvs) {
+                                    struct_fmt.field(&field.name.as_str(), lv);
+                                }
+                                struct_fmt.finish()
+                            }
+                        }
+                    }
+
+                    Closure(def_id, _) => ty::tls::with(|tcx| {
+                        if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+                            let name = format!("[closure@{:?}]", tcx.map.span(node_id));
+                            let mut struct_fmt = fmt.debug_struct(&name);
+
+                            tcx.with_freevars(node_id, |freevars| {
+                                for (freevar, lv) in freevars.iter().zip(lvs) {
+                                    let var_name = tcx.local_var_name_str(freevar.def.var_id());
+                                    struct_fmt.field(&var_name, lv);
+                                }
+                            });
+
+                            struct_fmt.finish()
+                        } else {
+                            write!(fmt, "[closure]")
+                        }
+                    }),
+                }
+            }
         }
     }
 }
