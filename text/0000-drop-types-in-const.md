@@ -6,13 +6,13 @@
 # Summary
 [summary]: #summary
 
-Allow types with destructors to be used in `static` items and in `cosnt` functions, as long as the destructor never needs to run in const context.
+Allow types with destructors to be used in `static` items and in `const` functions, as long as the destructor never needs to run in const context.
 
 # Motivation
 [motivation]: #motivation
 
 Most collection types do not allocate any memory when constructed empty. With the change to make leaking safe, the restriction on `static` items with destructors
-is no longer trequired to be a hard error.
+is no longer required to be a hard error.
 
 Allowing types with destructors to be directly used in `const` functions and stored in `static`s will remove the need to have
 runtime-initialisation for global variables.
@@ -24,7 +24,7 @@ runtime-initialisation for global variables.
  - (Optionally adding a lint that warn about the possibility of resource leak)
 - Alloc instantiating structures with destructors in constant expressions,
 - Continue to prevent `const` items from holding types with destructors.
-- Allow `const fn` to return types wth destructors.
+- Allow `const fn` to return types with destructors.
 - Disallow constant expressions which would result in the destructor being called (if the code were run at runtime).
 
 ## Examples
