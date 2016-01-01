@@ -4,7 +4,7 @@ use syntax::ast::*;
 
 use utils::{span_lint, snippet};
 
-/// **What it does:** This lint checks for operations where precedence may be unclear and `Warn`'s about them by default, suggesting to add parentheses. Currently it catches the following:
+/// **What it does:** This lint checks for operations where precedence may be unclear and `Warn`s about them by default, suggesting to add parentheses. Currently it catches the following:
 /// * mixed usage of arithmetic and bit shifting/combining operators without parentheses
 /// * a "negative" numeric literal (which is really a unary `-` followed by a numeric literal) followed by a method call
 ///
@@ -33,17 +33,17 @@ impl EarlyLintPass for Precedence {
         if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
             if !is_bit_op(op) { return; }
             match (is_arith_expr(left), is_arith_expr(right)) {
-                (true, true) =>  span_lint(cx, PRECEDENCE, expr.span, 
+                (true, true) =>  span_lint(cx, PRECEDENCE, expr.span,
                     &format!("operator precedence can trip the unwary. \
                          Consider parenthesizing your expression:\
                          `({}) {} ({})`", snippet(cx, left.span, ".."),
                          op.to_string(), snippet(cx, right.span, ".."))),
-                (true, false) => span_lint(cx, PRECEDENCE, expr.span, 
+                (true, false) => span_lint(cx, PRECEDENCE, expr.span,
                     &format!("operator precedence can trip the unwary. \
                          Consider parenthesizing your expression:\
                          `({}) {} {}`", snippet(cx, left.span, ".."),
                          op.to_string(), snippet(cx, right.span, ".."))),
-                (false, true) => span_lint(cx, PRECEDENCE, expr.span, 
+                (false, true) => span_lint(cx, PRECEDENCE, expr.span,
                     &format!("operator precedence can trip the unwary. \
                          Consider parenthesizing your expression:\
                          `{} {} ({})`", snippet(cx, left.span, ".."),
