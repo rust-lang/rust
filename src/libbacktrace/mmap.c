@@ -139,7 +139,7 @@ backtrace_alloc (struct backtrace_state *state,
       asksize = (size + pagesize - 1) & ~ (pagesize - 1);
       page = mmap (NULL, asksize, PROT_READ | PROT_WRITE,
 		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-      if (page == NULL)
+      if (page == MAP_FAILED)
 	error_callback (data, "mmap", errno);
       else
 	{
