@@ -721,7 +721,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
         match *self {
             Use(ref lvalue) => write!(fmt, "{:?}", lvalue),
             Repeat(ref a, ref b) => write!(fmt, "[{:?}; {:?}]", a, b),
-            Ref(ref a, bk, ref b) => write!(fmt, "&{:?} {:?} {:?}", a, bk, b),
             Len(ref a) => write!(fmt, "Len({:?})", a),
             Cast(ref kind, ref lv, ref ty) => write!(fmt, "{:?} as {:?} ({:?})", lv, ty, kind),
             BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
@@ -730,6 +729,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
             Slice { ref input, from_start, from_end } =>
                 write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
+
+            Ref(_, borrow_kind, ref lv) => {
+                let kind_str = match borrow_kind {
+                    BorrowKind::Shared => "",
+                    BorrowKind::Mut | BorrowKind::Unique => "mut ",
+                };
+                write!(fmt, "&{}{:?}", kind_str, lv)
+            }
 
             Aggregate(ref kind, ref lvs) => {
                 use self::AggregateKind::*;
