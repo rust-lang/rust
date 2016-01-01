@@ -32,7 +32,10 @@ Destructors do not run on `static` items (by design), so this can lead to unexpe
 # Alternatives
 [alternatives]: #alternatives
 
-Existing workarounds are based on storing `Option<T>`, and initialising it to `Some` upon first access. These solutions work, but require runtime intialisation and incur a checking overhead on subsequent accesses.
+- Runtime initialisation of a raw pointer can be used instead (as the `lazy_static` crate currently does on stable)
+- On nightly, a bug related to `static` and `UnsafeCell<Option<T>>` can be used to remove the dynamic allocation.
+
+Both of these alternatives require runtime initialisation, and incur a checking overhead on subsequent accesses.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
