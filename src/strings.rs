@@ -11,7 +11,7 @@ use eq_op::is_exp_equal;
 use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 use utils::STRING_PATH;
 
-/// **What it does:** This lint matches code of the form `x = x + y` (without `let`!)
+/// **What it does:** This lint matches code of the form `x = x + y` (without `let`!). It is `Allow` by default.
 ///
 /// **Why is this bad?** Because this expression needs another copy as opposed to `x.push_str(y)` (in practice LLVM will usually elide it, though). Despite [llogiq](https://github.com/llogiq)'s reservations, this lint also is `allow` by default, as some people opine that it's more readable.
 ///

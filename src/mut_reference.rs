@@ -4,7 +4,7 @@ use utils::span_lint;
 use rustc::middle::ty::{TypeAndMut, TypeVariants, MethodCall, TyS};
 use syntax::ptr::P;
 
-/// **What it does:** This lint detects giving a mutable reference to a function that only requires an immutable reference.
+/// **What it does:** This lint detects giving a mutable reference to a function that only requires an immutable reference. It is `Warn` by default.
 ///
 /// **Why is this bad?** The immutable reference rules out all other references to the value. Also the code misleads about the intent of the call site.
 ///

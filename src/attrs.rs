@@ -8,7 +8,7 @@ use syntax::attr::*;
 use syntax::ast::{Attribute, MetaList, MetaWord};
 use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 
-/// **What it does:** This lint warns on items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
+/// **What it does:** This lint `Warn`s on items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
 ///
 /// **Why is this bad?** While there are valid uses of this annotation (and once you know when to use it, by all means `allow` this lint), it's a common newbie-mistake to pepper one's code with it.
 ///

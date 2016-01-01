@@ -281,7 +281,7 @@ impl LateLintPass for ModuloOne {
     }
 }
 
-/// **What it does:** This lint checks for patterns in the form `name @ _`.
+/// **What it does:** This lint checks for patterns in the form `name @ _`. It is `Warn` by default.
 ///
 /// **Why is this bad?** It's almost always more readable to just use direct bindings.
 ///

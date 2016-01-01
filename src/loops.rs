@@ -50,7 +50,7 @@ declare_lint!{ pub EXPLICIT_ITER_LOOP, Warn,
 declare_lint!{ pub ITER_NEXT_LOOP, Warn,
                "for-looping over `_.next()` which is probably not intended" }
 
-/// **What it does:** This lint detects `loop + match` combinations that are easier written as a `while let` loop.
+/// **What it does:** This lint detects `loop + match` combinations that are easier written as a `while let` loop. It is `Warn` by default.
 ///
 /// **Why is this bad?** The `while let` loop is usually shorter and more readable
 ///
@@ -85,7 +85,7 @@ declare_lint!{ pub UNUSED_COLLECT, Warn,
                "`collect()`ing an iterator without using the result; this is usually better \
                 written as a for loop" }
 
-/// **What it does:** This lint checks for loops over ranges `x..y` where both `x` and `y` are constant and `x` is greater or equal to `y`, unless the range is reversed or has a negative `.step_by(_)`.
+/// **What it does:** This lint checks for loops over ranges `x..y` where both `x` and `y` are constant and `x` is greater or equal to `y`, unless the range is reversed or has a negative `.step_by(_)`. It is `Warn` by default.
 ///
 /// **Why is it bad?** Such loops will either be skipped or loop until wrap-around (in debug code, this may `panic!()`). Both options are probably not intended.
 ///
