@@ -841,7 +841,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// try!(fs::rename("a.txt", "b.txt"));
+/// try!(fs::rename("a.txt", "b.txt")); // Rename a.txt to b.txt
 /// # Ok(())
 /// # }
 /// ```
@@ -876,7 +876,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// try!(fs::copy("foo.txt", "bar.txt"));
+/// try!(fs::copy("foo.txt", "bar.txt"));  // Copy foo.txt to bar.txt
 /// # Ok(()) }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -895,7 +895,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// use std::fs;
 ///
 /// # fn foo() -> std::io::Result<()> {
-/// try!(fs::hard_link("a.txt", "b.txt"));
+/// try!(fs::hard_link("a.txt", "b.txt")); // Hard link a.txt to b.txt
 /// # Ok(())
 /// # }
 /// ```
