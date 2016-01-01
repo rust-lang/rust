@@ -676,8 +676,6 @@ impl f32 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// #![feature(float_extras)]
-    ///
     /// use std::f32::{self, consts};
     ///
     /// let angle = consts::PI;
@@ -686,16 +684,13 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[unstable(feature = "float_extras", reason = "desirability is unclear",
-               issue = "27752")]
+    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
     #[inline]
     pub fn to_degrees(self) -> f32 { num::Float::to_degrees(self) }
 
     /// Converts degrees to radians.
     ///
     /// ```
-    /// #![feature(float_extras)]
-    ///
     /// use std::f32::{self, consts};
     ///
     /// let angle = 180.0f32;
@@ -704,8 +699,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[unstable(feature = "float_extras", reason = "desirability is unclear",
-               issue = "27752")]
+    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
     #[inline]
     pub fn to_radians(self) -> f32 { num::Float::to_radians(self) }
 
