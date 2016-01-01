@@ -231,8 +231,8 @@ impl Stdin {
     /// returned guard also implements the [`Read`] and [`BufRead`] traits for
     /// accessing the underlying data.
     ///
-    /// [Read]: trait.Read.html
-    /// [BufRead]: trait.BufRead.html
+    /// [`Read`]: trait.Read.html
+    /// [`BufRead`]: trait.BufRead.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock {
         StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
