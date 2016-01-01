@@ -20,14 +20,17 @@ runtime-initialisation for global variables.
 # Detailed design
 [design]: #detailed-design
 
-- Remove the check for `Drop` types in constant expressions.
-- Add an error lint ensuring that `Drop` types are not dropped in a constant expression
- - This includes when another field is moved out of a struct/tuple, and unused arguments in constant functions.
+
+- allow destructors in statics
+ - optionally warn about the "potential leak"
+- allow instantiating structures that impl Drop in constant expressions
+- prevent const items from holding values with destructors, but allow const fn to return them
+- disallow constant expressions which would result in the Drop impl getting called, where they not in a constant context
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Destructors do not run on `static` items (by design), so this can lead to unexpected behavior when a side-effecting type is stored in a `static` (e.g. a RAII temporary folder handle). However, this can already happen using the `lazy_static` crate, or with `Option<DropType>` (which bypasses the existing checks).
+Destructors do not run on `static` items (by design), so this can lead to unexpected behavior when a side-effecting type is stored in a `static` (e.g. a RAII temporary folder handle). However, this can already happen using the `lazy_static` crate.
 
 # Alternatives
 [alternatives]: #alternatives
