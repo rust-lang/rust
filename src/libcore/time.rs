@@ -10,7 +10,8 @@
 
 //! Temporal quantification.
 
-#![stable(feature = "time", since = "1.3.0")]
+#![unstable(feature = "time", reason = "recently moved to libcore",
+            issue = "0")]  // FIXME: file tracking issue if this lands
 
 use ops::{Add, Sub, Mul, Div};
 
