@@ -14,11 +14,11 @@ use utils::span_lint;
 
 pub struct EscapePass;
 
-/// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine
+/// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine. It is `Warn` by default.
 ///
-/// **Why is this bad?** This is an unnecessary allocation, and bad for performance
+/// **Why is this bad?** This is an unnecessary allocation, and bad for performance. It is only necessary to allocate if you wish to move the box into something.
 ///
-/// It is only necessary to allocate if you wish to move the box into something.
+/// **Known problems:** None
 ///
 /// **Example:**
 ///

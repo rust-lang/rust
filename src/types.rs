@@ -17,7 +17,7 @@ use utils::{LL_PATH, VEC_PATH};
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
 
-/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code.
+/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code. It is `Warn` by default.
 ///
 /// **Why is this bad?** `Vec` already keeps its contents in a separate area on the heap. So if you `Box` it, you just add another level of indirection without any benefit whatsoever.
 ///
@@ -26,7 +26,8 @@ pub struct TypePass;
 /// **Example:** `struct X { values: Box<Vec<Foo>> }`
 declare_lint!(pub BOX_VEC, Warn,
               "usage of `Box<Vec<T>>`, vector elements are already on the heap");
-/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`).
+
+/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`). It is `Warn` by default.
 ///
 /// **Why is this bad?** Gankro says:
 ///
