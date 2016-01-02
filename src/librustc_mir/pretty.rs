@@ -78,7 +78,7 @@ fn write_mir_intro<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
 
     // Compiler-introduced temporary types.
     for (i, temp) in mir.temp_decls.iter().enumerate() {
-        try!(writeln!(w, "{}let {:?}: {};", INDENT, Lvalue::Temp(i as u32), temp.ty));
+        try!(writeln!(w, "{}let mut {:?}: {};", INDENT, Lvalue::Temp(i as u32), temp.ty));
     }
 
     Ok(())
