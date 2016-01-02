@@ -330,8 +330,11 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
             tt.principal_def_id().is_local()
         }
 
-        ty::TyClosure(..) |
         ty::TyError => {
+            true
+        }
+
+        ty::TyClosure(..) => {
             tcx.sess.bug(
                 &format!("ty_is_local invoked on unexpected type: {:?}",
                         ty))
