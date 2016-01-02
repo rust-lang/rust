@@ -36,7 +36,8 @@ fn test_ops() {
     macro_rules! op_test {
         ($op:ident ($lhs:expr, $rhs:expr) == $ans:expr) => {
             assert_eq!(black_box(Wrapping($lhs).$op(Wrapping($rhs))), Wrapping($ans));
-            assert_eq!(black_box(Wrapping($lhs).$op($rhs)), Wrapping($ans));
+            // FIXME(30524): uncomment this test when it's implemented
+            // assert_eq!(black_box(Wrapping($lhs).$op($rhs)), Wrapping($ans));
         }
     }
 
@@ -141,12 +142,15 @@ fn test_op_assigns() {
                 tmp.$op(Wrapping($rhs));
                 assert_eq!(black_box(tmp), Wrapping($ans));
             }
+            // FIXME(30524): Uncomment this test
+            /*
             {
                 let mut tmp = Wrapping($initial);
                 tmp = black_box(tmp);
                 tmp.$op($rhs);
                 assert_eq!(black_box(tmp), Wrapping($ans));
             }
+            */
         }
     }
     op_assign_test!(add_assign(i8::MAX, 1) == i8::MIN);
