@@ -334,7 +334,7 @@ pub struct AngleBracketedParameterData {
     /// The type parameters for this path segment, if present.
     pub types: P<[P<Ty>]>,
     /// Bindings (equality constraints) on associated types, if present.
-    /// E.g., `Foo<A=Bar>`.
+    /// e.g., `Foo<A=Bar>`.
     pub bindings: P<[P<TypeBinding>]>,
 }
 
@@ -447,7 +447,7 @@ pub struct WhereClause {
 /// A single predicate in a `where` clause
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum WherePredicate {
-    /// A type binding, eg `for<'c> Foo: Send+Clone+'c`
+    /// A type binding, e.g. `for<'c> Foo: Send+Clone+'c`
     BoundPredicate(WhereBoundPredicate),
     /// A lifetime predicate, e.g. `'a: 'b+'c`
     RegionPredicate(WhereRegionPredicate),
@@ -455,7 +455,7 @@ pub enum WherePredicate {
     EqPredicate(WhereEqPredicate),
 }
 
-/// A type bound, eg `for<'c> Foo: Send+Clone+'c`
+/// A type bound, e.g. `for<'c> Foo: Send+Clone+'c`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
@@ -1095,7 +1095,7 @@ impl Delimited {
     }
 }
 
-/// A sequence of token treesee
+/// A sequence of token trees
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct SequenceRepetition {
     /// The sequence of token trees
@@ -1346,7 +1346,7 @@ pub struct MethodSig {
 }
 
 /// Represents a method declaration in a trait declaration, possibly including
-/// a default implementation A trait method is either required (meaning it
+/// a default implementation. A trait method is either required (meaning it
 /// doesn't have an implementation, just a signature) or provided (meaning it
 /// has a default implementation).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
