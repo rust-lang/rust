@@ -9,9 +9,7 @@ use syntax::ast::IntTy::*;
 use syntax::ast::UintTy::*;
 use syntax::ast::FloatTy::*;
 
-use utils::{match_type, snippet, span_lint, span_help_and_lint};
-use utils::{is_from_for_desugar, in_macro, in_external_macro};
-use utils::{LL_PATH, VEC_PATH};
+use utils::*;
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -50,6 +48,9 @@ impl LintPass for TypePass {
 
 impl LateLintPass for TypePass {
     fn check_ty(&mut self, cx: &LateContext, ast_ty: &Ty) {
+        if in_macro(cx, ast_ty.span) {
+            return
+        }
         if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
             if let ty::TyBox(ref inner) = ty.sty {
                 if match_type(cx, inner, &VEC_PATH) {

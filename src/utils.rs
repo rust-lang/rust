@@ -74,6 +74,10 @@ macro_rules! if_let_chain {
     };
 }
 
+/// Returns true if the two spans come from differing expansions (i.e. one is from a macro and one isn't)
+pub fn differing_macro_contexts(sp1: Span, sp2: Span) -> bool {
+    sp1.expn_id != sp2.expn_id
+}
 /// returns true if this expn_info was expanded by any macro
 pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id,
