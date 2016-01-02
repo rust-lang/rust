@@ -56,6 +56,20 @@ you want. Example:
 ```
 "##,
 
+E0463: r##"
+A plugin/crate was declared but cannot be found. Erroneous code example:
+
+```
+#![feature(plugin)]
+#![plugin(cookie_monster)] // error: can't find crate for `cookie_monster`
+extern crate cake_is_a_lie; // error: can't find crate for `cake_is_a_lie`
+```
+
+You need to link your code to the relevant crate in order to be able to use it
+(through Cargo or the `-L` option of rustc example). Plugins are crates as
+well, and you link to them the same way.
+"##,
+
 }
 
 register_diagnostics! {
@@ -66,7 +80,6 @@ register_diagnostics! {
     E0460, // found possibly newer version of crate `..`
     E0461, // couldn't find crate `..` with expected target triple ..
     E0462, // found staticlib `..` instead of rlib or dylib
-    E0463, // can't find crate for `..`
     E0464, // multiple matching crates for `..`
     E0465, // multiple .. candidates for `..` found
     E0466, // bad macro import
