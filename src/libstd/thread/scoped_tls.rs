@@ -87,32 +87,9 @@ macro_rules! scoped_thread_local {
            issue = "0")]
 #[macro_export]
 #[allow_internal_unstable]
-#[cfg(no_elf_tls)]
 macro_rules! __scoped_thread_local_inner {
     ($t:ty) => {{
-        static _KEY: $crate::thread::__ScopedKeyInner<$t> =
-            $crate::thread::__ScopedKeyInner::new();
-        fn _getit() -> &'static $crate::thread::__ScopedKeyInner<$t> { &_KEY }
-        $crate::thread::ScopedKey::new(_getit)
-    }}
-}
-
-#[doc(hidden)]
-#[unstable(feature = "thread_local_internals",
-           reason = "should not be necessary",
-           issue = "0")]
-#[macro_export]
-#[allow_internal_unstable]
-#[cfg(not(no_elf_tls))]
-macro_rules! __scoped_thread_local_inner {
-    ($t:ty) => {{
-        #[cfg_attr(not(any(windows,
-                           target_os = "android",
-                           target_os = "ios",
-                           target_os = "netbsd",
-                           target_os = "openbsd",
-                           target_arch = "aarch64")),
-                   thread_local)]
+        #[cfg_attr(target_thread_local, thread_local)]
         static _KEY: $crate::thread::__ScopedKeyInner<$t> =
             $crate::thread::__ScopedKeyInner::new();
         fn _getit() -> &'static $crate::thread::__ScopedKeyInner<$t> { &_KEY }
@@ -221,13 +198,7 @@ impl<T> ScopedKey<T> {
     }
 }
 
-#[cfg(not(any(windows,
-              target_os = "android",
-              target_os = "ios",
-              target_os = "netbsd",
-              target_os = "openbsd",
-              target_arch = "aarch64",
-              no_elf_tls)))]
+#[cfg(target_thread_local)]
 #[doc(hidden)]
 mod imp {
     use cell::Cell;
@@ -246,13 +217,7 @@ mod imp {
     }
 }
 
-#[cfg(any(windows,
-          target_os = "android",
-          target_os = "ios",
-          target_os = "netbsd",
-          target_os = "openbsd",
-          target_arch = "aarch64",
-          no_elf_tls))]
+#[cfg(not(target_thread_local))]
 #[doc(hidden)]
 mod imp {
     use cell::Cell;
