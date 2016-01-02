@@ -240,23 +240,24 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 let mut impl_candidates = Vec::new();
                                 let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
 
-                                trait_def.for_each_impl(infcx.tcx, |def_id| {
-                                    let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
-                                    if let Some(simp) = simp {
+                                match simp {
+                                    Some(simp) => trait_def.for_each_impl(infcx.tcx, |def_id| {
+                                        let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
                                         let imp_simp = fast_reject::simplify_type(infcx.tcx,
                                                                                   imp.self_ty(),
                                                                                   true);
                                         if let Some(imp_simp) = imp_simp {
-                                            if simp == imp_simp {
-                                                impl_candidates.push(imp);
+                                            if simp != imp_simp {
+                                                return;
                                             }
-                                        } else {
-                                            impl_candidates.push(imp);
                                         }
-                                    } else {
                                         impl_candidates.push(imp);
-                                    }
-                                });
+                                    }),
+                                    None => trait_def.for_each_impl(infcx.tcx, |def_id| {
+                                        impl_candidates.push(
+                                            infcx.tcx.impl_trait_ref(def_id).unwrap());
+                                    })
+                                };
 
                                 if impl_candidates.len() > 0 {
                                     err.fileline_help(
@@ -266,7 +267,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                     let end = cmp::min(4, impl_candidates.len());
                                     for candidate in &impl_candidates[0..end] {
                                         err.fileline_help(obligation.cause.span,
-                                                                     candidate);
+                                                          &format!("  {:?}", candidate));
                                     }
                                     if impl_candidates.len() > 4 {
                                         err.fileline_help(obligation.cause.span,
