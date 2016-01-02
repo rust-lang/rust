@@ -174,6 +174,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::WHILE_LET_ON_ITERATOR,
         map_clone::MAP_CLONE,
         matches::MATCH_BOOL,
+        matches::MATCH_OVERLAPPING_ARM,
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
         methods::FILTER_NEXT,

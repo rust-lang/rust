@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 88 lints included in this crate:
+There are 89 lints included in this crate:
 
 name                                                                                                     | default | meaning
 ---------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -41,6 +41,7 @@ name                                                                            
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                                 | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque
 [map_clone](https://github.com/Manishearth/rust-clippy/wiki#map_clone)                                   | warn    | using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends `.cloned()` instead)
 [match_bool](https://github.com/Manishearth/rust-clippy/wiki#match_bool)                                 | warn    | a match on boolean expression; recommends `if..else` block instead
+[match_overlapping_arm](https://github.com/Manishearth/rust-clippy/wiki#match_overlapping_arm)           | warn    | a match has overlapping arms
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                         | warn    | a match or `if let` has all arms prefixed with `&`; the match expression can be dereferenced instead
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                       | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                 | warn    | taking a number modulo 1, which always returns 0

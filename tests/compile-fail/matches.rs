@@ -51,17 +51,17 @@ fn match_bool() {
         true => 1,
         false => 0,
     };
-    
+
     match test { //~ ERROR you seem to be trying to match on a boolean expression
         true => (),
         false => { println!("Noooo!"); }
     };
-    
+
     match test { //~ ERROR you seem to be trying to match on a boolean expression
         false => { println!("Noooo!"); }
         _ => (),
     };
-    
+
     match test { //~ ERROR you seem to be trying to match on a boolean expression
         false => { println!("Noooo!"); }
         true => { println!("Yes!"); }
@@ -70,7 +70,7 @@ fn match_bool() {
     // Not linted
     match option {
         1 ... 10 => (),
-        10 ... 20 => (),
+        11 ... 20 => (),
         _ => (),
     };
 }
@@ -112,6 +112,35 @@ fn ref_pats() {
     let b = Some(0);
     if let &None = &b { //~ERROR use `if let ... = b {`
         println!("none");
+    }
+}
+
+fn overlapping() {
+    const FOO : u64 = 2;
+
+    match 42 {
+        0 ... 10 => println!("0 ... 10"), //~ERROR: some ranges overlap
+        0 ... 11 => println!("0 ... 10"),
+        _ => (),
+    }
+
+    match 42 {
+        0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+        6 ... 7 => println!("6 ... 7"),
+        FOO ... 11 => println!("0 ... 10"),
+        _ => (),
+    }
+
+    match 42 {
+        2 => println!("2"),
+        0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+        _ => (),
+    }
+
+    match 42 {
+        0 ... 10 => println!("0 ... 10"),
+        11 ... 50 => println!("0 ... 10"),
+        _ => (),
     }
 }
 
