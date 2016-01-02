@@ -41,15 +41,15 @@ pub use panicking::{take_handler, set_handler, PanicInfo, Location};
 ///    panics.
 /// 2. This broken invariant is then later observed.
 ///
-/// Typically in Rust it is difficult to perform step (2) because catching a
+/// Typically in Rust, it is difficult to perform step (2) because catching a
 /// panic involves either spawning a thread (which in turns makes it difficult
 /// to later witness broken invariants) or using the `recover` function in this
-/// module. Additionally, even if an invariant is witness, it typically isn't a
+/// module. Additionally, even if an invariant is witnessed, it typically isn't a
 /// problem in Rust because there's no uninitialized values (like in C or C++).
 ///
 /// It is possible, however, for **logical** invariants to be broken in Rust,
 /// which can end up causing behavioral bugs. Another key aspect of panic safety
-/// in Rust is that in the absence of `unsafe` code, a panic cannot lead to
+/// in Rust is that, in the absence of `unsafe` code, a panic cannot lead to
 /// memory unsafety.
 ///
 /// That was a bit of a whirlwind tour of panic safety, but for more information
@@ -60,12 +60,12 @@ pub use panicking::{take_handler, set_handler, PanicInfo, Location};
 /// ## What is `RecoverSafe`?
 ///
 /// Now that we've got an idea of what panic safety is in Rust, it's also
-/// important to understand that this trait represents. As mentioned above, one
+/// important to understand what this trait represents. As mentioned above, one
 /// way to witness broken invariants is through the `recover` function in this
 /// module as it allows catching a panic and then re-using the environment of
 /// the closure.
 ///
-/// Simply but, a type `T` implements `RecoverSafe` if it cannot easily allow
+/// Simply put, a type `T` implements `RecoverSafe` if it cannot easily allow
 /// witnessing a broken invariant through the use of `recover` (catching a
 /// panic). This trait is a marker trait, so it is automatically implemented for
 /// many types, and it is also structurally composed (e.g. a struct is recover
@@ -180,7 +180,7 @@ impl<T: RefRecoverSafe + ?Sized> RecoverSafe for Arc<T> {}
 // Pretty simple implementations for the `RefRecoverSafe` marker trait,
 // basically just saying that this is a marker trait and `UnsafeCell` is the
 // only thing which doesn't implement it (which then transitively applies to
-// everything else.
+// everything else).
 impl RefRecoverSafe for .. {}
 impl<T: ?Sized> !RefRecoverSafe for UnsafeCell<T> {}
 impl<T> RefRecoverSafe for AssertRecoverSafe<T> {}
