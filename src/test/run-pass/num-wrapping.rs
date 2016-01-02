@@ -12,7 +12,9 @@
 //
 // Test std::num::Wrapping<T> for {uN, iN, usize, isize}
 
-#![feature(op_assign_traits, num_bits_bytes)]
+#![feature(op_assign_traits, num_bits_bytes, test)]
+
+extern crate test;
 
 use std::num::Wrapping;
 use std::ops::{
@@ -21,8 +23,7 @@ use std::ops::{
     Shl, Shr, ShlAssign, ShrAssign
 };
 use std::{i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
-
-use std::test::black_box;
+use test::black_box;
 
 fn main() {
     test_ops();
@@ -247,126 +248,79 @@ fn test_sh_ops() {
             assert_eq!(black_box(Wrapping($lhs).$op($rhs)), Wrapping($ans));
         }
     }
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as u8) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as u8) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as u8) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as u8) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as u8) == -2);
+    // NOTE: This will break for i8 if we ever get i/u128
+    macro_rules! sh_test_all {
+        ($t:ty) => {
+            sh_test!(shl(i8::MAX, (i8::BITS + 1) as $t) == -2);
+            sh_test!(shl(i16::MAX, (i16::BITS + 1) as $t) == -2);
+            sh_test!(shl(i32::MAX, (i32::BITS + 1) as $t) == -2);
+            sh_test!(shl(i64::MAX, (i64::BITS + 1) as $t) == -2);
+            sh_test!(shl(isize::MAX, (isize::BITS + 1) as $t) == -2);
 
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as i8) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as i8) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as i8) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as i8) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as i8) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as i16) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as i16) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as i16) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as i16) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as i16) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as i16) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as i16) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as i16) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as i16) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as i16) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as u16) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as u16) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as u16) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as u16) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as u16) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as u16) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as u16) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as u16) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as u16) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as u16) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as i32) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as i32) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as i32) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as i32) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as i32) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as i32) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as i32) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as i32) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as i32) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as i32) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as u32) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as u32) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as u32) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as u32) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as u32) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as u32) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as u32) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as u32) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as u32) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as u32) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as i64) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as i64) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as i64) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as i64) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as i64) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as i64) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as i64) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as i64) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as i64) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as i64) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as u64) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as u64) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as u64) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as u64) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as u64) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as u64) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as u64) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as u64) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as u64) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as u64) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as isize) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as isize) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as isize) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as isize) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as isize) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as isize) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as isize) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as isize) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as isize) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as isize) == usize::MAX - 1);
-
-    sh_test!(shl(i8::MAX, (i8::BITS + 1) as usize) == -2);
-    sh_test!(shl(i16::MAX, (i16::BITS + 1) as usize) == -2);
-    sh_test!(shl(i32::MAX, (i32::BITS + 1) as usize) == -2);
-    sh_test!(shl(i64::MAX, (i64::BITS + 1) as usize) == -2);
-    sh_test!(shl(isize::MAX, (isize::BITS + 1) as usize) == -2);
-
-    sh_test!(shl(u8::MAX, (u8::BITS + 1) as usize) == u8::MAX - 1);
-    sh_test!(shl(u16::MAX, (u16::BITS + 1) as usize) == u16::MAX - 1);
-    sh_test!(shl(u32::MAX, (u32::BITS + 1) as usize) == u32::MAX - 1);
-    sh_test!(shl(u64::MAX, (u64::BITS + 1) as usize) == u64::MAX - 1);
-    sh_test!(shl(usize::MAX, (usize::BITS + 1) as usize) == usize::MAX - 1);
+            sh_test!(shl(u8::MAX, (u8::BITS + 1) as $t) == u8::MAX - 1);
+            sh_test!(shl(u16::MAX, (u16::BITS + 1) as $t) == u16::MAX - 1);
+            sh_test!(shl(u32::MAX, (u32::BITS + 1) as $t) == u32::MAX - 1);
+            sh_test!(shl(u64::MAX, (u64::BITS + 1) as $t) == u64::MAX - 1);
+            sh_test!(shl(usize::MAX, (usize::BITS + 1) as $t) == usize::MAX - 1);
 
 
-    sh_test!(shr(i8::MAX, i8::BITS + 1) == i8::MAX / 2);
-    sh_test!(shr(i16::MAX, i16::BITS + 1) == i16::MAX / 2);
-    sh_test!(shr(i32::MAX, i32::BITS + 1) == i32::MAX / 2);
-    sh_test!(shr(i64::MAX, i64::BITS + 1) == i64::MAX / 2);
-    sh_test!(shr(isize::MAX, isize::BITS + 1) == isize::MAX / 2);
+            sh_test!(shr(i8::MAX, (i8::BITS + 1) as $t) == i8::MAX / 2);
+            sh_test!(shr(i16::MAX, (i16::BITS + 1) as $t) == i16::MAX / 2);
+            sh_test!(shr(i32::MAX, (i32::BITS + 1) as $t) == i32::MAX / 2);
+            sh_test!(shr(i64::MAX, (i64::BITS + 1) as $t) == i64::MAX / 2);
+            sh_test!(shr(isize::MAX, (isize::BITS + 1) as $t) == isize::MAX / 2);
 
-    sh_test!(shr(u8::MAX, u8::BITS + 1) == u8::MAX / 2);
-    sh_test!(shr(u16::MAX, u16::BITS + 1) == u16::MAX / 2);
-    sh_test!(shr(u32::MAX, u32::BITS + 1) == u32::MAX / 2);
-    sh_test!(shr(u64::MAX, u64::BITS + 1) == u64::MAX / 2);
-    sh_test!(shr(usize::MAX, usize::BITS + 1) == usize::MAX / 2);
+            sh_test!(shr(u8::MAX, (u8::BITS + 1) as $t) == u8::MAX / 2);
+            sh_test!(shr(u16::MAX, (u16::BITS + 1) as $t) == u16::MAX / 2);
+            sh_test!(shr(u32::MAX, (u32::BITS + 1) as $t) == u32::MAX / 2);
+            sh_test!(shr(u64::MAX, (u64::BITS + 1) as $t) == u64::MAX / 2);
+            sh_test!(shr(usize::MAX, (usize::BITS + 1) as $t) == usize::MAX / 2);
+        }
+    }
+    macro_rules! sh_test_negative_all {
+        ($t:ty) => {
+            sh_test!(shr(i8::MAX, -((i8::BITS + 1) as $t)) == -2);
+            sh_test!(shr(i16::MAX, -((i16::BITS + 1) as $t)) == -2);
+            sh_test!(shr(i32::MAX, -((i32::BITS + 1) as $t)) == -2);
+            sh_test!(shr(i64::MAX, -((i64::BITS + 1) as $t)) == -2);
+            sh_test!(shr(isize::MAX, -((isize::BITS + 1) as $t)) == -2);
+
+            sh_test!(shr(u8::MAX, -((u8::BITS + 1) as $t)) == u8::MAX - 1);
+            sh_test!(shr(u16::MAX, -((u16::BITS + 1) as $t)) == u16::MAX - 1);
+            sh_test!(shr(u32::MAX, -((u32::BITS + 1) as $t)) == u32::MAX - 1);
+            sh_test!(shr(u64::MAX, -((u64::BITS + 1) as $t)) == u64::MAX - 1);
+            sh_test!(shr(usize::MAX, -((usize::BITS + 1) as $t)) == usize::MAX - 1);
+
+
+            sh_test!(shl(i8::MAX, -((i8::BITS + 1) as $t)) == i8::MAX / 2);
+            sh_test!(shl(i16::MAX, -((i16::BITS + 1) as $t)) == i16::MAX / 2);
+            sh_test!(shl(i32::MAX, -((i32::BITS + 1) as $t)) == i32::MAX / 2);
+            sh_test!(shl(i64::MAX, -((i64::BITS + 1) as $t)) == i64::MAX / 2);
+            sh_test!(shl(isize::MAX, -((isize::BITS + 1) as $t)) == isize::MAX / 2);
+
+            sh_test!(shl(u8::MAX, -((u8::BITS + 1) as $t)) == u8::MAX / 2);
+            sh_test!(shl(u16::MAX, -((u16::BITS + 1) as $t)) == u16::MAX / 2);
+            sh_test!(shl(u32::MAX, -((u32::BITS + 1) as $t)) == u32::MAX / 2);
+            sh_test!(shl(u64::MAX, -((u64::BITS + 1) as $t)) == u64::MAX / 2);
+            sh_test!(shl(usize::MAX, -((usize::BITS + 1) as $t)) == usize::MAX / 2);
+        }
+    }
+    sh_test_all!(i8);
+    sh_test_all!(u8);
+    sh_test_all!(i16);
+    sh_test_all!(u16);
+    sh_test_all!(i32);
+    sh_test_all!(u32);
+    sh_test_all!(i64);
+    sh_test_all!(u64);
+    sh_test_all!(isize);
+    sh_test_all!(usize);
+
+    sh_test_negative_all!(i8);
+    sh_test_negative_all!(i16);
+    sh_test_negative_all!(i32);
+    sh_test_negative_all!(i64);
+    sh_test_negative_all!(isize);
 }
 
 fn test_sh_op_assigns() {
@@ -378,28 +332,77 @@ fn test_sh_op_assigns() {
             assert_eq!(black_box(tmp), Wrapping($ans));
         }}
     }
-    sh_assign_test!(shl_assign(i8::MAX, i8::BITS + 1) == -2);
-    sh_assign_test!(shl_assign(i16::MAX, i16::BITS + 1) == -2);
-    sh_assign_test!(shl_assign(i32::MAX, i32::BITS + 1) == -2);
-    sh_assign_test!(shl_assign(i64::MAX, i64::BITS + 1) == -2);
-    sh_assign_test!(shl_assign(isize::MAX, isize::BITS + 1) == -2);
+    macro_rules! sh_assign_test_all {
+        ($t:ty) => {
+            sh_assign_test!(shl_assign(i8::MAX, (i8::BITS + 1) as $t) == -2);
+            sh_assign_test!(shl_assign(i16::MAX, (i16::BITS + 1) as $t) == -2);
+            sh_assign_test!(shl_assign(i32::MAX, (i32::BITS + 1) as $t) == -2);
+            sh_assign_test!(shl_assign(i64::MAX, (i64::BITS + 1) as $t) == -2);
+            sh_assign_test!(shl_assign(isize::MAX, (isize::BITS + 1) as $t) == -2);
 
-    sh_assign_test!(shl_assign(u8::MAX, u8::BITS + 1) == u8::MAX - 1);
-    sh_assign_test!(shl_assign(u16::MAX, u16::BITS + 1) == u16::MAX - 1);
-    sh_assign_test!(shl_assign(u32::MAX, u32::BITS + 1) == u32::MAX - 1);
-    sh_assign_test!(shl_assign(u64::MAX, u64::BITS + 1) == u64::MAX - 1);
-    sh_assign_test!(shl_assign(usize::MAX, usize::BITS + 1) == usize::MAX - 1);
+            sh_assign_test!(shl_assign(u8::MAX, (u8::BITS + 1) as $t) == u8::MAX - 1);
+            sh_assign_test!(shl_assign(u16::MAX, (u16::BITS + 1) as $t) == u16::MAX - 1);
+            sh_assign_test!(shl_assign(u32::MAX, (u32::BITS + 1) as $t) == u32::MAX - 1);
+            sh_assign_test!(shl_assign(u64::MAX, (u64::BITS + 1) as $t) == u64::MAX - 1);
+            sh_assign_test!(shl_assign(usize::MAX, (usize::BITS + 1) as $t) == usize::MAX - 1);
 
 
-    sh_assign_test!(shr_assign(i8::MAX, i8::BITS + 1) == i8::MAX / 2);
-    sh_assign_test!(shr_assign(i16::MAX, i16::BITS + 1) == i16::MAX / 2);
-    sh_assign_test!(shr_assign(i32::MAX, i32::BITS + 1) == i32::MAX / 2);
-    sh_assign_test!(shr_assign(i64::MAX, i64::BITS + 1) == i64::MAX / 2);
-    sh_assign_test!(shr_assign(isize::MAX, isize::BITS + 1) == isize::MAX / 2);
+            sh_assign_test!(shr_assign(i8::MAX, (i8::BITS + 1) as $t) == i8::MAX / 2);
+            sh_assign_test!(shr_assign(i16::MAX, (i16::BITS + 1) as $t) == i16::MAX / 2);
+            sh_assign_test!(shr_assign(i32::MAX, (i32::BITS + 1) as $t) == i32::MAX / 2);
+            sh_assign_test!(shr_assign(i64::MAX, (i64::BITS + 1) as $t) == i64::MAX / 2);
+            sh_assign_test!(shr_assign(isize::MAX, (isize::BITS + 1) as $t) == isize::MAX / 2);
 
-    sh_assign_test!(shr_assign(u8::MAX, u8::BITS + 1) == u8::MAX / 2);
-    sh_assign_test!(shr_assign(u16::MAX, u16::BITS + 1) == u16::MAX / 2);
-    sh_assign_test!(shr_assign(u32::MAX, u32::BITS + 1) == u32::MAX / 2);
-    sh_assign_test!(shr_assign(u64::MAX, u64::BITS + 1) == u64::MAX / 2);
-    sh_assign_test!(shr_assign(usize::MAX, usize::BITS + 1) == usize::MAX / 2);
+            sh_assign_test!(shr_assign(u8::MAX, (u8::BITS + 1) as $t) == u8::MAX / 2);
+            sh_assign_test!(shr_assign(u16::MAX, (u16::BITS + 1) as $t) == u16::MAX / 2);
+            sh_assign_test!(shr_assign(u32::MAX, (u32::BITS + 1) as $t) == u32::MAX / 2);
+            sh_assign_test!(shr_assign(u64::MAX, (u64::BITS + 1) as $t) == u64::MAX / 2);
+            sh_assign_test!(shr_assign(usize::MAX, (usize::BITS + 1) as $t) == usize::MAX / 2);
+        }
+    }
+    macro_rules! sh_assign_test_negative_all {
+        ($t:ty) => {
+            sh_assign_test!(shr_assign(i8::MAX, -((i8::BITS + 1) as $t)) == -2);
+            sh_assign_test!(shr_assign(i16::MAX, -((i16::BITS + 1) as $t)) == -2);
+            sh_assign_test!(shr_assign(i32::MAX, -((i32::BITS + 1) as $t)) == -2);
+            sh_assign_test!(shr_assign(i64::MAX, -((i64::BITS + 1) as $t)) == -2);
+            sh_assign_test!(shr_assign(isize::MAX, -((isize::BITS + 1) as $t)) == -2);
+
+            sh_assign_test!(shr_assign(u8::MAX, -((u8::BITS + 1) as $t)) == u8::MAX - 1);
+            sh_assign_test!(shr_assign(u16::MAX, -((u16::BITS + 1) as $t)) == u16::MAX - 1);
+            sh_assign_test!(shr_assign(u32::MAX, -((u32::BITS + 1) as $t)) == u32::MAX - 1);
+            sh_assign_test!(shr_assign(u64::MAX, -((u64::BITS + 1) as $t)) == u64::MAX - 1);
+            sh_assign_test!(shr_assign(usize::MAX, -((usize::BITS + 1) as $t)) == usize::MAX - 1);
+
+
+            sh_assign_test!(shl_assign(i8::MAX, -((i8::BITS + 1) as $t)) == i8::MAX / 2);
+            sh_assign_test!(shl_assign(i16::MAX, -((i16::BITS + 1) as $t)) == i16::MAX / 2);
+            sh_assign_test!(shl_assign(i32::MAX, -((i32::BITS + 1) as $t)) == i32::MAX / 2);
+            sh_assign_test!(shl_assign(i64::MAX, -((i64::BITS + 1) as $t)) == i64::MAX / 2);
+            sh_assign_test!(shl_assign(isize::MAX, -((isize::BITS + 1) as $t)) == isize::MAX / 2);
+
+            sh_assign_test!(shl_assign(u8::MAX, -((u8::BITS + 1) as $t)) == u8::MAX / 2);
+            sh_assign_test!(shl_assign(u16::MAX, -((u16::BITS + 1) as $t)) == u16::MAX / 2);
+            sh_assign_test!(shl_assign(u32::MAX, -((u32::BITS + 1) as $t)) == u32::MAX / 2);
+            sh_assign_test!(shl_assign(u64::MAX, -((u64::BITS + 1) as $t)) == u64::MAX / 2);
+            sh_assign_test!(shl_assign(usize::MAX, -((usize::BITS + 1) as $t)) == usize::MAX / 2);
+        }
+    }
+
+    sh_assign_test_all!(i8);
+    sh_assign_test_all!(u8);
+    sh_assign_test_all!(i16);
+    sh_assign_test_all!(u16);
+    sh_assign_test_all!(i32);
+    sh_assign_test_all!(u32);
+    sh_assign_test_all!(i64);
+    sh_assign_test_all!(u64);
+    sh_assign_test_all!(isize);
+    sh_assign_test_all!(usize);
+
+    sh_assign_test_negative_all!(i8);
+    sh_assign_test_negative_all!(i16);
+    sh_assign_test_negative_all!(i32);
+    sh_assign_test_negative_all!(i64);
+    sh_assign_test_negative_all!(isize);
 }
