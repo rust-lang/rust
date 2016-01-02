@@ -551,24 +551,24 @@ impl<'tcx> Debug for Lvalue<'tcx> {
                 write!(fmt,"arg{:?}", id),
             Temp(id) =>
                 write!(fmt,"tmp{:?}", id),
-            Static(id) =>
-                write!(fmt,"Static({:?})", id),
+            Static(def_id) =>
+                write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
             ReturnPointer =>
-                write!(fmt,"ReturnPointer"),
+                write!(fmt, "ReturnPointer"),
             Projection(ref data) =>
                 match data.elem {
                     ProjectionElem::Downcast(ref adt_def, index) =>
-                        write!(fmt,"({:?} as {})", data.base, adt_def.variants[index].name),
+                        write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].name),
                     ProjectionElem::Deref =>
-                        write!(fmt,"(*{:?})", data.base),
+                        write!(fmt, "(*{:?})", data.base),
                     ProjectionElem::Field(field) =>
-                        write!(fmt,"{:?}.{:?}", data.base, field.index()),
+                        write!(fmt, "{:?}.{:?}", data.base, field.index()),
                     ProjectionElem::Index(ref index) =>
-                        write!(fmt,"{:?}[{:?}]", data.base, index),
+                        write!(fmt, "{:?}[{:?}]", data.base, index),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
-                        write!(fmt,"{:?}[{:?} of {:?}]", data.base, offset, min_length),
+                        write!(fmt, "{:?}[{:?} of {:?}]", data.base, offset, min_length),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
-                        write!(fmt,"{:?}[-{:?} of {:?}]", data.base, offset, min_length),
+                        write!(fmt, "{:?}[-{:?} of {:?}]", data.base, offset, min_length),
                 },
         }
     }
