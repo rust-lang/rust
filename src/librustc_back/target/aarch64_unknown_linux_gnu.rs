@@ -11,8 +11,7 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut base = super::linux_base::opts();
-    base.has_elf_tls = false;
+    let base = super::linux_base::opts();
     Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),

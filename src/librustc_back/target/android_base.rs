@@ -17,5 +17,6 @@ pub fn opts() -> TargetOptions {
     base.pre_link_args.push("-Wl,--allow-multiple-definition".to_string());
     base.is_like_android = true;
     base.position_independent_executables = true;
+    base.has_elf_tls = false;
     base
 }
