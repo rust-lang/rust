@@ -5,6 +5,15 @@
 #![deny(block_in_if_condition_stmt)]
 #![allow(unused)]
 
+
+macro_rules! blocky {
+    () => {{true}}
+}
+
+fn macro_if() {
+    if blocky!() {
+    }
+}
 fn condition_has_block() -> i32 {
 
     if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'

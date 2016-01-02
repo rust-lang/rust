@@ -79,13 +79,18 @@ impl LateLintPass for BlockInIfCondition {
                         if let Some(ref ex) = block.expr {
                             // don't dig into the expression here, just suggest that they remove
                             // the block
-
+                            if differing_macro_contexts(expr.span, ex.span) {
+                                return;
+                            }
                             span_help_and_lint(cx, BLOCK_IN_IF_CONDITION_EXPR, check.span,
                                 BRACED_EXPR_MESSAGE,
                                 &format!("try\nif {} {} ... ", snippet_block(cx, ex.span, ".."),
                                 snippet_block(cx, then.span, "..")));
                         }
                     } else {
+                        if differing_macro_contexts(expr.span, block.stmts[0].span) {
+                            return;
+                        }
                         // move block higher
                         span_help_and_lint(cx, BLOCK_IN_IF_CONDITION_STMT, check.span,
                             COMPLEX_BLOCK_MESSAGE,
