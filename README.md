@@ -71,7 +71,7 @@ You can run `rustfmt --help` for more information.
 * [Emacs](https://github.com/fbergroth/emacs-rustfmt)
 * [Sublime Text 3](https://packagecontrol.io/packages/BeautifyRust)
 * [Atom](atom.md)
-
+* Visual Studio Code using [RustyCode](https://github.com/saviorisdead/RustyCode) or [vsc-rustfmt](https://github.com/Connorcpu/vsc-rustfmt)
 
 ## How to build and test
 
