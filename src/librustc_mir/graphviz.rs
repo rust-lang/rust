@@ -117,7 +117,7 @@ fn write_graph_label<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
 
     // Compiler-introduced temporary types.
     for (i, temp) in mir.temp_decls.iter().enumerate() {
-        try!(write!(w, r#"let {:?}: {};<br align="left"/>"#,
+        try!(write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
                     Lvalue::Temp(i as u32), escape(&temp.ty)));
     }
 
