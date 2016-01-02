@@ -554,7 +554,7 @@ impl<'tcx> Debug for Lvalue<'tcx> {
             Static(def_id) =>
                 write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
             ReturnPointer =>
-                write!(fmt, "ReturnPointer"),
+                write!(fmt, "return"),
             Projection(ref data) =>
                 match data.elem {
                     ProjectionElem::Downcast(ref adt_def, index) =>
