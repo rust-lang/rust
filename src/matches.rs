@@ -22,7 +22,7 @@ use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_bloc
 declare_lint!(pub SINGLE_MATCH, Warn,
               "a match statement with a single nontrivial arm (i.e, where the other arm \
                is `_ => {}`) is used; recommends `if let` instead");
-/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It is `Warn` by default.
+/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It also checks for `if let &foo = bar` blocks. It is `Warn` by default.
 ///
 /// **Why is this bad?** It just makes the code less readable. That reference destructuring adds nothing to the code.
 ///
@@ -38,7 +38,7 @@ declare_lint!(pub SINGLE_MATCH, Warn,
 /// }
 /// ```
 declare_lint!(pub MATCH_REF_PATS, Warn,
-              "a match has all arms prefixed with `&`; the match expression can be \
+              "a match or `if let` has all arms prefixed with `&`; the match expression can be \
                dereferenced instead");
 /// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests to replace the expression with an `if...else` block. It is `Warn` by default.
 ///
