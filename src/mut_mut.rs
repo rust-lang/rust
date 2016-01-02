@@ -30,8 +30,8 @@ impl LateLintPass for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext, ty: &Ty) {
-        unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| span_lint(cx, MUT_MUT,
-            ty.span, "generally you want to avoid `&mut &mut _` if possible"))
+        unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| { span_lint(cx, MUT_MUT,
+            ty.span, "generally you want to avoid `&mut &mut _` if possible"); });
     }
 }
 
@@ -52,12 +52,12 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
                     cx.tcx.expr_ty(e).sty {
                         span_lint(cx, MUT_MUT, expr.span,
                                   "this expression mutably borrows a mutable reference. \
-                                   Consider reborrowing")
+                                   Consider reborrowing");
                 }
             },
             |_| {
                 span_lint(cx, MUT_MUT, expr.span,
-                          "generally you want to avoid `&mut &mut _` if possible")
+                          "generally you want to avoid `&mut &mut _` if possible");
             }
         )
     })

@@ -9,7 +9,7 @@ use consts::{Constant, constant_simple, FloatWidth};
 /// 0.0/0.0 with std::f32::NaN or std::f64::NaN, depending on the precision.
 pub struct ZeroDivZeroPass;
 
-/// **What it does:** This lint checks for `0.0 / 0.0`
+/// **What it does:** This lint checks for `0.0 / 0.0`. It is `Warn` by default.
 ///
 /// **Why is this bad?** It's less readable than `std::f32::NAN` or `std::f64::NAN`
 ///

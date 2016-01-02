@@ -63,7 +63,7 @@ impl LateLintPass for MutexAtomic {
                         ty::TyInt(t) if t != ast::TyIs =>
                             span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg)
-                    }
+                    };
                 }
             }
         }

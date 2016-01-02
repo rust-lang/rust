@@ -9,15 +9,13 @@ use syntax::ast::IntTy::*;
 use syntax::ast::UintTy::*;
 use syntax::ast::FloatTy::*;
 
-use utils::{match_type, snippet, span_lint, span_help_and_lint};
-use utils::{is_from_for_desugar, in_macro, in_external_macro};
-use utils::{LL_PATH, VEC_PATH};
+use utils::*;
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
 
-/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code.
+/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code. It is `Warn` by default.
 ///
 /// **Why is this bad?** `Vec` already keeps its contents in a separate area on the heap. So if you `Box` it, you just add another level of indirection without any benefit whatsoever.
 ///
@@ -26,7 +24,8 @@ pub struct TypePass;
 /// **Example:** `struct X { values: Box<Vec<Foo>> }`
 declare_lint!(pub BOX_VEC, Warn,
               "usage of `Box<Vec<T>>`, vector elements are already on the heap");
-/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`).
+
+/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`). It is `Warn` by default.
 ///
 /// **Why is this bad?** Gankro says:
 ///
@@ -49,6 +48,9 @@ impl LintPass for TypePass {
 
 impl LateLintPass for TypePass {
     fn check_ty(&mut self, cx: &LateContext, ast_ty: &Ty) {
+        if in_macro(cx, ast_ty.span) {
+            return
+        }
         if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
             if let ty::TyBox(ref inner) = ty.sty {
                 if match_type(cx, inner, &VEC_PATH) {

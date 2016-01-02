@@ -8,7 +8,7 @@ use utils::{walk_ptrs_ty, walk_ptrs_ty_depth};
 ///
 /// **Why is this bad?** It makes the code less readable.
 ///
-/// **Known problems:** False negative: The lint currently misses mapping `Clone::clone` directly. Issue #436 is tracking this.
+/// **Known problems:** None
 ///
 /// **Example:** `x.map(|e| e.clone());`
 declare_lint!(pub MAP_CLONE, Warn,

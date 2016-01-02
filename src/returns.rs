@@ -75,9 +75,9 @@ impl ReturnPass {
         if in_external_macro(cx, spans.1) {return;}
         span_lint_and_then(cx, NEEDLESS_RETURN, spans.0,
                            "unneeded return statement",
-                           || {
+                           |db| {
             if let Some(snippet) = snippet_opt(cx, spans.1) {
-                cx.sess().span_suggestion(spans.0,
+                db.span_suggestion(spans.0,
                                           "remove `return` as shown:",
                                           snippet);
             }
@@ -105,11 +105,11 @@ impl ReturnPass {
 
     fn emit_let_lint(&mut self, cx: &EarlyContext, lint_span: Span, note_span: Span) {
         if in_external_macro(cx, note_span) {return;}
-        span_lint(cx, LET_AND_RETURN, lint_span,
+        let mut db = span_lint(cx, LET_AND_RETURN, lint_span,
                   "returning the result of a let binding from a block. \
                    Consider returning the expression directly.");
         if cx.current_level(LET_AND_RETURN) != Level::Allow {
-            cx.sess().span_note(note_span,
+            db.span_note(note_span,
                                 "this expression can be directly returned");
         }
     }

@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.32"
+version = "0.0.35"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -17,7 +17,7 @@ name = "clippy"
 plugin = true
 
 [dependencies]
-unicode-normalization = "*"
+unicode-normalization = "0.1"
 
 [dev-dependencies]
 compiletest_rs = "0.0.11"

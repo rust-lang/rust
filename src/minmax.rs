@@ -8,7 +8,7 @@ use consts::{Constant, constant_simple};
 use utils::{match_def_path, span_lint};
 use self::MinMax::{Min, Max};
 
-/// **What it does:** This lint checks for expressions where `std::cmp::min` and `max` are used to clamp values, but switched so that the result is constant.
+/// **What it does:** This lint checks for expressions where `std::cmp::min` and `max` are used to clamp values, but switched so that the result is constant. It is `Warn` by default.
 ///
 /// **Why is this bad?** This is in all probability not the intended outcome. At the least it hurts readability of the code.
 ///
@@ -37,7 +37,7 @@ impl LateLintPass for MinMaxPass {
                     (_, None) | (Max, Some(Less)) | (Min, Some(Greater)) => (),
                     _ => {
                         span_lint(cx, MIN_MAX, expr.span,
-                            "this min/max combination leads to constant result")
+                            "this min/max combination leads to constant result");
                     }
                 }
             }

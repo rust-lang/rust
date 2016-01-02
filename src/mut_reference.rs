@@ -4,7 +4,7 @@ use utils::span_lint;
 use rustc::middle::ty::{TypeAndMut, TypeVariants, MethodCall, TyS};
 use syntax::ptr::P;
 
-/// **What it does:** This lint detects giving a mutable reference to a function that only requires an immutable reference.
+/// **What it does:** This lint detects giving a mutable reference to a function that only requires an immutable reference. It is `Warn` by default.
 ///
 /// **Why is this bad?** The immutable reference rules out all other references to the value. Also the code misleads about the intent of the call site.
 ///
@@ -36,7 +36,7 @@ impl LateLintPass for UnnecessaryMutPassed {
                 match borrowed_table.node_types.get(&fn_expr.id) {
                     Some(function_type) => {
                         if let ExprPath(_, ref path) = fn_expr.node {
-                            check_arguments(cx, &arguments, function_type, 
+                            check_arguments(cx, &arguments, function_type,
                                             &format!("{}", path));
                         }
                     }
@@ -50,7 +50,7 @@ impl LateLintPass for UnnecessaryMutPassed {
             ExprMethodCall(ref name, _, ref arguments) => {
                 let method_call = MethodCall::expr(e.id);
                 match borrowed_table.method_map.get(&method_call) {
-                    Some(method_type) => check_arguments(cx, &arguments, method_type.ty, 
+                    Some(method_type) => check_arguments(cx, &arguments, method_type.ty,
                                                          &format!("{}", name.node.as_str())),
                     None => unreachable!(), // Just like above, this should never happen.
                 };
@@ -68,9 +68,9 @@ fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &Ty
                 TypeVariants::TyRef(_, TypeAndMut {mutbl: MutImmutable, ..}) |
                 TypeVariants::TyRawPtr(TypeAndMut {mutbl: MutImmutable, ..}) => {
                     if let ExprAddrOf(MutMutable, _) = argument.node {
-                        span_lint(cx, UNNECESSARY_MUT_PASSED, 
+                        span_lint(cx, UNNECESSARY_MUT_PASSED,
                                   argument.span, &format!("The function/method \"{}\" \
-                                  doesn't need a mutable reference", 
+                                  doesn't need a mutable reference",
                                   name));
                     }
                 }

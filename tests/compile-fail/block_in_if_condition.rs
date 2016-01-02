@@ -5,6 +5,15 @@
 #![deny(block_in_if_condition_stmt)]
 #![allow(unused)]
 
+
+macro_rules! blocky {
+    () => {{true}}
+}
+
+fn macro_if() {
+    if blocky!() {
+    }
+}
 fn condition_has_block() -> i32 {
 
     if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
@@ -57,6 +66,15 @@ fn condition_is_normal() -> i32 {
 fn closure_without_block() {
     if predicate(|x| x == 3, 6) {
 
+    }
+}
+
+fn condition_is_unsafe_block() {
+    let a: i32 = 1;
+
+    // this should not warn because the condition is an unsafe block
+    if unsafe { 1u32 == std::mem::transmute(a) } {
+        println!("1u32 == a");
     }
 }
 

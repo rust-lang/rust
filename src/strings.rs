@@ -11,7 +11,7 @@ use eq_op::is_exp_equal;
 use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 use utils::STRING_PATH;
 
-/// **What it does:** This lint matches code of the form `x = x + y` (without `let`!)
+/// **What it does:** This lint matches code of the form `x = x + y` (without `let`!). It is `Allow` by default.
 ///
 /// **Why is this bad?** Because this expression needs another copy as opposed to `x.push_str(y)` (in practice LLVM will usually elide it, though). Despite [llogiq](https://github.com/llogiq)'s reservations, this lint also is `allow` by default, as some people opine that it's more readable.
 ///
@@ -75,13 +75,13 @@ impl LateLintPass for StringAdd {
                 }
                 span_lint(cx, STRING_ADD, e.span,
                     "you added something to a string. \
-                     Consider using `String::push_str()` instead")
+                     Consider using `String::push_str()` instead");
             }
         } else if let ExprAssign(ref target, ref src) = e.node {
             if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assigned the result of adding something to this string. \
-                     Consider using `String::push_str()` instead")
+                     Consider using `String::push_str()` instead");
             }
         }
     }

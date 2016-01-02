@@ -8,9 +8,14 @@ use rustc::middle::ty;
 use std::borrow::Cow;
 use syntax::ast::Lit_::*;
 use syntax::ast;
+use syntax::errors::DiagnosticBuilder;
+use syntax::ptr::P;
 
 use rustc::session::Session;
 use std::str::FromStr;
+use std::ops::{Deref, DerefMut};
+
+pub type MethodArgs = HirVec<P<Expr>>;
 
 // module DefPaths for certain structs/enums we check for
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
@@ -21,6 +26,7 @@ pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "Linke
 pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
 pub const MUTEX_PATH:  [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const CLONE_PATH:  [&'static str; 2] = ["Clone", "clone"];
+pub const BEGIN_UNWIND:[&'static str; 3] = ["std", "rt", "begin_unwind"];
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
@@ -68,6 +74,10 @@ macro_rules! if_let_chain {
     };
 }
 
+/// Returns true if the two spans come from differing expansions (i.e. one is from a macro and one isn't)
+pub fn differing_macro_contexts(sp1: Span, sp2: Span) -> bool {
+    sp1.expn_id != sp2.expn_id
+}
 /// returns true if this expn_info was expanded by any macro
 pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id,
@@ -135,6 +145,7 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
         false
     }
 }
+
 /// check if method call given in "expr" belongs to given trait
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
@@ -161,6 +172,31 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
         |(a, b)| a.identifier.name.as_str() == *b)
 }
+
+/// match an Expr against a chain of methods, and return the matched Exprs. For example, if `expr`
+/// represents the `.baz()` in `foo.bar().baz()`, `matched_method_chain(expr, &["bar", "baz"])`
+/// will return a Vec containing the Exprs for `.bar()` and `.baz()`
+pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a MethodArgs>> {
+    let mut current = expr;
+    let mut matched = Vec::with_capacity(methods.len());
+    for method_name in methods.iter().rev() { // method chains are stored last -> first
+        if let ExprMethodCall(ref name, _, ref args) = current.node {
+            if name.node.as_str() == *method_name {
+                matched.push(args); // build up `matched` backwards
+                current = &args[0] // go to parent expression
+            }
+            else {
+                return None;
+            }
+        }
+        else {
+            return None;
+        }
+    }
+    matched.reverse(); // reverse `matched`, so that it is in the same order as `methods`
+    Some(matched)
+}
+
 
 /// get the name of the item the expression is in, if available
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
@@ -277,63 +313,91 @@ pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c 
     } else { None }
 }
 
-#[cfg(not(feature="structured_logging"))]
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
-    cx.span_lint(lint, sp, msg);
-    if cx.current_level(lint) != Level::Allow {
-        cx.sess().fileline_help(sp, &format!("for further information visit \
-            https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+pub struct DiagnosticWrapper<'a>(pub DiagnosticBuilder<'a>);
+
+impl<'a> Drop for DiagnosticWrapper<'a> {
+    fn drop(&mut self) {
+        self.0.emit();
     }
+}
+
+impl<'a> DerefMut for DiagnosticWrapper<'a> {
+    fn deref_mut(&mut self) -> &mut DiagnosticBuilder<'a> {
+        &mut self.0
+    } 
+}
+
+impl<'a> Deref for DiagnosticWrapper<'a> {
+    type Target = DiagnosticBuilder<'a>;
+    fn deref(&self) -> &DiagnosticBuilder<'a> {
+        &self.0
+    } 
+}
+
+#[cfg(not(feature="structured_logging"))]
+pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint,
+                                     sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
+    let mut db = cx.struct_span_lint(lint, sp, msg);
+    if cx.current_level(lint) != Level::Allow {
+        db.fileline_help(sp, &format!("for further information visit \
+            https://github.com/Manishearth/rust-clippy/wiki#{}",
+            lint.name_lower()));
+    }
+    DiagnosticWrapper(db)
 }
 
 #[cfg(feature="structured_logging")]
-pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
+pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint,
+                                     sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
     // lint.name / lint.desc is can give details of the lint
     // cx.sess().codemap() has all these nice functions for line/column/snippet details
     // http://doc.rust-lang.org/syntax/codemap/struct.CodeMap.html#method.span_to_string
-    cx.span_lint(lint, sp, msg);
+    let mut db = cx.struct_span_lint(lint, sp, msg);
     if cx.current_level(lint) != Level::Allow {
-        cx.sess().fileline_help(sp, &format!("for further information visit \
+        db.fileline_help(sp, &format!("for further information visit \
             https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+            lint.name_lower()));
     }
+    DiagnosticWrapper(db)
 }
 
-pub fn span_help_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Span,
-        msg: &str, help: &str) {
-    cx.span_lint(lint, span, msg);
+pub fn span_help_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span,
+        msg: &str, help: &str) -> DiagnosticWrapper<'a> {
+    let mut db = cx.struct_span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
-        cx.sess().fileline_help(span, &format!("{}\nfor further information \
+        db.fileline_help(span, &format!("{}\nfor further information \
             visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-            help, lint.name_lower()))
+            help, lint.name_lower()));
     }
+    DiagnosticWrapper(db)
 }
 
-pub fn span_note_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Span,
-        msg: &str, note_span: Span, note: &str) {
-    cx.span_lint(lint, span, msg);
+pub fn span_note_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, span: Span,
+        msg: &str, note_span: Span, note: &str) -> DiagnosticWrapper<'a> {
+    let mut db = cx.struct_span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
         if note_span == span {
-            cx.sess().fileline_note(note_span, note)
+            db.fileline_note(note_span, note);
         } else {
-            cx.sess().span_note(note_span, note)
+            db.span_note(note_span, note);
         }
-        cx.sess().fileline_help(span, &format!("for further information visit \
+        db.fileline_help(span, &format!("for further information visit \
             https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+            lint.name_lower()));
     }
+    DiagnosticWrapper(db)
 }
 
-pub fn span_lint_and_then<T: LintContext, F>(cx: &T, lint: &'static Lint, sp: Span,
-        msg: &str, f: F) where F: Fn() {
-    cx.span_lint(lint, sp, msg);
+pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span,
+        msg: &str, f: F) -> DiagnosticWrapper<'a> where F: Fn(&mut DiagnosticWrapper) {
+    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {
-        f();
-        cx.sess().fileline_help(sp, &format!("for further information visit \
+        f(&mut db);
+        db.fileline_help(sp, &format!("for further information visit \
             https://github.com/Manishearth/rust-clippy/wiki#{}",
-            lint.name_lower()))
+            lint.name_lower()));
     }
+    db
 }
 
 /// return the base type for references and raw pointers

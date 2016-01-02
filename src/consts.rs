@@ -75,7 +75,7 @@ impl Constant {
         if let ConstantInt(val, _) = *self {
             val // TODO we may want to check the sign if any
         } else {
-            panic!("Could not convert a {:?} to u64");
+            panic!("Could not convert a {:?} to u64", self);
         }
     }
 
