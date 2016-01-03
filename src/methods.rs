@@ -258,14 +258,21 @@ impl LateLintPass for MethodsPass {
 fn lint_unwrap(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&unwrap_args[0]));
 
-    if match_type(cx, obj_ty, &OPTION_PATH) {
-        span_lint(cx, OPTION_UNWRAP_USED, expr.span,
-                  "used unwrap() on an Option value. If you don't want to handle the None case \
-                   gracefully, consider using expect() to provide a better panic message");
+    let mess = if match_type(cx, obj_ty, &OPTION_PATH) {
+        Some((OPTION_UNWRAP_USED, "an Option", "None"))
     }
     else if match_type(cx, obj_ty, &RESULT_PATH) {
-        span_lint(cx, RESULT_UNWRAP_USED, expr.span,
-                  "used unwrap() on a Result value. Graceful handling of Err values is preferred");
+        Some((RESULT_UNWRAP_USED, "a Result", "Err"))
+    }
+    else {
+        None
+    };
+
+    if let Some((lint, kind, none_value)) = mess {
+        span_lint(cx, lint, expr.span,
+                  &format!("used unwrap() on {} value. If you don't want to handle the {} \
+                            case gracefully, consider using expect() to provide a better panic
+                            message", kind, none_value));
     }
 }
 
