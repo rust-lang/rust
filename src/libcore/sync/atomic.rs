@@ -929,7 +929,7 @@ impl<T> AtomicPtr<T> {
     /// The return value is always the previous value contained in the pointer. If it is equal
     /// to the value pointed by `current`, then the value was updated.
     ///
-    ///`compare_and_swap` also takes an `Ordering` argument which describes the memory
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory
     ///  ordering of this operation.
     ///
     /// # Examples
