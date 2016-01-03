@@ -173,8 +173,8 @@ declare_lint!(pub SEARCH_IS_SOME, Warn,
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
-                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, OK_EXPECT, OPTION_MAP_UNWRAP_OR,
-                    OPTION_MAP_UNWRAP_OR_ELSE)
+                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, WRONG_PUB_SELF_CONVENTION,
+                    OK_EXPECT, OPTION_MAP_UNWRAP_OR, OPTION_MAP_UNWRAP_OR_ELSE)
     }
 }
 
@@ -258,14 +258,21 @@ impl LateLintPass for MethodsPass {
 fn lint_unwrap(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&unwrap_args[0]));
 
-    if match_type(cx, obj_ty, &OPTION_PATH) {
-        span_lint(cx, OPTION_UNWRAP_USED, expr.span,
-                  "used unwrap() on an Option value. If you don't want to handle the None case \
-                   gracefully, consider using expect() to provide a better panic message");
+    let mess = if match_type(cx, obj_ty, &OPTION_PATH) {
+        Some((OPTION_UNWRAP_USED, "an Option", "None"))
     }
     else if match_type(cx, obj_ty, &RESULT_PATH) {
-        span_lint(cx, RESULT_UNWRAP_USED, expr.span,
-                  "used unwrap() on a Result value. Graceful handling of Err values is preferred");
+        Some((RESULT_UNWRAP_USED, "a Result", "Err"))
+    }
+    else {
+        None
+    };
+
+    if let Some((lint, kind, none_value)) = mess {
+        span_lint(cx, lint, expr.span,
+                  &format!("used unwrap() on {} value. If you don't want to handle the {} \
+                            case gracefully, consider using expect() to provide a better panic
+                            message", kind, none_value));
     }
 }
 
