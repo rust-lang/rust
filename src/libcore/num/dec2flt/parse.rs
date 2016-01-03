@@ -56,27 +56,28 @@ pub enum ParseResult<'a> {
 /// Check if the input string is a valid floating point number and if so, locate the integral
 /// part, the fractional part, and the exponent in it. Does not handle signs.
 pub fn parse_decimal(s: &str) -> ParseResult {
+    if s.is_empty() {
+        return Invalid;
+    }
+
     let s = s.as_bytes();
     let (integral, s) = eat_digits(s);
+
     match s.first() {
-        None => {
-            if integral.is_empty() {
-                return Invalid; // No digits at all
-            }
-            Valid(Decimal::new(integral, b"", 0))
-        }
+        None => Valid(Decimal::new(integral, b"", 0)),
         Some(&b'e') | Some(&b'E') => {
             if integral.is_empty() {
                 return Invalid; // No digits before 'e'
             }
+
             parse_exp(integral, b"", &s[1..])
         }
         Some(&b'.') => {
             let (fractional, s) = eat_digits(&s[1..]);
             if integral.is_empty() && fractional.is_empty() && s.is_empty() {
-                // For historic reasons "." is a valid input.
-                return Valid(Decimal::new(b"", b"", 0));
+                return Invalid;
             }
+
             match s.first() {
                 None => Valid(Decimal::new(integral, fractional, 0)),
                 Some(&b'e') | Some(&b'E') => parse_exp(integral, fractional, &s[1..]),
