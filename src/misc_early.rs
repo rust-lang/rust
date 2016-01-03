@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 use syntax::ast::*;
 use syntax::codemap::Span;
-use syntax::print::pprust;
 use syntax::visit::FnKind;
 
 use utils::{span_lint, span_help_and_lint};
@@ -19,9 +18,9 @@ use utils::{span_lint, span_help_and_lint};
 declare_lint!(pub UNNEEDED_FIELD_PATTERN, Warn,
               "Struct fields are bound to a wildcard instead of using `..`");
 
-/// **What it does:** This lint `Warn`s on function arguments having the same name except one starts with '_'
+/// **What it does:** This lint `Warn`s on function arguments having the similar names differing by an underscore
 ///
-/// **Why is this bad?** It makes source code documentation more difficult
+/// **Why is this bad?** It affects code readability
 ///
 /// **Known problems:** None.
 ///
@@ -95,17 +94,19 @@ impl EarlyLintPass for MiscEarly {
         let mut registered_names : HashMap<String, Span> = HashMap::new();
 
         for ref arg in &decl.inputs {
-            let arg_name = pprust::pat_to_string(&arg.pat);
+            if let PatIdent(_, sp_ident, None) = arg.pat.node {
+                let arg_name = sp_ident.node.to_string();
 
-            if arg_name.starts_with("_") {
-                if let Some(correspondance) = registered_names.get(&arg_name[1..].to_owned()) {
-                    span_lint(cx, DUPLICATE_UNDERSCORE_ARGUMENT, *correspondance,
-                              &format!("`{}` already exists, having another argument having almost \
-                                        the same name makes code comprehension and documentation \
-                                        more difficult", arg_name[1..].to_owned()));
+                if arg_name.starts_with("_") {
+                    if let Some(correspondance) = registered_names.get(&arg_name[1..]) {
+                        span_lint(cx, DUPLICATE_UNDERSCORE_ARGUMENT, *correspondance,
+                                  &format!("`{}` already exists, having another argument having almost \
+                                            the same name makes code comprehension and documentation \
+                                            more difficult", arg_name[1..].to_owned()));
+                    }
+                } else {
+                    registered_names.insert(arg_name, arg.pat.span.clone());
                 }
-            } else {
-                registered_names.insert(arg_name.to_owned(), arg.pat.span.clone());
             }
         }
     }
