@@ -7,8 +7,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
 
-use eq_op::is_exp_equal;
-use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
+use utils::{is_exp_equal, match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 use utils::STRING_PATH;
 
 /// **What it does:** This lint matches code of the form `x = x + y` (without `let`!). It is `Allow` by default.
