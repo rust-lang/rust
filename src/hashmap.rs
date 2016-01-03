@@ -14,7 +14,14 @@ use utils::HASHMAP_PATH;
 /// if !m.contains_key(k) { m.insert(k.clone(), v); }
 /// ```
 ///
-/// **Example:** `if !m.contains_key(&k) { m.insert(k, v) }`
+/// **Example:**
+/// ```rust
+/// if !m.contains_key(&k) { m.insert(k, v) }
+/// ```
+/// can be rewritten as:
+/// ```rust
+/// m.entry(k).or_insert(v);
+/// ```
 declare_lint! {
     pub HASHMAP_ENTRY,
     Warn,
@@ -49,13 +56,15 @@ impl LateLintPass for HashMapLint {
                 let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(map));
 
                 if match_type(cx, obj_ty, &HASHMAP_PATH) {
+                    let sole_expr = if then.expr.is_some() { 1 } else { 0 } + then.stmts.len() == 1;
+
                     if let Some(ref then) = then.expr {
-                        check_for_insert(cx, expr.span, map, key, then);
+                        check_for_insert(cx, expr.span, map, key, then, sole_expr);
                     }
 
                     for stmt in &then.stmts {
                         if let StmtSemi(ref stmt, _) = stmt.node {
-                            check_for_insert(cx, expr.span, map, key, stmt);
+                            check_for_insert(cx, expr.span, map, key, stmt, sole_expr);
                         }
                     }
                 }
@@ -64,7 +73,7 @@ impl LateLintPass for HashMapLint {
     }
 }
 
-fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: &Expr) {
+fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: &Expr, sole_expr: bool) {
     if_let_chain! {
         [
             let ExprMethodCall(ref name, _, ref params) = expr.node,
@@ -73,11 +82,21 @@ fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: 
             get_item_name(cx, map) == get_item_name(cx, &*params[0]),
             is_exp_equal(cx, key, &params[1])
         ], {
-            span_help_and_lint(cx, HASHMAP_ENTRY, span,
-                               "usage of `contains_key` followed by `insert` on `HashMap`",
-                               &format!("Consider using `{}.entry({})`",
-                                        snippet(cx, map.span, ".."),
-                                        snippet(cx, params[1].span, "..")));
+            if sole_expr {
+                span_help_and_lint(cx, HASHMAP_ENTRY, span,
+                                   "usage of `contains_key` followed by `insert` on `HashMap`",
+                                   &format!("Consider using `{}.entry({}).or_insert({})`",
+                                            snippet(cx, map.span, ".."),
+                                            snippet(cx, params[1].span, ".."),
+                                            snippet(cx, params[2].span, ".."))); 
+            }
+            else {
+                span_help_and_lint(cx, HASHMAP_ENTRY, span,
+                                   "usage of `contains_key` followed by `insert` on `HashMap`",
+                                   &format!("Consider using `{}.entry({})`",
+                                            snippet(cx, map.span, ".."),
+                                            snippet(cx, params[1].span, "..")));
+            }
         }
     }
 }
