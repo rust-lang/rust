@@ -943,9 +943,11 @@ impl<T> AtomicPtr<T> {
     /// let other_ptr   = &mut 10;
     /// let another_ptr = &mut 10;
     /// // here `some_ptr` will not change as `other_ptr` has a different address from `ptr`
-    /// asserteq!(some_ptr.compare_and_swap(other_ptr, another_ptr, Ordering::Relaxed), 5);
+    /// some_ptr.compare_and_swap(other_ptr, another_ptr, Ordering::Relaxed);
+    /// assert_eq!( unsafe { *some_ptr.load(Ordering::Relaxed) }, 5);
     /// // but, in this instance `some_ptr` has `ptr` address, so the value is changed.
-    /// asserteq!(some_ptr.compare_and_swap(ptr, another_ptr, Ordering::Relaxed), 10);
+    /// some_ptr.compare_and_swap(ptr, another_ptr, Ordering::Relaxed);
+    /// assert_eq!(unsafe { *some_ptr.load(Ordering::Relaxed) }, 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
