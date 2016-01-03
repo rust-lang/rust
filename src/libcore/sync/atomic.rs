@@ -930,7 +930,7 @@ impl<T> AtomicPtr<T> {
     /// to the value pointed by `current`, then the value was updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory
-    ///  ordering of this operation.
+    /// ordering of this operation.
     ///
     /// # Examples
     ///
