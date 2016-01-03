@@ -173,8 +173,8 @@ declare_lint!(pub SEARCH_IS_SOME, Warn,
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
-                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, OK_EXPECT, OPTION_MAP_UNWRAP_OR,
-                    OPTION_MAP_UNWRAP_OR_ELSE)
+                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, WRONG_PUB_SELF_CONVENTION,
+                    OK_EXPECT, OPTION_MAP_UNWRAP_OR, OPTION_MAP_UNWRAP_OR_ELSE)
     }
 }
 
