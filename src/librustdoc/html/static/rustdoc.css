@@ -143,6 +143,10 @@ pre {
     padding: 20px;
 }
 
+img {
+    max-width: 100%;
+}
+
 .content.source {
     margin-top: 50px;
     max-width: none;
