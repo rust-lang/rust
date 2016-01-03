@@ -85,21 +85,38 @@ pub fn write_file(text: &StringBuffer,
         }
     }
 
+    fn source_and_formatted_text(text: &StringBuffer,
+                                 filename: &str,
+                                 config: &Config)
+                                 -> Result<(String, String), io::Error> {
+        let mut f = try!(File::open(filename));
+        let mut ori_text = String::new();
+        try!(f.read_to_string(&mut ori_text));
+        let mut v = Vec::new();
+        try!(write_system_newlines(&mut v, text, config));
+        let fmt_text = String::from_utf8(v).unwrap();
+        Ok((ori_text, fmt_text))
+    }
+
     match mode {
         WriteMode::Replace => {
-            // Do a little dance to make writing safer - write to a temp file
-            // rename the original to a .bk, then rename the temp file to the
-            // original.
-            let tmp_name = filename.to_owned() + ".tmp";
-            let bk_name = filename.to_owned() + ".bk";
-            {
-                // Write text to temp file
-                let tmp_file = try!(File::create(&tmp_name));
-                try!(write_system_newlines(tmp_file, text, config));
-            }
+            if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
+                if fmt != ori {
+                    // Do a little dance to make writing safer - write to a temp file
+                    // rename the original to a .bk, then rename the temp file to the
+                    // original.
+                    let tmp_name = filename.to_owned() + ".tmp";
+                    let bk_name = filename.to_owned() + ".bk";
+                    {
+                        // Write text to temp file
+                        let tmp_file = try!(File::create(&tmp_name));
+                        try!(write_system_newlines(tmp_file, text, config));
+                    }
 
-            try!(fs::rename(filename, bk_name));
-            try!(fs::rename(tmp_name, filename));
+                    try!(fs::rename(filename, bk_name));
+                    try!(fs::rename(tmp_name, filename));
+                }
+            }
         }
         WriteMode::Overwrite => {
             // Write text directly over original file.
@@ -124,14 +141,10 @@ pub fn write_file(text: &StringBuffer,
         }
         WriteMode::Diff => {
             println!("Diff of {}:\n", filename);
-            let mut f = try!(File::open(filename));
-            let mut ori_text = String::new();
-            try!(f.read_to_string(&mut ori_text));
-            let mut v = Vec::new();
-            try!(write_system_newlines(&mut v, text, config));
-            let fmt_text = String::from_utf8(v).unwrap();
-            let diff = make_diff(&ori_text, &fmt_text, 3);
-            print_diff(diff, |line_num| format!("\nDiff at line {}:", line_num));
+            if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
+                print_diff(make_diff(&ori, &fmt, 3),
+                           |line_num| format!("\nDiff at line {}:", line_num));
+            }
         }
         WriteMode::Return => {
             // io::Write is not implemented for String, working around with
