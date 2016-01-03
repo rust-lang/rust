@@ -923,14 +923,14 @@ impl<T> AtomicPtr<T> {
         unsafe { atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T }
     }
 
-    /// Stores a value into the pointer if the current pointer *address* value is the same 
+    /// Stores a value into the pointer if the current pointer *address* value is the same
     /// as the `current` pointer *address* value.
     ///
-    /// The return value is always the previous value contained in the pointer. If it is equal to the value 
-    /// pointed by `current`, then the value was updated.
+    /// The return value is always the previous value contained in the pointer. If it is equal
+    /// to the value pointed by `current`, then the value was updated.
     ///
-    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
-    /// this operation.
+    ///`compare_and_swap` also takes an `Ordering` argument which describes the memory
+    ///  ordering of this operation.
     ///
     /// # Examples
     ///
@@ -942,11 +942,9 @@ impl<T> AtomicPtr<T> {
     ///
     /// let other_ptr   = &mut 10;
     /// let another_ptr = &mut 10;
-    /// // The address of 'other_ptr' is not the same as the one contained in 'some_ptr' which is 
-    /// // 'ptr', hence no update is performed 
+    /// // here `some_ptr` will not change as `other_ptr` has a different address from `ptr`
     /// asserteq!(some_ptr.compare_and_swap(other_ptr, another_ptr, Ordering::Relaxed), 5);
-    /// // notice that, now that the address contained in 'some_ptr' is equal to 'ptr', 
-    /// // hence update is now performed and 'some_ptr' now has the value of 'another_ptr'
+    /// // but, in this instance `some_ptr` has `ptr` address, so the value is changed.
     /// asserteq!(some_ptr.compare_and_swap(ptr, another_ptr, Ordering::Relaxed), 10);
     /// ```
     #[inline]
