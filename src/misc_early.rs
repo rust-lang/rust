@@ -1,8 +1,11 @@
-//use rustc_front::hir::*;
-
 use rustc::lint::*;
 
+use std::collections::HashMap;
+
 use syntax::ast::*;
+use syntax::codemap::Span;
+use syntax::print::pprust;
+use syntax::visit::FnKind;
 
 use utils::{span_lint, span_help_and_lint};
 
@@ -16,12 +19,22 @@ use utils::{span_lint, span_help_and_lint};
 declare_lint!(pub UNNEEDED_FIELD_PATTERN, Warn,
               "Struct fields are bound to a wildcard instead of using `..`");
 
+/// **What it does:** This lint `Warn`s on function arguments having the same name except one starts with '_'
+///
+/// **Why is this bad?** It makes source code documentation more difficult
+///
+/// **Known problems:** None.
+///
+/// **Example:** `fn foo(a: i32, _a: i32) {}`
+declare_lint!(pub DUPLICATE_UNDERSCORE_ARGUMENT, Warn,
+              "Function arguments having names which only differ by an underscore");
+
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN)
+        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT)
     }
 }
 
@@ -74,6 +87,25 @@ impl EarlyLintPass for MiscEarly {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+        let mut registered_names : HashMap<String, Span> = HashMap::new();
+
+        for ref arg in &decl.inputs {
+            let arg_name = pprust::pat_to_string(&arg.pat);
+
+            if arg_name.starts_with("_") {
+                if let Some(correspondance) = registered_names.get(&arg_name[1..].to_owned()) {
+                    span_lint(cx, DUPLICATE_UNDERSCORE_ARGUMENT, *correspondance,
+                              &format!("`{}` already exists, having another argument having almost \
+                                        the same name makes code comprehension and documentation \
+                                        more difficult", arg_name[1..].to_owned()));
+                }
+            } else {
+                registered_names.insert(arg_name.to_owned(), arg.pat.span.clone());
             }
         }
     }
