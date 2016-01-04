@@ -13,7 +13,7 @@
 
 pub use self::imp::OsRng;
 
-#[cfg(all(unix, not(target_os = "ios"), not(target_os = "openbsd")))]
+#[cfg(all(unix, not(target_os = "ios")))]
 mod imp {
     use self::OsRngInner::*;
 
@@ -127,7 +127,6 @@ mod imp {
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
     ///
     /// This does not block.
     pub struct OsRng {
@@ -175,63 +174,6 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "openbsd")]
-mod imp {
-    use io;
-    use libc;
-    use mem;
-    use sys::os::errno;
-    use rand::Rng;
-
-    /// A random number generator that retrieves randomness straight from
-    /// the operating system. Platform sources:
-    ///
-    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
-    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
-    ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
-    ///
-    /// This does not block.
-    pub struct OsRng {
-        // dummy field to ensure that this struct cannot be constructed outside
-        // of this module
-        _dummy: (),
-    }
-
-    impl OsRng {
-        /// Create a new `OsRng`.
-        pub fn new() -> io::Result<OsRng> {
-            Ok(OsRng { _dummy: () })
-        }
-    }
-
-    impl Rng for OsRng {
-        fn next_u32(&mut self) -> u32 {
-            let mut v = [0; 4];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
-        }
-        fn next_u64(&mut self) -> u64 {
-            let mut v = [0; 8];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
-        }
-        fn fill_bytes(&mut self, v: &mut [u8]) {
-            // getentropy(2) permits a maximum buffer size of 256 bytes
-            for s in v.chunks_mut(256) {
-                let ret = unsafe {
-                    libc::syscall(libc::NR_GETENTROPY, s.as_mut_ptr(), s.len())
-                };
-                if ret == -1 {
-                    panic!("unexpected getentropy error: {}", errno());
-                }
-            }
-        }
-    }
-}
-
 #[cfg(target_os = "ios")]
 mod imp {
     use io;
@@ -248,7 +190,6 @@ mod imp {
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
     ///
     /// This does not block.
     pub struct OsRng {
@@ -314,7 +255,6 @@ mod imp {
     /// - Windows: calls `CryptGenRandom`, using the default cryptographic
     ///   service provider with the `PROV_RSA_FULL` type.
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
     ///
     /// This does not block.
     pub struct OsRng {
