@@ -58,11 +58,16 @@ fn test5(x: &Bar, a: isize) -> isize {
     x.extension_method(a)
 }
 
-#[rustc_mir]
-fn test6<T: Bar>(x: &T, a: isize) -> isize {
-    // Test calling extension method on generic callee
-    x.extension_method(a)
-}
+// FIXME #30661: Although this function has the #[rustc_mir] attribute it never
+//               was translated via the MIR implementation because attributes
+//               where not passed along to trans::base::trans_fn() for generic
+//               functions.
+//               Uncomment this test once the thing it tests is fixed.
+// #[rustc_mir]
+// fn test6<T: Bar>(x: &T, a: isize) -> isize {
+//     // Test calling extension method on generic callee
+//     x.extension_method(a)
+// }
 
 trait One<T = Self> {
     fn one() -> T;
@@ -94,7 +99,8 @@ fn main() {
     assert_eq!(test3(&Foo, 42), 42);
     assert_eq!(test4(&Foo, 970), 970);
     assert_eq!(test5(&Foo, 8576), 8576);
-    assert_eq!(test6(&Foo, 12367), 12367);
+    // see definition of test6() above
+    // assert_eq!(test6(&Foo, 12367), 12367);
     assert_eq!(test7(), 1);
     assert_eq!(test8(), 2);
 }
