@@ -238,6 +238,15 @@
 //!
 //! [result]: type.Result.html
 //! [try]: ../macro.try!.html
+//!
+//! ## Platform-specific behavior
+//!
+//! Many I/O functions throughout the standard library are documented to indicate
+//! what various library or syscalls they are delegated to. This is done to help
+//! applications both understand what's happening under the hood as well as investigate
+//! any possibly unclear semantics. Note, however, that this is informative, not a binding
+//! contract. The implementation of many of these functions are subject to change over
+//! time and may call fewer or more syscalls/library functions.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
