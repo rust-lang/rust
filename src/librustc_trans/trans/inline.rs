@@ -165,7 +165,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
                              llfn,
                              empty_substs,
                              impl_item.id,
-                             &[]);
+                             &impl_item.attrs);
                     // See linkage comments on items.
                     if ccx.sess().opts.cg.codegen_units == 1 {
                         SetLinkage(llfn, InternalLinkage);

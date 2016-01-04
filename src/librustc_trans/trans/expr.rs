@@ -1196,7 +1196,13 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         &format!("closure expr without closure type: {:?}", t)),
             };
 
-            closure::trans_closure_expr(dest, decl, body, expr.id, def_id, substs).unwrap_or(bcx)
+            closure::trans_closure_expr(dest,
+                                        decl,
+                                        body,
+                                        expr.id,
+                                        def_id,
+                                        substs,
+                                        &expr.attrs).unwrap_or(bcx)
         }
         hir::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
