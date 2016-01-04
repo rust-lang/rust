@@ -19,12 +19,9 @@ use hair::*;
 use rustc::mir::repr::*;
 
 use rustc::middle::const_eval::{self, ConstVal};
-use rustc::middle::def_id::DefId;
 use rustc::middle::infer::InferCtxt;
-use rustc::middle::subst::{Subst, Substs};
 use rustc::middle::ty::{self, Ty};
 use syntax::codemap::Span;
-use syntax::parse::token;
 use rustc_front::hir;
 
 #[derive(Copy, Clone)]
@@ -83,11 +80,6 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
             .map(|v| Literal::Value { value: v })
     }
 
-    pub fn partial_eq(&mut self, ty: Ty<'tcx>) -> ItemRef<'tcx> {
-        let eq_def_id = self.tcx.lang_items.eq_trait().unwrap();
-        self.cmp_method_ref(eq_def_id, "eq", ty)
-    }
-
     pub fn num_variants(&mut self, adt_def: ty::AdtDef<'tcx>) -> usize {
         adt_def.variants.len()
     }
@@ -117,35 +109,6 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
 
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.tcx
-    }
-
-    fn cmp_method_ref(&mut self,
-                      trait_def_id: DefId,
-                      method_name: &str,
-                      arg_ty: Ty<'tcx>)
-                      -> ItemRef<'tcx> {
-        let method_name = token::intern(method_name);
-        let substs = Substs::new_trait(vec![arg_ty], vec![], arg_ty);
-        for trait_item in self.tcx.trait_items(trait_def_id).iter() {
-            match *trait_item {
-                ty::ImplOrTraitItem::MethodTraitItem(ref method) => {
-                    if method.name == method_name {
-                        let method_ty = self.tcx.lookup_item_type(method.def_id);
-                        let method_ty = method_ty.ty.subst(self.tcx, &substs);
-                        return ItemRef {
-                            ty: method_ty,
-                            kind: ItemKind::Method,
-                            def_id: method.def_id,
-                            substs: self.tcx.mk_substs(substs),
-                        };
-                    }
-                }
-                ty::ImplOrTraitItem::ConstTraitItem(..) |
-                ty::ImplOrTraitItem::TypeTraitItem(..) => {}
-            }
-        }
-
-        self.tcx.sess.bug(&format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
     }
 }
 
