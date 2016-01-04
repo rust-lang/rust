@@ -1,0 +1,5 @@
+max_width = 120
+ideal_width = 100
+fn_args_density = "Compressed"
+fn_call_width = 80
+fn_args_paren_newline = false
