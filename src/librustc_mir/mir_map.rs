@@ -21,7 +21,7 @@ extern crate rustc;
 extern crate rustc_front;
 
 use build;
-use dot;
+use graphviz;
 use transform::*;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
@@ -157,7 +157,9 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                             Some(s) => {
                                 match
                                     File::create(format!("{}{}", prefix, s))
-                                    .and_then(|ref mut output| dot::render(&mir, output))
+                                    .and_then(|ref mut output| {
+                                        graphviz::write_mir_graphviz(&mir, output)
+                                    })
                                 {
                                     Ok(()) => { }
                                     Err(e) => {
