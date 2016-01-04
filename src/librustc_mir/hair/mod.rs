@@ -15,6 +15,7 @@
 //! structures.
 
 use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp, ItemKind};
+use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::subst::Substs;
@@ -305,7 +306,7 @@ pub enum PatternKind<'tcx> {
     }, // box P, &P, &mut P, etc
 
     Constant {
-        value: Literal<'tcx>,
+        value: ConstVal,
     },
 
     Range {
