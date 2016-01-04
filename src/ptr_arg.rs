@@ -63,14 +63,17 @@ fn check_fn(cx: &LateContext, decl: &FnDecl) {
         if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&arg.ty.id) {
             if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = ty.sty {
                 if match_type(cx, ty, &VEC_PATH) {
-                    span_lint(cx, PTR_ARG, arg.ty.span,
-                              "writing `&Vec<_>` instead of `&[_]` involves one more reference \
-                               and cannot be used with non-Vec-based slices. Consider changing \
-                               the type to `&[...]`");
+                    span_lint(cx,
+                              PTR_ARG,
+                              arg.ty.span,
+                              "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
+                               with non-Vec-based slices. Consider changing the type to `&[...]`");
                 } else if match_type(cx, ty, &STRING_PATH) {
-                    span_lint(cx, PTR_ARG, arg.ty.span,
-                              "writing `&String` instead of `&str` involves a new object \
-                               where a slice will do. Consider changing the type to `&str`");
+                    span_lint(cx,
+                              PTR_ARG,
+                              arg.ty.span,
+                              "writing `&String` instead of `&str` involves a new object where a slice will do. \
+                               Consider changing the type to `&str`");
                 }
             }
         }

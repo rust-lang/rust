@@ -40,11 +40,10 @@ impl LateLintPass for TemporaryAssignmentPass {
             match target.node {
                 ExprField(ref base, _) | ExprTupField(ref base, _) => {
                     if is_temporary(base) && !is_adjusted(cx, base) {
-                        span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span,
-                                  "assignment to temporary");
+                        span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span, "assignment to temporary");
                     }
                 }
-                _ => ()
+                _ => (),
             }
         }
     }

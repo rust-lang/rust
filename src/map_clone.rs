@@ -65,10 +65,13 @@ impl LateLintPass for MapClonePass {
                     ExprPath(_, ref path) => {
                         if match_path(path, &CLONE_PATH) {
                             let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
-                            span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
-                                "you seem to be using .map() to clone the contents of an {}, consider \
-                                using `.cloned()`", type_name),
-                                &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
+                            span_help_and_lint(cx,
+                                               MAP_CLONE,
+                                               expr.span,
+                                               &format!("you seem to be using .map() to clone the contents of an \
+                                                         {}, consider using `.cloned()`",
+                                                        type_name),
+                                               &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")));
                         }
                     }
                     _ => (),
@@ -81,7 +84,10 @@ impl LateLintPass for MapClonePass {
 fn expr_eq_ident(expr: &Expr, id: Ident) -> bool {
     match expr.node {
         ExprPath(None, ref path) => {
-            let arg_segment = [PathSegment { identifier: id, parameters: PathParameters::none() }];
+            let arg_segment = [PathSegment {
+                                   identifier: id,
+                                   parameters: PathParameters::none(),
+                               }];
             !path.global && path.segments[..] == arg_segment
         }
         _ => false,
@@ -108,9 +114,7 @@ fn get_arg_name(pat: &Pat) -> Option<Ident> {
 
 fn only_derefs(cx: &LateContext, expr: &Expr, id: Ident) -> bool {
     match expr.node {
-        ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => {
-            only_derefs(cx, subexpr, id)
-        }
+        ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
         _ => expr_eq_ident(expr, id),
     }
 }

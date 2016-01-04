@@ -40,15 +40,14 @@ impl LateLintPass for TopLevelRefPass {
     fn check_fn(&mut self, cx: &LateContext, k: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
         if let FnKind::Closure = k {
             // Does not apply to closures
-            return
+            return;
         }
         for ref arg in &decl.inputs {
             if let PatIdent(BindByRef(_), _, _) = arg.pat.node {
                 span_lint(cx,
-                    TOPLEVEL_REF_ARG,
-                    arg.pat.span,
-                    "`ref` directly on a function argument is ignored. Consider using a reference type instead."
-                );
+                          TOPLEVEL_REF_ARG,
+                          arg.pat.span,
+                          "`ref` directly on a function argument is ignored. Consider using a reference type instead.");
             }
         }
     }
@@ -112,9 +111,13 @@ impl LateLintPass for CmpNan {
 }
 
 fn check_nan(cx: &LateContext, path: &Path, span: Span) {
-    path.segments.last().map(|seg| if seg.identifier.name.as_str() == "NAN" {
-        span_lint(cx, CMP_NAN, span,
-            "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
+    path.segments.last().map(|seg| {
+        if seg.identifier.name.as_str() == "NAN" {
+            span_lint(cx,
+                      CMP_NAN,
+                      span,
+                      "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
+        }
     });
 }
 
@@ -144,20 +147,24 @@ impl LateLintPass for FloatCmp {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             let op = cmp.node;
             if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
-                if is_allowed(cx, left) || is_allowed(cx, right) { return; }
+                if is_allowed(cx, left) || is_allowed(cx, right) {
+                    return;
+                }
                 if let Some(name) = get_item_name(cx, expr) {
                     let name = name.as_str();
-                    if name == "eq" || name == "ne" || name == "is_nan" ||
-                            name.starts_with("eq_") ||
-                            name.ends_with("_eq") {
+                    if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
+                       name.ends_with("_eq") {
                         return;
                     }
                 }
-                span_lint(cx, FLOAT_CMP, expr.span, &format!(
-                    "{}-comparison of f32 or f64 detected. Consider changing this to \
-                     `abs({} - {}) < epsilon` for some suitable value of epsilon",
-                    binop_to_string(op), snippet(cx, left.span, ".."),
-                    snippet(cx, right.span, "..")));
+                span_lint(cx,
+                          FLOAT_CMP,
+                          expr.span,
+                          &format!("{}-comparison of f32 or f64 detected. Consider changing this to `abs({} - {}) < \
+                                    epsilon` for some suitable value of epsilon",
+                                   binop_to_string(op),
+                                   snippet(cx, left.span, ".."),
+                                   snippet(cx, right.span, "..")));
             }
         }
     }
@@ -167,7 +174,9 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
     let res = eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None);
     if let Ok(Float(val)) = res {
         val == 0.0 || val == ::std::f64::INFINITY || val == ::std::f64::NEG_INFINITY
-    } else { false }
+    } else {
+        false
+    }
 }
 
 fn is_float(cx: &LateContext, expr: &Expr) -> bool {
@@ -211,44 +220,54 @@ impl LateLintPass for CmpOwned {
 fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, op: Span) {
     let snip = match expr.node {
         ExprMethodCall(Spanned{node: ref name, ..}, _, ref args) if args.len() == 1 => {
-            if name.as_str() == "to_string" ||
-                name.as_str() == "to_owned" && is_str_arg(cx, args) {
-                    snippet(cx, args[0].span, "..")
-                } else {
-                    return
-                }
+            if name.as_str() == "to_string" || name.as_str() == "to_owned" && is_str_arg(cx, args) {
+                snippet(cx, args[0].span, "..")
+            } else {
+                return;
+            }
         }
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let ExprPath(None, ref path) = path.node {
-                if match_path(path, &["String", "from_str"]) ||
-                    match_path(path, &["String", "from"]) {
-                            snippet(cx, v[0].span, "..")
-                    } else {
-                        return
-                    }
+                if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
+                    snippet(cx, v[0].span, "..")
+                } else {
+                    return;
+                }
             } else {
-                return
+                return;
             }
         }
-        _ => return
+        _ => return,
     };
     if left {
-        span_lint(cx, CMP_OWNED, expr.span, &format!(
-        "this creates an owned instance just for comparison. Consider using \
-        `{} {} {}` to compare without allocation", snip,
-        snippet(cx, op, "=="), snippet(cx, other_span, "..")));
+        span_lint(cx,
+                  CMP_OWNED,
+                  expr.span,
+                  &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
+                            compare without allocation",
+                           snip,
+                           snippet(cx, op, "=="),
+                           snippet(cx, other_span, "..")));
     } else {
-        span_lint(cx, CMP_OWNED, expr.span, &format!(
-        "this creates an owned instance just for comparison. Consider using \
-        `{} {} {}` to compare without allocation",
-        snippet(cx, other_span, ".."), snippet(cx, op, "=="),  snip));
+        span_lint(cx,
+                  CMP_OWNED,
+                  expr.span,
+                  &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
+                            compare without allocation",
+                           snippet(cx, other_span, ".."),
+                           snippet(cx, op, "=="),
+                           snip));
     }
 
 }
 
 fn is_str_arg(cx: &LateContext, args: &[P<Expr>]) -> bool {
-    args.len() == 1 && if let ty::TyStr =
-        walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty { true } else { false }
+    args.len() == 1 &&
+    if let ty::TyStr = walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty {
+        true
+    } else {
+        false
+    }
 }
 
 /// **What it does:** This lint checks for getting the remainder of a division by one. It is `Warn` by default.
@@ -309,9 +328,11 @@ impl LateLintPass for PatternPass {
     fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
         if let PatIdent(_, ref ident, Some(ref right)) = pat.node {
             if right.node == PatWild {
-                cx.span_lint(REDUNDANT_PATTERN, pat.span, &format!(
-                    "the `{} @ _` pattern can be written as just `{}`",
-                    ident.node.name, ident.node.name));
+                cx.span_lint(REDUNDANT_PATTERN,
+                             pat.span,
+                             &format!("the `{} @ _` pattern can be written as just `{}`",
+                                      ident.node.name,
+                                      ident.node.name));
             }
         }
     }
@@ -344,31 +365,33 @@ impl LintPass for UsedUnderscoreBinding {
 }
 
 impl LateLintPass for UsedUnderscoreBinding {
+    #[rustfmt_skip]
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if in_attributes_expansion(cx, expr) { // Don't lint things expanded by #[derive(...)], etc
+        if in_attributes_expansion(cx, expr) {
+    // Don't lint things expanded by #[derive(...)], etc
             return;
         }
         let needs_lint = match expr.node {
             ExprPath(_, ref path) => {
-                let ident = path.segments.last()
+                let ident = path.segments
+                                .last()
                                 .expect("path should always have at least one segment")
                                 .identifier;
-                ident.name.as_str().chars().next() == Some('_') //starts with '_'
-                && ident.name.as_str().chars().skip(1).next() != Some('_') //doesn't start with "__"
-                && ident.name != ident.unhygienic_name //not in bang macro
-                && is_used(cx, expr)
-            },
+                ident.name.as_str().chars().next() == Some('_') && // starts with '_'
+                ident.name.as_str().chars().skip(1).next() != Some('_') &&  // doesn't start with "__"
+                ident.name != ident.unhygienic_name && is_used(cx, expr) // not in bang macro
+            }
             ExprField(_, spanned) => {
                 let name = spanned.node.as_str();
-                name.chars().next() == Some('_')
-                && name.chars().skip(1).next() != Some('_')
-            },
-            _ => false
+                name.chars().next() == Some('_') && name.chars().skip(1).next() != Some('_')
+            }
+            _ => false,
         };
         if needs_lint {
-            cx.span_lint(USED_UNDERSCORE_BINDING, expr.span,
-                         "used binding which is prefixed with an underscore. A leading underscore \
-                          signals that a binding will not be used.");
+            cx.span_lint(USED_UNDERSCORE_BINDING,
+                         expr.span,
+                         "used binding which is prefixed with an underscore. A leading underscore signals that a \
+                          binding will not be used.");
         }
     }
 }
@@ -380,10 +403,9 @@ fn is_used(cx: &LateContext, expr: &Expr) -> bool {
         match parent.node {
             ExprAssign(_, ref rhs) => **rhs == *expr,
             ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
-            _ => is_used(cx, &parent)
+            _ => is_used(cx, &parent),
         }
-    }
-    else {
+    } else {
         true
     }
 }

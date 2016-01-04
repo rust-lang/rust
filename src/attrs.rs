@@ -57,13 +57,15 @@ impl LateLintPass for AttrPass {
 fn is_relevant_item(item: &Item) -> bool {
     if let ItemFn(_, _, _, _, _, ref block) = item.node {
         is_relevant_block(block)
-    } else { false }
+    } else {
+        false
+    }
 }
 
 fn is_relevant_impl(item: &ImplItem) -> bool {
     match item.node {
         ImplItemKind::Method(_, ref block) => is_relevant_block(block),
-        _ => false
+        _ => false,
     }
 }
 
@@ -71,7 +73,7 @@ fn is_relevant_trait(item: &TraitItem) -> bool {
     match item.node {
         MethodTraitItem(_, None) => true,
         MethodTraitItem(_, Some(ref block)) => is_relevant_block(block),
-        _ => false
+        _ => false,
     }
 }
 
@@ -95,25 +97,33 @@ fn is_relevant_expr(expr: &Expr) -> bool {
         ExprCall(ref path_expr, _) => {
             if let ExprPath(_, ref path) = path_expr.node {
                 !match_path(path, &BEGIN_UNWIND)
-            } else { true }
+            } else {
+                true
+            }
         }
-        _ => true
+        _ => true,
     }
 }
 
-fn check_attrs(cx: &LateContext, span: Span, name: &Name,
-        attrs: &[Attribute]) {
-    if in_macro(cx, span) { return; }
+fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
+    if in_macro(cx, span) {
+        return;
+    }
 
     for attr in attrs {
         if let MetaList(ref inline, ref values) = attr.node.value.node {
-            if values.len() != 1 || inline != &"inline" { continue; }
+            if values.len() != 1 || inline != &"inline" {
+                continue;
+            }
             if let MetaWord(ref always) = values[0].node {
-                if always != &"always" { continue; }
-                span_lint(cx, INLINE_ALWAYS, attr.span, &format!(
-                    "you have declared `#[inline(always)]` on `{}`. This \
-                     is usually a bad idea",
-                    name));
+                if always != &"always" {
+                    continue;
+                }
+                span_lint(cx,
+                          INLINE_ALWAYS,
+                          attr.span,
+                          &format!("you have declared `#[inline(always)]` on `{}`. This is usually a bad idea",
+                                   name));
             }
         }
     }

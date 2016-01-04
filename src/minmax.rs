@@ -32,12 +32,13 @@ impl LateLintPass for MinMaxPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let Some((outer_max, outer_c, oe)) = min_max(cx, expr) {
             if let Some((inner_max, inner_c, _)) = min_max(cx, oe) {
-                if outer_max == inner_max { return; }
+                if outer_max == inner_max {
+                    return;
+                }
                 match (outer_max, outer_c.partial_cmp(&inner_c)) {
                     (_, None) | (Max, Some(Less)) | (Min, Some(Greater)) => (),
                     _ => {
-                        span_lint(cx, MIN_MAX, expr.span,
-                            "this min/max combination leads to constant result");
+                        span_lint(cx, MIN_MAX, expr.span, "this min/max combination leads to constant result");
                     }
                 }
             }
@@ -65,20 +66,30 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
                     None
                 }
             }
-        } else { None }
-    } else { None }
- }
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
 
-fn fetch_const(args: &[P<Expr>], m: MinMax) ->
-        Option<(MinMax, Constant, &Expr)> {
-    if args.len() != 2 { return None }
+fn fetch_const(args: &[P<Expr>], m: MinMax) -> Option<(MinMax, Constant, &Expr)> {
+    if args.len() != 2 {
+        return None;
+    }
     if let Some(c) = constant_simple(&args[0]) {
-        if let None = constant_simple(&args[1]) { // otherwise ignore
+        if let None = constant_simple(&args[1]) {
+            // otherwise ignore
             Some((m, c, &args[1]))
-        } else { None }
+        } else {
+            None
+        }
     } else {
         if let Some(c) = constant_simple(&args[1]) {
             Some((m, c, &args[0]))
-        } else { None }
+        } else {
+            None
+        }
     }
 }

@@ -1,11 +1,14 @@
 #![feature(plugin_registrar, box_syntax)]
 #![feature(rustc_private, collections)]
 #![feature(num_bits_bytes, iter_arith)]
+#![feature(custom_attribute)]
 #![allow(unknown_lints)]
 
 // this only exists to allow the "dogfood" integration test to work
 #[allow(dead_code)]
-fn main() { println!("What are you doing? Don't run clippy as an executable"); }
+fn main() {
+    println!("What are you doing? Don't run clippy as an executable");
+}
 
 #[macro_use]
 extern crate syntax;
@@ -75,6 +78,7 @@ mod reexport {
 }
 
 #[plugin_registrar]
+#[rustfmt_skip]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
@@ -127,6 +131,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
     reg.register_late_lint_pass(box panic::PanicPass);
+
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,

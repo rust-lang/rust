@@ -27,9 +27,7 @@ pub struct CyclomaticComplexity {
 
 impl CyclomaticComplexity {
     pub fn new(limit: u64) -> Self {
-        CyclomaticComplexity {
-            limit: LimitStack::new(limit),
-        }
+        CyclomaticComplexity { limit: LimitStack::new(limit) }
     }
 }
 
@@ -41,7 +39,9 @@ impl LintPass for CyclomaticComplexity {
 
 impl CyclomaticComplexity {
     fn check<'a, 'tcx>(&mut self, cx: &'a LateContext<'a, 'tcx>, block: &Block, span: Span) {
-        if in_macro(cx, span) { return; }
+        if in_macro(cx, span) {
+            return;
+        }
         let cfg = CFG::new(cx.tcx, block);
         let n = cfg.graph.len_nodes() as u64;
         let e = cfg.graph.len_edges() as u64;
@@ -59,9 +59,11 @@ impl CyclomaticComplexity {
         } else {
             let rust_cc = cc + divergence - narms;
             if rust_cc > self.limit.limit() {
-                span_help_and_lint(cx, CYCLOMATIC_COMPLEXITY, span,
-                &format!("The function has a cyclomatic complexity of {}", rust_cc),
-                "You could split it up into multiple smaller functions");
+                span_help_and_lint(cx,
+                                   CYCLOMATIC_COMPLEXITY,
+                                   span,
+                                   &format!("The function has a cyclomatic complexity of {}", rust_cc),
+                                   "You could split it up into multiple smaller functions");
             }
         }
     }
@@ -105,8 +107,8 @@ impl<'a> Visitor<'a> for MatchArmCounter {
                 if arms_n > 1 {
                     self.0 += arms_n - 2;
                 }
-            },
-            ExprClosure(..) => {},
+            }
+            ExprClosure(..) => {}
             _ => walk_expr(self, e),
         }
     }
@@ -125,8 +127,8 @@ impl<'a, 'b, 'tcx> Visitor<'a> for DivergenceCounter<'b, 'tcx> {
                         self.0 += 1;
                     }
                 }
-            },
-            ExprClosure(..) => {},
+            }
+            ExprClosure(..) => {}
             _ => walk_expr(self, e),
         }
     }
@@ -134,15 +136,22 @@ impl<'a, 'b, 'tcx> Visitor<'a> for DivergenceCounter<'b, 'tcx> {
 
 #[cfg(feature="debugging")]
 fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, span: Span) {
-    cx.sess().span_bug(span, &format!("Clippy encountered a bug calculating cyclomatic complexity: \
-                                       cc = {}, arms = {}, div = {}. Please file a bug report.", cc, narms, div));;
+    cx.sess().span_bug(span,
+                       &format!("Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
+                                 div = {}. Please file a bug report.",
+                                cc,
+                                narms,
+                                div));;
 }
 #[cfg(not(feature="debugging"))]
 fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, span: Span) {
     if cx.current_level(CYCLOMATIC_COMPLEXITY) != Level::Allow {
         cx.sess().span_note_without_error(span,
                                           &format!("Clippy encountered a bug calculating cyclomatic complexity \
-                                                    (hide this message with `#[allow(cyclomatic_complexity)]`): \
-                                                    cc = {}, arms = {}, div = {}. Please file a bug report.", cc, narms, div));
+                                                    (hide this message with `#[allow(cyclomatic_complexity)]`): cc \
+                                                    = {}, arms = {}, div = {}. Please file a bug report.",
+                                                   cc,
+                                                   narms,
+                                                   div));
     }
 }

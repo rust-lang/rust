@@ -30,19 +30,29 @@ impl LateLintPass for EqOp {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
             if is_cmp_or_bit(op) && is_exp_equal(cx, left, right) {
-                span_lint(cx, EQ_OP, e.span, &format!(
-                    "equal expressions as operands to {}",
-                        ast_util::binop_to_string(op.node)));
+                span_lint(cx,
+                          EQ_OP,
+                          e.span,
+                          &format!("equal expressions as operands to {}", ast_util::binop_to_string(op.node)));
             }
         }
     }
 }
 
 
-fn is_cmp_or_bit(op : &BinOp) -> bool {
+fn is_cmp_or_bit(op: &BinOp) -> bool {
     match op.node {
-        BiEq | BiLt | BiLe | BiGt | BiGe | BiNe | BiAnd | BiOr |
-        BiBitXor | BiBitAnd | BiBitOr => true,
-        _ => false
+        BiEq |
+        BiLt |
+        BiLe |
+        BiGt |
+        BiGe |
+        BiNe |
+        BiAnd |
+        BiOr |
+        BiBitXor |
+        BiBitAnd |
+        BiBitOr => true,
+        _ => false,
     }
 }

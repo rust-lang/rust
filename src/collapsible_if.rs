@@ -52,23 +52,26 @@ impl LateLintPass for CollapsibleIf {
 fn check_if(cx: &LateContext, e: &Expr) {
     if let ExprIf(ref check, ref then, None) = e.node {
         if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
-            single_stmt_of_block(then) {
-                if e.span.expn_id != sp.expn_id {
-                    return;
-                }
-                span_help_and_lint(cx, COLLAPSIBLE_IF, e.span,
-                    "this if statement can be collapsed",
-                    &format!("try\nif {} && {} {}",
-                             check_to_string(cx, check), check_to_string(cx, check_inner),
-                             snippet_block(cx, content.span, "..")));
+               single_stmt_of_block(then) {
+            if e.span.expn_id != sp.expn_id {
+                return;
             }
+            span_help_and_lint(cx,
+                               COLLAPSIBLE_IF,
+                               e.span,
+                               "this if statement can be collapsed",
+                               &format!("try\nif {} && {} {}",
+                                        check_to_string(cx, check),
+                                        check_to_string(cx, check_inner),
+                                        snippet_block(cx, content.span, "..")));
+        }
     }
 }
 
 fn requires_brackets(e: &Expr) -> bool {
     match e.node {
         ExprBinary(Spanned {node: n, ..}, _, _) if n == BiEq => false,
-        _ => true
+        _ => true,
     }
 }
 
@@ -84,16 +87,26 @@ fn single_stmt_of_block(block: &Block) -> Option<&Expr> {
     if block.stmts.len() == 1 && block.expr.is_none() {
         if let StmtExpr(ref expr, _) = block.stmts[0].node {
             single_stmt_of_expr(expr)
-        } else { None }
+        } else {
+            None
+        }
     } else {
         if block.stmts.is_empty() {
-            if let Some(ref p) = block.expr { Some(p) } else { None }
-        } else { None }
+            if let Some(ref p) = block.expr {
+                Some(p)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
 fn single_stmt_of_expr(expr: &Expr) -> Option<&Expr> {
     if let ExprBlock(ref block) = expr.node {
         single_stmt_of_block(block)
-    } else { Some(expr) }
+    } else {
+        Some(expr)
+    }
 }

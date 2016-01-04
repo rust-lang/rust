@@ -52,15 +52,15 @@ impl EarlyLintPass for MiscEarly {
                 }
             }
             if !pfields.is_empty() && wilds == pfields.len() {
-                span_help_and_lint(cx, UNNEEDED_FIELD_PATTERN, pat.span,
-                                   "All the struct fields are matched to a wildcard pattern, \
-                                    consider using `..`.",
-                                   &format!("Try with `{} {{ .. }}` instead",
-                                            type_name));
+                span_help_and_lint(cx,
+                                   UNNEEDED_FIELD_PATTERN,
+                                   pat.span,
+                                   "All the struct fields are matched to a wildcard pattern, consider using `..`.",
+                                   &format!("Try with `{} {{ .. }}` instead", type_name));
                 return;
             }
             if wilds > 0 {
-                let mut normal = vec!();
+                let mut normal = vec![];
 
                 for field in pfields {
                     if field.node.pat.node != PatWild {
@@ -73,13 +73,16 @@ impl EarlyLintPass for MiscEarly {
                     if field.node.pat.node == PatWild {
                         wilds -= 1;
                         if wilds > 0 {
-                            span_lint(cx, UNNEEDED_FIELD_PATTERN, field.span,
-                                      "You matched a field with a wildcard pattern. \
-                                       Consider using `..` instead");
+                            span_lint(cx,
+                                      UNNEEDED_FIELD_PATTERN,
+                                      field.span,
+                                      "You matched a field with a wildcard pattern. Consider using `..` instead");
                         } else {
-                            span_help_and_lint(cx, UNNEEDED_FIELD_PATTERN, field.span,
-                                               "You matched a field with a wildcard pattern. \
-                                                Consider using `..` instead",
+                            span_help_and_lint(cx,
+                                               UNNEEDED_FIELD_PATTERN,
+                                               field.span,
+                                               "You matched a field with a wildcard pattern. Consider using `..` \
+                                                instead",
                                                &format!("Try with `{} {{ {}, .. }}`",
                                                         type_name,
                                                         normal[..].join(", ")));
@@ -91,7 +94,7 @@ impl EarlyLintPass for MiscEarly {
     }
 
     fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
-        let mut registered_names : HashMap<String, Span> = HashMap::new();
+        let mut registered_names: HashMap<String, Span> = HashMap::new();
 
         for ref arg in &decl.inputs {
             if let PatIdent(_, sp_ident, None) = arg.pat.node {
@@ -99,10 +102,12 @@ impl EarlyLintPass for MiscEarly {
 
                 if arg_name.starts_with("_") {
                     if let Some(correspondance) = registered_names.get(&arg_name[1..]) {
-                        span_lint(cx, DUPLICATE_UNDERSCORE_ARGUMENT, *correspondance,
-                                  &format!("`{}` already exists, having another argument having almost \
-                                            the same name makes code comprehension and documentation \
-                                            more difficult", arg_name[1..].to_owned()));
+                        span_lint(cx,
+                                  DUPLICATE_UNDERSCORE_ARGUMENT,
+                                  *correspondance,
+                                  &format!("`{}` already exists, having another argument having almost the same \
+                                            name makes code comprehension and documentation more difficult",
+                                           arg_name[1..].to_owned()));
                     }
                 } else {
                     registered_names.insert(arg_name, arg.pat.span.clone());

@@ -38,7 +38,7 @@ impl LintPass for BlockInIfCondition {
 }
 
 struct ExVisitor<'v> {
-    found_block: Option<&'v Expr>
+    found_block: Option<&'v Expr>,
 }
 
 impl<'v> Visitor<'v> for ExVisitor<'v> {
@@ -51,7 +51,7 @@ impl<'v> Visitor<'v> for ExVisitor<'v> {
                     if let Some(ref ex) = block.expr {
                         match ex.node {
                             ExprBlock(_) => true,
-                            _ => false
+                            _ => false,
                         }
                     } else {
                         false
@@ -59,7 +59,7 @@ impl<'v> Visitor<'v> for ExVisitor<'v> {
                 }
             };
             if complex {
-                self.found_block = Some(& expr);
+                self.found_block = Some(&expr);
                 return;
             }
         }
@@ -67,8 +67,9 @@ impl<'v> Visitor<'v> for ExVisitor<'v> {
     }
 }
 
-const BRACED_EXPR_MESSAGE:&'static str = "omit braces around single expression condition";
-const COMPLEX_BLOCK_MESSAGE:&'static str = "in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'";
+const BRACED_EXPR_MESSAGE: &'static str = "omit braces around single expression condition";
+const COMPLEX_BLOCK_MESSAGE: &'static str = "in an 'if' condition, avoid complex blocks or closures with blocks; \
+                                             instead, move the block or closure higher and bind it with a 'let'";
 
 impl LateLintPass for BlockInIfCondition {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
@@ -82,29 +83,33 @@ impl LateLintPass for BlockInIfCondition {
                             if differing_macro_contexts(expr.span, ex.span) {
                                 return;
                             }
-                            span_help_and_lint(cx, BLOCK_IN_IF_CONDITION_EXPR, check.span,
-                                BRACED_EXPR_MESSAGE,
-                                &format!("try\nif {} {} ... ", snippet_block(cx, ex.span, ".."),
-                                snippet_block(cx, then.span, "..")));
+                            span_help_and_lint(cx,
+                                               BLOCK_IN_IF_CONDITION_EXPR,
+                                               check.span,
+                                               BRACED_EXPR_MESSAGE,
+                                               &format!("try\nif {} {} ... ",
+                                                        snippet_block(cx, ex.span, ".."),
+                                                        snippet_block(cx, then.span, "..")));
                         }
                     } else {
                         if differing_macro_contexts(expr.span, block.stmts[0].span) {
                             return;
                         }
                         // move block higher
-                        span_help_and_lint(cx, BLOCK_IN_IF_CONDITION_STMT, check.span,
-                            COMPLEX_BLOCK_MESSAGE,
-                            &format!("try\nlet res = {};\nif res {} ... ",
-                            snippet_block(cx, block.span, ".."),
-                            snippet_block(cx, then.span, "..")));
+                        span_help_and_lint(cx,
+                                           BLOCK_IN_IF_CONDITION_STMT,
+                                           check.span,
+                                           COMPLEX_BLOCK_MESSAGE,
+                                           &format!("try\nlet res = {};\nif res {} ... ",
+                                                    snippet_block(cx, block.span, ".."),
+                                                    snippet_block(cx, then.span, "..")));
                     }
                 }
             } else {
                 let mut visitor = ExVisitor { found_block: None };
                 walk_expr(&mut visitor, check);
                 if let Some(ref block) = visitor.found_block {
-                    span_help_and_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span,
-                        COMPLEX_BLOCK_MESSAGE, "");
+                    span_help_and_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE, "");
                 }
             }
         }

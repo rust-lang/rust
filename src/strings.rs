@@ -68,19 +68,24 @@ impl LateLintPass for StringAdd {
                     if let Some(ref p) = parent {
                         if let ExprAssign(ref target, _) = p.node {
                             // avoid duplicate matches
-                            if is_exp_equal(cx, target, left) { return; }
+                            if is_exp_equal(cx, target, left) {
+                                return;
+                            }
                         }
                     }
                 }
-                span_lint(cx, STRING_ADD, e.span,
-                    "you added something to a string. \
-                     Consider using `String::push_str()` instead");
+                span_lint(cx,
+                          STRING_ADD,
+                          e.span,
+                          "you added something to a string. Consider using `String::push_str()` instead");
             }
         } else if let ExprAssign(ref target, ref src) = e.node {
             if is_string(cx, target) && is_add(cx, src, target) {
-                span_lint(cx, STRING_ADD_ASSIGN, e.span,
-                    "you assigned the result of adding something to this string. \
-                     Consider using `String::push_str()` instead");
+                span_lint(cx,
+                          STRING_ADD_ASSIGN,
+                          e.span,
+                          "you assigned the result of adding something to this string. Consider using \
+                           `String::push_str()` instead");
             }
         }
     }
@@ -92,11 +97,10 @@ fn is_string(cx: &LateContext, e: &Expr) -> bool {
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
-        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) =>
-            is_exp_equal(cx, target, left),
-        ExprBlock(ref block) => block.stmts.is_empty() &&
-            block.expr.as_ref().map_or(false,
-                |expr| is_add(cx, expr, target)),
-        _ => false
+        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) => is_exp_equal(cx, target, left),
+        ExprBlock(ref block) => {
+            block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
+        }
+        _ => false,
     }
 }

@@ -47,15 +47,13 @@ impl LateLintPass for LifetimePass {
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = item.node {
-            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
-                           &sig.generics, item.span);
+            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self), &sig.generics, item.span);
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
-            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
-                           &sig.generics, item.span);
+            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self), &sig.generics, item.span);
         }
     }
 }
@@ -69,20 +67,20 @@ enum RefLt {
 }
 use self::RefLt::*;
 
-fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>,
-                  generics: &Generics, span: Span) {
+fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, generics: &Generics, span: Span) {
     if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
     if could_use_elision(cx, decl, slf, &generics.lifetimes) {
-        span_lint(cx, NEEDLESS_LIFETIMES, span,
+        span_lint(cx,
+                  NEEDLESS_LIFETIMES,
+                  span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
     report_extra_lifetimes(cx, decl, &generics);
 }
 
-fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
-                     named_lts: &[LifetimeDef]) -> bool {
+fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>, named_lts: &[LifetimeDef]) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT
@@ -102,7 +100,7 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
         match slf.node {
             SelfRegion(ref opt_lt, _, _) => input_visitor.record(opt_lt),
             SelfExplicit(ref ty, _) => walk_ty(&mut input_visitor, ty),
-            _ => { }
+            _ => {}
         }
     }
     // extract lifetimes in input argument types
@@ -147,8 +145,8 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
                 (&Named(n1), &Named(n2)) if n1 == n2 => true,
                 (&Named(_), &Unnamed) => true,
                 (&Unnamed, &Named(_)) => true,
-                _ => false // already elided, different named lifetimes
-                           // or something static going on
+                _ => false, // already elided, different named lifetimes
+                // or something static going on
             }
         } else {
             false
@@ -176,12 +174,15 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
 /// A visitor usable for rustc_front::visit::walk_ty().
 struct RefVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>, // context reference
-    lts: Vec<RefLt>
+    lts: Vec<RefLt>,
 }
 
-impl <'v, 't> RefVisitor<'v, 't>  {
+impl<'v, 't> RefVisitor<'v, 't> {
     fn new(cx: &'v LateContext<'v, 't>) -> RefVisitor<'v, 't> {
-        RefVisitor { cx: cx, lts: Vec::new() }
+        RefVisitor {
+            cx: cx,
+            lts: Vec::new(),
+        }
     }
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
@@ -211,13 +212,13 @@ impl <'v, 't> RefVisitor<'v, 't>  {
                             for _ in type_scheme.generics.regions.as_slice() {
                                 self.record(&None);
                             }
-                        },
+                        }
                         DefTrait(def_id) => {
                             let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
                             for _ in &trait_def.generics.regions {
                                 self.record(&None);
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -227,7 +228,6 @@ impl <'v, 't> RefVisitor<'v, 't>  {
 }
 
 impl<'v, 't> Visitor<'v> for RefVisitor<'v, 't> {
-
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         self.record(&Some(*lifetime));
@@ -258,7 +258,9 @@ fn has_where_lifetimes(cx: &LateContext, where_clause: &WhereClause) -> bool {
                 let mut visitor = RefVisitor::new(cx);
                 // walk the type F, it may not contain LT refs
                 walk_ty(&mut visitor, &pred.bounded_ty);
-                if !visitor.lts.is_empty() { return true; }
+                if !visitor.lts.is_empty() {
+                    return true;
+                }
                 // if the bounds define new lifetimes, they are fine to occur
                 let allowed_lts = allowed_lts_from(&pred.bound_lifetimes);
                 // now walk the bounds
@@ -275,7 +277,9 @@ fn has_where_lifetimes(cx: &LateContext, where_clause: &WhereClause) -> bool {
             WherePredicate::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
                 walk_ty(&mut visitor, &pred.ty);
-                if !visitor.lts.is_empty() { return true; }
+                if !visitor.lts.is_empty() {
+                    return true;
+                }
             }
         }
     }
@@ -285,7 +289,6 @@ fn has_where_lifetimes(cx: &LateContext, where_clause: &WhereClause) -> bool {
 struct LifetimeChecker(HashMap<Name, Span>);
 
 impl<'v> Visitor<'v> for LifetimeChecker {
-
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         self.0.remove(&lifetime.name);
@@ -300,16 +303,15 @@ impl<'v> Visitor<'v> for LifetimeChecker {
     }
 }
 
-fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl,
-                          generics: &Generics) {
-    let hs = generics.lifetimes.iter()
+fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics) {
+    let hs = generics.lifetimes
+                     .iter()
                      .map(|lt| (lt.lifetime.name, lt.lifetime.span))
                      .collect();
     let mut checker = LifetimeChecker(hs);
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
     for (_, v) in checker.0 {
-        span_lint(cx, UNUSED_LIFETIMES, v,
-                  "this lifetime isn't used in the function definition");
+        span_lint(cx, UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");
     }
 }

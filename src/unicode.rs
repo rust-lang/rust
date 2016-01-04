@@ -58,11 +58,13 @@ impl LateLintPass for Unicode {
     }
 }
 
-fn escape<T: Iterator<Item=char>>(s: T) -> String {
+fn escape<T: Iterator<Item = char>>(s: T) -> String {
     let mut result = String::new();
     for c in s {
         if c as u32 > 0x7F {
-            for d in c.escape_unicode() { result.push(d) };
+            for d in c.escape_unicode() {
+                result.push(d)
+            }
         } else {
             result.push(c);
         }
@@ -73,26 +75,30 @@ fn escape<T: Iterator<Item=char>>(s: T) -> String {
 fn check_str(cx: &LateContext, span: Span) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
-        span_help_and_lint(cx, ZERO_WIDTH_SPACE, span,
-            "zero-width space detected",
-            &format!("Consider replacing the string with:\n\"{}\"",
-                string.replace("\u{200B}", "\\u{200B}")));
+        span_help_and_lint(cx,
+                           ZERO_WIDTH_SPACE,
+                           span,
+                           "zero-width space detected",
+                           &format!("Consider replacing the string with:\n\"{}\"",
+                                    string.replace("\u{200B}", "\\u{200B}")));
     }
     if string.chars().any(|c| c as u32 > 0x7F) {
-        span_help_and_lint(cx, NON_ASCII_LITERAL, span,
-            "literal non-ASCII character detected",
-            &format!("Consider replacing the string with:\n\"{}\"",
-                if cx.current_level(UNICODE_NOT_NFC) == Level::Allow {
-                    escape(string.chars())
-                } else {
-                    escape(string.nfc())
-                }));
+        span_help_and_lint(cx,
+                           NON_ASCII_LITERAL,
+                           span,
+                           "literal non-ASCII character detected",
+                           &format!("Consider replacing the string with:\n\"{}\"",
+                                    if cx.current_level(UNICODE_NOT_NFC) == Level::Allow {
+                                        escape(string.chars())
+                                    } else {
+                                        escape(string.nfc())
+                                    }));
     }
-    if cx.current_level(NON_ASCII_LITERAL) == Level::Allow &&
-            string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
-        span_help_and_lint(cx, UNICODE_NOT_NFC, span,
-            "non-nfc unicode sequence detected",
-            &format!("Consider replacing the string with:\n\"{}\"",
-                string.nfc().collect::<String>()));
+    if cx.current_level(NON_ASCII_LITERAL) == Level::Allow && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
+        span_help_and_lint(cx,
+                           UNICODE_NOT_NFC,
+                           span,
+                           "non-nfc unicode sequence detected",
+                           &format!("Consider replacing the string with:\n\"{}\"", string.nfc().collect::<String>()));
     }
 }

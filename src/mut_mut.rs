@@ -30,42 +30,46 @@ impl LateLintPass for MutMut {
     }
 
     fn check_ty(&mut self, cx: &LateContext, ty: &Ty) {
-        unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| { span_lint(cx, MUT_MUT,
-            ty.span, "generally you want to avoid `&mut &mut _` if possible"); });
+        unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| {
+            span_lint(cx, MUT_MUT, ty.span, "generally you want to avoid `&mut &mut _` if possible");
+        });
     }
 }
 
 fn check_expr_mut(cx: &LateContext, expr: &Expr) {
-    if in_external_macro(cx, expr.span) { return; }
+    if in_external_macro(cx, expr.span) {
+        return;
+    }
 
     fn unwrap_addr(expr: &Expr) -> Option<&Expr> {
         match expr.node {
             ExprAddrOf(MutMutable, ref e) => Some(e),
-            _ => None
+            _ => None,
         }
     }
 
     unwrap_addr(expr).map_or((), |e| {
-        unwrap_addr(e).map_or_else(
-            || {
-                if let TyRef(_, TypeAndMut{mutbl: MutMutable, ..}) =
-                    cx.tcx.expr_ty(e).sty {
-                        span_lint(cx, MUT_MUT, expr.span,
-                                  "this expression mutably borrows a mutable reference. \
-                                   Consider reborrowing");
-                }
-            },
-            |_| {
-                span_lint(cx, MUT_MUT, expr.span,
-                          "generally you want to avoid `&mut &mut _` if possible");
-            }
-        )
+        unwrap_addr(e).map_or_else(|| {
+                                       if let TyRef(_, TypeAndMut{mutbl: MutMutable, ..}) = cx.tcx.expr_ty(e).sty {
+                                           span_lint(cx,
+                                                     MUT_MUT,
+                                                     expr.span,
+                                                     "this expression mutably borrows a mutable reference. Consider \
+                                                      reborrowing");
+                                       }
+                                   },
+                                   |_| {
+                                       span_lint(cx,
+                                                 MUT_MUT,
+                                                 expr.span,
+                                                 "generally you want to avoid `&mut &mut _` if possible");
+                                   })
     })
 }
 
 fn unwrap_mut(ty: &Ty) -> Option<&Ty> {
     match ty.node {
         TyRptr(_, MutTy{ ty: ref pty, mutbl: MutMutable }) => Some(pty),
-        _ => None
+        _ => None,
     }
 }

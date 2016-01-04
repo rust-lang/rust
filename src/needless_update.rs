@@ -32,9 +32,10 @@ impl LateLintPass for NeedlessUpdatePass {
             let ty = cx.tcx.expr_ty(expr);
             if let TyStruct(def, _) = ty.sty {
                 if fields.len() == def.struct_variant().fields.len() {
-                    span_lint(cx, NEEDLESS_UPDATE, base.span,
-                              "struct update has no effect, all the fields \
-                              in the struct have already been specified");
+                    span_lint(cx,
+                              NEEDLESS_UPDATE,
+                              base.span,
+                              "struct update has no effect, all the fields in the struct have already been specified");
                 }
             }
         }
