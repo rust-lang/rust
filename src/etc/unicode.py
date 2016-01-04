@@ -326,15 +326,15 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
 
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
-          None        => [c, '\\0', '\\0'],
-          Some(index) => to_lowercase_table[index].1
+            None        => [c, '\\0', '\\0'],
+            Some(index) => to_lowercase_table[index].1,
         }
     }
 
     pub fn to_upper(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_uppercase_table) {
             None        => [c, '\\0', '\\0'],
-            Some(index) => to_uppercase_table[index].1
+            Some(index) => to_uppercase_table[index].1,
         }
     }
 
