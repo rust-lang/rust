@@ -1,359 +1,324 @@
 % Concurrency
 
-Concurrency and parallelism are incredibly important topics in computer
-science, and are also a hot topic in industry today. Computers are gaining more
-and more cores, yet many programmers aren't prepared to fully utilize them.
+The Rust project was initiated to solve two thorny problems:
 
-Rust's memory safety features also apply to its concurrency story too. Even
-concurrent Rust programs must be memory safe, having no data races. Rust's type
-system is up to the task, and gives you powerful ways to reason about
-concurrent code at compile time.
+* How do you do safe systems programming?
+* How do you make concurrency painless?
 
-Before we talk about the concurrency features that come with Rust, it's important
-to understand something: Rust is low-level enough that the vast majority of
-this is provided by the standard library, not by the language. This means that
-if you don't like some aspect of the way Rust handles concurrency, you can
-implement an alternative way of doing things.
-[mio](https://github.com/carllerche/mio) is a real-world example of this
-principle in action.
+Initially these problems seemed orthogonal, but to our amazement, the
+solution turned out to be identical: **the same tools that make Rust
+safe also help you tackle concurrency head-on**.
 
-## Background: `Send` and `Sync`
+Memory safety bugs and concurrency bugs often come down to code
+accessing data when it shouldn't. Rust's secret weapon is *ownership*,
+a discipline for access control that systems programmers try to
+follow, but that Rust's compiler checks statically for you.
 
-Concurrency is difficult to reason about. In Rust, we have a strong, static
-type system to help us reason about our code. As such, Rust gives us two traits
-to help us make sense of code that can possibly be concurrent.
+For memory safety, this means you can program without a garbage
+collector *and* without fear of segfaults, because Rust will catch
+your mistakes.
 
-### `Send`
+For concurrency, this means you can choose from a wide variety of
+paradigms (message passing, shared state, lock-free, purely
+functional), and Rust will help you avoid common pitfalls.
 
-The first trait we're going to talk about is
-[`Send`](../std/marker/trait.Send.html). When a type `T` implements `Send`, it
-indicates that something of this type is able to have ownership transferred
-safely between threads.
+Here's a taste of concurrency in Rust:
 
-This is important to enforce certain restrictions. For example, if we have a
-channel connecting two threads, we would want to be able to send some data
-down the channel and to the other thread. Therefore, we'd ensure that `Send` was
-implemented for that type.
+* A [channel][mpsc] transfers ownership of the messages sent along it,
+  so you can send a pointer from one thread to another without fear of
+  the threads later racing for access through that pointer. **Rust's
+  channels enforce thread isolation.**
 
-In the opposite way, if we were wrapping a library with [FFI][ffi] that isn't
-threadsafe, we wouldn't want to implement `Send`, and so the compiler will help
-us enforce that it can't leave the current thread.
+* A [lock][mutex] knows what data it protects, and Rust guarantees
+  that the data can only be accessed when the lock is held. State is
+  never accidentally shared. **"Lock data, not code" is enforced in
+  Rust.**
 
-[ffi]: ffi.html
+* Every data type knows whether it can safely be [sent][send] between
+  or [accessed][sync] by multiple threads, and Rust enforces this safe
+  usage; there are no data races, even for lock-free data structures.
+  **Thread safety isn't just documentation; it's law.**
 
-### `Sync`
+All of these benefits come out of Rust's ownership model, and in fact
+locks, channels, lock-free data structures and so on are defined in
+libraries, not the core language. That means that Rust's approach to
+concurrency is *open ended*: new libraries can embrace new paradigms
+and catch new bugs, just by adding APIs that use Rust's ownership
+features.
 
-The second of these traits is called [`Sync`](../std/marker/trait.Sync.html).
-When a type `T` implements `Sync`, it indicates that something
-of this type has no possibility of introducing memory unsafety when used from
-multiple threads concurrently through shared references. This implies that
-types which don't have [interior mutability](mutability.html) are inherently
-`Sync`, which includes simple primitive types (like `u8`) and aggregate types
-containing them.
+The goal of this post is to give you some idea of how that's done.
 
-For sharing references across threads, Rust provides a wrapper type called
-`Arc<T>`. `Arc<T>` implements `Send` and `Sync` if and only if `T` implements
-both `Send` and `Sync`. For example, an object of type `Arc<RefCell<U>>` cannot
-be transferred across threads because
-[`RefCell`](choosing-your-guarantees.html#refcellt) does not implement
-`Sync`, consequently `Arc<RefCell<U>>` would not implement `Send`.
+## Message passing
 
-These two traits allow you to use the type system to make strong guarantees
-about the properties of your code under concurrency. Before we demonstrate
-why, we need to learn how to create a concurrent Rust program in the first
-place!
+Now that we've covered the basic ownership story in Rust, let's see
+what it means for concurrency.
 
-## Threads
+Concurrent programming comes in many styles, but a particularly simple
+one is message passing, where threads or actors communicate by sending
+each other messages.  Proponents of the style emphasize the way that
+it ties together sharing and communication:
 
-Rust's standard library provides a library for threads, which allow you to
-run Rust code in parallel. Here's a basic example of using `std::thread`:
+> Do not communicate by sharing memory; instead, share memory by
+> communicating.
+>
+> --[Effective Go](http://golang.org/doc/effective_go.html)
 
-```rust
-use std::thread;
+**Rust's ownership makes it easy to turn that advice into a
+compiler-checked rule**. Consider the following channel API
+([channels in Rust's standard library][mpsc] are a bit different):
 
-fn main() {
-    thread::spawn(|| {
-        println!("Hello from a thread!");
-    });
+~~~~rust,ignore
+fn send<T: Send>(chan: &Channel<T>, t: T);
+fn recv<T: Send>(chan: &Channel<T>) -> T;
+~~~~
+
+Channels are generic over the type of data they transmit (the `<T:
+Send>` part of the API). The `Send` part means that `T` must be
+considered safe to send between threads; we'll come back to that later
+in the post, but for now it's enough to know that `Vec<i32>` is
+`Send`.
+
+As always in Rust, passing in a `T` to the `send` function means
+transferring ownership of it. This fact has profound consequences: it
+means that code like the following will generate a compiler error.
+
+~~~~rust,ignore
+// Suppose chan: Channel<Vec<i32>>
+
+let mut vec = Vec::new();
+// do some computation
+send(&chan, vec);
+print_vec(&vec);
+~~~~
+
+Here, the thread creates a vector, sends it to another thread, and
+then continues using it. The thread receiving the vector could mutate
+it as this thread continues running, so the call to `print_vec` could
+lead to race condition or, for that matter, a use-after-free bug.
+
+Instead, the Rust compiler will produce an error message on the call
+to `print_vec`:
+
+~~~~text
+Error: use of moved value `vec`
+~~~~
+
+Disaster averted.
+
+### Locks
+
+Another way to deal with concurrency is by having threads communicate
+through passive, shared state.
+
+Shared-state concurrency has a bad rap. It's easy to forget to acquire
+a lock, or otherwise mutate the wrong data at the wrong time, with
+disastrous results -- so easy that many eschew the style altogether.
+
+Rust's take is that:
+
+1. Shared-state concurrency is nevertheless a fundamental programming
+style, needed for systems code, for maximal performance, and for
+implementing other styles of concurrency.
+
+2. The problem is really about *accidentally* shared state.
+
+Rust aims to give you the tools to conquer shared-state concurrency
+directly, whether you're using locking or lock-free techniques.
+
+In Rust, threads are "isolated" from each other automatically, due to
+ownership. Writes can only happen when the thread has mutable access,
+either by owning the data, or by having a mutable borrow of it. Either
+way, **the thread is guaranteed to be the only one with access at the
+time**.  To see how this plays out, let's look at locks.
+
+Remember that mutable borrows cannot occur simultaneously with other
+borrows. Locks provide the same guarantee ("mutual exclusion") through
+synchronization at runtime. That leads to a locking API that hooks
+directly into Rust's ownership system.
+
+Here is a simplified version (the [standard library's][mutex]
+is more ergonomic):
+
+~~~~rust,ignore
+// create a new mutex
+fn mutex<T: Send>(t: T) -> Mutex<T>;
+
+// acquire the lock
+fn lock<T: Send>(mutex: &Mutex<T>) -> MutexGuard<T>;
+
+// access the data protected by the lock
+fn access<T: Send>(guard: &mut MutexGuard<T>) -> &mut T;
+~~~~
+
+This lock API is unusual in several respects.
+
+First, the `Mutex` type is generic over a type `T` of **the data
+protected by the lock**. When you create a `Mutex`, you transfer
+ownership of that data *into* the mutex, immediately giving up access
+to it. (Locks are unlocked when they are first created.)
+
+Later, you can `lock` to block the thread until the lock is
+acquired. This function, too, is unusual in providing a return value,
+`MutexGuard<T>`. The `MutexGuard` automatically releases the lock when
+it is destroyed; there is no separate `unlock` function.
+
+The only way to access the lock is through the `access` function,
+which turns a mutable borrow of the guard into a mutable borrow of the
+data (with a shorter lease):
+
+~~~~rust,ignore
+fn use_lock(mutex: &Mutex<Vec<i32>>) {
+    // acquire the lock, taking ownership of a guard;
+    // the lock is held for the rest of the scope
+    let mut guard = lock(mutex);
+
+    // access the data by mutably borrowing the guard
+    let vec = access(&mut guard);
+
+    // vec has type `&mut Vec<i32>`
+    vec.push(3);
+
+    // lock automatically released here, when `guard` is destroyed
 }
-```
+~~~~
 
-The `thread::spawn()` method accepts a [closure](closures.html), which is executed in a
-new thread. It returns a handle to the thread, that can be used to
-wait for the child thread to finish and extract its result:
+There are two key ingredients here:
 
-```rust
-use std::thread;
+* The mutable reference returned by `access` cannot outlive the
+  `MutexGuard` it is borrowing from.
 
-fn main() {
-    let handle = thread::spawn(|| {
-        "Hello from a thread!"
-    });
+* The lock is only released when the `MutexGuard` is destroyed.
 
-    println!("{}", handle.join().unwrap());
+The result is that **Rust enforces locking discipline: it will not let
+you access lock-protected data except when holding the lock**. Any
+attempt to do otherwise will generate a compiler error. For example,
+consider the following buggy "refactoring":
+
+~~~~rust,ignore
+fn use_lock(mutex: &Mutex<Vec<i32>>) {
+    let vec = {
+        // acquire the lock
+        let mut guard = lock(mutex);
+
+        // attempt to return a borrow of the data
+        access(&mut guard)
+
+        // guard is destroyed here, releasing the lock
+    };
+
+    // attempt to access the data outside of the lock.
+    vec.push(3);
 }
-```
+~~~~
 
-Many languages have the ability to execute threads, but it's wildly unsafe.
-There are entire books about how to prevent errors that occur from shared
-mutable state. Rust helps out with its type system here as well, by preventing
-data races at compile time. Let's talk about how you actually share things
-between threads.
+Rust will generate an error pinpointing the problem:
 
-## Safe Shared Mutable State
+~~~~text
+error: `guard` does not live long enough
+access(&mut guard)
+            ^~~~~
+~~~~
 
-Due to Rust's type system, we have a concept that sounds like a lie: "safe
-shared mutable state." Many programmers agree that shared mutable state is
-very, very bad.
+Disaster averted.
 
-Someone once said this:
+### Thread safety and "Send"
 
-> Shared mutable state is the root of all evil. Most languages attempt to deal
-> with this problem through the 'mutable' part, but Rust deals with it by
-> solving the 'shared' part.
+It's typical to distinguish some data types as "thread safe" and
+others not. Thread safe data structures use enough internal
+synchronization to be safely used by multiple threads concurrently.
 
-The same [ownership system](ownership.html) that helps prevent using pointers
-incorrectly also helps rule out data races, one of the worst kinds of
-concurrency bugs.
+For example, Rust ships with two kinds of "smart pointers" for
+reference counting:
 
-As an example, here is a Rust program that would have a data race in many
-languages. It will not compile:
+* `Rc<T>` provides reference counting via normal reads/writes. It is
+  not thread safe.
 
-```ignore
-use std::thread;
-use std::time::Duration;
+* `Arc<T>` provides reference counting via *atomic* operations. It is
+  thread safe.
 
-fn main() {
-    let mut data = vec![1, 2, 3];
+The hardware atomic operations used by `Arc` are more expensive than
+the vanilla operations used by `Rc`, so it's advantageous to use `Rc`
+rather than `Arc`. On the other hand, it's critical that an `Rc<T>`
+never migrate from one thread to another, because that could lead to
+race conditions that corrupt the count.
 
-    for i in 0..3 {
-        thread::spawn(move || {
-            data[i] += 1;
-        });
-    }
+Usually, the only recourse is careful documentation; most languages
+make no *semantic* distinction between thread-safe and thread-unsafe
+types.
 
-    thread::sleep(Duration::from_millis(50));
-}
-```
+In Rust, the world is divided into two kinds of data types: those that
+are [`Send`][send], meaning they can be safely moved from one thread to
+another, and those that are `!Send`, meaning that it may not be safe
+to do so. If all of a type's components are `Send`, so is that type --
+which covers most types. Certain base types are not inherently
+thread-safe, though, so it's also possible to explicitly mark a type
+like `Arc` as `Send`, saying to the compiler: "Trust me; I've verified
+the necessary synchronization here."
 
-This gives us an error:
+Naturally, `Arc` is `Send`, and `Rc` is not.
 
-```text
-8:17 error: capture of moved value: `data`
-        data[i] += 1;
-        ^~~~
-```
+We already saw that the `Channel` and `Mutex` APIs work only with
+`Send` data. Since they are the point at which data crosses thread
+boundaries, they are also the point of enforcement for `Send`.
 
-Rust knows this wouldn't be safe! If we had a reference to `data` in each
-thread, and the thread takes ownership of the reference, we'd have three
-owners!
+Putting this all together, Rust programmers can reap the benefits of
+`Rc` and other thread-*unsafe* types with confidence, knowing that if
+they ever do accidentally try to send one to another thread, the Rust
+compiler will say:
 
-So, we need some type that lets us have more than one reference to a value and
-that we can share between threads, that is it must implement `Sync`.
+~~~~text
+`Rc<Vec<i32>>` cannot be sent between threads safely
+~~~~
 
-We'll use `Arc<T>`, Rust's standard atomic reference count type, which
-wraps a value up with some extra runtime bookkeeping which allows us to
-share the ownership of the value between multiple references at the same time.
-
-The bookkeeping consists of a count of how many of these references exist to
-the value, hence the reference count part of the name.
-
-The Atomic part means `Arc<T>` can safely be accessed from multiple threads.
-To do this the compiler guarantees that mutations of the internal count use
-indivisible operations which can't have data races.
-
-
-```ignore
-use std::thread;
-use std::sync::Arc;
-use std::time::Duration;
-
-fn main() {
-    let mut data = Arc::new(vec![1, 2, 3]);
-
-    for i in 0..3 {
-        let data = data.clone();
-        thread::spawn(move || {
-            data[i] += 1;
-        });
-    }
-
-    thread::sleep(Duration::from_millis(50));
-}
-```
-
-We now call `clone()` on our `Arc<T>`, which increases the internal count.
-This handle is then moved into the new thread.
-
-And... still gives us an error.
-
-```text
-<anon>:11:24 error: cannot borrow immutable borrowed content as mutable
-<anon>:11                    data[i] += 1;
-                             ^~~~
-```
+Disaster averted.
 
-`Arc<T>` assumes one more property about its contents to ensure that it is safe
-to share across threads: it assumes its contents are `Sync`. This is true for
-our value if it's immutable, but we want to be able to mutate it, so we need
-something else to persuade the borrow checker we know what we're doing.
-
-It looks like we need some type that allows us to safely mutate a shared value,
-for example a type that can ensure only one thread at a time is able to
-mutate the value inside it at any one time.
-
-For that, we can use the `Mutex<T>` type!
-
-Here's the working version:
-
-```rust
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
-
-fn main() {
-    let data = Arc::new(Mutex::new(vec![1, 2, 3]));
-
-    for i in 0..3 {
-        let data = data.clone();
-        thread::spawn(move || {
-            let mut data = data.lock().unwrap();
-            data[i] += 1;
-        });
-    }
-
-    thread::sleep(Duration::from_millis(50));
-}
-```
-
-Note that the value of `i` is bound (copied) to the closure and not shared
-among the threads.
+### Data races
 
-Also note that [`lock`](../std/sync/struct.Mutex.html#method.lock) method of
-[`Mutex`](../std/sync/struct.Mutex.html) has this signature:
-
-```ignore
-fn lock(&self) -> LockResult<MutexGuard<T>>
-```
-
-and because `Send` is not implemented for `MutexGuard<T>`, the guard cannot
-cross thread boundaries, ensuring thread-locality of lock acquire and release.
+At this point, we've seen enough to venture a strong statement about
+Rust's approach to concurrency: **the compiler prevents all *data races*.**
 
-Let's examine the body of the thread more closely:
+> A data race is any unsynchronized, concurrent access to data
+> involving a write.
 
-```rust
-# use std::sync::{Arc, Mutex};
-# use std::thread;
-# use std::time::Duration;
-# fn main() {
-#     let data = Arc::new(Mutex::new(vec![1, 2, 3]));
-#     for i in 0..3 {
-#         let data = data.clone();
-thread::spawn(move || {
-    let mut data = data.lock().unwrap();
-    data[i] += 1;
-});
-#     }
-#     thread::sleep(Duration::from_millis(50));
-# }
-```
+Synchronization here includes things as low-level as atomic
+instructions. Essentially, this is a way of saying that you cannot
+accidentally "share state" between threads; all (mutating) access to
+state has to be mediated by *some* form of synchronization.
 
-First, we call `lock()`, which acquires the mutex's lock. Because this may fail,
-it returns an `Result<T, E>`, and because this is just an example, we `unwrap()`
-it to get a reference to the data. Real code would have more robust error handling
-here. We're then free to mutate it, since we have the lock.
+Data races are just one (very important) kind of race condition, but
+by preventing them, Rust often helps you prevent other, more subtle
+races as well. For example, it's often important that updates to
+different locations appear to take place *atomically*: other threads
+see either all of the updates, or none of them. In Rust, having `&mut`
+access to the relevant locations at the same time **guarantees
+atomicity of updates to them**, since no other thread could possibly
+have concurrent read access.
 
-Lastly, while the threads are running, we wait on a short timer. But
-this is not ideal: we may have picked a reasonable amount of time to
-wait but it's more likely we'll either be waiting longer than
-necessary or not long enough, depending on just how much time the
-threads actually take to finish computing when the program runs.
+It's worth pausing for a moment to think about this guarantee in the
+broader landscape of languages. Many languages provide memory safety
+through garbage collection. But garbage collection doesn't give you
+any help in preventing data races.
 
-A more precise alternative to the timer would be to use one of the
-mechanisms provided by the Rust standard library for synchronizing
-threads with each other. Let's talk about one of them: channels.
+Rust instead uses ownership and borrowing to provide its two key value
+propositions:
 
-## Channels
+* Memory safety without garbage collection.
+* Concurrency without data races.
 
-Here's a version of our code that uses channels for synchronization, rather
-than waiting for a specific time:
+### The future
 
-```rust
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::sync::mpsc;
+When Rust first began, it baked channels directly into the language,
+taking a very opinionated stance on concurrency.
 
-fn main() {
-    let data = Arc::new(Mutex::new(0));
-
-    let (tx, rx) = mpsc::channel();
-
-    for _ in 0..10 {
-        let (data, tx) = (data.clone(), tx.clone());
-
-        thread::spawn(move || {
-            let mut data = data.lock().unwrap();
-            *data += 1;
-
-            tx.send(()).unwrap();
-        });
-    }
-
-    for _ in 0..10 {
-        rx.recv().unwrap();
-    }
-}
-```
-
-We use the `mpsc::channel()` method to construct a new channel. We just `send`
-a simple `()` down the channel, and then wait for ten of them to come back.
-
-While this channel is just sending a generic signal, we can send any data that
-is `Send` over the channel!
-
-```rust
-use std::thread;
-use std::sync::mpsc;
-
-fn main() {
-    let (tx, rx) = mpsc::channel();
-
-    for i in 0..10 {
-        let tx = tx.clone();
-
-        thread::spawn(move || {
-            let answer = i * i;
-
-            tx.send(answer).unwrap();
-        });
-    }
-
-    for _ in 0..10 {
-        println!("{}", rx.recv().unwrap());
-    }
-}
-```
-
-Here we create 10 threads, asking each to calculate the square of a number (`i`
-at the time of `spawn()`), and then `send()` back the answer over the channel.
-
-
-## Panics
-
-A `panic!` will crash the currently executing thread. You can use Rust's
-threads as a simple isolation mechanism:
-
-```rust
-use std::thread;
-
-let handle = thread::spawn(move || {
-    panic!("oops!");
-});
-
-let result = handle.join();
-
-assert!(result.is_err());
-```
-
-`Thread.join()` gives us a `Result` back, which allows us to check if the thread
-has panicked or not.
+In today's Rust, concurrency is *entirely* a library affair;
+everything described in this post, including `Send`, is defined in the
+standard library, and could be defined in an external library instead.
+
+And that's very exciting, because it means that Rust's concurrency
+story can endlessly evolve, growing to encompass new paradigms and
+catch new classes of bugs.
+
+[mpsc]: ../std/sync/mpsc/index.html
+[mutex]: ../std/sync/struct.Mutex.html
+[send]: ../std/marker/trait.Send.html
+[sync]: ../std/marker/trait.Sync.html
