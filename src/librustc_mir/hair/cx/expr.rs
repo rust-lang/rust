@@ -46,6 +46,26 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 }
             }
 
+            hir::ExprCall(ref fun, ref args) => {
+                if cx.tcx.is_method_call(self.id) {
+                    // The callee is something implementing Fn, FnMut, or FnOnce.
+                    // Find the actual method implementation being called and
+                    // build the appropriate UFCS call expression with the
+                    // callee-object as self parameter.
+
+                    let method = method_callee(cx, self, ty::MethodCall::expr(self.id));
+                    let mut argrefs = vec![fun.to_ref()];
+                    argrefs.extend(args.iter().map(|a| a.to_ref()));
+
+                    ExprKind::Call {
+                        fun: method.to_ref(),
+                        args: argrefs,
+                    }
+                } else {
+                    ExprKind::Call { fun: fun.to_ref(), args: args.to_ref() }
+                }
+            }
+
             hir::ExprAddrOf(mutbl, ref expr) => {
                 let region = match expr_ty.sty {
                     ty::TyRef(r, _) => r,
@@ -328,8 +348,6 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 ExprKind::Vec { fields: fields.to_ref() },
             hir::ExprTup(ref fields) =>
                 ExprKind::Tuple { fields: fields.to_ref() },
-            hir::ExprCall(ref fun, ref args) =>
-                ExprKind::Call { fun: fun.to_ref(), args: args.to_ref() },
         };
 
         let temp_lifetime = cx.tcx.region_maps.temporary_scope(self.id);
