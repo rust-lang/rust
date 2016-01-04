@@ -70,6 +70,7 @@ use rustc_metadata::loader;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::time;
 
+use std::cmp::max;
 use std::cmp::Ordering::Equal;
 use std::env;
 use std::io::{self, Read, Write};
@@ -632,6 +633,8 @@ Available lint options:
                                     .map(|&(s, _)| s.chars().count())
                                     .max()
                                     .unwrap_or(0);
+    let max_name_len = std::cmp::max(max_name_len, "warnings".len());
+
     let padded = |x: &str| {
         let mut s = repeat(" ")
                         .take(max_name_len - x.chars().count())
@@ -643,6 +646,7 @@ Available lint options:
     println!("Lint groups provided by rustc:\n");
     println!("    {}  {}", padded("name"), "sub-lints");
     println!("    {}  {}", padded("----"), "---------");
+    println!("    {}  {}", padded("warnings"), "all built-in lints");
 
     let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
         for (name, to) in lints {
