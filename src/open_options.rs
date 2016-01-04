@@ -40,7 +40,7 @@ impl LateLintPass for NonSensicalOpenOptions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Argument {
     True,
     False,
@@ -104,130 +104,82 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
     }
 }
 
-fn check_for_duplicates(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
+fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
+    let (mut create, mut append, mut truncate, mut read, mut write) = (false, false, false, false, false);
+    let (mut create_arg, mut append_arg, mut truncate_arg, mut read_arg, mut write_arg) = (false,
+                                                                                           false,
+                                                                                           false,
+                                                                                           false,
+                                                                                           false);
     // This code is almost duplicated (oh, the irony), but I haven't found a way to unify it.
-    if options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Create, _) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 1 {
-        span_lint(cx,
-                  NONSENSICAL_OPEN_OPTIONS,
-                  span,
-                  "The method \"create\" is called more than once");
-    }
-    if options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Append, _) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 1 {
-        span_lint(cx,
-                  NONSENSICAL_OPEN_OPTIONS,
-                  span,
-                  "The method \"append\" is called more than once");
-    }
-    if options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Truncate, _) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 1 {
-        span_lint(cx,
-                  NONSENSICAL_OPEN_OPTIONS,
-                  span,
-                  "The method \"truncate\" is called more than once");
-    }
-    if options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Read, _) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 1 {
-        span_lint(cx,
-                  NONSENSICAL_OPEN_OPTIONS,
-                  span,
-                  "The method \"read\" is called more than once");
-    }
-    if options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Write, _) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 1 {
-        span_lint(cx,
-                  NONSENSICAL_OPEN_OPTIONS,
-                  span,
-                  "The method \"write\" is called more than once");
-    }
-}
 
-fn check_for_inconsistencies(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
-    // Truncate + read makes no sense.
-    if options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Read, Argument::True) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 0 &&
-       options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Truncate, Argument::True) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 0 {
+    for option in options {
+        match *option {
+            (OpenOption::Create, arg) => {
+                if create {
+                    span_lint(cx,
+                              NONSENSICAL_OPEN_OPTIONS,
+                              span,
+                              "The method \"create\" is called more than once");
+                } else {
+                    create = true
+                }
+                create_arg = create_arg || (arg == Argument::True);;
+            }
+            (OpenOption::Append, arg) => {
+                if append {
+                    span_lint(cx,
+                              NONSENSICAL_OPEN_OPTIONS,
+                              span,
+                              "The method \"append\" is called more than once");
+                } else {
+                    append = true
+                }
+                append_arg = append_arg || (arg == Argument::True);;
+            }
+            (OpenOption::Truncate, arg) => {
+                if truncate {
+                    span_lint(cx,
+                              NONSENSICAL_OPEN_OPTIONS,
+                              span,
+                              "The method \"truncate\" is called more than once");
+                } else {
+                    truncate = true
+                }
+                truncate_arg = truncate_arg || (arg == Argument::True);
+            }
+            (OpenOption::Read, arg) => {
+                if read {
+                    span_lint(cx,
+                              NONSENSICAL_OPEN_OPTIONS,
+                              span,
+                              "The method \"read\" is called more than once");
+                } else {
+                    read = true
+                }
+                read_arg = read_arg || (arg == Argument::True);;
+            }
+            (OpenOption::Write, arg) => {
+                if write {
+                    span_lint(cx,
+                              NONSENSICAL_OPEN_OPTIONS,
+                              span,
+                              "The method \"write\" is called more than once");
+                } else {
+                    write = true
+                }
+                write_arg = write_arg || (arg == Argument::True);;
+            }
+        }
+    }
+
+    if read && truncate && read_arg && truncate_arg {
         span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "File opened with \"truncate\" and \"read\"");
     }
-
-    // Append + truncate makes no sense.
-    if options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Append, Argument::True) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 0 &&
-       options.iter()
-              .filter(|o| {
-                  if let (OpenOption::Truncate, Argument::True) = **o {
-                      true
-                  } else {
-                      false
-                  }
-              })
-              .count() > 0 {
+    if append && truncate && append_arg && truncate_arg {
         span_lint(cx,
                   NONSENSICAL_OPEN_OPTIONS,
                   span,
                   "File opened with \"append\" and \"truncate\"");
     }
-}
-
-fn check_open_options(cx: &LateContext, options: &[(OpenOption, Argument)], span: Span) {
-    check_for_duplicates(cx, options, span);
-    check_for_inconsistencies(cx, options, span);
 }
