@@ -84,11 +84,13 @@ pub fn output_checkstyle_file<T>(mut writer: T,
         for line in mismatch.lines {
             match line {
                 DiffLine::Expected(ref str) => {
+                    let message = xml_escape_str(&str);
+                    // TODO XML encode str here.
                     try!(write!(writer,
                                 "<error line=\"{}\" severity=\"error\" message=\"Should be \
                                  `{}`\" />",
                                 mismatch.line_number,
-                                str));
+                                message));
                 }
                 _ => {
                     // Do nothing with context and expected.
@@ -98,6 +100,23 @@ pub fn output_checkstyle_file<T>(mut writer: T,
     }
     try!(write!(writer, "</file>"));
     Ok(())
+}
+
+// Convert special characters into XML entities.
+// This is needed for checkstyle output.
+fn xml_escape_str(string: &str) -> String {
+    let mut out = String::new();
+    for c in string.chars() {
+        match c {
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            '&' => out.push_str("&amp;"),
+            _ => out.push(c),
+        }
+    }
+    out
 }
 
 // Prints all newlines either as `\n` or as `\r\n`.
