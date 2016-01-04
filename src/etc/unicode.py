@@ -319,10 +319,8 @@ def emit_property_module(f, mod, tbl, emit):
 def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
     f.write("""
-    use core::cmp::Ordering::{Equal, Less, Greater};
     use core::option::Option;
     use core::option::Option::{Some, None};
-    use core::result::Result::{Ok, Err};
 
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
@@ -339,14 +337,7 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
     }
 
     fn bsearch_case_table(c: char, table: &'static [(char, [char; 3])]) -> Option<usize> {
-        match table.binary_search_by(|&(key, _)| {
-            if c == key { Equal }
-            else if key < c { Less }
-            else { Greater }
-        }) {
-            Ok(i) => Some(i),
-            Err(_) => None,
-        }
+        table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
     }
 
 """)
