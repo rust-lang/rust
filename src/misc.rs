@@ -365,9 +365,10 @@ impl LintPass for UsedUnderscoreBinding {
 }
 
 impl LateLintPass for UsedUnderscoreBinding {
+    #[rustfmt_skip]
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if in_attributes_expansion(cx, expr) {
-            // Don't lint things expanded by #[derive(...)], etc
+    // Don't lint things expanded by #[derive(...)], etc
             return;
         }
         let needs_lint = match expr.node {
@@ -376,9 +377,9 @@ impl LateLintPass for UsedUnderscoreBinding {
                                 .last()
                                 .expect("path should always have at least one segment")
                                 .identifier;
-                ident.name.as_str().chars().next() == Some('_') &&
-                ident.name.as_str().chars().skip(1).next() != Some('_') &&
-                ident.name != ident.unhygienic_name && is_used(cx, expr)
+                ident.name.as_str().chars().next() == Some('_') && // starts with '_'
+                ident.name.as_str().chars().skip(1).next() != Some('_') &&  // doesn't start with "__"
+                ident.name != ident.unhygienic_name && is_used(cx, expr) // not in bang macro
             }
             ExprField(_, spanned) => {
                 let name = spanned.node.as_str();
