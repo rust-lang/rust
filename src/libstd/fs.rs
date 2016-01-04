@@ -715,7 +715,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform-specific behavior
     ///
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
@@ -730,7 +730,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform-specific behavior
     ///
     /// On Windows and most Unix platforms this function is free (no extra
     /// system calls needed), but some Unix platforms may require the equivalent
@@ -758,11 +758,20 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// guarantee that the file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal).
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `unlink` function on Unix
+/// and the `DeleteFile` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
 /// # Errors
 ///
-/// This function will return an error if `path` points to a directory, if the
-/// user lacks permissions to remove the file, or if some other filesystem-level
-/// error occurs.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `path` points to a directory.
+/// * The user lacks permissions to remove the file.
 ///
 /// # Examples
 ///
@@ -785,6 +794,21 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function will traverse symbolic links to query information about the
 /// destination file.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `stat` function on Unix
+/// and the `GetFileAttributesEx` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * The user lacks permissions to perform `metadata` call on `path`.
+/// * `path` does not exist.
+///
 /// # Examples
 ///
 /// ```rust
@@ -796,18 +820,27 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Ok(())
 /// # }
 /// ```
-///
-/// # Errors
-///
-/// This function will return an error if the user lacks the requisite
-/// permissions to perform a `metadata` call on the given `path` or if there
-/// is no entry in the filesystem at the provided path.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_ref()).map(Metadata)
 }
 
 /// Query the metadata about a file without following symlinks.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `lstat` function on Unix
+/// and the `GetFileAttributesEx` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * The user lacks permissions to perform `metadata` call on `path`.
+/// * `path` does not exist.
 ///
 /// # Examples
 ///
@@ -829,12 +862,21 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// This will not work if the new name is on a different mount point.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `rename` function on Unix
+/// and the `MoveFileEx` function with the `MOVEFILE_REPLACE_EXISTING` flag on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
 /// # Errors
 ///
-/// This function will return an error if the provided `from` doesn't exist, if
-/// the process lacks permissions to view the contents, if `from` and `to`
-/// reside on separate filesystems, or if some other intermittent I/O error
-/// occurs.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `from` does not exist.
+/// * The user lacks permissions to view contents.
+/// * `from` and `to` are on separate filesystems.
 ///
 /// # Examples
 ///
@@ -861,15 +903,24 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 ///
 /// On success, the total number of bytes copied is returned.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `open` function in Unix
+/// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
+/// `O_CLOEXEC` is set for returned file descriptors.
+/// On Windows, this function currently corresponds to `CopyFileEx`.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The `from` path is not a file
-/// * The `from` file does not exist
+/// * The `from` path is not a file.
+/// * The `from` file does not exist.
 /// * The current process does not have the permission rights to access
-///   `from` or write `to`
+///   `from` or write `to`.
 ///
 /// # Examples
 ///
@@ -889,6 +940,20 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// The `dst` path will be a link pointing to the `src` path. Note that systems
 /// often require these two paths to both be located on the same filesystem.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `link` function on Unix
+/// and the `CreateHardLink` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * The `src` path is not a file or doesn't exist.
 ///
 /// # Examples
 ///
@@ -933,11 +998,21 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 
 /// Reads a symbolic link, returning the file that the link points to.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `readlink` function on Unix
+/// and the `CreateFile` function with `FILE_FLAG_OPEN_REPARSE_POINT` and
+/// `FILE_FLAG_BACKUP_SEMANTICS` flags on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
 /// # Errors
 ///
-/// This function will return an error on failure. Failure conditions include
-/// reading a file that does not exist or reading a file that is not a symbolic
-/// link.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `path` is not a symbolic link.
+/// * `path` does not exist.
 ///
 /// # Examples
 ///
@@ -957,8 +1032,20 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// Returns the canonical form of a path with all intermediate components
 /// normalized and symbolic links resolved.
 ///
-/// This function may return an error in situations like where the path does not
-/// exist, a component in the path is not a directory, or an I/O error happens.
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `realpath` function on Unix
+/// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `path` does not exist.
+/// * A component in path is not a directory.
 ///
 /// # Examples
 ///
@@ -977,10 +1064,20 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 
 /// Creates a new, empty directory at the provided path
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `mkdir` function on Unix
+/// and the `CreateDirectory` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
 /// # Errors
 ///
-/// This function will return an error if the user lacks permissions to make a
-/// new directory at the provided `path`, or if the directory already exists.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * User lacks permissions to create directory at `path`.
+/// * `path` already exists.
 ///
 /// # Examples
 ///
@@ -1000,9 +1097,19 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Recursively create a directory and all of its parent components if they
 /// are missing.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `mkdir` function on Unix
+/// and the `CreateDirectory` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
 /// # Errors
 ///
-/// This function will fail if any directory in the path specified by `path`
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * If any directory in the path specified by `path`
 /// does not already exist and it could not be created otherwise. The specific
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by `fs::create_dir`.
@@ -1024,10 +1131,20 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 
 /// Removes an existing, empty directory.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `rmdir` function on Unix
+/// and the `RemoveDirectory` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
 /// # Errors
 ///
-/// This function will return an error if the user lacks permissions to remove
-/// the directory at the provided `path`, or if the directory isn't empty.
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * The user lacks permissions to remove the directory at the provided `path`.
+/// * The directory isn't empty.
 ///
 /// # Examples
 ///
@@ -1049,6 +1166,14 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// This function does **not** follow symbolic links and it will simply remove the
 /// symbolic link itself.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to `opendir`, `lstat`, `rm` and `rmdir` functions on Unix
+/// and the `FindFirstFile`, `GetFileAttributesEx`, `DeleteFile`, and `RemoveDirectory` functions
+/// on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -1087,6 +1212,22 @@ fn _remove_dir_all(path: &Path) -> io::Result<()> {
 /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
 /// be encountered after an iterator is initially constructed.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `opendir` function on Unix
+/// and the `FindFirstFile` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * The provided `path` doesn't exist.
+/// * The process lacks permissions to view the contents.
+/// * The `path` points at a non-directory file.
+///
 /// # Examples
 ///
 /// ```
@@ -1109,12 +1250,6 @@ fn _remove_dir_all(path: &Path) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-///
-/// # Errors
-///
-/// This function will return an error if the provided `path` doesn't exist, if
-/// the process lacks permissions to view the contents or if the `path` points
-/// at a non-directory file
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
     fs_imp::readdir(path.as_ref()).map(ReadDir)
@@ -1180,6 +1315,21 @@ impl Iterator for WalkDir {
 
 /// Changes the permissions found on a file or a directory.
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `chmod` function on Unix
+/// and the `SetFileAttributes` function on Windows.
+/// Note that, this [may change in the future][changes].
+/// [changes]: ../io/index.html#platform-specific-behavior
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `path` does not exist.
+/// * The user lacks the permission to change attributes of the file.
+///
 /// # Examples
 ///
 /// ```
@@ -1192,12 +1342,6 @@ impl Iterator for WalkDir {
 /// # Ok(())
 /// # }
 /// ```
-///
-/// # Errors
-///
-/// This function will return an error if the provided `path` doesn't exist, if
-/// the process lacks permissions to change the attributes of the file, or if
-/// some other I/O error is encountered.
 #[stable(feature = "set_permissions", since = "1.1.0")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions)
                                        -> io::Result<()> {
