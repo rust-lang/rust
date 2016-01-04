@@ -279,12 +279,12 @@ def emit_bsearch_range_table(f):
 fn bsearch_range_table(c: char, r: &'static [(char, char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
     r.binary_search_by(|&(lo, hi)| {
-         if lo <= c && c <= hi {
-             Equal
+         if c < lo {
+             Greater
          } else if hi < c {
              Less
          } else {
-             Greater
+             Equal
          }
      })
      .is_ok()
