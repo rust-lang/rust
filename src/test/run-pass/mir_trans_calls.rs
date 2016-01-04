@@ -93,6 +93,19 @@ fn test8() -> isize {
     Two::two()
 }
 
+#[rustc_mir]
+fn test_fn_impl(f: &&Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
+    // This call goes through the Fn implementation for &Fn provided in
+    // core::ops::impls. It expands to a static Fn::call() that calls the
+    // Fn::call() implemenation of the object shim underneath.
+    f(x, y)
+}
+
+#[rustc_mir]
+fn test_fn_object(f: &Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
+    f(x, y)
+}
+
 fn main() {
     assert_eq!(test1(1, (2, 3), &[4, 5, 6]), (1, (2, 3), &[4, 5, 6][..]));
     assert_eq!(test2(98), 98);
@@ -103,4 +116,8 @@ fn main() {
     // assert_eq!(test6(&Foo, 12367), 12367);
     assert_eq!(test7(), 1);
     assert_eq!(test8(), 2);
+
+    let function_object = (&|x: i32, y: i32| { x + y }) as &Fn(i32, i32) -> i32;
+    assert_eq!(test_fn_object(function_object, 100, 1), 101);
+    assert_eq!(test_fn_impl(&function_object, 100, 2), 102);
 }
