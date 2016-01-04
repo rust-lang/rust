@@ -132,7 +132,8 @@
 <!-- Constraints -->
 
 * `T: U`: generic parameter `T` constrained to types that implement `U`.  See [Traits].
-* `T: 'a`: generic type `T` must outlive lifetime `'a`.
+* `T: 'a`: generic type `T` must outlive lifetime `'a`. When we say that a type 'outlives' the lifetime, we mean that it cannot transitively contain any references with lifetimes shorter than `'a`.
+* `T : 'static`: The generic type `T` contains no borrowed references other than `'static` ones.
 * `'b: 'a`: generic lifetime `'b` must outlive lifetime `'a`.
 * `T: ?Sized`: allow generic type parameter to be a dynamically-sized type.  See [Unsized Types (`?Sized`)].
 * `'a + trait`, `trait + trait`: compound type constraint.  See [Traits (Multiple Trait Bounds)].
