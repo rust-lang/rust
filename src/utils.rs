@@ -198,13 +198,14 @@ macro_rules! impl_enum_decodable {
     ( $e:ident, $( $x:ident ),* ) => {
         impl ::rustc_serialize::Decodable for $e {
             fn decode<D: ::rustc_serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
+                use std::ascii::AsciiExt;
                 let s = try!(d.read_str());
-                match &*s {
-                    $(
-                        stringify!($x) => Ok($e::$x),
-                    )*
-                    _ => Err(d.error("Bad variant")),
-                }
+                $(
+                    if stringify!($x).eq_ignore_ascii_case(&s) {
+                      return Ok($e::$x);
+                    }
+                )*
+                Err(d.error("Bad variant"))
             }
         }
 
@@ -212,12 +213,13 @@ macro_rules! impl_enum_decodable {
             type Err = &'static str;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                match &*s {
-                    $(
-                        stringify!($x) => Ok($e::$x),
-                    )*
-                    _ => Err("Bad variant"),
-                }
+                use std::ascii::AsciiExt;
+                $(
+                    if stringify!($x).eq_ignore_ascii_case(s) {
+                        return Ok($e::$x);
+                    }
+                )*
+                Err("Bad variant")
             }
         }
 
