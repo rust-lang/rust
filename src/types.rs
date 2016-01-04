@@ -49,22 +49,23 @@ impl LintPass for TypePass {
 impl LateLintPass for TypePass {
     fn check_ty(&mut self, cx: &LateContext, ast_ty: &Ty) {
         if in_macro(cx, ast_ty.span) {
-            return
+            return;
         }
         if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
             if let ty::TyBox(ref inner) = ty.sty {
                 if match_type(cx, inner, &VEC_PATH) {
-                    span_help_and_lint(
-                        cx, BOX_VEC, ast_ty.span,
-                        "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                        "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                    span_help_and_lint(cx,
+                                       BOX_VEC,
+                                       ast_ty.span,
+                                       "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                       "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
                 }
-            }
-            else if match_type(cx, ty, &LL_PATH) {
-                span_help_and_lint(
-                    cx, LINKEDLIST, ast_ty.span,
-                    "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                    "a VecDeque might work");
+            } else if match_type(cx, ty, &LL_PATH) {
+                span_help_and_lint(cx,
+                                   LINKEDLIST,
+                                   ast_ty.span,
+                                   "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                                   "a VecDeque might work");
             }
         }
     }
@@ -87,12 +88,17 @@ fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
         let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
         if *bindtype == ty::TyTuple(vec![]) {
-            if in_external_macro(cx, decl.span) ||
-                in_macro(cx, local.pat.span) { return; }
-                if is_from_for_desugar(decl) { return; }
-                span_lint(cx, LET_UNIT_VALUE, decl.span, &format!(
-                    "this let-binding has unit value. Consider omitting `let {} =`",
-                    snippet(cx, local.pat.span, "..")));
+            if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
+                return;
+            }
+            if is_from_for_desugar(decl) {
+                return;
+            }
+            span_lint(cx,
+                      LET_UNIT_VALUE,
+                      decl.span,
+                      &format!("this let-binding has unit value. Consider omitting `let {} =`",
+                               snippet(cx, local.pat.span, "..")));
         }
     }
 }
@@ -130,18 +136,23 @@ impl LintPass for UnitCmp {
 
 impl LateLintPass for UnitCmp {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if in_macro(cx, expr.span) { return; }
+        if in_macro(cx, expr.span) {
+            return;
+        }
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             let sty = &cx.tcx.expr_ty(left).sty;
             if *sty == ty::TyTuple(vec![]) && is_comparison_binop(op) {
                 let result = match op {
                     BiEq | BiLe | BiGe => "true",
-                    _ => "false"
+                    _ => "false",
                 };
-                span_lint(cx, UNIT_CMP, expr.span, &format!(
-                    "{}-comparison of unit values detected. This will always be {}",
-                    binop_to_string(op), result));
+                span_lint(cx,
+                          UNIT_CMP,
+                          expr.span,
+                          &format!("{}-comparison of unit values detected. This will always be {}",
+                                   binop_to_string(op),
+                                   result));
             }
         }
     }
@@ -192,38 +203,64 @@ declare_lint!(pub CAST_POSSIBLE_WRAP, Allow,
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
     let n = match typ.sty {
-        ty::TyInt(i) =>  4 << (i as usize),
+        ty::TyInt(i) => 4 << (i as usize),
         ty::TyUint(u) => 4 << (u as usize),
-        _ => 0
+        _ => 0,
     };
     // n == 4 is the usize/isize case
-    if n == 4 { ::std::usize::BITS } else { n }
+    if n == 4 {
+        ::std::usize::BITS
+    } else {
+        n
+    }
 }
 
 fn is_isize_or_usize(typ: &ty::TyS) -> bool {
     match typ.sty {
         ty::TyInt(TyIs) | ty::TyUint(TyUs) => true,
-        _ => false
+        _ => false,
     }
 }
 
 fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to_f64: bool) {
-    let mantissa_nbits = if cast_to_f64 {52} else {23};
+    let mantissa_nbits = if cast_to_f64 {
+        52
+    } else {
+        23
+    };
     let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
     let arch_dependent_str = "on targets with 64-bit wide pointers ";
-    let from_nbits_str = if arch_dependent {"64".to_owned()}
-                         else if is_isize_or_usize(cast_from) {"32 or 64".to_owned()}
-                         else {int_ty_to_nbits(cast_from).to_string()};
-    span_lint(cx, CAST_PRECISION_LOSS, expr.span,
-        &format!("casting {0} to {1} causes a loss of precision {2}\
-            ({0} is {3} bits wide, but {1}'s mantissa is only {4} bits wide)",
-            cast_from, if cast_to_f64 {"f64"} else {"f32"},
-            if arch_dependent {arch_dependent_str} else {""},
-            from_nbits_str, mantissa_nbits));
+    let from_nbits_str = if arch_dependent {
+        "64".to_owned()
+    } else if is_isize_or_usize(cast_from) {
+        "32 or 64".to_owned()
+    } else {
+        int_ty_to_nbits(cast_from).to_string()
+    };
+    span_lint(cx,
+              CAST_PRECISION_LOSS,
+              expr.span,
+              &format!("casting {0} to {1} causes a loss of precision {2}({0} is {3} bits wide, but {1}'s mantissa \
+                        is only {4} bits wide)",
+                       cast_from,
+                       if cast_to_f64 {
+                           "f64"
+                       } else {
+                           "f32"
+                       },
+                       if arch_dependent {
+                           arch_dependent_str
+                       } else {
+                           ""
+                       },
+                       from_nbits_str,
+                       mantissa_nbits));
 }
 
 enum ArchSuffix {
-    _32, _64, None
+    _32,
+    _64,
+    None,
 }
 
 fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to: &ty::TyS) {
@@ -231,44 +268,60 @@ fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: &ty::
     let arch_32_suffix = " on targets with 32-bit wide pointers";
     let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
     let (from_nbits, to_nbits) = (int_ty_to_nbits(cast_from), int_ty_to_nbits(cast_to));
-    let (span_truncation, suffix_truncation, span_wrap, suffix_wrap) =
-        match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
-            (true, true) | (false, false) => (
-                to_nbits < from_nbits,
-                ArchSuffix::None,
-                to_nbits == from_nbits && cast_unsigned_to_signed,
+    let (span_truncation, suffix_truncation, span_wrap, suffix_wrap) = match (is_isize_or_usize(cast_from),
+                                                                              is_isize_or_usize(cast_to)) {
+        (true, true) | (false, false) => {
+            (to_nbits < from_nbits,
+             ArchSuffix::None,
+             to_nbits == from_nbits && cast_unsigned_to_signed,
+             ArchSuffix::None)
+        }
+        (true, false) => {
+            (to_nbits <= 32,
+             if to_nbits == 32 {
+                ArchSuffix::_64
+            } else {
                 ArchSuffix::None
-                ),
-            (true, false) => (
-                to_nbits <= 32,
-                if to_nbits == 32 {ArchSuffix::_64} else {ArchSuffix::None},
-                to_nbits <= 32 && cast_unsigned_to_signed,
+            },
+             to_nbits <= 32 && cast_unsigned_to_signed,
+             ArchSuffix::_32)
+        }
+        (false, true) => {
+            (from_nbits == 64,
+             ArchSuffix::_32,
+             cast_unsigned_to_signed,
+             if from_nbits == 64 {
+                ArchSuffix::_64
+            } else {
                 ArchSuffix::_32
-                ),
-            (false, true) => (
-                from_nbits == 64,
-                ArchSuffix::_32,
-                cast_unsigned_to_signed,
-                if from_nbits == 64 {ArchSuffix::_64} else {ArchSuffix::_32}
-                ),
-        };
+            })
+        }
+    };
     if span_truncation {
-        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-            &format!("casting {} to {} may truncate the value{}",
-               cast_from, cast_to,
-               match suffix_truncation {
-                   ArchSuffix::_32 => arch_32_suffix,
-                   ArchSuffix::_64 => arch_64_suffix,
-                   ArchSuffix::None => "" }));
+        span_lint(cx,
+                  CAST_POSSIBLE_TRUNCATION,
+                  expr.span,
+                  &format!("casting {} to {} may truncate the value{}",
+                           cast_from,
+                           cast_to,
+                           match suffix_truncation {
+                               ArchSuffix::_32 => arch_32_suffix,
+                               ArchSuffix::_64 => arch_64_suffix,
+                               ArchSuffix::None => "",
+                           }));
     }
     if span_wrap {
-        span_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
-            &format!("casting {} to {} may wrap around the value{}",
-                cast_from, cast_to,
-                match suffix_wrap {
-                    ArchSuffix::_32 => arch_32_suffix,
-                    ArchSuffix::_64 => arch_64_suffix,
-                    ArchSuffix::None => "" }));
+        span_lint(cx,
+                  CAST_POSSIBLE_WRAP,
+                  expr.span,
+                  &format!("casting {} to {} may wrap around the value{}",
+                           cast_from,
+                           cast_to,
+                           match suffix_wrap {
+                               ArchSuffix::_32 => arch_32_suffix,
+                               ArchSuffix::_64 => arch_64_suffix,
+                               ArchSuffix::None => "",
+                           }));
     }
 }
 
@@ -289,35 +342,42 @@ impl LateLintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits = if let ty::TyFloat(TyF32) = cast_to.sty {32} else {64};
+                        let to_nbits = if let ty::TyFloat(TyF32) = cast_to.sty {
+                            32
+                        } else {
+                            64
+                        };
                         if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
                             span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
                         }
                     }
                     (false, true) => {
-                        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-                            &format!("casting {} to {} may truncate the value",
-                                  cast_from, cast_to));
+                        span_lint(cx,
+                                  CAST_POSSIBLE_TRUNCATION,
+                                  expr.span,
+                                  &format!("casting {} to {} may truncate the value", cast_from, cast_to));
                         if !cast_to.is_signed() {
-                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                &format!("casting {} to {} may lose the sign of the value",
-                                    cast_from, cast_to));
+                            span_lint(cx,
+                                      CAST_SIGN_LOSS,
+                                      expr.span,
+                                      &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
                     }
                     (true, true) => {
                         if cast_from.is_signed() && !cast_to.is_signed() {
-                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                &format!("casting {} to {} may lose the sign of the value",
-                                    cast_from, cast_to));
+                            span_lint(cx,
+                                      CAST_SIGN_LOSS,
+                                      expr.span,
+                                      &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                     }
                     (false, false) => {
-                        if let (&ty::TyFloat(TyF64),
-                                &ty::TyFloat(TyF32)) = (&cast_from.sty, &cast_to.sty) {
-                            span_lint(cx, CAST_POSSIBLE_TRUNCATION,
-                                expr.span,
-                                "casting f64 to f32 may truncate the value");
+                        if let (&ty::TyFloat(TyF64), &ty::TyFloat(TyF32)) = (&cast_from.sty, &cast_to.sty) {
+                            span_lint(cx,
+                                      CAST_POSSIBLE_TRUNCATION,
+                                      expr.span,
+                                      "casting f64 to f32 may truncate the value");
                         }
                     }
                 }
@@ -360,7 +420,7 @@ impl LateLintPass for TypeComplexityPass {
             ItemStatic(ref ty, _, _) |
             ItemConst(ref ty, _) => check_type(cx, ty),
             // functions, enums, structs, impls and traits are covered
-            _ => ()
+            _ => (),
         }
     }
 
@@ -370,7 +430,7 @@ impl LateLintPass for TypeComplexityPass {
             TypeTraitItem(_, Some(ref ty)) => check_type(cx, ty),
             MethodTraitItem(MethodSig { ref decl, .. }, None) => check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
-            _ => ()
+            _ => (),
         }
     }
 
@@ -379,7 +439,7 @@ impl LateLintPass for TypeComplexityPass {
             ImplItemKind::Const(ref ty, _) |
             ImplItemKind::Type(ref ty) => check_type(cx, ty),
             // methods are covered by check_fn
-            _ => ()
+            _ => (),
         }
     }
 
@@ -400,16 +460,23 @@ fn check_fndecl(cx: &LateContext, decl: &FnDecl) {
 }
 
 fn check_type(cx: &LateContext, ty: &Ty) {
-    if in_macro(cx, ty.span) { return; }
+    if in_macro(cx, ty.span) {
+        return;
+    }
     let score = {
-        let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
+        let mut visitor = TypeComplexityVisitor {
+            score: 0,
+            nest: 1,
+        };
         visitor.visit_ty(ty);
         visitor.score
     };
     // println!("{:?} --> {}", ty, score);
     if score > 250 {
-        span_lint(cx, TYPE_COMPLEXITY, ty.span, &format!(
-            "very complex type used. Consider factoring parts into `type` definitions"));
+        span_lint(cx,
+                  TYPE_COMPLEXITY,
+                  ty.span,
+                  &format!("very complex type used. Consider factoring parts into `type` definitions"));
     }
 }
 
@@ -442,7 +509,7 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
             TyBareFn(..) |
             TyPolyTraitRef(..) => (50 * self.nest, 1),
 
-            _ => (0, 0)
+            _ => (0, 0),
         };
         self.score += add_score;
         self.nest += sub_nest;

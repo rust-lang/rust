@@ -21,24 +21,22 @@ declare_lint! {
 }
 
 // Tuples are of the form (constant, name, min_digits)
-const KNOWN_CONSTS : &'static [(f64, &'static str, usize)] = &[
-    (f64::E, "E", 4),
-    (f64::FRAC_1_PI, "FRAC_1_PI", 4),
-    (f64::FRAC_1_SQRT_2, "FRAC_1_SQRT_2", 5),
-    (f64::FRAC_2_PI, "FRAC_2_PI", 5),
-    (f64::FRAC_2_SQRT_PI, "FRAC_2_SQRT_PI", 5),
-    (f64::FRAC_PI_2, "FRAC_PI_2", 5),
-    (f64::FRAC_PI_3, "FRAC_PI_3", 5),
-    (f64::FRAC_PI_4, "FRAC_PI_4", 5),
-    (f64::FRAC_PI_6, "FRAC_PI_6", 5),
-    (f64::FRAC_PI_8, "FRAC_PI_8", 5),
-    (f64::LN_10, "LN_10", 5),
-    (f64::LN_2, "LN_2", 5),
-    (f64::LOG10_E, "LOG10_E", 5),
-    (f64::LOG2_E, "LOG2_E", 5),
-    (f64::PI, "PI", 3),
-    (f64::SQRT_2, "SQRT_2", 5),
-];
+const KNOWN_CONSTS: &'static [(f64, &'static str, usize)] = &[(f64::E, "E", 4),
+                                                              (f64::FRAC_1_PI, "FRAC_1_PI", 4),
+                                                              (f64::FRAC_1_SQRT_2, "FRAC_1_SQRT_2", 5),
+                                                              (f64::FRAC_2_PI, "FRAC_2_PI", 5),
+                                                              (f64::FRAC_2_SQRT_PI, "FRAC_2_SQRT_PI", 5),
+                                                              (f64::FRAC_PI_2, "FRAC_PI_2", 5),
+                                                              (f64::FRAC_PI_3, "FRAC_PI_3", 5),
+                                                              (f64::FRAC_PI_4, "FRAC_PI_4", 5),
+                                                              (f64::FRAC_PI_6, "FRAC_PI_6", 5),
+                                                              (f64::FRAC_PI_8, "FRAC_PI_8", 5),
+                                                              (f64::LN_10, "LN_10", 5),
+                                                              (f64::LN_2, "LN_2", 5),
+                                                              (f64::LOG10_E, "LOG10_E", 5),
+                                                              (f64::LOG2_E, "LOG2_E", 5),
+                                                              (f64::PI, "PI", 3),
+                                                              (f64::SQRT_2, "SQRT_2", 5)];
 
 #[derive(Copy,Clone)]
 pub struct ApproxConstant;
@@ -61,9 +59,8 @@ fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
     match lit.node {
         LitFloat(ref s, TyF32) => check_known_consts(cx, e, s, "f32"),
         LitFloat(ref s, TyF64) => check_known_consts(cx, e, s, "f64"),
-        LitFloatUnsuffixed(ref s) =>
-            check_known_consts(cx, e, s, "f{32, 64}"),
-        _ => ()
+        LitFloatUnsuffixed(ref s) => check_known_consts(cx, e, s, "f{32, 64}"),
+        _ => (),
     }
 }
 
@@ -71,9 +68,10 @@ fn check_known_consts(cx: &LateContext, e: &Expr, s: &str, module: &str) {
     if let Ok(_) = s.parse::<f64>() {
         for &(constant, name, min_digits) in KNOWN_CONSTS {
             if is_approx_const(constant, s, min_digits) {
-                span_lint(cx, APPROX_CONSTANT, e.span, &format!(
-                    "approximate value of `{}::{}` found. \
-                    Consider using it directly", module, &name));
+                span_lint(cx,
+                          APPROX_CONSTANT,
+                          e.span,
+                          &format!("approximate value of `{}::{}` found. Consider using it directly", module, &name));
                 return;
             }
         }

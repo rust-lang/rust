@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use syntax::ast::*;
-//use reexport::*;
+// use reexport::*;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 
@@ -67,19 +67,17 @@ impl ReturnPass {
                     self.check_final_expr(cx, &arm.body);
                 }
             }
-            _ => { }
+            _ => {}
         }
     }
 
     fn emit_return_lint(&mut self, cx: &EarlyContext, spans: (Span, Span)) {
-        if in_external_macro(cx, spans.1) {return;}
-        span_lint_and_then(cx, NEEDLESS_RETURN, spans.0,
-                           "unneeded return statement",
-                           |db| {
+        if in_external_macro(cx, spans.1) {
+            return;
+        }
+        span_lint_and_then(cx, NEEDLESS_RETURN, spans.0, "unneeded return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, spans.1) {
-                db.span_suggestion(spans.0,
-                                          "remove `return` as shown:",
-                                          snippet);
+                db.span_suggestion(spans.0, "remove `return` as shown:", snippet);
             }
         });
     }
@@ -104,13 +102,16 @@ impl ReturnPass {
     }
 
     fn emit_let_lint(&mut self, cx: &EarlyContext, lint_span: Span, note_span: Span) {
-        if in_external_macro(cx, note_span) {return;}
-        let mut db = span_lint(cx, LET_AND_RETURN, lint_span,
-                  "returning the result of a let binding from a block. \
-                   Consider returning the expression directly.");
+        if in_external_macro(cx, note_span) {
+            return;
+        }
+        let mut db = span_lint(cx,
+                               LET_AND_RETURN,
+                               lint_span,
+                               "returning the result of a let binding from a block. Consider returning the \
+                                expression directly.");
         if cx.current_level(LET_AND_RETURN) != Level::Allow {
-            db.span_note(note_span,
-                                "this expression can be directly returned");
+            db.span_note(note_span, "this expression can be directly returned");
         }
     }
 }
@@ -122,8 +123,7 @@ impl LintPass for ReturnPass {
 }
 
 impl EarlyLintPass for ReturnPass {
-    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, _: &FnDecl,
-                block: &Block, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, _: &FnDecl, block: &Block, _: Span, _: NodeId) {
         self.check_block_return(cx, block);
     }
 

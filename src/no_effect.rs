@@ -37,9 +37,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
             let def = cx.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
             match def {
                 Some(DefStruct(..)) |
-                Some(DefVariant(..)) => {
-                    args.iter().all(|arg| has_no_effect(cx, arg))
-                }
+                Some(DefVariant(..)) => args.iter().all(|arg| has_no_effect(cx, arg)),
                 _ => false,
             }
         }
@@ -60,8 +58,7 @@ impl LateLintPass for NoEffectPass {
     fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if has_no_effect(cx, expr) {
-                span_lint(cx, NO_EFFECT, stmt.span,
-                          "statement with no effect");
+                span_lint(cx, NO_EFFECT, stmt.span, "statement with no effect");
             }
         }
     }

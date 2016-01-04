@@ -49,14 +49,16 @@ impl LateLintPass for NeedlessFeaturesPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMethodCall(ref name, _, _) = expr.node {
             if name.node.as_str() == "as_slice" && check_paths(cx, expr) {
-                span_lint(cx, UNSTABLE_AS_SLICE, expr.span,
-                          "used as_slice() from the 'convert' nightly feature. Use &[..] \
-                           instead");
+                span_lint(cx,
+                          UNSTABLE_AS_SLICE,
+                          expr.span,
+                          "used as_slice() from the 'convert' nightly feature. Use &[..] instead");
             }
             if name.node.as_str() == "as_mut_slice" && check_paths(cx, expr) {
-                span_lint(cx, UNSTABLE_AS_MUT_SLICE, expr.span,
-                          "used as_mut_slice() from the 'convert' nightly feature. Use &mut [..] \
-                           instead");
+                span_lint(cx,
+                          UNSTABLE_AS_MUT_SLICE,
+                          expr.span,
+                          "used as_mut_slice() from the 'convert' nightly feature. Use &mut [..] instead");
             }
         }
     }

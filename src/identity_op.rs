@@ -27,26 +27,26 @@ impl LintPass for IdentityOp {
 
 impl LateLintPass for IdentityOp {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
-        if in_macro(cx, e.span) { return; }
+        if in_macro(cx, e.span) {
+            return;
+        }
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
             match cmp.node {
                 BiAdd | BiBitOr | BiBitXor => {
                     check(cx, left, 0, e.span, right.span);
                     check(cx, right, 0, e.span, left.span);
                 }
-                BiShl | BiShr | BiSub =>
-                    check(cx, right, 0, e.span, left.span),
+                BiShl | BiShr | BiSub => check(cx, right, 0, e.span, left.span),
                 BiMul => {
                     check(cx, left, 1, e.span, right.span);
                     check(cx, right, 1, e.span, left.span);
                 }
-                BiDiv =>
-                    check(cx, right, 1, e.span, left.span),
+                BiDiv => check(cx, right, 1, e.span, left.span),
                 BiBitAnd => {
                     check(cx, left, -1, e.span, right.span);
                     check(cx, right, -1, e.span, left.span);
                 }
-                _ => ()
+                _ => (),
             }
         }
     }
@@ -61,9 +61,11 @@ fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
             1 => !is_negative(ty) && v == 1,
             _ => unreachable!(),
         } {
-            span_lint(cx, IDENTITY_OP, span, &format!(
-                "the operation is ineffective. Consider reducing it to `{}`",
-               snippet(cx, arg, "..")));
+            span_lint(cx,
+                      IDENTITY_OP,
+                      span,
+                      &format!("the operation is ineffective. Consider reducing it to `{}`",
+                               snippet(cx, arg, "..")));
         }
     }
 }

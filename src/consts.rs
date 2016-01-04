@@ -28,7 +28,7 @@ use syntax::ast::Sign::{self, Plus, Minus};
 pub enum FloatWidth {
     Fw32,
     Fw64,
-    FwAny
+    FwAny,
 }
 
 impl From<FloatTy> for FloatWidth {
@@ -85,9 +85,14 @@ impl Constant {
         match *self {
             ConstantByte(b) => Some(b as f64),
             ConstantFloat(ref s, _) => s.parse().ok(),
-            ConstantInt(i, ty) => Some(if is_negative(ty) {
-                -(i as f64) } else { i as f64 }),
-            _ => None
+            ConstantInt(i, ty) => {
+                Some(if is_negative(ty) {
+                    -(i as f64)
+                } else {
+                    i as f64
+                })
+            }
+            _ => None,
         }
     }
 }
@@ -95,14 +100,14 @@ impl Constant {
 impl PartialEq for Constant {
     fn eq(&self, other: &Constant) -> bool {
         match (self, other) {
-            (&ConstantStr(ref ls, ref lsty), &ConstantStr(ref rs, ref rsty)) =>
-                ls == rs && lsty == rsty,
+            (&ConstantStr(ref ls, ref lsty), &ConstantStr(ref rs, ref rsty)) => ls == rs && lsty == rsty,
             (&ConstantBinary(ref l), &ConstantBinary(ref r)) => l == r,
             (&ConstantByte(l), &ConstantByte(r)) => l == r,
             (&ConstantChar(l), &ConstantChar(r)) => l == r,
-            (&ConstantInt(lv, lty), &ConstantInt(rv, rty)) => lv == rv &&
-               (is_negative(lty) & (lv != 0)) == (is_negative(rty) & (rv != 0)),
-            (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) =>
+            (&ConstantInt(lv, lty), &ConstantInt(rv, rty)) => {
+                lv == rv && (is_negative(lty) & (lv != 0)) == (is_negative(rty) & (rv != 0))
+            }
+            (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) => {
                 if match (lw, rw) {
                     (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
                     _ => false,
@@ -111,11 +116,13 @@ impl PartialEq for Constant {
                         (Ok(l), Ok(r)) => l.eq(&r),
                         _ => false,
                     }
-                } else { false },
+                } else {
+                    false
+                }
+            }
             (&ConstantBool(l), &ConstantBool(r)) => l == r,
             (&ConstantVec(ref l), &ConstantVec(ref r)) => l == r,
-            (&ConstantRepeat(ref lv, ref ls), &ConstantRepeat(ref rv, ref rs)) =>
-                ls == rs && lv == rv,
+            (&ConstantRepeat(ref lv, ref ls), &ConstantRepeat(ref rv, ref rs)) => ls == rs && lv == rv,
             (&ConstantTuple(ref l), &ConstantTuple(ref r)) => l == r,
             _ => false, //TODO: Are there inter-type equalities?
         }
@@ -125,19 +132,24 @@ impl PartialEq for Constant {
 impl PartialOrd for Constant {
     fn partial_cmp(&self, other: &Constant) -> Option<Ordering> {
         match (self, other) {
-            (&ConstantStr(ref ls, ref lsty), &ConstantStr(ref rs, ref rsty)) =>
-                if lsty != rsty { None } else { Some(ls.cmp(rs)) },
+            (&ConstantStr(ref ls, ref lsty), &ConstantStr(ref rs, ref rsty)) => {
+                if lsty != rsty {
+                    None
+                } else {
+                    Some(ls.cmp(rs))
+                }
+            }
             (&ConstantByte(ref l), &ConstantByte(ref r)) => Some(l.cmp(r)),
             (&ConstantChar(ref l), &ConstantChar(ref r)) => Some(l.cmp(r)),
-            (&ConstantInt(ref lv, lty), &ConstantInt(ref rv, rty)) =>
-                Some(match (is_negative(lty) && *lv != 0,
-                            is_negative(rty) && *rv != 0) {
+            (&ConstantInt(ref lv, lty), &ConstantInt(ref rv, rty)) => {
+                Some(match (is_negative(lty) && *lv != 0, is_negative(rty) && *rv != 0) {
                     (true, true) => rv.cmp(lv),
                     (false, false) => lv.cmp(rv),
                     (true, false) => Less,
                     (false, true) => Greater,
-                }),
-            (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) =>
+                })
+            }
+            (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) => {
                 if match (lw, rw) {
                     (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
                     _ => false,
@@ -146,17 +158,21 @@ impl PartialOrd for Constant {
                         (Ok(ref l), Ok(ref r)) => l.partial_cmp(r),
                         _ => None,
                     }
-                } else { None },
+                } else {
+                    None
+                }
+            }
             (&ConstantBool(ref l), &ConstantBool(ref r)) => Some(l.cmp(r)),
             (&ConstantVec(ref l), &ConstantVec(ref r)) => l.partial_cmp(&r),
-            (&ConstantRepeat(ref lv, ref ls), &ConstantRepeat(ref rv, ref rs)) =>
+            (&ConstantRepeat(ref lv, ref ls), &ConstantRepeat(ref rv, ref rs)) => {
                 match lv.partial_cmp(rv) {
                     Some(Equal) => Some(ls.cmp(rs)),
                     x => x,
-                },
+                }
+            }
             (&ConstantTuple(ref l), &ConstantTuple(ref r)) => l.partial_cmp(r),
-             _ => None, //TODO: Are there any useful inter-type orderings?
-         }
+            _ => None, //TODO: Are there any useful inter-type orderings?
+        }
     }
 }
 
@@ -178,9 +194,11 @@ impl fmt::Display for Constant {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ConstantStr(ref s, _) => write!(fmt, "{:?}", s),
-            ConstantByte(ref b) =>
-                write!(fmt, "b'").and_then(|_| format_byte(fmt, *b))
-                                 .and_then(|_| write!(fmt, "'")),
+            ConstantByte(ref b) => {
+                write!(fmt, "b'")
+                    .and_then(|_| format_byte(fmt, *b))
+                    .and_then(|_| write!(fmt, "'"))
+            }
             ConstantBinary(ref bs) => {
                 try!(write!(fmt, "b\""));
                 for b in bs.iter() {
@@ -191,14 +209,23 @@ impl fmt::Display for Constant {
             ConstantChar(ref c) => write!(fmt, "'{}'", c),
             ConstantInt(ref i, ref ity) => {
                 let (sign, suffix) = match *ity {
-                    LitIntType::SignedIntLit(ref sity, ref sign) =>
-                        (if let Sign::Minus = *sign { "-" } else { "" },
-                         sity.ty_to_string()),
-                    LitIntType::UnsignedIntLit(ref uity) =>
-                        ("", uity.ty_to_string()),
-                    LitIntType::UnsuffixedIntLit(ref sign) =>
-                        (if let Sign::Minus = *sign { "-" } else { "" },
-                         "".into()),
+                    LitIntType::SignedIntLit(ref sity, ref sign) => {
+                        (if let Sign::Minus = *sign {
+                            "-"
+                        } else {
+                            ""
+                        },
+                         sity.ty_to_string())
+                    }
+                    LitIntType::UnsignedIntLit(ref uity) => ("", uity.ty_to_string()),
+                    LitIntType::UnsuffixedIntLit(ref sign) => {
+                        (if let Sign::Minus = *sign {
+                            "-"
+                        } else {
+                            ""
+                        },
+                         "".into())
+                    }
                 };
                 write!(fmt, "{}{}{}", sign, i, suffix)
             }
@@ -212,12 +239,22 @@ impl fmt::Display for Constant {
             }
             ConstantBool(ref b) => write!(fmt, "{}", b),
             ConstantRepeat(ref c, ref n) => write!(fmt, "[{}; {}]", c, n),
-            ConstantVec(ref v) => write!(fmt, "[{}]",
-                                         v.iter().map(|i| format!("{}", i))
-                                                 .collect::<Vec<_>>().join(", ")),
-            ConstantTuple(ref t) => write!(fmt, "({})",
-                                           t.iter().map(|i| format!("{}", i))
-                                                   .collect::<Vec<_>>().join(", ")),
+            ConstantVec(ref v) => {
+                write!(fmt,
+                       "[{}]",
+                       v.iter()
+                        .map(|i| format!("{}", i))
+                        .collect::<Vec<_>>()
+                        .join(", "))
+            }
+            ConstantTuple(ref t) => {
+                write!(fmt,
+                       "({})",
+                       t.iter()
+                        .map(|i| format!("{}", i))
+                        .collect::<Vec<_>>()
+                        .join(", "))
+            }
         }
     }
 }
@@ -242,7 +279,9 @@ fn constant_not(o: Constant) -> Option<Constant> {
         ConstantInt(value, ty) => {
             let (nvalue, nty) = match ty {
                 SignedIntLit(ity, Plus) => {
-                    if value == ::std::u64::MAX { return None; }
+                    if value == ::std::u64::MAX {
+                        return None;
+                    }
                     (value + 1, SignedIntLit(ity, Minus))
                 }
                 SignedIntLit(ity, Minus) => {
@@ -258,30 +297,40 @@ fn constant_not(o: Constant) -> Option<Constant> {
                         UintTy::TyU16 => ::std::u16::MAX as u64,
                         UintTy::TyU32 => ::std::u32::MAX as u64,
                         UintTy::TyU64 => ::std::u64::MAX,
-                        UintTy::TyUs => { return None; }  // refuse to guess
+                        UintTy::TyUs => {
+                            return None;
+                        }  // refuse to guess
                     };
                     (!value & mask, UnsignedIntLit(ity))
                 }
-                UnsuffixedIntLit(_) => { return None; }  // refuse to guess
+                UnsuffixedIntLit(_) => {
+                    return None;
+                }  // refuse to guess
             };
             ConstantInt(nvalue, nty)
         }
-        _ => { return None; }
+        _ => {
+            return None;
+        }
     })
 }
 
 fn constant_negate(o: Constant) -> Option<Constant> {
     Some(match o {
-        ConstantInt(value, ty) =>
-            ConstantInt(value, match ty {
-                SignedIntLit(ity, sign) =>
-                    SignedIntLit(ity, neg_sign(sign)),
-                UnsuffixedIntLit(sign) => UnsuffixedIntLit(neg_sign(sign)),
-                _ => { return None; }
-            }),
-        ConstantFloat(is, ty) =>
-            ConstantFloat(neg_float_str(is), ty),
-        _ => { return None; }
+        ConstantInt(value, ty) => {
+            ConstantInt(value,
+                        match ty {
+                            SignedIntLit(ity, sign) => SignedIntLit(ity, neg_sign(sign)),
+                            UnsuffixedIntLit(sign) => UnsuffixedIntLit(neg_sign(sign)),
+                            _ => {
+                                return None;
+                            }
+                        })
+        }
+        ConstantFloat(is, ty) => ConstantFloat(neg_float_str(is), ty),
+        _ => {
+            return None;
+        }
     })
 }
 
@@ -316,25 +365,42 @@ pub fn is_negative(ty: LitIntType) -> bool {
 
 fn unify_int_type(l: LitIntType, r: LitIntType, s: Sign) -> Option<LitIntType> {
     match (l, r) {
-        (SignedIntLit(lty, _), SignedIntLit(rty, _)) => if lty == rty {
-            Some(SignedIntLit(lty, s)) } else { None },
-        (UnsignedIntLit(lty), UnsignedIntLit(rty)) =>
+        (SignedIntLit(lty, _), SignedIntLit(rty, _)) => {
+            if lty == rty {
+                Some(SignedIntLit(lty, s))
+            } else {
+                None
+            }
+        }
+        (UnsignedIntLit(lty), UnsignedIntLit(rty)) => {
             if s == Plus && lty == rty {
                 Some(UnsignedIntLit(lty))
-            } else { None },
+            } else {
+                None
+            }
+        }
         (UnsuffixedIntLit(_), UnsuffixedIntLit(_)) => Some(UnsuffixedIntLit(s)),
         (SignedIntLit(lty, _), UnsuffixedIntLit(_)) => Some(SignedIntLit(lty, s)),
-        (UnsignedIntLit(lty), UnsuffixedIntLit(rs)) => if rs == Plus {
-            Some(UnsignedIntLit(lty)) } else { None },
+        (UnsignedIntLit(lty), UnsuffixedIntLit(rs)) => {
+            if rs == Plus {
+                Some(UnsignedIntLit(lty))
+            } else {
+                None
+            }
+        }
         (UnsuffixedIntLit(_), SignedIntLit(rty, _)) => Some(SignedIntLit(rty, s)),
-        (UnsuffixedIntLit(ls), UnsignedIntLit(rty)) => if ls == Plus {
-            Some(UnsignedIntLit(rty)) } else { None },
+        (UnsuffixedIntLit(ls), UnsignedIntLit(rty)) => {
+            if ls == Plus {
+                Some(UnsignedIntLit(rty))
+            } else {
+                None
+            }
+        }
         _ => None,
     }
 }
 
-fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) ->
-        Option<Constant> {
+fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) -> Option<Constant> {
     if neg > pos {
         unify_int_type(nty, pty, Minus).map(|ty| ConstantInt(neg - pos, ty))
     } else {
@@ -342,70 +408,80 @@ fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) ->
     }
 }
 
-fn sub_int(l: u64, lty: LitIntType, r: u64, rty: LitIntType, neg: bool) ->
-        Option<Constant> {
-     unify_int_type(lty, rty, if neg { Minus } else { Plus }).and_then(
-        |ty| l.checked_sub(r).map(|v| ConstantInt(v, ty)))
+fn sub_int(l: u64, lty: LitIntType, r: u64, rty: LitIntType, neg: bool) -> Option<Constant> {
+    unify_int_type(lty,
+                   rty,
+                   if neg {
+                       Minus
+                   } else {
+                       Plus
+                   })
+        .and_then(|ty| l.checked_sub(r).map(|v| ConstantInt(v, ty)))
 }
 
 
 pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
-    let mut cx = ConstEvalLateContext { lcx: Some(lcx), needed_resolution: false };
+    let mut cx = ConstEvalLateContext {
+        lcx: Some(lcx),
+        needed_resolution: false,
+    };
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
 
 pub fn constant_simple(e: &Expr) -> Option<Constant> {
-    let mut cx = ConstEvalLateContext { lcx: None, needed_resolution: false };
+    let mut cx = ConstEvalLateContext {
+        lcx: None,
+        needed_resolution: false,
+    };
     cx.expr(e)
 }
 
 struct ConstEvalLateContext<'c, 'cc: 'c> {
     lcx: Option<&'c LateContext<'c, 'cc>>,
-    needed_resolution: bool
+    needed_resolution: bool,
 }
 
 impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
-
     /// simple constant folding: Insert an expression, get a constant or none.
     fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
             ExprPath(_, _) => self.fetch_path(e),
             ExprBlock(ref block) => self.block(block),
-            ExprIf(ref cond, ref then, ref otherwise) =>
-                self.ifthenelse(cond, then, otherwise),
+            ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
             ExprVec(ref vec) => self.multi(vec).map(ConstantVec),
             ExprTup(ref tup) => self.multi(tup).map(ConstantTuple),
-            ExprRepeat(ref value, ref number) =>
-                self.binop_apply(value, number, |v, n|
-                    Some(ConstantRepeat(Box::new(v), n.as_u64() as usize))),
-            ExprUnary(op, ref operand) => self.expr(operand).and_then(
-                |o| match op {
-                    UnNot => constant_not(o),
-                    UnNeg => constant_negate(o),
-                    UnDeref => Some(o),
-                }),
-            ExprBinary(op, ref left, ref right) =>
-                self.binop(op, left, right),
-            //TODO: add other expressions
+            ExprRepeat(ref value, ref number) => {
+                self.binop_apply(value, number, |v, n| Some(ConstantRepeat(Box::new(v), n.as_u64() as usize)))
+            }
+            ExprUnary(op, ref operand) => {
+                self.expr(operand).and_then(|o| {
+                    match op {
+                        UnNot => constant_not(o),
+                        UnNeg => constant_negate(o),
+                        UnDeref => Some(o),
+                    }
+                })
+            }
+            ExprBinary(op, ref left, ref right) => self.binop(op, left, right),
+            // TODO: add other expressions
             _ => None,
         }
     }
 
     /// create `Some(Vec![..])` of all constants, unless there is any
     /// non-constant part
-    fn multi<E: Deref<Target=Expr> + Sized>(&mut self, vec: &[E]) ->
-            Option<Vec<Constant>> {
-        vec.iter().map(|elem| self.expr(elem))
-                  .collect::<Option<_>>()
+    fn multi<E: Deref<Target = Expr> + Sized>(&mut self, vec: &[E]) -> Option<Vec<Constant>> {
+        vec.iter()
+           .map(|elem| self.expr(elem))
+           .collect::<Option<_>>()
     }
 
     /// lookup a possibly constant expression from a ExprPath
     fn fetch_path(&mut self, e: &Expr) -> Option<Constant> {
         if let Some(lcx) = self.lcx {
             let mut maybe_id = None;
-            if let Some(&PathResolution { base_def: DefConst(id), ..}) =
-                lcx.tcx.def_map.borrow().get(&e.id) {
+            if let Some(&PathResolution { base_def: DefConst(id), ..}) = lcx.tcx.def_map.borrow().get(&e.id) {
                 maybe_id = Some(id);
             }
             // separate if lets to avoid doubleborrowing the defmap
@@ -426,63 +502,84 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     fn block(&mut self, block: &Block) -> Option<Constant> {
         if block.stmts.is_empty() {
             block.expr.as_ref().and_then(|ref b| self.expr(b))
-        } else { None }
+        } else {
+            None
+        }
     }
 
-    fn ifthenelse(&mut self, cond: &Expr, then: &Block, otherwise: &Option<P<Expr>>)
-                  -> Option<Constant> {
+    fn ifthenelse(&mut self, cond: &Expr, then: &Block, otherwise: &Option<P<Expr>>) -> Option<Constant> {
         if let Some(ConstantBool(b)) = self.expr(cond) {
             if b {
                 self.block(then)
             } else {
                 otherwise.as_ref().and_then(|expr| self.expr(expr))
             }
-        } else { None }
+        } else {
+            None
+        }
     }
 
     fn binop(&mut self, op: BinOp, left: &Expr, right: &Expr) -> Option<Constant> {
         match op.node {
-            BiAdd => self.binop_apply(left, right, |l, r|
-                match (l, r) {
-                    (ConstantByte(l8), ConstantByte(r8)) =>
-                        l8.checked_add(r8).map(ConstantByte),
-                    (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
-                        let (ln, rn) = (is_negative(lty), is_negative(rty));
-                        if ln == rn {
-                            unify_int_type(lty, rty, if ln { Minus } else { Plus })
-                                .and_then(|ty| l64.checked_add(r64).map(
-                                    |v| ConstantInt(v, ty)))
-                        } else {
-                            if ln {
-                                add_neg_int(r64, rty, l64, lty)
+            BiAdd => {
+                self.binop_apply(left, right, |l, r| {
+                    match (l, r) {
+                        (ConstantByte(l8), ConstantByte(r8)) => l8.checked_add(r8).map(ConstantByte),
+                        (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
+                            let (ln, rn) = (is_negative(lty), is_negative(rty));
+                            if ln == rn {
+                                unify_int_type(lty,
+                                               rty,
+                                               if ln {
+                                                   Minus
+                                               } else {
+                                                   Plus
+                                               })
+                                    .and_then(|ty| l64.checked_add(r64).map(|v| ConstantInt(v, ty)))
                             } else {
-                                add_neg_int(l64, lty, r64, rty)
+                                if ln {
+                                    add_neg_int(r64, rty, l64, lty)
+                                } else {
+                                    add_neg_int(l64, lty, r64, rty)
+                                }
                             }
                         }
+                        // TODO: float (would need bignum library?)
+                        _ => None,
                     }
-                    // TODO: float (would need bignum library?)
-                    _ => None
-                }),
-            BiSub => self.binop_apply(left, right, |l, r|
-                match (l, r) {
-                    (ConstantByte(l8), ConstantByte(r8)) => if r8 > l8 {
-                        None } else { Some(ConstantByte(l8 - r8)) },
-                    (ConstantInt(l64, lty), ConstantInt(r64, rty)) =>
-                        match (is_negative(lty), is_negative(rty)) {
-                            (false, false) => sub_int(l64, lty, r64, rty, r64 > l64),
-                            (true, true) => sub_int(l64, lty, r64, rty, l64 > r64),
-                            (true, false) => unify_int_type(lty, rty, Minus)
-                                .and_then(|ty| l64.checked_add(r64).map(
-                                    |v| ConstantInt(v, ty))),
-                            (false, true) => unify_int_type(lty, rty, Plus)
-                                .and_then(|ty| l64.checked_add(r64).map(
-                                    |v| ConstantInt(v, ty))),
-                        },
-                    _ => None,
-                }),
+                })
+            }
+            BiSub => {
+                self.binop_apply(left, right, |l, r| {
+                    match (l, r) {
+                        (ConstantByte(l8), ConstantByte(r8)) => {
+                            if r8 > l8 {
+                                None
+                            } else {
+                                Some(ConstantByte(l8 - r8))
+                            }
+                        }
+                        (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
+                            match (is_negative(lty), is_negative(rty)) {
+                                (false, false) => sub_int(l64, lty, r64, rty, r64 > l64),
+                                (true, true) => sub_int(l64, lty, r64, rty, l64 > r64),
+                                (true, false) => {
+                                    unify_int_type(lty, rty, Minus)
+                                        .and_then(|ty| l64.checked_add(r64).map(|v| ConstantInt(v, ty)))
+                                }
+                                (false, true) => {
+                                    unify_int_type(lty, rty, Plus)
+                                        .and_then(|ty| l64.checked_add(r64).map(|v| ConstantInt(v, ty)))
+                                }
+                            }
+                        }
+                        _ => None,
+                    }
+                })
+            }
             BiMul => self.divmul(left, right, u64::checked_mul),
             BiDiv => self.divmul(left, right, u64::checked_div),
-            //BiRem,
+            // BiRem,
             BiAnd => self.short_circuit(left, right, false),
             BiOr => self.short_circuit(left, right, true),
             BiBitXor => self.bitop(left, right, |x, y| x ^ y),
@@ -490,70 +587,86 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             BiBitOr => self.bitop(left, right, |x, y| (x | y)),
             BiShl => self.bitop(left, right, |x, y| x << y),
             BiShr => self.bitop(left, right, |x, y| x >> y),
-            BiEq => self.binop_apply(left, right,
-                |l, r| Some(ConstantBool(l == r))),
-            BiNe => self.binop_apply(left, right,
-                |l, r| Some(ConstantBool(l != r))),
+            BiEq => self.binop_apply(left, right, |l, r| Some(ConstantBool(l == r))),
+            BiNe => self.binop_apply(left, right, |l, r| Some(ConstantBool(l != r))),
             BiLt => self.cmp(left, right, Less, true),
             BiLe => self.cmp(left, right, Greater, false),
             BiGe => self.cmp(left, right, Less, false),
             BiGt => self.cmp(left, right, Greater, true),
-            _ => None
+            _ => None,
         }
     }
 
-    fn divmul<F>(&mut self, left: &Expr, right: &Expr, f: F)
-            -> Option<Constant> where F: Fn(u64, u64) -> Option<u64> {
-        self.binop_apply(left, right, |l, r|
+    fn divmul<F>(&mut self, left: &Expr, right: &Expr, f: F) -> Option<Constant>
+        where F: Fn(u64, u64) -> Option<u64>
+    {
+        self.binop_apply(left, right, |l, r| {
             match (l, r) {
                 (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
-                    f(l64, r64).and_then(|value|
-                        unify_int_type(lty, rty, if is_negative(lty) ==
-                                is_negative(rty) { Plus } else { Minus })
-                            .map(|ty| ConstantInt(value, ty)))
+                    f(l64, r64).and_then(|value| {
+                        unify_int_type(lty,
+                                       rty,
+                                       if is_negative(lty) == is_negative(rty) {
+                                           Plus
+                                       } else {
+                                           Minus
+                                       })
+                            .map(|ty| ConstantInt(value, ty))
+                    })
                 }
                 _ => None,
-            })
+            }
+        })
     }
 
-    fn bitop<F>(&mut self, left: &Expr, right: &Expr, f: F)
-            -> Option<Constant> where F: Fn(u64, u64) -> u64 {
-        self.binop_apply(left, right, |l, r| match (l, r) {
-            (ConstantBool(l), ConstantBool(r)) =>
-                Some(ConstantBool(f(l as u64, r as u64) != 0)),
-            (ConstantByte(l8), ConstantByte(r8)) =>
-                Some(ConstantByte(f(l8 as u64, r8 as u64) as u8)),
-            (ConstantInt(l, lty), ConstantInt(r, rty)) =>
-                unify_int_type(lty, rty, Plus).map(|ty| ConstantInt(f(l, r), ty)),
-            _ => None
+    fn bitop<F>(&mut self, left: &Expr, right: &Expr, f: F) -> Option<Constant>
+        where F: Fn(u64, u64) -> u64
+    {
+        self.binop_apply(left, right, |l, r| {
+            match (l, r) {
+                (ConstantBool(l), ConstantBool(r)) => Some(ConstantBool(f(l as u64, r as u64) != 0)),
+                (ConstantByte(l8), ConstantByte(r8)) => Some(ConstantByte(f(l8 as u64, r8 as u64) as u8)),
+                (ConstantInt(l, lty), ConstantInt(r, rty)) => {
+                    unify_int_type(lty, rty, Plus).map(|ty| ConstantInt(f(l, r), ty))
+                }
+                _ => None,
+            }
         })
     }
 
     fn cmp(&mut self, left: &Expr, right: &Expr, ordering: Ordering, b: bool) -> Option<Constant> {
-        self.binop_apply(left, right, |l, r| l.partial_cmp(&r).map(|o|
-            ConstantBool(b == (o == ordering))))
+        self.binop_apply(left,
+                         right,
+                         |l, r| l.partial_cmp(&r).map(|o| ConstantBool(b == (o == ordering))))
     }
 
     fn binop_apply<F>(&mut self, left: &Expr, right: &Expr, op: F) -> Option<Constant>
-    where F: Fn(Constant, Constant) -> Option<Constant> {
+        where F: Fn(Constant, Constant) -> Option<Constant>
+    {
         if let (Some(lc), Some(rc)) = (self.expr(left), self.expr(right)) {
             op(lc, rc)
-        } else { None }
+        } else {
+            None
+        }
     }
 
     fn short_circuit(&mut self, left: &Expr, right: &Expr, b: bool) -> Option<Constant> {
-        self.expr(left).and_then(|left|
+        self.expr(left).and_then(|left| {
             if let ConstantBool(lbool) = left {
                 if lbool == b {
                     Some(left)
                 } else {
-                    self.expr(right).and_then(|right|
+                    self.expr(right).and_then(|right| {
                         if let ConstantBool(_) = right {
                             Some(right)
-                        } else { None }
-                    )
+                        } else {
+                            None
+                        }
+                    })
                 }
-            } else { None }
-        )
+            } else {
+                None
+            }
+        })
     }
 }

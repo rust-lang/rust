@@ -34,7 +34,8 @@ impl LateLintPass for UselessTransmute {
                     let to_ty = cx.tcx.expr_ty(e);
 
                     if from_ty == to_ty {
-                        cx.span_lint(USELESS_TRANSMUTE, e.span,
+                        cx.span_lint(USELESS_TRANSMUTE,
+                                     e.span,
                                      &format!("transmute from a type (`{}`) to itself", from_ty));
                     }
                 }

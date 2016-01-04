@@ -52,17 +52,13 @@ impl LateLintPass for MutexAtomic {
             if match_type(cx, ty, &MUTEX_PATH) {
                 let mutex_param = &subst.types.get(ParamSpace::TypeSpace, 0).sty;
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
-                    let msg = format!("Consider using an {} instead of a \
-                                       Mutex here. If you just want the \
-                                       locking behaviour and not the internal \
-                                       type, consider using Mutex<()>.",
+                    let msg = format!("Consider using an {} instead of a Mutex here. If you just want the locking \
+                                       behaviour and not the internal type, consider using Mutex<()>.",
                                       atomic_name);
                     match *mutex_param {
-                        ty::TyUint(t) if t != ast::TyUs =>
-                            span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
-                        ty::TyInt(t) if t != ast::TyIs =>
-                            span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
-                        _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg)
+                        ty::TyUint(t) if t != ast::TyUs => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::TyInt(t) if t != ast::TyIs => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
                     };
                 }
             }
@@ -76,6 +72,6 @@ fn get_atomic_name(ty: &ty::TypeVariants) -> Option<(&'static str)> {
         ty::TyUint(_) => Some("AtomicUsize"),
         ty::TyInt(_) => Some("AtomicIsize"),
         ty::TyRawPtr(_) => Some("AtomicPtr"),
-        _ => None
+        _ => None,
     }
 }

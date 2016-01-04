@@ -43,13 +43,7 @@ impl LintPass for EscapePass {
 }
 
 impl LateLintPass for EscapePass {
-    fn check_fn(&mut self,
-                cx: &LateContext,
-                _: visit::FnKind,
-                decl: &FnDecl,
-                body: &Block,
-                _: Span,
-                id: NodeId) {
+    fn check_fn(&mut self, cx: &LateContext, _: visit::FnKind, decl: &FnDecl, body: &Block, _: Span, id: NodeId) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
         let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(param_env), false);
         let mut v = EscapeDelegate {
@@ -70,11 +64,7 @@ impl LateLintPass for EscapePass {
 }
 
 impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self,
-               _: NodeId,
-               _: Span,
-               cmt: cmt<'tcx>,
-               mode: ConsumeMode) {
+    fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
 
         if let Categorization::Local(lid) = cmt.cat {
             if self.set.contains(&lid) {
@@ -119,12 +109,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
 
     }
-    fn borrow(&mut self,
-              borrow_id: NodeId,
-              _: Span,
-              cmt: cmt<'tcx>,
-              _: ty::Region,
-              _: ty::BorrowKind,
+    fn borrow(&mut self, borrow_id: NodeId, _: Span, cmt: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind,
               loan_cause: LoanCause) {
 
         if let Categorization::Local(lid) = cmt.cat {
@@ -145,9 +130,15 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                     }
                 } else if LoanCause::AddrOf == loan_cause {
                     // &x
-                    if let Some(&AutoAdjustment::AdjustDerefRef(adj)) =
-                           self.cx.tcx.tables.borrow().adjustments
-                               .get(&self.cx.tcx.map.get_parent_node(borrow_id)) {
+                    if let Some(&AutoAdjustment::AdjustDerefRef(adj)) = self.cx
+                                                                            .tcx
+                                                                            .tables
+                                                                            .borrow()
+                                                                            .adjustments
+                                                                            .get(&self.cx
+                                                                                      .tcx
+                                                                                      .map
+                                                                                      .get_parent_node(borrow_id)) {
                         if adj.autoderefs <= 1 {
                             // foo(&x) where no extra autoreffing is happening
                             self.set.remove(&lid);
@@ -162,10 +153,5 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
-    fn mutate(&mut self,
-              _: NodeId,
-              _: Span,
-              _: cmt<'tcx>,
-              _: MutateMode) {
-    }
+    fn mutate(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: MutateMode) {}
 }

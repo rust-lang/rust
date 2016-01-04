@@ -5,8 +5,8 @@ use rustc::middle::subst::{Subst, TypeSpace};
 use std::iter;
 use std::borrow::Cow;
 
-use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args,
-            match_trait_method, walk_ptrs_ty_depth, walk_ptrs_ty};
+use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args, match_trait_method,
+            walk_ptrs_ty_depth, walk_ptrs_ty};
 use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
 use utils::MethodArgs;
 
@@ -172,9 +172,16 @@ declare_lint!(pub SEARCH_IS_SOME, Warn,
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
-                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION, WRONG_PUB_SELF_CONVENTION,
-                    OK_EXPECT, OPTION_MAP_UNWRAP_OR, OPTION_MAP_UNWRAP_OR_ELSE)
+        lint_array!(OPTION_UNWRAP_USED,
+                    RESULT_UNWRAP_USED,
+                    STR_TO_STRING,
+                    STRING_TO_STRING,
+                    SHOULD_IMPLEMENT_TRAIT,
+                    WRONG_SELF_CONVENTION,
+                    WRONG_PUB_SELF_CONVENTION,
+                    OK_EXPECT,
+                    OPTION_MAP_UNWRAP_OR,
+                    OPTION_MAP_UNWRAP_OR_ELSE)
     }
 }
 
@@ -183,29 +190,21 @@ impl LateLintPass for MethodsPass {
         if let ExprMethodCall(_, _, _) = expr.node {
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                 lint_unwrap(cx, expr, arglists[0]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
                 lint_to_string(cx, expr, arglists[0]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
                 lint_ok_expect(cx, expr, arglists[0]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or"]) {
                 lint_map_unwrap_or(cx, expr, arglists[0], arglists[1]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
                 lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
                 lint_filter_next(cx, expr, arglists[0]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
                 lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
                 lint_search_is_some(cx, expr, "position", arglists[0], arglists[1]);
-            }
-            else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
+            } else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
                 lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
             }
         }
@@ -235,16 +234,22 @@ impl LateLintPass for MethodsPass {
                     let is_copy = is_copy(cx, &ty, &item);
                     for &(prefix, self_kinds) in &CONVENTIONS {
                         if name.as_str().starts_with(prefix) &&
-                                !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
+                           !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
                             let lint = if item.vis == Visibility::Public {
                                 WRONG_PUB_SELF_CONVENTION
                             } else {
                                 WRONG_SELF_CONVENTION
                             };
-                            span_lint(cx, lint, sig.explicit_self.span, &format!(
-                                "methods called `{}*` usually take {}; consider choosing a less \
-                                 ambiguous name", prefix,
-                                &self_kinds.iter().map(|k| k.description()).collect::<Vec<_>>().join(" or ")));
+                            span_lint(cx,
+                                      lint,
+                                      sig.explicit_self.span,
+                                      &format!("methods called `{}*` usually take {}; consider choosing a less \
+                                                ambiguous name",
+                                               prefix,
+                                               &self_kinds.iter()
+                                                          .map(|k| k.description())
+                                                          .collect::<Vec<_>>()
+                                                          .join(" or ")));
                         }
                     }
                 }
@@ -253,30 +258,34 @@ impl LateLintPass for MethodsPass {
     }
 }
 
-#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+#[allow(ptr_arg)]
+// Type of MethodArgs is potentially a Vec
 /// lint use of `unwrap()` for `Option`s and `Result`s
 fn lint_unwrap(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&unwrap_args[0]));
 
     let mess = if match_type(cx, obj_ty, &OPTION_PATH) {
         Some((OPTION_UNWRAP_USED, "an Option", "None"))
-    }
-    else if match_type(cx, obj_ty, &RESULT_PATH) {
+    } else if match_type(cx, obj_ty, &RESULT_PATH) {
         Some((RESULT_UNWRAP_USED, "a Result", "Err"))
-    }
-    else {
+    } else {
         None
     };
 
     if let Some((lint, kind, none_value)) = mess {
-        span_lint(cx, lint, expr.span,
-                  &format!("used unwrap() on {} value. If you don't want to handle the {} \
-                            case gracefully, consider using expect() to provide a better panic
-                            message", kind, none_value));
+        span_lint(cx,
+                  lint,
+                  expr.span,
+                  &format!("used unwrap() on {} value. If you don't want to handle the {} case gracefully, consider \
+                            using expect() to provide a better panic
+                            message",
+                           kind,
+                           none_value));
     }
 }
 
-#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+#[allow(ptr_arg)]
+// Type of MethodArgs is potentially a Vec
 /// lint use of `to_string()` for `&str`s and `String`s
 fn lint_to_string(cx: &LateContext, expr: &Expr, to_string_args: &MethodArgs) {
     let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&to_string_args[0]));
@@ -284,21 +293,19 @@ fn lint_to_string(cx: &LateContext, expr: &Expr, to_string_args: &MethodArgs) {
     if obj_ty.sty == ty::TyStr {
         let mut arg_str = snippet(cx, to_string_args[0].span, "_");
         if ptr_depth > 1 {
-            arg_str = Cow::Owned(format!(
-                "({}{})",
-                iter::repeat('*').take(ptr_depth - 1).collect::<String>(),
-                arg_str));
+            arg_str = Cow::Owned(format!("({}{})", iter::repeat('*').take(ptr_depth - 1).collect::<String>(), arg_str));
         }
-        span_lint(cx, STR_TO_STRING, expr.span,
-                  &format!("`{}.to_owned()` is faster", arg_str));
-    }
-    else if match_type(cx, obj_ty, &STRING_PATH) {
-        span_lint(cx, STRING_TO_STRING, expr.span,
+        span_lint(cx, STR_TO_STRING, expr.span, &format!("`{}.to_owned()` is faster", arg_str));
+    } else if match_type(cx, obj_ty, &STRING_PATH) {
+        span_lint(cx,
+                  STRING_TO_STRING,
+                  expr.span,
                   "`String.to_string()` is a no-op; use `clone()` to make a copy");
     }
 }
 
-#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+#[allow(ptr_arg)]
+// Type of MethodArgs is potentially a Vec
 /// lint use of `ok().expect()` for `Result`s
 fn lint_ok_expect(cx: &LateContext, expr: &Expr, ok_args: &MethodArgs) {
     // lint if the caller of `ok()` is a `Result`
@@ -306,107 +313,120 @@ fn lint_ok_expect(cx: &LateContext, expr: &Expr, ok_args: &MethodArgs) {
         let result_type = cx.tcx.expr_ty(&ok_args[0]);
         if let Some(error_type) = get_error_type(cx, result_type) {
             if has_debug_impl(error_type, cx) {
-                span_lint(cx, OK_EXPECT, expr.span,
-                          "called `ok().expect()` on a Result value. You can call `expect` \
-                           directly on the `Result`");
+                span_lint(cx,
+                          OK_EXPECT,
+                          expr.span,
+                          "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`");
             }
         }
     }
 }
 
-#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+#[allow(ptr_arg)]
+// Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or()` for `Option`s
-fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
-                      unwrap_args: &MethodArgs) {
+fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, map_args: &MethodArgs, unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
-        let msg = "called `map(f).unwrap_or(a)` on an Option value. This can be done more \
-                   directly by calling `map_or(a, f)` instead";
+        let msg = "called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling \
+                   `map_or(a, f)` instead";
         // get snippets for args to map() and unwrap_or()
         let map_snippet = snippet(cx, map_args[1].span, "..");
         let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or() have the same span
-        let multiline = map_snippet.lines().count() > 1
-                        || unwrap_snippet.lines().count() > 1;
+        let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
         let same_span = map_args[1].span.expn_id == unwrap_args[1].span.expn_id;
         if same_span && !multiline {
-            span_note_and_lint(
-                cx, OPTION_MAP_UNWRAP_OR, expr.span, msg, expr.span,
-                &format!("replace `map({0}).unwrap_or({1})` with `map_or({1}, {0})`", map_snippet,
-                         unwrap_snippet)
-            );
-        }
-        else if same_span && multiline {
+            span_note_and_lint(cx,
+                               OPTION_MAP_UNWRAP_OR,
+                               expr.span,
+                               msg,
+                               expr.span,
+                               &format!("replace `map({0}).unwrap_or({1})` with `map_or({1}, {0})`",
+                                        map_snippet,
+                                        unwrap_snippet));
+        } else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg);
         };
     }
 }
 
-#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+#[allow(ptr_arg)]
+// Type of MethodArgs is potentially a Vec
 /// lint use of `map().unwrap_or_else()` for `Option`s
-fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
-                           unwrap_args: &MethodArgs) {
+fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, map_args: &MethodArgs, unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
         // lint message
-        let msg = "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more \
-                   directly by calling `map_or_else(g, f)` instead";
+        let msg = "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling \
+                   `map_or_else(g, f)` instead";
         // get snippets for args to map() and unwrap_or_else()
         let map_snippet = snippet(cx, map_args[1].span, "..");
         let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or_else() have the same span
-        let multiline = map_snippet.lines().count() > 1
-                        || unwrap_snippet.lines().count() > 1;
+        let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
         let same_span = map_args[1].span.expn_id == unwrap_args[1].span.expn_id;
         if same_span && !multiline {
-            span_note_and_lint(
-                cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg, expr.span,
-                &format!("replace `map({0}).unwrap_or_else({1})` with `with map_or_else({1}, {0})`",
-                          map_snippet, unwrap_snippet)
-            );
-        }
-        else if same_span && multiline {
+            span_note_and_lint(cx,
+                               OPTION_MAP_UNWRAP_OR_ELSE,
+                               expr.span,
+                               msg,
+                               expr.span,
+                               &format!("replace `map({0}).unwrap_or_else({1})` with `with map_or_else({1}, {0})`",
+                                        map_snippet,
+                                        unwrap_snippet));
+        } else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg);
         };
     }
 }
 
-#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+#[allow(ptr_arg)]
+// Type of MethodArgs is potentially a Vec
 /// lint use of `filter().next() for Iterators`
 fn lint_filter_next(cx: &LateContext, expr: &Expr, filter_args: &MethodArgs) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
-        let msg = "called `filter(p).next()` on an Iterator. This is more succinctly expressed by \
-                   calling `.find(p)` instead.";
+        let msg = "called `filter(p).next()` on an Iterator. This is more succinctly expressed by calling `.find(p)` \
+                   instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
-        if filter_snippet.lines().count() <= 1 { // add note if not multi-line
-            span_note_and_lint(cx, FILTER_NEXT, expr.span, msg, expr.span,
-                &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet));
-        }
-        else {
+        if filter_snippet.lines().count() <= 1 {
+            // add note if not multi-line
+            span_note_and_lint(cx,
+                               FILTER_NEXT,
+                               expr.span,
+                               msg,
+                               expr.span,
+                               &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet));
+        } else {
             span_lint(cx, FILTER_NEXT, expr.span, msg);
         }
     }
 }
 
-#[allow(ptr_arg)] // Type of MethodArgs is potentially a Vec
+#[allow(ptr_arg)]
+// Type of MethodArgs is potentially a Vec
 /// lint searching an Iterator followed by `is_some()`
 fn lint_search_is_some(cx: &LateContext, expr: &Expr, search_method: &str, search_args: &MethodArgs,
                        is_some_args: &MethodArgs) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &*is_some_args[0], &["core", "iter", "Iterator"]) {
-        let msg = format!("called `is_some()` after searching an iterator with {}. This is more \
-                           succinctly expressed by calling `any()`.", search_method);
+        let msg = format!("called `is_some()` after searching an iterator with {}. This is more succinctly expressed \
+                           by calling `any()`.",
+                          search_method);
         let search_snippet = snippet(cx, search_args[1].span, "..");
-        if search_snippet.lines().count() <= 1 { // add note if not multi-line
-            span_note_and_lint(cx, SEARCH_IS_SOME, expr.span, &msg, expr.span,
-                &format!("replace `{0}({1}).is_some()` with `any({1})`", search_method,
-                         search_snippet));
-        }
-        else {
+        if search_snippet.lines().count() <= 1 {
+            // add note if not multi-line
+            span_note_and_lint(cx,
+                               SEARCH_IS_SOME,
+                               expr.span,
+                               &msg,
+                               expr.span,
+                               &format!("replace `{0}({1}).is_some()` with `any({1})`", search_method, search_snippet));
+        } else {
             span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
         }
     }
@@ -432,7 +452,7 @@ fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     let no_ref_ty = walk_ptrs_ty(ty);
     let debug = match cx.tcx.lang_items.debug_trait() {
         Some(debug) => debug,
-        None => return false
+        None => return false,
     };
     let debug_def = cx.tcx.lookup_trait_def(debug);
     let mut debug_impl_exists = false;
@@ -447,46 +467,162 @@ fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     debug_impl_exists
 }
 
-const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
-    ("into_", &[ValueSelf]),
-    ("to_",   &[RefSelf]),
-    ("as_",   &[RefSelf, RefMutSelf]),
-    ("is_",   &[RefSelf, NoSelf]),
-    ("from_", &[NoSelf]),
-];
+const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [("into_", &[ValueSelf]),
+                                                               ("to_", &[RefSelf]),
+                                                               ("as_", &[RefSelf, RefMutSelf]),
+                                                               ("is_", &[RefSelf, NoSelf]),
+                                                               ("from_", &[NoSelf])];
 
-const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
-    ("add",        2, ValueSelf,  AnyType,  "std::ops::Add"),
-    ("sub",        2, ValueSelf,  AnyType,  "std::ops::Sub"),
-    ("mul",        2, ValueSelf,  AnyType,  "std::ops::Mul"),
-    ("div",        2, ValueSelf,  AnyType,  "std::ops::Div"),
-    ("rem",        2, ValueSelf,  AnyType,  "std::ops::Rem"),
-    ("shl",        2, ValueSelf,  AnyType,  "std::ops::Shl"),
-    ("shr",        2, ValueSelf,  AnyType,  "std::ops::Shr"),
-    ("bitand",     2, ValueSelf,  AnyType,  "std::ops::BitAnd"),
-    ("bitor",      2, ValueSelf,  AnyType,  "std::ops::BitOr"),
-    ("bitxor",     2, ValueSelf,  AnyType,  "std::ops::BitXor"),
-    ("neg",        1, ValueSelf,  AnyType,  "std::ops::Neg"),
-    ("not",        1, ValueSelf,  AnyType,  "std::ops::Not"),
-    ("drop",       1, RefMutSelf, UnitType, "std::ops::Drop"),
-    ("index",      2, RefSelf,    RefType,  "std::ops::Index"),
-    ("index_mut",  2, RefMutSelf, RefType,  "std::ops::IndexMut"),
-    ("deref",      1, RefSelf,    RefType,  "std::ops::Deref"),
-    ("deref_mut",  1, RefMutSelf, RefType,  "std::ops::DerefMut"),
-    ("clone",      1, RefSelf,    AnyType,  "std::clone::Clone"),
-    ("borrow",     1, RefSelf,    RefType,  "std::borrow::Borrow"),
-    ("borrow_mut", 1, RefMutSelf, RefType,  "std::borrow::BorrowMut"),
-    ("as_ref",     1, RefSelf,    RefType,  "std::convert::AsRef"),
-    ("as_mut",     1, RefMutSelf, RefType,  "std::convert::AsMut"),
-    ("eq",         2, RefSelf,    BoolType, "std::cmp::PartialEq"),
-    ("cmp",        2, RefSelf,    AnyType,  "std::cmp::Ord"),
-    ("default",    0, NoSelf,     AnyType,  "std::default::Default"),
-    ("hash",       2, RefSelf,    UnitType, "std::hash::Hash"),
-    ("next",       1, RefMutSelf, AnyType,  "std::iter::Iterator"),
-    ("into_iter",  1, ValueSelf,  AnyType,  "std::iter::IntoIterator"),
-    ("from_iter",  1, NoSelf,     AnyType,  "std::iter::FromIterator"),
-    ("from_str",   1, NoSelf,     AnyType,  "std::str::FromStr"),
-];
+const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [("add",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Add"),
+                                                                                     ("sub",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Sub"),
+                                                                                     ("mul",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Mul"),
+                                                                                     ("div",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Div"),
+                                                                                     ("rem",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Rem"),
+                                                                                     ("shl",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Shl"),
+                                                                                     ("shr",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Shr"),
+                                                                                     ("bitand",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::BitAnd"),
+                                                                                     ("bitor",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::BitOr"),
+                                                                                     ("bitxor",
+                                                                                      2,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::BitXor"),
+                                                                                     ("neg",
+                                                                                      1,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Neg"),
+                                                                                     ("not",
+                                                                                      1,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::ops::Not"),
+                                                                                     ("drop",
+                                                                                      1,
+                                                                                      RefMutSelf,
+                                                                                      UnitType,
+                                                                                      "std::ops::Drop"),
+                                                                                     ("index",
+                                                                                      2,
+                                                                                      RefSelf,
+                                                                                      RefType,
+                                                                                      "std::ops::Index"),
+                                                                                     ("index_mut",
+                                                                                      2,
+                                                                                      RefMutSelf,
+                                                                                      RefType,
+                                                                                      "std::ops::IndexMut"),
+                                                                                     ("deref",
+                                                                                      1,
+                                                                                      RefSelf,
+                                                                                      RefType,
+                                                                                      "std::ops::Deref"),
+                                                                                     ("deref_mut",
+                                                                                      1,
+                                                                                      RefMutSelf,
+                                                                                      RefType,
+                                                                                      "std::ops::DerefMut"),
+                                                                                     ("clone",
+                                                                                      1,
+                                                                                      RefSelf,
+                                                                                      AnyType,
+                                                                                      "std::clone::Clone"),
+                                                                                     ("borrow",
+                                                                                      1,
+                                                                                      RefSelf,
+                                                                                      RefType,
+                                                                                      "std::borrow::Borrow"),
+                                                                                     ("borrow_mut",
+                                                                                      1,
+                                                                                      RefMutSelf,
+                                                                                      RefType,
+                                                                                      "std::borrow::BorrowMut"),
+                                                                                     ("as_ref",
+                                                                                      1,
+                                                                                      RefSelf,
+                                                                                      RefType,
+                                                                                      "std::convert::AsRef"),
+                                                                                     ("as_mut",
+                                                                                      1,
+                                                                                      RefMutSelf,
+                                                                                      RefType,
+                                                                                      "std::convert::AsMut"),
+                                                                                     ("eq",
+                                                                                      2,
+                                                                                      RefSelf,
+                                                                                      BoolType,
+                                                                                      "std::cmp::PartialEq"),
+                                                                                     ("cmp",
+                                                                                      2,
+                                                                                      RefSelf,
+                                                                                      AnyType,
+                                                                                      "std::cmp::Ord"),
+                                                                                     ("default",
+                                                                                      0,
+                                                                                      NoSelf,
+                                                                                      AnyType,
+                                                                                      "std::default::Default"),
+                                                                                     ("hash",
+                                                                                      2,
+                                                                                      RefSelf,
+                                                                                      UnitType,
+                                                                                      "std::hash::Hash"),
+                                                                                     ("next",
+                                                                                      1,
+                                                                                      RefMutSelf,
+                                                                                      AnyType,
+                                                                                      "std::iter::Iterator"),
+                                                                                     ("into_iter",
+                                                                                      1,
+                                                                                      ValueSelf,
+                                                                                      AnyType,
+                                                                                      "std::iter::IntoIterator"),
+                                                                                     ("from_iter",
+                                                                                      1,
+                                                                                      NoSelf,
+                                                                                      AnyType,
+                                                                                      "std::iter::FromIterator"),
+                                                                                     ("from_str",
+                                                                                      1,
+                                                                                      NoSelf,
+                                                                                      AnyType,
+                                                                                      "std::str::FromStr")];
 
 #[derive(Clone, Copy)]
 enum SelfKind {
@@ -506,7 +642,7 @@ impl SelfKind {
             (&RefMutSelf, &SelfValue(_)) => allow_value_for_ref,
             (&NoSelf, &SelfStatic) => true,
             (_, &SelfExplicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
-            _ => false
+            _ => false,
         }
     }
 
@@ -517,7 +653,7 @@ impl SelfKind {
             (&RefMutSelf, &TyRptr(_, MutTy { mutbl: Mutability::MutMutable, .. })) => true,
             (&RefSelf, &TyPath(..)) => allow_value_for_ref,
             (&RefMutSelf, &TyPath(..)) => allow_value_for_ref,
-            _ => false
+            _ => false,
         }
     }
 
@@ -545,11 +681,15 @@ impl OutType {
             (&UnitType, &DefaultReturn(_)) => true,
             (&UnitType, &Return(ref ty)) if ty.node == TyTup(vec![].into()) => true,
             (&BoolType, &Return(ref ty)) if is_bool(ty) => true,
-            (&AnyType, &Return(ref ty)) if ty.node != TyTup(vec![].into())  => true,
+            (&AnyType, &Return(ref ty)) if ty.node != TyTup(vec![].into()) => true,
             (&RefType, &Return(ref ty)) => {
-                if let TyRptr(_, _) = ty.node { true } else { false }
+                if let TyRptr(_, _) = ty.node {
+                    true
+                } else {
+                    false
+                }
             }
-            _ => false
+            _ => false,
         }
     }
 }

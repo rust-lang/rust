@@ -37,30 +37,42 @@ impl LateLintPass for NeedlessBool {
         if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
             match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                 (Some(true), Some(true)) => {
-                    span_lint(cx, NEEDLESS_BOOL, e.span,
+                    span_lint(cx,
+                              NEEDLESS_BOOL,
+                              e.span,
                               "this if-then-else expression will always return true");
                 }
                 (Some(false), Some(false)) => {
-                    span_lint(cx, NEEDLESS_BOOL, e.span,
+                    span_lint(cx,
+                              NEEDLESS_BOOL,
+                              e.span,
                               "this if-then-else expression will always return false");
                 }
                 (Some(true), Some(false)) => {
                     let pred_snip = snippet(cx, pred.span, "..");
-                    let hint = if pred_snip == ".." { "its predicate".into() } else {
+                    let hint = if pred_snip == ".." {
+                        "its predicate".into()
+                    } else {
                         format!("`{}`", pred_snip)
                     };
-                    span_lint(cx, NEEDLESS_BOOL, e.span, &format!(
-                        "you can reduce this if-then-else expression to just {}", hint));
+                    span_lint(cx,
+                              NEEDLESS_BOOL,
+                              e.span,
+                              &format!("you can reduce this if-then-else expression to just {}", hint));
                 }
                 (Some(false), Some(true)) => {
                     let pred_snip = snippet(cx, pred.span, "..");
-                    let hint = if pred_snip == ".." { "`!` and its predicate".into() } else {
+                    let hint = if pred_snip == ".." {
+                        "`!` and its predicate".into()
+                    } else {
                         format!("`!{}`", pred_snip)
                     };
-                    span_lint(cx, NEEDLESS_BOOL, e.span, &format!(
-                        "you can reduce this if-then-else expression to just {}", hint));
+                    span_lint(cx,
+                              NEEDLESS_BOOL,
+                              e.span,
+                              &format!("you can reduce this if-then-else expression to just {}", hint));
                 }
-                _ => ()
+                _ => (),
             }
         }
     }
@@ -69,14 +81,21 @@ impl LateLintPass for NeedlessBool {
 fn fetch_bool_block(block: &Block) -> Option<bool> {
     if block.stmts.is_empty() {
         block.expr.as_ref().and_then(|e| fetch_bool_expr(e))
-    } else { None }
+    } else {
+        None
+    }
 }
 
 fn fetch_bool_expr(expr: &Expr) -> Option<bool> {
     match expr.node {
         ExprBlock(ref block) => fetch_bool_block(block),
-        ExprLit(ref lit_ptr) => if let LitBool(value) = lit_ptr.node {
-            Some(value) } else { None },
-        _ => None
+        ExprLit(ref lit_ptr) => {
+            if let LitBool(value) = lit_ptr.node {
+                Some(value)
+            } else {
+                None
+            }
+        }
+        _ => None,
     }
 }
