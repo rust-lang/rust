@@ -84,44 +84,54 @@ mod cmath {
     mod shims {
         use libc::{c_float, c_int};
 
+        #[inline]
         pub unsafe fn acosf(n: c_float) -> c_float {
             f64::acos(n as f64) as c_float
         }
 
+        #[inline]
         pub unsafe fn asinf(n: c_float) -> c_float {
             f64::asin(n as f64) as c_float
         }
 
+        #[inline]
         pub unsafe fn atan2f(n: c_float, b: c_float) -> c_float {
             f64::atan2(n as f64, b as f64) as c_float
         }
 
+        #[inline]
         pub unsafe fn atanf(n: c_float) -> c_float {
             f64::atan(n as f64) as c_float
         }
 
+        #[inline]
         pub unsafe fn coshf(n: c_float) -> c_float {
             f64::cosh(n as f64) as c_float
         }
 
+        #[inline]
         pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float {
             let (a, b) = f64::frexp(x as f64);
             *value = b as c_int;
             a as c_float
         }
 
+        #[inline]
         pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float {
             f64::ldexp(x as f64, n as isize) as c_float
         }
 
+        #[inline]
         pub unsafe fn sinhf(n: c_float) -> c_float {
             f64::sinh(n as f64) as c_float
         }
 
+        #[inline]
         pub unsafe fn tanf(n: c_float) -> c_float {
             f64::tan(n as f64) as c_float
         }
 
+        #[inline]
         pub unsafe fn tanhf(n: c_float) -> c_float {
             f64::tanh(n as f64) as c_float
         }
@@ -272,8 +282,6 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn floor(self) -> f32 {
-        return floorf(self);
-
         // On MSVC LLVM will lower many math intrinsics to a call to the
         // corresponding function. On MSVC, however, many of these functions
         // aren't actually available as symbols to call, but rather they are all
@@ -288,9 +296,9 @@ impl f32 {
         // redirect to this comment, so `floorf` is just one case of a missing
         // function on MSVC, but there are many others elsewhere.
         #[cfg(target_env = "msvc")]
-        fn floorf(f: f32) -> f32 { (f as f64).floor() as f32 }
+        return (self as f64).floor() as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn floorf(f: f32) -> f32 { unsafe { intrinsics::floorf32(f) } }
+        return unsafe { intrinsics::floorf32(f) };
     }
 
     /// Returns the smallest integer greater than or equal to a number.
@@ -305,13 +313,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ceil(self) -> f32 {
-        return ceilf(self);
-
         // see notes above in `floor`
         #[cfg(target_env = "msvc")]
-        fn ceilf(f: f32) -> f32 { (f as f64).ceil() as f32 }
+        return (self as f64).ceil() as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn ceilf(f: f32) -> f32 { unsafe { intrinsics::ceilf32(f) } }
+        return unsafe { intrinsics::ceilf32(self) };
     }
 
     /// Returns the nearest integer to a number. Round half-way cases away from
@@ -506,13 +512,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f32) -> f32 {
-        return powf(self, n);
-
         // see notes above in `floor`
         #[cfg(target_env = "msvc")]
-        fn powf(f: f32, n: f32) -> f32 { (f as f64).powf(n as f64) as f32 }
+        return (self as f64).powf(n as f64) as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn powf(f: f32, n: f32) -> f32 { unsafe { intrinsics::powf32(f, n) } }
+        return unsafe { intrinsics::powf32(self, n) };
     }
 
     /// Takes the square root of a number.
@@ -557,13 +561,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
-        return expf(self);
-
         // see notes above in `floor`
         #[cfg(target_env = "msvc")]
-        fn expf(f: f32) -> f32 { (f as f64).exp() as f32 }
+        return (self as f64).exp() as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn expf(f: f32) -> f32 { unsafe { intrinsics::expf32(f) } }
+        return unsafe { intrinsics::expf32(self) };
     }
 
     /// Returns `2^(self)`.
@@ -601,13 +603,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
-        return logf(self);
-
         // see notes above in `floor`
         #[cfg(target_env = "msvc")]
-        fn logf(f: f32) -> f32 { (f as f64).ln() as f32 }
+        return (self as f64).ln() as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn logf(f: f32) -> f32 { unsafe { intrinsics::logf32(f) } }
+        return unsafe { intrinsics::logf32(self) };
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -664,13 +664,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
-        return log10f(self);
-
         // see notes above in `floor`
         #[cfg(target_env = "msvc")]
-        fn log10f(f: f32) -> f32 { (f as f64).log10() as f32 }
+        return (f as f64).log10() as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn log10f(f: f32) -> f32 { unsafe { intrinsics::log10f32(f) } }
+        return unsafe { intrinsics::log10f32(f) };
     }
 
     /// Converts radians to degrees.
@@ -884,13 +882,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        return sinf(self);
-
         // see notes in `core::f32::Float::floor`
         #[cfg(target_env = "msvc")]
-        fn sinf(f: f32) -> f32 { (f as f64).sin() as f32 }
+        return (self as f64).sin() as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn sinf(f: f32) -> f32 { unsafe { intrinsics::sinf32(f) } }
+        return unsafe { intrinsics::sinf32(self) };
     }
 
     /// Computes the cosine of a number (in radians).
@@ -907,13 +903,11 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        return cosf(self);
-
         // see notes in `core::f32::Float::floor`
         #[cfg(target_env = "msvc")]
-        fn cosf(f: f32) -> f32 { (f as f64).cos() as f32 }
+        return (self as f64).cos() as f32;
         #[cfg(not(target_env = "msvc"))]
-        fn cosf(f: f32) -> f32 { unsafe { intrinsics::cosf32(f) } }
+        return unsafe { intrinsics::cosf32(self) };
     }
 
     /// Computes the tangent of a number (in radians).
