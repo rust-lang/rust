@@ -24,6 +24,8 @@ use hash::Hash;
 use hash::Hasher;
 
 /// Types that can be transferred across thread boundaries.
+///
+/// This trait is automatically derived when the compiler determines it's appropriate.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
@@ -219,6 +221,8 @@ pub trait Copy : Clone {
 /// wrapper around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behavior (for example,
 /// `transmute`-ing from `&T` to `&mut T` is invalid).
+///
+/// This trait is automatically derived when the compiler determines it's appropriate.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
