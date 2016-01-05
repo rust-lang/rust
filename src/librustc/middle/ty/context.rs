@@ -13,6 +13,7 @@
 // FIXME: (@jroesch) @eddyb should remove this when he renames ctxt
 #![allow(non_camel_case_types)]
 
+use dep_graph::{DepGraph, DepNode, DepTrackingMap};
 use front::map as ast_map;
 use session::Session;
 use lint;
@@ -223,6 +224,8 @@ pub struct ctxt<'tcx> {
     bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
     region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
     stability_interner: RefCell<FnvHashMap<&'tcx attr::Stability, &'tcx attr::Stability>>,
+
+    pub dep_graph: DepGraph,
 
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
@@ -483,7 +486,7 @@ impl<'tcx> ctxt<'tcx> {
     {
         let interner = RefCell::new(FnvHashMap());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
-
+        let dep_graph = DepGraph::new(s.opts.incremental_compilation);
         tls::enter(ctxt {
             arenas: arenas,
             interner: interner,
@@ -491,6 +494,7 @@ impl<'tcx> ctxt<'tcx> {
             bare_fn_interner: RefCell::new(FnvHashMap()),
             region_interner: RefCell::new(FnvHashMap()),
             stability_interner: RefCell::new(FnvHashMap()),
+            dep_graph: dep_graph.clone(),
             types: common_types,
             named_region_map: named_region_map,
             region_maps: region_maps,
