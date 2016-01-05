@@ -73,11 +73,11 @@ pub fn run(input: &str,
     };
 
     let codemap = Rc::new(CodeMap::new());
-    let diagnostic_handler = errors::Handler::new(ColorConfig::Auto,
-                                                  None,
-                                                  true,
-                                                  false,
-                                                  codemap.clone());
+    let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
+                                                               None,
+                                                               true,
+                                                               false,
+                                                               codemap.clone());
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
     let sess = session::build_session_(sessopts,
