@@ -21,6 +21,7 @@ use rustc::middle::traits;
 use rustc::mir::repr::ItemKind;
 use trans::common::{Block, fulfill_obligation};
 use trans::base;
+use trans::closure;
 use trans::expr;
 use trans::monomorphize;
 use trans::meth;
@@ -38,6 +39,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           substs: &'tcx Substs<'tcx>,
                           did: DefId)
                           -> OperandRef<'tcx> {
+        debug!("trans_item_ref(ty={:?}, kind={:?}, substs={:?}, did={})",
+            ty, kind, substs, bcx.tcx().item_path_str(did));
+
         match kind {
             ItemKind::Function => self.trans_fn_ref(bcx, ty, substs, did),
             ItemKind::Method => match bcx.tcx().impl_or_trait_item(did).container() {
@@ -68,6 +72,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         substs: &'tcx Substs<'tcx>,
                         did: DefId)
                         -> OperandRef<'tcx> {
+        debug!("trans_fn_ref(ty={:?}, substs={:?}, did={})",
+            ty, substs, bcx.tcx().item_path_str(did));
+
         let did = inline::maybe_instantiate_inline(bcx.ccx(), did);
 
         if !substs.types.is_empty() || is_named_tuple_constructor(bcx.tcx(), did) {
@@ -101,9 +108,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                trait_id: DefId,
                                substs: &'tcx Substs<'tcx>)
                                -> OperandRef<'tcx> {
+        debug!("trans_static_method(ty={:?}, method={}, trait={}, substs={:?})",
+                ty,
+                bcx.tcx().item_path_str(method_id),
+                bcx.tcx().item_path_str(trait_id),
+                substs);
+
         let ccx = bcx.ccx();
         let tcx = bcx.tcx();
-        let mname = tcx.item_name(method_id);
         let subst::SeparateVecsPerParamSpace {
             types: rcvr_type,
             selfs: rcvr_self,
@@ -118,6 +130,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         match vtbl {
             traits::VtableImpl(traits::VtableImplData { impl_def_id, substs: imp_substs, .. }) => {
                 assert!(!imp_substs.types.needs_infer());
+
+                let mname = tcx.item_name(method_id);
+
                 let subst::SeparateVecsPerParamSpace {
                     types: impl_type,
                     selfs: impl_self,
@@ -129,6 +144,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let mth = tcx.get_impl_method(impl_def_id, callee_substs, mname);
                 let mthsubsts = tcx.mk_substs(mth.substs);
                 self.trans_fn_ref(bcx, ty, mthsubsts, mth.method.def_id)
+            },
+            traits::VtableClosure(data) => {
+                let trait_closure_kind = bcx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
+                let llfn = closure::trans_closure_method(bcx.ccx(),
+                                                         data.closure_def_id,
+                                                         data.substs,
+                                                         trait_closure_kind);
+                OperandRef {
+                    ty: ty,
+                    val: OperandValue::Immediate(llfn)
+                }
             },
             traits::VtableObject(ref data) => {
                 let idx = traits::get_vtable_index_of_object_method(tcx, data, method_id);
