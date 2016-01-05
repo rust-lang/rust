@@ -16,6 +16,9 @@
 
 use lint::{LintPass, LateLintPass, LintArray};
 
+// name of the future-incompatible group
+pub const FUTURE_INCOMPATIBLE: &'static str = "future_incompatible";
+
 declare_lint! {
     pub CONST_ERR,
     Warn,
