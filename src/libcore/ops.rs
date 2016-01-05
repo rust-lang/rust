@@ -38,7 +38,7 @@
 //! #[derive(Debug)]
 //! struct Point {
 //!     x: i32,
-//!     y: i32
+//!     y: i32,
 //! }
 //!
 //! impl Add for Point {
@@ -161,7 +161,6 @@ macro_rules! forward_ref_binop {
 /// ```
 /// use std::ops::Add;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Add for Foo {
@@ -215,7 +214,6 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Sub;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Sub for Foo {
@@ -269,7 +267,6 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Mul;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Mul for Foo {
@@ -323,7 +320,6 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Div;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Div for Foo {
@@ -395,7 +391,6 @@ div_impl_float! { f32 f64 }
 /// ```
 /// use std::ops::Rem;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Rem for Foo {
@@ -467,7 +462,6 @@ rem_impl_float! { f32 f64 }
 /// ```
 /// use std::ops::Neg;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Neg for Foo {
@@ -535,7 +529,6 @@ neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Not;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Not for Foo {
@@ -589,7 +582,6 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitAnd;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitAnd for Foo {
@@ -643,7 +635,6 @@ bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitOr;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitOr for Foo {
@@ -697,7 +688,6 @@ bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitXor;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitXor for Foo {
@@ -751,7 +741,6 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::Shl;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Shl<Foo> for Foo {
@@ -823,7 +812,6 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// ```
 /// use std::ops::Shr;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Shr<Foo> for Foo {
@@ -898,7 +886,6 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// use std::ops::AddAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl AddAssign for Foo {
@@ -945,7 +932,6 @@ add_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::SubAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl SubAssign for Foo {
@@ -992,7 +978,6 @@ sub_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::MulAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl MulAssign for Foo {
@@ -1039,7 +1024,6 @@ mul_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::DivAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl DivAssign for Foo {
@@ -1086,7 +1070,6 @@ div_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::RemAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl RemAssign for Foo {
@@ -1133,7 +1116,6 @@ rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::BitAndAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitAndAssign for Foo {
@@ -1180,7 +1162,6 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// use std::ops::BitOrAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitOrAssign for Foo {
@@ -1227,7 +1208,6 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// use std::ops::BitXorAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitXorAssign for Foo {
@@ -1274,7 +1254,6 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 ///
 /// use std::ops::ShlAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl ShlAssign<Foo> for Foo {
@@ -1339,7 +1318,6 @@ shl_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// use std::ops::ShrAssign;
 ///
-/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl ShrAssign<Foo> for Foo {
