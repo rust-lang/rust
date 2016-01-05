@@ -396,7 +396,7 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                         .map(|t| selcx.infcx().resolve_type_vars_if_possible(t))
                         .filter(|t| t.has_infer_types())
                         .flat_map(|t| t.walk())
-                        .filter(|t| t.is_ty_var())
+                        .filter(|t| match t.sty { ty::TyInfer(_) => true, _ => false })
                         .collect();
 
                     debug!("process_predicate: pending obligation {:?} now stalled on {:?}",
