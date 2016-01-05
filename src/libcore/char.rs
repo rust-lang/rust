@@ -181,7 +181,7 @@ pub unsafe fn from_u32_unchecked(i: u32) -> char {
 ///
 /// A 'radix' here is sometimes also called a 'base'. A radix of two
 /// indicates a binary number, a radix of ten, decimal, and a radix of
-/// sixteen, hexicdecimal, to give some common values. Arbitrary
+/// sixteen, hexadecimal, to give some common values. Arbitrary
 /// radicum are supported.
 ///
 /// `from_digit()` will return `None` if the input is not a digit in
