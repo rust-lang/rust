@@ -170,7 +170,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("slice_patterns", "1.0.0", Some(23121), Active),
 
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
-    ("negate_unsigned", "1.0.0", Some(29645), Active),
+    ("negate_unsigned", "1.0.0", Some(29645), Removed),
 
     // Allows the definition of associated constants in `trait` or `impl`
     // blocks.
@@ -540,7 +540,6 @@ pub struct Features {
     pub allow_pushpop_unsafe: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
-    pub negate_unsigned: bool,
     /// spans of #![feature] attrs for stable language features. for error reporting
     pub declared_stable_lang_features: Vec<Span>,
     /// #![feature] attrs for non-language (library) features
@@ -577,7 +576,6 @@ impl Features {
             allow_pushpop_unsafe: false,
             simd_ffi: false,
             unmarked_api: false,
-            negate_unsigned: false,
             declared_stable_lang_features: Vec::new(),
             declared_lib_features: Vec::new(),
             const_fn: false,
@@ -1166,7 +1164,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         allow_pushpop_unsafe: cx.has_feature("pushpop_unsafe"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
-        negate_unsigned: cx.has_feature("negate_unsigned"),
         declared_stable_lang_features: accepted_features,
         declared_lib_features: unknown_features,
         const_fn: cx.has_feature("const_fn"),
