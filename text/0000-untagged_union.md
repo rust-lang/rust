@@ -230,8 +230,8 @@ a field, should cause the compiler to treat the entire union as initialized.
 
 A union may have trait implementations, using the same syntax as a struct.
 
-The compiler should warn if a union field has a type that implements the `Drop`
-trait.
+The compiler should produce an error if a union field has a type that
+implements the `Drop` trait.
 
 ## Unions and undefined behavior
 
