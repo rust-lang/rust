@@ -496,13 +496,11 @@ pub enum ProjectionElem<'tcx, V> {
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
 /// and the index is an operand.
-pub type LvalueProjection<'tcx> =
-    Projection<'tcx,Lvalue<'tcx>,Operand<'tcx>>;
+pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Operand<'tcx>>;
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
 /// and the index is an operand.
-pub type LvalueElem<'tcx> =
-    ProjectionElem<'tcx,Operand<'tcx>>;
+pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Operand<'tcx>>;
 
 /// Index into the list of fields found in a `VariantDef`
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -546,11 +544,11 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 
         match *self {
             Var(id) =>
-                write!(fmt,"var{:?}", id),
+                write!(fmt, "var{:?}", id),
             Arg(id) =>
-                write!(fmt,"arg{:?}", id),
+                write!(fmt, "arg{:?}", id),
             Temp(id) =>
-                write!(fmt,"tmp{:?}", id),
+                write!(fmt, "tmp{:?}", id),
             Static(def_id) =>
                 write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
             ReturnPointer =>
