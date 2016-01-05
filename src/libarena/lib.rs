@@ -561,9 +561,11 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use super::{Arena, TypedArena};
+    use std::cell::Cell;
     use std::rc::Rc;
 
     #[allow(dead_code)]
+    #[derive(Debug, Eq, PartialEq)]
     struct Point {
         x: i32,
         y: i32,
@@ -668,11 +670,16 @@ mod tests {
     #[test]
     pub fn test_arena_zero_sized() {
         let arena = Arena::new();
+        let mut points = vec![];
         for _ in 0..1000 {
             for _ in 0..100 {
                 arena.alloc(|| ());
             }
-            arena.alloc(|| Point { x: 1, y: 2, z: 3 });
+            let point = arena.alloc(|| Point { x: 1, y: 2, z: 3 });
+            points.push(point);
+        }
+        for point in &points {
+            assert_eq!(**point, Point { x: 1, y: 2, z: 3 });
         }
     }
 
@@ -745,6 +752,124 @@ mod tests {
         arena.alloc::<Rc<i32>, _>(|| {
             panic!();
         });
+    }
+
+    // Drop tests
+
+    struct DropCounter<'a> {
+        count: &'a Cell<u32>,
+    }
+
+    impl<'a> Drop for DropCounter<'a> {
+        fn drop(&mut self) {
+            self.count.set(self.count.get() + 1);
+        }
+    }
+
+    #[test]
+    fn test_arena_drop_count() {
+        let counter = Cell::new(0);
+        {
+            let arena = Arena::new();
+            for _ in 0..100 {
+                // Allocate something with drop glue to make sure it doesn't leak.
+                arena.alloc(|| DropCounter { count: &counter });
+                // Allocate something with funny size and alignment, to keep
+                // things interesting.
+                arena.alloc(|| [0u8, 1u8, 2u8]);
+            }
+            // dropping
+        };
+        assert_eq!(counter.get(), 100);
+    }
+
+    #[test]
+    fn test_arena_drop_on_clear() {
+        let counter = Cell::new(0);
+        for i in 0..10 {
+            let mut arena = Arena::new();
+            for _ in 0..100 {
+                // Allocate something with drop glue to make sure it doesn't leak.
+                arena.alloc(|| DropCounter { count: &counter });
+                // Allocate something with funny size and alignment, to keep
+                // things interesting.
+                arena.alloc(|| [0u8, 1u8, 2u8]);
+            }
+            arena.clear();
+            assert_eq!(counter.get(), i * 100 + 100);
+        }
+    }
+
+    #[test]
+    fn test_typed_arena_drop_count() {
+        let counter = Cell::new(0);
+        {
+            let arena: TypedArena<DropCounter> = TypedArena::new();
+            for _ in 0..100 {
+                // Allocate something with drop glue to make sure it doesn't leak.
+                arena.alloc(DropCounter { count: &counter });
+            }
+        };
+        assert_eq!(counter.get(), 100);
+    }
+
+    #[test]
+    fn test_typed_arena_drop_on_clear() {
+        let counter = Cell::new(0);
+        let mut arena: TypedArena<DropCounter> = TypedArena::new();
+        for i in 0..10 {
+            for _ in 0..100 {
+                // Allocate something with drop glue to make sure it doesn't leak.
+                arena.alloc(DropCounter { count: &counter });
+            }
+            arena.clear();
+            assert_eq!(counter.get(), i * 100 + 100);
+        }
+    }
+
+    thread_local! {
+        static DROP_COUNTER: Cell<u32> = Cell::new(0)
+    }
+
+    struct SmallDroppable;
+
+    impl Drop for SmallDroppable {
+        fn drop(&mut self) {
+            DROP_COUNTER.with(|c| c.set(c.get() + 1));
+        }
+    }
+
+    #[test]
+    fn test_arena_drop_small_count() {
+        DROP_COUNTER.with(|c| c.set(0));
+        {
+            let arena = Arena::new();
+            for _ in 0..10 {
+                for _ in 0..10 {
+                    // Allocate something with drop glue to make sure it doesn't leak.
+                    arena.alloc(|| SmallDroppable);
+                }
+                // Allocate something with funny size and alignment, to keep
+                // things interesting.
+                arena.alloc(|| [0u8, 1u8, 2u8]);
+            }
+            // dropping
+        };
+        assert_eq!(DROP_COUNTER.with(|c| c.get()), 100);
+    }
+
+    #[test]
+    fn test_typed_arena_drop_small_count() {
+        DROP_COUNTER.with(|c| c.set(0));
+        {
+            let arena: TypedArena<SmallDroppable> = TypedArena::new();
+            for _ in 0..100 {
+                // Allocate something with drop glue to make sure it doesn't leak.
+                arena.alloc(SmallDroppable);
+            }
+            // dropping
+        };
+        assert_eq!(DROP_COUNTER.with(|c| c.get()), 100);
     }
 
     #[bench]
