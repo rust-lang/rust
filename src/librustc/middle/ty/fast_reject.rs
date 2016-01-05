@@ -15,7 +15,7 @@ use syntax::ast;
 use self::SimplifiedType::*;
 
 /// See `simplify_type
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SimplifiedType {
     BoolSimplifiedType,
     CharSimplifiedType,
