@@ -254,7 +254,7 @@
 #![feature(slice_concat_ext)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
-#![feature(stmt_expr_attributes)] 
+#![feature(stmt_expr_attributes)]
 #![feature(str_char)]
 #![feature(str_internals)]
 #![feature(str_utf16)]
