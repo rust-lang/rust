@@ -143,8 +143,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
                     UNUSED_UNSAFE, PATH_STATEMENTS, UNUSED_ATTRIBUTES);
 
-    add_lint_group!(sess, "future_incompatible",
-                    PRIVATE_IN_PUBLIC);
+    add_lint_group!(sess, FUTURE_INCOMPATIBLE,
+                    PRIVATE_IN_PUBLIC, INVALID_TYPE_PARAM_DEFAULT);
 
     // We have one lint pass defined specially
     store.register_late_pass(sess, false, box lint::GatherNodeLevels);
