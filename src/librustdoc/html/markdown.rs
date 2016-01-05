@@ -400,7 +400,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             let text = lines.collect::<Vec<&str>>().join("\n");
             tests.add_test(text.to_owned(),
                            block_info.should_panic, block_info.no_run,
-                           block_info.ignore, block_info.test_harness);
+                           block_info.ignore, block_info.test_harness,
+                           block_info.compile_fail);
         }
     }
 
@@ -445,6 +446,7 @@ struct LangString {
     ignore: bool,
     rust: bool,
     test_harness: bool,
+    compile_fail: bool,
 }
 
 impl LangString {
@@ -455,6 +457,7 @@ impl LangString {
             ignore: false,
             rust: true,  // NB This used to be `notrust = false`
             test_harness: false,
+            compile_fail: false,
         }
     }
 
@@ -474,7 +477,9 @@ impl LangString {
                 "no_run" => { data.no_run = true; seen_rust_tags = true; },
                 "ignore" => { data.ignore = true; seen_rust_tags = true; },
                 "rust" => { data.rust = true; seen_rust_tags = true; },
-                "test_harness" => { data.test_harness = true; seen_rust_tags = true; }
+                "test_harness" => { data.test_harness = true; seen_rust_tags = true; },
+                "compile_fail" => { data.compile_fail = true; seen_rust_tags = true;
+                                    data.no_run = true; },
                 _ => { seen_other_tags = true }
             }
         }
@@ -557,28 +562,31 @@ mod tests {
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
-            should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool) {
+            should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
+            compile_fail: bool) {
             assert_eq!(LangString::parse(s), LangString {
                 should_panic: should_panic,
                 no_run: no_run,
                 ignore: ignore,
                 rust: rust,
                 test_harness: test_harness,
+                compile_fail: compile_fail,
             })
         }
 
-        // marker                | should_panic| no_run | ignore | rust | test_harness
-        t("",                      false,        false,   false,   true,  false);
-        t("rust",                  false,        false,   false,   true,  false);
-        t("sh",                    false,        false,   false,   false, false);
-        t("ignore",                false,        false,   true,    true,  false);
-        t("should_panic",          true,         false,   false,   true,  false);
-        t("no_run",                false,        true,    false,   true,  false);
-        t("test_harness",          false,        false,   false,   true,  true);
-        t("{.no_run .example}",    false,        true,    false,   true,  false);
-        t("{.sh .should_panic}",   true,         false,   false,   true,  false);
-        t("{.example .rust}",      false,        false,   false,   true,  false);
-        t("{.test_harness .rust}", false,        false,   false,   true,  true);
+        // marker                | should_panic| no_run| ignore| rust | test_harness| compile_fail
+        t("",                      false,        false,  false,  true,  false,        false);
+        t("rust",                  false,        false,  false,  true,  false,        false);
+        t("sh",                    false,        false,  false,  false, false,        false);
+        t("ignore",                false,        false,  true,   true,  false,        false);
+        t("should_panic",          true,         false,  false,  true,  false,        false);
+        t("no_run",                false,        true,   false,  true,  false,        false);
+        t("test_harness",          false,        false,  false,  true,  true,         false);
+        t("compile_fail",          false,        false,  false,  true,  false,        true);
+        t("{.no_run .example}",    false,        true,   false,  true,  false,        false);
+        t("{.sh .should_panic}",   true,         false,  false,  true,  false,        false);
+        t("{.example .rust}",      false,        false,  false,  true,  false,        false);
+        t("{.test_harness .rust}", false,        false,  false,  true,  true,         false);
     }
 
     #[test]

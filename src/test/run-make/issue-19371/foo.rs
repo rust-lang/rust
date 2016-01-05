@@ -71,5 +71,5 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
             &None,
             &Some(output),
             None,
-            control);
+            &control);
 }

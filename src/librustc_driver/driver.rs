@@ -65,7 +65,7 @@ pub fn compile_input(sess: &Session,
                      outdir: &Option<PathBuf>,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
-                     control: CompileController) -> CompileResult {
+                     control: &CompileController) -> CompileResult {
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
             let state = $make_state;
