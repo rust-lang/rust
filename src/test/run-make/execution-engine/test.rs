@@ -195,7 +195,7 @@ fn build_exec_options(sysroot: PathBuf) -> Options {
     opts.maybe_sysroot = Some(sysroot);
 
     // Prefer faster build time
-    opts.optimize = config::No;
+    opts.optimize = config::OptLevel::No;
 
     // Don't require a `main` function
     opts.crate_types = vec![config::CrateTypeDylib];

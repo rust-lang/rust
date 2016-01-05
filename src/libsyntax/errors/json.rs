@@ -131,7 +131,7 @@ impl<'a> Diagnostic<'a> {
                         je: &JsonEmitter)
                         -> Diagnostic<'a> {
         Diagnostic {
-            msg: msg,
+            message: msg,
             code: None,
             level: level.to_str(),
             span: Some(DiagnosticSpan::from_render_span(span, je)),
