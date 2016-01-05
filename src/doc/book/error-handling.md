@@ -1795,6 +1795,10 @@ To convert this to proper error handling, we need to do the following:
 Let's try it:
 
 ```rust,ignore
+use std::error::Error
+
+// The rest of the code before this is unchanged
+
 fn search<P: AsRef<Path>>
          (file_path: P, city: &str)
          -> Result<Vec<PopulationCount>, Box<Error+Send+Sync>> {
@@ -1903,8 +1907,13 @@ let city = if !matches.free.is_empty() {
 	return;
 };
 
-for pop in search(&data_file, &city) {
-	println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+match search(&data_file, &city) {
+    Ok(pops) => {
+        for pop in pops {
+            println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+        }
+    }
+    Err(err) => println!("{}", err)
 }
 ...
 ```
@@ -1927,6 +1936,10 @@ that it is generic on some type parameter `R` that satisfies
 `io::Read`. Another way is to just use trait objects:
 
 ```rust,ignore
+use std::io;
+
+// The rest of the code before this is unchanged
+
 fn search<P: AsRef<Path>>
          (file_path: &Option<P>, city: &str)
          -> Result<Vec<PopulationCount>, Box<Error+Send+Sync>> {
