@@ -127,6 +127,12 @@ declare_lint! {
     "detect private items in public interfaces not caught by the old implementation"
 }
 
+declare_lint! {
+    pub INVALID_TYPE_PARAM_DEFAULT,
+    Warn,
+    "type parameter default erroneously allowed in invalid location"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -152,6 +158,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
+            INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR
         )
     }
