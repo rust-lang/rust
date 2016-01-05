@@ -2793,8 +2793,15 @@ impl<'a> Parser<'a> {
                     // We have 2 alternatives here: `x..y` and `x..` The other two variants are
                     // handled with `parse_prefix_range_expr` call above.
                     let rhs = if self.is_at_start_of_range_notation_rhs() {
-                        self.parse_assoc_expr_with(op.precedence() + 1,
-                                                   LhsExpr::NotYetParsed).ok()
+                        let rhs = self.parse_assoc_expr_with(op.precedence() + 1,
+                                                             LhsExpr::NotYetParsed);
+                        match rhs {
+                            Ok(e) => Some(e),
+                            Err(mut e) => {
+                                e.cancel();
+                                None
+                            }
+                        }
                     } else {
                         None
                     };
