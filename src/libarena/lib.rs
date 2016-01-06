@@ -38,6 +38,8 @@
 #![feature(dropck_parametricity)]
 #![cfg_attr(test, feature(test))]
 
+#![allow(deprecated)]
+
 extern crate alloc;
 
 use std::cell::{Cell, RefCell};
@@ -122,6 +124,10 @@ impl Chunk {
 /// than objects without destructors. This reduces overhead when initializing
 /// plain-old-data (`Copy` types) and means we don't need to waste time running
 /// their destructors.
+#[unstable(feature = "rustc_private",
+           reason = "Private to rustc", issue = "0")]
+#[rustc_deprecated(since = "1.6.0-dev", reason =
+"The reflection-based arena is superseded by the any-arena crate")]
 pub struct Arena<'longer_than_self> {
     // The heads are separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to access a head.
