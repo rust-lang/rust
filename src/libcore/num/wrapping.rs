@@ -42,9 +42,9 @@ macro_rules! sh_impl_signed {
             #[inline(always)]
             fn shl(self, other: $f) -> Wrapping<$t> {
                 if other < 0 {
-                    Wrapping(self.0 >> (-other & self::shift_max::$t as $f))
+                    Wrapping(self.0.wrapping_shr((-other & self::shift_max::$t as $f) as u32))
                 } else {
-                    Wrapping(self.0 << (other & self::shift_max::$t as $f))
+                    Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
                 }
             }
         }
@@ -64,9 +64,9 @@ macro_rules! sh_impl_signed {
             #[inline(always)]
             fn shr(self, other: $f) -> Wrapping<$t> {
                 if other < 0 {
-                    Wrapping(self.0 << (-other & self::shift_max::$t as $f))
+                    Wrapping(self.0.wrapping_shl((-other & self::shift_max::$t as $f) as u32))
                 } else {
-                    Wrapping(self.0 >> (other & self::shift_max::$t as $f))
+                    Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
                 }
             }
         }
@@ -89,7 +89,7 @@ macro_rules! sh_impl_unsigned {
 
             #[inline(always)]
             fn shl(self, other: $f) -> Wrapping<$t> {
-                Wrapping(self.0 << (other & self::shift_max::$t as $f))
+                Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
             }
         }
 
@@ -107,7 +107,7 @@ macro_rules! sh_impl_unsigned {
 
             #[inline(always)]
             fn shr(self, other: $f) -> Wrapping<$t> {
-                Wrapping(self.0 >> (other & self::shift_max::$t as $f))
+                Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
             }
         }
 
@@ -124,17 +124,17 @@ macro_rules! sh_impl_unsigned {
 // FIXME (#23545): uncomment the remaining impls
 macro_rules! sh_impl_all {
     ($($t:ident)*) => ($(
-        sh_impl_unsigned! { $t, u8 }
-        sh_impl_unsigned! { $t, u16 }
-        sh_impl_unsigned! { $t, u32 }
-        sh_impl_unsigned! { $t, u64 }
+        //sh_impl_unsigned! { $t, u8 }
+        //sh_impl_unsigned! { $t, u16 }
+        //sh_impl_unsigned! { $t, u32 }
+        //sh_impl_unsigned! { $t, u64 }
         sh_impl_unsigned! { $t, usize }
 
-        sh_impl_signed! { $t, i8 }
-        sh_impl_signed! { $t, i16 }
-        sh_impl_signed! { $t, i32 }
-        sh_impl_signed! { $t, i64 }
-        sh_impl_signed! { $t, isize }
+        //sh_impl_signed! { $t, i8 }
+        //sh_impl_signed! { $t, i16 }
+        //sh_impl_signed! { $t, i32 }
+        //sh_impl_signed! { $t, i64 }
+        //sh_impl_signed! { $t, isize }
     )*)
 }
 
