@@ -37,7 +37,7 @@ declare_lint! {
 pub struct UnusedMut;
 
 impl UnusedMut {
-    fn check_unused_mut_pat(&self, cx: &LateContext, pats: &[P<hir::Pat>]) {
+    fn check_unused_mut_pat(&self, cx: &LateContext, pats: &[P<hir::Pat>], override_mut: Option<hir::Mutability>) {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
 
@@ -46,17 +46,20 @@ impl UnusedMut {
             pat_util::pat_bindings(&cx.tcx.def_map, p, |mode, id, _, path1| {
                 let name = path1.node;
 
-                match mode {
-                    hir::BindByValue(hir::MutMutable) |
-                    hir::BindByRef(hir::MutMutable) => {
-                        if !name.as_str().starts_with("_") {
-                            match mutables.entry(name.0 as usize) {
-                                Vacant(entry) => { entry.insert(vec![id]); },
-                                Occupied(mut entry) => { entry.get_mut().push(id); },
-                            }
-                        }
-                    },
-                    _ => {},
+                let mutability = if let Some(mutability) = override_mut {
+                    mutability
+                } else {
+                    match mode {
+                        hir::BindByValue(mutability) => mutability,
+                        hir::BindByRef(mutability) => mutability,
+                    }
+                };
+
+                if mutability == hir::MutMutable && !name.as_str().starts_with("_") {
+                    match mutables.entry(name.0 as usize) {
+                        Vacant(entry) => { entry.insert(vec![id]); },
+                        Occupied(mut entry) => { entry.get_mut().push(id); },
+                    }
                 }
             });
         }
@@ -81,7 +84,7 @@ impl LateLintPass for UnusedMut {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprMatch(_, ref arms, _) = e.node {
             for a in arms {
-                self.check_unused_mut_pat(cx, &a.pats)
+                self.check_unused_mut_pat(cx, &a.pats, None)
             }
         }
     }
@@ -89,7 +92,7 @@ impl LateLintPass for UnusedMut {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         if let hir::StmtDecl(ref d, _) = s.node {
             if let hir::DeclLocal(ref l) = d.node {
-                self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
+                self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat), None);
             }
         }
     }
@@ -98,7 +101,12 @@ impl LateLintPass for UnusedMut {
                 _: FnKind, decl: &hir::FnDecl,
                 _: &hir::Block, _: Span, _: ast::NodeId) {
         for a in &decl.inputs {
-            self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
+            let override_mutability = if let hir::TyRptr(_, ref ty) = a.ty.node {
+                Some(ty.mutbl)
+            } else {
+                None
+            };
+            self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat), override_mutability);
         }
     }
 }

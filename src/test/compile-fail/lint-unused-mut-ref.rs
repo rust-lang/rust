@@ -16,6 +16,9 @@
 fn foo(any: &mut i32) {} //~ ERROR: variable does not need to be mutable
 
 fn bar(_any: &mut i32) {}
+fn baz(something: &mut i32) {
+    *something += 1;
+}
 
 fn main() {
     let mut x = 42;
@@ -30,9 +33,14 @@ fn main() {
 
     // Positive cases
     bar(&mut x);
+    baz(&mut x);
 
     match something {
         Some(ref mut _i) => {},
         None => {},
+    }
+
+    if let Some(ref mut i) = something {
+        *i += 1;
     }
 }
