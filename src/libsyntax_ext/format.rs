@@ -98,7 +98,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let fmtstr = panictry!(p.parse_expr());
     let mut named = false;
     while p.token != token::Eof {
-        if !panictry!(p.eat(&token::Comma)) {
+        if !p.eat(&token::Comma) {
             ecx.span_err(sp, "expected token: `,`");
             return None;
         }
@@ -107,7 +107,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             named = true;
             let ident = match p.token {
                 token::Ident(i, _) => {
-                    panictry!(p.bump());
+                    p.bump();
                     i
                 }
                 _ if named => {

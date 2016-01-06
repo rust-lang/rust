@@ -512,7 +512,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         _ => {}
     }
     // check at the beginning and the parser checks after each bump
-    panictry!(p.check_unknown_macro_variable());
+    p.check_unknown_macro_variable();
     match name {
         "item" => match panictry!(p.parse_item()) {
             Some(i) => token::NtItem(i),
@@ -535,7 +535,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         // this could be handled like a token, since it is one
         "ident" => match p.token {
             token::Ident(sn,b) => {
-                panictry!(p.bump());
+                p.bump();
                 token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}),b)
             }
             _ => {

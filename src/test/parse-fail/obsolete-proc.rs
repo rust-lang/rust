@@ -14,6 +14,7 @@
 
 fn foo(p: proc()) { } //~ ERROR `proc` is a reserved keyword
 
-fn bar() { proc() 1; }
+fn bar() { proc() 1; } //~ ERROR `proc` is a reserved keyword
+                       //~^ ERROR expected
 
 fn main() { }

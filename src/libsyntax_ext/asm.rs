@@ -113,7 +113,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::ModSep {
 
                     if !outputs.is_empty() {
-                        panictry!(p.eat(&token::Comma));
+                        p.eat(&token::Comma);
                     }
 
                     let (constraint, _str_style) = panictry!(p.parse_str());
@@ -159,7 +159,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::ModSep {
 
                     if !inputs.is_empty() {
-                        panictry!(p.eat(&token::Comma));
+                        p.eat(&token::Comma);
                     }
 
                     let (constraint, _str_style) = panictry!(p.parse_str());
@@ -183,7 +183,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::ModSep {
 
                     if !clobs.is_empty() {
-                        panictry!(p.eat(&token::Comma));
+                        p.eat(&token::Comma);
                     }
 
                     let (s, _str_style) = panictry!(p.parse_str());
@@ -210,7 +210,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
 
                 if p.token == token::Comma {
-                    panictry!(p.eat(&token::Comma));
+                    p.eat(&token::Comma);
                 }
             }
             StateNone => ()
@@ -222,12 +222,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             match (&p.token, state.next(), state.next().next()) {
                 (&token::Colon, StateNone, _)   |
                 (&token::ModSep, _, StateNone) => {
-                    panictry!(p.bump());
+                    p.bump();
                     break 'statement;
                 }
                 (&token::Colon, st, _)   |
                 (&token::ModSep, _, st) => {
-                    panictry!(p.bump());
+                    p.bump();
                     state = st;
                 }
                 (&token::Eof, _, _) => break 'statement,

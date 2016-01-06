@@ -47,7 +47,7 @@ impl<'a> ParserAnyMacro<'a> {
     fn ensure_complete_parse(&self, allow_semi: bool, context: &str) {
         let mut parser = self.parser.borrow_mut();
         if allow_semi && parser.token == token::Semi {
-            panictry!(parser.bump())
+            parser.bump();
         }
         if parser.token != token::Eof {
             let token_str = parser.this_token_to_string();
@@ -194,7 +194,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                            imported_from,
                                            rhs);
                 let mut p = Parser::new(cx.parse_sess(), cx.cfg(), Box::new(trncbr));
-                panictry!(p.check_unknown_macro_variable());
+                p.check_unknown_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {
