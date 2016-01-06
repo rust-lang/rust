@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-
 fn main() {
     let x = 42 + y;
+
+    42u8 + 42i32;
 }
