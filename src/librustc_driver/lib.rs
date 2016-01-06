@@ -127,7 +127,7 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
 
     let descriptions = diagnostics_registry();
 
-    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.output));
+    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.error_format));
 
     let (odir, ofile) = make_output(&matches);
     let (input, input_file_path) = match make_input(&matches.free) {
@@ -340,10 +340,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 if should_stop == Compilation::Stop {
                     return None;
                 }
-                early_error(sopts.output, "no input filename given");
+                early_error(sopts.error_format, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(sopts.output, "multiple input filenames provided"),
+            _ => early_error(sopts.error_format, "multiple input filenames provided"),
         }
 
         None

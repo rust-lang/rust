@@ -406,8 +406,8 @@ pub fn build_session(sopts: config::Options,
     let treat_err_as_bug = sopts.treat_err_as_bug;
 
     let codemap = Rc::new(codemap::CodeMap::new());
-    let emitter: Box<Emitter> = match sopts.output {
-        config::ErrorOutputType::Tty(color_config) => {
+    let emitter: Box<Emitter> = match sopts.error_format {
+        config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, Some(registry), codemap.clone()))
         }
         config::ErrorOutputType::Json => {
@@ -483,7 +483,9 @@ pub fn build_session_(sopts: config::Options,
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let mut emitter: Box<Emitter> = match output {
-        config::ErrorOutputType::Tty(color_config) => Box::new(BasicEmitter::stderr(color_config)),
+        config::ErrorOutputType::HumanReadable(color_config) => {
+            Box::new(BasicEmitter::stderr(color_config))
+        }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
     emitter.emit(None, msg, None, errors::Level::Fatal);
@@ -492,7 +494,9 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let mut emitter: Box<Emitter> = match output {
-        config::ErrorOutputType::Tty(color_config) => Box::new(BasicEmitter::stderr(color_config)),
+        config::ErrorOutputType::HumanReadable(color_config) => {
+            Box::new(BasicEmitter::stderr(color_config))
+        }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
     emitter.emit(None, msg, None, errors::Level::Warning);

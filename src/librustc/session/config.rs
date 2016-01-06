@@ -72,13 +72,13 @@ pub enum OutputType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
-    Tty(ColorConfig),
+    HumanReadable(ColorConfig),
     Json,
 }
 
 impl Default for ErrorOutputType {
     fn default() -> ErrorOutputType {
-        ErrorOutputType::Tty(ColorConfig::Auto)
+        ErrorOutputType::HumanReadable(ColorConfig::Auto)
     }
 }
 
@@ -135,7 +135,7 @@ pub struct Options {
     pub test: bool,
     pub parse_only: bool,
     pub no_trans: bool,
-    pub output: ErrorOutputType,
+    pub error_format: ErrorOutputType,
     pub treat_err_as_bug: bool,
     pub incremental_compilation: bool,
     pub dump_dep_graph: bool,
@@ -252,12 +252,7 @@ pub fn basic_options() -> Options {
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
         cg: basic_codegen_options(),
-<<<<<<< HEAD
-        color: ColorConfig::Auto,
-=======
-        output: ErrorOutputType::default(),
-        show_span: None,
->>>>>>> Add an --output option for specifying an error emitter
+        error_format: ErrorOutputType::default(),
         externs: HashMap::new(),
         crate_name: None,
         alt_std_name: None,
@@ -324,7 +319,7 @@ macro_rules! options {
         $struct_name { $($opt: $init),* }
     }
 
-    pub fn $buildfn(matches: &getopts::Matches, output: ErrorOutputType) -> $struct_name
+    pub fn $buildfn(matches: &getopts::Matches, error_format: ErrorOutputType) -> $struct_name
     {
         let mut op = $defaultfn();
         for option in matches.opt_strs($prefix) {
@@ -338,20 +333,20 @@ macro_rules! options {
                 if !setter(&mut op, value) {
                     match (value, opt_type_desc) {
                         (Some(..), None) => {
-                            early_error(output, &format!("{} option `{}` takes no \
-                                                         value", $outputname, key))
+                            early_error(error_format, &format!("{} option `{}` takes no \
+                                                              value", $outputname, key))
                         }
                         (None, Some(type_desc)) => {
-                            early_error(output, &format!("{0} option `{1}` requires \
-                                                         {2} ({3} {1}=<value>)",
-                                                        $outputname, key,
-                                                        type_desc, $prefix))
+                            early_error(error_format, &format!("{0} option `{1}` requires \
+                                                              {2} ({3} {1}=<value>)",
+                                                             $outputname, key,
+                                                             type_desc, $prefix))
                         }
                         (Some(value), Some(type_desc)) => {
-                            early_error(output, &format!("incorrect value `{}` for {} \
-                                                         option `{}` - {} was expected",
-                                                        value, $outputname,
-                                                        key, type_desc))
+                            early_error(error_format, &format!("incorrect value `{}` for {} \
+                                                              option `{}` - {} was expected",
+                                                             value, $outputname,
+                                                             key, type_desc))
                         }
                         (None, None) => unreachable!()
                     }
@@ -360,8 +355,8 @@ macro_rules! options {
                 break;
             }
             if !found {
-                early_error(output, &format!("unknown {} option: `{}`",
-                                            $outputname, key));
+                early_error(error_format, &format!("unknown {} option: `{}`",
+                                                 $outputname, key));
             }
         }
         return op;
@@ -879,7 +874,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                  "NAME=PATH"),
         opt::opt("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
-        opt::opt_u("", "output", "How errors and other mesasges are produced", "tty|json"),
+        opt::opt_u("", "error-format", "How errors and other messages are produced", "human|json"),
         opt::opt("", "color", "Configure coloring of output:
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
@@ -929,19 +924,20 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
 
     // We need the opts_present check because the driver will send us Matches
-    // with only stable options if no unstable options are used. Since output is
-    // unstable, it will not be present. We have to use opts_present not
+    // with only stable options if no unstable options are used. Since error-format
+    // is unstable, it will not be present. We have to use opts_present not
     // opt_present because the latter will panic.
-    let output = if matches.opts_present(&["output".to_owned()]) {
-        match matches.opt_str("output").as_ref().map(|s| &s[..]) {
-            Some("tty")   => ErrorOutputType::Tty(color),
+    let error_format = if matches.opts_present(&["error-format".to_owned()]) {
+        match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+            Some("human")   => ErrorOutputType::HumanReadable(color),
             Some("json") => ErrorOutputType::Json,
 
             None => ErrorOutputType::default(),
 
             Some(arg) => {
-                early_error(ErrorOutputType::default(), &format!("argument for --output must be \
-                                                                  tty or json (instead was `{}`)",
+                early_error(ErrorOutputType::default(), &format!("argument for --error-format must \
+                                                                  be human or json (instead was \
+                                                                  `{}`)",
                                                                  arg))
             }
         }
@@ -951,7 +947,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
-        .unwrap_or_else(|e| early_error(output, &e[..]));
+        .unwrap_or_else(|e| early_error(error_format, &e[..]));
 
     let mut lint_opts = vec!();
     let mut describe_lints = false;
@@ -968,11 +964,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let lint_cap = matches.opt_str("cap-lints").map(|cap| {
         lint::Level::from_str(&cap).unwrap_or_else(|| {
-            early_error(output, &format!("unknown lint level: `{}`", cap))
+            early_error(error_format, &format!("unknown lint level: `{}`", cap))
         })
     });
 
-    let debugging_opts = build_debugging_options(matches, output);
+    let debugging_opts = build_debugging_options(matches, error_format);
 
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
@@ -998,7 +994,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     "link" => OutputType::Exe,
                     "dep-info" => OutputType::DepInfo,
                     part => {
-                        early_error(output, &format!("unknown emission type: `{}`",
+                        early_error(error_format, &format!("unknown emission type: `{}`",
                                                     part))
                     }
                 };
@@ -1011,7 +1007,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         output_types.insert(OutputType::Exe, None);
     }
 
-    let mut cg = build_codegen_options(matches, output);
+    let mut cg = build_codegen_options(matches, error_format);
 
     // Issue #30063: if user requests llvm-related output to one
     // particular path, disable codegen-units.
@@ -1023,11 +1019,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }).collect();
         if !incompatible.is_empty() {
             for ot in &incompatible {
-                early_warn(output, &format!("--emit={} with -o incompatible with \
-                                            -C codegen-units=N for N > 1",
-                                           ot.shorthand()));
+                early_warn(error_format, &format!("--emit={} with -o incompatible with \
+                                                 -C codegen-units=N for N > 1",
+                                                ot.shorthand()));
             }
-            early_warn(output, "resetting to default -C codegen-units=1");
+            early_warn(error_format, "resetting to default -C codegen-units=1");
             cg.codegen_units = 1;
         }
     }
@@ -1040,7 +1036,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let opt_level = {
         if matches.opt_present("O") {
             if cg.opt_level.is_some() {
-                early_error(output, "-O and -C opt-level both provided");
+                early_error(error_format, "-O and -C opt-level both provided");
             }
             OptLevel::Default
         } else {
@@ -1051,9 +1047,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 Some(2) => OptLevel::Default,
                 Some(3) => OptLevel::Aggressive,
                 Some(arg) => {
-                    early_error(output, &format!("optimization level needs to be \
-                                                 between 0-3 (instead was `{}`)",
-                                                arg));
+                    early_error(error_format, &format!("optimization level needs to be \
+                                                      between 0-3 (instead was `{}`)",
+                                                     arg));
                 }
             }
         }
@@ -1062,7 +1058,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let gc = debugging_opts.gc;
     let debuginfo = if matches.opt_present("g") {
         if cg.debuginfo.is_some() {
-            early_error(output, "-g and -C debuginfo both provided");
+            early_error(error_format, "-g and -C debuginfo both provided");
         }
         FullDebugInfo
     } else {
@@ -1071,16 +1067,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(1) => LimitedDebugInfo,
             Some(2) => FullDebugInfo,
             Some(arg) => {
-                early_error(output, &format!("debug info level needs to be between \
-                                             0-2 (instead was `{}`)",
-                                            arg));
+                early_error(error_format, &format!("debug info level needs to be between \
+                                                  0-2 (instead was `{}`)",
+                                                 arg));
             }
         }
     };
 
     let mut search_paths = SearchPaths::new();
     for s in &matches.opt_strs("L") {
-        search_paths.add_path(&s[..], output);
+        search_paths.add_path(&s[..], error_format);
     }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
@@ -1092,9 +1088,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             (Some(name), "framework") => (name, cstore::NativeFramework),
             (Some(name), "static") => (name, cstore::NativeStatic),
             (_, s) => {
-                early_error(output, &format!("unknown library kind `{}`, expected \
-                                             one of dylib, framework, or static",
-                                            s));
+                early_error(error_format, &format!("unknown library kind `{}`, expected \
+                                                  one of dylib, framework, or static",
+                                                 s));
             }
         };
         (name.to_string(), kind)
@@ -1109,14 +1105,14 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             "file-names" => PrintRequest::FileNames,
             "sysroot" => PrintRequest::Sysroot,
             req => {
-                early_error(output, &format!("unknown print request `{}`", req))
+                early_error(error_format, &format!("unknown print request `{}`", req))
             }
         }
     }).collect::<Vec<_>>();
 
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
-        early_warn(output, "-C remark will not show source locations without \
-                           --debuginfo");
+        early_warn(error_format, "-C remark will not show source locations without \
+                                --debuginfo");
     }
 
     let mut externs = HashMap::new();
@@ -1124,11 +1120,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         let mut parts = arg.splitn(2, '=');
         let name = match parts.next() {
             Some(s) => s,
-            None => early_error(output, "--extern value must not be empty"),
+            None => early_error(error_format, "--extern value must not be empty"),
         };
         let location = match parts.next() {
             Some(s) => s,
-            None => early_error(output, "--extern value must be of the format `foo=bar`"),
+            None => early_error(error_format, "--extern value must be of the format `foo=bar`"),
         };
 
         externs.entry(name.to_string()).or_insert(vec![]).push(location.to_string());
@@ -1159,7 +1155,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         debugging_opts: debugging_opts,
         prints: prints,
         cg: cg,
-        output: output,
+        error_format: error_format,
         externs: externs,
         crate_name: crate_name,
         alt_std_name: None,
