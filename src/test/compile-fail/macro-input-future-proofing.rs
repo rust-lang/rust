@@ -18,7 +18,6 @@ macro_rules! errors_everywhere {
     ($bl:block < ) => ();
     ($pa:pat >) => (); //~ ERROR `$pa:pat` is followed by `>`, which is not allowed for `pat`
     ($pa:pat , ) => ();
-    ($pa:pat | ) => (); //~ ERROR `$pa:pat` is followed by `|`
     ($pa:pat $pb:pat $ty:ty ,) => ();
     //~^ ERROR `$pa:pat` is followed by `$pb:pat`, which is not allowed
     //~^^ ERROR `$pb:pat` is followed by `$ty:ty`, which is not allowed
