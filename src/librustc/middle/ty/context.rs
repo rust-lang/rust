@@ -13,7 +13,7 @@
 // FIXME: (@jroesch) @eddyb should remove this when he renames ctxt
 #![allow(non_camel_case_types)]
 
-use dep_graph::{DepGraph, DepNode, DepTrackingMap};
+use dep_graph::{DepGraph, DepTrackingMap};
 use front::map as ast_map;
 use session::Session;
 use lint;
@@ -256,9 +256,8 @@ pub struct ctxt<'tcx> {
     pub trait_item_def_ids: RefCell<DepTrackingMap<maps::TraitItemDefIds<'tcx>>>,
 
     /// A cache for the trait_items() routine; note that the routine
-    /// itself pushes the `TraitItems` dependency node. This cache is
-    /// "encapsulated" and thus does not need to be itself tracked.
-    trait_items_cache: RefCell<DefIdMap<Rc<Vec<ty::ImplOrTraitItem<'tcx>>>>>,
+    /// itself pushes the `TraitItems` dependency node.
+    trait_items_cache: RefCell<DepTrackingMap<maps::TraitItems<'tcx>>>,
 
     pub impl_trait_refs: RefCell<DepTrackingMap<maps::ImplTraitRefs<'tcx>>>,
     pub trait_defs: RefCell<DepTrackingMap<maps::TraitDefs<'tcx>>>,
@@ -371,9 +370,7 @@ pub struct ctxt<'tcx> {
     pub fulfilled_predicates: RefCell<traits::FulfilledPredicates<'tcx>>,
 
     /// Caches the representation hints for struct definitions.
-    ///
-    /// This is encapsulated by the `ReprHints` task and hence is not tracked.
-    repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
+    repr_hint_cache: RefCell<DepTrackingMap<maps::ReprHints<'tcx>>>,
 
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<middle::check_const::ConstQualif>>,
@@ -544,7 +541,7 @@ impl<'tcx> ctxt<'tcx> {
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
             impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            trait_items_cache: RefCell::new(DefIdMap()),
+            trait_items_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             ty_param_defs: RefCell::new(NodeMap()),
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
@@ -561,7 +558,7 @@ impl<'tcx> ctxt<'tcx> {
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
-            repr_hint_cache: RefCell::new(DefIdMap()),
+            repr_hint_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             const_qualif_map: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             cast_kinds: RefCell::new(NodeMap()),
@@ -1032,28 +1029,16 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn trait_items(&self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> {
-        // since this is cached, pushing a dep-node for the
-        // computation yields the correct dependencies.
-        let _task = self.dep_graph.in_task(DepNode::TraitItems(trait_did));
-
-        let mut trait_items = self.trait_items_cache.borrow_mut();
-        match trait_items.get(&trait_did).cloned() {
-            Some(trait_items) => trait_items,
-            None => {
-                let def_ids = self.trait_item_def_ids(trait_did);
-                let items: Rc<Vec<_>> =
-                    Rc::new(def_ids.iter()
-                                   .map(|d| self.impl_or_trait_item(d.def_id()))
-                                   .collect());
-                trait_items.insert(trait_did, items.clone());
-                items
-            }
-        }
+        self.trait_items_cache.memoize(trait_did, || {
+            let def_ids = self.trait_item_def_ids(trait_did);
+            Rc::new(def_ids.iter()
+                           .map(|d| self.impl_or_trait_item(d.def_id()))
+                           .collect())
+        })
     }
 
     /// Obtain the representation annotation for a struct definition.
     pub fn lookup_repr_hints(&self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
-        let _task = self.dep_graph.in_task(DepNode::ReprHints(did));
         self.repr_hint_cache.memoize(did, || {
             Rc::new(if did.is_local() {
                 self.get_attrs(did).iter().flat_map(|meta| {
