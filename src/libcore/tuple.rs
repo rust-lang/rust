@@ -30,6 +30,7 @@
 use clone::Clone;
 use cmp::*;
 use cmp::Ordering::*;
+use convert::From;
 use default::Default;
 use option::Option;
 use option::Option::Some;
@@ -110,6 +111,28 @@ macro_rules! tuple_impls {
             }
         )+
     }
+}
+
+// macro for implementing `From<[T; N]` on tuples
+macro_rules! tuple_impl_variadic {
+    {$n:expr, $i:ident: $t:ident $(,$is:ident: $ts:ident)*} => {
+        #[unstable(feature = "tuple_from_array", reason = "recently added", issue = "0")]
+        impl<T> From<[T; $n]> for ($t, $($ts),*) {
+            #[inline]
+            fn from([$i, $($is,)*]: [T; $n]) -> ($t, $($ts,)*) {
+                ($i, $($is,)*)
+            }
+        }
+
+        tuple_impl_variadic!{($n - 1), $($is: $ts),*}
+    };
+    {$n:expr,} => {
+        #[unstable(feature = "tuple_from_array", reason = "recently added", issue = "0")]
+        impl<T> From<[T; $n]> for () {
+            #[inline]
+            fn from(_: [T; $n]) -> () { () }
+        }
+    };
 }
 
 // Constructs an expression that performs a lexical ordering using method $rel.
@@ -248,3 +271,6 @@ tuple_impls! {
         (11) -> L
     }
 }
+
+tuple_impl_variadic! { 12, l: T, k: T, j: T, i: T, h: T, g: T,
+                           f: T, e: T, d: T, c: T, b: T, a: T }
