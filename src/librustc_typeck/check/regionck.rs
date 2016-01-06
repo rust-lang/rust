@@ -61,7 +61,7 @@
 //!
 //!     struct Foo { i: i32 }
 //!     struct Bar { foo: Foo  }
-//!     fn get_i(x: &'a Bar) -> &'a i32 {
+//!     fn get_i<'a>(x: &'a Bar) -> &'a i32 {
 //!        let foo = &x.foo; // Lifetime L1
 //!        &foo.i            // Lifetime L2
 //!     }
