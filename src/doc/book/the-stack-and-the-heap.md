@@ -539,7 +539,7 @@ instead.
 # Which to use?
 
 So if the stack is faster and easier to manage, why do we need the heap? A big
-reason is that Stack-allocation alone means you only have LIFO semantics for
+reason is that Stack-allocation alone means you only have 'Last In First Out (LIFO)' semantics for
 reclaiming storage. Heap-allocation is strictly more general, allowing storage
 to be taken from and returned to the pool in arbitrary order, but at a
 complexity cost.
