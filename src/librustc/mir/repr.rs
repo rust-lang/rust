@@ -804,10 +804,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     Vec => write!(fmt, "{:?}", lvs),
 
                     Tuple => {
-                        if lvs.len() == 1 {
-                            write!(fmt, "({:?},)", lvs[0])
-                        } else {
-                            fmt_tuple(fmt, "", lvs)
+                        match lvs.len() {
+                            0 => write!(fmt, "()"),
+                            1 => write!(fmt, "({:?},)", lvs[0]),
+                            _ => fmt_tuple(fmt, "", lvs),
                         }
                     }
 
