@@ -39,7 +39,7 @@ impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t0 = self.infcx.shallow_resolve(t);
-            t0.fold_subitems_with(self)
+            t0.super_fold_with(self)
         }
     }
 }
@@ -67,7 +67,7 @@ impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t0 = self.infcx.shallow_resolve(t);
-            t0.fold_subitems_with(self)
+            t0.super_fold_with(self)
         }
     }
 
@@ -132,7 +132,7 @@ impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
                                 t));
                 }
                 _ => {
-                    t.fold_subitems_with(self)
+                    t.super_fold_with(self)
                 }
             }
         }

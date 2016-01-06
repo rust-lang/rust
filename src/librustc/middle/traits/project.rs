@@ -273,7 +273,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
-        let ty = ty.fold_subitems_with(self);
+        let ty = ty.super_fold_with(self);
         match ty.sty {
             ty::TyProjection(ref data) if !data.has_escaping_regions() => { // (*)
 

@@ -168,7 +168,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::TyTuple(..) |
             ty::TyProjection(..) |
             ty::TyParam(..) => {
-                t.fold_subitems_with(self)
+                t.super_fold_with(self)
             }
         }
     }

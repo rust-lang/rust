@@ -318,7 +318,7 @@ impl<'cx, 'tcx> ty::fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
                 }
             }
             _ => {
-                t.fold_subitems_with(self)
+                t.super_fold_with(self)
             }
         }
     }
