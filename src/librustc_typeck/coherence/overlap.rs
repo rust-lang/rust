@@ -18,53 +18,53 @@ use middle::ty;
 use middle::infer;
 use syntax::ast;
 use syntax::codemap::Span;
+use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 use rustc_front::intravisit;
-use util::nodemap::DefIdMap;
+use util::nodemap::{DefIdMap, DefIdSet};
 
 pub fn check(tcx: &ty::ctxt) {
-    let mut overlap = OverlapChecker { tcx: tcx, default_impls: DefIdMap() };
-    overlap.check_for_overlapping_impls();
+    let mut overlap = OverlapChecker { tcx: tcx,
+                                       traits_checked: DefIdSet(),
+                                       default_impls: DefIdMap() };
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
-    tcx.map.krate().visit_all_items(&mut overlap);
+    tcx.visit_all_items_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
+
+    // The set of traits where we have checked for overlap.  This is
+    // used to avoid checking the same trait twice.
+    //
+    // NB. It's ok to skip tracking this set because we fully
+    // encapsulate it, and we always create a task
+    // (`CoherenceOverlapCheck`) corresponding to each entry.
+    traits_checked: DefIdSet,
 
     // maps from a trait def-id to an impl id
     default_impls: DefIdMap<ast::NodeId>,
 }
 
 impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
-    fn check_for_overlapping_impls(&self) {
-        debug!("check_for_overlapping_impls");
+    fn check_for_overlapping_impls_of_trait(&mut self, trait_def_id: DefId) {
+        debug!("check_for_overlapping_impls_of_trait(trait_def_id={:?})",
+               trait_def_id);
 
-        // Collect this into a vector to avoid holding the
-        // refcell-lock during the
-        // check_for_overlapping_impls_of_trait() check, since that
-        // check can populate this table further with impls from other
-        // crates.
-        let trait_defs: Vec<_> = self.tcx.trait_defs.borrow().values().cloned().collect();
-
-        for trait_def in trait_defs {
-            self.tcx.populate_implementations_for_trait_if_necessary(trait_def.trait_ref.def_id);
-            self.check_for_overlapping_impls_of_trait(trait_def);
+        let _task = self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
+        if !self.traits_checked.insert(trait_def_id) {
+            return;
         }
-    }
 
-    fn check_for_overlapping_impls_of_trait(&self,
-                                            trait_def: &'tcx ty::TraitDef<'tcx>)
-    {
-        debug!("check_for_overlapping_impls_of_trait(trait_def={:?})",
-               trait_def);
+        let trait_def = self.tcx.lookup_trait_def(trait_def_id);
+        self.tcx.populate_implementations_for_trait_if_necessary(
+            trait_def.trait_ref.def_id);
 
         // We should already know all impls of this trait, so these
         // borrows are safe.
-        let blanket_impls = trait_def.blanket_impls.borrow();
-        let nonblanket_impls = trait_def.nonblanket_impls.borrow();
+        let (blanket_impls, nonblanket_impls) = trait_def.borrow_impl_lists(self.tcx);
 
         // Conflicts can only occur between a blanket impl and another impl,
         // or between 2 non-blanket impls of the same kind.
@@ -175,12 +175,20 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
-            hir::ItemDefaultImpl(_, _) => {
+            hir::ItemTrait(..) => {
+                let trait_def_id = self.tcx.map.local_def_id(item.id);
+                self.check_for_overlapping_impls_of_trait(trait_def_id);
+            }
+
+            hir::ItemDefaultImpl(..) => {
                 // look for another default impl; note that due to the
                 // general orphan/coherence rules, it must always be
                 // in this crate.
                 let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
+
+                self.check_for_overlapping_impls_of_trait(trait_ref.def_id);
+
                 let prev_default_impl = self.default_impls.insert(trait_ref.def_id, item.id);
                 match prev_default_impl {
                     Some(prev_id) => {
@@ -195,6 +203,7 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
+                self.check_for_overlapping_impls_of_trait(trait_def_id);
                 match trait_ref.self_ty().sty {
                     ty::TyTrait(ref data) => {
                         // This is something like impl Trait1 for Trait2. Illegal

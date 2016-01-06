@@ -204,6 +204,7 @@ impl PpSourceMode {
                                                         let annotation = TypedAnnotation {
                                                             tcx: tcx,
                                                         };
+                                                        let _ignore = tcx.dep_graph.in_ignore();
                                                         f(&annotation,
                                                           payload,
                                                           &ast_map.forest.krate)

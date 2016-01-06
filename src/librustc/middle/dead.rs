@@ -12,6 +12,7 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
+use dep_graph::DepNode;
 use front::map as ast_map;
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
@@ -590,6 +591,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt, access_levels: &privacy::AccessLevels) {
+    let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
     let krate = tcx.map.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };

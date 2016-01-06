@@ -310,6 +310,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("select({:?})", obligation);
         assert!(!obligation.predicate.has_escaping_regions());
 
+        let dep_node = obligation.dep_node(self.tcx());
+        let _task = self.tcx().dep_graph.in_task(dep_node);
+
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
         match try!(self.candidate_from_obligation(&stack)) {
             None => {
@@ -411,7 +414,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// accurate if inference variables are involved.
     pub fn evaluate_obligation_conservatively(&mut self,
                                               obligation: &PredicateObligation<'tcx>)
-                               -> bool
+                                              -> bool
     {
         debug!("evaluate_obligation_conservatively({:?})",
                obligation);

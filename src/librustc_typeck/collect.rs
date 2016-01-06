@@ -34,13 +34,12 @@ lazilly and on demand, and include logic that checks for cycles.
 Demand is driven by calls to `AstConv::get_item_type_scheme` or
 `AstConv::lookup_trait_def`.
 
-Currently, we "convert" types and traits in three phases (note that
+Currently, we "convert" types and traits in two phases (note that
 conversion only affects the types of items / enum variants / methods;
 it does not e.g. compute the types of individual expressions):
 
 0. Intrinsics
-1. Trait definitions
-2. Type definitions
+1. Trait/Type definitions
 
 Conversion itself is done by simply walking each of the items in turn
 and invoking an appropriate function (e.g., `trait_def_of_item` or
@@ -56,11 +55,6 @@ There are some shortcomings in this design:
 - Because the type scheme includes defaults, cycles through type
   parameter defaults are illegal even if those defaults are never
   employed. This is not necessarily a bug.
-- The phasing of trait definitions before type definitions does not
-  seem to be necessary, sufficient, or particularly helpful, given that
-  processing a trait definition can trigger processing a type def and
-  vice versa. However, if I remove it, I get ICEs, so some more work is
-  needed in that area. -nmatsakis
 
 */
 
@@ -79,12 +73,13 @@ use middle::ty::{VariantKind};
 use middle::ty::fold::{TypeFolder};
 use middle::ty::util::IntTypeExt;
 use rscope::*;
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
-use util::common::{ErrorReported, memoized};
+use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use write_ty_to_tcx;
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -103,9 +98,6 @@ use rustc_front::print::pprust;
 
 pub fn collect_item_types(tcx: &ty::ctxt) {
     let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
-
-    let mut visitor = CollectTraitDefVisitor{ ccx: ccx };
-    ccx.tcx.map.krate().visit_all_items(&mut visitor);
 
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
     ccx.tcx.map.krate().visit_all_items(&mut visitor);
@@ -146,41 +138,17 @@ enum AstConvRequest {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// First phase: just collect *trait definitions* -- basically, the set
-// of type parameters and supertraits. This is information we need to
-// know later when parsing field defs.
-
-struct CollectTraitDefVisitor<'a, 'tcx: 'a> {
-    ccx: &'a CrateCtxt<'a, 'tcx>
-}
-
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectTraitDefVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
-        match i.node {
-            hir::ItemTrait(..) => {
-                // computing the trait def also fills in the table
-                let _ = trait_def_of_item(self.ccx, i);
-            }
-            _ => { }
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Second phase: collection proper.
 
 struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>
 }
 
 impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &hir::Item) {
-        convert_item(self.ccx, i);
-        intravisit::walk_item(self, i);
-    }
-    fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
-        convert_foreign_item(self.ccx, i);
-        intravisit::walk_foreign_item(self, i);
+    fn visit_item(&mut self, item: &hir::Item) {
+        let tcx = self.ccx.tcx;
+        let item_def_id = tcx.map.local_def_id(item.id);
+        let _task = tcx.dep_graph.in_task(DepNode::CollectItem(item_def_id));
+        convert_item(self.ccx, item);
     }
 }
 
@@ -703,8 +671,12 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     debug!("convert: item {} with id {}", it.name, it.id);
     match it.node {
         // These don't define types.
-        hir::ItemExternCrate(_) | hir::ItemUse(_) |
-        hir::ItemForeignMod(_) | hir::ItemMod(_) => {
+        hir::ItemExternCrate(_) | hir::ItemUse(_) | hir::ItemMod(_) => {
+        }
+        hir::ItemForeignMod(ref foreign_mod) => {
+            for item in &foreign_mod.items {
+                convert_foreign_item(ccx, item);
+            }
         }
         hir::ItemEnum(ref enum_definition, _) => {
             let (scheme, predicates) = convert_typed_item(ccx, it);
@@ -1283,16 +1255,11 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         substs: substs,
     };
 
-    let trait_def = ty::TraitDef {
-        paren_sugar: paren_sugar,
-        unsafety: unsafety,
-        generics: ty_generics,
-        trait_ref: trait_ref,
-        associated_type_names: associated_type_names,
-        nonblanket_impls: RefCell::new(FnvHashMap()),
-        blanket_impls: RefCell::new(vec![]),
-        flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
-    };
+    let trait_def = ty::TraitDef::new(unsafety,
+                                      paren_sugar,
+                                      ty_generics,
+                                      trait_ref,
+                                      associated_type_names);
 
     return tcx.intern_trait_def(trait_def);
 
@@ -1452,12 +1419,17 @@ fn type_scheme_of_def_id<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 }
 
 fn type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
-                                it: &hir::Item)
+                                item: &hir::Item)
                                 -> ty::TypeScheme<'tcx>
 {
-    memoized(&ccx.tcx.tcache,
-             ccx.tcx.map.local_def_id(it.id),
-             |_| compute_type_scheme_of_item(ccx, it))
+    let item_def_id = ccx.tcx.map.local_def_id(item.id);
+    ccx.tcx.tcache.memoize(item_def_id, || {
+        // NB. Since the `memoized` function enters a new task, and we
+        // are giving this task access to the item `item`, we must
+        // register a read.
+        ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id));
+        compute_type_scheme_of_item(ccx, item)
+    })
 }
 
 fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -1571,13 +1543,18 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn type_scheme_of_foreign_item<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
-    it: &hir::ForeignItem,
+    item: &hir::ForeignItem,
     abi: abi::Abi)
     -> ty::TypeScheme<'tcx>
 {
-    memoized(&ccx.tcx.tcache,
-             ccx.tcx.map.local_def_id(it.id),
-             |_| compute_type_scheme_of_foreign_item(ccx, it, abi))
+    let item_def_id = ccx.tcx.map.local_def_id(item.id);
+    ccx.tcx.tcache.memoize(item_def_id, || {
+        // NB. Since the `memoized` function enters a new task, and we
+        // are giving this task access to the item `item`, we must
+        // register a read.
+        ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id));
+        compute_type_scheme_of_foreign_item(ccx, item, abi)
+    })
 }
 
 fn compute_type_scheme_of_foreign_item<'a, 'tcx>(
