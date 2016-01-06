@@ -1795,7 +1795,7 @@ To convert this to proper error handling, we need to do the following:
 Let's try it:
 
 ```rust,ignore
-use std::error::Error
+use std::error::Error;
 
 // The rest of the code before this is unchanged
 
