@@ -471,6 +471,18 @@ fn test_is_utf8() {
 }
 
 #[test]
+fn from_utf8_mostly_ascii() {
+    // deny invalid bytes embedded in long stretches of ascii
+    for i in 32..64 {
+        let mut data = [0; 128];
+        data[i] = 0xC0;
+        assert!(from_utf8(&data).is_err());
+        data[i] = 0xC2;
+        assert!(from_utf8(&data).is_err());
+    }
+}
+
+#[test]
 fn test_is_utf16() {
     use rustc_unicode::str::is_utf16;
 
