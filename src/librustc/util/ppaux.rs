@@ -251,12 +251,11 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
 struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
-    fn fold_with<F:ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F)
-                                              -> TraitAndProjections<'tcx> {
+    fn super_fold_with<F:ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
     }
 
-    fn visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.0.visit_with(visitor) || self.1.visit_with(visitor)
     }
 }
