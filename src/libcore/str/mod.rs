@@ -32,6 +32,7 @@ use option::Option::{self, None, Some};
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};
+use usize;
 
 pub mod pattern;
 
@@ -240,7 +241,7 @@ impl Utf8Error {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
-    try!(run_utf8_validation_iterator(&mut v.iter()));
+    try!(run_utf8_validation(v));
     Ok(unsafe { from_utf8_unchecked(v) })
 }
 
@@ -1074,46 +1075,44 @@ unsafe fn cmp_slice(a: &str, b: &str, len: usize) -> i32 {
 }
 
 /*
-Section: Misc
+Section: UTF-8 validation
 */
+
+// use truncation to fit u64 into usize
+const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
+
+/// Return `true` if any byte in the word `x` is nonascii (>= 128).
+#[inline]
+fn contains_nonascii(x: usize) -> bool {
+    (x & NONASCII_MASK) != 0
+}
 
 /// Walk through `iter` checking that it's a valid UTF-8 sequence,
 /// returning `true` in that case, or, if it is invalid, `false` with
 /// `iter` reset such that it is pointing at the first byte in the
 /// invalid sequence.
 #[inline(always)]
-fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
-                                -> Result<(), Utf8Error> {
-    let whole = iter.as_slice();
-    loop {
-        // save the current thing we're pointing at.
-        let old = iter.clone();
-
-        // restore the iterator we had at the start of this codepoint.
+fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
+    let mut offset = 0;
+    let len = v.len();
+    while offset < len {
+        let old_offset = offset;
         macro_rules! err { () => {{
-            *iter = old.clone();
             return Err(Utf8Error {
-                valid_up_to: whole.len() - iter.as_slice().len()
+                valid_up_to: old_offset
             })
         }}}
 
-        macro_rules! next { () => {
-            match iter.next() {
-                Some(a) => *a,
-                // we needed data, but there was none: error!
-                None => err!(),
+        macro_rules! next { () => {{
+            offset += 1;
+            // we needed data, but there was none: error!
+            if offset >= len {
+                err!()
             }
-        }}
+            v[offset]
+        }}}
 
-        let first = match iter.next() {
-            Some(&b) => b,
-            // we're at the end of the iterator and a codepoint
-            // boundary at the same time, so this string is valid.
-            None => return Ok(())
-        };
-
-        // ASCII characters are always valid, so only large
-        // bytes need more examination.
+        let first = v[offset];
         if first >= 128 {
             let w = UTF8_CHAR_WIDTH[first as usize];
             let second = next!();
@@ -1156,8 +1155,39 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
                 }
                 _ => err!()
             }
+            offset += 1;
+        } else {
+            // Ascii case, try to skip forward quickly.
+            let ptr = v.as_ptr();
+            let align = (ptr as usize + offset) & (usize::BYTES - 1);
+            if align == 0 {
+                // When the pointer is aligned, read 2 words of data per iteration
+                // until we find a word containing a non-ascii byte.
+                while offset <= len - 2 * usize::BYTES {
+                    unsafe {
+                        let u = *(ptr.offset(offset as isize) as *const usize);
+                        let v = *(ptr.offset((offset + usize::BYTES) as isize) as *const usize);
+
+                        // break if there is a nonascii byte
+                        let zu = contains_nonascii(u);
+                        let zv = contains_nonascii(v);
+                        if zu || zv {
+                            break;
+                        }
+                    }
+                    offset += usize::BYTES * 2;
+                }
+                // step from the point where the wordwise loop stopped
+                while offset < len && v[offset] < 128 {
+                    offset += 1;
+                }
+            } else {
+                offset += 1;
+            }
         }
     }
+
+    Ok(())
 }
 
 // https://tools.ietf.org/html/rfc3629
