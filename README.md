@@ -53,6 +53,16 @@ Read ["Installing Rust"] from [The Book].
 
 ### Building on Windows
 
+There are two prominent ABIs in use on Windows: the native (MSVC) ABI used by
+Visual Studio, and the GNU ABI used by the GCC toolchain. Which version of Rust
+you need depends largely on what C/C++ libraries you want to interoperate with:
+for interop with software produced by Visual Studio use the MSVC build of Rust;
+for interop with GNU software built using the MinGW/MSYS2 toolchain use the GNU
+build.
+
+
+#### MinGW
+
 [MSYS2](http://msys2.github.io/) can be used to easily build Rust on Windows:
 
 1. Grab the latest MSYS2 installer and go through the installer.
@@ -63,12 +73,15 @@ Read ["Installing Rust"] from [The Book].
    ```sh
    # Update package mirrors (may be needed if you have a fresh install of MSYS2)
    $ pacman -Sy pacman-mirrors
+   ```
 
-   # Choose one based on platform: 
-   # *** see the note below ***
-   $ pacman -S mingw-w64-i686-toolchain
-   $ pacman -S mingw-w64-x86_64-toolchain
+Download [MinGW from
+here](http://mingw-w64.org/doku.php/download/mingw-builds), and choose the
+`threads=win32,exceptions=dwarf/seh` flavor when installing. After installing,
+add its `bin` directory to your `PATH`. This is due to #28260, in the future,
+installing from pacman should be just fine.
 
+   ```
    # Make git available in MSYS2 (if not already available on path)
    $ pacman -S git
 
@@ -84,16 +97,19 @@ Read ["Installing Rust"] from [The Book].
    $ ./configure
    $ make && make install
    ```
-> ***Note:*** gcc versions >= 5 currently have issues building LLVM on Windows
-> resulting in a segmentation fault when building Rust. In order to avoid this
-> it may be necessary to obtain an earlier version of gcc such as 4.9.x.  
-> Msys's `pacman` will install the latest version, so for the time being it is
-> recommended to skip gcc toolchain installation step above and use [Mingw-Builds]
-> project's installer instead.  Be sure to add gcc `bin` directory to the path
-> before running `configure`.  
-> For more information on this see issue #28260.
 
-[Mingw-Builds]: http://sourceforge.net/projects/mingw-w64/
+#### MSVC
+
+MSVC builds of Rust additionally require an installation of Visual Studio 2013
+(or later) so `rustc` can use its linker. Make sure to check the “C++ tools”
+option. In addition, `cmake` needs to be installed to build LLVM.
+
+With these dependencies installed, the build takes two steps:
+
+```sh
+$ ./configure
+$ make && make install
+```
 
 ## Building Documentation
 
