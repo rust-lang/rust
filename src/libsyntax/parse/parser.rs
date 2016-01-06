@@ -2192,6 +2192,12 @@ impl<'a> Parser<'a> {
                         UnsafeBlock(ast::UserProvided),
                         attrs);
                 }
+                if try!(self.eat_keyword(keywords::Let) ) {
+                    return Err(self.span_fatal(self.span,
+                                               "`let` is not an expression, so it cannot \
+                                                be used in this way"))
+
+                }
                 if try!(self.eat_keyword(keywords::Return) ){
                     if self.token.can_begin_expr() {
                         let e = try!(self.parse_expr());
