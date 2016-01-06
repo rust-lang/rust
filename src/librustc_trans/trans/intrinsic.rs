@@ -37,6 +37,7 @@ use trans::machine;
 use trans::type_::Type;
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::subst::Substs;
+use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 use syntax::abi::{self, RustIntrinsic};
 use syntax::ast;
@@ -101,6 +102,7 @@ pub fn span_transmute_size_error(a: &Session, b: Span, msg: &str) {
 /// Performs late verification that intrinsics are used correctly. At present,
 /// the only intrinsic that needs such verification is `transmute`.
 pub fn check_intrinsics(ccx: &CrateContext) {
+    let _task = ccx.tcx().dep_graph.in_task(DepNode::IntrinsicUseCheck);
     let mut last_failing_id = None;
     for transmute_restriction in ccx.tcx().transmute_restrictions.borrow().iter() {
         // Sometimes, a single call to transmute will push multiple

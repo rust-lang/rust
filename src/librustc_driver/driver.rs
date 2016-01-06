@@ -801,7 +801,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
                                    time(time_passes,
                                         "rvalue checking",
-                                        || middle::check_rvalues::check_crate(tcx, krate));
+                                        || middle::check_rvalues::check_crate(tcx));
 
                                    // Avoid overwhelming user with errors if type checking failed.
                                    // I'm not sure how helpful this is, to be honest, but it avoids
