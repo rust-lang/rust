@@ -28,7 +28,7 @@ impl<'tcx> CFG<'tcx> {
 
     pub fn start_new_block(&mut self) -> BasicBlock {
         let node_index = self.basic_blocks.len();
-        self.basic_blocks.push(BasicBlockData::new(Terminator::Diverge));
+        self.basic_blocks.push(BasicBlockData::new(None));
         BasicBlock::new(node_index)
     }
 
@@ -67,15 +67,9 @@ impl<'tcx> CFG<'tcx> {
     pub fn terminate(&mut self,
                      block: BasicBlock,
                      terminator: Terminator<'tcx>) {
-        // Check whether this block has already been terminated. For
-        // this, we rely on the fact that the initial state is to have
-        // a Diverge terminator and an empty list of targets (which
-        // is not a valid state).
-        debug_assert!(match self.block_data(block).terminator { Terminator::Diverge => true,
-                                                                _ => false },
+        debug_assert!(self.block_data(block).terminator.is_none(),
                       "terminate: block {:?} already has a terminator set", block);
-
-        self.block_data_mut(block).terminator = terminator;
+        self.block_data_mut(block).terminator = Some(terminator);
     }
 }
 

@@ -15,6 +15,7 @@ use build::expr::category::{Category, RvalueFunc};
 use build::scope::LoopScope;
 use hair::*;
 use rustc::middle::region::CodeExtent;
+use rustc::middle::ty;
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
@@ -210,23 +211,35 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.exit_scope(expr_span, extent, block, END_BLOCK);
                 this.cfg.start_new_block().unit()
             }
-            ExprKind::Call { fun, args } => {
+            ExprKind::Call { ty, fun, args } => {
+                let diverges = match ty.sty {
+                    ty::TyBareFn(_, ref f) => f.sig.0.output.diverges(),
+                    _ => false
+                };
                 let fun = unpack!(block = this.as_operand(block, fun));
                 let args: Vec<_> =
                     args.into_iter()
                         .map(|arg| unpack!(block = this.as_operand(block, arg)))
                         .collect();
+
                 let success = this.cfg.start_new_block();
-                let panic = this.diverge_cleanup();
-                this.cfg.terminate(block,
-                                   Terminator::Call {
-                                       data: CallData {
-                                           destination: destination.clone(),
-                                           func: fun,
-                                           args: args,
-                                       },
-                                       targets: (success, panic),
-                                   });
+                let cleanup = this.diverge_cleanup();
+                this.cfg.terminate(block, Terminator::Call {
+                    func: fun,
+                    args: args,
+                    kind: match (cleanup, diverges) {
+                        (None, true) => CallKind::Diverging,
+                        (Some(c), true) => CallKind::DivergingCleanup(c),
+                        (None, false) => CallKind::Converging {
+                            destination: destination.clone(),
+                            target: success
+                        },
+                        (Some(c), false) => CallKind::ConvergingCleanup {
+                            destination: destination.clone(),
+                            targets: (success, c)
+                        }
+                    }
+                });
                 success.unit()
             }
 

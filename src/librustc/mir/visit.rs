@@ -84,7 +84,7 @@ pub trait Visitor<'tcx> {
         for statement in &data.statements {
             self.visit_statement(block, statement);
         }
-        self.visit_terminator(block, &data.terminator);
+        data.terminator.as_ref().map(|r| self.visit_terminator(block, r));
     }
 
     fn super_statement(&mut self, block: BasicBlock, statement: &Statement<'tcx>) {
@@ -107,8 +107,7 @@ pub trait Visitor<'tcx> {
 
     fn super_terminator(&mut self, block: BasicBlock, terminator: &Terminator<'tcx>) {
         match *terminator {
-            Terminator::Goto { target } |
-            Terminator::Panic { target } => {
+            Terminator::Goto { target } => {
                 self.visit_branch(block, target);
             }
 
@@ -133,17 +132,19 @@ pub trait Visitor<'tcx> {
                 }
             }
 
-            Terminator::Diverge |
+            Terminator::Resume |
             Terminator::Return => {
             }
 
-            Terminator::Call { ref data, ref targets } => {
-                self.visit_lvalue(&data.destination, LvalueContext::Store);
-                self.visit_operand(&data.func);
-                for arg in &data.args {
+            Terminator::Call { ref func, ref args, ref kind } => {
+                if let Some(ref destination) = kind.destination() {
+                    self.visit_lvalue(destination, LvalueContext::Store);
+                }
+                self.visit_operand(func);
+                for arg in args {
                     self.visit_operand(arg);
                 }
-                for &target in targets.as_slice() {
+                for &target in kind.successors() {
                     self.visit_branch(block, target);
                 }
             }
@@ -364,7 +365,7 @@ pub trait MutVisitor<'tcx> {
         for statement in &mut data.statements {
             self.visit_statement(block, statement);
         }
-        self.visit_terminator(block, &mut data.terminator);
+        data.terminator.as_mut().map(|r| self.visit_terminator(block, r));
     }
 
     fn super_statement(&mut self,
@@ -394,8 +395,7 @@ pub trait MutVisitor<'tcx> {
                         block: BasicBlock,
                         terminator: &mut Terminator<'tcx>) {
         match *terminator {
-            Terminator::Goto { target } |
-            Terminator::Panic { target } => {
+            Terminator::Goto { target } => {
                 self.visit_branch(block, target);
             }
 
@@ -420,17 +420,19 @@ pub trait MutVisitor<'tcx> {
                 }
             }
 
-            Terminator::Diverge |
+            Terminator::Resume |
             Terminator::Return => {
             }
 
-            Terminator::Call { ref mut data, ref mut targets } => {
-                self.visit_lvalue(&mut data.destination, LvalueContext::Store);
-                self.visit_operand(&mut data.func);
-                for arg in &mut data.args {
+            Terminator::Call { ref mut func, ref mut args, ref mut kind } => {
+                if let Some(ref mut destination) = kind.destination() {
+                    self.visit_lvalue(destination, LvalueContext::Store);
+                }
+                self.visit_operand(func);
+                for arg in args {
                     self.visit_operand(arg);
                 }
-                for &target in targets.as_slice() {
+                for &target in kind.successors() {
                     self.visit_branch(block, target);
                 }
             }

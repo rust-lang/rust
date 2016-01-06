@@ -51,9 +51,6 @@ pub const START_BLOCK: BasicBlock = BasicBlock(0);
 /// where execution ends, on normal return
 pub const END_BLOCK: BasicBlock = BasicBlock(1);
 
-/// where execution ends, on panic
-pub const DIVERGE_BLOCK: BasicBlock = BasicBlock(2);
-
 impl<'tcx> Mir<'tcx> {
     pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
         (0..self.basic_blocks.len())
@@ -194,19 +191,14 @@ impl Debug for BasicBlock {
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
     pub statements: Vec<Statement<'tcx>>,
-    pub terminator: Terminator<'tcx>,
+    pub terminator: Option<Terminator<'tcx>>,
+    pub is_cleanup: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub enum Terminator<'tcx> {
     /// block should have one successor in the graph; we jump there
     Goto {
-        target: BasicBlock,
-    },
-
-    /// block should initiate unwinding; should be one successor
-    /// that does cleanup and branches to DIVERGE_BLOCK
-    Panic {
         target: BasicBlock,
     },
 
@@ -243,26 +235,75 @@ pub enum Terminator<'tcx> {
         targets: Vec<BasicBlock>,
     },
 
-    /// Indicates that the last statement in the block panics, aborts,
-    /// etc. No successors. This terminator appears on exactly one
-    /// basic block which we create in advance. However, during
-    /// construction, we use this value as a sentinel for "terminator
-    /// not yet assigned", and assert at the end that only the
-    /// well-known diverging block actually diverges.
-    Diverge,
+    /// Indicates that the landing pad is finished and unwinding should
+    /// continue. Emitted by build::scope::diverge_cleanup.
+    Resume,
 
     /// Indicates a normal return. The ReturnPointer lvalue should
     /// have been filled in by now. This should only occur in the
     /// `END_BLOCK`.
     Return,
 
-    /// block ends with a call; it should have two successors. The
-    /// first successor indicates normal return. The second indicates
-    /// unwinding.
+    /// Block ends with a call of a converging function
     Call {
-        data: CallData<'tcx>,
-        targets: (BasicBlock, BasicBlock),
+        /// The function that’s being called
+        func: Operand<'tcx>,
+        /// Arguments the function is called with
+        args: Vec<Operand<'tcx>>,
+        /// The kind of call with associated information
+        kind: CallKind<'tcx>,
     },
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub enum CallKind<'tcx> {
+    /// Diverging function without associated cleanup
+    Diverging,
+    /// Diverging function with associated cleanup
+    DivergingCleanup(BasicBlock),
+    /// Converging function without associated cleanup
+    Converging {
+        /// Destination where the call result is written
+        destination: Lvalue<'tcx>,
+        /// Block to branch into on successful return
+        target: BasicBlock,
+    },
+    ConvergingCleanup {
+        /// Destination where the call result is written
+        destination: Lvalue<'tcx>,
+        /// First target is branched to on successful return.
+        /// Second block contains the cleanups to do on unwind.
+        targets: (BasicBlock, BasicBlock)
+    }
+}
+
+impl<'tcx> CallKind<'tcx> {
+    pub fn successors(&self) -> &[BasicBlock] {
+        match *self {
+            CallKind::Diverging => &[],
+            CallKind::DivergingCleanup(ref b) |
+            CallKind::Converging { target: ref b, .. } => slice::ref_slice(b),
+            CallKind::ConvergingCleanup { ref targets, .. } => targets.as_slice(),
+        }
+    }
+
+    pub fn successors_mut(&mut self) -> &mut [BasicBlock] {
+        match *self {
+            CallKind::Diverging => &mut [],
+            CallKind::DivergingCleanup(ref mut b) |
+            CallKind::Converging { target: ref mut b, .. } => slice::mut_ref_slice(b),
+            CallKind::ConvergingCleanup { ref mut targets, .. } => targets.as_mut_slice(),
+        }
+    }
+
+    pub fn destination(&self) -> Option<Lvalue<'tcx>> {
+        match *self {
+            CallKind::Converging { ref destination, .. } |
+            CallKind::ConvergingCleanup { ref destination, .. } => Some(destination.clone()),
+            CallKind::Diverging |
+            CallKind::DivergingCleanup(_) => None
+        }
+    }
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -270,13 +311,12 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b),
-            Panic { target: ref b } => slice::ref_slice(b),
-            If { cond: _, targets: ref b } => b.as_slice(),
+            If { targets: ref b, .. } => b.as_slice(),
             Switch { targets: ref b, .. } => b,
             SwitchInt { targets: ref b, .. } => b,
-            Diverge => &[],
+            Resume => &[],
             Return => &[],
-            Call { data: _, targets: ref b } => b.as_slice(),
+            Call { ref kind, .. } => kind.successors(),
         }
     }
 
@@ -284,35 +324,35 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Goto { target: ref mut b } => slice::mut_ref_slice(b),
-            Panic { target: ref mut b } => slice::mut_ref_slice(b),
-            If { cond: _, targets: ref mut b } => b.as_mut_slice(),
+            If { targets: ref mut b, .. } => b.as_mut_slice(),
             Switch { targets: ref mut b, .. } => b,
             SwitchInt { targets: ref mut b, .. } => b,
-            Diverge => &mut [],
+            Resume => &mut [],
             Return => &mut [],
-            Call { data: _, targets: ref mut b } => b.as_mut_slice(),
+            Call { ref mut kind, .. } => kind.successors_mut(),
         }
     }
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
-pub struct CallData<'tcx> {
-    /// where the return value is written to
-    pub destination: Lvalue<'tcx>,
-
-    /// the fn being called
-    pub func: Operand<'tcx>,
-
-    /// the arguments
-    pub args: Vec<Operand<'tcx>>,
-}
-
 impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Terminator<'tcx>) -> BasicBlockData<'tcx> {
+    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
         BasicBlockData {
             statements: vec![],
             terminator: terminator,
+            is_cleanup: false,
         }
+    }
+
+    /// Accessor for terminator.
+    ///
+    /// Terminator may not be None after construction of the basic block is complete. This accessor
+    /// provides a convenience way to reach the terminator.
+    pub fn terminator(&self) -> &Terminator<'tcx> {
+        self.terminator.as_ref().expect("invalid terminator state")
+    }
+
+    pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
+        self.terminator.as_mut().expect("invalid terminator state")
     }
 }
 
@@ -351,15 +391,17 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
-            Panic { .. } => write!(fmt, "panic"),
             If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
             Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
-            Diverge => write!(fmt, "diverge"),
             Return => write!(fmt, "return"),
-            Call { data: ref c, .. } => {
-                try!(write!(fmt, "{:?} = {:?}(", c.destination, c.func));
-                for (index, arg) in c.args.iter().enumerate() {
+            Resume => write!(fmt, "resume"),
+            Call { ref kind, ref func, ref args } => {
+                if let Some(destination) = kind.destination() {
+                    try!(write!(fmt, "{:?} = ", destination));
+                }
+                try!(write!(fmt, "{:?}(", func));
+                for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         try!(write!(fmt, ", "));
                     }
@@ -374,10 +416,9 @@ impl<'tcx> Terminator<'tcx> {
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
         use self::Terminator::*;
         match *self {
-            Diverge | Return => vec![],
-            Goto { .. } | Panic { .. } => vec!["".into_cow()],
+            Return | Resume => vec![],
+            Goto { .. } => vec!["".into_cow()],
             If { .. } => vec!["true".into_cow(), "false".into_cow()],
-            Call { .. } => vec!["return".into_cow(), "unwind".into_cow()],
             Switch { ref adt_def, .. } => {
                 adt_def.variants
                        .iter()
@@ -394,6 +435,16 @@ impl<'tcx> Terminator<'tcx> {
                       .chain(iter::once(String::from("otherwise").into_cow()))
                       .collect()
             }
+            Call { ref kind, .. } => match *kind {
+                CallKind::Diverging =>
+                    vec![],
+                CallKind::DivergingCleanup(..) =>
+                    vec!["unwind".into_cow()],
+                CallKind::Converging { .. } =>
+                    vec!["return".into_cow()],
+                CallKind::ConvergingCleanup { .. } =>
+                    vec!["return".into_cow(), "unwind".into_cow()],
+            },
         }
     }
 }

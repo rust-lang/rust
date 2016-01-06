@@ -28,6 +28,9 @@ use self::operand::OperandRef;
 pub struct MirContext<'bcx, 'tcx:'bcx> {
     mir: &'bcx mir::Mir<'tcx>,
 
+    /// Function context
+    fcx: &'bcx common::FunctionContext<'bcx, 'tcx>,
+
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
     /// resume instruction. The personality is (afaik) some kind of
@@ -39,6 +42,9 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
 
     /// A `Block` for each MIR `BasicBlock`
     blocks: Vec<Block<'bcx, 'tcx>>,
+
+    /// Cached unreachable block
+    unreachable_block: Option<Block<'bcx, 'tcx>>,
 
     /// An LLVM alloca for each MIR `VarDecl`
     vars: Vec<LvalueRef<'tcx>>,
@@ -107,7 +113,10 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
     // Allocate a `Block` for every basic block
     let block_bcxs: Vec<Block<'bcx,'tcx>> =
         mir_blocks.iter()
-                  .map(|&bb| fcx.new_block(false, &format!("{:?}", bb), None))
+                  .map(|&bb|{
+                      let is_cleanup = mir.basic_block_data(bb).is_cleanup;
+                      fcx.new_block(is_cleanup, &format!("{:?}", bb), None)
+                  })
                   .collect();
 
     // Branch to the START block
@@ -116,8 +125,10 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
 
     let mut mircx = MirContext {
         mir: mir,
+        fcx: fcx,
         llpersonalityslot: None,
         blocks: block_bcxs,
+        unreachable_block: None,
         vars: vars,
         temps: temps,
         args: args,
@@ -125,16 +136,8 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
 
     // Translate the body of each block
     for &bb in &mir_blocks {
-        if bb != mir::DIVERGE_BLOCK {
-            mircx.trans_block(bb);
-        }
+        mircx.trans_block(bb);
     }
-
-    // Total hack: translate DIVERGE_BLOCK last. This is so that any
-    // panics which the fn may do can initialize the
-    // `llpersonalityslot` cell. We don't do this up front because the
-    // LLVM type of it is (frankly) annoying to compute.
-    mircx.trans_block(mir::DIVERGE_BLOCK);
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the
