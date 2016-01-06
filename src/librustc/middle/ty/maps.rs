@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::{DepNode, DepTrackingMapId};
+use dep_graph::{DepNode, DepTrackingMapConfig};
 use middle::def_id::DefId;
 use middle::ty;
 use std::marker::PhantomData;
@@ -20,7 +20,7 @@ macro_rules! dep_map_ty {
             data: PhantomData<&'tcx ()>
         }
 
-        impl<'tcx> DepTrackingMapId for $ty_name<'tcx> {
+        impl<'tcx> DepTrackingMapConfig for $ty_name<'tcx> {
             type Key = $key;
             type Value = $value;
             fn to_dep_node(key: &$key) -> DepNode { DepNode::$node_name(*key) }

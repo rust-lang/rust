@@ -123,7 +123,7 @@ However, you should rarely need to invoke those methods directly.
 Instead, the idea is to *encapsulate* shared state into some API that
 will invoke `read` and `write` automatically. The most common way to
 do this is to use a `DepTrackingMap`, described in the next section,
-but any sort of abstraction brarier will do. In general, the strategy
+but any sort of abstraction barrier will do. In general, the strategy
 is that getting access to information implicitly adds an appropriate
 `read`. So, for example, when you use the
 `dep_graph::visit_all_items_in_krate` helper method, it will visit
@@ -197,7 +197,7 @@ from/to the node `DepNode::Variant(K)` (for some variant specific to
 the map).
 
 Each `DepTrackingMap` is parameterized by a special type `M` that
-implements `DepTrackingMapId`; this trait defines the key and value
+implements `DepTrackingMapConfig`; this trait defines the key and value
 types of the map, and also defines a fn for converting from the key to
 a `DepNode` label. You don't usually have to muck about with this by
 hand, there is a macro for creating it. You can see the complete set
@@ -221,7 +221,13 @@ of the map will be a `DefId` and value will be
 `DepNode::ItemSignature(K)` for a given key.
 
 Once that is done, you can just use the `DepTrackingMap` like any
-other map.
+other map:
+
+```rust
+let mut map: DepTrackingMap<M> = DepTrackingMap::new(dep_graph);
+map.insert(key, value); // registers dep_graph.write
+map.get(key; // registers dep_graph.read
+```
 
 #### Memoization
 
@@ -305,7 +311,7 @@ distinguish which fns used which fn sigs.
 
 There are various ways to write tests against the dependency graph.
 The simplest mechanism are the
-`#[rustc_if_this_changed` and `#[rustc_then_this_would_need]`
+`#[rustc_if_this_changed]` and `#[rustc_then_this_would_need]`
 annotations. These are used in compile-fail tests to test whether the
 expected set of paths exist in the dependency graph. As an example,
 see `src/test/compile-fail/dep-graph-caller-callee.rs`.
@@ -354,7 +360,7 @@ source_filter     // nodes originating from source_filter
 source_filter -> target_filter // nodes in between source_filter and target_filter
 ```
 
-`source_filter` and `target_filter` are a comma-separated list of strings.
+`source_filter` and `target_filter` are a `&`-separated list of strings.
 A node is considered to match a filter if all of those strings appear in its
 label. So, for example:
 
@@ -363,10 +369,10 @@ RUST_DEP_GRAPH_FILTER='-> TypeckItemBody'
 ```
 
 would select the predecessors of all `TypeckItemBody` nodes. Usually though you
-want the `TypeckItemBody` nod for some particular fn, so you might write:
+want the `TypeckItemBody` node for some particular fn, so you might write:
 
 ```
-RUST_DEP_GRAPH_FILTER='-> TypeckItemBody,bar'
+RUST_DEP_GRAPH_FILTER='-> TypeckItemBody & bar'
 ```
 
 This will select only the `TypeckItemBody` nodes for fns with `bar` in their name.
@@ -375,7 +381,7 @@ Perhaps you are finding that when you change `foo` you need to re-type-check `ba
 but you don't think you should have to. In that case, you might do:
 
 ```
-RUST_DEP_GRAPH_FILTER='Hir,foo -> TypeckItemBody,bar'
+RUST_DEP_GRAPH_FILTER='Hir&foo -> TypeckItemBody & bar'
 ```
 
 This will dump out all the nodes that lead from `Hir(foo)` to

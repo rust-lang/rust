@@ -20,19 +20,19 @@ use super::{DepNode, DepGraph};
 /// A DepTrackingMap offers a subset of the `Map` API and ensures that
 /// we make calls to `read` and `write` as appropriate. We key the
 /// maps with a unique type for brevity.
-pub struct DepTrackingMap<M: DepTrackingMapId> {
+pub struct DepTrackingMap<M: DepTrackingMapConfig> {
     phantom: PhantomData<M>,
     graph: DepGraph,
     map: FnvHashMap<M::Key, M::Value>,
 }
 
-pub trait DepTrackingMapId {
+pub trait DepTrackingMapConfig {
     type Key: Eq + Hash + Clone;
     type Value: Clone;
     fn to_dep_node(key: &Self::Key) -> DepNode;
 }
 
-impl<M: DepTrackingMapId> DepTrackingMap<M> {
+impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
     pub fn new(graph: DepGraph) -> DepTrackingMap<M> {
         DepTrackingMap {
             phantom: PhantomData,
@@ -71,7 +71,7 @@ impl<M: DepTrackingMapId> DepTrackingMap<M> {
     }
 }
 
-impl<M: DepTrackingMapId> MemoizationMap for RefCell<DepTrackingMap<M>> {
+impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     type Key = M::Key;
     type Value = M::Value;
 
@@ -89,9 +89,9 @@ impl<M: DepTrackingMapId> MemoizationMap for RefCell<DepTrackingMap<M>> {
     /// **Important:* when `op` is invoked, the current task will be
     /// switched to `Map(key)`. Therefore, if `op` makes use of any
     /// HIR nodes or shared state accessed through its closure
-    /// environment, it must explicitly read that state. As an
-    /// example, see `type_scheme_of_item` in `collect`, which looks
-    /// something like this:
+    /// environment, it must explicitly register a read of that
+    /// state. As an example, see `type_scheme_of_item` in `collect`,
+    /// which looks something like this:
     ///
     /// ```
     /// fn type_scheme_of_item(..., item: &hir::Item) -> ty::TypeScheme<'tcx> {
@@ -126,7 +126,7 @@ impl<M: DepTrackingMapId> MemoizationMap for RefCell<DepTrackingMap<M>> {
     }
 }
 
-impl<'k, M: DepTrackingMapId> Index<&'k M::Key> for DepTrackingMap<M> {
+impl<'k, M: DepTrackingMapConfig> Index<&'k M::Key> for DepTrackingMap<M> {
     type Output = M::Value;
 
     #[inline]

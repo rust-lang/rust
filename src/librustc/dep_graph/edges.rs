@@ -12,7 +12,7 @@ use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
 use super::{DepGraphQuery, DepNode};
 
 pub struct DepGraphEdges {
-    ids: Vec<DepNode>,
+    nodes: Vec<DepNode>,
     indices: FnvHashMap<DepNode, IdIndex>,
     edges: FnvHashSet<(IdIndex, IdIndex)>,
     open_nodes: Vec<OpenNode>,
@@ -43,15 +43,15 @@ enum OpenNode {
 impl DepGraphEdges {
     pub fn new() -> DepGraphEdges {
         DepGraphEdges {
-            ids: vec![],
+            nodes: vec![],
             indices: FnvHashMap(),
             edges: FnvHashSet(),
             open_nodes: Vec::new()
         }
     }
 
-    fn id(&self, index: IdIndex) -> &DepNode {
-        &self.ids[index.index()]
+    fn id(&self, index: IdIndex) -> DepNode {
+        self.nodes[index.index()]
     }
 
     /// Creates a node for `id` in the graph.
@@ -60,8 +60,8 @@ impl DepGraphEdges {
             return i;
         }
 
-        let index = IdIndex::new(self.ids.len());
-        self.ids.push(id.clone());
+        let index = IdIndex::new(self.nodes.len());
+        self.nodes.push(id.clone());
         self.indices.insert(id, index);
         index
     }
@@ -83,7 +83,7 @@ impl DepGraphEdges {
     pub fn push_task(&mut self, key: DepNode) {
         let top_node = self.current_node();
 
-        let new_node = self.make_node(key.clone());
+        let new_node = self.make_node(key);
         self.open_nodes.push(OpenNode::Node(new_node));
 
         // if we are in the midst of doing task T, then this new task
@@ -155,8 +155,8 @@ impl DepGraphEdges {
 
     pub fn query(&self) -> DepGraphQuery {
         let edges: Vec<_> = self.edges.iter()
-                                      .map(|&(i, j)| (self.id(i).clone(), self.id(j).clone()))
+                                      .map(|&(i, j)| (self.id(i), self.id(j)))
                                       .collect();
-        DepGraphQuery::new(&self.ids, &edges)
+        DepGraphQuery::new(&self.nodes, &edges)
     }
 }
