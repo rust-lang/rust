@@ -15,8 +15,9 @@ use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
 use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_front::hir::InlineAsm;
-use syntax::ast::Name;
+use syntax::ast::{self, Name};
 use syntax::codemap::Span;
+use std::ascii;
 use std::borrow::{Cow, IntoCow};
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
@@ -844,26 +845,41 @@ impl<'tcx> Debug for Literal<'tcx> {
         use self::Literal::*;
         match *self {
             Item { def_id, .. } =>
-                write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
-            Value { ref value } => fmt_const_val(fmt, value),
+                write!(fmt, "{}", item_path_str(def_id)),
+            Value { ref value } => {
+                try!(write!(fmt, "const "));
+                fmt_const_val(fmt, value)
+            }
         }
     }
 }
 
 /// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
-pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
+fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
     use middle::const_eval::ConstVal::*;
     match *const_val {
         Float(f) => write!(fmt, "{:?}", f),
         Int(n) => write!(fmt, "{:?}", n),
         Uint(n) => write!(fmt, "{:?}", n),
-        Str(ref s) => write!(fmt, "Str({:?})", s),
-        ByteStr(ref bytes) => write!(fmt, "ByteStr{:?}", bytes),
+        Str(ref s) => write!(fmt, "{:?}", s),
+        ByteStr(ref bytes) => {
+            let escaped: String = bytes
+                .iter()
+                .flat_map(|&ch| ascii::escape_default(ch).map(|c| c as char))
+                .collect();
+            write!(fmt, "b\"{}\"", escaped)
+        }
         Bool(b) => write!(fmt, "{:?}", b),
-        Struct(id) => write!(fmt, "Struct({:?})", id),
-        Tuple(id) => write!(fmt, "Tuple({:?})", id),
-        Function(def_id) => write!(fmt, "Function({:?})", def_id),
-        Array(id, n) => write!(fmt, "Array({:?}, {:?})", id, n),
-        Repeat(id, n) => write!(fmt, "Repeat({:?}, {:?})", id, n),
+        Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
+        Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
+            write!(fmt, "{}", node_to_string(node_id)),
     }
+}
+
+fn node_to_string(node_id: ast::NodeId) -> String {
+    ty::tls::with(|tcx| tcx.map.node_to_user_string(node_id))
+}
+
+fn item_path_str(def_id: DefId) -> String {
+    ty::tls::with(|tcx| tcx.item_path_str(def_id))
 }
