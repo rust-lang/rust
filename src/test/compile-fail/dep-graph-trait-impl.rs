@@ -37,8 +37,7 @@ mod y {
         char::method('a');
     }
 
-    // TODO open an issue on this, problem is that we fail to track
-    // the tcx fulfillment cache
+    // FIXME(#30741) tcx fulfillment cache not tracked
     #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR no path
     #[rustc_then_this_would_need(TransCrateItem)] //~ ERROR no path
     pub fn take_foo_with_char() {
@@ -51,7 +50,7 @@ mod y {
         u32::method(22);
     }
 
-    // TODO same issue as above
+    // FIXME(#30741) tcx fulfillment cache not tracked
     #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR no path
     #[rustc_then_this_would_need(TransCrateItem)] //~ ERROR no path
     pub fn take_foo_with_u32() {
