@@ -628,12 +628,12 @@ Available lint options:
 
 
 
-    let max_name_len = plugin_groups.iter()
-                                    .chain(&builtin_groups)
-                                    .map(|&(s, _)| s.chars().count())
-                                    .max()
-                                    .unwrap_or(0);
-    let max_name_len = std::cmp::max(max_name_len, "warnings".len());
+    let max_name_len = max("warnings".len(),
+                           plugin_groups.iter()
+                                        .chain(&builtin_groups)
+                                        .map(|&(s, _)| s.chars().count())
+                                        .max()
+                                        .unwrap_or(0));
 
     let padded = |x: &str| {
         let mut s = repeat(" ")
