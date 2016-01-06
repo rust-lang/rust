@@ -958,22 +958,28 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc && sess.target.target.arch == "x86"
 }
 
-pub fn need_invoke(bcx: Block) -> bool {
+pub fn avoid_invoke(bcx: Block) -> bool {
     // FIXME(#25869) currently SEH-based unwinding is pretty buggy in LLVM and
     //               is being overhauled as this is being written. Until that
     //               time such that upstream LLVM's implementation is more solid
     //               and we start binding it we need to skip invokes for any
     //               target which wants SEH-based unwinding.
     if bcx.sess().no_landing_pads() || wants_msvc_seh(bcx.sess()) {
-        return false;
+        true
+    } else if bcx.is_lpad {
+        // Avoid using invoke if we are already inside a landing pad.
+        true
+    } else {
+        false
     }
+}
 
-    // Avoid using invoke if we are already inside a landing pad.
-    if bcx.is_lpad {
-        return false;
+pub fn need_invoke(bcx: Block) -> bool {
+    if avoid_invoke(bcx) {
+        false
+    } else {
+        bcx.fcx.needs_invoke()
     }
-
-    bcx.fcx.needs_invoke()
 }
 
 pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, t: Ty<'tcx>) -> ValueRef {

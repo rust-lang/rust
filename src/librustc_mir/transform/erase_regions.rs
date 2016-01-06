@@ -59,7 +59,7 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
             self.erase_regions_statement(statement);
         }
 
-        self.erase_regions_terminator(&mut basic_block.terminator);
+        self.erase_regions_terminator(basic_block.terminator_mut());
     }
 
     fn erase_regions_statement(&mut self,
@@ -79,9 +79,8 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
                                 terminator: &mut Terminator<'tcx>) {
         match *terminator {
             Terminator::Goto { .. } |
-            Terminator::Diverge |
-            Terminator::Return |
-            Terminator::Panic { .. } => {
+            Terminator::Resume |
+            Terminator::Return => {
                 /* nothing to do */
             }
             Terminator::If { ref mut cond, .. } => {
@@ -90,23 +89,14 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
             Terminator::Switch { ref mut discr, .. } => {
                 self.erase_regions_lvalue(discr);
             }
-            Terminator::SwitchInt {
-                ref mut discr,
-                ref mut switch_ty,
-                ..
-            } => {
+            Terminator::SwitchInt { ref mut discr, ref mut switch_ty, .. } => {
                 self.erase_regions_lvalue(discr);
                 *switch_ty = self.tcx.erase_regions(switch_ty);
             },
-            Terminator::Call {
-                data: CallData {
-                    ref mut destination,
-                    ref mut func,
-                    ref mut args
-                },
-                ..
-            } => {
-                self.erase_regions_lvalue(destination);
+            Terminator::Call { ref mut func, ref mut args, ref mut kind } => {
+                if let Some(ref mut destination) = kind.destination() {
+                    self.erase_regions_lvalue(destination);
+                }
                 self.erase_regions_operand(func);
                 for arg in &mut *args {
                     self.erase_regions_operand(arg);

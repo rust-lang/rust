@@ -41,6 +41,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                .map(|e| e.to_ref())
                                .collect();
                 ExprKind::Call {
+                    ty: expr.ty,
                     fun: expr.to_ref(),
                     args: args,
                 }
@@ -58,11 +59,17 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     argrefs.extend(args.iter().map(|a| a.to_ref()));
 
                     ExprKind::Call {
+                        ty: method.ty,
                         fun: method.to_ref(),
                         args: argrefs,
                     }
                 } else {
-                    ExprKind::Call { fun: fun.to_ref(), args: args.to_ref() }
+                    ExprKind::Call {
+                        ty: &cx.tcx.node_id_to_type(fun.id),
+                        fun: fun.to_ref(),
+                        args: args.to_ref(),
+                    }
+
                 }
             }
 
@@ -802,6 +809,7 @@ fn overloaded_operator<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
     // now create the call itself
     let fun = method_callee(cx, expr, method_call);
     ExprKind::Call {
+        ty: fun.ty,
         fun: fun.to_ref(),
         args: argrefs,
     }

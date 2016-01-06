@@ -86,11 +86,14 @@ should go to.
 
 */
 
-use build::{BlockAnd, BlockAndExtension, Builder, CFG};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc::middle::region::CodeExtent;
-use rustc::middle::ty::Ty;
+use rustc::middle::lang_items;
+use rustc::middle::subst::Substs;
+use rustc::middle::ty::{self, Ty};
 use rustc::mir::repr::*;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
+use syntax::parse::token::intern_and_get_ident;
 
 pub struct Scope<'tcx> {
     extent: CodeExtent,
@@ -227,17 +230,39 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.terminate(block, Terminator::Goto { target: target });
     }
 
-    /// Creates a path that performs all required cleanup for
-    /// unwinding. This path terminates in DIVERGE. Returns the start
-    /// of the path. See module comment for more details.
-    pub fn diverge_cleanup(&mut self) -> BasicBlock {
-        diverge_cleanup_helper(&mut self.cfg, &mut self.scopes)
-    }
+    /// Creates a path that performs all required cleanup for unwinding.
+    ///
+    /// This path terminates in Resume. Returns the start of the path.
+    /// See module comment for more details. None indicates there’s no
+    /// cleanup to do at this point.
+    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
+        if self.scopes.is_empty() {
+            return None;
+        }
 
-    /// Create diverge cleanup and branch to it from `block`.
-    pub fn panic(&mut self, block: BasicBlock) {
-        let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, Terminator::Panic { target: cleanup });
+        let mut terminator = Terminator::Resume;
+        // Given an array of scopes, we generate these from the outermost scope to the innermost
+        // one. Thus for array [S0, S1, S2] with corresponding cleanup blocks [B0, B1, B2], we will
+        // generate B0 <- B1 <- B2 in left-to-right order. The outermost scope (B0) will always
+        // terminate with a Resume terminator.
+        for scope in self.scopes.iter_mut().filter(|s| !s.drops.is_empty()) {
+            if let Some(b) = scope.cached_block {
+                terminator = Terminator::Goto { target: b };
+                continue;
+            } else {
+                let new_block = self.cfg.start_new_block();
+                self.cfg.block_data_mut(new_block).is_cleanup = true;
+                self.cfg.terminate(new_block, terminator);
+                terminator = Terminator::Goto { target: new_block };
+                for &(kind, span, ref lvalue) in scope.drops.iter().rev() {
+                    self.cfg.push_drop(new_block, span, kind, lvalue);
+                }
+                scope.cached_block = Some(new_block);
+            }
+        }
+        // Return the innermost cached block, most likely the one we just generated.
+        // Note that if there are no cleanups in scope we return None.
+        self.scopes.iter().rev().flat_map(|b| b.cached_block).next()
     }
 
     /// Indicates that `lvalue` should be dropped on exit from
@@ -249,14 +274,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                          lvalue: &Lvalue<'tcx>,
                          lvalue_ty: Ty<'tcx>) {
         if self.hir.needs_drop(lvalue_ty) {
-            match self.scopes.iter_mut().rev().find(|s| s.extent == extent) {
-                Some(scope) => {
+            for scope in self.scopes.iter_mut().rev() {
+                // We must invalidate all the cached_blocks leading up to the scope we’re looking
+                // for, because otherwise some/most of the blocks in the chain might become
+                // incorrect (i.e. they still are pointing at old cached_block).
+                scope.cached_block = None;
+                if scope.extent == extent {
                     scope.drops.push((kind, span, lvalue.clone()));
-                    scope.cached_block = None;
+                    return;
                 }
-                None => self.hir.span_bug(span, &format!("extent {:?} not in scope to drop {:?}",
-                                                         extent, lvalue)),
             }
+            self.hir.span_bug(span,
+                              &format!("extent {:?} not in scope to drop {:?}", extent, lvalue));
         }
     }
 
@@ -267,29 +296,111 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn extent_of_outermost_scope(&self) -> CodeExtent {
         self.scopes.first().map(|scope| scope.extent).unwrap()
     }
-}
 
-fn diverge_cleanup_helper<'tcx>(cfg: &mut CFG<'tcx>, scopes: &mut [Scope<'tcx>]) -> BasicBlock {
-    let len = scopes.len();
-
-    if len == 0 {
-        return DIVERGE_BLOCK;
+    pub fn panic_bounds_check(&mut self,
+                             block: BasicBlock,
+                             index: Operand<'tcx>,
+                             len: Operand<'tcx>,
+                             span: Span) {
+        // fn(&(filename: &'static str, line: u32), index: usize, length: usize) -> !
+        let func = self.lang_function(lang_items::PanicBoundsCheckFnLangItem);
+        let args = func.ty.fn_args();
+        let ref_ty = args.skip_binder()[0];
+        let (region, tup_ty) = if let ty::TyRef(region, tyandmut) = ref_ty.sty {
+            (region, tyandmut.ty)
+        } else {
+            self.hir.span_bug(span, &format!("unexpected panic_bound_check type: {:?}", func.ty));
+        };
+        let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
+        let (file, line) = self.span_to_fileline_args(span);
+        let elems = vec![Operand::Constant(file), Operand::Constant(line)];
+        // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
+        // icache with cold branch code), however to achieve that we either have to rely on rvalue
+        // promotion or have some way, in MIR, to create constants.
+        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (file_arg, line_arg);
+                             Rvalue::Aggregate(AggregateKind::Tuple, elems));
+        // FIXME: is this region really correct here?
+        self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
+                             Rvalue::Ref(*region, BorrowKind::Unique, tuple));
+        let cleanup = self.diverge_cleanup();
+        self.cfg.terminate(block, Terminator::Call {
+            func: Operand::Constant(func),
+            args: vec![Operand::Consume(tuple_ref), index, len],
+            kind: match cleanup {
+                None => CallKind::Diverging,
+                Some(c) => CallKind::DivergingCleanup(c)
+            }
+        });
     }
 
-    let (remaining, scope) = scopes.split_at_mut(len - 1);
-    let scope = &mut scope[0];
-
-    if let Some(b) = scope.cached_block {
-        return b;
+    /// Create diverge cleanup and branch to it from `block`.
+    pub fn panic(&mut self, block: BasicBlock, msg: &'static str, span: Span) {
+        // fn(&(msg: &'static str filename: &'static str, line: u32)) -> !
+        let func = self.lang_function(lang_items::PanicFnLangItem);
+        let args = func.ty.fn_args();
+        let ref_ty = args.skip_binder()[0];
+        let (region, tup_ty) = if let ty::TyRef(region, tyandmut) = ref_ty.sty {
+            (region, tyandmut.ty)
+        } else {
+            self.hir.span_bug(span, &format!("unexpected panic type: {:?}", func.ty));
+        };
+        let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
+        let (file, line) = self.span_to_fileline_args(span);
+        let message = Constant {
+            span: DUMMY_SP,
+            ty: self.hir.tcx().mk_static_str(),
+            literal: self.hir.str_literal(intern_and_get_ident(msg))
+        };
+        let elems = vec![Operand::Constant(message),
+                         Operand::Constant(file),
+                         Operand::Constant(line)];
+        // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
+        // icache with cold branch code), however to achieve that we either have to rely on rvalue
+        // promotion or have some way, in MIR, to create constants.
+        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (message_arg, file_arg, line_arg);
+                             Rvalue::Aggregate(AggregateKind::Tuple, elems));
+        // FIXME: is this region really correct here?
+        self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
+                             Rvalue::Ref(*region, BorrowKind::Unique, tuple));
+        let cleanup = self.diverge_cleanup();
+        self.cfg.terminate(block, Terminator::Call {
+            func: Operand::Constant(func),
+            args: vec![Operand::Consume(tuple_ref)],
+            kind: match cleanup {
+                None => CallKind::Diverging,
+                Some(c) => CallKind::DivergingCleanup(c)
+            }
+        });
     }
 
-    let block = cfg.start_new_block();
-    for &(kind, span, ref lvalue) in &scope.drops {
-        cfg.push_drop(block, span, kind, lvalue);
+    fn lang_function(&mut self, lang_item: lang_items::LangItem) -> Constant<'tcx> {
+        let funcdid = match self.hir.tcx().lang_items.require(lang_item) {
+            Ok(d) => d,
+            Err(m) => {
+                self.hir.tcx().sess.fatal(&*m)
+            }
+        };
+        Constant {
+            span: DUMMY_SP,
+            ty: self.hir.tcx().lookup_item_type(funcdid).ty,
+            literal: Literal::Item {
+                def_id: funcdid,
+                kind: ItemKind::Function,
+                substs: self.hir.tcx().mk_substs(Substs::empty())
+            }
+        }
     }
-    scope.cached_block = Some(block);
 
-    let remaining_cleanup_block = diverge_cleanup_helper(cfg, remaining);
-    cfg.terminate(block, Terminator::Goto { target: remaining_cleanup_block });
-    block
+    fn span_to_fileline_args(&mut self, span: Span) -> (Constant<'tcx>, Constant<'tcx>) {
+        let span_lines = self.hir.tcx().sess.codemap().lookup_char_pos(span.lo);
+        (Constant {
+            span: DUMMY_SP,
+            ty: self.hir.tcx().mk_static_str(),
+            literal: self.hir.str_literal(intern_and_get_ident(&span_lines.file.name))
+        }, Constant {
+            span: DUMMY_SP,
+            ty: self.hir.tcx().types.u32,
+            literal: self.hir.usize_literal(span_lines.line)
+        })
+    }
 }

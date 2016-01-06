@@ -15,7 +15,7 @@ use rustc::mir::repr::*;
 /// in a single pass
 pub fn update_basic_block_ids(mir: &mut Mir, replacements: &[BasicBlock]) {
     for bb in mir.all_basic_blocks() {
-        for target in mir.basic_block_data_mut(bb).terminator.successors_mut() {
+        for target in mir.basic_block_data_mut(bb).terminator_mut().successors_mut() {
             *target = replacements[target.index()];
         }
     }
