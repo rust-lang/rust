@@ -627,9 +627,9 @@ impl<T> Clone for Sender<T> {
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
-            Flavor::Oneshot(ref mut p) => unsafe { (*p.get()).drop_chan(); },
-            Flavor::Stream(ref mut p) => unsafe { (*p.get()).drop_chan(); },
-            Flavor::Shared(ref mut p) => unsafe { (*p.get()).drop_chan(); },
+            Flavor::Oneshot(ref p) => unsafe { (*p.get()).drop_chan(); },
+            Flavor::Stream(ref p) => unsafe { (*p.get()).drop_chan(); },
+            Flavor::Shared(ref p) => unsafe { (*p.get()).drop_chan(); },
             Flavor::Sync(..) => unreachable!(),
         }
     }
@@ -979,10 +979,10 @@ impl <T> IntoIterator for Receiver<T> {
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
-            Flavor::Oneshot(ref mut p) => unsafe { (*p.get()).drop_port(); },
-            Flavor::Stream(ref mut p) => unsafe { (*p.get()).drop_port(); },
-            Flavor::Shared(ref mut p) => unsafe { (*p.get()).drop_port(); },
-            Flavor::Sync(ref mut p) => unsafe { (*p.get()).drop_port(); },
+            Flavor::Oneshot(ref p) => unsafe { (*p.get()).drop_port(); },
+            Flavor::Stream(ref p) => unsafe { (*p.get()).drop_port(); },
+            Flavor::Shared(ref p) => unsafe { (*p.get()).drop_port(); },
+            Flavor::Sync(ref p) => unsafe { (*p.get()).drop_port(); },
         }
     }
 }
