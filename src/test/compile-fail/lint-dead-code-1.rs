@@ -114,3 +114,27 @@ fn bar() { //~ ERROR: function is never used
 #[allow(dead_code)]
 fn g() { h(); }
 fn h() {}
+
+// This implements Drop, so we should not see a warning on
+// 'unused' field 's'.
+struct S(u32);
+
+impl Drop for S {
+    fn drop(&mut self) { }
+}
+
+struct Container {
+    s: S,
+}
+
+impl Container {
+    fn new() -> Container {
+        let s = S(4);
+
+        Container { s: s }
+    }
+}
+
+pub fn baz() {
+    Container::new();
+}

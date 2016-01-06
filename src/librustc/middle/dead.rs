@@ -436,10 +436,16 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             Some(def_id) => self.tcx.lang_items.items().any(|(_, item)| *item == Some(def_id)),
             _ => false
         };
+        let field_has_dtor = match field_type.ty_adt_def() {
+            Some(def) => def.has_dtor(),
+            _ => false
+        };
+
         is_named
             && !self.symbol_is_live(node.id, None)
             && !is_marker_field
             && !has_allow_dead_code_or_lang_attr(&node.attrs)
+            && !field_has_dtor
     }
 
     fn should_warn_about_variant(&mut self, variant: &hir::Variant_) -> bool {
