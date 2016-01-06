@@ -1573,11 +1573,11 @@ fn main() {
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m }
-	Err(e) => { panic!(e.to_string()) }
+        Err(e) => { panic!(e.to_string()) }
     };
     if matches.opt_present("h") {
         print_usage(&program, opts);
-	return;
+        return;
     }
     let data_path = args[1].clone();
     let city = args[2].clone();
