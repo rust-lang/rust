@@ -170,7 +170,7 @@ impl IsaacRng {
         const MIDPOINT: usize = RAND_SIZE_USIZE / 2;
 
         macro_rules! ind {
-            ($x:expr) => (self.mem[($x >> 2u32).0 as usize & (RAND_SIZE_USIZE - 1)] )
+            ($x:expr) => (self.mem[($x >> 2).0 as usize & (RAND_SIZE_USIZE - 1)] )
         }
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
@@ -452,7 +452,7 @@ impl Isaac64Rng {
         const MP_VEC: [(usize, usize); 2] = [(0, MIDPOINT), (MIDPOINT, 0)];
         macro_rules! ind {
             ($x:expr) => {
-                *self.mem.get_unchecked((($x >> 3u32).0 as usize) & (RAND_SIZE_64 - 1))
+                *self.mem.get_unchecked((($x >> 3).0 as usize) & (RAND_SIZE_64 - 1))
             }
         }
 
@@ -495,10 +495,10 @@ impl Isaac64Rng {
                     }}
                 }
 
-                rngstepp!(0, 21u32);
-                rngstepn!(1, 5u32);
-                rngstepp!(2, 12u32);
-                rngstepn!(3, 33u32);
+                rngstepp!(0, 21);
+                rngstepn!(1, 5);
+                rngstepp!(2, 12);
+                rngstepn!(3, 33);
             }
         }
 
