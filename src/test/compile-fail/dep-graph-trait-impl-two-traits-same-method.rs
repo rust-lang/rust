@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that two unrelated functions have no trans dependency.
+// Test that adding an impl to a trait `Foo` DOES affect functions
+// that only use `Bar` if they have methods in common.
+
+// compile-flags: -Z incr-comp
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

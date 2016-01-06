@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that two unrelated functions have no trans dependency.
+// Test cases where a changing struct appears in the signature of fns
+// and methods.
+
+// compile-flags: -Z incr-comp
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
@@ -68,7 +71,7 @@ mod signatures {
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
     #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
-    fn indirect(x: WillChange) { }
+    fn indirect(x: WillChanges) { }
 }
 
 // these are invalid dependencies, though sometimes we create edges

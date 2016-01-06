@@ -10,6 +10,8 @@
 
 // Test that two unrelated functions have no trans dependency.
 
+// compile-flags: -Z incr-comp
+
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 

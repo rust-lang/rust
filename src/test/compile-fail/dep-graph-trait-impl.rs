@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that two unrelated functions have no trans dependency.
+// Test that when a trait impl changes, fns whose body uses that trait
+// must also be recompiled.
+
+// compile-flags: -Z incr-comp
 
 #![feature(rustc_attrs)]
 #![allow(warnings)]

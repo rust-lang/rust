@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that two unrelated functions have no trans dependency.
+// Test that immediate callers have to change when callee changes, but
+// not callers' callers.
+
+// compile-flags: -Z incr-comp
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
