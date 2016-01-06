@@ -21,28 +21,7 @@ impl SimplifyCfg {
         SimplifyCfg
     }
 
-    fn remove_dead_blocks(&self, mir: &mut Mir) {
-        let mut seen = vec![false; mir.basic_blocks.len()];
-
-        // These blocks are always required.
-        seen[START_BLOCK.index()] = true;
-        seen[END_BLOCK.index()] = true;
-        seen[DIVERGE_BLOCK.index()] = true;
-
-        let mut worklist = vec![START_BLOCK];
-        while let Some(bb) = worklist.pop() {
-            for succ in mir.basic_block_data(bb).terminator.successors() {
-                if !seen[succ.index()] {
-                    seen[succ.index()] = true;
-                    worklist.push(*succ);
-                }
-            }
-        }
-
-        util::retain_basic_blocks(mir, &seen);
-    }
-
-    fn remove_goto_chains(&self, mir: &mut Mir) -> bool {
+    fn merge_consecutive_blocks(&self, mir: &mut Mir) -> bool {
 
         // Find the target at the end of the jump chain, return None if there is a loop
         fn final_target(mir: &Mir, mut target: BasicBlock) -> Option<BasicBlock> {
@@ -65,24 +44,73 @@ impl SimplifyCfg {
             Some(target)
         }
 
-        let mut changed = false;
-        for bb in mir.all_basic_blocks() {
-            // Temporarily swap out the terminator we're modifying to keep borrowck happy
-            let mut terminator = Terminator::Diverge;
-            mem::swap(&mut terminator, &mut mir.basic_block_data_mut(bb).terminator);
+        let mut predecessor_map = util::build_predecessor_map(mir);
 
+        let mut changed = false;
+        let mut seen = vec![false; mir.basic_blocks.len()];
+        let mut worklist = vec![START_BLOCK];
+        while let Some(bb) = worklist.pop() {
+            // Temporarily swap out the terminator we're modifying to keep borrowck happy
+            let mut terminator = mem::replace(&mut mir.basic_block_data_mut(bb).terminator,
+                                          Terminator::Diverge);
+
+            // See if we can merge the target block into this one
+            while let Terminator::Goto { target } = terminator {
+                if target.index() <= DIVERGE_BLOCK.index() ||
+                        predecessor_map.num_predecessors(target) > 1 {
+                    break;
+                }
+
+                changed = true;
+
+                let mut other_data = mem::replace(mir.basic_block_data_mut(target), BasicBlockData {
+                    statements: Vec::new(),
+                    terminator: Terminator::Goto { target: target }
+                });
+
+                // target used to have 1 predecessor (bb), and still has only one (itself)
+                // All the successors of target have had target replaced by bb in their
+                // list of predecessors, keeping the number the same.
+
+                let data = mir.basic_block_data_mut(bb);
+                data.statements.append(&mut other_data.statements);
+                terminator = other_data.terminator;
+            }
+
+            // Shortcut chains of empty blocks that just jump from one to the next
             for target in terminator.successors_mut() {
                 let new_target = match final_target(mir, *target) {
                     Some(new_target) => new_target,
                     None if mir.basic_block_data(bb).statements.is_empty() => bb,
                     None => continue
                 };
-                changed |= *target != new_target;
-                *target = new_target;
+
+                if *target != new_target {
+                    changed = true;
+                    predecessor_map.remove_predecessor(*target);
+                    predecessor_map.add_predecessor(new_target);
+                    *target = new_target;
+                }
             }
 
+            // Restore the terminator we swapped out for Diverge
             mir.basic_block_data_mut(bb).terminator = terminator;
+
+            for succ in mir.basic_block_data(bb).terminator.successors() {
+                if !seen[succ.index()] {
+                    seen[succ.index()] = true;
+                    worklist.push(*succ);
+                }
+            }
         }
+
+        // These blocks must be retained, so mark them seen even if we didn't see them
+        seen[START_BLOCK.index()] = true;
+        seen[END_BLOCK.index()] = true;
+        seen[DIVERGE_BLOCK.index()] = true;
+
+        // Now get rid of all the blocks we never saw
+        util::retain_basic_blocks(mir, &seen);
 
         changed
     }
@@ -128,8 +156,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         let mut changed = true;
         while changed {
             changed = self.simplify_branches(mir);
-            changed |= self.remove_goto_chains(mir);
-            self.remove_dead_blocks(mir);
+            changed |= self.merge_consecutive_blocks(mir);
         }
 
         // FIXME: Should probably be moved into some kind of pass manager
