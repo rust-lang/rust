@@ -12,7 +12,6 @@
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
 
-pub use self::MutateMode::*;
 pub use self::LoanCause::*;
 pub use self::ConsumeMode::*;
 pub use self::MoveReason::*;
@@ -465,7 +464,11 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         self.consume_expr(&*output.expr);
                     } else {
                         self.mutate_expr(expr, &*output.expr,
-                                         if output.is_rw { WriteAndRead } else { JustWrite });
+                                         if output.is_rw {
+                                             MutateMode::WriteAndRead
+                                         } else {
+                                             MutateMode::JustWrite
+                                         });
                     }
                 }
             }
@@ -519,7 +522,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             }
 
             hir::ExprAssign(ref lhs, ref rhs) => {
-                self.mutate_expr(expr, &**lhs, JustWrite);
+                self.mutate_expr(expr, &**lhs, MutateMode::JustWrite);
                 self.consume_expr(&**rhs);
             }
 
@@ -532,7 +535,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 assert!(::rustc_front::util::is_by_value_binop(op.node));
 
                 if !self.walk_overloaded_operator(expr, lhs, vec![rhs], PassArgs::ByValue) {
-                    self.mutate_expr(expr, &**lhs, WriteAndRead);
+                    self.mutate_expr(expr, &**lhs, MutateMode::WriteAndRead);
                     self.consume_expr(&**rhs);
                 }
             }
@@ -991,7 +994,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 let def = def_map.borrow().get(&pat.id).unwrap().full_def();
                 match mc.cat_def(pat.id, pat.span, pat_ty, def) {
                     Ok(binding_cmt) => {
-                        delegate.mutate(pat.id, pat.span, binding_cmt, Init);
+                        delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
                     }
                     Err(_) => { }
                 }
