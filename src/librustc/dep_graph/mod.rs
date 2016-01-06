@@ -152,7 +152,7 @@ impl DepGraph {
     }
 }
 
-pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapId};
+pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
 
 pub use self::query::DepGraphQuery;
 

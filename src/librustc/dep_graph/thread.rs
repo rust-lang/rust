@@ -48,7 +48,7 @@ pub struct DepGraphThreadData {
     // where to send buffer when full
     swap_out: Sender<Vec<DepMessage>>,
 
-    // where to receiver query results
+    // where to receive query results
     query_in: Receiver<DepGraphQuery>,
 }
 
