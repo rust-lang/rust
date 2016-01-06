@@ -46,7 +46,7 @@ use std::vec::IntoIter;
 use std::collections::{HashMap, HashSet};
 use syntax::ast::{self, CrateNum, Name, NodeId};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{InternedString, special_idents};
 
 use rustc_front::hir;
@@ -2392,6 +2392,39 @@ impl<'tcx> ctxt<'tcx> {
         lookup_locally_or_in_crate_store(
             "super_predicates", did, &self.super_predicates,
             || self.sess.cstore.item_super_predicates(self, did))
+    }
+
+    /// If `type_needs_drop` returns true, then `ty` is definitely
+    /// non-copy and *might* have a destructor attached; if it returns
+    /// false, then `ty` definitely has no destructor (i.e. no drop glue).
+    ///
+    /// (Note that this implies that if `ty` has a destructor attached,
+    /// then `type_needs_drop` will definitely return `true` for `ty`.)
+    pub fn type_needs_drop_given_env<'a>(&self,
+                                         ty: Ty<'tcx>,
+                                         param_env: &ty::ParameterEnvironment<'a,'tcx>) -> bool {
+        // Issue #22536: We first query type_moves_by_default.  It sees a
+        // normalized version of the type, and therefore will definitely
+        // know whether the type implements Copy (and thus needs no
+        // cleanup/drop/zeroing) ...
+        let implements_copy = !ty.moves_by_default(param_env, DUMMY_SP);
+
+        if implements_copy { return false; }
+
+        // ... (issue #22536 continued) but as an optimization, still use
+        // prior logic of asking if the `needs_drop` bit is set; we need
+        // not zero non-Copy types if they have no destructor.
+
+        // FIXME(#22815): Note that calling `ty::type_contents` is a
+        // conservative heuristic; it may report that `needs_drop` is set
+        // when actual type does not actually have a destructor associated
+        // with it. But since `ty` absolutely did not have the `Copy`
+        // bound attached (see above), it is sound to treat it as having a
+        // destructor (e.g. zero its memory on move).
+
+        let contents = ty.type_contents(self);
+        debug!("type_needs_drop ty={:?} contents={:?}", ty, contents);
+        contents.needs_drop(self)
     }
 
     /// Get the attributes of a definition.
