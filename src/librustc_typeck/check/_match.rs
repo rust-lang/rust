@@ -636,6 +636,12 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let report_bad_struct_kind = |is_warning| {
         bad_struct_kind_err(tcx.sess, pat.span, path, is_warning);
         if is_warning {
+            // Boo! Too painful to attach this to the actual warning,
+            // it should go away at some point though.
+            tcx.sess.span_note_without_error(
+                pat.span,
+                "this warning will become a HARD ERROR in a future release. \
+                 See RFC 218 for details.");
             return
         }
 
@@ -676,10 +682,6 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 report_bad_struct_kind(is_special_case);
                 if !is_special_case {
                     return
-                } else {
-                    span_note!(tcx.sess, pat.span,
-                        "this warning will become a HARD ERROR in a future release. \
-                        See RFC 218 for details.");
                 }
             }
             (variant.fields
@@ -693,7 +695,10 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ty::TyStruct(struct_def, expected_substs) => {
             let variant = struct_def.struct_variant();
             if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
-                report_bad_struct_kind(false);
+                // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
+                // is allowed for backward compatibility.
+                let is_special_case = variant.kind() == ty::VariantKind::Unit;
+                report_bad_struct_kind(is_special_case);
                 return;
             }
             (variant.fields
