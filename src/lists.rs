@@ -129,9 +129,8 @@ pub struct ListItem {
 
 impl ListItem {
     pub fn is_multiline(&self) -> bool {
-        self.item.as_ref().map(|s| s.contains('\n')).unwrap_or(false) ||
-        self.pre_comment.is_some() ||
-        self.post_comment.as_ref().map(|s| s.contains('\n')).unwrap_or(false)
+        self.item.as_ref().map_or(false, |s| s.contains('\n')) || self.pre_comment.is_some() ||
+        self.post_comment.as_ref().map_or(false, |s| s.contains('\n'))
     }
 
     pub fn has_line_pre_comment(&self) -> bool {
@@ -156,10 +155,7 @@ pub enum DefinitiveListTactic {
     Mixed,
 }
 
-pub fn definitive_tactic<'t, I, T>(items: I,
-                                   tactic: ListTactic,
-                                   width: usize)
-                                   -> DefinitiveListTactic
+pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> DefinitiveListTactic
     where I: IntoIterator<Item = T> + Clone,
           T: AsRef<ListItem>
 {
@@ -493,7 +489,7 @@ fn needs_trailing_separator(separator_tactic: SeparatorTactic,
 }
 
 /// Returns the count and total width of the list items.
-fn calculate_width<'li, I, T>(items: I) -> (usize, usize)
+fn calculate_width<I, T>(items: I) -> (usize, usize)
     where I: IntoIterator<Item = T>,
           T: AsRef<ListItem>
 {
@@ -505,7 +501,7 @@ fn calculate_width<'li, I, T>(items: I) -> (usize, usize)
 fn total_item_width(item: &ListItem) -> usize {
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..])) +
     comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) +
-    item.item.as_ref().map(|str| str.len()).unwrap_or(0)
+    item.item.as_ref().map_or(0, |str| str.len())
 }
 
 fn comment_len(comment: Option<&str>) -> usize {
