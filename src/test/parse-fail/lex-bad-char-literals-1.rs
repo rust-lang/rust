@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -25,8 +25,3 @@ static s: &'static str =
     "\●" //~ ERROR: unknown character escape
 ;
 
-// THIS MUST BE LAST, since it kills the lexer
-
-static c: char =
-    '●  //~ ERROR: character literal may only contain one codepoint
-;
