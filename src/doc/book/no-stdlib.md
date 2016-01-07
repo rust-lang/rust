@@ -92,7 +92,7 @@ instead.
 The core library has very few dependencies and is much more portable than the
 standard library itself. Additionally, the core library has most of the
 necessary functionality for writing idiomatic and effective Rust code. When
-using `#![no_std]`, Rust will automatically inject the `core` crate, just like
+using `#![no_std]`, Rust will automatically inject the `core` crate, like
 we do for `std` when we’re using it.
 
 As an example, here is a program that will calculate the dot product of two

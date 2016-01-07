@@ -193,7 +193,7 @@ If you want something that's not Rust code, you can add an annotation:
 ```
 
 This will highlight according to whatever language you're showing off.
-If you're just showing plain text, choose `text`.
+If you're only showing plain text, choose `text`.
 
 It's important to choose the correct annotation here, because `rustdoc` uses it
 in an interesting way: It can be used to actually test your examples in a
@@ -273,7 +273,7 @@ be hidden from the output, but will be used when compiling your code. You
 can use this to your advantage. In this case, documentation comments need
 to apply to some kind of function, so if I want to show you just a
 documentation comment, I need to add a little function definition below
-it. At the same time, it's just there to satisfy the compiler, so hiding
+it. At the same time, it's only there to satisfy the compiler, so hiding
 it makes the example more clear. You can use this technique to explain
 longer examples in detail, while still preserving the testability of your
 documentation.
@@ -512,7 +512,7 @@ the documentation with comments. For example:
 # fn foo() {}
 ```
 
-is just
+is:
 
 ~~~markdown
 # Examples

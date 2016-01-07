@@ -52,7 +52,7 @@ These pointers cannot be copied in such a way that they outlive the lifetime ass
 
 ## `*const T` and `*mut T`
 
-These are C-like raw pointers with no lifetime or ownership attached to them. They just point to
+These are C-like raw pointers with no lifetime or ownership attached to them. They point to
 some location in memory with no other restrictions. The only guarantee that these provide is that
 they cannot be dereferenced except in code marked `unsafe`.
 
@@ -255,7 +255,7 @@ major ones will be covered below.
 
 ## `Arc<T>`
 
-[`Arc<T>`][arc] is just a version of `Rc<T>` that uses an atomic reference count (hence, "Arc").
+[`Arc<T>`][arc] is a version of `Rc<T>` that uses an atomic reference count (hence, "Arc").
 This can be sent freely between threads.
 
 C++'s `shared_ptr` is similar to `Arc`, however in the case of C++ the inner data is always mutable.
