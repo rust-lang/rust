@@ -59,6 +59,7 @@ There are some shortcomings in this design:
 */
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
+use lint;
 use middle::def;
 use middle::def_id::DefId;
 use constrained_type_params as ctp;
@@ -1909,6 +1910,17 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                         &param.bounds, &ast_generics.where_clause);
 
     let parent = tcx.map.get_parent(param.id);
+
+    if space != TypeSpace && default.is_some() {
+        if !tcx.sess.features.borrow().default_type_parameter_fallback {
+            tcx.sess.add_lint(
+                lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                param.id,
+                param.span,
+                format!("defaults for type parameters are only allowed \
+                         on `struct` or `enum` definitions (see issue #27336)"));
+        }
+    }
 
     let def = ty::TypeParameterDef {
         space: space,

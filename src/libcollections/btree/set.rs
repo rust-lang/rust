@@ -154,10 +154,10 @@ impl<T: Ord> BTreeSet<T> {
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range<'a, Min: ?Sized + Ord = T, Max: ?Sized + Ord = T>(&'a self,
-                                                                   min: Bound<&Min>,
-                                                                   max: Bound<&Max>)
-                                                                   -> Range<'a, T>
+    pub fn range<'a, Min: ?Sized + Ord, Max: ?Sized + Ord>(&'a self,
+                                                           min: Bound<&Min>,
+                                                           max: Bound<&Max>)
+                                                           -> Range<'a, T>
         where T: Borrow<Min> + Borrow<Max>
     {
         fn first<A, B>((a, _): (A, B)) -> A {
