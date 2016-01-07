@@ -208,7 +208,7 @@ different.
 
 Rust’s implementation of closures is a bit different than other languages. They
 are effectively syntax sugar for traits. You’ll want to make sure to have read
-the [traits chapter][traits] before this one, as well as the chapter on [trait
+the [traits][traits] section before this one, as well as the section on [trait
 objects][trait-objects].
 
 [traits]: traits.html

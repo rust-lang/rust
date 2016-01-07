@@ -14,7 +14,7 @@ Even then, Rust still allows precise control like a low-level language would.
 
 [rust]: https://www.rust-lang.org
 
-“The Rust Programming Language” is split into sections. This introduction
+“The Rust Programming Language” is split into chapters. This introduction
 is the first. After this:
 
 * [Getting started][gs] - Set up your computer for Rust development.

@@ -5,18 +5,18 @@ errors in a particular way. Generally speaking, error handling is divided into
 two broad categories: exceptions and return values. Rust opts for return
 values.
 
-In this chapter, we intend to provide a comprehensive treatment of how to deal
+In this section, we intend to provide a comprehensive treatment of how to deal
 with errors in Rust. More than that, we will attempt to introduce error handling
 one piece at a time so that you'll come away with a solid working knowledge of
 how everything fits together.
 
 When done naïvely, error handling in Rust can be verbose and annoying. This
-chapter will explore those stumbling blocks and demonstrate how to use the
+section will explore those stumbling blocks and demonstrate how to use the
 standard library to make error handling concise and ergonomic.
 
 # Table of Contents
 
-This chapter is very long, mostly because we start at the very beginning with
+This section is very long, mostly because we start at the very beginning with
 sum types and combinators, and try to motivate the way Rust does error handling
 incrementally. As such, programmers with experience in other expressive type
 systems may want to jump around.
@@ -636,7 +636,7 @@ Thus far, we've looked at error handling where everything was either an
 `Option` and a `Result`? Or what if you have a `Result<T, Error1>` and a
 `Result<T, Error2>`? Handling *composition of distinct error types* is the next
 challenge in front of us, and it will be the major theme throughout the rest of
-this chapter.
+this section.
 
 ## Composing `Option` and `Result`
 
@@ -648,7 +648,7 @@ Of course, in real code, things aren't always as clean. Sometimes you have a
 mix of `Option` and `Result` types. Must we resort to explicit case analysis,
 or can we continue using combinators?
 
-For now, let's revisit one of the first examples in this chapter:
+For now, let's revisit one of the first examples in this section:
 
 ```rust,should_panic
 use std::env;
@@ -1319,7 +1319,7 @@ and [`cause`](../std/error/trait.Error.html#method.cause), but the
 limitation remains: `Box<Error>` is opaque. (N.B. This isn't entirely
 true because Rust does have runtime reflection, which is useful in
 some scenarios that are [beyond the scope of this
-chapter](https://crates.io/crates/error).)
+section](https://crates.io/crates/error).)
 
 It's time to revisit our custom `CliError` type and tie everything together.
 
@@ -1486,7 +1486,7 @@ and [`fmt::Result`](../std/fmt/type.Result.html).
 
 # Case study: A program to read population data
 
-This chapter was long, and depending on your background, it might be
+This section was long, and depending on your background, it might be
 rather dense. While there is plenty of example code to go along with
 the prose, most of it was specifically designed to be pedagogical. So,
 we're going to do something new: a case study.
@@ -1512,7 +1512,7 @@ and [`rustc-serialize`](https://crates.io/crates/rustc-serialize) crates.
 
 We're not going to spend a lot of time on setting up a project with
 Cargo because it is already covered well in [the Cargo
-chapter](../book/hello-cargo.html) and [Cargo's documentation][14].
+section](../book/hello-cargo.html) and [Cargo's documentation][14].
 
 To get started from scratch, run `cargo new --bin city-pop` and make sure your
 `Cargo.toml` looks something like this:
@@ -2108,7 +2108,7 @@ handling.
 
 # The Short Story
 
-Since this chapter is long, it is useful to have a quick summary for error
+Since this section is long, it is useful to have a quick summary for error
 handling in Rust. These are some good “rules of thumb." They are emphatically
 *not* commandments. There are probably good reasons to break every one of these
 heuristics!
