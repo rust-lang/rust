@@ -149,7 +149,7 @@ endif
 ifdef TRACE
   CFG_RUSTC_FLAGS += -Z trace
 endif
-ifdef CFG_ENABLE_RPATH
+ifndef CFG_DISABLE_RPATH
 CFG_RUSTC_FLAGS += -C rpath
 endif
 
