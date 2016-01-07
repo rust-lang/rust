@@ -172,7 +172,7 @@ pub fn panicking() -> bool {
 #[inline(never)]
 #[no_mangle]
 #[allow(private_no_mangle_fns)]
-fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
+pub fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
     unsafe {
         imp::panic(cause)
     }
