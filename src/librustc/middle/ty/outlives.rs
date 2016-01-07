@@ -13,7 +13,7 @@
 // RFC for reference.
 
 use middle::infer::InferCtxt;
-use middle::ty::{self, RegionEscape, Ty};
+use middle::ty::{self, Ty, TypeFoldable};
 
 #[derive(Debug)]
 pub enum Component<'tcx> {

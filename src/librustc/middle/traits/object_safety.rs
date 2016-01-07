@@ -23,7 +23,7 @@ use super::elaborate_predicates;
 use middle::def_id::DefId;
 use middle::subst::{self, SelfSpace, TypeSpace};
 use middle::traits;
-use middle::ty::{self, HasTypeFlags, ToPolyTraitRef, Ty};
+use middle::ty::{self, ToPolyTraitRef, Ty, TypeFoldable};
 use std::rc::Rc;
 use syntax::ast;
 

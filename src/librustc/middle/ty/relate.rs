@@ -15,9 +15,8 @@
 
 use middle::def_id::DefId;
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
-use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::error::{ExpectedFound, TypeError};
-use middle::ty::fold::TypeFoldable;
 use std::rc::Rc;
 use syntax::abi;
 use rustc_front::hir as ast;
@@ -80,7 +79,7 @@ pub trait TypeRelation<'a,'tcx> : Sized {
         where T: Relate<'a,'tcx>;
 }
 
-pub trait Relate<'a,'tcx>: TypeFoldable<'tcx> + HasTypeFlags {
+pub trait Relate<'a,'tcx>: TypeFoldable<'tcx> {
     fn relate<R:TypeRelation<'a,'tcx>>(relation: &mut R,
                                        a: &Self,
                                        b: &Self)

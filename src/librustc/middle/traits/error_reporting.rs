@@ -26,9 +26,8 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
-use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TypeFoldable};
 use middle::ty::fast_reject;
-use middle::ty::fold::TypeFoldable;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -185,7 +184,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                           obligation: &Obligation<'tcx, T>)
                                           -> !
-    where T: fmt::Display + TypeFoldable<'tcx> + HasTypeFlags
+    where T: fmt::Display + TypeFoldable<'tcx>
 {
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);

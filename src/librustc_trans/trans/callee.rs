@@ -50,7 +50,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
+use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::MethodCall;
 use rustc_front::hir;
 

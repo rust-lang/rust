@@ -11,8 +11,7 @@
 pub use self::AutoAdjustment::*;
 pub use self::AutoRef::*;
 
-use middle::ty::{self, Ty, TypeAndMut};
-use middle::ty::HasTypeFlags;
+use middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use middle::ty::LvaluePreference::{NoPreference};
 
 use syntax::ast;
