@@ -1195,6 +1195,7 @@ impl<'a> StringReader<'a> {
             }
             '\'' => {
                 // Either a character constant 'a' OR a lifetime name 'abc
+                let start_with_quote = self.last_pos;
                 self.bump();
                 let start = self.last_pos;
 
@@ -1207,6 +1208,14 @@ impl<'a> StringReader<'a> {
                 if ident_start(Some(c2)) && !self.curr_is('\'') {
                     while ident_continue(self.curr) {
                         self.bump();
+                    }
+                    // lifetimes shouldn't end with a single quote
+                    // if we find one, then this is an invalid character literal
+                    if self.curr_is('\'') {
+                        panic!(self.fatal_span_verbose(
+                               start_with_quote, self.pos,
+                               String::from("character literal may only contain one codepoint")));
+
                     }
 
                     // Include the leading `'` in the real identifier, for macro
@@ -1233,26 +1242,22 @@ impl<'a> StringReader<'a> {
                        !keyword_checking_token.is_keyword(token::keywords::Static) {
                         self.err_span_(start, last_bpos, "invalid lifetime name");
                     }
+
                     return token::Lifetime(ident);
                 }
 
-                // Otherwise it is a character constant:
                 let valid = self.scan_char_or_byte(start,
                                                    c2,
                                                    // ascii_only =
                                                    false,
                                                    '\'');
-                if !self.curr_is('\'') {
-                    let last_bpos = self.last_pos;
-                    panic!(self.fatal_span_verbose(// Byte offsetting here is okay because the
-                                                   // character before position `start` is an
-                                                   // ascii single quote.
-                                                   start - BytePos(1),
-                                                   last_bpos,
 
-                                                   String::from("character literal may only \
-                                                                 contain one codepoint")));
+                if !self.curr_is('\'') {
+                    panic!(self.fatal_span_verbose(
+                           start_with_quote, self.last_pos,
+                           String::from("character literal may only contain one codepoint")));
                 }
+
                 let id = if valid {
                     self.name_from(start)
                 } else {
