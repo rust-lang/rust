@@ -122,8 +122,7 @@ impl<'a> FmtVisitor<'a> {
                                     .skip_while(|rev_c| [' ', '\t'].contains(&rev_c))
                                     .next();
 
-                let fix_indent = last_char.map(|rev_c| ['{', '\n'].contains(&rev_c))
-                                          .unwrap_or(true);
+                let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
 
                 if rewrite_next_comment && fix_indent {
                     if let Some('{') = last_char {

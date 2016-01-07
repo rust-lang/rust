@@ -693,17 +693,15 @@ fn format_tuple_struct(context: &RewriteContext,
             let where_budget = try_opt!(context.config
                                                .max_width
                                                .checked_sub(last_line_width(&result)));
-            let where_clause_str = try_opt!(rewrite_where_clause(context,
-                                                                 &generics.where_clause,
-                                                                 context.config,
-                                                                 context.config.item_brace_style,
-                                                                 context.block_indent,
-                                                                 where_budget,
-                                                                 Density::Compressed,
-                                                                 ";",
-                                                                 None));
-
-            where_clause_str
+            try_opt!(rewrite_where_clause(context,
+                                          &generics.where_clause,
+                                          context.config,
+                                          context.config.item_brace_style,
+                                          context.block_indent,
+                                          where_budget,
+                                          Density::Compressed,
+                                          ";",
+                                          None))
         }
         None => "".to_owned(),
     };
@@ -1114,8 +1112,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = generics.ty_params
                              .last()
-                             .map(|tp| end_typaram(tp))
-                             .unwrap_or(span.lo);
+                             .map_or(span.lo, |tp| end_typaram(tp));
     let args_span = mk_sp(span_after(mk_sp(args_start, span.hi), "(", context.codemap),
                           span_for_return(&fd.output).lo);
     let arg_str = try_opt!(rewrite_args(context,
@@ -1243,11 +1240,10 @@ fn rewrite_args(context: &RewriteContext,
     let min_args = explicit_self.and_then(|explicit_self| {
                                     rewrite_explicit_self(explicit_self, args, context)
                                 })
-                                .map(|self_str| {
+                                .map_or(1, |self_str| {
                                     arg_item_strs[0] = self_str;
                                     2
-                                })
-                                .unwrap_or(1);
+                                });
 
     // Comments between args.
     let mut arg_items = Vec::new();

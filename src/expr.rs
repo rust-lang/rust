@@ -382,7 +382,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
         let rewrite = inner_expr.rewrite(context, budget, offset + extra_offset);
 
         // Checks if rewrite succeeded and fits on a single line.
-        let accept_rewrite = rewrite.as_ref().map(|result| !result.contains('\n')).unwrap_or(false);
+        let accept_rewrite = rewrite.as_ref().map_or(false, |result| !result.contains('\n'));
 
         if accept_rewrite {
             return Some(format!("{}{}{}{}", prefix, spacer, rewrite.unwrap(), closer));

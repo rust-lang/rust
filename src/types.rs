@@ -30,7 +30,7 @@ pub fn rewrite_path(context: &RewriteContext,
                     width: usize,
                     offset: Indent)
                     -> Option<String> {
-    let skip_count = qself.map(|x| x.position).unwrap_or(0);
+    let skip_count = qself.map_or(0, |x| x.position);
 
     let mut result = if path.global {
         "::".to_owned()
