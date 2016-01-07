@@ -379,6 +379,7 @@ impl<O> Node<O> {
     }
 }
 
+#[derive(Clone)]
 pub struct Backtrace<'b, O: 'b> {
     nodes: &'b [Node<O>],
     pointer: Option<NodeIndex>,
