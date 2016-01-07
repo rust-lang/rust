@@ -77,6 +77,7 @@ mod reexport {
     pub use syntax::ast::{Name, NodeId};
 }
 
+#[allow(unused_attributes)]
 #[plugin_registrar]
 #[rustfmt_skip]
 pub fn plugin_registrar(reg: &mut Registry) {

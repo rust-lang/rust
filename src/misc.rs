@@ -365,6 +365,7 @@ impl LintPass for UsedUnderscoreBinding {
 }
 
 impl LateLintPass for UsedUnderscoreBinding {
+    #[allow(unused_attributes)]
     #[rustfmt_skip]
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if in_attributes_expansion(cx, expr) {
