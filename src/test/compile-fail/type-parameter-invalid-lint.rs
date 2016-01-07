@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(default_type_parameter_fallback)]
+#![deny(future_incompatible)]
+#![allow(dead_code)]
 
-fn avg<T=T::Item>(_: T) {} //~ ERROR associated type `Item` not found for `T`
+fn avg<T=i32>(_: T) {}
+//~^ ERROR defaults for type parameters are only allowed
+//~| NOTE HARD ERROR
 fn main() {}
