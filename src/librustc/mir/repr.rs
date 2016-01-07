@@ -20,6 +20,7 @@ use syntax::codemap::Span;
 use std::borrow::{Cow, IntoCow};
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
+use std::ops::{Index, IndexMut};
 
 /// Lowered representation of a single function.
 #[derive(RustcEncodable, RustcDecodable)]
@@ -64,6 +65,22 @@ impl<'tcx> Mir<'tcx> {
 
     pub fn basic_block_data_mut(&mut self, bb: BasicBlock) -> &mut BasicBlockData<'tcx> {
         &mut self.basic_blocks[bb.index()]
+    }
+}
+
+impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
+    type Output = BasicBlockData<'tcx>;
+
+    #[inline]
+    fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
+        self.basic_block_data(index)
+    }
+}
+
+impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
+    #[inline]
+    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
+        self.basic_block_data_mut(index)
     }
 }
 
