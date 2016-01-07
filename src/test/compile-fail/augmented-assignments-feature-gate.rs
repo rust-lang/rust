@@ -22,5 +22,5 @@ fn main() {
     let mut x = Int(0);
     x += 1;
     //~^ error: overloaded augmented assignments are not stable
-    // | help: add #![feature(augmented_assignments)] to the crate root to enable
+    //~| help: add #![feature(augmented_assignments)] to the crate root to enable
 }
