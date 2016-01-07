@@ -298,7 +298,7 @@ impl f32 {
         #[cfg(target_env = "msvc")]
         return (self as f64).floor() as f32;
         #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::floorf32(f) };
+        return unsafe { intrinsics::floorf32(self) };
     }
 
     /// Returns the smallest integer greater than or equal to a number.
@@ -666,9 +666,9 @@ impl f32 {
     pub fn log10(self) -> f32 {
         // see notes above in `floor`
         #[cfg(target_env = "msvc")]
-        return (f as f64).log10() as f32;
+        return (self as f64).log10() as f32;
         #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::log10f32(f) };
+        return unsafe { intrinsics::log10f32(self) };
     }
 
     /// Converts radians to degrees.
