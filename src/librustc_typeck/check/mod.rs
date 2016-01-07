@@ -1059,6 +1059,9 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          t_cast: Ty<'tcx>,
                                          t_expr: Ty<'tcx>,
                                          id: ast::NodeId) {
+    if t_cast.references_error() || t_expr.references_error() {
+        return;
+    }
     let tstr = fcx.infcx().ty_to_string(t_cast);
     fcx.type_error_message(span, |actual| {
         format!("cast to unsized type: `{}` as `{}`", actual, tstr)
