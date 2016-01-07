@@ -2127,6 +2127,12 @@ impl<'a> Parser<'a> {
                 }
                 hi = self.last_span.hi;
             }
+            _ if self.token.is_keyword(keywords::Let) => {
+                // Catch this syntax error here, instead of in `check_strict_keywords`, so that
+                // we can explicitly mention that let is not to be used as an expression
+                let msg = "`let` is not an expression, so it cannot be used in this way";
+                return Err(self.diagnostic().struct_span_err(self.span, &msg));
+            },
             _ => {
                 if try!(self.eat_lt()){
                     let (qself, path) =
@@ -2191,12 +2197,6 @@ impl<'a> Parser<'a> {
                         lo,
                         UnsafeBlock(ast::UserProvided),
                         attrs);
-                }
-                if try!(self.eat_keyword(keywords::Let) ) {
-                    return Err(self.span_fatal(self.span,
-                                               "`let` is not an expression, so it cannot \
-                                                be used in this way"))
-
                 }
                 if try!(self.eat_keyword(keywords::Return) ){
                     if self.token.can_begin_expr() {
