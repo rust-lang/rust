@@ -84,7 +84,7 @@ it borrows ownership. A binding that borrows something does not deallocate the
 resource when it goes out of scope. This means that after the call to `foo()`,
 we can use our original bindings again.
 
-References are immutable, just like bindings. This means that inside of `foo()`,
+References are immutable, like bindings. This means that inside of `foo()`,
 the vectors can’t be changed at all:
 
 ```rust,ignore
@@ -129,7 +129,7 @@ You'll also notice we added an asterisk (`*`) in front of `y`, making it `*y`,
 this is because `y` is a `&mut` reference. You'll also need to use them for
 accessing the contents of a reference as well.
 
-Otherwise, `&mut` references are just like references. There _is_ a large
+Otherwise, `&mut` references are like references. There _is_ a large
 difference between the two, and how they interact, though. You can tell
 something is fishy in the above example, because we need that extra scope, with
 the `{` and `}`. If we remove them, we get an error:
