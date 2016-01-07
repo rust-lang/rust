@@ -22,7 +22,7 @@ use middle::def_id::{DefId, DefIndex};
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, ToPredicate, Ty, HasTypeFlags};
+use middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 
 use rbml;
 use rbml::leb128;

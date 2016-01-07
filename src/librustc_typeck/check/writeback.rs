@@ -17,7 +17,7 @@ use astconv::AstConv;
 use check::FnCtxt;
 use middle::def_id::DefId;
 use middle::pat_util;
-use middle::ty::{self, Ty, MethodCall, MethodCallee, HasTypeFlags};
+use middle::ty::{self, Ty, MethodCall, MethodCallee};
 use middle::ty::adjustment;
 use middle::ty::fold::{TypeFolder,TypeFoldable};
 use middle::infer;

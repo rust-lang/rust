@@ -21,7 +21,7 @@ use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
-use rustc_typeck::middle::ty::{self, Ty, RegionEscape};
+use rustc_typeck::middle::ty::{self, Ty, TypeFoldable};
 use rustc_typeck::middle::ty::relate::TypeRelation;
 use rustc_typeck::middle::infer::{self, TypeOrigin};
 use rustc_typeck::middle::infer::lub::Lub;

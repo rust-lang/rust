@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::{self, Ty, HasTypeFlags};
+use rustc::middle::ty::{self, Ty, TypeFoldable};
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use trans::adt;

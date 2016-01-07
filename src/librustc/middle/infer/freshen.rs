@@ -30,8 +30,7 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use middle::ty::{self, Ty, HasTypeFlags};
-use middle::ty::fold::TypeFoldable;
+use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::fold::TypeFolder;
 use std::collections::hash_map::{self, Entry};
 
@@ -169,7 +168,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::TyTuple(..) |
             ty::TyProjection(..) |
             ty::TyParam(..) => {
-                ty::fold::super_fold_ty(self, t)
+                t.super_fold_with(self)
             }
         }
     }

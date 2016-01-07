@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::infer::InferCtxt;
-use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 
 use syntax::ast;
 use util::common::ErrorReported;

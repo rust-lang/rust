@@ -17,8 +17,7 @@ use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
-use middle::ty::{self, Ty, HasTypeFlags};
-use middle::ty::fold::TypeFoldable;
+use middle::ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
 use syntax::{abi};
@@ -252,9 +251,12 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
 struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
-    fn fold_with<F:ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F)
-                                              -> TraitAndProjections<'tcx> {
+    fn super_fold_with<F:ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
+    }
+
+    fn super_visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.0.visit_with(visitor) || self.1.visit_with(visitor)
     }
 }
 

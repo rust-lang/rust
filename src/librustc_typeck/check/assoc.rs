@@ -11,7 +11,6 @@
 use middle::infer::InferCtxt;
 use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
-use middle::ty::HasTypeFlags;
 use middle::ty::fold::TypeFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -23,7 +22,7 @@ pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                 body_id: ast::NodeId,
                                                 value: &T)
                                                 -> T
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     debug!("normalize_associated_types_in(value={:?})", value);
     let mut selcx = SelectionContext::new(infcx);

@@ -37,7 +37,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
 use rustc::mir::repr::Mir;
@@ -469,7 +469,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + HasTypeFlags
+        where T : TypeFoldable<'tcx>
     {
         monomorphize::apply_param_substs(self.ccx.tcx(),
                                          self.param_substs,
@@ -650,7 +650,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + HasTypeFlags
+        where T : TypeFoldable<'tcx>
     {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,

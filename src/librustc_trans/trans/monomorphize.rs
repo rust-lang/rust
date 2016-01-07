@@ -23,7 +23,7 @@ use trans::base;
 use trans::common::*;
 use trans::declare;
 use trans::foreign;
-use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::{self, Ty};
 use rustc::front::map as hir_map;
 
 use rustc_front::hir;
@@ -299,7 +299,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
                                   param_substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
-    where T : TypeFoldable<'tcx> + HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     let substituted = value.subst(tcx, param_substs);
     normalize_associated_type(tcx, &substituted)

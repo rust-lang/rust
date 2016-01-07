@@ -14,7 +14,7 @@ use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::Substs;
-use middle::ty::{self, Ty, HasTypeFlags, LvaluePreference};
+use middle::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
 use check::{check_expr_with_lvalue_pref};
