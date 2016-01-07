@@ -32,5 +32,4 @@ fn main() {
     let p = Point::new(0.0, 0.0);
     //~^ ERROR no associated item named `new` found for type `Point` in the current scope
     println!("{}", p.to_string());
-    //~^ ERROR the type of this value must be known in this context
 }
