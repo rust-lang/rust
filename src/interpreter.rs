@@ -57,7 +57,10 @@ impl Pointer {
 /// ```
 #[derive(Debug)]
 struct Frame {
-    return_ptr: Pointer,
+    /// A pointer to a stack cell to write the return value of the current call, if it's not a
+    /// divering call.
+    return_ptr: Option<Pointer>,
+
     offset: usize,
     num_args: usize,
     num_vars: usize,
@@ -100,7 +103,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &Mir, args: &[Value], return_ptr: Pointer) {
+    fn push_stack_frame(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) {
         let frame = Frame {
             return_ptr: return_ptr,
             offset: self.value_stack.len(),
@@ -134,11 +137,12 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         ptr
     }
 
-    fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Pointer) {
+    fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) {
         self.push_stack_frame(mir, args, return_ptr);
         let mut block = mir::START_BLOCK;
 
         loop {
+            if TRACE_EXECUTION { println!("Entering block: {:?}", block); }
             let block_data = mir.basic_block_data(block);
 
             for stmt in &block_data.statements {
@@ -157,16 +161,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 }
             }
 
-            if TRACE_EXECUTION { println!("{:?}", block_data.terminator); }
+            if TRACE_EXECUTION { println!("{:?}", block_data.terminator()); }
 
-            match block_data.terminator {
+            match *block_data.terminator() {
                 mir::Terminator::Return => break,
                 mir::Terminator::Goto { target } => block = target,
 
-                mir::Terminator::Call { ref data, targets: (success_target, _panic_target) } => {
-                    let mir::CallData { ref destination, ref func, ref args } = *data;
-
-                    let ptr = self.eval_lvalue(destination);
+                mir::Terminator::Call { ref func, ref args, ref kind } => {
+                    let ptr = kind.destination().map(|dest| self.eval_lvalue(&dest));
                     let func_val = self.eval_operand(func);
 
                     if let Value::Func(def_id) = func_val {
@@ -184,7 +186,13 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                             args.iter().map(|arg| self.eval_operand(arg)).collect();
 
                         self.call(mir, &arg_vals, ptr);
-                        block = success_target
+
+                        match *kind {
+                            mir::CallKind::Converging { target: success_target, .. } |
+                            mir::CallKind::ConvergingCleanup { targets: (success_target, _), .. }
+                            => { block = success_target; }
+                            _ => {}
+                        }
                     } else {
                         panic!("tried to call a non-function value: {:?}", func_val);
                     }
@@ -217,8 +225,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     }
                 }
 
-                // mir::Terminator::Diverge => unimplemented!(),
-                // mir::Terminator::Panic { target } => unimplemented!(),
+                // mir::Terminator::Resume => unimplemented!(),
                 _ => unimplemented!(),
             }
         }
@@ -230,7 +237,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         let frame = self.call_stack.last().expect("missing call frame");
 
         match *lvalue {
-            mir::Lvalue::ReturnPointer => frame.return_ptr,
+            mir::Lvalue::ReturnPointer =>
+                frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
             mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i as usize)),
             mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i as usize)),
             mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i as usize)),
@@ -405,7 +413,7 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
 
                 let mut interpreter = Interpreter::new(tcx, mir_map);
                 let return_ptr = Pointer::Stack(0);
-                interpreter.call(mir, &[], return_ptr);
+                interpreter.call(mir, &[], Some(return_ptr));
 
                 let val_str = format!("{:?}", interpreter.read_pointer(return_ptr));
                 if !check_expected(&val_str, attr) {

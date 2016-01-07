@@ -122,18 +122,18 @@ fn basic_ref_mut_var() -> i32 {
     a
 }
 
-// #[miri_run(expected = "Int(4)")]
-// fn match_int_range() -> i32 {
-//     let n = 42;
-//     match n {
-//         0...9 => 0,
-//         10...19 => 1,
-//         20...29 => 2,
-//         30...39 => 3,
-//         40...49 => 4,
-//         _ => 5,
-//     }
-// }
+#[miri_run(expected = "Int(4)")]
+fn match_int_range() -> i32 {
+    let n = 42;
+    match n {
+        0...9 => 0,
+        10...19 => 1,
+        20...29 => 2,
+        30...39 => 3,
+        40...49 => 4,
+        _ => 5,
+    }
+}
 
 enum MyOption<T> {
     Some { data: T },
