@@ -109,6 +109,7 @@ use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
+use ast_map;
 use middle::def::*;
 use middle::pat_util;
 use middle::ty;
@@ -410,6 +411,12 @@ fn visit_fn(ir: &mut IrMaps,
     // check for various error conditions
     lsets.visit_block(body);
     lsets.check_ret(id, sp, fk, entry_ln, body);
+
+    // Do not warn about unused arguments in default methods
+    if let Some(ast_map::NodeTraitItem(..)) = ir.tcx.map.find(id) {
+        return;
+    }
+
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
