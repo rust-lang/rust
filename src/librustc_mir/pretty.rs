@@ -39,7 +39,7 @@ fn write_basic_block<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::R
     }
 
     // Terminator at the bottom.
-    try!(writeln!(w, "{0}{0}{1:?};", INDENT, data.terminator));
+    try!(writeln!(w, "{0}{0}{1:?};", INDENT, data.terminator()));
 
     writeln!(w, "{}}}", INDENT)
 }
