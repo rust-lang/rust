@@ -10,6 +10,8 @@
 
 // Can't use unit struct as enum pattern
 
+#![feature(rustc_attrs)]
+// remove prior feature after warning cycle and promoting warnings to errors
 #![feature(braced_empty_structs)]
 
 struct Empty1;
@@ -18,7 +20,9 @@ enum E {
     Empty2
 }
 
-fn main() {
+// remove attribute after warning cycle and promoting warnings to errors
+#[rustc_error]
+fn main() { //~ ERROR: compilation successful
     let e1 = Empty1;
     let e2 = E::Empty2;
 
@@ -27,7 +31,7 @@ fn main() {
     //     Empty1() => () // ERROR `Empty1` does not name a tuple variant or a tuple struct
     // }
     match e1 {
-        Empty1(..) => () //~ ERROR `Empty1` does not name a tuple variant or a tuple struct
+        Empty1(..) => () //~ WARN `Empty1` does not name a tuple variant or a tuple struct
     }
     // Rejected by parser as yet
     // match e2 {
