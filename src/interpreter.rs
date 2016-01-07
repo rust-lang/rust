@@ -225,8 +225,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     }
                 }
 
-                // mir::Terminator::Resume => unimplemented!(),
-                _ => unimplemented!(),
+                mir::Terminator::Resume => unimplemented!(),
             }
         }
 
