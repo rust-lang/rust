@@ -1487,6 +1487,8 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
+    debug!("trans_adt");
+
     // This scope holds intermediates that must be cleaned should
     // panic occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
