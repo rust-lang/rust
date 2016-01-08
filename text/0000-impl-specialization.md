@@ -860,6 +860,10 @@ And this most-specific impl is what we'll dispatch to.
 (It's worth pausing to think for a moment how this rule can lead to dispatching
 to each of the impls in the example above.)
 
+One nice thing about this approach is that, if there is an overlap without there
+being an intersecting impl, the compiler can tell the programmer *precisely
+which impl needs to be written* to disambiguate the overlapping portion.
+
 We'll start with an abstract/high-level formulation, and then build up toward an
 algorithm for deciding specialization by introducing a number of building
 blocks.
@@ -1184,6 +1188,10 @@ following holds:
 
 - `I` and `J` do not overlap (a unification check), or else
 - There is some impl `K` such that `apply(K) = apply(I) intersect apply(J)`
+
+Recall also that if there is an overlap without there being an intersecting
+impl, the compiler can tell the programmer *precisely which impl needs to be
+written* to disambiguate the overlapping portion.
 
 Since `I <= J` ultimately boils down to a subset relationship, we get a lot of
 nice properties for free (e.g., transitivity: if `I <= J <= K` then `I <= K`).
