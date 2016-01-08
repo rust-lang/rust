@@ -87,17 +87,14 @@ any calling convention the compiler is compatible with, calls to naked functions
 from within Rust code are forbidden unless the function is also declared with
 a well-defined ABI.
 
-The function `call_foo` in the following code block is an error because the
-default (Rust) ABI is unspecified and as such a programmer can never write code
-in `foo` which is compatible:
+Defining a naked function with the default (Rust) ABI is an error, because the
+Rust ABI is unspecified and the programmer can never write a function which is
+guaranteed to be compatible. For example, The function declaration of `foo` in
+the following code block is an error.
 
 ```rust
 #[naked]
-fn foo() { }
-
-fn call_foo() {
-    foo();
-}
+unsafe fn foo() { }
 ```
 
 The following variant is not an error because the C calling convention is
@@ -107,28 +104,36 @@ function:
 ```rust
 #[naked]
 extern "C" fn foo() { }
-
-fn call_foo() {
-    foo();
-}
 ```
 
 ---
 
-The current support for `extern` functions in `rustc` generates a minimum of two
-basic blocks for any function declared in Rust code with a non-default calling
-convention: a trampoline which translates the declared calling convention to the
-Rust convention, and a Rust ABI version of the function containing the actual
-implementation. Calls to the function from Rust code call the Rust ABI version
-directly.
+Because the compiler cannot verify the correctness of code written in a naked
+function (since it may have an unknown calling convention), naked functions must
+be declared `unsafe` or contain no non-`unsafe` statements in the body. The
+function `error` in the following code block is a compile-time error, whereas
+the functions `correct1` and `correct2` are permitted.
 
-For naked functions, it is impossible for the compiler to generate a Rust ABI
-version of the function because the implementation may depend on the calling
-convention. In cases where calling a naked function from Rust is permitted, the
-compiler must be able to use the target calling convention directly rather than
-call the same function with the Rust convention.
+```
+#[naked]
+extern "C" fn error(x: &mut u8) {
+    *x += 1;
+}
 
----
+#[naked]
+unsafe extern "C" fn correct1(x: &mut u8) {
+    *x += 1;
+}
+
+#[naked]
+extern "C" fn correct2() {
+    unsafe {
+        *x += 1;
+    }
+}
+```
+
+## Example
 
 The following example illustrates the possible use of a naked function for
 implementation of an interrupt service routine on 32-bit x86.
@@ -162,6 +167,21 @@ fn main() {
 }
 ```
 
+## Implementation Considerations
+
+The current support for `extern` functions in `rustc` generates a minimum of two
+basic blocks for any function declared in Rust code with a non-default calling
+convention: a trampoline which translates the declared calling convention to the
+Rust convention, and a Rust ABI version of the function containing the actual
+implementation. Calls to the function from Rust code call the Rust ABI version
+directly.
+
+For naked functions, it is impossible for the compiler to generate a Rust ABI
+version of the function because the implementation may depend on the calling
+convention. In cases where calling a naked function from Rust is permitted, the
+compiler must be able to use the target calling convention directly rather than
+call the same function with the Rust convention.
+
 # Drawbacks
 
 The utility of this feature is extremely limited to most users, and it might be
@@ -179,8 +199,20 @@ external libraries such as `libffi`.
 
 It is easy to quietly generate wrong code in naked functions, such as by causing
 the compiler to allocate stack space for temporaries where none were
-anticipated. It may be desirable to require that all statements inside naked
-functions be inside `unsafe` blocks (either by declaring the function `unsafe`
-or including `unsafe { }` in the function body) to reinforce the need for
-extreme care in the use of this feature. Requiring that the function always be
-marked `unsafe` is not desirable because its external API may be safe.
+anticipated. There is currently no restriction on writing Rust statements inside
+a naked function, while most compilers supporting similar features either
+require or strongly recommend that authors write only inline assembly inside
+naked functions to ensure no code is generated that assumes a particular stack
+layout. It may be desirable to place further restrictions on what statements are
+permitted in the body of a naked function, such as permitting only `asm!`
+statements.
+
+The `unsafe` requirement on naked functions may not be desirable in all cases.
+However, relaxing that requirement in the future would not be a breaking change.
+
+Because a naked function may use a calling convention unknown to the compiler,
+it may be useful to add a "unknown" calling convention to the compiler which is
+illegal to call directly. Absent this feature, functions implementing an unknown
+ABI would need to be declared with a calling convention which is known to be
+incorrect and depend on the programmer to avoid calling such a function
+incorrectly since it cannot be prevented statically.
