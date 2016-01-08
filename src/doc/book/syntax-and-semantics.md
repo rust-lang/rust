@@ -1,6 +1,6 @@
 % Syntax and Semantics
 
-This section breaks Rust down into small chunks, one for each concept.
+This chapter breaks Rust down into small chunks, one for each concept.
 
 If you’d like to learn Rust from the bottom up, reading this in order is a
 great way to do that.

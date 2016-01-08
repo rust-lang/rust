@@ -7,7 +7,7 @@ prompt us to enter a guess. Upon entering our guess, it will tell us if we’re
 too low or too high. Once we guess correctly, it will congratulate us. Sounds
 good?
 
-Along the way, we’ll learn a little bit about Rust. The next section, ‘Syntax
+Along the way, we’ll learn a little bit about Rust. The next chapter, ‘Syntax
 and Semantics’, will dive deeper into each part.
 
 # Set up
