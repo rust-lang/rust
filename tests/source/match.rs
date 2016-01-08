@@ -100,6 +100,14 @@ fn matches() {
     }
 }
 
+fn match_skip() {
+    let _ = match Some(1) {
+        #[rustfmt_skip]
+        Some( n ) => n,
+        None      => 1,
+    };
+}
+
 fn issue339() {
     match a {
         b => {}
