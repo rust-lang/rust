@@ -167,8 +167,11 @@ variable binding. Slices have a defined length, can be mutable or immutable.
 ## Slicing syntax
 
 You can use a combo of `&` and `[]` to create a slice from various things. The
-`&` indicates that slices are similar to references, and the `[]`s, with a
-range, let you define the length of the slice:
+`&` indicates that slices are similar to [references], which we will cover in
+detail later in this section. The `[]`s, with a range, let you define the
+length of the slice:
+
+[references]: references-and-borrowing.html
 
 ```rust
 let a = [0, 1, 2, 3, 4];
@@ -189,11 +192,13 @@ documentation][slice].
 # `str`
 
 Rust’s `str` type is the most primitive string type. As an [unsized type][dst],
-it’s not very useful by itself, but becomes useful when placed behind a reference,
-like [`&str`][strings]. As such, we’ll just leave it at that.
+it’s not very useful by itself, but becomes useful when placed behind a
+reference, like `&str`. We'll elaborate further when we cover
+[Strings][strings] and [references].
 
 [dst]: unsized-types.html
 [strings]: strings.html
+[references]: references-and-borrowing.html
 
 You can find more documentation for `str` [in the standard library
 documentation][str].
