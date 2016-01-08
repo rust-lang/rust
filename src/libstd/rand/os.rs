@@ -38,9 +38,11 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;
-        #[cfg(any(target_arch = "arm", target_arch = "powerpc",
-                  target_arch = "powerpc64", target_arch = "powerpc64le"))]
+        #[cfg(target_arch = "arm")]
         const NR_GETRANDOM: libc::c_long = 384;
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64",
+                  target_arch = "powerpc64le"))]
+        const NR_GETRANDOM: libc::c_long = 359;
         #[cfg(target_arch = "aarch64")]
         const NR_GETRANDOM: libc::c_long = 278;
 
