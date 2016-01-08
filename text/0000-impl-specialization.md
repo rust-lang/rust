@@ -6,13 +6,13 @@
 # Summary
 
 This RFC proposes a design for *specialization*, which permits multiple `impl`
-blocks to apply to the same type/trait, so long as one of the blocks is clearly
-"more specific" than the other. The more specific `impl` block is used in a case
-of overlap. The design proposed here also supports refining default trait
-implementations based on specifics about the types involved.
+blocks to apply to the same type/trait, so long as there is always a clearly
+"most specific" impl block that applies. The most specific `impl` block is used
+in a case of overlap. The design proposed here also supports refining default
+trait implementations based on specifics about the types involved.
 
 Altogether, this relatively small extension to the trait system yields benefits
-for performance and code reuse, and it lays the groundwork for an "efficient
+for performance, expressiveness, and code reuse, and it lays the groundwork for an "efficient
 inheritance" scheme that is largely based on the trait system (described in a
 forthcoming companion RFC).
 
@@ -23,6 +23,11 @@ Specialization brings benefits along several different axes:
 * **Performance**: specialization expands the scope of "zero cost abstraction",
   because specialized impls can provide custom high-performance code for
   particular, concrete cases of an abstraction.
+
+* **Expressiveness**: specialization significantly relaxes the overlapping impl
+  rules, making it possible to write multiple blanket impls that intersect -- a
+  desire that has come up over and over again in the standard library and
+  elsewhere.
 
 * **Reuse**: the design proposed here also supports refining default (but
   incomplete) implementations of a trait, given details about the types
@@ -125,6 +130,147 @@ unsafe trait TrustedSizeHint {}
 that can allow the optimization to apply to a broader set of types than slices,
 but are still more specific than `T: IntoIterator`.
 
+## Expressiveness
+
+One frequent motivation for specialization is broader "expressiveness", in
+particular providing a larger set of trait implementations than is possible
+today.
+
+For example, the standard library currently includes an `AsRef` trait
+for "as-style" conversions:
+
+```rust
+pub trait AsRef<T> where T: ?Sized {
+    fn as_ref(&self) -> &T;
+}
+```
+
+Currently, there is also a blanket implementation as follows:
+
+```rust
+impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U> {
+    fn as_ref(&self) -> &U {
+        <T as AsRef<U>>::as_ref(*self)
+    }
+}
+```
+
+which allows these conversions to "lift" over references, which is in turn
+important for making a number of standard library APIs ergonomic.
+
+On the other hand, we'd also like to provide the following very simple
+blanket implementation:
+
+```rust
+impl<'a, T: ?Sized> AsRef<T> for T {
+    fn as_ref(&self) -> &T {
+        self
+    }
+}
+```
+
+The current coherence rules prevent having both impls, however,
+because they can in principle overlap:
+
+```rust
+AsRef<&'a T> for &'a T where T: AsRef<&'a T>
+```
+
+Another example comes from the `Option` type, which currently provides two
+methods for unwrapping while providing a default value for the `None` case:
+
+```rust
+impl<T> Option<T> {
+    fn unwrap_or(self, def: T) -> T { ... }
+    fn unwrap_or_else<F>(self, f: F) -> T where F: FnOnce() -> T { .. }
+}
+```
+
+The `unwrap_or` method is more ergonomic but `unwrap_or_else` is more efficient
+in the case that the default is expensive to compute. The original
+[collections reform RFC](https://github.com/rust-lang/rfcs/pull/235) proposed a
+`ByNeed` trait that was rendered unworkable after unboxed closures landed:
+
+```rust
+trait ByNeed<T> {
+    fn compute(self) -> T;
+}
+
+impl<T> ByNeed<T> for T {
+    fn compute(self) -> T {
+        self
+    }
+}
+
+impl<F, T> ByNeed<T> for F where F: FnOnce() -> T {
+    fn compute(self) -> T {
+        self()
+    }
+}
+
+impl<T> Option<T> {
+    fn unwrap_or<U>(self, def: U) where U: ByNeed<T> { ... }
+    ...
+}
+```
+
+The trait represents any value that can produce a `T` on demand. But the above
+impls fail to compile in today's Rust, because they overlap: consider `ByNeed<F>
+for F` where `F: FnOnce() -> F`.
+
+There are also some trait hierarchies where a subtrait completely subsumes the
+functionality of a supertrait. For example, consider `PartialOrd` and `Ord`:
+
+```rust
+trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
+    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
+}
+
+trait Ord: Eq + PartialOrd<Self> {
+    fn cmp(&self, other: &Self) -> Ordering;
+}
+```
+
+In cases like this, it's somewhat annoying to have to provide an impl for *both*
+`Ord` and `PartialOrd`, since the latter can be trivially derived from the
+former. So you might want an impl like this:
+
+```rust
+impl<T> PartialOrd<T> for T where T: Ord {
+    fn partial_cmp(&self, other: &T) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+```
+
+But this blanket impl would conflict with a number of others that work to "lift"
+`PartialOrd` and `Ord` impls over various type constructors like references and
+tuples, e.g.:
+
+```rust
+impl<'a, A: ?Sized> Ord for &'a A where A: Ord {
+    fn cmp(&self, other: & &'a A) -> Ordering { Ord::cmp(*self, *other) }
+}
+
+impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b B> for &'a A where A: PartialOrd<B> {
+    fn partial_cmp(&self, other: &&'b B) -> Option<Ordering> {
+        PartialOrd::partial_cmp(*self, *other)
+    }
+```
+
+The case where they overlap boils down to:
+
+```rust
+PartialOrd<&'a T> for &'a T where &'a T: Ord
+PartialOrd<&'a T> for &'a T where T: PartialOrd
+```
+
+There are many other examples along these lines.
+
+Specialization as proposed in this RFC greatly relaxes the overlap rules, even
+allowing impls to only partially overlap, as long as there is another
+yet-more-specialized impl that disambiguates the portion of partial overlap.
+
 ## Reuse
 
 Today's default methods in traits are pretty limited: they can assume only the
@@ -219,8 +365,12 @@ nicely with an orthogonal mechanism for virtual dispatch to give a complete
 story for the "efficient inheritance" goal that many previous RFCs targeted.
 
 The author is preparing a companion RFC showing how this can be done with a
-relatively small further extension to the language. But it should be said that
-the design in *this* RFC is fully motivated independently of its companion RFC.
+relatively small further extension to the language. In the meantime, you can
+find a blog post laying out the basic ideas
+[here](http://aturon.github.io/blog/2015/09/18/reuse/).
+
+But it should be said that the design in *this* RFC is fully motivated
+independently of its companion RFC.
 
 # Detailed design
 
@@ -357,7 +507,8 @@ to begin with, and wait for strong use cases of associated type specialization
 to emerge before stabilizing that.)
 
 The solution proposed in this RFC is instead to treat specialization of items in
-a trait as a per-item *opt in*, described in the next section.
+a trait as a per-item *opt in*, described in the next section. (This opt in, it
+should be noted, is desirable for other reasons as well.)
 
 ## The `default` keyword
 
@@ -576,7 +727,7 @@ impl<'a, T, U> Bar<T> for &'a U where U: Bar<T> {}
 ### Permitting overlap
 
 The goal of specialization is to allow overlapping impls, but it's not as simple
-as permitting *all* overlap. There has to be a way to decide which of two
+as permitting *all* overlap. There has to be a way to decide which of several
 overlapping impls to actually use for a given set of input types. The simpler
 and more intuitive the rule for deciding, the easier it is to write and reason
 about code -- and since dispatch is already quite complicated, simplicity here
@@ -584,11 +735,14 @@ is a high priority. On the other hand, the design should support as many of the
 motivating use cases as possible.
 
 The basic intuition we've been using for specialization is the idea that one
-impl is "more specific" than another it overlaps with. Before turning this
-intuition into a rule, let's go through the previous examples of overlap and
-decide which, if any, of the impls is intuitively more specific. **Note that since
-we're leaving out the body of the impls, you won't see the `default` keyword
-that would be required in practice for the less specialized impls.**
+impl can be "more specific" than another, and that for any given type there
+should be at most one "most specific" impl that applies.
+
+Before turning this intuition into a rule, let's go through the previous
+examples of overlap and decide which, if any, of the impls is intuitively more
+specific. **Note that since we're leaving out the body of the impls, you won't
+see the `default` keyword that would be required in practice for the less
+specialized impls.**
 
 ```rust
 trait Foo {}
@@ -666,14 +820,45 @@ We'll say that `I < J` if `I <= J` and `!(J <= I)`. In this case, `I` is *more
 specialized* than `J`.
 
 To ensure specialization is coherent, we will ensure that for any two impls `I`
-and `J` that overlap, we have either `I < J` or `J < I`.  That is, one must be
-truly more specific than the other. Specialization chooses the "smallest" impl
-in this order -- and the new overlap rule ensures there is a unique smallest
-impl among those that apply to a given set of input types.
+and `J` that overlap, there must be an impl that is *precisely their
+intersection*. That intersecting impl might just *be* one of `I` or `J` -- in
+other words, the rule is automatically satisfied if `I < J` or `J < I`.
 
-More broadly, while `<=` is not a total order on *all* impls of a given trait,
-it will be a total order on any set of impls that all mutually overlap, which is
-all we need to determine which impl to use.
+For example:
+
+```rust
+trait Foo {}
+trait Trait1 {}
+trait Trait2 {}
+trait Trait3 {}
+
+// these two impls overlap without one being more specific than the other:
+impl<T> Foo for T where T: Trait1 {}
+impl<T> Foo for T where T: Trait2 {}
+
+// ... but this one gives their intersection:
+impl<T> Foo for T where T: Trait1 + Trait2 {}
+
+// ... and this one is just more specific than all the others
+impl<T> Foo for T where T: Trait1 + Trait2 + Trait3 {}
+```
+
+Note in particular that the intersection of the last two impls *is* the last
+impl.
+
+This rule guarantees that, given any concrete type that has at least one
+applicable impl, we'll be able to find a *single most-specific impl* that
+applies. In other words if you take the set of all applicable impls
+`ALL_APPLICABLE_IMPLS`:
+
+- There will be some `I` in `ALL_APPLICABLE_IMPLS` such that:
+  - For all `J` in `ALL_APPLICABLE_IMPLS` such that:
+    - `I <= J`
+
+And this most-specific impl is what we'll dispatch to.
+
+(It's worth pausing to think for a moment how this rule can lead to dispatching
+to each of the impls in the example above.)
 
 We'll start with an abstract/high-level formulation, and then build up toward an
 algorithm for deciding specialization by introducing a number of building
@@ -748,7 +933,32 @@ impl<T> Bar<T> for T {}
 ```
 
 The same reasoning can be applied to all of the examples we saw earlier, and the
-reader is encouraged to do so. We'll look at one of the more subtle cases here:
+reader is encouraged to do so. We'll look at some of the more subtle cases here:
+
+```rust
+trait Foo {}
+trait Trait1 {}
+trait Trait2 {}
+trait Trait3 {}
+
+// impl I
+// apply(I) = { T | T: Trait1 }
+impl<T> Foo for T where T: Trait1 {}
+
+// impl J
+// apply(J) = { T | T: Trait2 }
+impl<T> Foo for T where T: Trait2 {}
+
+// Neither I < J or J < I, but:
+
+// impl K
+// apply(K) = { T | T: Trait1, T: Trait2 }
+impl<T> Foo for T where T: Trait1 + Trait2 {}
+
+// apply(I) intersect apply(J) = apply(K)
+// apply(I) intersect apply(K) = apply(K)
+// apply(J) intersect apply(K) = apply(K)
+```
 
 ```rust
 // impl I
@@ -761,8 +971,26 @@ impl<'a, T, U> Bar<T> for &'a U where U: Bar<T> {}
 ```
 
 The claim is that `apply(I)` and `apply(J)` intersect, but neither contains the
-other. Thus, these two impls are not permitted to coexist according to this
-RFC's design. (We'll revisit this limitation toward the end of the RFC.)
+other. Thus, for these impls to coexist, there must be a *third* impl for which
+`apply` is precisely the intersection:
+
+```rust
+// impl I
+// apply(I) = { (T, T) | T any type }
+impl<T> Bar<T> for T {}
+
+// impl J
+// apply(J) = { (T, &'a U) | U: Bar<T>, 'a any lifetime }
+impl<'a, T, U> Bar<T> for &'a U where U: Bar<T> {}
+
+// impl K
+// apply(K) = { (&'a T, &'a T) | T: Bar<&'a T>, 'a any lifetime }
+impl<'a, T> Bar<&'a T> for &'a T where T: Bar<&'a T> {}
+
+// apply(I) intersect apply(J) = apply(K)
+// apply(I) intersect apply(K) = apply(K)
+// apply(J) intersect apply(K) = apply(K)
+```
 
 #### Algorithmic formulation
 
@@ -929,7 +1157,8 @@ impl<T: Trait2> Foo for T {}    // there's no relationship between the traits he
 In comparing these two impls in either direction, we make it past unification
 and must try to prove that one where clause implies another. But `T: Trait1`
 does not imply `T: Trait2`, nor vice versa, so neither impl is more specific
-than the other. Since the impls do overlap, an ambiguity error is reported.
+than the other. Since the impls do overlap, there must be a third impl for their
+intersection (`T: Trait1 + Trait2`).
 
 On the other hand:
 
@@ -950,12 +1179,11 @@ impl<T: Trait4> Foo for T    <    impl<T: Trait3> Foo for T
 
 ##### Key properties
 
-Remember that for each pair of impls `I`, `J`, the compiler will check that
-exactly one of the following holds:
+For each pair of impls `I`, `J`, the compiler will check that exactly one of the
+following holds:
 
 - `I` and `J` do not overlap (a unification check), or else
-- `I < J`, or else
-- `J < I`
+- There is some impl `K` such that `apply(K) = apply(I) intersect apply(J)`
 
 Since `I <= J` ultimately boils down to a subset relationship, we get a lot of
 nice properties for free (e.g., transitivity: if `I <= J <= K` then `I <= K`).
