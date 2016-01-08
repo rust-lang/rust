@@ -288,20 +288,29 @@ pub fn immediate_rvalue_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return DatumBlock::new(bcx, immediate_rvalue(val, ty))
 }
 
-
 /// Allocates temporary space on the stack using alloca() and returns a by-ref Datum pointing to
 /// it. The memory will be dropped upon exit from `scope`. The callback `populate` should
 /// initialize the memory.
+///
+/// The flag `zero` indicates how the temporary space itself should be
+/// initialized at the outset of the function; the only time that
+/// `InitAlloca::Uninit` is a valid value for `zero` is when the
+/// caller can prove that either (1.) the code injected by `populate`
+/// onto `bcx` always dominates the end of `scope`, or (2.) the data
+/// being allocated has no associated destructor.
 pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                               ty: Ty<'tcx>,
                                               name: &str,
+                                              zero: InitAlloca,
                                               scope: cleanup::ScopeId,
                                               arg: A,
                                               populate: F)
                                               -> DatumBlock<'blk, 'tcx, Lvalue> where
     F: FnOnce(A, Block<'blk, 'tcx>, ValueRef) -> Block<'blk, 'tcx>,
 {
-    let scratch = alloc_ty(bcx, ty, name);
+    // Very subtle: potentially initialize the scratch memory at point where it is alloca'ed.
+    // (See discussion at Issue 30530.)
+    let scratch = alloc_ty_init(bcx, ty, zero, name);
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
     let bcx = populate(arg, bcx, scratch);
@@ -496,7 +505,7 @@ impl<'tcx> Datum<'tcx, Rvalue> {
 
             ByValue => {
                 lvalue_scratch_datum(
-                    bcx, self.ty, name, scope, self,
+                    bcx, self.ty, name, InitAlloca::Dropped, scope, self,
                     |this, bcx, llval| {
                         call_lifetime_start(bcx, llval);
                         let bcx = this.store_to(bcx, llval);
