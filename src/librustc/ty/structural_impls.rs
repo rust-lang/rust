@@ -190,10 +190,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
 
 impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        folder.enter_region_binder();
-        let result = ty::Binder(self.0.fold_with(folder));
-        folder.exit_region_binder();
-        result
+        ty::Binder(self.0.fold_with(folder))
     }
 
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
@@ -201,10 +198,11 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        visitor.enter_region_binder();
-        if self.0.visit_with(visitor) { return true }
-        visitor.exit_region_binder();
-        false
+        self.0.visit_with(visitor)
+    }
+
+    fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        visitor.visit_binder(self)
     }
 }
 
@@ -220,39 +218,11 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for P<[T]> {
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for VecPerParamSpace<T> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-
-        // Things in the Fn space take place under an additional level
-        // of region binding relative to the other spaces. This is
-        // because those entries are attached to a method, and methods
-        // always introduce a level of region binding.
-
-        let result = self.map_enumerated(|(space, index, elem)| {
-            if space == subst::FnSpace && index == 0 {
-                // enter new level when/if we reach the first thing in fn space
-                folder.enter_region_binder();
-            }
-            elem.fold_with(folder)
-        });
-        if result.len(subst::FnSpace) > 0 {
-            // if there was anything in fn space, exit the region binding level
-            folder.exit_region_binder();
-        }
-        result
+        self.map(|elem| elem.fold_with(folder))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        let mut entered_region_binder = false;
-        let result = self.iter_enumerated().any(|(space, index, t)| {
-            if space == subst::FnSpace && index == 0 {
-                visitor.enter_region_binder();
-                entered_region_binder = true;
-            }
-            t.visit_with(visitor)
-        });
-        if entered_region_binder {
-            visitor.exit_region_binder();
-        }
-        result
+        self.iter().any(|elem| elem.visit_with(visitor))
     }
 }
 

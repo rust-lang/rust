@@ -582,12 +582,11 @@ struct SubstFolder<'a, 'tcx: 'a> {
 impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
 
-    fn enter_region_binder(&mut self) {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.region_binders_passed += 1;
-    }
-
-    fn exit_region_binder(&mut self) {
+        let t = t.super_fold_with(self);
         self.region_binders_passed -= 1;
+        t
     }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
