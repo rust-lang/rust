@@ -72,7 +72,7 @@ use rustc_front::intravisit::{self, FnKind, Visitor};
 use rustc_front::hir;
 use rustc_front::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
 use rustc_front::hir::Crate;
-use rustc_front::hir::{Expr, ExprAgain, ExprBreak, ExprField};
+use rustc_front::hir::{Expr, ExprAgain, ExprBreak, ExprCall, ExprField};
 use rustc_front::hir::{ExprLoop, ExprWhile, ExprMethodCall};
 use rustc_front::hir::{ExprPath, ExprStruct, FnDecl};
 use rustc_front::hir::{ForeignItemFn, ForeignItemStatic, Generics};
@@ -433,7 +433,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                            msg);
 
             match context {
-                UnresolvedNameContext::Other => {} // no help available
+                UnresolvedNameContext::Other => { } // no help available
                 UnresolvedNameContext::PathIsMod(id) => {
                     let mut help_msg = String::new();
                     let parent_id = resolver.ast_map.get_parent_node(id);
@@ -446,7 +446,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                                    module = &*path,
                                                    ident = ident.node);
                             }
-
                             ExprMethodCall(ident, _, _) => {
                                 help_msg = format!("To call a function from the \
                                                     `{module}` module, use \
@@ -454,9 +453,15 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                                    module = &*path,
                                                    ident = ident.node);
                             }
-
-                            _ => {} // no help available
+                            ExprCall(_, _) => {
+                                help_msg = format!("No function corresponds to `{module}(..)`",
+                                                   module = &*path);
+                            }
+                            _ => { } // no help available
                         }
+                    } else {
+                        help_msg = format!("Module `{module}` cannot be the value of an expression",
+                                           module = &*path);
                     }
 
                     if !help_msg.is_empty() {

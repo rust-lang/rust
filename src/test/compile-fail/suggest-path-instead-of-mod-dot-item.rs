@@ -58,3 +58,15 @@ fn h6() -> i32 {
         //~^ ERROR E0425
         //~| HELP To call a function from the `a::b` module, use `a::b::f(..)`
 }
+
+fn h7() {
+    a::b
+        //~^ ERROR E0425
+        //~| HELP Module `a::b` cannot be the value of an expression
+}
+
+fn h8() -> i32 {
+    a::b()
+        //~^ ERROR E0425
+        //~| HELP No function corresponds to `a::b(..)`
+}
