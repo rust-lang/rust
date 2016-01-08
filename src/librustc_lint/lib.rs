@@ -54,6 +54,7 @@ pub use rustc::util as util;
 
 use session::Session;
 use lint::LintId;
+use lint::FutureIncompatibleInfo;
 
 mod bad_style;
 mod builtin;
@@ -144,9 +145,28 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
                     UNUSED_UNSAFE, PATH_STATEMENTS, UNUSED_ATTRIBUTES);
 
-    add_lint_group!(sess, FUTURE_INCOMPATIBLE,
-                    PRIVATE_IN_PUBLIC, INVALID_TYPE_PARAM_DEFAULT,
-                    MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT);
+    // Guidelines for creating a future incompatibility lint:
+    //
+    // - Create a lint defaulting to warn as normal, with ideally the same error
+    //   message you would normally give
+    // - Add a suitable reference, typically an RFC or tracking issue. Go ahead
+    //   and include the full URL.
+    // - Later, change lint to error
+    // - Eventually, remove lint
+    store.register_future_incompatible(sess, vec![
+        FutureIncompatibleInfo {
+            id: LintId::of(PRIVATE_IN_PUBLIC),
+            reference: "the explanation for E0446 (`--explain E0446`)",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(INVALID_TYPE_PARAM_DEFAULT),
+            reference: "PR 30742 <https://github.com/rust-lang/rust/pull/30724>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT),
+            reference: "RFC 218 <https://github.com/rust-lang/rfcs/blob/master/text/0218-empty-struct-with-braces.md>",
+        },
+        ]);
 
     // We have one lint pass defined specially
     store.register_late_pass(sess, false, box lint::GatherNodeLevels);

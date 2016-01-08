@@ -160,6 +160,17 @@ impl<'a> DiagnosticBuilder<'a> {
         self.sub(Level::Note, msg, Some(sp), None);
         self
     }
+    pub fn warn(&mut self, msg: &str) -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Warning, msg, None, None);
+        self
+    }
+    pub fn span_warn(&mut self,
+                     sp: Span,
+                     msg: &str)
+                     -> &mut DiagnosticBuilder<'a> {
+        self.sub(Level::Warning, msg, Some(sp), None);
+        self
+    }
     pub fn help(&mut self , msg: &str) -> &mut DiagnosticBuilder<'a>  {
         self.sub(Level::Help, msg, None, None);
         self

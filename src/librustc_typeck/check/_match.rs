@@ -595,14 +595,10 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
     let name = pprust::path_to_string(path);
     let msg = format!("`{}` does not name a tuple variant or a tuple struct", name);
     if lint {
-        let expanded_msg =
-            format!("{}; RFC 218 disallowed matching of unit variants or unit structs via {}(..)",
-                    msg,
-                    name);
         sess.add_lint(lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
                       pat.id,
                       pat.span,
-                      expanded_msg);
+                      msg);
     } else {
         span_err!(sess, pat.span, E0164, "{}", msg);
     }
