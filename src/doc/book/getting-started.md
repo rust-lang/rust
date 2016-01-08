@@ -1,13 +1,13 @@
 % Getting Started
 
-This first section of the book will get us going with Rust and its tooling.
+This first chapter of the book will get us going with Rust and its tooling.
 First, we’ll install Rust. Then, the classic ‘Hello World’ program. Finally,
 we’ll talk about Cargo, Rust’s build system and package manager.
 
 # Installing Rust
 
 The first step to using Rust is to install it. Generally speaking, you’ll need
-an Internet connection to run the commands in this chapter, as we’ll be
+an Internet connection to run the commands in this section, as we’ll be
 downloading Rust from the internet.
 
 We’ll be showing off a number of commands using a terminal, and those lines all
