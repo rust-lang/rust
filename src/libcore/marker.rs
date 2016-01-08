@@ -295,6 +295,10 @@ macro_rules! impls{
 /// even though it does not. This allows you to inform the compiler about certain safety properties
 /// of your code.
 ///
+/// For a more in-depth explanation of how to use `PhantomData<T>`, please see [the Nomicon].
+///
+/// [the Nomicon]: ../../nomicon/phantom-data.html
+///
 /// # A ghastly note 👻👻👻
 ///
 /// Though they both have scary names, `PhantomData<T>` and 'phantom types' are related, but not
