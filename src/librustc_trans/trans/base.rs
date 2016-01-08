@@ -1689,6 +1689,8 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
     let fcx = bcx.fcx;
     let arg_scope_id = cleanup::CustomScope(arg_scope);
 
+    debug!("create_datums_for_fn_args");
+
     // Return an array wrapping the ValueRefs that we get from `get_param` for
     // each argument into datums.
     //
@@ -1723,6 +1725,9 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                 unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "", uninit_reason,
                                                         arg_scope_id, (data, extra),
                                                         |(data, extra), bcx, dst| {
+                    debug!("populate call for create_datum_for_fn_args \
+                            early fat arg, on arg[{}] ty={:?}", i, arg_ty);
+
                     Store(bcx, data, expr::get_dataptr(bcx, dst));
                     Store(bcx, extra, expr::get_meta(bcx, dst));
                     bcx
@@ -1738,7 +1743,13 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                                           uninit_reason,
                                                           arg_scope_id,
                                                           tmp,
-                                                          |tmp, bcx, dst| tmp.store_to(bcx, dst)))
+                                                          |tmp, bcx, dst| {
+
+                        debug!("populate call for create_datum_for_fn_args \
+                                early thin arg, on arg[{}] ty={:?}", i, arg_ty);
+
+                                                              tmp.store_to(bcx, dst)
+                                                          }))
             }
         } else {
             // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
@@ -1753,7 +1764,9 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                                               (),
                                                               |(),
                                                                mut bcx,
-                                                               llval| {
+                                                              llval| {
+                        debug!("populate call for create_datum_for_fn_args \
+                                tupled_args, on arg[{}] ty={:?}", i, arg_ty);
                         for (j, &tupled_arg_ty) in
                                     tupled_arg_tys.iter().enumerate() {
                             let lldest = StructGEP(bcx, llval, j);

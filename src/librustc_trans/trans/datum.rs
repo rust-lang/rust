@@ -311,6 +311,8 @@ pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     // Very subtle: potentially initialize the scratch memory at point where it is alloca'ed.
     // (See discussion at Issue 30530.)
     let scratch = alloc_ty_init(bcx, ty, zero, name);
+    debug!("lvalue_scratch_datum scope={:?} scratch={} ty={:?}",
+           scope, bcx.ccx().tn().val_to_string(scratch), ty);
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
     let bcx = populate(arg, bcx, scratch);
@@ -349,6 +351,8 @@ fn add_rvalue_clean<'a, 'tcx>(mode: RvalueMode,
                               scope: cleanup::ScopeId,
                               val: ValueRef,
                               ty: Ty<'tcx>) {
+    debug!("add_rvalue_clean scope={:?} val={} ty={:?}",
+           scope, fcx.ccx.tn().val_to_string(val), ty);
     match mode {
         ByValue => { fcx.schedule_drop_immediate(scope, val, ty); }
         ByRef => {
@@ -507,6 +511,8 @@ impl<'tcx> Datum<'tcx, Rvalue> {
                 lvalue_scratch_datum(
                     bcx, self.ty, name, InitAlloca::Dropped, scope, self,
                     |this, bcx, llval| {
+                        debug!("populate call for Datum::to_lvalue_datum_in_scope \
+                                self.ty={:?}", this.ty);
                         call_lifetime_start(bcx, llval);
                         let bcx = this.store_to(bcx, llval);
                         bcx.fcx.schedule_lifetime_end(scope, llval);
