@@ -898,8 +898,7 @@ impl Rewrite for ast::Arm {
             attr_visitor.last_pos = attrs[0].span.lo;
             if attr_visitor.visit_attrs(attrs) {
                 // Attributes included a skip instruction.
-                let snippet = context.snippet(mk_sp(attrs[0].span.lo, body.span.hi));
-                return Some(snippet);
+                return None;
             }
             attr_visitor.format_missing(pats[0].span.lo);
             attr_visitor.buffer.to_string()
