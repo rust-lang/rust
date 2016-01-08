@@ -120,6 +120,13 @@ declare_lint! {
     Allow,
     "detects trivial casts of numeric types which could be removed"
 }
+
+declare_lint! {
+    pub MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
+    Warn,
+    "unit struct or enum variant erroneously allowed to match via path::ident(..)"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -144,6 +151,7 @@ impl LintPass for HardwiredLints {
             FAT_PTR_TRANSMUTES,
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
+            MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR
         )
     }
