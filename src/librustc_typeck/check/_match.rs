@@ -19,6 +19,7 @@ use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
 use check::{check_expr_with_lvalue_pref};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
+use lint;
 use require_same_types;
 use util::nodemap::FnvHashMap;
 use session::Session;
@@ -138,7 +139,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
             if let hir::PatEnum(ref path, ref subpats) = pat.node {
                 if !(subpats.is_some() && subpats.as_ref().unwrap().is_empty()) {
-                    bad_struct_kind_err(tcx.sess, pat.span, path, false);
+                    bad_struct_kind_err(tcx.sess, pat, path, false);
                     return;
                 }
             }
@@ -590,10 +591,21 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx hir::Pat,
 }
 
 // This function exists due to the warning "diagnostic code E0164 already used"
-fn bad_struct_kind_err(sess: &Session, span: Span, path: &hir::Path, is_warning: bool) {
+fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: bool) {
     let name = pprust::path_to_string(path);
-    span_err_or_warn!(is_warning, sess, span, E0164,
-        "`{}` does not name a tuple variant or a tuple struct", name);
+    let msg = format!("`{}` does not name a tuple variant or a tuple struct", name);
+    if lint {
+        let expanded_msg =
+            format!("{}; RFC 218 disallowed matching of unit variants or unit structs via {}(..)",
+                    msg,
+                    name);
+        sess.add_lint(lint::builtin::MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
+                      pat.id,
+                      pat.span,
+                      expanded_msg);
+    } else {
+        span_err!(sess, pat.span, E0164, "{}", msg);
+    }
 }
 
 pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
@@ -657,17 +669,8 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                      opt_ty, def, pat.span, pat.id);
 
     let report_bad_struct_kind = |is_warning| {
-        bad_struct_kind_err(tcx.sess, pat.span, path, is_warning);
-        if is_warning {
-            // Boo! Too painful to attach this to the actual warning,
-            // it should go away at some point though.
-            tcx.sess.span_note_without_error(
-                pat.span,
-                "this warning will become a HARD ERROR in a future release. \
-                 See RFC 218 for details.");
-            return;
-        }
-
+        bad_struct_kind_err(tcx.sess, pat, path, is_warning);
+        if is_warning { return; }
         fcx.write_error(pat.id);
         if let Some(subpats) = subpats {
             for pat in subpats {

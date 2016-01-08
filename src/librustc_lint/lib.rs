@@ -144,7 +144,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_UNSAFE, PATH_STATEMENTS, UNUSED_ATTRIBUTES);
 
     add_lint_group!(sess, FUTURE_INCOMPATIBLE,
-                    PRIVATE_IN_PUBLIC, INVALID_TYPE_PARAM_DEFAULT);
+                    PRIVATE_IN_PUBLIC, INVALID_TYPE_PARAM_DEFAULT,
+                    MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT);
 
     // We have one lint pass defined specially
     store.register_late_pass(sess, false, box lint::GatherNodeLevels);

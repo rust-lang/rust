@@ -133,6 +133,12 @@ declare_lint! {
     "type parameter default erroneously allowed in invalid location"
 }
 
+declare_lint! {
+    pub MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
+    Warn,
+    "unit struct or enum variant erroneously allowed to match via path::ident(..)"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -159,6 +165,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
             INVALID_TYPE_PARAM_DEFAULT,
+            MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR
         )
     }
