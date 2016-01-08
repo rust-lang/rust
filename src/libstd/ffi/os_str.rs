@@ -8,27 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A type that can represent all platform-native strings, but is cheaply
-//! interconvertable with Rust strings.
-//!
-//! The need for this type arises from the fact that:
-//!
-//! * On Unix systems, strings are often arbitrary sequences of non-zero
-//!   bytes, in many cases interpreted as UTF-8.
-//!
-//! * On Windows, strings are often arbitrary sequences of non-zero 16-bit
-//!   values, interpreted as UTF-16 when it is valid to do so.
-//!
-//! * In Rust, strings are always valid UTF-8, but may contain zeros.
-//!
-//! The types in this module bridge this gap by simultaneously representing Rust
-//! and platform-native string values, and in particular allowing a Rust string
-//! to be converted into an "OS" string with no cost.
-//!
-//! **Note**: At the moment, these types are extremely bare-bones, usable only
-//! for conversion to/from various other string types. Eventually these types
-//! will offer a full-fledged string API.
-
 use borrow::{Borrow, Cow, ToOwned};
 use ffi::CString;
 use fmt::{self, Debug};
@@ -42,14 +21,29 @@ use vec::Vec;
 use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};
 
-/// Owned, mutable OS strings.
+/// A type that can represent owned, mutable platform-native strings, but is
+/// cheaply interconvertable with Rust strings.
+///
+/// The need for this type arises from the fact that:
+///
+/// * On Unix systems, strings are often arbitrary sequences of non-zero
+///   bytes, in many cases interpreted as UTF-8.
+///
+/// * On Windows, strings are often arbitrary sequences of non-zero 16-bit
+///   values, interpreted as UTF-16 when it is valid to do so.
+///
+/// * In Rust, strings are always valid UTF-8, but may contain zeros.
+///
+/// `OsString` and `OsStr` bridge this gap by simultaneously representing Rust
+/// and platform-native string values, and in particular allowing a Rust string
+/// to be converted into an "OS" string with no cost.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf
 }
 
-/// Slices into OS strings.
+/// Slices into OS strings (see `OsString`).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsStr {
     inner: Slice
