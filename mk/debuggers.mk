@@ -26,6 +26,11 @@ DEBUGGER_BIN_SCRIPTS_GDB_ABS=\
     $(foreach script,$(DEBUGGER_BIN_SCRIPTS_GDB), \
         $(CFG_SRC_DIR)src/etc/$(script))
 
+## CGDB ##
+DEBUGGER_BIN_SCRIPTS_CGDB=rust-cgdb
+DEBUGGER_BIN_SCRIPTS_CGDB_ABS=\
+    $(foreach script,$(DEBUGGER_BIN_SCRIPTS_CGDB), \
+        $(CFG_SRC_DIR)src/etc/$(script))
 
 ## LLDB ##
 DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB=lldb_rust_formatters.py \
@@ -46,9 +51,11 @@ DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL=$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB) \
 DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS=$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) \
                                      $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS)
 DEBUGGER_BIN_SCRIPTS_ALL=$(DEBUGGER_BIN_SCRIPTS_GDB) \
-                         $(DEBUGGER_BIN_SCRIPTS_LLDB)
+                         $(DEBUGGER_BIN_SCRIPTS_LLDB) \
+                         $(DEBUGGER_BIN_SCRIPTS_CGDB)
 DEBUGGER_BIN_SCRIPTS_ALL_ABS=$(DEBUGGER_BIN_SCRIPTS_GDB_ABS) \
-                             $(DEBUGGER_BIN_SCRIPTS_LLDB_ABS)
+                             $(DEBUGGER_BIN_SCRIPTS_LLDB_ABS) \
+                             $(DEBUGGER_BIN_SCRIPTS_CGDB_ABS)
 
 
 # $(1) - the stage to copy to

@@ -1267,8 +1267,8 @@ Version 1.0.0-alpha (2015-01-09)
     * [Flexible target specification][flex] allows rustc's code
       generation to be configured to support otherwise-unsupported
       platforms.
-    * Rust comes with rust-gdb and rust-lldb scripts that launch their
-      respective debuggers with Rust-appropriate pretty-printing.
+    * Rust comes with rust-gdb, rust-cgdb and rust-lldb scripts that launch
+      their respective debuggers with Rust-appropriate pretty-printing.
     * The Windows installation of Rust is distributed with the the
       MinGW components currently required to link binaries on that
       platform.
