@@ -1340,7 +1340,12 @@ that item. Such a relaxed approach is much more flexible, probably easier to
 work with, and can enable more code reuse -- but it's also more complicated, and
 backwards-compatible to add on top of the proposed conservative approach.
 
-## Inherent impls
+## Possible extensions
+
+It's worth briefly mentioning a couple of mechanisms that one could consider
+adding on top of specialization.
+
+### Inherent impls
 
 It has long been folklore that inherent impls can be thought of as special,
 anonymous traits that are:
@@ -1400,241 +1405,14 @@ impl<T> Vec<T> {
 }
 ```
 
-This RFC proposes to permit such specialization at the inherent impl level. The
-semantics is defined in terms of the folklore desugaring above.
+We could permit such specialization at the inherent impl level. The
+semantics would be defined in terms of the folklore desugaring above.
 
 (Note: this example was chosen purposefully: it's possible to use specialization
 at the inherent impl level to avoid refactoring the `Extend` trait as described
 in the Motivation section.)
 
-One tricky aspect here is that, since there is no explicit trait definition,
-there is no general signature that each definition of an inherent item must
-match. Thinking about `Vec` above, for example, notice that the two signatures
-for `extend` look superficially different, although it's clear that the first
-impl is the more general of the two.
-
-We propose a very simple-minded conceptual desugaring: each item desugars into a
-distinct trait, with type parameters for e.g. each argument and the return
-type. All concrete type information then emerges from desugaring into impl
-blocks. Thus, for example:
-
-```
-impl<T, I> Vec<T> where I: IntoIterator<Item = T> {
-    default fn extend(iter: I) { .. }
-}
-
-impl<T> Vec<T> {
-    fn extend(slice: &[T]) { .. }
-}
-
-// Desugars to:
-
-trait Vec_extend<Arg, Result> {
-    fn extend(Arg) -> Result;
-}
-
-impl<T, I> Vec_extend<I, ()> for Vec<T> where I: IntoIterator<Item = T> {
-    default fn extend(iter: I) { .. }
-}
-
-impl<T> Vec_extend<&[T], ()> for Vec<T> {
-    fn extend(slice: &[T]) { .. }
-}
-```
-
-All items of a given name must desugar to the same trait, which means that the
-number of arguments must be consistent across all impl blocks for a given `Self`
-type. In addition, we require that *all of the impl blocks overlap* (meaning
-that there is a single, most general impl). Without these constraints, we would
-implicitly be permitting full-blown overloading on both arity and type
-signatures. For the time being at least, we want to restrict overloading to
-explicit uses of the trait system, as it is today.
-
-This "desugaring" semantics has the benefits of allowing inherent item
-specialization, and also making it *actually* be the case that inherent impls
-are really just implicit traits -- unifying the two forms of dispatch. Note that
-this is a breaking change, since examples like the following are (surprisingly!)
-allowed today:
-
-```rust
-struct Foo<A, B>(A, B);
-
-impl<A> Foo<A,A> {
-    fn foo(&self, _: u32) {}
-}
-
-impl<A,B> Foo<A,B> {
-    fn foo(&self, _: bool) {}
-}
-
-fn use_foo<A, B>(f: Foo<A,B>) {
-    f.foo(true)
-}
-```
-
-As has been proposed
-[elsewhere](https://internals.rust-lang.org/t/pre-rfc-adjust-default-object-bounds/2199/),
-this "breaking change" would be made available through a feature flag that must
-be used even after stabilization (to opt in to specialization of inherent
-impls); the full details will depend on pending revisions to
-[RFC 1122](https://github.com/rust-lang/rfcs/pull/1122).
-
-## Limitations
-
-One frequent motivation for specialization is broader "expressiveness", in
-particular providing a larger set of trait implementations than is possible
-today.
-
-For example, the standard library currently includes an `AsRef` trait
-for "as-style" conversions:
-
-```rust
-pub trait AsRef<T> where T: ?Sized {
-    fn as_ref(&self) -> &T;
-}
-```
-
-Currently, there is also a blanket implementation as follows:
-
-```rust
-impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U> {
-    fn as_ref(&self) -> &U {
-        <T as AsRef<U>>::as_ref(*self)
-    }
-}
-```
-
-which allows these conversions to "lift" over references, which is in turn
-important for making a number of standard library APIs ergonomic.
-
-On the other hand, we'd also like to provide the following very simple
-blanket implementation:
-
-```rust
-impl<'a, T: ?Sized> AsRef<T> for T {
-    fn as_ref(&self) -> &T {
-        self
-    }
-}
-```
-
-The current coherence rules prevent having both impls, however,
-because they can in principle overlap:
-
-```rust
-AsRef<&'a T> for &'a T where T: AsRef<&'a T>
-```
-
-Another examples comes from the `Option` type, which currently provides two
-methods for unwrapping while providing a default value for the `None` case:
-
-```rust
-impl<T> Option<T> {
-    fn unwrap_or(self, def: T) -> T { ... }
-    fn unwrap_or_else<F>(self, f: F) -> T where F: FnOnce() -> T { .. }
-}
-```
-
-The `unwrap_or` method is more ergonomic but `unwrap_or_else` is more efficient
-in the case that the default is expensive to compute. The original
-[collections reform RFC](https://github.com/rust-lang/rfcs/pull/235) proposed a
-`ByNeed` trait that was rendered unworkable after unboxed closures landed:
-
-```rust
-trait ByNeed<T> {
-    fn compute(self) -> T;
-}
-
-impl<T> ByNeed<T> for T {
-    fn compute(self) -> T {
-        self
-    }
-}
-
-impl<F, T> ByNeed<T> for F where F: FnOnce() -> T {
-    fn compute(self) -> T {
-        self()
-    }
-}
-
-impl<T> Option<T> {
-    fn unwrap_or<U>(self, def: U) where U: ByNeed<T> { ... }
-    ...
-}
-```
-
-The trait represents any value that can produce a `T` on demand. But the above
-impls fail to compile in today's Rust, because they overlap: consider `ByNeed<F>
-for F` where `F: FnOnce() -> F`.
-
-There are also some trait hierarchies where a subtrait completely subsumes the
-functionality of a supertrait. For example, consider `PartialOrd` and `Ord`:
-
-```rust
-trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
-    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
-}
-
-trait Ord: Eq + PartialOrd<Self> {
-    fn cmp(&self, other: &Self) -> Ordering;
-}
-```
-
-In cases like this, it's somewhat annoying to have to provide an impl for *both*
-`Ord` and `PartialOrd`, since the latter can be trivially derived from the
-former. So you might want an impl like this:
-
-```rust
-impl<T> PartialOrd<T> for T where T: Ord {
-    fn partial_cmp(&self, other: &T) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-```
-
-But this blanket impl would conflict with a number of others that work to "lift"
-`PartialOrd` and `Ord` impls over various type constructors like references and
-tuples, e.g.:
-
-```rust
-impl<'a, A: ?Sized> Ord for &'a A where A: Ord {
-    fn cmp(&self, other: & &'a A) -> Ordering { Ord::cmp(*self, *other) }
-}
-
-impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b B> for &'a A where A: PartialOrd<B> {
-    fn partial_cmp(&self, other: &&'b B) -> Option<Ordering> {
-        PartialOrd::partial_cmp(*self, *other)
-    }
-```
-
-The case where they overlap boils down to:
-
-```rust
-PartialOrd<&'a T> for &'a T where &'a T: Ord
-PartialOrd<&'a T> for &'a T where T: PartialOrd
-```
-
-and there is no implication between either of the where clauses.
-
-There are many other examples along these lines.
-
-Unfortunately, *none* of these examples are permitted by the revised overlap
-rule in this RFC, because in none of these cases is one of the impls fully a
-"subset" of the other; the overlap is always partial.
-
-It's a shame to not be able to address these cases, but the benefit is a
-specialization rule that is very intuitive and accepts only very clear-cut
-cases. The Alternatives section sketches some different rules that are less
-intuitive but do manage to handle cases like those above.
-
-If we allowed "relaxed" partial impls as described above, one could at least use
-that mechanism to avoid having to give a definition directly in most cases. (So
-if you had `T: Ord` you could write `impl PartialOrd for T {}`.)
-
-## Possible extensions
-
-It's worth briefly mentioning a couple of mechanisms that one could consider
-adding on top of specialization.
+There are more details about this idea in the appendix.
 
 ### Super
 
@@ -1878,3 +1656,79 @@ Finally, there are a few important questions not yet addressed by this RFC:
   the associated type. This is particularly relevant for the "efficient
   inheritance" use case. Such a mechanism can likely be added, if needed, later
   on.
+
+# Appendix
+
+## More details on inherent impls
+
+One tricky aspect for specializing inherent impls is that, since there is no
+explicit trait definition, there is no general signature that each definition of
+an inherent item must match. Thinking about `Vec` above, for example, notice
+that the two signatures for `extend` look superficially different, although it's
+clear that the first impl is the more general of the two.
+
+It's workable to use a very simple-minded conceptual desugaring: each item
+desugars into a distinct trait, with type parameters for e.g. each argument and
+the return type. All concrete type information then emerges from desugaring into
+impl blocks. Thus, for example:
+
+```
+impl<T, I> Vec<T> where I: IntoIterator<Item = T> {
+    default fn extend(iter: I) { .. }
+}
+
+impl<T> Vec<T> {
+    fn extend(slice: &[T]) { .. }
+}
+
+// Desugars to:
+
+trait Vec_extend<Arg, Result> {
+    fn extend(Arg) -> Result;
+}
+
+impl<T, I> Vec_extend<I, ()> for Vec<T> where I: IntoIterator<Item = T> {
+    default fn extend(iter: I) { .. }
+}
+
+impl<T> Vec_extend<&[T], ()> for Vec<T> {
+    fn extend(slice: &[T]) { .. }
+}
+```
+
+All items of a given name must desugar to the same trait, which means that the
+number of arguments must be consistent across all impl blocks for a given `Self`
+type. In addition, we'd require that *all of the impl blocks overlap* (meaning
+that there is a single, most general impl). Without these constraints, we would
+implicitly be permitting full-blown overloading on both arity and type
+signatures. For the time being at least, we want to restrict overloading to
+explicit uses of the trait system, as it is today.
+
+This "desugaring" semantics has the benefits of allowing inherent item
+specialization, and also making it *actually* be the case that inherent impls
+are really just implicit traits -- unifying the two forms of dispatch. Note that
+this is a breaking change, since examples like the following are (surprisingly!)
+allowed today:
+
+```rust
+struct Foo<A, B>(A, B);
+
+impl<A> Foo<A,A> {
+    fn foo(&self, _: u32) {}
+}
+
+impl<A,B> Foo<A,B> {
+    fn foo(&self, _: bool) {}
+}
+
+fn use_foo<A, B>(f: Foo<A,B>) {
+    f.foo(true)
+}
+```
+
+As has been proposed
+[elsewhere](https://internals.rust-lang.org/t/pre-rfc-adjust-default-object-bounds/2199/),
+this "breaking change" could be made available through a feature flag that must
+be used even after stabilization (to opt in to specialization of inherent
+impls); the full details will depend on pending revisions to
+[RFC 1122](https://github.com/rust-lang/rfcs/pull/1122).
