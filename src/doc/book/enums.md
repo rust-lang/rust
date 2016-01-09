@@ -62,7 +62,6 @@ learn in the next section. We don’t know enough about Rust to implement
 equality yet, but we’ll find out in the [`traits`][traits] section.
 
 [match]: match.html
-[if-let]: if-let.html
 [traits]: traits.html
 
 # Constructors as functions
