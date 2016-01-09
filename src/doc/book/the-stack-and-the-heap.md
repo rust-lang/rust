@@ -44,7 +44,7 @@ values ‘go on the stack’. What does that mean?
 Well, when a function gets called, some memory gets allocated for all of its
 local variables and some other information. This is called a ‘stack frame’, and
 for the purpose of this tutorial, we’re going to ignore the extra information
-and just consider the local variables we’re allocating. So in this case, when
+and only consider the local variables we’re allocating. So in this case, when
 `main()` is run, we’ll allocate a single 32-bit integer for our stack frame.
 This is automatically handled for you, as you can see; we didn’t have to write
 any special Rust code or anything.
@@ -177,7 +177,7 @@ And then `bold()` calls `italic()`:
 | 0       | x    | 42    |
 Whew! Our stack is growing tall.
 
-After `italic()` is over, its frame is deallocated, leaving just `bold()` and
+After `italic()` is over, its frame is deallocated, leaving only `bold()` and
 `main()`:
 
 | Address | Name | Value |
@@ -187,7 +187,7 @@ After `italic()` is over, its frame is deallocated, leaving just `bold()` and
 | **1**   | **a**| **5** |
 | 0       | x    | 42    | 
 
-And then `bold()` ends, leaving just `main()`:
+And then `bold()` ends, leaving only `main()`:
 
 | Address | Name | Value |
 |---------|------|-------|
@@ -247,7 +247,7 @@ location we’ve asked for.
 We haven’t really talked too much about what it actually means to allocate and
 deallocate memory in these contexts. Getting into very deep detail is out of
 the scope of this tutorial, but what’s important to point out here is that
-the heap isn’t just a stack that grows from the opposite end. We’ll have an
+the heap isn’t a stack that grows from the opposite end. We’ll have an
 example of this later in the book, but because the heap can be allocated and
 freed in any order, it can end up with ‘holes’. Here’s a diagram of the memory
 layout of a program which has been running for a while now:
@@ -332,13 +332,13 @@ What about when we call `foo()`, passing `y` as an argument?
 | 1       | y    | → 0    |
 | 0       | x    | 5      |
 
-Stack frames aren’t just for local bindings, they’re for arguments too. So in
+Stack frames aren’t only for local bindings, they’re for arguments too. So in
 this case, we need to have both `i`, our argument, and `z`, our local variable
 binding. `i` is a copy of the argument, `y`. Since `y`’s value is `0`, so is
 `i`’s.
 
 This is one reason why borrowing a variable doesn’t deallocate any memory: the
-value of a reference is just a pointer to a memory location. If we got rid of
+value of a reference is a pointer to a memory location. If we got rid of
 the underlying memory, things wouldn’t work very well.
 
 # A complex example
@@ -454,7 +454,7 @@ Next, `foo()` calls `bar()` with `x` and `z`:
 | 0                    | h    | 3                      |
 
 We end up allocating another value on the heap, and so we have to subtract one
-from (2<sup>30</sup>) - 1. It’s easier to just write that than `1,073,741,822`. In any
+from (2<sup>30</sup>) - 1. It’s easier to write that than `1,073,741,822`. In any
 case, we set up the variables as usual.
 
 At the end of `bar()`, it calls `baz()`:
@@ -550,7 +550,7 @@ has two big impacts: runtime efficiency and semantic impact.
 
 ## Runtime Efficiency
 
-Managing the memory for the stack is trivial: The machine just
+Managing the memory for the stack is trivial: The machine
 increments or decrements a single value, the so-called “stack pointer”.
 Managing memory for the heap is non-trivial: heap-allocated memory is freed at
 arbitrary points, and each block of heap-allocated memory can be of arbitrary

@@ -120,7 +120,7 @@ fn main() {
 }
 ```
 
-For `HasArea` and `Square`, we just declare a type parameter `T` and replace
+For `HasArea` and `Square`, we declare a type parameter `T` and replace
 `f64` with it. The `impl` needs more involved modifications:
 
 ```ignore
