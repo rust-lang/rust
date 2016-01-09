@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 91 lints included in this crate:
+There are 92 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -24,6 +24,7 @@ name                                                                            
 [cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                                         | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
 [collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                               | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
 [cyclomatic_complexity](https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity)                 | warn    | finds functions that should be split up into multiple functions
+[deprecated_semver](https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver)                         | warn    | `Warn` on `#[deprecated(since = "x")]` where x is not semver
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument) | warn    | Function arguments having names which only differ by an underscore
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                       | warn    | empty `loop {}` detected
 [eq_op](https://github.com/Manishearth/rust-clippy/wiki#eq_op)                                                 | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
