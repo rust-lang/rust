@@ -206,7 +206,7 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
     // debugger provides a useable stacktrace.
     if panics >= 3 {
         util::dumb_print(format_args!("thread panicked while processing \
-                                       panic. aborting."));
+                                       panic. aborting.\n"));
         unsafe { intrinsics::abort() }
     }
 
@@ -232,7 +232,7 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
         util::dumb_print(format_args!("thread panicked while panicking. \
-                                       aborting."));
+                                       aborting.\n"));
         unsafe { intrinsics::abort() }
     }
 }
