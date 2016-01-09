@@ -15,12 +15,13 @@ use middle::ty::{Ty, TypeFoldable};
 use rustc::middle::const_eval::ConstVal;
 use rustc::mir::repr as mir;
 use trans::common::{self, Block, C_bool, C_bytes, C_floating_f64, C_integral, C_str_slice};
-use trans::consts::{self, TrueConst};
-use trans::{type_of, expr};
-
+use trans::consts;
+use trans::expr;
+use trans::type_of;
 
 use super::operand::{OperandRef, OperandValue};
 use super::MirContext;
+
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_constval(&mut self,
@@ -66,13 +67,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ConstVal::Uint(v) => C_integral(llty, v, false),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
-            ConstVal::Struct(id) | ConstVal::Tuple(id) => {
-                let expr = bcx.tcx().map.expect_expr(id);
-                match consts::const_expr(ccx, expr, param_substs, None, TrueConst::Yes) {
-                    Ok((val, _)) => val,
-                    Err(e) => panic!("const eval failure: {}", e.description()),
-                }
-            },
+            ConstVal::Struct(id) | ConstVal::Tuple(id) |
             ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
                 let expr = bcx.tcx().map.expect_expr(id);
                 expr::trans(bcx, expr).datum.val
