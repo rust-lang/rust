@@ -451,9 +451,14 @@ pub trait LintContext: Sized {
 
     fn level_src(&self, lint: &'static Lint) -> Option<LevelSource> {
         self.lints().levels.get(&LintId::of(lint)).map(|ls| match ls {
-            &(Warn, src) => {
+            &(Warn, _) => {
                 let lint_id = LintId::of(builtin::WARNINGS);
-                (self.lints().get_level_source(lint_id).0, src)
+                let warn_src = self.lints().get_level_source(lint_id);
+                if warn_src.0 != Warn {
+                    warn_src
+                } else {
+                    *ls
+                }
             }
             _ => *ls
         })
