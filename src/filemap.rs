@@ -87,7 +87,7 @@ pub fn output_checkstyle_file<T>(mut writer: T,
                     let message = xml_escape_str(&str);
                     // TODO XML encode str here.
                     try!(write!(writer,
-                                "<error line=\"{}\" severity=\"error\" message=\"Should be \
+                                "<error line=\"{}\" severity=\"warning\" message=\"Should be \
                                  `{}`\" />",
                                 mismatch.line_number,
                                 message));
@@ -174,6 +174,14 @@ pub fn write_file(text: &StringBuffer,
         Ok((ori_text, fmt_text))
     }
 
+    fn create_diff(filename: &str,
+                   text: &StringBuffer,
+                   config: &Config)
+                   -> Result<Vec<Mismatch>, io::Error> {
+        let ori_text, fmt_text = try!(source_and_formatted_text(text, filename, config));
+        Ok(make_diff(&ori_text, &fmt_text, 3))
+    }
+
     match mode {
         WriteMode::Replace => {
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
@@ -223,16 +231,9 @@ pub fn write_file(text: &StringBuffer,
         WriteMode::Checkstyle => {
             let stdout = stdout();
             let stdout = stdout.lock();
-            // Generate the diff for the current file.
-            let mut f = try!(File::open(filename));
-            let mut ori_text = String::new();
-            try!(f.read_to_string(&mut ori_text));
-            let mut v = Vec::new();
-            try!(write_system_newlines(&mut v, text, config));
-            let fmt_text = String::from_utf8(v).unwrap();
-            let diff = make_diff(&ori_text, &fmt_text, 3);
+            let diff = try!(create_diff(filename, text, config));
             // Output the XML tags for the lines that are different.
-            output_checkstyle_file(stdout, filename, diff).unwrap();
+            try!(output_checkstyle_file(stdout, filename, diff));
         }
         WriteMode::Return => {
             // io::Write is not implemented for String, working around with
