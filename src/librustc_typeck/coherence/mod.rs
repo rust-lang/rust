@@ -20,8 +20,7 @@ use middle::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
 use middle::traits;
-use middle::ty;
-use middle::ty::RegionEscape;
+use middle::ty::{self, TypeFoldable};
 use middle::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
@@ -39,9 +38,10 @@ use std::rc::Rc;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use util::nodemap::{DefIdMap, FnvHashMap};
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc_front::intravisit;
-use rustc_front::hir::{Item, ItemImpl,Crate};
+use rustc_front::hir::{Item, ItemImpl};
 use rustc_front::hir;
 
 mod orphan;
@@ -104,11 +104,13 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
-    fn check(&self, krate: &Crate) {
+    fn check(&self) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        krate.visit_all_items(&mut CoherenceCheckVisitor { cc: self });
+        self.crate_context.tcx.visit_all_items_in_krate(
+            DepNode::CoherenceCheckImpl,
+            &mut CoherenceCheckVisitor { cc: self });
 
         // Copy over the inherent impls we gathered up during the walk into
         // the tcx.
@@ -513,11 +515,13 @@ fn enforce_trait_manually_implementable(tcx: &ty::ctxt, sp: Span, trait_def_id: 
 }
 
 pub fn check_coherence(crate_context: &CrateCtxt) {
+    let _task = crate_context.tcx.dep_graph.in_task(DepNode::Coherence);
+    let infcx = new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, true);
     CoherenceChecker {
         crate_context: crate_context,
-        inference_context: new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None, true),
+        inference_context: infcx,
         inherent_impls: RefCell::new(FnvHashMap()),
-    }.check(crate_context.tcx.map.krate());
+    }.check();
     unsafety::check(crate_context.tcx);
     orphan::check(crate_context.tcx);
     overlap::check(crate_context.tcx);

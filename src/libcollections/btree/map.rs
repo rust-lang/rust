@@ -1591,10 +1591,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range<Min: ?Sized + Ord = K, Max: ?Sized + Ord = K>(&self,
-                                                               min: Bound<&Min>,
-                                                               max: Bound<&Max>)
-                                                               -> Range<K, V>
+    pub fn range<Min: ?Sized + Ord, Max: ?Sized + Ord>(&self,
+                                                       min: Bound<&Min>,
+                                                       max: Bound<&Max>)
+                                                       -> Range<K, V>
         where K: Borrow<Min> + Borrow<Max>
     {
         range_impl!(&self.root,
@@ -1633,10 +1633,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27787")]
-    pub fn range_mut<Min: ?Sized + Ord = K, Max: ?Sized + Ord = K>(&mut self,
-                                                                   min: Bound<&Min>,
-                                                                   max: Bound<&Max>)
-                                                                   -> RangeMut<K, V>
+    pub fn range_mut<Min: ?Sized + Ord, Max: ?Sized + Ord>(&mut self,
+                                                           min: Bound<&Min>,
+                                                           max: Bound<&Max>)
+                                                           -> RangeMut<K, V>
         where K: Borrow<Min> + Borrow<Max>
     {
         range_impl!(&mut self.root,

@@ -10,7 +10,7 @@
 
 use middle::def_id::{DefId};
 use middle::ty::{self, Ty};
-use util::common::{memoized};
+use util::common::MemoizationMap;
 use util::nodemap::FnvHashMap;
 
 use std::fmt;
@@ -141,9 +141,7 @@ impl fmt::Debug for TypeContents {
 
 impl<'tcx> ty::TyS<'tcx> {
     pub fn type_contents(&'tcx self, cx: &ty::ctxt<'tcx>) -> TypeContents {
-        return memoized(&cx.tc_cache, self, |ty| {
-            tc_ty(cx, ty, &mut FnvHashMap())
-        });
+        return cx.tc_cache.memoize(self, || tc_ty(cx, self, &mut FnvHashMap()));
 
         fn tc_ty<'tcx>(cx: &ty::ctxt<'tcx>,
                        ty: Ty<'tcx>,

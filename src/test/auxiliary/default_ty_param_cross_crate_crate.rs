@@ -10,6 +10,7 @@
 
 #![crate_type = "lib"]
 #![crate_name = "default_param_test"]
+#![feature(default_type_parameter_fallback)]
 
 use std::marker::PhantomData;
 

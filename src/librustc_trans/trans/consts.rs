@@ -986,8 +986,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprClosure(_, ref decl, ref body) => {
             match ety.sty {
                 ty::TyClosure(def_id, ref substs) => {
-                    closure::trans_closure_expr(closure::Dest::Ignore(cx), decl,
-                                                body, e.id, def_id, substs);
+                    closure::trans_closure_expr(closure::Dest::Ignore(cx),
+                                                decl,
+                                                body,
+                                                e.id,
+                                                def_id,
+                                                substs,
+                                                &e.attrs);
                 }
                 _ =>
                     cx.sess().span_bug(

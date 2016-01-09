@@ -1573,11 +1573,11 @@ fn main() {
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m }
-	Err(e) => { panic!(e.to_string()) }
+        Err(e) => { panic!(e.to_string()) }
     };
     if matches.opt_present("h") {
         print_usage(&program, opts);
-	return;
+        return;
     }
     let data_path = args[1].clone();
     let city = args[2].clone();
@@ -1613,6 +1613,9 @@ CSV data given to us and print out a field in matching rows. Let's do it. (Make
 sure to add `extern crate csv;` to the top of your file.)
 
 ```rust,ignore
+use std::fs::File;
+use std::path::Path;
+
 // This struct represents the data in each row of the CSV file.
 // Type based decoding absolves us of a lot of the nitty gritty error
 // handling, like parsing strings as integers or floats.
@@ -1656,7 +1659,7 @@ fn main() {
 	let data_path = Path::new(&data_file);
 	let city = args[2].clone();
 
-	let file = fs::File::open(data_path).unwrap();
+	let file = File::open(data_path).unwrap();
 	let mut rdr = csv::Reader::from_reader(file);
 
 	for row in rdr.decode::<Row>() {
@@ -1674,7 +1677,7 @@ fn main() {
 Let's outline the errors. We can start with the obvious: the three places that
 `unwrap` is called:
 
-1. [`fs::File::open`](../std/fs/struct.File.html#method.open)
+1. [`File::open`](../std/fs/struct.File.html#method.open)
    can return an
    [`io::Error`](../std/io/struct.Error.html).
 2. [`csv::Reader::decode`](http://burntsushi.net/rustdoc/csv/struct.Reader.html#method.decode)
@@ -1734,7 +1737,7 @@ fn print_usage(program: &str, opts: Options) {
 
 fn search<P: AsRef<Path>>(file_path: P, city: &str) -> Vec<PopulationCount> {
     let mut found = vec![];
-    let file = fs::File::open(file_path).unwrap();
+    let file = File::open(file_path).unwrap();
     let mut rdr = csv::Reader::from_reader(file);
     for row in rdr.decode::<Row>() {
         let row = row.unwrap();
@@ -1796,7 +1799,7 @@ fn search<P: AsRef<Path>>
          (file_path: P, city: &str)
          -> Result<Vec<PopulationCount>, Box<Error+Send+Sync>> {
     let mut found = vec![];
-    let file = try!(fs::File::open(file_path));
+    let file = try!(File::open(file_path));
     let mut rdr = csv::Reader::from_reader(file);
     for row in rdr.decode::<Row>() {
         let row = try!(row);
@@ -1930,7 +1933,7 @@ fn search<P: AsRef<Path>>
     let mut found = vec![];
     let input: Box<io::Read> = match *file_path {
         None => Box::new(io::stdin()),
-        Some(ref file_path) => Box::new(try!(fs::File::open(file_path))),
+        Some(ref file_path) => Box::new(try!(File::open(file_path))),
     };
     let mut rdr = csv::Reader::from_reader(input);
     // The rest remains unchanged!
@@ -2017,7 +2020,7 @@ fn search<P: AsRef<Path>>
     let mut found = vec![];
     let input: Box<io::Read> = match *file_path {
         None => Box::new(io::stdin()),
-        Some(ref file_path) => Box::new(try!(fs::File::open(file_path))),
+        Some(ref file_path) => Box::new(try!(File::open(file_path))),
     };
     let mut rdr = csv::Reader::from_reader(input);
     for row in rdr.decode::<Row>() {

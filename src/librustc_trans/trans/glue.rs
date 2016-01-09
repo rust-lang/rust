@@ -88,6 +88,10 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+fn type_needs_drop<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
+}
+
 pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     t: Ty<'tcx>) -> Ty<'tcx> {
     let tcx = ccx.tcx();
@@ -106,11 +110,11 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // returned `tcx.types.i8` does not appear unsound. The impact on
     // code quality is unknown at this time.)
 
-    if !type_needs_drop(tcx, t) {
+    if !type_needs_drop(&tcx, t) {
         return tcx.types.i8;
     }
     match t.sty {
-        ty::TyBox(typ) if !type_needs_drop(tcx, typ)
+        ty::TyBox(typ) if !type_needs_drop(&tcx, typ)
                          && type_is_sized(tcx, typ) => {
             let llty = sizing_type_of(ccx, typ);
             // `Box<ZeroSizeType>` does not allocate.

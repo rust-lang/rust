@@ -47,7 +47,7 @@ impl<'a> ParserAnyMacro<'a> {
     fn ensure_complete_parse(&self, allow_semi: bool, context: &str) {
         let mut parser = self.parser.borrow_mut();
         if allow_semi && parser.token == token::Semi {
-            panictry!(parser.bump())
+            parser.bump();
         }
         if parser.token != token::Eof {
             let token_str = parser.this_token_to_string();
@@ -178,7 +178,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
             TokenTree::Delimited(_, ref delim) => &delim.tts[..],
-            _ => cx.span_bug(sp, "malformed macro lhs")
+            _ => cx.span_fatal(sp, "malformed macro lhs")
         };
 
         match TokenTree::parse(cx, lhs_tt, arg) {
@@ -186,7 +186,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 let rhs = match rhses[i] {
                     // ignore delimiters
                     TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
-                    _ => cx.span_bug(sp, "malformed macro rhs"),
+                    _ => cx.span_fatal(sp, "malformed macro rhs"),
                 };
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
@@ -194,7 +194,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                            imported_from,
                                            rhs);
                 let mut p = Parser::new(cx.parse_sess(), cx.cfg(), Box::new(trncbr));
-                panictry!(p.check_unknown_macro_variable());
+                p.check_unknown_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {

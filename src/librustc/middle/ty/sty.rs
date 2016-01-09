@@ -15,8 +15,7 @@ use middle::def_id::DefId;
 use middle::region;
 use middle::subst::{self, Substs};
 use middle::traits;
-use middle::ty::{self, AdtDef, TypeFlags, Ty, TyS};
-use middle::ty::{RegionEscape, ToPredicate};
+use middle::ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyS, TypeFoldable};
 use util::common::ErrorReported;
 
 use collections::enum_set::{self, EnumSet, CLike};

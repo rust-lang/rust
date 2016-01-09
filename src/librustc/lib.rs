@@ -87,6 +87,8 @@ pub mod back {
     pub use rustc_back::svh;
 }
 
+pub mod dep_graph;
+
 pub mod front {
     pub mod check_attr;
     pub mod map;

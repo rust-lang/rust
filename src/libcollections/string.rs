@@ -1029,8 +1029,8 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if `idx` is larger than the `String`'s length, or if it does not
-    /// lie on a [`char`] boundary.
+    /// Panics if `idx` is larger than or equal to the `String`'s length,
+    /// or if it does not lie on a [`char`] boundary.
     ///
     /// [`char`]: ../primitive.char.html
     ///
@@ -1049,7 +1049,7 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, idx: usize) -> char {
         let len = self.len();
-        assert!(idx <= len);
+        assert!(idx < len);
 
         let ch = self.char_at(idx);
         let next = idx + ch.len_utf8();

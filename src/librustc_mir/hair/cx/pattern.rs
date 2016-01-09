@@ -14,11 +14,11 @@ use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_eval;
 use rustc::middle::def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
-use rustc::middle::subst::Substs;
 use rustc::middle::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc_front::hir;
 use syntax::ast;
+use syntax::codemap::Span;
 use syntax::ptr::P;
 
 /// When there are multiple patterns in a single arm, each one has its
@@ -40,15 +40,15 @@ struct PatCx<'patcx, 'cx: 'patcx, 'tcx: 'cx> {
 }
 
 impl<'cx, 'tcx> Cx<'cx, 'tcx> {
-    pub fn irrefutable_pat(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
-        PatCx::new(self, None).to_pat(pat)
+    pub fn irrefutable_pat(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
+        PatCx::new(self, None).to_pattern(pat)
     }
 
     pub fn refutable_pat(&mut self,
                          binding_map: Option<&FnvHashMap<ast::Name, ast::NodeId>>,
-                         pat: &'tcx hir::Pat)
+                         pat: &hir::Pat)
                          -> Pattern<'tcx> {
-        PatCx::new(self, binding_map).to_pat(pat)
+        PatCx::new(self, binding_map).to_pattern(pat)
     }
 }
 
@@ -62,13 +62,12 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
         }
     }
 
-    fn to_pat(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
+    fn to_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
         let kind = match pat.node {
             hir::PatWild => PatternKind::Wild,
 
             hir::PatLit(ref value) => {
                 let value = const_eval::eval_const_expr(self.cx.tcx, value);
-                let value = Literal::Value { value: value };
                 PatternKind::Constant { value: value }
             }
 
@@ -88,22 +87,9 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                     def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
                         match const_eval::lookup_const_by_id(self.cx.tcx, def_id, Some(pat.id)) {
                             Some(const_expr) => {
-                                let opt_value =
-                                    const_eval::eval_const_expr_partial(
-                                        self.cx.tcx, const_expr,
-                                        const_eval::EvalHint::ExprTypeChecked,
-                                        None);
-                                let literal = if let Ok(value) = opt_value {
-                                    Literal::Value { value: value }
-                                } else {
-                                    let substs = self.cx.tcx.mk_substs(Substs::empty());
-                                    Literal::Item {
-                                        def_id: def_id,
-                                        kind: ItemKind::Constant,
-                                        substs: substs
-                                    }
-                                };
-                                PatternKind::Constant { value: literal }
+                                let pat = const_eval::const_expr_to_pat(self.cx.tcx, const_expr,
+                                                                        pat.span);
+                                return self.to_pattern(&*pat);
                             }
                             None => {
                                 self.cx.tcx.sess.span_bug(
@@ -120,7 +106,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
 
             hir::PatRegion(ref subpattern, _) |
             hir::PatBox(ref subpattern) => {
-                PatternKind::Deref { subpattern: self.to_pat(subpattern) }
+                PatternKind::Deref { subpattern: self.to_pattern(subpattern) }
             }
 
             hir::PatVec(ref prefix, ref slice, ref suffix) => {
@@ -131,14 +117,14 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                             subpattern: Pattern {
                                 ty: mt.ty,
                                 span: pat.span,
-                                kind: Box::new(self.slice_or_array_pattern(pat, mt.ty, prefix,
+                                kind: Box::new(self.slice_or_array_pattern(pat.span, mt.ty, prefix,
                                                                            slice, suffix)),
                             },
                         },
 
                     ty::TySlice(..) |
                     ty::TyArray(..) =>
-                        self.slice_or_array_pattern(pat, ty, prefix, slice, suffix),
+                        self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
 
                     ref sty =>
                         self.cx.tcx.sess.span_bug(
@@ -153,7 +139,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                                .enumerate()
                                .map(|(i, subpattern)| FieldPattern {
                                    field: Field::new(i),
-                                   pattern: self.to_pat(subpattern),
+                                   pattern: self.to_pattern(subpattern),
                                })
                                .collect();
 
@@ -188,7 +174,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                     name: ident.node.name,
                     var: id,
                     ty: var_ty,
-                    subpattern: self.to_opt_pat(sub),
+                    subpattern: self.to_opt_pattern(sub),
                 }
             }
 
@@ -203,7 +189,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                                    .enumerate()
                                    .map(|(i, field)| FieldPattern {
                                        field: Field::new(i),
-                                       pattern: self.to_pat(field),
+                                       pattern: self.to_pattern(field),
                                    })
                                    .collect();
                 self.variant_or_leaf(pat, subpatterns)
@@ -234,7 +220,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                               });
                               FieldPattern {
                                   field: Field::new(index),
-                                  pattern: self.to_pat(&field.node.pat),
+                                  pattern: self.to_pattern(&field.node.pat),
                               }
                           })
                           .collect();
@@ -256,28 +242,28 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
         }
     }
 
-    fn to_pats(&mut self, pats: &'tcx [P<hir::Pat>]) -> Vec<Pattern<'tcx>> {
-        pats.iter().map(|p| self.to_pat(p)).collect()
+    fn to_patterns(&mut self, pats: &[P<hir::Pat>]) -> Vec<Pattern<'tcx>> {
+        pats.iter().map(|p| self.to_pattern(p)).collect()
     }
 
-    fn to_opt_pat(&mut self, pat: &'tcx Option<P<hir::Pat>>) -> Option<Pattern<'tcx>> {
-        pat.as_ref().map(|p| self.to_pat(p))
+    fn to_opt_pattern(&mut self, pat: &Option<P<hir::Pat>>) -> Option<Pattern<'tcx>> {
+        pat.as_ref().map(|p| self.to_pattern(p))
     }
 
     fn slice_or_array_pattern(&mut self,
-                              pat: &'tcx hir::Pat,
+                              span: Span,
                               ty: Ty<'tcx>,
-                              prefix: &'tcx [P<hir::Pat>],
-                              slice: &'tcx Option<P<hir::Pat>>,
-                              suffix: &'tcx [P<hir::Pat>])
+                              prefix: &[P<hir::Pat>],
+                              slice: &Option<P<hir::Pat>>,
+                              suffix: &[P<hir::Pat>])
                               -> PatternKind<'tcx> {
         match ty.sty {
             ty::TySlice(..) => {
                 // matching a slice or fixed-length array
                 PatternKind::Slice {
-                    prefix: self.to_pats(prefix),
-                    slice: self.to_opt_pat(slice),
-                    suffix: self.to_pats(suffix),
+                    prefix: self.to_patterns(prefix),
+                    slice: self.to_opt_pattern(slice),
+                    suffix: self.to_patterns(suffix),
                 }
             }
 
@@ -285,20 +271,20 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 // fixed-length array
                 assert!(len >= prefix.len() + suffix.len());
                 PatternKind::Array {
-                    prefix: self.to_pats(prefix),
-                    slice: self.to_opt_pat(slice),
-                    suffix: self.to_pats(suffix),
+                    prefix: self.to_patterns(prefix),
+                    slice: self.to_opt_pattern(slice),
+                    suffix: self.to_patterns(suffix),
                 }
             }
 
             _ => {
-                self.cx.tcx.sess.span_bug(pat.span, "unexpanded macro or bad constant etc");
+                self.cx.tcx.sess.span_bug(span, "unexpanded macro or bad constant etc");
             }
         }
     }
 
     fn variant_or_leaf(&mut self,
-                       pat: &'tcx hir::Pat,
+                       pat: &hir::Pat,
                        subpatterns: Vec<FieldPattern<'tcx>>)
                        -> PatternKind<'tcx> {
         let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();

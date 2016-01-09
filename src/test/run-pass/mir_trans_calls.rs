@@ -58,11 +58,16 @@ fn test5(x: &Bar, a: isize) -> isize {
     x.extension_method(a)
 }
 
-#[rustc_mir]
-fn test6<T: Bar>(x: &T, a: isize) -> isize {
-    // Test calling extension method on generic callee
-    x.extension_method(a)
-}
+// FIXME #30661: Although this function has the #[rustc_mir] attribute it never
+//               was translated via the MIR implementation because attributes
+//               where not passed along to trans::base::trans_fn() for generic
+//               functions.
+//               Uncomment this test once the thing it tests is fixed.
+// #[rustc_mir]
+// fn test6<T: Bar>(x: &T, a: isize) -> isize {
+//     // Test calling extension method on generic callee
+//     x.extension_method(a)
+// }
 
 trait One<T = Self> {
     fn one() -> T;
@@ -88,13 +93,40 @@ fn test8() -> isize {
     Two::two()
 }
 
+#[rustc_mir]
+fn test_closure<F>(f: &F, x: i32, y: i32) -> i32
+    where F: Fn(i32, i32) -> i32
+{
+    f(x, y)
+}
+
+#[rustc_mir]
+fn test_fn_object(f: &Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
+    f(x, y)
+}
+
+#[rustc_mir]
+fn test_fn_impl(f: &&Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
+    // This call goes through the Fn implementation for &Fn provided in
+    // core::ops::impls. It expands to a static Fn::call() that calls the
+    // Fn::call() implemenation of the object shim underneath.
+    f(x, y)
+}
+
 fn main() {
     assert_eq!(test1(1, (2, 3), &[4, 5, 6]), (1, (2, 3), &[4, 5, 6][..]));
     assert_eq!(test2(98), 98);
     assert_eq!(test3(&Foo, 42), 42);
     assert_eq!(test4(&Foo, 970), 970);
     assert_eq!(test5(&Foo, 8576), 8576);
-    assert_eq!(test6(&Foo, 12367), 12367);
+    // see definition of test6() above
+    // assert_eq!(test6(&Foo, 12367), 12367);
     assert_eq!(test7(), 1);
     assert_eq!(test8(), 2);
+
+    let closure = |x: i32, y: i32| { x + y };
+    assert_eq!(test_closure(&closure, 100, 1), 101);
+    let function_object = &closure as &Fn(i32, i32) -> i32;
+    assert_eq!(test_fn_object(function_object, 100, 2), 102);
+    assert_eq!(test_fn_impl(&function_object, 100, 3), 103);
 }

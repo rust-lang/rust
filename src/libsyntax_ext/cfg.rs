@@ -28,7 +28,7 @@ pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
     let mut p = cx.new_parser_from_tts(tts);
     let cfg = panictry!(p.parse_meta_item());
 
-    if !panictry!(p.eat(&token::Eof)){
+    if !p.eat(&token::Eof) {
         cx.span_err(sp, "expected 1 cfg-pattern");
         return DummyResult::expr(sp);
     }

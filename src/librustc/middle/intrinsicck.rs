@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use dep_graph::DepNode;
 use middle::def::DefFn;
 use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
 
@@ -29,7 +30,7 @@ pub fn check_crate(tcx: &ctxt) {
         dummy_sized_ty: tcx.types.isize,
         dummy_unsized_ty: tcx.mk_slice(tcx.types.isize),
     };
-    tcx.map.krate().visit_all_items(&mut visitor);
+    tcx.visit_all_items_in_krate(DepNode::IntrinsicCheck, &mut visitor);
 }
 
 struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {

@@ -57,7 +57,7 @@ use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use middle::traits;
-use middle::ty::{self, Ty, ToPredicate, HasTypeFlags};
+use middle::ty::{self, Ty, ToPredicate, TypeFoldable};
 use middle::ty::wf::object_region_bounds;
 use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,

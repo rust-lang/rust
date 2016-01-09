@@ -25,6 +25,7 @@
 //! for all lint attributes.
 use self::TargetLint::*;
 
+use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
 use middle::ty;
 use session::{early_error, Session};
@@ -364,14 +365,16 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
 /// lints elsewhere in the compiler should call
 /// `Session::add_lint()` instead.
 pub fn raw_emit_lint(sess: &Session,
+                     lints: &LintStore,
                      lint: &'static Lint,
                      lvlsrc: LevelSource,
                      span: Option<Span>,
                      msg: &str) {
-    raw_struct_lint(sess, lint, lvlsrc, span, msg).emit();
+    raw_struct_lint(sess, lints, lint, lvlsrc, span, msg).emit();
 }
 
 pub fn raw_struct_lint<'a>(sess: &'a Session,
+                           lints: &LintStore,
                            lint: &'static Lint,
                            lvlsrc: LevelSource,
                            span: Option<Span>,
@@ -413,6 +416,18 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
         _ => sess.bug("impossible level in raw_emit_lint"),
     };
 
+    // Check for future incompatibility lints and issue a stronger warning.
+    let future_incompat_lints = &lints.lint_groups[builtin::FUTURE_INCOMPATIBLE];
+    let this_id = LintId::of(lint);
+    if future_incompat_lints.0.iter().any(|&id| id == this_id) {
+        let msg = "this lint will become a HARD ERROR in a future release!";
+        if let Some(sp) = span {
+            err.span_note(sp, msg);
+        } else {
+            err.note(msg);
+        }
+    }
+
     if let Some(span) = def {
         err.span_note(span, "lint level defined here");
     }
@@ -450,7 +465,7 @@ pub trait LintContext: Sized {
             Some(pair) => pair,
         };
 
-        raw_emit_lint(&self.sess(), lint, (level, src), span, msg);
+        raw_emit_lint(&self.sess(), self.lints(), lint, (level, src), span, msg);
     }
 
     fn lookup(&self,
@@ -463,7 +478,7 @@ pub trait LintContext: Sized {
             Some(pair) => pair,
         };
 
-        raw_struct_lint(&self.sess(), lint, (level, src), span, msg)
+        raw_struct_lint(&self.sess(), self.lints(), lint, (level, src), span, msg)
     }
 
     /// Emit a lint at the appropriate level, for a particular span.
@@ -1071,6 +1086,8 @@ impl LateLintPass for GatherNodeLevels {
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt, access_levels: &AccessLevels) {
+    let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
+
     let krate = tcx.map.krate();
     let mut cx = LateContext::new(tcx, krate, access_levels);
 

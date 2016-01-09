@@ -326,6 +326,14 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                        "the `#[rustc_error]` attribute \
                                         is just used for rustc unit tests \
                                         and will never be stable")),
+    ("rustc_if_this_changed", Whitelisted, Gated("rustc_attrs",
+                                       "the `#[rustc_if_this_changed]` attribute \
+                                        is just used for rustc unit tests \
+                                        and will never be stable")),
+    ("rustc_then_this_would_need", Whitelisted, Gated("rustc_attrs",
+                                       "the `#[rustc_if_this_changed]` attribute \
+                                        is just used for rustc unit tests \
+                                        and will never be stable")),
     ("rustc_move_fragments", Normal, Gated("rustc_attrs",
                                            "the `#[rustc_move_fragments]` attribute \
                                             is just used for rustc unit tests \

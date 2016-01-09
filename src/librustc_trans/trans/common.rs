@@ -37,7 +37,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
 use rustc::mir::repr::Mir;
@@ -71,45 +71,6 @@ pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         }
     }
-}
-
-/// If `type_needs_drop` returns true, then `ty` is definitely
-/// non-copy and *might* have a destructor attached; if it returns
-/// false, then `ty` definitely has no destructor (i.e. no drop glue).
-///
-/// (Note that this implies that if `ty` has a destructor attached,
-/// then `type_needs_drop` will definitely return `true` for `ty`.)
-pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    type_needs_drop_given_env(cx, ty, &cx.empty_parameter_environment())
-}
-
-/// Core implementation of type_needs_drop, potentially making use of
-/// and/or updating caches held in the `param_env`.
-fn type_needs_drop_given_env<'a,'tcx>(cx: &ty::ctxt<'tcx>,
-                                      ty: Ty<'tcx>,
-                                      param_env: &ty::ParameterEnvironment<'a,'tcx>) -> bool {
-    // Issue #22536: We first query type_moves_by_default.  It sees a
-    // normalized version of the type, and therefore will definitely
-    // know whether the type implements Copy (and thus needs no
-    // cleanup/drop/zeroing) ...
-    let implements_copy = !ty.moves_by_default(param_env, DUMMY_SP);
-
-    if implements_copy { return false; }
-
-    // ... (issue #22536 continued) but as an optimization, still use
-    // prior logic of asking if the `needs_drop` bit is set; we need
-    // not zero non-Copy types if they have no destructor.
-
-    // FIXME(#22815): Note that calling `ty::type_contents` is a
-    // conservative heuristic; it may report that `needs_drop` is set
-    // when actual type does not actually have a destructor associated
-    // with it. But since `ty` absolutely did not have the `Copy`
-    // bound attached (see above), it is sound to treat it as having a
-    // destructor (e.g. zero its memory on move).
-
-    let contents = ty.type_contents(cx);
-    debug!("type_needs_drop ty={:?} contents={:?}", ty, contents);
-    contents.needs_drop(cx)
 }
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
@@ -508,7 +469,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + HasTypeFlags
+        where T : TypeFoldable<'tcx>
     {
         monomorphize::apply_param_substs(self.ccx.tcx(),
                                          self.param_substs,
@@ -518,7 +479,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// This is the same as `common::type_needs_drop`, except that it
     /// may use or update caches within this `FunctionContext`.
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        type_needs_drop_given_env(self.ccx.tcx(), ty, &self.param_env)
+        self.ccx.tcx().type_needs_drop_given_env(ty, &self.param_env)
     }
 
     pub fn eh_personality(&self) -> ValueRef {
@@ -689,7 +650,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T : TypeFoldable<'tcx> + HasTypeFlags
+        where T : TypeFoldable<'tcx>
     {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,

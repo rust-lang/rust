@@ -14,7 +14,6 @@
 macro_rules! m {
     () => ( i ; typeof );   //~ ERROR `typeof` is a reserved keyword
                             //~| ERROR macro expansion ignores token `typeof`
-                            //~| ERROR macro expansion ignores token `typeof`
                             //~| ERROR macro expansion ignores token `;`
                             //~| ERROR macro expansion ignores token `;`
                             //~| ERROR macro expansion ignores token `i`
@@ -29,5 +28,5 @@ fn main() {
         m!() => {}  //~ NOTE the usage of `m!` is likely invalid in pattern context
     }
 
-    m!();           //~ NOTE the usage of `m!` is likely invalid in statement context
+    m!();
 }

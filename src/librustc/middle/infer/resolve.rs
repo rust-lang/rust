@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use super::{InferCtxt, FixupError, FixupResult};
-use middle::ty::{self, Ty, HasTypeFlags};
-use middle::ty::fold::{TypeFoldable};
+use middle::ty::{self, Ty, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC TYPE RESOLVER
@@ -40,7 +39,7 @@ impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t0 = self.infcx.shallow_resolve(t);
-            ty::fold::super_fold_ty(self, t0)
+            t0.super_fold_with(self)
         }
     }
 }
@@ -68,7 +67,7 @@ impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t0 = self.infcx.shallow_resolve(t);
-            ty::fold::super_fold_ty(self, t0)
+            t0.super_fold_with(self)
         }
     }
 
@@ -133,7 +132,7 @@ impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
                                 t));
                 }
                 _ => {
-                    ty::fold::super_fold_ty(self, t)
+                    t.super_fold_with(self)
                 }
             }
         }

@@ -21,8 +21,10 @@ extern crate rustc;
 extern crate rustc_front;
 
 use build;
-use dot;
+use graphviz;
+use pretty;
 use transform::*;
+use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
 use std::fs::File;
@@ -47,7 +49,7 @@ pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
             tcx: tcx,
             map: &mut map,
         };
-        tcx.map.krate().visit_all_items(&mut dump);
+        tcx.visit_all_items_in_krate(DepNode::MirMapConstruction, &mut dump);
     }
     map
 }
@@ -152,27 +154,29 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                                          .flat_map(|a| a.meta_item_list())
                                          .flat_map(|l| l.iter());
                 for item in meta_item_list {
-                    if item.check_name("graphviz") {
+                    if item.check_name("graphviz") || item.check_name("pretty") {
                         match item.value_str() {
                             Some(s) => {
-                                match
-                                    File::create(format!("{}{}", prefix, s))
-                                    .and_then(|ref mut output| dot::render(&mir, output))
-                                {
-                                    Ok(()) => { }
-                                    Err(e) => {
-                                        self.tcx.sess.span_fatal(
-                                            item.span,
-                                            &format!("Error writing graphviz \
-                                                      results to `{}`: {}",
-                                                     s, e));
+                                let filename = format!("{}{}", prefix, s);
+                                let result = File::create(&filename).and_then(|ref mut output| {
+                                    if item.check_name("graphviz") {
+                                        graphviz::write_mir_graphviz(&mir, output)
+                                    } else {
+                                        pretty::write_mir_pretty(&mir, output)
                                     }
+                                });
+
+                                if let Err(e) = result {
+                                    self.tcx.sess.span_fatal(
+                                        item.span,
+                                        &format!("Error writing MIR {} results to `{}`: {}",
+                                                 item.name(), filename, e));
                                 }
                             }
                             None => {
                                 self.tcx.sess.span_err(
                                     item.span,
-                                    "graphviz attribute requires a path");
+                                    &format!("{} attribute requires a path", item.name()));
                             }
                         }
                     }

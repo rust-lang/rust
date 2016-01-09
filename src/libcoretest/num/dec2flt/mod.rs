@@ -98,7 +98,8 @@ fn fast_path_correct() {
 
 #[test]
 fn lonely_dot() {
-    assert_eq!(".".parse(), Ok(0.0));
+    assert!(".".parse::<f32>().is_err());
+    assert!(".".parse::<f64>().is_err());
 }
 
 #[test]

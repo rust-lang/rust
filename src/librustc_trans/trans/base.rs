@@ -42,7 +42,8 @@ use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_name;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::util::common::time;
 use rustc_mir::mir_map::MirMap;
@@ -50,6 +51,7 @@ use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
+use trans::assert_dep_graph;
 use trans::attributes;
 use trans::build::*;
 use trans::builder::{Builder, noname};
@@ -958,22 +960,28 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc && sess.target.target.arch == "x86"
 }
 
-pub fn need_invoke(bcx: Block) -> bool {
+pub fn avoid_invoke(bcx: Block) -> bool {
     // FIXME(#25869) currently SEH-based unwinding is pretty buggy in LLVM and
     //               is being overhauled as this is being written. Until that
     //               time such that upstream LLVM's implementation is more solid
     //               and we start binding it we need to skip invokes for any
     //               target which wants SEH-based unwinding.
     if bcx.sess().no_landing_pads() || wants_msvc_seh(bcx.sess()) {
-        return false;
+        true
+    } else if bcx.is_lpad {
+        // Avoid using invoke if we are already inside a landing pad.
+        true
+    } else {
+        false
     }
+}
 
-    // Avoid using invoke if we are already inside a landing pad.
-    if bcx.is_lpad {
-        return false;
+pub fn need_invoke(bcx: Block) -> bool {
+    if avoid_invoke(bcx) {
+        false
+    } else {
+        bcx.fcx.needs_invoke()
     }
-
-    bcx.fcx.needs_invoke()
 }
 
 pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, t: Ty<'tcx>) -> ValueRef {
@@ -2208,6 +2216,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span,
         // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
         // pass for the latter already ran.
         lint::raw_struct_lint(&ccx.tcx().sess,
+                              &ccx.tcx().sess.lint_store.borrow(),
                               lint::builtin::VARIANT_SIZE_DIFFERENCES,
                               *lvlsrc.unwrap(),
                               Some(sp),
@@ -2978,8 +2987,15 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
                          mir_map: &MirMap<'tcx>,
                          analysis: ty::CrateAnalysis)
                          -> CrateTranslation {
-    let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
+    let _task = tcx.dep_graph.in_task(DepNode::TransCrate);
+
+    // Be careful with this krate: obviously it gives access to the
+    // entire contents of the krate. So if you push any subtasks of
+    // `TransCrate`, you need to be careful to register "reads" of the
+    // particular items that will be processed.
     let krate = tcx.map.krate();
+
+    let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
 
     let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
         v
@@ -3134,6 +3150,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
+    assert_dep_graph::assert_dep_graph(tcx);
+
     CrateTranslation {
         modules: modules,
         metadata_module: metadata_module,
@@ -3186,7 +3204,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
                 // skip modules, they will be uncovered by the TransModVisitor
             }
             _ => {
-                trans_item(self.ccx, i);
+                let def_id = self.ccx.tcx().map.local_def_id(i.id);
+                let tcx = self.ccx.tcx();
+
+                // Create a subtask for trans'ing a particular item. We are
+                // giving `trans_item` access to this item, so also record a read.
+                tcx.dep_graph.with_task(DepNode::TransCrateItem(def_id), || {
+                    tcx.dep_graph.read(DepNode::Hir(def_id));
+                    trans_item(self.ccx, i);
+                });
+
                 intravisit::walk_item(self, i);
             }
         }

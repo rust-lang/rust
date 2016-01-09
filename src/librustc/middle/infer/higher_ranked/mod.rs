@@ -14,9 +14,8 @@
 use super::{CombinedSnapshot, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::CombineFields;
 
-use middle::ty::{self, Binder};
+use middle::ty::{self, Binder, TypeFoldable};
 use middle::ty::error::TypeError;
-use middle::ty::fold::TypeFoldable;
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
@@ -557,7 +556,7 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                              snapshot: &CombinedSnapshot,
                              value: &T)
                              -> T
-    where T : TypeFoldable<'tcx> + ty::HasTypeFlags
+    where T : TypeFoldable<'tcx>
 {
     debug_assert!(leak_check(infcx, &skol_map, snapshot).is_ok());
 

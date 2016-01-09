@@ -26,10 +26,11 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
-use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
-use middle::ty::fold::TypeFoldable;
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TypeFoldable};
+use middle::ty::fast_reject;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
+use std::cmp;
 use std::fmt;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Span;
@@ -183,7 +184,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                           obligation: &Obligation<'tcx, T>)
                                           -> !
-    where T: fmt::Display + TypeFoldable<'tcx> + HasTypeFlags
+    where T: fmt::Display + TypeFoldable<'tcx>
 {
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);
@@ -231,12 +232,53 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                                                       obligation.cause.span);
                             if let Some(s) = custom_note {
                                 err.fileline_note(obligation.cause.span, &s);
+                            } else {
+                                let simp = fast_reject::simplify_type(infcx.tcx,
+                                                                      trait_ref.self_ty(),
+                                                                      true);
+                                let mut impl_candidates = Vec::new();
+                                let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
+
+                                match simp {
+                                    Some(simp) => trait_def.for_each_impl(infcx.tcx, |def_id| {
+                                        let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
+                                        let imp_simp = fast_reject::simplify_type(infcx.tcx,
+                                                                                  imp.self_ty(),
+                                                                                  true);
+                                        if let Some(imp_simp) = imp_simp {
+                                            if simp != imp_simp {
+                                                return;
+                                            }
+                                        }
+                                        impl_candidates.push(imp);
+                                    }),
+                                    None => trait_def.for_each_impl(infcx.tcx, |def_id| {
+                                        impl_candidates.push(
+                                            infcx.tcx.impl_trait_ref(def_id).unwrap());
+                                    })
+                                };
+
+                                if impl_candidates.len() > 0 {
+                                    err.fileline_help(
+                                        obligation.cause.span,
+                                        &format!("the following implementations were found:"));
+
+                                    let end = cmp::min(4, impl_candidates.len());
+                                    for candidate in &impl_candidates[0..end] {
+                                        err.fileline_help(obligation.cause.span,
+                                                          &format!("  {:?}", candidate));
+                                    }
+                                    if impl_candidates.len() > 4 {
+                                        err.fileline_help(obligation.cause.span,
+                                                          &format!("and {} others",
+                                                                   impl_candidates.len()-4));
+                                    }
+                                }
                             }
                             note_obligation_cause(infcx, &mut err, obligation);
                             err.emit();
                         }
-                    }
-
+                    },
                     ty::Predicate::Equate(ref predicate) => {
                         let predicate = infcx.resolve_type_vars_if_possible(predicate);
                         let err = infcx.equality_predicate(obligation.cause.span,

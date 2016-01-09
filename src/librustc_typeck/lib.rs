@@ -92,6 +92,7 @@ extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_front;
 extern crate rustc_back;
 
+pub use rustc::dep_graph;
 pub use rustc::front;
 pub use rustc::lint;
 pub use rustc::middle;
@@ -102,7 +103,7 @@ use front::map as hir_map;
 use middle::def;
 use middle::infer::{self, TypeOrigin};
 use middle::subst;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, TypeFoldable};
 use session::config;
 use util::common::time;
 use rustc_front::hir;

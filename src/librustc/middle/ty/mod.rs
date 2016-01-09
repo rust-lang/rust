@@ -17,7 +17,9 @@ pub use self::BorrowKind::*;
 pub use self::ImplOrTraitItem::*;
 pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
+pub use self::fold::TypeFoldable;
 
+use dep_graph::{self, DepNode};
 use front::map as ast_map;
 use front::map::LinkedPath;
 use middle;
@@ -31,13 +33,13 @@ use middle::traits;
 use middle::ty;
 use middle::ty::fold::TypeFolder;
 use middle::ty::walk::TypeWalker;
-use util::common::memoized;
-use util::nodemap::{NodeMap, NodeSet, DefIdMap};
+use util::common::MemoizationMap;
+use util::nodemap::{NodeMap, NodeSet};
 use util::nodemap::FnvHashMap;
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::borrow::{Borrow, Cow};
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::hash::{Hash, Hasher};
 use std::iter;
 use std::rc::Rc;
@@ -46,11 +48,12 @@ use std::vec::IntoIter;
 use std::collections::{HashMap, HashSet};
 use syntax::ast::{self, CrateNum, Name, NodeId};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{InternedString, special_idents};
 
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait};
+use rustc_front::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds, ExistentialBounds};
@@ -75,14 +78,18 @@ pub use self::contents::TypeContents;
 pub use self::context::{ctxt, tls};
 pub use self::context::{CtxtArenas, Lift, Tables};
 
+pub use self::trait_def::{TraitDef, TraitFlags};
+
 pub mod adjustment;
 pub mod cast;
 pub mod error;
 pub mod fast_reject;
 pub mod fold;
 pub mod _match;
+pub mod maps;
 pub mod outlives;
 pub mod relate;
+pub mod trait_def;
 pub mod walk;
 pub mod wf;
 pub mod util;
@@ -1318,161 +1325,6 @@ pub struct TypeScheme<'tcx> {
 }
 
 bitflags! {
-    flags TraitFlags: u32 {
-        const NO_TRAIT_FLAGS        = 0,
-        const HAS_DEFAULT_IMPL      = 1 << 0,
-        const IS_OBJECT_SAFE        = 1 << 1,
-        const OBJECT_SAFETY_VALID   = 1 << 2,
-        const IMPLS_VALID           = 1 << 3,
-    }
-}
-
-/// As `TypeScheme` but for a trait ref.
-pub struct TraitDef<'tcx> {
-    pub unsafety: hir::Unsafety,
-
-    /// If `true`, then this trait had the `#[rustc_paren_sugar]`
-    /// attribute, indicating that it should be used with `Foo()`
-    /// sugar. This is a temporary thing -- eventually any trait wil
-    /// be usable with the sugar (or without it).
-    pub paren_sugar: bool,
-
-    /// Generic type definitions. Note that `Self` is listed in here
-    /// as having a single bound, the trait itself (e.g., in the trait
-    /// `Eq`, there is a single bound `Self : Eq`). This is so that
-    /// default methods get to assume that the `Self` parameters
-    /// implements the trait.
-    pub generics: Generics<'tcx>,
-
-    pub trait_ref: TraitRef<'tcx>,
-
-    /// A list of the associated types defined in this trait. Useful
-    /// for resolving `X::Foo` type markers.
-    pub associated_type_names: Vec<Name>,
-
-    // Impls of this trait. To allow for quicker lookup, the impls are indexed
-    // by a simplified version of their Self type: impls with a simplifiable
-    // Self are stored in nonblanket_impls keyed by it, while all other impls
-    // are stored in blanket_impls.
-
-    /// Impls of the trait.
-    pub nonblanket_impls: RefCell<
-        FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>
-    >,
-
-    /// Blanket impls associated with the trait.
-    pub blanket_impls: RefCell<Vec<DefId>>,
-
-    /// Various flags
-    pub flags: Cell<TraitFlags>
-}
-
-impl<'tcx> TraitDef<'tcx> {
-    // returns None if not yet calculated
-    pub fn object_safety(&self) -> Option<bool> {
-        if self.flags.get().intersects(TraitFlags::OBJECT_SAFETY_VALID) {
-            Some(self.flags.get().intersects(TraitFlags::IS_OBJECT_SAFE))
-        } else {
-            None
-        }
-    }
-
-    pub fn set_object_safety(&self, is_safe: bool) {
-        assert!(self.object_safety().map(|cs| cs == is_safe).unwrap_or(true));
-        self.flags.set(
-            self.flags.get() | if is_safe {
-                TraitFlags::OBJECT_SAFETY_VALID | TraitFlags::IS_OBJECT_SAFE
-            } else {
-                TraitFlags::OBJECT_SAFETY_VALID
-            }
-        );
-    }
-
-    /// Records a trait-to-implementation mapping.
-    pub fn record_impl(&self,
-                       tcx: &ctxt<'tcx>,
-                       impl_def_id: DefId,
-                       impl_trait_ref: TraitRef<'tcx>) {
-        debug!("TraitDef::record_impl for {:?}, from {:?}",
-               self, impl_trait_ref);
-
-        // We don't want to borrow_mut after we already populated all impls,
-        // so check if an impl is present with an immutable borrow first.
-        if let Some(sty) = fast_reject::simplify_type(tcx,
-                                                      impl_trait_ref.self_ty(), false) {
-            if let Some(is) = self.nonblanket_impls.borrow().get(&sty) {
-                if is.contains(&impl_def_id) {
-                    return // duplicate - skip
-                }
-            }
-
-            self.nonblanket_impls.borrow_mut().entry(sty).or_insert(vec![]).push(impl_def_id)
-        } else {
-            if self.blanket_impls.borrow().contains(&impl_def_id) {
-                return // duplicate - skip
-            }
-            self.blanket_impls.borrow_mut().push(impl_def_id)
-        }
-    }
-
-
-    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &ctxt<'tcx>, mut f: F)  {
-        tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
-
-        for &impl_def_id in self.blanket_impls.borrow().iter() {
-            f(impl_def_id);
-        }
-
-        for v in self.nonblanket_impls.borrow().values() {
-            for &impl_def_id in v {
-                f(impl_def_id);
-            }
-        }
-    }
-
-    /// Iterate over every impl that could possibly match the
-    /// self-type `self_ty`.
-    pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
-                                                   tcx: &ctxt<'tcx>,
-                                                   self_ty: Ty<'tcx>,
-                                                   mut f: F)
-    {
-        tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
-
-        for &impl_def_id in self.blanket_impls.borrow().iter() {
-            f(impl_def_id);
-        }
-
-        // simplify_type(.., false) basically replaces type parameters and
-        // projections with infer-variables. This is, of course, done on
-        // the impl trait-ref when it is instantiated, but not on the
-        // predicate trait-ref which is passed here.
-        //
-        // for example, if we match `S: Copy` against an impl like
-        // `impl<T:Copy> Copy for Option<T>`, we replace the type variable
-        // in `Option<T>` with an infer variable, to `Option<_>` (this
-        // doesn't actually change fast_reject output), but we don't
-        // replace `S` with anything - this impl of course can't be
-        // selected, and as there are hundreds of similar impls,
-        // considering them would significantly harm performance.
-        if let Some(simp) = fast_reject::simplify_type(tcx, self_ty, true) {
-            if let Some(impls) = self.nonblanket_impls.borrow().get(&simp) {
-                for &impl_def_id in impls {
-                    f(impl_def_id);
-                }
-            }
-        } else {
-            for v in self.nonblanket_impls.borrow().values() {
-                for &impl_def_id in v {
-                    f(impl_def_id);
-                }
-            }
-        }
-    }
-
-}
-
-bitflags! {
     flags AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0,
         const IS_ENUM             = 1 << 0,
@@ -1513,6 +1365,8 @@ pub struct FieldDefData<'tcx, 'container: 'tcx> {
     pub vis: hir::Visibility,
     /// TyIVar is used here to allow for variance (see the doc at
     /// AdtDefData).
+    ///
+    /// Note: direct accesses to `ty` must also add dep edges.
     ty: ivar::TyIVar<'tcx, 'container>
 }
 
@@ -1803,11 +1657,11 @@ impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
     }
 
     pub fn unsubst_ty(&self) -> Ty<'tcx> {
-        self.ty.unwrap()
+        self.ty.unwrap(DepNode::FieldTy(self.did))
     }
 
     pub fn fulfill_ty(&self, ty: Ty<'container>) {
-        self.ty.fulfill(ty);
+        self.ty.fulfill(DepNode::FieldTy(self.did), ty);
     }
 }
 
@@ -1930,24 +1784,20 @@ impl LvaluePreference {
 /// into the map by the `typeck::collect` phase.  If the def-id is external,
 /// then we have to go consult the crate loading code (and cache the result for
 /// the future).
-fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
+fn lookup_locally_or_in_crate_store<M, F>(descr: &str,
                                           def_id: DefId,
-                                          map: &RefCell<DefIdMap<V>>,
-                                          load_external: F) -> V where
-    V: Clone,
-    F: FnOnce() -> V,
+                                          map: &M,
+                                          load_external: F)
+                                          -> M::Value where
+    M: MemoizationMap<Key=DefId>,
+    F: FnOnce() -> M::Value,
 {
-    match map.borrow().get(&def_id).cloned() {
-        Some(v) => { return v; }
-        None => { }
-    }
-
-    if def_id.is_local() {
-        panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
-    }
-    let v = load_external();
-    map.borrow_mut().insert(def_id, v.clone());
-    v
+    map.memoize(def_id, || {
+        if def_id.is_local() {
+            panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
+        }
+        load_external()
+    })
 }
 
 impl BorrowKind {
@@ -2223,22 +2073,6 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn trait_items(&self, trait_did: DefId) -> Rc<Vec<ImplOrTraitItem<'tcx>>> {
-        let mut trait_items = self.trait_items_cache.borrow_mut();
-        match trait_items.get(&trait_did).cloned() {
-            Some(trait_items) => trait_items,
-            None => {
-                let def_ids = self.trait_item_def_ids(trait_did);
-                let items: Rc<Vec<ImplOrTraitItem>> =
-                    Rc::new(def_ids.iter()
-                                   .map(|d| self.impl_or_trait_item(d.def_id()))
-                                   .collect());
-                trait_items.insert(trait_did, items.clone());
-                items
-            }
-        }
-    }
-
     pub fn trait_impl_polarity(&self, id: DefId) -> Option<hir::ImplPolarity> {
         if let Some(id) = self.map.as_local_node_id(id) {
             match self.map.find(id) {
@@ -2256,7 +2090,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn custom_coerce_unsized_kind(&self, did: DefId) -> adjustment::CustomCoerceUnsized {
-        memoized(&self.custom_coerce_unsized_kinds, did, |did: DefId| {
+        self.custom_coerce_unsized_kinds.memoize(did, || {
             let (kind, src) = if did.krate != LOCAL_CRATE {
                 (self.sess.cstore.custom_coerce_unsized_kind(did), "external")
             } else {
@@ -2394,6 +2228,39 @@ impl<'tcx> ctxt<'tcx> {
             || self.sess.cstore.item_super_predicates(self, did))
     }
 
+    /// If `type_needs_drop` returns true, then `ty` is definitely
+    /// non-copy and *might* have a destructor attached; if it returns
+    /// false, then `ty` definitely has no destructor (i.e. no drop glue).
+    ///
+    /// (Note that this implies that if `ty` has a destructor attached,
+    /// then `type_needs_drop` will definitely return `true` for `ty`.)
+    pub fn type_needs_drop_given_env<'a>(&self,
+                                         ty: Ty<'tcx>,
+                                         param_env: &ty::ParameterEnvironment<'a,'tcx>) -> bool {
+        // Issue #22536: We first query type_moves_by_default.  It sees a
+        // normalized version of the type, and therefore will definitely
+        // know whether the type implements Copy (and thus needs no
+        // cleanup/drop/zeroing) ...
+        let implements_copy = !ty.moves_by_default(param_env, DUMMY_SP);
+
+        if implements_copy { return false; }
+
+        // ... (issue #22536 continued) but as an optimization, still use
+        // prior logic of asking if the `needs_drop` bit is set; we need
+        // not zero non-Copy types if they have no destructor.
+
+        // FIXME(#22815): Note that calling `ty::type_contents` is a
+        // conservative heuristic; it may report that `needs_drop` is set
+        // when actual type does not actually have a destructor associated
+        // with it. But since `ty` absolutely did not have the `Copy`
+        // bound attached (see above), it is sound to treat it as having a
+        // destructor (e.g. zero its memory on move).
+
+        let contents = ty.type_contents(self);
+        debug!("type_needs_drop ty={:?} contents={:?}", ty, contents);
+        contents.needs_drop(self)
+    }
+
     /// Get the attributes of a definition.
     pub fn get_attrs(&self, did: DefId) -> Cow<'tcx, [ast::Attribute]> {
         if let Some(id) = self.map.as_local_node_id(did) {
@@ -2417,19 +2284,6 @@ impl<'tcx> ctxt<'tcx> {
     pub fn lookup_simd(&self, did: DefId) -> bool {
         self.has_attr(did, "simd")
             || self.lookup_repr_hints(did).contains(&attr::ReprSimd)
-    }
-
-    /// Obtain the representation annotation for a struct definition.
-    pub fn lookup_repr_hints(&self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
-        memoized(&self.repr_hint_cache, did, |did: DefId| {
-            Rc::new(if did.is_local() {
-                self.get_attrs(did).iter().flat_map(|meta| {
-                    attr::find_repr_attrs(self.sess.diagnostic(), meta).into_iter()
-                }).collect()
-            } else {
-                self.sess.cstore.repr_attrs(did)
-            })
-        })
     }
 
     pub fn item_variances(&self, item_id: DefId) -> Rc<ItemVariances> {
@@ -2458,6 +2312,10 @@ impl<'tcx> ctxt<'tcx> {
             return
         }
 
+        // The primitive is not local, hence we are reading this out
+        // of metadata.
+        let _ignore = self.dep_graph.in_ignore();
+
         if self.populated_external_primitive_impls.borrow().contains(&primitive_def_id) {
             return
         }
@@ -2479,6 +2337,10 @@ impl<'tcx> ctxt<'tcx> {
         if type_id.is_local() {
             return
         }
+
+        // The type is not local, hence we are reading this out of
+        // metadata and don't need to track edges.
+        let _ignore = self.dep_graph.in_ignore();
 
         if self.populated_external_types.borrow().contains(&type_id) {
             return
@@ -2504,6 +2366,10 @@ impl<'tcx> ctxt<'tcx> {
         if trait_id.is_local() {
             return
         }
+
+        // The type is not local, hence we are reading this out of
+        // metadata and don't need to track edges.
+        let _ignore = self.dep_graph.in_ignore();
 
         let def = self.lookup_trait_def(trait_id);
         if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
@@ -2727,6 +2593,15 @@ impl<'tcx> ctxt<'tcx> {
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
     }
+
+
+    pub fn visit_all_items_in_krate<V,F>(&self,
+                                         dep_node_fn: F,
+                                         visitor: &mut V)
+        where F: FnMut(DefId) -> DepNode, V: Visitor<'tcx>
+    {
+        dep_graph::visit_all_items_in_krate(self, dep_node_fn, visitor);
+    }
 }
 
 /// The category of explicit self.
@@ -2791,75 +2666,5 @@ impl<'tcx> ctxt<'tcx> {
                   .map(|def| def.to_early_bound_region())
                   .collect();
         trait_ref.substs.clone().with_method(meth_tps, meth_regions)
-    }
-}
-
-/// An "escaping region" is a bound region whose binder is not part of `t`.
-///
-/// So, for example, consider a type like the following, which has two binders:
-///
-///    for<'a> fn(x: for<'b> fn(&'a isize, &'b isize))
-///    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
-///                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
-///
-/// This type has *bound regions* (`'a`, `'b`), but it does not have escaping regions, because the
-/// binders of both `'a` and `'b` are part of the type itself. However, if we consider the *inner
-/// fn type*, that type has an escaping region: `'a`.
-///
-/// Note that what I'm calling an "escaping region" is often just called a "free region". However,
-/// we already use the term "free region". It refers to the regions that we use to represent bound
-/// regions on a fn definition while we are typechecking its body.
-///
-/// To clarify, conceptually there is no particular difference between an "escaping" region and a
-/// "free" region. However, there is a big difference in practice. Basically, when "entering" a
-/// binding level, one is generally required to do some sort of processing to a bound region, such
-/// as replacing it with a fresh/skolemized region, or making an entry in the environment to
-/// represent the scope to which it is attached, etc. An escaping region represents a bound region
-/// for which this processing has not yet been done.
-pub trait RegionEscape {
-    fn has_escaping_regions(&self) -> bool {
-        self.has_regions_escaping_depth(0)
-    }
-
-    fn has_regions_escaping_depth(&self, depth: u32) -> bool;
-}
-
-pub trait HasTypeFlags {
-    fn has_type_flags(&self, flags: TypeFlags) -> bool;
-    fn has_projection_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PROJECTION)
-    }
-    fn references_error(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_ERR)
-    }
-    fn has_param_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_PARAMS)
-    }
-    fn has_self_ty(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_SELF)
-    }
-    fn has_infer_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER)
-    }
-    fn needs_infer(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
-    }
-    fn needs_subst(&self) -> bool {
-        self.has_type_flags(TypeFlags::NEEDS_SUBST)
-    }
-    fn has_closure_types(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
-    }
-    fn has_erasable_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_EARLY_BOUND |
-                            TypeFlags::HAS_RE_INFER |
-                            TypeFlags::HAS_FREE_REGIONS)
-    }
-    /// Indicates whether this value references only 'global'
-    /// types/lifetimes that are the same regardless of what fn we are
-    /// in. This is used for caching. Errs on the side of returning
-    /// false.
-    fn is_global(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_LOCAL_NAMES)
     }
 }

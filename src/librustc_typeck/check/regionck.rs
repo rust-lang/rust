@@ -61,7 +61,7 @@
 //!
 //!     struct Foo { i: i32 }
 //!     struct Bar { foo: Foo  }
-//!     fn get_i(x: &'a Bar) -> &'a i32 {
+//!     fn get_i<'a>(x: &'a Bar) -> &'a i32 {
 //!        let foo = &x.foo; // Lifetime L1
 //!        &foo.i            // Lifetime L2
 //!     }
@@ -92,7 +92,7 @@ use middle::mem_categorization::Categorization;
 use middle::region::{self, CodeExtent};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, RegionEscape, Ty, MethodCall, HasTypeFlags};
+use middle::ty::{self, Ty, MethodCall, TypeFoldable};
 use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound};
 use middle::pat_util;
 use middle::ty::adjustment;

@@ -39,9 +39,8 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin};
 use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty, HasTypeFlags};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TypeFoldable};
 use middle::ty::fast_reject;
-use middle::ty::fold::TypeFoldable;
 use middle::ty::relate::TypeRelation;
 
 use std::cell::RefCell;
@@ -310,6 +309,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("select({:?})", obligation);
         assert!(!obligation.predicate.has_escaping_regions());
 
+        let dep_node = obligation.dep_node(self.tcx());
+        let _task = self.tcx().dep_graph.in_task(dep_node);
+
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
         match try!(self.candidate_from_obligation(&stack)) {
             None => {
@@ -411,7 +413,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// accurate if inference variables are involved.
     pub fn evaluate_obligation_conservatively(&mut self,
                                               obligation: &PredicateObligation<'tcx>)
-                               -> bool
+                                              -> bool
     {
         debug!("evaluate_obligation_conservatively({:?})",
                obligation);
@@ -962,7 +964,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match *candidate {
             Ok(Some(_)) | Err(_) => true,
             Ok(None) => {
-                cache_fresh_trait_pred.0.input_types().has_infer_types()
+                cache_fresh_trait_pred.0.trait_ref.substs.types.has_infer_types()
             }
         }
     }

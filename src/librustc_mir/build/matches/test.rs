@@ -37,7 +37,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 }
             }
 
-            PatternKind::Constant { value: Literal::Value { .. } }
+            PatternKind::Constant { .. }
             if is_switch_ty(match_pair.pattern.ty) => {
                 // for integers, we use a SwitchInt match, which allows
                 // us to handle more cases
@@ -55,12 +55,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
 
             PatternKind::Constant { ref value } => {
-                // for other types, we use an equality comparison
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Eq {
                         value: value.clone(),
-                        ty: match_pair.pattern.ty.clone(),
+                        ty: match_pair.pattern.ty.clone()
                     }
                 }
             }
@@ -113,7 +112,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         };
 
         match *match_pair.pattern.kind {
-            PatternKind::Constant { value: Literal::Value { ref value } } => {
+            PatternKind::Constant { ref value } => {
                 // if the lvalues match, the type should match
                 assert_eq!(match_pair.pattern.ty, switch_ty);
 
@@ -126,7 +125,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
 
             PatternKind::Range { .. } |
-            PatternKind::Constant { .. } |
             PatternKind::Variant { .. } |
             PatternKind::Slice { .. } |
             PatternKind::Array { .. } |
@@ -177,11 +175,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
 
             TestKind::Eq { ref value, ty } => {
-                // call PartialEq::eq(discrim, constant)
-                let constant = self.literal_operand(test.span, ty.clone(), value.clone());
-                let item_ref = self.hir.partial_eq(ty);
-                self.call_comparison_fn(block, test.span, item_ref,
-                                        Operand::Consume(lvalue.clone()), constant)
+                let expect = self.literal_operand(test.span, ty.clone(), Literal::Value {
+                    value: value.clone()
+                });
+                let val = Operand::Consume(lvalue.clone());
+                let fail = self.cfg.start_new_block();
+                let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val.clone());
+                vec![block, fail]
             }
 
             TestKind::Range { ref lo, ref hi, ty } => {
@@ -249,39 +249,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         });
 
         target_block
-    }
-
-    fn call_comparison_fn(&mut self,
-                          block: BasicBlock,
-                          span: Span,
-                          item_ref: ItemRef<'tcx>,
-                          lvalue1: Operand<'tcx>,
-                          lvalue2: Operand<'tcx>)
-                          -> Vec<BasicBlock> {
-        let target_blocks = vec![self.cfg.start_new_block(), self.cfg.start_new_block()];
-
-        let bool_ty = self.hir.bool_ty();
-        let eq_result = self.temp(bool_ty);
-        let func = self.item_ref_operand(span, item_ref);
-        let call_blocks = (self.cfg.start_new_block(), self.diverge_cleanup());
-        self.cfg.terminate(block,
-                           Terminator::Call {
-                               data: CallData {
-                                   destination: eq_result.clone(),
-                                   func: func,
-                                   args: vec![lvalue1, lvalue2],
-                               },
-                               targets: call_blocks,
-                           });
-
-        // check the result
-        self.cfg.terminate(call_blocks.0,
-                           Terminator::If {
-                               cond: Operand::Consume(eq_result),
-                               targets: (target_blocks[0], target_blocks[1]),
-                           });
-
-        target_blocks
     }
 
     /// Given that we are performing `test` against `test_lvalue`,
@@ -368,7 +335,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             // things out here, in some cases.
             TestKind::SwitchInt { switch_ty: _, options: _, ref indices } => {
                 match *match_pair.pattern.kind {
-                    PatternKind::Constant { value: Literal::Value { ref value } }
+                    PatternKind::Constant { ref value }
                     if is_switch_ty(match_pair.pattern.ty) => {
                         let index = indices[value];
                         let new_candidate = self.candidate_without_match_pair(match_pair_index,

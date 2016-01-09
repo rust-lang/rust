@@ -11,7 +11,7 @@
 use back::abi;
 use llvm::ValueRef;
 use middle::subst::Substs;
-use middle::ty::{Ty, HasTypeFlags};
+use middle::ty::{Ty, TypeFoldable};
 use rustc::middle::const_eval::ConstVal;
 use rustc::mir::repr as mir;
 use trans::common::{self, Block, C_bool, C_bytes, C_floating_f64, C_integral, C_str_slice};
@@ -89,8 +89,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     {
         let ty = bcx.monomorphize(&constant.ty);
         match constant.literal {
-            mir::Literal::Item { def_id, kind, substs } =>
-                self.trans_item_ref(bcx, ty, kind, substs, def_id),
+            mir::Literal::Item { def_id, kind, substs } => {
+                let substs = bcx.tcx().mk_substs(bcx.monomorphize(&substs));
+                self.trans_item_ref(bcx, ty, kind, substs, def_id)
+            }
             mir::Literal::Value { ref value } => {
                 self.trans_constval(bcx, value, ty)
             }

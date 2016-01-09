@@ -15,12 +15,13 @@ use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use trans::common::*;
 
+use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 
-fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
-    -> Option<DefId> {
+fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
     debug!("instantiate_inline({:?})", fn_id);
     let _icx = push_ctxt("instantiate_inline");
+    let _task = ccx.tcx().dep_graph.in_task(DepNode::TransInlinedItem(fn_id));
 
     match ccx.external().borrow().get(&fn_id) {
         Some(&Some(node_id)) => {
@@ -165,7 +166,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
                              llfn,
                              empty_substs,
                              impl_item.id,
-                             &[]);
+                             &impl_item.attrs);
                     // See linkage comments on items.
                     if ccx.sess().opts.cg.codegen_units == 1 {
                         SetLinkage(llfn, InternalLinkage);

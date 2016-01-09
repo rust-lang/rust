@@ -8,23 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
-#[rustc_mir]
-pub fn foo(x: i8) -> i32 {
-  match x {
-    1...10 => 0,
-    _ => 1,
-  }
+trait Foo<A> {
+    fn foo(&self, a: A) -> A {
+        a
+    }
 }
 
+trait NotRelevant<A> {
+    fn nr(&self, a: A) -> A {
+        a
+    }
+}
+
+struct Bar;
+
+impl NotRelevant<usize> for Bar {}
+
 fn main() {
-  assert_eq!(foo(0), 1);
-  assert_eq!(foo(1), 0);
-  assert_eq!(foo(2), 0);
-  assert_eq!(foo(5), 0);
-  assert_eq!(foo(9), 0);
-  assert_eq!(foo(10), 0);
-  assert_eq!(foo(11), 1);
-  assert_eq!(foo(20), 1);
+    let f1 = Bar;
+
+    f1.foo(1usize);
+    //~^ error: method named `foo` found for type `Bar` in the current scope
+    //~| help: items from traits can only be used if the trait is implemented and in scope
+    //~| help: candidate #1: `Foo`
 }

@@ -33,12 +33,12 @@ use middle::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
-use middle::ty::{self, RegionEscape, Ty};
+use middle::ty::{self, Ty, TypeFoldable};
 
 use rustc::mir;
 use rustc::mir::visit::MutVisitor;
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -353,16 +353,11 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
     let associated_type_names = parse_associated_type_names(item_doc);
     let paren_sugar = parse_paren_sugar(item_doc);
 
-    ty::TraitDef {
-        paren_sugar: paren_sugar,
-        unsafety: unsafety,
-        generics: generics,
-        trait_ref: item_trait_ref(item_doc, tcx, cdata),
-        associated_type_names: associated_type_names,
-        nonblanket_impls: RefCell::new(FnvHashMap()),
-        blanket_impls: RefCell::new(vec![]),
-        flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
-    }
+    ty::TraitDef::new(unsafety,
+                      paren_sugar,
+                      generics,
+                      item_trait_ref(item_doc, tcx, cdata),
+                      associated_type_names)
 }
 
 pub fn get_adt_def<'tcx>(intr: &IdentInterner,
