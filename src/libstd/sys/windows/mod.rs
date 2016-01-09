@@ -53,7 +53,7 @@ fn oom_handler() -> ! {
         // is no need to check the result of GetStdHandle.
         c::WriteFile(c::GetStdHandle(c::STD_ERROR_HANDLE),
                      msg.as_ptr() as c::LPVOID,
-                     msg.len() as DWORD,
+                     msg.len() as c::DWORD,
                      ptr::null_mut(),
                      ptr::null_mut());
         intrinsics::abort();
