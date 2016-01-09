@@ -19,9 +19,8 @@ use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def::*;
 use middle::def_id::{DefId};
-use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
-use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
-use middle::expr_use_visitor::WriteAndRead;
+use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
+use middle::expr_use_visitor::{LoanCause, MutateMode};
 use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::mem_categorization::{cmt};
@@ -1161,10 +1160,10 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
     fn mutate(&mut self, _: NodeId, span: Span, _: cmt, mode: MutateMode) {
         match mode {
-            JustWrite | WriteAndRead => {
+            MutateMode::JustWrite | MutateMode::WriteAndRead => {
                 span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
             }
-            Init => {}
+            MutateMode::Init => {}
         }
     }
 }
