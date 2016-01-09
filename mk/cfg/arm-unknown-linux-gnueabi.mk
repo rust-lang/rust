@@ -8,8 +8,8 @@ CFG_LIB_NAME_arm-unknown-linux-gnueabi=lib$(1).so
 CFG_STATIC_LIB_NAME_arm-unknown-linux-gnueabi=lib$(1).a
 CFG_LIB_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabi=lib$(1)-*.dylib.dSYM
-CFG_JEMALLOC_CFLAGS_arm-unknown-linux-gnueabi := -D__arm__ -mfpu=vfp $(CFLAGS)
-CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabi := -Wall -g -fPIC -D__arm__ -mfpu=vfp $(CFLAGS)
+CFG_JEMALLOC_CFLAGS_arm-unknown-linux-gnueabi := -D__arm__ -mfloat-abi=soft $(CFLAGS)
+CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabi := -Wall -g -fPIC -D__arm__ -mfloat-abi=soft $(CFLAGS)
 CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabi := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabi := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_arm-unknown-linux-gnueabi := -Wl,--export-dynamic,--dynamic-list=
