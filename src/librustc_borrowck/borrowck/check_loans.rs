@@ -21,6 +21,7 @@ use self::UseError::*;
 use borrowck::*;
 use borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -161,7 +162,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
         match opt_loan_path(&assignee_cmt) {
             Some(lp) => {
                 match mode {
-                    euv::Init | euv::JustWrite => {
+                    MutateMode::Init | MutateMode::JustWrite => {
                         // In a case like `path = 1`, then path does not
                         // have to be *FULLY* initialized, but we still
                         // must be careful lest it contains derefs of
@@ -171,7 +172,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                                                              MovedInUse,
                                                              &lp);
                     }
-                    euv::WriteAndRead => {
+                    MutateMode::WriteAndRead => {
                         // In a case like `path += 1`, then path must be
                         // fully initialized, since we will read it before
                         // we write it.
