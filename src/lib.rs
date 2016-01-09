@@ -24,6 +24,9 @@ extern crate collections;
 // for unicode nfc normalization
 extern crate unicode_normalization;
 
+// for semver check in attrs.rs
+extern crate semver;
+
 extern crate rustc_plugin;
 
 use rustc_plugin::Registry;
@@ -156,6 +159,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
         array_indexing::OUT_OF_BOUNDS_INDEXING,
+        attrs::DEPRECATED_SEMVER,
         attrs::INLINE_ALWAYS,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,

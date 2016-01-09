@@ -3,9 +3,10 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use reexport::*;
+use semver::Version;
 use syntax::codemap::Span;
 use syntax::attr::*;
-use syntax::ast::{Attribute, MetaList, MetaWord};
+use syntax::ast::{Attribute, Lit, Lit_, MetaList, MetaWord, MetaNameValue};
 use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 
 /// **What it does:** This lint `Warn`s on items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
@@ -24,17 +25,45 @@ use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 declare_lint! { pub INLINE_ALWAYS, Warn,
     "`#[inline(always)]` is a bad idea in most cases" }
 
+/// **What it does:** This lint `Warn`s on `#[deprecated]` annotations with a `since` field that is not a valid semantic version..
+///
+/// **Why is this bad?** For checking the version of the deprecation, it must be valid semver. Failing that, the contained information is useless.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```
+/// #[deprecated(since = "forever")]
+/// fn something_else(..) { ... }
+/// ```
+declare_lint! { pub DEPRECATED_SEMVER, Warn,
+    "`Warn` on `#[deprecated(since = \"x\")]` where x is not semver" }
 
 #[derive(Copy,Clone)]
 pub struct AttrPass;
 
 impl LintPass for AttrPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(INLINE_ALWAYS)
+        lint_array!(INLINE_ALWAYS, DEPRECATED_SEMVER)
     }
 }
 
 impl LateLintPass for AttrPass {
+    fn check_attribute(&mut self, cx: &LateContext, attr: &Attribute) {
+        if let MetaList(ref name, ref items) = attr.node.value.node {
+            if items.is_empty() || name != &"deprecated" {
+                return;
+            }
+            for ref item in items {
+                if let MetaNameValue(ref name, ref lit) = item.node {
+                    if name == &"since" {
+                        check_semver(cx, item.span, lit);
+                    }
+                }
+            } 
+        }
+    }
+    
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if is_relevant_item(item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
@@ -127,4 +156,16 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
             }
         }
     }
+}
+
+fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
+    if let Lit_::LitStr(ref is, _) = lit.node {
+        if Version::parse(&*is).is_ok() {
+            return;
+        }
+    }
+    span_lint(cx, 
+              DEPRECATED_SEMVER,
+              span,
+              "the since field must contain a semver-compliant version");
 }

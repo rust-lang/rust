@@ -18,6 +18,7 @@ plugin = true
 
 [dependencies]
 unicode-normalization = "0.1"
+semver = "0.2.1"
 
 [dev-dependencies]
 compiletest_rs = "0.0.11"
