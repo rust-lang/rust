@@ -68,7 +68,7 @@ use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use middle::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer};
-use middle::ty::{self, LvaluePreference, TypeAndMut, Ty};
+use middle::ty::{self, LvaluePreference, TypeAndMut, Ty, HasTypeFlags};
 use middle::ty::error::TypeError;
 use middle::ty::relate::RelateResult;
 use util::common::indent;
@@ -110,10 +110,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                a,
                b);
 
+        let a = self.fcx.infcx().shallow_resolve(a);
+
+        // Just ignore error types.
+        if a.references_error() || b.references_error() {
+            return Ok(None);
+        }
+
         // Consider coercing the subtype to a DST
-        let unsize = self.unpack_actual_value(a, |a| {
-            self.coerce_unsized(a, b)
-        });
+        let unsize = self.coerce_unsized(a, b);
         if unsize.is_ok() {
             return unsize;
         }
@@ -124,39 +129,33 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // See above for details.
         match b.sty {
             ty::TyRawPtr(mt_b) => {
-                return self.unpack_actual_value(a, |a| {
-                    self.coerce_unsafe_ptr(a, b, mt_b.mutbl)
-                });
+                return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
             }
 
             ty::TyRef(_, mt_b) => {
-                return self.unpack_actual_value(a, |a| {
-                    self.coerce_borrowed_pointer(expr_a, a, b, mt_b.mutbl)
-                });
+                return self.coerce_borrowed_pointer(expr_a, a, b, mt_b.mutbl);
             }
 
             _ => {}
         }
 
-        self.unpack_actual_value(a, |a| {
-            match a.sty {
-                ty::TyBareFn(Some(_), a_f) => {
-                    // Function items are coercible to any closure
-                    // type; function pointers are not (that would
-                    // require double indirection).
-                    self.coerce_from_fn_item(a, a_f, b)
-                }
-                ty::TyBareFn(None, a_f) => {
-                    // We permit coercion of fn pointers to drop the
-                    // unsafe qualifier.
-                    self.coerce_from_fn_pointer(a, a_f, b)
-                }
-                _ => {
-                    // Otherwise, just use subtyping rules.
-                    self.subtype(a, b)
-                }
+        match a.sty {
+            ty::TyBareFn(Some(_), a_f) => {
+                // Function items are coercible to any closure
+                // type; function pointers are not (that would
+                // require double indirection).
+                self.coerce_from_fn_item(a, a_f, b)
             }
-        })
+            ty::TyBareFn(None, a_f) => {
+                // We permit coercion of fn pointers to drop the
+                // unsafe qualifier.
+                self.coerce_from_fn_pointer(a, a_f, b)
+            }
+            _ => {
+                // Otherwise, just use subtyping rules.
+                self.subtype(a, b)
+            }
+        }
     }
 
     /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
