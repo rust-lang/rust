@@ -182,7 +182,8 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 /// if the program type checks or not -- and they are unusual
 /// occurrences in any case.
 pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
-                                          obligation: &Obligation<'tcx, T>)
+                                          obligation: &Obligation<'tcx, T>,
+                                          suggest_increasing_limit: bool)
                                           -> !
     where T: fmt::Display + TypeFoldable<'tcx>
 {
@@ -192,13 +193,150 @@ pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                    "overflow evaluating the requirement `{}`",
                                    predicate);
 
-    suggest_new_overflow_limit(infcx.tcx, &mut err, obligation.cause.span);
+    if suggest_increasing_limit {
+        suggest_new_overflow_limit(infcx.tcx, &mut err, obligation.cause.span);
+    }
 
     note_obligation_cause(infcx, &mut err, obligation);
 
     err.emit();
     infcx.tcx.sess.abort_if_errors();
     unreachable!();
+}
+
+/// Reports that a cycle was detected which led to overflow and halts
+/// compilation. This is equivalent to `report_overflow_error` except
+/// that we can give a more helpful error message (and, in particular,
+/// we do not suggest increasing the overflow limit, which is not
+/// going to help).
+pub fn report_overflow_error_cycle<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                             cycle: &Vec<PredicateObligation<'tcx>>)
+                                             -> !
+{
+    assert!(cycle.len() > 1);
+
+    debug!("report_overflow_error_cycle(cycle length = {})", cycle.len());
+
+    let cycle = infcx.resolve_type_vars_if_possible(cycle);
+
+    debug!("report_overflow_error_cycle: cycle={:?}", cycle);
+
+    assert_eq!(&cycle[0].predicate, &cycle.last().unwrap().predicate);
+
+    try_report_overflow_error_type_of_infinite_size(infcx, &cycle);
+    report_overflow_error(infcx, &cycle[0], false);
+}
+
+/// If a cycle results from evaluated whether something is Sized, that
+/// is a particular special case that always results from a struct or
+/// enum definition that lacks indirection (e.g., `struct Foo { x: Foo
+/// }`). We wish to report a targeted error for this case.
+pub fn try_report_overflow_error_type_of_infinite_size<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    cycle: &[PredicateObligation<'tcx>])
+{
+    let sized_trait = match infcx.tcx.lang_items.sized_trait() {
+        Some(v) => v,
+        None => return,
+    };
+    let top_is_sized = {
+        match cycle[0].predicate {
+            ty::Predicate::Trait(ref data) => data.def_id() == sized_trait,
+            _ => false,
+        }
+    };
+    if !top_is_sized {
+        return;
+    }
+
+    // The only way to have a type of infinite size is to have,
+    // somewhere, a struct/enum type involved. Identify all such types
+    // and report the cycle to the user.
+
+    let struct_enum_tys: Vec<_> =
+        cycle.iter()
+             .flat_map(|obligation| match obligation.predicate {
+                 ty::Predicate::Trait(ref data) => {
+                     assert_eq!(data.def_id(), sized_trait);
+                     let self_ty = data.skip_binder().trait_ref.self_ty(); // (*)
+                     // (*) ok to skip binder because this is just
+                     // error reporting and regions don't really
+                     // matter
+                     match self_ty.sty {
+                         ty::TyEnum(..) | ty::TyStruct(..) => Some(self_ty),
+                         _ => None,
+                     }
+                 }
+                 _ => {
+                     infcx.tcx.sess.span_bug(obligation.cause.span,
+                                             &format!("Sized cycle involving non-trait-ref: {:?}",
+                                                      obligation.predicate));
+                 }
+             })
+             .collect();
+
+    assert!(!struct_enum_tys.is_empty());
+
+    // This is a bit tricky. We want to pick a "main type" in the
+    // listing that is local to the current crate, so we can give a
+    // good span to the user. But it might not be the first one in our
+    // cycle list. So find the first one that is local and then
+    // rotate.
+    let (main_index, main_def_id) =
+        struct_enum_tys.iter()
+                       .enumerate()
+                       .filter_map(|(index, ty)| match ty.sty {
+                           ty::TyEnum(adt_def, _) | ty::TyStruct(adt_def, _) if adt_def.did.is_local() =>
+                               Some((index, adt_def.did)),
+                           _ =>
+                               None,
+                       })
+                       .next()
+                       .unwrap(); // should always be SOME local type involved!
+
+    // Rotate so that the "main" type is at index 0.
+    let struct_enum_tys: Vec<_> =
+        struct_enum_tys.iter()
+                       .cloned()
+                       .skip(main_index)
+                       .chain(struct_enum_tys.iter().cloned().take(main_index))
+                       .collect();
+
+    let tcx = infcx.tcx;
+    let mut err = recursive_type_with_infinite_size_error(tcx, main_def_id);
+    let len = struct_enum_tys.len();
+    if len > 2 {
+        let span = tcx.map.span_if_local(main_def_id).unwrap();
+        err.fileline_note(span,
+                          &format!("type `{}` is embedded within `{}`...",
+                                   struct_enum_tys[0],
+                                   struct_enum_tys[1]));
+        for &next_ty in &struct_enum_tys[1..len-1] {
+            err.fileline_note(span,
+                              &format!("...which in turn is embedded within `{}`...", next_ty));
+        }
+        err.fileline_note(span,
+                          &format!("...which in turn is embedded within `{}`, \
+                                    completing the cycle.",
+                                   struct_enum_tys[len-1]));
+    }
+    err.emit();
+    infcx.tcx.sess.abort_if_errors();
+    unreachable!();
+}
+
+pub fn recursive_type_with_infinite_size_error<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                                     type_def_id: DefId)
+                                                     -> DiagnosticBuilder<'tcx>
+{
+    assert!(type_def_id.is_local());
+    let span = tcx.map.span_if_local(type_def_id).unwrap();
+    let mut err = struct_span_err!(tcx.sess, span, E0072, "recursive type `{}` has infinite size",
+                                   tcx.item_path_str(type_def_id));
+    err.fileline_help(span, &format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
+                                      at some point to make `{}` representable",
+                                     tcx.item_path_str(type_def_id)));
+    err
 }
 
 pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,

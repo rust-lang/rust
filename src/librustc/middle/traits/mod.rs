@@ -28,8 +28,10 @@ use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
 pub use self::error_reporting::TraitErrorKey;
+pub use self::error_reporting::recursive_type_with_infinite_size_error;
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::error_reporting::report_overflow_error;
+pub use self::error_reporting::report_overflow_error_cycle;
 pub use self::error_reporting::report_selection_error;
 pub use self::error_reporting::report_object_safety_error;
 pub use self::coherence::orphan_check;

@@ -11,10 +11,10 @@
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, TypeFoldable};
 use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
-
+use std::iter;
 use syntax::ast;
 use util::common::ErrorReported;
-use util::nodemap::{FnvHashSet, NodeMap};
+use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -25,6 +25,7 @@ use super::FulfillmentErrorCode;
 use super::ObligationCause;
 use super::PredicateObligation;
 use super::project;
+use super::report_overflow_error_cycle;
 use super::select::SelectionContext;
 use super::Unimplemented;
 use super::util::predicate_for_builtin_bound;
@@ -357,6 +358,17 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     }
 
     let obligation = &pending_obligation.obligation;
+
+    // If we exceed the recursion limit, take a moment to look for a
+    // cycle so we can give a better error report from here, where we
+    // have more context.
+    let recursion_limit = selcx.tcx().sess.recursion_limit.get();
+    if obligation.recursion_depth >= recursion_limit {
+        if let Some(cycle) = scan_for_cycle(obligation, &backtrace) {
+            report_overflow_error_cycle(selcx.infcx(), &cycle);
+        }
+    }
+
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
             if coinductive_match(selcx, obligation, data, &backtrace) {
@@ -488,11 +500,15 @@ fn coinductive_match<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                               -> bool
 {
     if selcx.tcx().trait_has_default_impl(top_data.def_id()) {
+        debug!("coinductive_match: top_data={:?}", top_data);
         for bt_obligation in backtrace.clone() {
+            debug!("coinductive_match: bt_obligation={:?}", bt_obligation);
+
             // *Everything* in the backtrace must be a defaulted trait.
             match bt_obligation.obligation.predicate {
                 ty::Predicate::Trait(ref data) => {
                     if !selcx.tcx().trait_has_default_impl(data.def_id()) {
+                        debug!("coinductive_match: trait does not have default impl");
                         break;
                     }
                 }
@@ -501,13 +517,34 @@ fn coinductive_match<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 
             // And we must find a recursive match.
             if bt_obligation.obligation.predicate == top_obligation.predicate {
-                debug!("process_predicate: found a match in the backtrace");
+                debug!("coinductive_match: found a match in the backtrace");
                 return true;
             }
         }
     }
 
     false
+}
+
+fn scan_for_cycle<'a,'tcx>(top_obligation: &PredicateObligation<'tcx>,
+                           backtrace: &Backtrace<PendingPredicateObligation<'tcx>>)
+                           -> Option<Vec<PredicateObligation<'tcx>>>
+{
+    let mut map = FnvHashMap();
+    let all_obligations =
+        || iter::once(top_obligation)
+               .chain(backtrace.clone()
+                               .map(|p| &p.obligation));
+    for (index, bt_obligation) in all_obligations().enumerate() {
+        if let Some(&start) = map.get(&bt_obligation.predicate) {
+            // Found a cycle starting at position `start` and running
+            // until the current position (`index`).
+            return Some(all_obligations().skip(start).take(index - start + 1).cloned().collect());
+        } else {
+            map.insert(bt_obligation.predicate.clone(), index);
+        }
+    }
+    None
 }
 
 fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,

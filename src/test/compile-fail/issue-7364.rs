@@ -17,6 +17,5 @@ use std::cell::RefCell;
 static boxed: Box<RefCell<isize>> = box RefCell::new(0);
 //~^ ERROR allocations are not allowed in statics
 //~| ERROR the trait `core::marker::Sync` is not implemented for the type
-//~| ERROR the trait `core::marker::Sync` is not implemented for the type
 
 fn main() { }
