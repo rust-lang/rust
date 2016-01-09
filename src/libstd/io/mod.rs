@@ -279,6 +279,8 @@ pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
 pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
+#[unstable(feature = "stdio_raw", reason = "newly exposed", issue = "0")]
+pub use self::stdio::{StdinRaw, StdoutRaw, StderrRaw, stdin_raw, stdout_raw, stderr_raw};
 #[unstable(feature = "libstd_io_internals", issue = "0")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
