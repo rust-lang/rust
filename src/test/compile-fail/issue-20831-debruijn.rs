@@ -40,6 +40,7 @@ impl<'a> Publisher<'a> for MyStruct<'a> {
         //~^^ ERROR cannot infer
         //~|  ERROR cannot infer
         //~|  ERROR cannot infer
+        //~|  ERROR cannot infer
         //
         // The fact that `Publisher` is using an implicit lifetime is
         // what was causing the debruijn accounting to be off, so

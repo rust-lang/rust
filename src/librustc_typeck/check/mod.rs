@@ -4132,7 +4132,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn check_representable(tcx: &ty::ctxt,
                            sp: Span,
                            item_id: ast::NodeId,
-                           designation: &str) -> bool {
+                           _designation: &str) -> bool {
     let rty = tcx.node_id_to_type(item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -4142,9 +4142,7 @@ pub fn check_representable(tcx: &ty::ctxt,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
-            struct_span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation)
-                .fileline_help(sp, "wrap the inner value in a box to make it representable")
-                .emit();
+            traits::recursive_type_with_infinite_size_error(tcx, tcx.map.local_def_id(item_id)).emit();
             return false
         }
         Representability::Representable | Representability::ContainsRecursive => (),

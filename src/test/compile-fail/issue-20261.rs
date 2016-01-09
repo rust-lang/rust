@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    for (ref i,) in [].iter() { //~ ERROR: type mismatch resolving
+    for (ref i,) in [].iter() { //~ ERROR mismatched types
         i.clone();
         //~^ ERROR: the type of this value must be known in this context
     }
