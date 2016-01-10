@@ -238,17 +238,25 @@ enum CharClassesStatus {
     LineComment,
 }
 
+/// Distinguish between functionnal part of code and comments
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum CodeCharKind {
     Normal,
     Comment,
 }
 
+/// Distinguish between functionnal part of code and comments,
+/// describing opening and closing of comments for ease when chunking
+/// code from tagged characters
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 enum FullCodeCharKind {
     Normal,
+    /// The first character of a comment, there is only one for a comment (always '/')
     StartComment,
+    /// Any character inside a comment including the second character of comment
+    /// marks ("//", "/*")
     InComment,
+    /// Last character of a comment, '\n' for a line comment, '/' for a block comment.
     EndComment,
 }
 
