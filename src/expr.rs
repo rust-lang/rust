@@ -23,7 +23,7 @@ use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search, 
             semicolon_for_stmt};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle};
-use comment::{FindUncommented, rewrite_comment, contains_comment};
+use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg};
 use chains::rewrite_chain;
@@ -35,7 +35,7 @@ use syntax::visit::Visitor;
 
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        match self.node {
+        let result = match self.node {
             ast::Expr_::ExprVec(ref expr_vec) => {
                 rewrite_array(expr_vec.iter().map(|e| &**e),
                               mk_sp(span_after(self.span, "[", context.codemap), self.span.hi),
@@ -207,7 +207,8 @@ impl Rewrite for ast::Expr {
                          width,
                          offset)
             }
-        }
+        };
+        result.and_then(|res| recover_comment_removed(res, self.span, context, width, offset))
     }
 }
 
@@ -478,7 +479,7 @@ impl Rewrite for ast::Block {
 
 impl Rewrite for ast::Stmt {
     fn rewrite(&self, context: &RewriteContext, _width: usize, offset: Indent) -> Option<String> {
-        match self.node {
+        let result = match self.node {
             ast::Stmt_::StmtDecl(ref decl, _) => {
                 if let ast::Decl_::DeclLocal(ref local) = decl.node {
                     local.rewrite(context, context.config.max_width, offset)
@@ -499,7 +500,8 @@ impl Rewrite for ast::Stmt {
                   .map(|s| s + suffix)
             }
             ast::Stmt_::StmtMac(..) => None,
-        }
+        };
+        result.and_then(|res| recover_comment_removed(res, self.span, context, _width, offset))
     }
 }
 
