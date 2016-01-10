@@ -25,6 +25,8 @@ use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, Struct
 use syntax::{ast, abi};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
+use syntax::ast::ImplItem;
+use syntax::ptr::P;
 
 // Statements of the form
 // let pat: ty = init;
@@ -485,8 +487,18 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                              context.config.where_density,
                                                              "{",
                                                              None));
-        if !where_clause_str.contains('\n') &&
-           result.len() + where_clause_str.len() + offset.width() > context.config.max_width {
+
+        if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
+            result.push_str(&where_clause_str);
+            if where_clause_str.contains('\n') {
+                result.push_str("\n{\n}");
+            } else {
+                result.push_str(" {}");
+            }
+            return Some(result);
+        }
+
+        if !where_clause_str.is_empty() && !where_clause_str.contains('\n') {
             result.push('\n');
             let width = context.block_indent.width() + context.config.tab_spaces - 1;
             let where_indent = Indent::new(0, width);
@@ -505,6 +517,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                 }
             }
         }
+
         result.push('{');
 
         let snippet = context.snippet(item.span);
@@ -531,11 +544,29 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
             result.push_str(&outer_indent_str);
         }
 
+        if result.chars().last().unwrap() == '{' {
+            result.push('\n');
+        }
         result.push('}');
+
         Some(result)
     } else {
         unreachable!();
     }
+}
+
+fn is_impl_single_line(context: &RewriteContext,
+                       items: &Vec<P<ImplItem>>,
+                       result: &str,
+                       where_clause_str: &str,
+                       item: &ast::Item)
+                       -> Option<bool> {
+    let snippet = context.snippet(item.span);
+    let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
+
+    Some(context.config.impl_empty_single_line && items.is_empty() &&
+         result.len() + where_clause_str.len() <= context.config.max_width &&
+         !contains_comment(&snippet[open_pos..]))
 }
 
 pub fn format_struct(context: &RewriteContext,
