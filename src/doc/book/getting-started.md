@@ -303,10 +303,10 @@ prints the string to the screen. Easy enough!
 
 [statically allocated]: the-stack-and-the-heap.html
 
-The line ends with a semicolon (`;`). Rust is an *[expression oriented]*
-language, which means that most things are expressions, rather than statements.
-The `;` indicates that this expression is over, and the next one is ready to
-begin. Most lines of Rust code end with a `;`.
+The line ends with a semicolon (`;`). Rust is an *[expression-oriented
+language]*, which means that most things are expressions, rather than
+statements. The `;` indicates that this expression is over, and the next one is
+ready to begin. Most lines of Rust code end with a `;`.
 
 [expression-oriented language]: glossary.html#expression-oriented-language
 
