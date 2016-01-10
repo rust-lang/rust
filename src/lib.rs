@@ -337,6 +337,7 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 
         for (c, b) in text.chars() {
             if c == '\r' {
+                line_len += c.len_utf8();
                 continue;
             }
 
@@ -367,7 +368,7 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
                 last_wspace = None;
             } else {
                 newline_count = 0;
-                line_len += 1;
+                line_len += c.len_utf8();
                 if c.is_whitespace() {
                     if last_wspace.is_none() {
                         last_wspace = Some(b);
