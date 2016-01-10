@@ -664,7 +664,30 @@ fn rewrite_if_else(context: &RewriteContext,
             _ => else_block.rewrite(context, width, offset),
         };
 
-        result.push_str(" else ");
+        let snippet = context.codemap
+                             .span_to_snippet(mk_sp(if_block.span.hi, else_block.span.lo))
+                             .unwrap();
+        // Preserve comments that are between the if and else block
+        if contains_comment(&snippet) {
+            let close_pos = try_opt!(snippet.find_uncommented("else"));
+            let trimmed = &snippet[..close_pos].trim();
+            let comment_str = format!("{}{}",
+                            offset.to_string(context.config),
+                            try_opt!(rewrite_comment(trimmed,
+                                                     false,
+                                                     width,
+                                                     offset,
+                                                     context.config)),
+                            );
+            let else_str = format!("{}else ", offset.to_string(context.config));
+
+            result.push('\n');
+            result.push_str(&comment_str);
+            result.push('\n');
+            result.push_str(&else_str);
+        } else {
+            result.push_str(" else ");
+        }
         result.push_str(&&try_opt!(rewrite));
     }
 
