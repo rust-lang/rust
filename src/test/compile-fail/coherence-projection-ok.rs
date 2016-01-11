@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    1.0f64 - 1.0;
-    1.0f64 - 1 //~ ERROR E0277
+#![feature(rustc_attrs)]
+
+pub trait Foo<P> {}
+
+pub trait Bar {
+    type Output: 'static;
 }
+
+impl Foo<i32> for i32 { }
+
+impl<A:Bar> Foo<A::Output> for A { }
+
+impl Bar for i32 {
+    type Output = u32;
+}
+
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful
