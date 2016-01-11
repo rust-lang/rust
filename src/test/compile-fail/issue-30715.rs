@@ -10,7 +10,12 @@
 
 macro_rules! parallel {
     (
-        for $id:ident in $iter:expr {
+        // If future has `pred`/`moelarry` fragments (where "pred" is
+        // "like expr, but with `{` in its FOLLOW set"), then could
+        // use `pred` instead of future-proof erroring here. See also:
+        //
+        // https://github.com/rust-lang/rfcs/pull/1384#issuecomment-160165525
+        for $id:ident in $iter:expr { //~ WARN `$iter:expr` is followed by `{`
             $( $inner:expr; )*
         }
     ) => {};
