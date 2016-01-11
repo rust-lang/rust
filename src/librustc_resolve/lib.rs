@@ -26,6 +26,7 @@
 extern crate log;
 #[macro_use]
 extern crate syntax;
+extern crate arena;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
@@ -90,7 +91,7 @@ use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::mem::replace;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 use resolve_imports::{Target, ImportDirective, ImportResolutionPerNamespace};
 use resolve_imports::Shadowable;
@@ -576,7 +577,7 @@ pub enum Namespace {
 /// a particular namespace. The result is either definitely-resolved,
 /// definitely- unresolved, or unknown.
 #[derive(Clone)]
-enum NamespaceResult {
+enum NamespaceResult<'a> {
     /// Means that resolve hasn't gathered enough information yet to determine
     /// whether the name is bound in this namespace. (That is, it hasn't
     /// resolved all `use` directives yet.)
@@ -586,10 +587,10 @@ enum NamespaceResult {
     UnboundResult,
     /// Means that resolve has determined that the name is bound in the Module
     /// argument, and specified by the NameBinding argument.
-    BoundResult(Rc<Module>, NameBinding),
+    BoundResult(Module<'a>, NameBinding<'a>),
 }
 
-impl NamespaceResult {
+impl<'a> NamespaceResult<'a> {
     fn is_unknown(&self) -> bool {
         match *self {
             UnknownResult => true,
@@ -766,9 +767,9 @@ enum UseLexicalScopeFlag {
     UseLexicalScope,
 }
 
-enum ModulePrefixResult {
+enum ModulePrefixResult<'a> {
     NoPrefixFound,
-    PrefixFound(Rc<Module>, usize),
+    PrefixFound(Module<'a>, usize),
 }
 
 #[derive(Copy, Clone)]
@@ -830,24 +831,24 @@ impl LocalDef {
 
 /// The link from a module up to its nearest parent node.
 #[derive(Clone,Debug)]
-enum ParentLink {
+enum ParentLink<'a> {
     NoParentLink,
-    ModuleParentLink(Weak<Module>, Name),
-    BlockParentLink(Weak<Module>, NodeId),
+    ModuleParentLink(Module<'a>, Name),
+    BlockParentLink(Module<'a>, NodeId),
 }
 
 /// One node in the tree of modules.
-pub struct Module {
-    parent_link: ParentLink,
+pub struct ModuleS<'a> {
+    parent_link: ParentLink<'a>,
     def: Cell<Option<Def>>,
     is_public: bool,
 
-    children: RefCell<HashMap<Name, NameBindings>>,
+    children: RefCell<HashMap<Name, NameBindings<'a>>>,
     imports: RefCell<Vec<ImportDirective>>,
 
     // The external module children of this node that were declared with
     // `extern crate`.
-    external_module_children: RefCell<HashMap<Name, Rc<Module>>>,
+    external_module_children: RefCell<HashMap<Name, Module<'a>>>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -863,10 +864,10 @@ pub struct Module {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    anonymous_children: RefCell<NodeMap<Rc<Module>>>,
+    anonymous_children: RefCell<NodeMap<Module<'a>>>,
 
     // The status of resolving each import in this module.
-    import_resolutions: RefCell<HashMap<Name, ImportResolutionPerNamespace>>,
+    import_resolutions: RefCell<HashMap<Name, ImportResolutionPerNamespace<'a>>>,
 
     // The number of unresolved globs that this module exports.
     glob_count: Cell<usize>,
@@ -886,13 +887,11 @@ pub struct Module {
     populated: Cell<bool>,
 }
 
-impl Module {
-    fn new(parent_link: ParentLink,
-           def: Option<Def>,
-           external: bool,
-           is_public: bool)
-           -> Rc<Module> {
-        Rc::new(Module {
+pub type Module<'a> = &'a ModuleS<'a>;
+
+impl<'a> ModuleS<'a> {
+    fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool, is_public: bool) -> Self {
+        ModuleS {
             parent_link: parent_link,
             def: Cell::new(def),
             is_public: is_public,
@@ -906,7 +905,7 @@ impl Module {
             pub_glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
-        })
+        }
     }
 
     fn def_id(&self) -> Option<DefId> {
@@ -935,9 +934,7 @@ impl Module {
             self.imports.borrow().len() == self.resolved_import_count.get()
         }
     }
-}
 
-impl Module {
     pub fn inc_glob_count(&self) {
         self.glob_count.set(self.glob_count.get() + 1);
     }
@@ -961,7 +958,7 @@ impl Module {
     }
 }
 
-impl fmt::Debug for Module {
+impl<'a> fmt::Debug for ModuleS<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
                "{:?}, {}",
@@ -989,20 +986,20 @@ bitflags! {
 
 // Records a possibly-private value, type, or module definition.
 #[derive(Debug)]
-struct NsDef {
+struct NsDef<'a> {
     modifiers: DefModifiers, // see note in ImportResolutionPerNamespace about how to use this
-    def_or_module: DefOrModule,
+    def_or_module: DefOrModule<'a>,
     span: Option<Span>,
 }
 
 #[derive(Debug)]
-enum DefOrModule {
+enum DefOrModule<'a> {
     Def(Def),
-    Module(Rc<Module>),
+    Module(Module<'a>),
 }
 
-impl NsDef {
-    fn create_from_module(module: Rc<Module>, span: Option<Span>) -> Self {
+impl<'a> NsDef<'a> {
+    fn create_from_module(module: Module<'a>, span: Option<Span>) -> Self {
         let modifiers = if module.is_public {
             DefModifiers::PUBLIC
         } else {
@@ -1016,9 +1013,9 @@ impl NsDef {
         NsDef { modifiers: modifiers, def_or_module: DefOrModule::Def(def), span: span }
     }
 
-    fn module(&self) -> Option<Rc<Module>> {
+    fn module(&self) -> Option<Module<'a>> {
         match self.def_or_module {
-            DefOrModule::Module(ref module) => Some(module.clone()),
+            DefOrModule::Module(ref module) => Some(module),
             DefOrModule::Def(_) => None,
         }
     }
@@ -1033,18 +1030,18 @@ impl NsDef {
 
 // Records at most one definition that a name in a namespace is bound to
 #[derive(Clone,Debug)]
-pub struct NameBinding(Rc<RefCell<Option<NsDef>>>);
+pub struct NameBinding<'a>(Rc<RefCell<Option<NsDef<'a>>>>);
 
-impl NameBinding {
+impl<'a> NameBinding<'a> {
     fn new() -> Self {
         NameBinding(Rc::new(RefCell::new(None)))
     }
 
-    fn create_from_module(module: Rc<Module>) -> Self {
+    fn create_from_module(module: Module<'a>) -> Self {
         NameBinding(Rc::new(RefCell::new(Some(NsDef::create_from_module(module, None)))))
     }
 
-    fn set(&self, ns_def: NsDef) {
+    fn set(&self, ns_def: NsDef<'a>) {
         *self.0.borrow_mut() = Some(ns_def);
     }
 
@@ -1054,7 +1051,7 @@ impl NameBinding {
         }
     }
 
-    fn borrow(&self) -> ::std::cell::Ref<Option<NsDef>> {
+    fn borrow(&self) -> ::std::cell::Ref<Option<NsDef<'a>>> {
         self.0.borrow()
     }
 
@@ -1062,7 +1059,7 @@ impl NameBinding {
     fn def(&self) -> Option<Def> {
         self.borrow().as_ref().and_then(NsDef::def)
     }
-    fn module(&self) -> Option<Rc<Module>> {
+    fn module(&self) -> Option<Module<'a>> {
         self.borrow().as_ref().and_then(NsDef::module)
     }
     fn span(&self) -> Option<Span> {
@@ -1093,20 +1090,20 @@ impl NameBinding {
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 #[derive(Clone,Debug)]
-pub struct NameBindings {
-    type_ns: NameBinding, // < Meaning in type namespace.
-    value_ns: NameBinding, // < Meaning in value namespace.
+pub struct NameBindings<'a> {
+    type_ns: NameBinding<'a>, // < Meaning in type namespace.
+    value_ns: NameBinding<'a>, // < Meaning in value namespace.
 }
 
-impl ::std::ops::Index<Namespace> for NameBindings {
-    type Output = NameBinding;
-    fn index(&self, namespace: Namespace) -> &NameBinding {
+impl<'a> ::std::ops::Index<Namespace> for NameBindings<'a> {
+    type Output = NameBinding<'a>;
+    fn index(&self, namespace: Namespace) -> &NameBinding<'a> {
         match namespace { TypeNS => &self.type_ns, ValueNS => &self.value_ns }
     }
 }
 
-impl NameBindings {
-    fn new() -> NameBindings {
+impl<'a> NameBindings<'a> {
+    fn new() -> Self {
         NameBindings {
             type_ns: NameBinding::new(),
             value_ns: NameBinding::new(),
@@ -1114,7 +1111,7 @@ impl NameBindings {
     }
 
     /// Creates a new module in this set of name bindings.
-    fn define_module(&self, module: Rc<Module>, sp: Span) {
+    fn define_module(&self, module: Module<'a>, sp: Span) {
         self.type_ns.set(NsDef::create_from_module(module, Some(sp)));
     }
 
@@ -1170,7 +1167,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
     ast_map: &'a hir_map::Map<'tcx>,
 
-    graph_root: Rc<Module>,
+    graph_root: Module<'a>,
 
     trait_item_map: FnvHashMap<(Name, DefId), DefId>,
 
@@ -1180,7 +1177,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
     unresolved_imports: usize,
 
     // The module that represents the current item scope.
-    current_module: Rc<Module>,
+    current_module: Module<'a>,
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
@@ -1226,6 +1223,12 @@ pub struct Resolver<'a, 'tcx: 'a> {
     // The intention is that the callback modifies this flag.
     // Once set, the resolver falls out of the walk, preserving the ribs.
     resolved: bool,
+
+    arenas: &'a ResolverArenas<'a>,
+}
+
+pub struct ResolverArenas<'a> {
+    modules: arena::TypedArena<ModuleS<'a>>,
 }
 
 #[derive(PartialEq)]
@@ -1237,10 +1240,12 @@ enum FallbackChecks {
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn new(session: &'a Session,
            ast_map: &'a hir_map::Map<'tcx>,
-           make_glob_map: MakeGlobMap)
+           make_glob_map: MakeGlobMap,
+           arenas: &'a ResolverArenas<'a>)
            -> Resolver<'a, 'tcx> {
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
-        let graph_root = Module::new(NoParentLink, Some(DefMod(root_def_id)), false, true);
+        let graph_root = ModuleS::new(NoParentLink, Some(DefMod(root_def_id)), false, true);
+        let graph_root = arenas.modules.alloc(graph_root);
 
         Resolver {
             session: session,
@@ -1249,7 +1254,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
-            graph_root: graph_root.clone(),
+            graph_root: graph_root,
 
             trait_item_map: FnvHashMap(),
             structs: FnvHashMap(),
@@ -1281,7 +1286,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             callback: None,
             resolved: false,
+
+            arenas: arenas,
         }
+    }
+
+    fn arenas() -> ResolverArenas<'a> {
+        ResolverArenas {
+            modules: arena::TypedArena::new(),
+        }
+    }
+
+    fn new_module(&self,
+                  parent_link: ParentLink<'a>,
+                  def: Option<Def>,
+                  external: bool,
+                  is_public: bool) -> Module<'a> {
+        self.arenas.modules.alloc(ModuleS::new(parent_link, def, external, is_public))
     }
 
     #[inline]
@@ -1308,7 +1329,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Check that an external crate doesn't collide with items or other external crates.
-    fn check_for_conflicts_for_external_crate(&self, module: &Module, name: Name, span: Span) {
+    fn check_for_conflicts_for_external_crate(&self, module: Module<'a>, name: Name, span: Span) {
         if module.external_module_children.borrow().contains_key(&name) {
             span_err!(self.session,
                       span,
@@ -1328,7 +1349,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Checks that the names of items don't collide with external crates.
     fn check_for_conflicts_between_external_crates_and_items(&self,
-                                                             module: &Module,
+                                                             module: Module<'a>,
                                                              name: Name,
                                                              span: Span) {
         if module.external_module_children.borrow().contains_key(&name) {
@@ -1338,19 +1359,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Resolves the given module path from the given root `module_`.
     fn resolve_module_path_from_root(&mut self,
-                                     module_: Rc<Module>,
+                                     module_: Module<'a>,
                                      module_path: &[Name],
                                      index: usize,
                                      span: Span,
                                      name_search_type: NameSearchType,
                                      lp: LastPrivate)
-                                     -> ResolveResult<(Rc<Module>, LastPrivate)> {
-        fn search_parent_externals(needle: Name, module: &Rc<Module>) -> Option<Rc<Module>> {
+                                     -> ResolveResult<(Module<'a>, LastPrivate)> {
+        fn search_parent_externals<'a>(needle: Name, module: Module<'a>)
+                                       -> Option<Module<'a>> {
             match module.external_module_children.borrow().get(&needle) {
-                Some(_) => Some(module.clone()),
+                Some(_) => Some(module),
                 None => match module.parent_link {
                     ModuleParentLink(ref parent, _) => {
-                        search_parent_externals(needle, &parent.upgrade().unwrap())
+                        search_parent_externals(needle, parent)
                     }
                     _ => None,
                 },
@@ -1367,14 +1389,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index];
-            match self.resolve_name_in_module(search_module.clone(),
+            match self.resolve_name_in_module(search_module,
                                               name,
                                               TypeNS,
                                               name_search_type,
                                               false) {
                 Failed(None) => {
                     let segment_name = name.as_str();
-                    let module_name = module_to_string(&*search_module);
+                    let module_name = module_to_string(search_module);
                     let mut span = span;
                     let msg = if "???" == &module_name[..] {
                         span.hi = span.lo + Pos::from_usize(segment_name.len());
@@ -1445,12 +1467,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// On success, returns the resolved module, and the closest *private*
     /// module found to the destination when resolving this path.
     fn resolve_module_path(&mut self,
-                           module_: Rc<Module>,
+                           module_: Module<'a>,
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Span,
                            name_search_type: NameSearchType)
-                           -> ResolveResult<(Rc<Module>, LastPrivate)> {
+                           -> ResolveResult<(Module<'a>, LastPrivate)> {
         let module_path_len = module_path.len();
         assert!(module_path_len > 0);
 
@@ -1459,7 +1481,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                module_to_string(&*module_));
 
         // Resolve the module prefix, if any.
-        let module_prefix_result = self.resolve_module_prefix(module_.clone(), module_path);
+        let module_prefix_result = self.resolve_module_prefix(module_, module_path);
 
         let search_module;
         let start_index;
@@ -1495,7 +1517,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     DontUseLexicalScope => {
                         // This is a crate-relative path. We will start the
                         // resolution process at index zero.
-                        search_module = self.graph_root.clone();
+                        search_module = self.graph_root;
                         start_index = 0;
                         last_private = LastMod(AllPublic);
                     }
@@ -1519,7 +1541,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
             Success(PrefixFound(ref containing_module, index)) => {
-                search_module = containing_module.clone();
+                search_module = containing_module;
                 start_index = index;
                 last_private = LastMod(DependsOn(containing_module.def_id()
                                                                   .unwrap()));
@@ -1537,11 +1559,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_item_in_lexical_scope(&mut self,
-                                     module_: Rc<Module>,
+                                     module_: Module<'a>,
                                      name: Name,
                                      namespace: Namespace,
                                      record_used: bool)
-                                     -> ResolveResult<(Target, bool)> {
+                                     -> ResolveResult<(Target<'a>, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
                name,
                namespace,
@@ -1554,7 +1576,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match module_.children.borrow().get(&name) {
             Some(name_bindings) if name_bindings[namespace].defined() => {
                 debug!("top name bindings succeeded");
-                return Success((Target::new(module_.clone(),
+                return Success((Target::new(module_,
                                             name_bindings[namespace].clone(),
                                             Shadowable::Never),
                                 false));
@@ -1594,9 +1616,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Search for external modules.
         if namespace == TypeNS {
-            // FIXME (21114): In principle unclear `child` *has* to be lifted.
-            let child = module_.external_module_children.borrow().get(&name).cloned();
-            if let Some(module) = child {
+            let children = module_.external_module_children.borrow();
+            if let Some(module) = children.get(&name) {
                 let name_binding = NameBinding::create_from_module(module);
                 debug!("lower name bindings succeeded");
                 return Success((Target::new(module_, name_binding, Shadowable::Never),
@@ -1608,7 +1629,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut search_module = module_;
         loop {
             // Go to the next parent.
-            match search_module.parent_link.clone() {
+            match search_module.parent_link {
                 NoParentLink => {
                     // No more parents. This module was unresolved.
                     debug!("(resolving item in lexical scope) unresolved module");
@@ -1621,16 +1642,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 searching through module parents");
                             return Failed(None);
                     } else {
-                        search_module = parent_module_node.upgrade().unwrap();
+                        search_module = parent_module_node;
                     }
                 }
-                BlockParentLink(ref parent_module_node, _) => {
-                    search_module = parent_module_node.upgrade().unwrap();
+                BlockParentLink(parent_module_node, _) => {
+                    search_module = parent_module_node;
                 }
             }
 
             // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module.clone(),
+            match self.resolve_name_in_module(search_module,
                                               name,
                                               namespace,
                                               PathSearch,
@@ -1657,9 +1678,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Resolves a module name in the current lexical scope.
     fn resolve_module_in_lexical_scope(&mut self,
-                                       module_: Rc<Module>,
+                                       module_: Module<'a>,
                                        name: Name)
-                                       -> ResolveResult<Rc<Module>> {
+                                       -> ResolveResult<Module<'a>> {
         // If this module is an anonymous module, resolve the item in the
         // lexical scope. Otherwise, resolve the item from the crate root.
         let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS, true);
@@ -1685,14 +1706,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Returns the nearest normal module parent of the given module.
-    fn get_nearest_normal_module_parent(&mut self, module_: Rc<Module>) -> Option<Rc<Module>> {
+    fn get_nearest_normal_module_parent(&mut self, module_: Module<'a>) -> Option<Module<'a>> {
         let mut module_ = module_;
         loop {
-            match module_.parent_link.clone() {
+            match module_.parent_link {
                 NoParentLink => return None,
                 ModuleParentLink(new_module, _) |
                 BlockParentLink(new_module, _) => {
-                    let new_module = new_module.upgrade().unwrap();
+                    let new_module = new_module;
                     if new_module.is_normal() {
                         return Some(new_module);
                     }
@@ -1704,11 +1725,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Returns the nearest normal module parent of the given module, or the
     /// module itself if it is a normal module.
-    fn get_nearest_normal_module_parent_or_self(&mut self, module_: Rc<Module>) -> Rc<Module> {
+    fn get_nearest_normal_module_parent_or_self(&mut self, module_: Module<'a>) -> Module<'a> {
         if module_.is_normal() {
             return module_;
         }
-        match self.get_nearest_normal_module_parent(module_.clone()) {
+        match self.get_nearest_normal_module_parent(module_) {
             None => module_,
             Some(new_module) => new_module,
         }
@@ -1718,9 +1739,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
     fn resolve_module_prefix(&mut self,
-                             module_: Rc<Module>,
+                             module_: Module<'a>,
                              module_path: &[Name])
-                             -> ResolveResult<ModulePrefixResult> {
+                             -> ResolveResult<ModulePrefixResult<'a>> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
         let mut i = match &*module_path[0].as_str() {
@@ -1756,12 +1777,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// The boolean returned on success is an indicator of whether this lookup
     /// passed through a public re-export proxy.
     fn resolve_name_in_module(&mut self,
-                              module_: Rc<Module>,
+                              module_: Module<'a>,
                               name: Name,
                               namespace: Namespace,
                               name_search_type: NameSearchType,
                               allow_private_imports: bool)
-                              -> ResolveResult<(Target, bool)> {
+                              -> ResolveResult<(Target<'a>, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
                name,
                module_to_string(&*module_));
@@ -1769,10 +1790,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // First, check the direct children of the module.
         build_reduced_graph::populate_module_if_necessary(self, &module_);
 
-        match module_.children.borrow().get(&name) {
+        let children = module_.children.borrow();
+        match children.get(&name) {
             Some(name_bindings) if name_bindings[namespace].defined() => {
                 debug!("(resolving name in module) found node as child");
-                return Success((Target::new(module_.clone(),
+                return Success((Target::new(module_,
                                             name_bindings[namespace].clone(),
                                             Shadowable::Never),
                                 false));
@@ -1791,7 +1813,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Check the list of resolved imports.
-        match module_.import_resolutions.borrow().get(&name) {
+        let children = module_.import_resolutions.borrow();
+        match children.get(&name) {
             Some(import_resolution) if allow_private_imports ||
                                        import_resolution[namespace].is_public => {
 
@@ -1823,9 +1846,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            // FIXME (21114): In principle unclear `child` *has* to be lifted.
-            let child = module_.external_module_children.borrow().get(&name).cloned();
-            if let Some(module) = child {
+            let children = module_.external_module_children.borrow();
+            if let Some(module) = children.get(&name) {
                 let name_binding = NameBinding::create_from_module(module);
                 return Success((Target::new(module_, name_binding, Shadowable::Never),
                                 false));
@@ -1837,7 +1859,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         return Failed(None);
     }
 
-    fn report_unresolved_imports(&mut self, module_: Rc<Module>) {
+    fn report_unresolved_imports(&mut self, module_: Module<'a>) {
         let index = module_.resolved_import_count.get();
         let imports = module_.imports.borrow();
         let import_count = imports.len();
@@ -1862,7 +1884,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         for (_, module_) in module_.anonymous_children.borrow().iter() {
-            self.report_unresolved_imports(module_.clone());
+            self.report_unresolved_imports(module_);
         }
     }
 
@@ -1887,7 +1909,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn with_scope<F>(&mut self, name: Option<Name>, f: F)
         where F: FnOnce(&mut Resolver)
     {
-        let orig_module = self.current_module.clone();
+        let orig_module = self.current_module;
 
         // Move down in the graph.
         match name {
@@ -2475,14 +2497,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.value_ribs.push(Rib::new(NormalRibKind));
 
         // Move down in the graph, if there's an anonymous module rooted here.
-        let orig_module = self.current_module.clone();
+        let orig_module = self.current_module;
         match orig_module.anonymous_children.borrow().get(&block.id) {
             None => {
                 // Nothing to do.
             }
             Some(anonymous_module) => {
                 debug!("(resolving block) found anonymous module, moving down");
-                self.current_module = anonymous_module.clone();
+                self.current_module = anonymous_module;
             }
         }
 
@@ -2871,7 +2893,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        name: Name,
                                        span: Span)
                                        -> BareIdentifierPatternResolution {
-        let module = self.current_module.clone();
+        let module = self.current_module;
         match self.resolve_item_in_lexical_scope(module, name, ValueNS, true) {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
@@ -3135,7 +3157,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let containing_module;
         let last_private;
-        let current_module = self.current_module.clone();
+        let current_module = self.current_module;
         match self.resolve_module_path(current_module,
                                        &module_path[..],
                                        UseLexicalScope,
@@ -3162,7 +3184,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        let def = match self.resolve_name_in_module(containing_module.clone(),
+        let def = match self.resolve_name_in_module(containing_module,
                                                     name,
                                                     namespace,
                                                     NameSearchType::PathSearch,
@@ -3193,7 +3215,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                   .map(|ps| ps.identifier.name)
                                   .collect::<Vec<_>>();
 
-        let root_module = self.graph_root.clone();
+        let root_module = self.graph_root;
 
         let containing_module;
         let last_private;
@@ -3283,7 +3305,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                              record_used: bool)
                                              -> Option<Def> {
         // Check the items.
-        let module = self.current_module.clone();
+        let module = self.current_module;
         match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
             Success((target, _)) => {
                 match target.binding.def() {
@@ -3345,11 +3367,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        fn get_module(this: &mut Resolver,
-                      span: Span,
-                      name_path: &[ast::Name])
-                      -> Option<Rc<Module>> {
-            let root = this.current_module.clone();
+        fn get_module<'a, 'tcx>(this: &mut Resolver<'a, 'tcx>,
+                                span: Span,
+                                name_path: &[ast::Name])
+                                -> Option<Module<'a>> {
+            let root = this.current_module;
             let last_name = name_path.last().unwrap();
 
             if name_path.len() == 1 {
@@ -3603,7 +3625,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     let name_path = path.segments.iter()
                                                         .map(|seg| seg.identifier.name)
                                                         .collect::<Vec<_>>();
-                                    let current_module = self.current_module.clone();
+                                    let current_module = self.current_module;
 
                                     match self.resolve_module_path(current_module,
                                                    &name_path[..],
@@ -3725,7 +3747,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let mut found_traits = Vec::new();
-        let mut search_module = self.current_module.clone();
+        let mut search_module = self.current_module;
         loop {
             // Look for the current trait.
             match self.current_trait_ref {
@@ -3778,10 +3800,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            match search_module.parent_link.clone() {
+            match search_module.parent_link {
                 NoParentLink | ModuleParentLink(..) => break,
                 BlockParentLink(parent_module, _) => {
-                    search_module = parent_module.upgrade().unwrap();
+                    search_module = parent_module;
                 }
             }
         }
@@ -3828,7 +3850,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     //
 
     #[allow(dead_code)]   // useful for debugging
-    fn dump_module(&mut self, module_: Rc<Module>) {
+    fn dump_module(&mut self, module_: Module<'a>) {
         debug!("Dump of module `{}`:", module_to_string(&*module_));
 
         debug!("Children:");
@@ -3891,20 +3913,20 @@ fn path_names_to_string(path: &Path, depth: usize) -> String {
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
-fn module_to_string(module: &Module) -> String {
+fn module_to_string<'a>(module: Module<'a>) -> String {
     let mut names = Vec::new();
 
-    fn collect_mod(names: &mut Vec<ast::Name>, module: &Module) {
+    fn collect_mod<'a>(names: &mut Vec<ast::Name>, module: Module<'a>) {
         match module.parent_link {
             NoParentLink => {}
             ModuleParentLink(ref module, name) => {
                 names.push(name);
-                collect_mod(names, &*module.upgrade().unwrap());
+                collect_mod(names, module);
             }
             BlockParentLink(ref module, _) => {
                 // danger, shouldn't be ident?
                 names.push(special_idents::opaque.name);
-                collect_mod(names, &*module.upgrade().unwrap());
+                collect_mod(names, module);
             }
         }
     }
@@ -3946,7 +3968,8 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
                                make_glob_map: MakeGlobMap)
                                -> CrateMap {
     let krate = ast_map.krate();
-    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, None);
+    let arenas = Resolver::arenas();
+    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, &arenas, None);
 
     resolver.resolve_crate(krate);
 
@@ -3978,9 +4001,10 @@ pub fn create_resolver<'a, 'tcx>(session: &'a Session,
                                  ast_map: &'a hir_map::Map<'tcx>,
                                  krate: &'a Crate,
                                  make_glob_map: MakeGlobMap,
+                                 arenas: &'a ResolverArenas<'a>,
                                  callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>)
                                  -> Resolver<'a, 'tcx> {
-    let mut resolver = Resolver::new(session, ast_map, make_glob_map);
+    let mut resolver = Resolver::new(session, ast_map, make_glob_map, arenas);
 
     resolver.callback = callback;
 
