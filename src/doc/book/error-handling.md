@@ -117,8 +117,8 @@ the first example. This is because the
 panic is embedded in the calls to `unwrap`.
 
 To “unwrap” something in Rust is to say, “Give me the result of the
-computation, and if there was an error, just panic and stop the program.”
-It would be better if we just showed the code for unwrapping because it is so
+computation, and if there was an error, panic and stop the program.”
+It would be better if we showed the code for unwrapping because it is so
 simple, but to do that, we will first need to explore the `Option` and `Result`
 types. Both of these types have a method called `unwrap` defined on them.
 
@@ -154,7 +154,7 @@ fn find(haystack: &str, needle: char) -> Option<usize> {
 }
 ```
 
-Notice that when this function finds a matching character, it doesn't just
+Notice that when this function finds a matching character, it doesn't only
 return the `offset`. Instead, it returns `Some(offset)`. `Some` is a variant or
 a *value constructor* for the `Option` type. You can think of it as a function
 with the type `fn<T>(value: T) -> Option<T>`. Correspondingly, `None` is also a
@@ -216,7 +216,7 @@ we saw how to use `find` to discover the extension in a file name. Of course,
 not all file names have a `.` in them, so it's possible that the file name has
 no extension. This *possibility of absence* is encoded into the types using
 `Option<T>`. In other words, the compiler will force us to address the
-possibility that an extension does not exist. In our case, we just print out a
+possibility that an extension does not exist. In our case, we only print out a
 message saying as such.
 
 Getting the extension of a file name is a pretty common operation, so it makes
@@ -248,7 +248,7 @@ tiresome.
 
 In fact, the case analysis in `extension_explicit` follows a very common
 pattern: *map* a function on to the value inside of an `Option<T>`, unless the
-option is `None`, in which case, just return `None`.
+option is `None`, in which case, return `None`.
 
 Rust has parametric polymorphism, so it is very easy to define a combinator
 that abstracts this pattern:
@@ -350,7 +350,7 @@ fn file_name(file_path: &str) -> Option<&str> {
 }
 ```
 
-You might think that we could just use the `map` combinator to reduce the case
+You might think that we could use the `map` combinator to reduce the case
 analysis, but its type doesn't quite fit. Namely, `map` takes a function that
 does something only with the inner value. The result of that function is then
 *always* [rewrapped with `Some`](#code-option-map). Instead, we need something
@@ -670,7 +670,7 @@ The tricky aspect here is that `argv.nth(1)` produces an `Option` while
 with both an `Option` and a `Result`, the solution is *usually* to convert the
 `Option` to a `Result`. In our case, the absence of a command line parameter
 (from `env::args()`) means the user didn't invoke the program correctly. We
-could just use a `String` to describe the error. Let's try:
+could use a `String` to describe the error. Let's try:
 
 <span id="code-error-double-string"></span>
 
@@ -709,7 +709,7 @@ fn ok_or<T, E>(option: Option<T>, err: E) -> Result<T, E> {
 
 The other new combinator used here is
 [`Result::map_err`](../std/result/enum.Result.html#method.map_err).
-This is just like `Result::map`, except it maps a function on to the *error*
+This is like `Result::map`, except it maps a function on to the *error*
 portion of a `Result` value. If the `Result` is an `Ok(...)` value, then it is
 returned unmodified.
 
@@ -841,7 +841,7 @@ example, the very last call to `map` multiplies the `Ok(...)` value (which is
 an `i32`) by `2`. If an error had occurred before that point, this operation
 would have been skipped because of how `map` is defined.
 
-`map_err` is the trick that makes all of this work. `map_err` is just like
+`map_err` is the trick that makes all of this work. `map_err` is like
 `map`, except it applies a function to the `Err(...)` value of a `Result`. In
 this case, we want to convert all of our errors to one type: `String`. Since
 both `io::Error` and `num::ParseIntError` implement `ToString`, we can call the
@@ -901,7 +901,7 @@ reduce explicit case analysis. Combinators aren't the only way.
 ## The `try!` macro
 
 A cornerstone of error handling in Rust is the `try!` macro. The `try!` macro
-abstracts case analysis just like combinators, but unlike combinators, it also
+abstracts case analysis like combinators, but unlike combinators, it also
 abstracts *control flow*. Namely, it can abstract the *early return* pattern
 seen above.
 
@@ -1461,7 +1461,7 @@ expose its representation (like
 [`ErrorKind`](../std/io/enum.ErrorKind.html)) or keep it hidden (like
 [`ParseIntError`](../std/num/struct.ParseIntError.html)). Regardless
 of how you do it, it's usually good practice to at least provide some
-information about the error beyond just its `String`
+information about the error beyond its `String`
 representation. But certainly, this will vary depending on use cases.
 
 At a minimum, you should probably implement the
@@ -1499,7 +1499,7 @@ that can go wrong!
 The data we'll be using comes from the [Data Science
 Toolkit][11]. I've prepared some data from it for this exercise. You
 can either grab the [world population data][12] (41MB gzip compressed,
-145MB uncompressed) or just the [US population data][13] (2.2MB gzip
+145MB uncompressed) or only the [US population data][13] (2.2MB gzip
 compressed, 7.2MB uncompressed).
 
 Up until now, we've kept the code limited to Rust's standard library. For a real
@@ -1706,7 +1706,7 @@ compiler can no longer reason about its underlying type.
 
 [Previously](#the-limits-of-combinators) we started refactoring our code by
 changing the type of our function from `T` to `Result<T, OurErrorType>`. In
-this case, `OurErrorType` is just `Box<Error>`. But what's `T`? And can we add
+this case, `OurErrorType` is only `Box<Error>`. But what's `T`? And can we add
 a return type to `main`?
 
 The answer to the second question is no, we can't. That means we'll need to
@@ -1924,7 +1924,7 @@ parser out of
 But how can we use the same code over both types? There's actually a
 couple ways we could go about this. One way is to write `search` such
 that it is generic on some type parameter `R` that satisfies
-`io::Read`. Another way is to just use trait objects:
+`io::Read`. Another way is to use trait objects:
 
 ```rust,ignore
 fn search<P: AsRef<Path>>
@@ -2081,7 +2081,7 @@ opts.optflag("q", "quiet", "Silences errors and warnings.");
 ...
 ```
 
-Now we just need to implement our “quiet” functionality. This requires us to
+Now we only need to implement our “quiet” functionality. This requires us to
 tweak the case analysis in `main`:
 
 ```rust,ignore
@@ -2114,7 +2114,7 @@ handling in Rust. These are some good “rules of thumb." They are emphatically
 heuristics!
 
 * If you're writing short example code that would be overburdened by error
-  handling, it's probably just fine to use `unwrap` (whether that's
+  handling, it's probably fine to use `unwrap` (whether that's
   [`Result::unwrap`](../std/result/enum.Result.html#method.unwrap),
   [`Option::unwrap`](../std/option/enum.Option.html#method.unwrap)
   or preferably
