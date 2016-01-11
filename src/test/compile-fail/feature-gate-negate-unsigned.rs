@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that negating unsigned integers is gated by `negate_unsigned` feature
-// gate
+// Test that negating unsigned integers doesn't compile
 
 struct S;
 impl std::ops::Neg for S {
@@ -18,21 +17,26 @@ impl std::ops::Neg for S {
 }
 
 const _MAX: usize = -1;
-//~^ ERROR unary negation of unsigned integers may be removed in the future
+//~^ ERROR unary negation of unsigned integer
+//~| HELP use a cast or the `!` operator
 
 fn main() {
     let a = -1;
-    //~^ ERROR unary negation of unsigned integers may be removed in the future
+    //~^ ERROR unary negation of unsigned integer
+    //~| HELP use a cast or the `!` operator
     let _b : u8 = a; // for infering variable a to u8.
 
     -a;
-    //~^ ERROR unary negation of unsigned integers may be removed in the future
+    //~^ ERROR unary negation of unsigned integer
+    //~| HELP use a cast or the `!` operator
 
     let _d = -1u8;
-    //~^ ERROR unary negation of unsigned integers may be removed in the future
+    //~^ ERROR unary negation of unsigned integer
+    //~| HELP use a cast or the `!` operator
 
     for _ in -10..10u8 {}
-    //~^ ERROR unary negation of unsigned integers may be removed in the future
+    //~^ ERROR unary negation of unsigned integer
+    //~| HELP use a cast or the `!` operator
 
     -S; // should not trigger the gate; issue 26840
 }
