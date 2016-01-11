@@ -314,10 +314,19 @@ impl<'tcx> CallKind<'tcx> {
         }
     }
 
-    pub fn destination(&self) -> Option<Lvalue<'tcx>> {
+    pub fn destination(&self) -> Option<&Lvalue<'tcx>> {
         match *self {
             CallKind::Converging { ref destination, .. } |
-            CallKind::ConvergingCleanup { ref destination, .. } => Some(destination.clone()),
+            CallKind::ConvergingCleanup { ref destination, .. } => Some(destination),
+            CallKind::Diverging |
+            CallKind::DivergingCleanup(_) => None
+        }
+    }
+
+    pub fn destination_mut(&mut self) -> Option<&mut Lvalue<'tcx>> {
+        match *self {
+            CallKind::Converging { ref mut destination, .. } |
+            CallKind::ConvergingCleanup { ref mut destination, .. } => Some(destination),
             CallKind::Diverging |
             CallKind::DivergingCleanup(_) => None
         }

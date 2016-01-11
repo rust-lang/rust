@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(negate_unsigned)]
 #![feature(intrinsics)]
 
 mod rusti {
@@ -45,10 +43,10 @@ pub fn main() {
         assert_eq!(ctpop(100u32), 3); assert_eq!(ctpop(100i32), 3);
         assert_eq!(ctpop(100u64), 3); assert_eq!(ctpop(100i64), 3);
 
-        assert_eq!(ctpop(-1u8), 8); assert_eq!(ctpop(-1i8), 8);
-        assert_eq!(ctpop(-1u16), 16); assert_eq!(ctpop(-1i16), 16);
-        assert_eq!(ctpop(-1u32), 32); assert_eq!(ctpop(-1i32), 32);
-        assert_eq!(ctpop(-1u64), 64); assert_eq!(ctpop(-1i64), 64);
+        assert_eq!(ctpop(-1i8 as u8), 8); assert_eq!(ctpop(-1i8), 8);
+        assert_eq!(ctpop(-1i16 as u16), 16); assert_eq!(ctpop(-1i16), 16);
+        assert_eq!(ctpop(-1i32 as u32), 32); assert_eq!(ctpop(-1i32), 32);
+        assert_eq!(ctpop(-1i64 as u64), 64); assert_eq!(ctpop(-1i64), 64);
 
         assert_eq!(ctlz(0u8), 8); assert_eq!(ctlz(0i8), 8);
         assert_eq!(ctlz(0u16), 16); assert_eq!(ctlz(0i16), 16);
@@ -70,10 +68,10 @@ pub fn main() {
         assert_eq!(ctlz(100u32), 25); assert_eq!(ctlz(100i32), 25);
         assert_eq!(ctlz(100u64), 57); assert_eq!(ctlz(100i64), 57);
 
-        assert_eq!(cttz(-1u8), 0); assert_eq!(cttz(-1i8), 0);
-        assert_eq!(cttz(-1u16), 0); assert_eq!(cttz(-1i16), 0);
-        assert_eq!(cttz(-1u32), 0); assert_eq!(cttz(-1i32), 0);
-        assert_eq!(cttz(-1u64), 0); assert_eq!(cttz(-1i64), 0);
+        assert_eq!(cttz(-1i8 as u8), 0); assert_eq!(cttz(-1i8), 0);
+        assert_eq!(cttz(-1i16 as u16), 0); assert_eq!(cttz(-1i16), 0);
+        assert_eq!(cttz(-1i32 as u32), 0); assert_eq!(cttz(-1i32), 0);
+        assert_eq!(cttz(-1i64 as u64), 0); assert_eq!(cttz(-1i64), 0);
 
         assert_eq!(cttz(0u8), 8); assert_eq!(cttz(0i8), 8);
         assert_eq!(cttz(0u16), 16); assert_eq!(cttz(0i16), 16);
