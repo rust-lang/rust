@@ -220,6 +220,9 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
                        self.tcx.map.node_to_string(item.id));
+                if let ty::TyError = self.tcx.lookup_item_type(def_id).ty.sty {
+                    return;
+                }
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
