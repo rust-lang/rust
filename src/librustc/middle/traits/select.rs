@@ -627,9 +627,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self.candidate_from_obligation(stack) {
-            Ok(Some(c)) => self.evaluate_candidate(stack, &c),
+            Err(..) | Ok(Some(ErrorCandidate)) => EvaluatedToErr,
             Ok(None) => EvaluatedToAmbig,
-            Err(..) => EvaluatedToErr
+            Ok(Some(c)) => self.evaluate_candidate(stack, &c),
         }
     }
 
@@ -753,7 +753,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               stack: &TraitObligationStack<'o, 'tcx>)
                                               -> SelectionResult<'tcx, SelectionCandidate<'tcx>>
     {
-        if stack.obligation.predicate.0.self_ty().references_error() {
+        if stack.obligation.predicate.references_error() {
             return Ok(Some(ErrorCandidate));
         }
 
