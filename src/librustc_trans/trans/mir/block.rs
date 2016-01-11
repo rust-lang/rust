@@ -100,7 +100,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let mut llargs = Vec::with_capacity(args.len() + 1);
 
                 // Prepare the return value destination
-                let (ret_dest_ty, must_copy_dest) = if let Some(ref d) = kind.destination() {
+                let (ret_dest_ty, must_copy_dest) = if let Some(d) = kind.destination() {
                     let dest = self.trans_lvalue(bcx, d);
                     let ret_ty = dest.ty.to_ty(bcx.tcx());
                     if type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
