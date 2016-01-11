@@ -4142,7 +4142,8 @@ pub fn check_representable(tcx: &ty::ctxt,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
-            traits::recursive_type_with_infinite_size_error(tcx, tcx.map.local_def_id(item_id)).emit();
+            let item_def_id = tcx.map.local_def_id(item_id);
+            traits::recursive_type_with_infinite_size_error(tcx, item_def_id).emit();
             return false
         }
         Representability::Representable | Representability::ContainsRecursive => (),

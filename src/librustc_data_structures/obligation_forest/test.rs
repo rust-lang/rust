@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use super::{ObligationForest, Outcome, Error};
 
 #[test]
@@ -86,42 +96,46 @@ fn success_in_grandchildren() {
     let mut forest = ObligationForest::new();
     forest.push_root("A");
 
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, _| {
-        match *obligation {
-            "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, _| {
+            match *obligation {
+                "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
+                _ => unreachable!(),
+            }
+        });
     assert!(ok.is_empty());
     assert!(err.is_empty());
 
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, _| {
-        match *obligation {
-            "A.1" => Ok(Some(vec![])),
-            "A.2" => Ok(Some(vec!["A.2.i", "A.2.ii"])),
-            "A.3" => Ok(Some(vec![])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, _| {
+            match *obligation {
+                "A.1" => Ok(Some(vec![])),
+                "A.2" => Ok(Some(vec!["A.2.i", "A.2.ii"])),
+                "A.3" => Ok(Some(vec![])),
+                _ => unreachable!(),
+            }
+        });
     assert_eq!(ok, vec!["A.3", "A.1"]);
     assert!(err.is_empty());
 
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, _| {
-        match *obligation {
-            "A.2.i" => Ok(Some(vec!["A.2.i.a"])),
-            "A.2.ii" => Ok(Some(vec![])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, _| {
+            match *obligation {
+                "A.2.i" => Ok(Some(vec!["A.2.i.a"])),
+                "A.2.ii" => Ok(Some(vec![])),
+                _ => unreachable!(),
+            }
+        });
     assert_eq!(ok, vec!["A.2.ii"]);
     assert!(err.is_empty());
 
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, _| {
-        match *obligation {
-            "A.2.i.a" => Ok(Some(vec![])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, _| {
+            match *obligation {
+                "A.2.i.a" => Ok(Some(vec![])),
+                _ => unreachable!(),
+            }
+        });
     assert_eq!(ok, vec!["A.2.i.a", "A.2.i", "A.2", "A"]);
     assert!(err.is_empty());
 
@@ -137,12 +151,13 @@ fn to_errors_no_throw() {
     // only yields one of them (and does not panic, in particular).
     let mut forest = ObligationForest::new();
     forest.push_root("A");
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, _| {
-        match *obligation {
-            "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, _| {
+            match *obligation {
+                "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
+                _ => unreachable!(),
+            }
+        });
     assert_eq!(ok.len(), 0);
     assert_eq!(err.len(), 0);
     let errors = forest.to_errors(());
@@ -155,34 +170,37 @@ fn backtrace() {
     // only yields one of them (and does not panic, in particular).
     let mut forest: ObligationForest<&'static str> = ObligationForest::new();
     forest.push_root("A");
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, mut backtrace| {
-        assert!(backtrace.next().is_none());
-        match *obligation {
-            "A" => Ok(Some(vec!["A.1"])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, mut backtrace| {
+            assert!(backtrace.next().is_none());
+            match *obligation {
+                "A" => Ok(Some(vec!["A.1"])),
+                _ => unreachable!(),
+            }
+        });
     assert!(ok.is_empty());
     assert!(err.is_empty());
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, mut backtrace| {
-        assert!(backtrace.next().unwrap() == &"A");
-        assert!(backtrace.next().is_none());
-        match *obligation {
-            "A.1" => Ok(Some(vec!["A.1.i"])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, mut backtrace| {
+            assert!(backtrace.next().unwrap() == &"A");
+            assert!(backtrace.next().is_none());
+            match *obligation {
+                "A.1" => Ok(Some(vec!["A.1.i"])),
+                _ => unreachable!(),
+            }
+        });
     assert!(ok.is_empty());
     assert!(err.is_empty());
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations::<(),_>(|obligation, mut backtrace| {
-        assert!(backtrace.next().unwrap() == &"A.1");
-        assert!(backtrace.next().unwrap() == &"A");
-        assert!(backtrace.next().is_none());
-        match *obligation {
-            "A.1.i" => Ok(None),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { successful: ok, errors: err, .. } =
+        forest.process_obligations::<(),_>(|obligation, mut backtrace| {
+            assert!(backtrace.next().unwrap() == &"A.1");
+            assert!(backtrace.next().unwrap() == &"A");
+            assert!(backtrace.next().is_none());
+            match *obligation {
+                "A.1.i" => Ok(None),
+                _ => unreachable!(),
+            }
+        });
     assert_eq!(ok.len(), 0);
     assert!(err.is_empty());
 }

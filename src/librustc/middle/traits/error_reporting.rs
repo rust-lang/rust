@@ -286,7 +286,8 @@ pub fn try_report_overflow_error_type_of_infinite_size<'a, 'tcx>(
         struct_enum_tys.iter()
                        .enumerate()
                        .filter_map(|(index, ty)| match ty.sty {
-                           ty::TyEnum(adt_def, _) | ty::TyStruct(adt_def, _) if adt_def.did.is_local() =>
+                           ty::TyEnum(adt_def, _) | ty::TyStruct(adt_def, _)
+                               if adt_def.did.is_local() =>
                                Some((index, adt_def.did)),
                            _ =>
                                None,
