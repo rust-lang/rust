@@ -73,6 +73,13 @@ configuration_option_enum! { Density:
     CompressedIfEmpty,
 }
 
+configuration_option_enum! { TypeDensity:
+    // No spaces around "=" and "+"
+    Compressed,
+    // Spaces around " = " and " + "
+    WhiteSpace,
+}
+
 impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
         match self {
@@ -278,6 +285,8 @@ create_config! {
     fn_args_density: Density, Density::Tall, "Argument density in functions";
     fn_args_layout: StructLitStyle, StructLitStyle::Visual, "Layout of function arguments";
     fn_arg_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on function arguments";
+    type_punctuation_density: TypeDensity, TypeDensity::WhiteSpace,
+        "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     // Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
     where_density: Density, Density::CompressedIfEmpty, "Density of a where clause";
