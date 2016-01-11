@@ -24,7 +24,17 @@ macro_rules! pat_if {
     }}
 }
 
+macro_rules! pat_bar {
+    ($p:pat | $p2:pat) => {{
+        match Some(1u8) {
+            $p | $p2 => {},
+            _ => {}
+        }
+    }}
+}
+
 fn main() {
     pat_in!(Some(_) in 0..10);
     pat_if!(Some(x) if x > 0);
+    pat_bar!(Some(1u8) | None);
 }

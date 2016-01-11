@@ -38,6 +38,7 @@
 #![feature(staged_api)]
 #![feature(str_char)]
 
+#[macro_use]
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
@@ -154,4 +155,5 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_renamed("unknown_features", "unused_features");
 
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
+    store.register_removed("negate_unsigned", "cast a signed value instead");
 }

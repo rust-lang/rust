@@ -34,7 +34,7 @@ you but duty compels me to mention. In the course of translating
 matches, it sometimes happen that certain code (namely guards) gets
 executed multiple times. This means that the scope lexical scope may
 in fact correspond to multiple, disjoint SEME regions. So in fact our
-mapping os from one scope to a vector of SEME regions.
+mapping is from one scope to a vector of SEME regions.
 
 ### Drops
 
