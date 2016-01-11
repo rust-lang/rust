@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(negate_unsigned)]
 #![allow(dead_code)]
-#![feature(negate_unsigned)]
 
 // compile-flags: -D unused-comparisons
 fn main() { }

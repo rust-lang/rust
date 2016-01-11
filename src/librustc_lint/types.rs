@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(non_snake_case)]
+
 use middle::{infer};
 use middle::def_id::DefId;
 use middle::subst::Substs;
@@ -24,12 +26,38 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
-use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::util::is_shift_binop;
+
+register_long_diagnostics! {
+E0519: r##"
+It is not allowed to negate an unsigned integer.
+You can negate a signed integer and cast it to an
+unsigned integer or use the `!` operator.
+
+```
+let x: usize = -1isize as usize;
+let y: usize = !0;
+assert_eq!(x, y);
+```
+
+Alternatively you can use the `Wrapping` newtype
+or the `wrapping_neg` operation that all
+integral types support:
+
+```
+use std::num::Wrapping;
+let x: Wrapping<usize> = -Wrapping(1);
+let Wrapping(x) = x;
+let y: usize = 1.wrapping_neg();
+assert_eq!(x, y);
+```
+
+"##
+}
 
 declare_lint! {
     UNUSED_COMPARISONS,
@@ -73,30 +101,24 @@ impl LateLintPass for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
-                match expr.node  {
-                    hir::ExprLit(ref lit) => {
-                        match lit.node {
-                            ast::LitInt(_, ast::UnsignedIntLit(_)) => {
-                                check_unsigned_negation_feature(cx, e.span);
-                            },
-                            ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
-                                if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
-                                    check_unsigned_negation_feature(cx, e.span);
-                                }
-                            },
-                            _ => ()
-                        }
-                    },
-                    _ => {
-                        let t = cx.tcx.node_id_to_type(expr.id);
-                        match t.sty {
-                            ty::TyUint(_) => {
-                                check_unsigned_negation_feature(cx, e.span);
-                            },
-                            _ => ()
-                        }
+                if let hir::ExprLit(ref lit) = expr.node {
+                    match lit.node {
+                        ast::LitInt(_, ast::UnsignedIntLit(_)) => {
+                            forbid_unsigned_negation(cx, e.span);
+                        },
+                        ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
+                            if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
+                                forbid_unsigned_negation(cx, e.span);
+                            }
+                        },
+                        _ => ()
                     }
-                };
+                } else {
+                    let t = cx.tcx.node_id_to_type(expr.id);
+                    if let ty::TyUint(_) = t.sty {
+                        forbid_unsigned_negation(cx, e.span);
+                    }
+                }
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != e.id {
                     self.negated_expr_id = expr.id;
@@ -322,15 +344,11 @@ impl LateLintPass for TypeLimits {
             }
         }
 
-        fn check_unsigned_negation_feature(cx: &LateContext, span: Span) {
-            if !cx.sess().features.borrow().negate_unsigned {
-                emit_feature_err(
-                    &cx.sess().parse_sess.span_diagnostic,
-                    "negate_unsigned",
-                    span,
-                    GateIssue::Language,
-                    "unary negation of unsigned integers may be removed in the future");
-            }
+        fn forbid_unsigned_negation(cx: &LateContext, span: Span) {
+            cx.sess()
+              .struct_span_err_with_code(span, "unary negation of unsigned integer", "E0519")
+              .span_help(span, "use a cast or the `!` operator")
+              .emit();
         }
     }
 }
