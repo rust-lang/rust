@@ -319,12 +319,58 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                         FulfillmentErrorCode<'tcx>>
 {
     match process_predicate1(selcx, pending_obligation, backtrace, region_obligations) {
-        Ok(Some(v)) => Ok(Some(v.into_iter()
-                                .map(|o| PendingPredicateObligation {
-                                    obligation: o,
-                                    stalled_on: vec![]
-                                })
-                               .collect())),
+        Ok(Some(v)) => {
+            // FIXME the right thing to do here, I think, is to permit
+            // DAGs. That is, we should detect whenever this predicate
+            // has appeared somewhere in the current tree./ If it's a
+            // parent, that's a cycle, and we should either error out
+            // or consider it ok. But if it's NOT a parent, we can
+            // ignore it, since it will be proven (or not) separately.
+            // However, this is a touch tricky, so I'm doing something
+            // a bit hackier for now so that the `huge-struct.rs` passes.
+
+            let retain_vec: Vec<_> = {
+                let mut dedup = FnvHashSet();
+                v.iter()
+                 .map(|o| {
+                     // Screen out obligations that we know globally
+                     // are true. This should really be the DAG check
+                     // mentioned above.
+                     if
+                         o.predicate.is_global() &&
+                         selcx.tcx().fulfilled_predicates.borrow().is_duplicate(&o.predicate)
+                     {
+                         return false;
+                     }
+
+                     // If we see two siblings that are exactly the
+                     // same, no need to add them twice.
+                     if !dedup.insert(&o.predicate) {
+                         return false;
+                     }
+
+                     true
+                 })
+                 .collect()
+            };
+
+            let pending_predicate_obligations =
+                v.into_iter()
+                 .zip(retain_vec)
+                 .flat_map(|(o, retain)| {
+                     if retain {
+                         Some(PendingPredicateObligation {
+                             obligation: o,
+                             stalled_on: vec![]
+                         })
+                     } else {
+                         None
+                     }
+                 })
+                .collect();
+
+            Ok(Some(pending_predicate_obligations))
+        }
         Ok(None) => Ok(None),
         Err(e) => Err(e)
     }
