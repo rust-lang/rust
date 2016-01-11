@@ -354,7 +354,7 @@ impl<T: Ord> BinaryHeap<T> {
         self.data.pop().map(|mut item| {
             if !self.is_empty() {
                 swap(&mut item, &mut self.data[0]);
-                self.sift_down(0);
+                self.sift_down_to_bottom(0);
             }
             item
         })
@@ -543,6 +543,31 @@ impl<T: Ord> BinaryHeap<T> {
     fn sift_down(&mut self, pos: usize) {
         let len = self.len();
         self.sift_down_range(pos, len);
+    }
+
+    /// Take an element at `pos` and move it all the way down the heap,
+    /// then sift it up to its position.
+    ///
+    /// Note: This is faster when the element is known to be large / should
+    /// be closer to the bottom.
+    fn sift_down_to_bottom(&mut self, mut pos: usize) {
+        let end = self.len();
+        let start = pos;
+        unsafe {
+            let mut hole = Hole::new(&mut self.data, pos);
+            let mut child = 2 * pos + 1;
+            while child < end {
+                let right = child + 1;
+                // compare with the greater of the two children
+                if right < end && !(hole.get(child) > hole.get(right)) {
+                    child = right;
+                }
+                hole.move_to(child);
+                child = 2 * hole.pos() + 1;
+            }
+            pos = hole.pos;
+        }
+        self.sift_up(start, pos);
     }
 
     /// Returns the length of the binary heap.
