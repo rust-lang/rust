@@ -63,9 +63,9 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
                                                                 b_def_id,
                                                                 util::fresh_type_vars_for_impl);
 
-    debug!("overlap: a_trait_ref={:?}", a_trait_ref);
+    debug!("overlap: a_trait_ref={:?} a_obligations={:?}", a_trait_ref, a_obligations);
 
-    debug!("overlap: b_trait_ref={:?}", b_trait_ref);
+    debug!("overlap: b_trait_ref={:?} b_obligations={:?}", b_trait_ref, b_obligations);
 
     // Do `a` and `b` unify? If not, no overlap.
     if let Err(_) = infer::mk_eq_trait_refs(selcx.infcx(),
@@ -330,8 +330,11 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
             tt.principal_def_id().is_local()
         }
 
-        ty::TyClosure(..) |
         ty::TyError => {
+            true
+        }
+
+        ty::TyClosure(..) => {
             tcx.sess.bug(
                 &format!("ty_is_local invoked on unexpected type: {:?}",
                         ty))

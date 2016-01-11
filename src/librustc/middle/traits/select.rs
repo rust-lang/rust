@@ -210,8 +210,6 @@ enum SelectionCandidate<'tcx> {
     BuiltinObjectCandidate,
 
     BuiltinUnsizeCandidate,
-
-    ErrorCandidate,
 }
 
 struct SelectionCandidateSet<'tcx> {
@@ -753,8 +751,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               stack: &TraitObligationStack<'o, 'tcx>)
                                               -> SelectionResult<'tcx, SelectionCandidate<'tcx>>
     {
-        if stack.obligation.predicate.0.self_ty().references_error() {
-            return Ok(Some(ErrorCandidate));
+        if stack.obligation.predicate.references_error() {
+            // If we encounter a `TyError`, we generally prefer the
+            // most "optimistic" result in response -- that is, the
+            // one least likely to report downstream errors. But
+            // because this routine is shared by coherence and by
+            // trait selection, there isn't an obvious "right" choice
+            // here in that respect, so we opt to just return
+            // ambiguity and let the upstream clients sort it out.
+            return Ok(None);
         }
 
         if !self.is_knowable(stack) {
@@ -1587,7 +1592,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     true
                 },
                 &ParamCandidate(..) => false,
-                &ErrorCandidate => false // propagate errors
             },
             _ => false
         }
@@ -1996,10 +2000,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BuiltinCandidate(builtin_bound) => {
                 Ok(VtableBuiltin(
                     try!(self.confirm_builtin_candidate(obligation, builtin_bound))))
-            }
-
-            ErrorCandidate => {
-                Ok(VtableBuiltin(VtableBuiltinData { nested: vec![] }))
             }
 
             ParamCandidate(param) => {

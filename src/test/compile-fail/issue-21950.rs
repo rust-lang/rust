@@ -16,5 +16,5 @@ fn main() {
     let x = &10 as
             &Add;
             //~^ ERROR the type parameter `RHS` must be explicitly specified in an object type because its default value `Self` references the type `Self`
-            //~^^ ERROR the value of the associated type `Output` (from the trait `core::ops::Add`) must be specified
+            //~| ERROR the value of the associated type `Output` (from the trait `core::ops::Add`) must be specified
 }

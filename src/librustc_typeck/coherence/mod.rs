@@ -149,11 +149,23 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                    trait_ref,
                    item.name);
 
+            // Skip impls where one of the self type is an error type.
+            // This occurs with e.g. resolve failures (#30589).
+            if trait_ref.references_error() {
+                return;
+            }
+
             enforce_trait_manually_implementable(self.crate_context.tcx,
                                                  item.span,
                                                  trait_ref.def_id);
             self.add_trait_impl(trait_ref, impl_did);
         } else {
+            // Skip inherent impls where the self type is an error
+            // type. This occurs with e.g. resolve failures (#30589).
+            if self_type.ty.references_error() {
+                return;
+            }
+
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and
             // the implementation does not have any associated traits.
