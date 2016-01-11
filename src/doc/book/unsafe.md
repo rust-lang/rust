@@ -41,8 +41,8 @@ unsafe impl Scary for i32 {}
 ```
 
 It’s important to be able to explicitly delineate code that may have bugs that
-cause big problems. If a Rust program segfaults, you can be sure it’s somewhere
-in the sections marked `unsafe`.
+cause big problems. If a Rust program segfaults, you can be sure the cause is
+related to something marked `unsafe`.
 
 # What does ‘safe’ mean?
 
