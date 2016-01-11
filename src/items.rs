@@ -182,8 +182,8 @@ impl<'a> FmtVisitor<'a> {
         let context = self.get_context();
 
         let block_snippet = self.snippet(codemap::mk_sp(block.span.lo, block.span.hi));
-        let is_block_empty = block_snippet[1..block_snippet.len() - 1].trim().is_empty() &&
-                             context.config.fn_empty_single_line;
+        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty() ||
+                       !context.config.fn_empty_single_line;
 
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(&context,
                                                                          indent,
@@ -197,7 +197,7 @@ impl<'a> FmtVisitor<'a> {
                                                                          vis,
                                                                          span,
                                                                          newline_brace,
-                                                                         !is_block_empty));
+                                                                         has_body));
 
         if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
             newline_brace = false;
