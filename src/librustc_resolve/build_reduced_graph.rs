@@ -325,7 +325,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                     debug!("(build reduced graph for item) found extern `{}`",
                            module_to_string(&*external_module));
-                    self.check_for_conflicts_between_external_crates(&**parent, name, sp);
+                    self.check_for_conflicts_for_external_crate(&parent, name, sp);
                     parent.external_module_children
                           .borrow_mut()
                           .insert(name, external_module.clone());
