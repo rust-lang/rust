@@ -2,17 +2,9 @@
 
 fn foo(a: AAAA, b: BBB, c: CCC) -> RetType {}
 
-fn foo(a: AAAA, b: BBB /* some, weird, inline comment */, c: CCC) -> RetType
-    where T: Blah
-{
+fn foo(a: AAAA, b: BBB /* some, weird, inline comment */, c: CCC) -> RetType where T: Blah {}
 
-}
-
-fn foo(a: AAA /* (comment) */)
-    where T: Blah
-{
-
-}
+fn foo(a: AAA /* (comment) */) where T: Blah {}
 
 fn foo(a: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
        b: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB)
@@ -35,10 +27,7 @@ fn foo<U, T>(a: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
 fn foo<U: Fn(A) -> B /* paren inside generics */>() {}
 
 impl Foo {
-    fn with_no_errors<T, F>(&mut self, f: F) -> T
-        where F: FnOnce(&mut Resolver) -> T
-    {
-    }
+    fn with_no_errors<T, F>(&mut self, f: F) -> T where F: FnOnce(&mut Resolver) -> T {}
 
     fn foo(mut self, mut bar: u32) {}
 
