@@ -239,6 +239,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // Allows cfg(target_thread_local)
     ("cfg_target_thread_local", "1.7.0", Some(29594), Active),
+
+    // rustc internal
+    ("abi_vectorcall", "1.7.0", None, Active)
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -862,6 +865,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                     Abi::PlatformIntrinsic => {
                         Some(("platform_intrinsics",
                               "platform intrinsics are experimental and possibly buggy"))
+                    },
+                    Abi::Vectorcall => {
+                        Some(("abi_vectorcall",
+                            "vectorcall is experimental and subject to change"
+                        ))
                     }
                     _ => None
                 };
@@ -1033,11 +1041,17 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   "intrinsics are subject to change")
             }
             FnKind::ItemFn(_, _, _, _, abi, _) |
-            FnKind::Method(_, &ast::MethodSig { abi, .. }, _) if abi == Abi::RustCall => {
-                self.gate_feature("unboxed_closures",
-                                  span,
-                                  "rust-call ABI is subject to change")
-            }
+            FnKind::Method(_, &ast::MethodSig { abi, .. }, _) => match abi {
+                Abi::RustCall => {
+                    self.gate_feature("unboxed_closures", span,
+                        "rust-call ABI is subject to change");
+                },
+                Abi::Vectorcall => {
+                    self.gate_feature("abi_vectorcall", span,
+                        "vectorcall is experimental and subject to change");
+                },
+                _ => {}
+            },
             _ => {}
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);

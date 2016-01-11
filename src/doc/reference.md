@@ -2390,6 +2390,9 @@ The currently implemented features of the reference compiler are:
 
 * - `type_ascription` - Allows type ascription expressions `expr: Type`.
 
+* - `abi_vectorcall` - Allows the usage of the vectorcall calling convention
+                             (e.g. `extern "vectorcall" func fn_();`)
+
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
 the new feature (because the directive is no longer necessary). However, if a
