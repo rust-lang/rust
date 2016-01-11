@@ -365,7 +365,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 It works!
 
 The current convention is to use the `tests` module to hold your "unit-style"
-tests. Anything that just tests one small bit of functionality makes sense to
+tests. Anything that tests one small bit of functionality makes sense to
 go here. But what about "integration-style" tests instead? For that, we have
 the `tests` directory.
 

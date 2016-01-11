@@ -140,7 +140,7 @@ If you're on Windows, please download the appropriate [installer][install-page].
 
 ## Uninstalling
 
-Uninstalling Rust is as easy as installing it. On Linux or Mac, just run
+Uninstalling Rust is as easy as installing it. On Linux or Mac, run
 the uninstall script:
 
 ```bash
@@ -192,7 +192,7 @@ that tradition.
 
 The nice thing about starting with such a simple program is that you can
 quickly verify that your compiler is installed, and that it's working properly.
-Printing information to the screen is also just a pretty common thing to do, so
+Printing information to the screen is also a pretty common thing to do, so
 practicing it early on is good.
 
 > Note: This book assumes basic familiarity with the command line. Rust itself
@@ -248,7 +248,7 @@ $ ./main
 Hello, world!
 ```
 
-In Windows, just replace `main` with `main.exe`. Regardless of your operating
+In Windows, replace `main` with `main.exe`. Regardless of your operating
 system, you should see the string `Hello, world!` print to the terminal. If you
 did, then congratulations! You've officially written a Rust program. That makes
 you a Rust programmer! Welcome.
@@ -289,7 +289,7 @@ that it’s indented with four spaces, not tabs.
 The second important part is the `println!()` line. This is calling a Rust
 *[macro]*, which is how metaprogramming is done in Rust. If it were calling a
 function instead, it would look like this: `println()` (without the !). We'll
-discuss Rust macros in more detail later, but for now you just need to
+discuss Rust macros in more detail later, but for now you only need to
 know that when you see a `!` that means that you’re calling a macro instead of
 a normal function.
 
@@ -456,7 +456,7 @@ authors = [ "Your name <you@example.com>" ]
 
 The first line, `[package]`, indicates that the following statements are
 configuring a package. As we add more information to this file, we’ll add other
-sections, but for now, we just have the package configuration.
+sections, but for now, we only have the package configuration.
 
 The other three lines set the three bits of configuration that Cargo needs to
 know to compile your program: its name, what version it is, and who wrote it.
@@ -507,7 +507,7 @@ rebuilds your project if they’ve changed since the last time you built it.
 With simple projects, Cargo doesn't bring a whole lot over just using `rustc`,
 but it will become useful in future. With complex projects composed of multiple
 crates, it’s much easier to let Cargo coordinate the build. With Cargo, you can
-just run `cargo build`, and it should work the right way.
+run `cargo build`, and it should work the right way.
 
 ## Building for Release
 

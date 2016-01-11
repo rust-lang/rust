@@ -118,7 +118,7 @@ match origin {
 
 This prints `x is 0`.
 
-You can do this kind of match on any member, not just the first:
+You can do this kind of match on any member, not only the first:
 
 ```rust
 struct Point {
@@ -155,7 +155,7 @@ match some_value {
 ```
 
 In the first arm, we bind the value inside the `Ok` variant to `value`. But
-in the `Err` arm, we use `_` to disregard the specific error, and just print
+in the `Err` arm, we use `_` to disregard the specific error, and print
 a general error message.
 
 `_` is valid in any pattern that creates a binding. This can be useful to
@@ -326,7 +326,7 @@ match x {
 ```
 
 This prints `no`, because the `if` applies to the whole of `4 | 5`, and not to
-just the `5`. In other words, the precedence of `if` behaves like this:
+only the `5`. In other words, the precedence of `if` behaves like this:
 
 ```text
 (4 | 5) if y => ...
