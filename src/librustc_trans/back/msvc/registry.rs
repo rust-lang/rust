@@ -11,7 +11,6 @@
 use std::io;
 use std::ffi::{OsString, OsStr};
 use std::os::windows::prelude::*;
-use std::ops::RangeFrom;
 use std::ptr;
 use libc::{c_void, c_long};
 
@@ -34,7 +33,6 @@ const KEY_NOTIFY: REGSAM = 0x0010;
 const SYNCHRONIZE: REGSAM = 0x00100000;
 const REG_SZ: DWORD = 1;
 const ERROR_SUCCESS: i32 = 0;
-const ERROR_NO_MORE_ITEMS: DWORD = 259;
 
 enum __HKEY__ {}
 pub type HKEY = *mut __HKEY__;
@@ -56,14 +54,6 @@ extern "system" {
                         lpType: LPDWORD,
                         lpData: LPBYTE,
                         lpcbData: LPDWORD) -> LONG;
-    fn RegEnumKeyExW(hKey: HKEY,
-                     dwIndex: DWORD,
-                     lpName: LPWSTR,
-                     lpcName: LPDWORD,
-                     lpReserved: LPDWORD,
-                     lpClass: LPWSTR,
-                     lpcClass: LPDWORD,
-                     lpftLastWriteTime: PFILETIME) -> LONG;
     fn RegCloseKey(hKey: HKEY) -> LONG;
 }
 
@@ -74,11 +64,6 @@ struct OwnedKey(HKEY);
 enum Repr {
     Const(HKEY),
     Owned(OwnedKey),
-}
-
-pub struct Iter<'a> {
-    idx: RangeFrom<DWORD>,
-    key: &'a RegistryKey,
 }
 
 unsafe impl Sync for RegistryKey {}
@@ -106,10 +91,6 @@ impl RegistryKey {
         } else {
             Err(io::Error::from_raw_os_error(err as i32))
         }
-    }
-
-    pub fn iter(&self) -> Iter {
-        Iter { idx: 0.., key: self }
     }
 
     pub fn query_str(&self, name: &str) -> io::Result<OsString> {
@@ -153,27 +134,5 @@ impl RegistryKey {
 impl Drop for OwnedKey {
     fn drop(&mut self) {
         unsafe { RegCloseKey(self.0); }
-    }
-}
-
-impl<'a> Iterator for Iter<'a> {
-    type Item = io::Result<OsString>;
-
-    fn next(&mut self) -> Option<io::Result<OsString>> {
-        self.idx.next().and_then(|i| unsafe {
-            let mut v = Vec::with_capacity(256);
-            let mut len = v.capacity() as DWORD;
-            let ret = RegEnumKeyExW(self.key.raw(), i, v.as_mut_ptr(), &mut len,
-                                    ptr::null_mut(), ptr::null_mut(), ptr::null_mut(),
-                                    ptr::null_mut());
-            if ret == ERROR_NO_MORE_ITEMS as LONG {
-                None
-            } else if ret != ERROR_SUCCESS {
-                Some(Err(io::Error::from_raw_os_error(ret as i32)))
-            } else {
-                v.set_len(len as usize);
-                Some(Ok(OsString::from_wide(&v)))
-            }
-        })
     }
 }
