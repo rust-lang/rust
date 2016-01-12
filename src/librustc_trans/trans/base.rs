@@ -1331,6 +1331,18 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     alloc_ty_init(bcx, t, InitAlloca::Uninit("all alloc_ty are uninit"), name)
 }
 
+/// This variant of `fn alloc_ty` does not necessarily assume that the
+/// alloca should be created with no initial value. Instead the caller
+/// controls that assumption via the `init` flag.
+///
+/// Note that if the alloca *is* initialized via `init`, then we will
+/// also inject an `llvm.lifetime.start` before that initialization
+/// occurs, and thus callers should not call_lifetime_start
+/// themselves.  But if `init` says "uninitialized", then callers are
+/// in charge of choosing where to call_lifetime_start and
+/// subsequently populate the alloca.
+///
+/// (See related discussion on PR #30823.)
 pub fn alloc_ty_init<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              t: Ty<'tcx>,
                              init: InitAlloca,
