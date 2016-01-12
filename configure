@@ -622,6 +622,7 @@ valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt nacl-cross-path  "" "NaCl SDK path (Pepper Canary is recommended). Must be absolute!"
 valopt release-channel "dev" "the name of the release channel to build"
 valopt musl-root "/usr/local" "MUSL root installation directory"
+valopt extra-filename "" "Additional data that is hashed and passed to the -C extra-filename flag"
 
 # Used on systems where "cc" and "ar" are unavailable
 valopt default-linker "cc" "the default linker"
