@@ -425,10 +425,10 @@ impl Rewrite for ast::TyParam {
             result.push_str(&bounds);
         }
         if let Some(ref def) = self.default {
-            let eq_str = if context.config.type_punctuation_density == TypeDensity::Compressed {
-                "="
-            } else {
-                " = "
+
+            let eq_str = match context.config.type_punctuation_density {
+                TypeDensity::Compressed => "=",
+                TypeDensity::Wide => " = ",
             };
             result.push_str(eq_str);
             let budget = try_opt!(width.checked_sub(result.len()));
@@ -473,11 +473,9 @@ impl Rewrite for ast::Ty {
             ast::TyObjectSum(ref ty, ref bounds) => {
                 let ty_str = try_opt!(ty.rewrite(context, width, offset));
                 let overhead = ty_str.len() + 3;
-                let plus_str = if context.config.type_punctuation_density ==
-                                  TypeDensity::Compressed {
-                    "+"
-                } else {
-                    " + "
+                let plus_str = match context.config.type_punctuation_density {
+                    TypeDensity::Compressed => "+",
+                    TypeDensity::Wide => " + ",
                 };
                 Some(format!("{}{}{}",
                              ty_str,
