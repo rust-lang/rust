@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <assert.h>
+#include <stdarg.h>
 
 // These functions are used in the unit tests for C ABI calls.
 
@@ -221,4 +222,19 @@ uint64_t get_z(struct S s) {
 
 uint64_t get_c_many_params(void *a, void *b, void *c, void *d, struct quad f) {
     return f.c;
+}
+
+// Calculates the average of `(x + y) / n` where x: i64, y: f64. There must be exactly n pairs
+// passed as variadic arguments.
+double rust_interesting_average(uint64_t n, ...) {
+    va_list pairs;
+    double sum = 0.0;
+    int i;
+    va_start(pairs, n);
+    for(i = 0; i < n; i += 1) {
+        sum += (double)va_arg(pairs, int64_t);
+        sum += va_arg(pairs, double);
+    }
+    va_end(pairs);
+    return sum / n;
 }
