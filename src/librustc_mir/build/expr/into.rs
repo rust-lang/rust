@@ -58,7 +58,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 });
 
                 unpack!(then_block = this.into(destination, then_block, then_expr));
-                unpack!(else_block = this.into(destination, else_block, else_expr));
+                else_block = if let Some(else_expr) = else_expr {
+                    unpack!(this.into(destination, else_block, else_expr))
+                } else {
+                    // Body of the `if` expression without an `else` clause must return `()`, thus
+                    // we implicitly generate a `else {}` if it is not specified.
+                    this.cfg.push_assign_unit(else_block, expr_span, &Lvalue::ReturnPointer);
+                    else_block
+                };
 
                 let join_block = this.cfg.start_new_block();
                 this.cfg.terminate(then_block, Terminator::Goto { target: join_block });
@@ -157,11 +164,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     }
 
                     // execute the body, branching back to the test
-                    let unit_temp = this.unit_temp.clone();
-                    let body_block_end = unpack!(this.into(&unit_temp, body_block, body));
+                    // We write body’s “return value” into the destination of loop. This is fine,
+                    // because:
+                    //
+                    // * In Rust both loop expression and its body are required to have `()`
+                    //   as the “return value”;
+                    // * The destination will be considered uninitialised (given it was
+                    //   uninitialised before the loop) during the first iteration, thus
+                    //   disallowing its use inside the body. Alternatively, if it was already
+                    //   initialised, the `destination` can only possibly have a value of `()`,
+                    //   therefore, “mutating” the destination during iteration is fine.
+                    let body_block_end = unpack!(this.into(destination, body_block, body));
                     this.cfg.terminate(body_block_end, Terminator::Goto { target: loop_block });
-
-                    // final point is exit_block
                     exit_block.unit()
                 })
             }
@@ -206,7 +220,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.break_or_continue(expr_span, label, block, |loop_scope| loop_scope.break_block)
             }
             ExprKind::Return { value } => {
-                unpack!(block = this.into(&Lvalue::ReturnPointer, block, value));
+                block = match value {
+                    Some(value) => unpack!(this.into(&Lvalue::ReturnPointer, block, value)),
+                    None => {
+                        this.cfg.push_assign_unit(block, expr_span, &Lvalue::ReturnPointer);
+                        block
+                    }
+                };
                 let extent = this.extent_of_outermost_scope();
                 this.exit_scope(expr_span, extent, block, END_BLOCK);
                 this.cfg.start_new_block().unit()
