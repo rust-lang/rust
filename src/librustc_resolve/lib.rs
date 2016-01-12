@@ -101,7 +101,6 @@ use resolve_imports::Shadowable;
 pub mod diagnostics;
 
 mod check_unused;
-mod record_exports;
 mod build_reduced_graph;
 mod resolve_imports;
 
@@ -4012,9 +4011,6 @@ pub fn create_resolver<'a, 'tcx>(session: &'a Session,
     session.abort_if_errors();
 
     resolve_imports::resolve_imports(&mut resolver);
-    session.abort_if_errors();
-
-    record_exports::record(&mut resolver);
     session.abort_if_errors();
 
     resolver
