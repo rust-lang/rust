@@ -39,6 +39,14 @@ pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
 }
 
 #[inline]
+pub fn span_before(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
+    let snippet = codemap.span_to_snippet(original).unwrap();
+    let offset = snippet.find_uncommented(needle).unwrap();
+
+    original.lo + BytePos(offset as u32)
+}
+
+#[inline]
 pub fn span_after_last(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
     let snippet = codemap.span_to_snippet(original).unwrap();
     let mut offset = 0;

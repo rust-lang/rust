@@ -13,14 +13,15 @@ use std::borrow::Borrow;
 use std::mem::swap;
 use std::ops::Deref;
 use std::iter::ExactSizeIterator;
+use std::fmt::Write;
 
 use {Indent, Spanned};
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
             DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
 use string::{StringFormat, rewrite_string};
-use utils::{span_after, extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
-            semicolon_for_stmt};
+use utils::{span_after, span_before, extra_offset, last_line_width, wrap_str, binary_search,
+            first_line_width, semicolon_for_stmt};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -101,6 +102,7 @@ impl Rewrite for ast::Expr {
                                 cond,
                                 if_block,
                                 else_block.as_ref().map(|e| &**e),
+                                self.span,
                                 None,
                                 width,
                                 offset,
@@ -111,6 +113,7 @@ impl Rewrite for ast::Expr {
                                 cond,
                                 if_block,
                                 else_block.as_ref().map(|e| &**e),
+                                self.span,
                                 Some(pat),
                                 width,
                                 offset,
@@ -605,12 +608,33 @@ fn rewrite_label(label: Option<ast::Ident>) -> String {
     }
 }
 
+fn extract_comment(span: Span,
+                   context: &RewriteContext,
+                   offset: Indent,
+                   width: usize)
+                   -> Option<String> {
+    let comment_str = context.snippet(span);
+    if contains_comment(&comment_str) {
+        let comment = try_opt!(rewrite_comment(comment_str.trim(),
+                                               false,
+                                               width,
+                                               offset,
+                                               context.config));
+        Some(format!("\n{indent}{}\n{indent}",
+                     comment,
+                     indent = offset.to_string(context.config)))
+    } else {
+        None
+    }
+}
+
 // Rewrites if-else blocks. If let Some(_) = pat, the expression is
 // treated as an if-let-else expression.
 fn rewrite_if_else(context: &RewriteContext,
                    cond: &ast::Expr,
                    if_block: &ast::Block,
                    else_block_opt: Option<&ast::Expr>,
+                   span: Span,
                    pat: Option<&ast::Pat>,
                    width: usize,
                    offset: Indent,
@@ -635,7 +659,22 @@ fn rewrite_if_else(context: &RewriteContext,
     }
 
     let if_block_string = try_opt!(if_block.rewrite(context, width, offset));
-    let mut result = format!("if {} {}", pat_expr_string, if_block_string);
+
+    let between_if_cond = mk_sp(span_after(span, "if", context.codemap),
+                                pat.map_or(cond.span.lo,
+                                           |_| span_before(span, "let", context.codemap)));
+    let between_if_cond_comment = extract_comment(between_if_cond, &context, offset, width);
+
+    let after_cond_comment = extract_comment(mk_sp(cond.span.hi, if_block.span.lo),
+                                             context,
+                                             offset,
+                                             width);
+
+    let mut result = format!("if{}{}{}{}",
+                             between_if_cond_comment.as_ref().map_or(" ", |str| &**str),
+                             pat_expr_string,
+                             after_cond_comment.as_ref().map_or(" ", |str| &**str),
+                             if_block_string);
 
     if let Some(else_block) = else_block_opt {
         let rewrite = match else_block.node {
@@ -646,6 +685,7 @@ fn rewrite_if_else(context: &RewriteContext,
                                 cond,
                                 if_block,
                                 else_block.as_ref().map(|e| &**e),
+                                mk_sp(span_after(span, "else", context.codemap), span.hi),
                                 Some(pat),
                                 width,
                                 offset,
@@ -656,6 +696,7 @@ fn rewrite_if_else(context: &RewriteContext,
                                 cond,
                                 if_block,
                                 else_block.as_ref().map(|e| &**e),
+                                mk_sp(span_after(span, "else", context.codemap), span.hi),
                                 None,
                                 width,
                                 offset,
@@ -664,7 +705,26 @@ fn rewrite_if_else(context: &RewriteContext,
             _ => else_block.rewrite(context, width, offset),
         };
 
-        result.push_str(" else ");
+        let between_if_else_block = mk_sp(if_block.span.hi,
+                                          span_before(mk_sp(if_block.span.hi, else_block.span.lo),
+                                                      "else",
+                                                      context.codemap));
+        let between_if_else_block_comment = extract_comment(between_if_else_block,
+                                                            &context,
+                                                            offset,
+                                                            width);
+
+        let after_else = mk_sp(span_after(mk_sp(if_block.span.hi, else_block.span.lo),
+                                          "else",
+                                          context.codemap),
+                               else_block.span.lo);
+        let after_else_comment = extract_comment(after_else, &context, offset, width);
+
+        try_opt!(write!(&mut result,
+                        "{}else{}",
+                        between_if_else_block_comment.as_ref().map_or(" ", |str| &**str),
+                        after_else_comment.as_ref().map_or(" ", |str| &**str))
+                     .ok());
         result.push_str(&&try_opt!(rewrite));
     }
 
