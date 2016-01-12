@@ -168,7 +168,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 mir::Terminator::Goto { target } => block = target,
 
                 mir::Terminator::Call { ref func, ref args, ref kind } => {
-                    let ptr = kind.destination().map(|dest| self.eval_lvalue(&dest));
+                    let ptr = kind.destination().map(|dest| self.eval_lvalue(dest));
                     let func_val = self.eval_operand(func);
 
                     if let Value::Func(def_id) = func_val {
