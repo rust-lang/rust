@@ -218,8 +218,14 @@ impl Float for f32 {
     /// Computes the absolute value of `self`. Returns `Float::nan()` if the
     /// number is `Float::nan()`.
     #[inline]
+    #[cfg(stage0)]
     fn abs(self) -> f32 {
         unsafe { intrinsics::fabsf32(self) }
+    }
+    #[inline]
+    #[cfg(not(stage0))]
+    fn abs(self) -> f32 {
+        unsafe { intrinsics::fabs(self) }
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -228,11 +234,21 @@ impl Float for f32 {
     /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
     /// - `Float::nan()` if the number is `Float::nan()`
     #[inline]
+    #[cfg(stage0)]
     fn signum(self) -> f32 {
         if self.is_nan() {
             Float::nan()
         } else {
             unsafe { intrinsics::copysignf32(1.0, self) }
+        }
+    }
+    #[inline]
+    #[cfg(not(stage0))]
+    fn signum(self) -> f32 {
+        if self.is_nan() {
+            Float::nan()
+        } else {
+            unsafe { intrinsics::copysign(1.0, self) }
         }
     }
 
@@ -255,8 +271,14 @@ impl Float for f32 {
     fn recip(self) -> f32 { 1.0 / self }
 
     #[inline]
+    #[cfg(stage0)]
     fn powi(self, n: i32) -> f32 {
         unsafe { intrinsics::powif32(self, n) }
+    }
+    #[inline]
+    #[cfg(not(stage0))]
+    fn powi(self, n: i32) -> f32 {
+        unsafe { intrinsics::powi(self, n) }
     }
 
     /// Converts to degrees, assuming the number is in radians.

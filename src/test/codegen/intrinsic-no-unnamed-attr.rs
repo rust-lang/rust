@@ -13,10 +13,19 @@
 #![feature(intrinsics)]
 
 extern "rust-intrinsic" {
+    #[cfg(stage0)]
     fn sqrtf32(x: f32) -> f32;
+    #[cfg(not(stage0))]
+    fn sqrt<T>(x: T) -> T;
 }
 // CHECK: @llvm.sqrt.f32(float) #{{[0-9]*}}
 
+#[cfg(stage0)]
 fn main() {
     unsafe { sqrtf32(0.0f32); }
+}
+
+#[cfg(not(stage0))]
+fn main() {
+    unsafe { sqrtf(0.0f32); }
 }

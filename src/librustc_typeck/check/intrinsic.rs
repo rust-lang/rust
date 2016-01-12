@@ -192,68 +192,18 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                ),
                tcx.mk_nil())
             }
-            "sqrtf32" => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "sqrtf64" => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "powif32" => {
-               (0,
-                vec!( tcx.types.f32, tcx.types.i32 ),
-                tcx.types.f32)
-            }
-            "powif64" => {
-               (0,
-                vec!( tcx.types.f64, tcx.types.i32 ),
-                tcx.types.f64)
-            }
-            "sinf32" => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "sinf64" => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "cosf32" => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "cosf64" => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "powf32" => {
-               (0,
-                vec!( tcx.types.f32, tcx.types.f32 ),
-                tcx.types.f32)
-            }
-            "powf64" => {
-               (0,
-                vec!( tcx.types.f64, tcx.types.f64 ),
-                tcx.types.f64)
-            }
-            "expf32"   => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "expf64"   => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "exp2f32"  => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "exp2f64"  => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "logf32"   => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "logf64"   => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "log10f32" => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "log10f64" => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "log2f32"  => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "log2f64"  => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "fmaf32" => {
-                (0,
-                 vec!( tcx.types.f32, tcx.types.f32, tcx.types.f32 ),
-                 tcx.types.f32)
-            }
-            "fmaf64" => {
-                (0,
-                 vec!( tcx.types.f64, tcx.types.f64, tcx.types.f64 ),
-                 tcx.types.f64)
-            }
-            "fabsf32"      => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "fabsf64"      => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "copysignf32"  => (0, vec!( tcx.types.f32, tcx.types.f32 ), tcx.types.f32),
-            "copysignf64"  => (0, vec!( tcx.types.f64, tcx.types.f64 ), tcx.types.f64),
-            "floorf32"     => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "floorf64"     => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "ceilf32"      => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "ceilf64"      => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "truncf32"     => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "truncf64"     => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "rintf32"      => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "rintf64"      => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "nearbyintf32" => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "nearbyintf64" => (0, vec!( tcx.types.f64 ), tcx.types.f64),
-            "roundf32"     => (0, vec!( tcx.types.f32 ), tcx.types.f32),
-            "roundf64"     => (0, vec!( tcx.types.f64 ), tcx.types.f64),
+            "sqrt" | "sin" | "cos" | "exp" | "exp2" | "log" | "log10" | "log2" | "fabs" |
+                "floor" | "ceil" | "trunc" | "rint" | "nearbyint" | "round" =>
+                (1, vec!(param(ccx, 0)), param(ccx, 0)),
+
+            "powi" =>
+                (1, vec!(param(ccx, 0), tcx.types.i32), param(ccx, 0)),
+
+            "pow" | "copysign" =>
+                (1, vec!(param(ccx, 0), param(ccx, 0)), param(ccx, 0)),
+
+            "fma" =>
+                (1, vec!(param(ccx, 0), param(ccx, 0), param(ccx, 0)), param(ccx, 0)),
 
             "volatile_load" =>
                 (1, vec!( tcx.mk_imm_ptr(param(ccx, 0)) ), param(ccx, 0)),

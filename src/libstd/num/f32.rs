@@ -289,8 +289,10 @@ impl f32 {
         // function on MSVC, but there are many others elsewhere.
         #[cfg(target_env = "msvc")]
         fn floorf(f: f32) -> f32 { (f as f64).floor() as f32 }
-        #[cfg(not(target_env = "msvc"))]
+        #[cfg(all(not(target_env = "msvc"), stage0))]
         fn floorf(f: f32) -> f32 { unsafe { intrinsics::floorf32(f) } }
+        #[cfg(all(not(target_env = "msvc"), not(stage0)))]
+        fn floorf(f: f32) -> f32 { unsafe { intrinsics::floor(f) } }
     }
 
     /// Returns the smallest integer greater than or equal to a number.
@@ -304,6 +306,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn ceil(self) -> f32 {
         return ceilf(self);
 
@@ -314,6 +317,18 @@ impl f32 {
         fn ceilf(f: f32) -> f32 { unsafe { intrinsics::ceilf32(f) } }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn ceil(self) -> f32 {
+        return ceilf(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn ceilf(f: f32) -> f32 { (f as f64).ceil() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn ceilf(f: f32) -> f32 { unsafe { intrinsics::ceil(f) } }
+    }
     /// Returns the nearest integer to a number. Round half-way cases away from
     /// `0.0`.
     ///
@@ -326,8 +341,15 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn round(self) -> f32 {
         unsafe { intrinsics::roundf32(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn round(self) -> f32 {
+        unsafe { intrinsics::round(self) }
     }
 
     /// Returns the integer part of a number.
@@ -341,8 +363,15 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn trunc(self) -> f32 {
         unsafe { intrinsics::truncf32(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn trunc(self) -> f32 {
+        unsafe { intrinsics::trunc(self) }
     }
 
     /// Returns the fractional part of a number.
@@ -459,8 +488,15 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn mul_add(self, a: f32, b: f32) -> f32 {
         unsafe { intrinsics::fmaf32(self, a, b) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn mul_add(self, a: f32, b: f32) -> f32 {
+        unsafe { intrinsics::fma(self, a, b) }
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
@@ -505,6 +541,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn powf(self, n: f32) -> f32 {
         return powf(self, n);
 
@@ -513,6 +550,19 @@ impl f32 {
         fn powf(f: f32, n: f32) -> f32 { (f as f64).powf(n as f64) as f32 }
         #[cfg(not(target_env = "msvc"))]
         fn powf(f: f32, n: f32) -> f32 { unsafe { intrinsics::powf32(f, n) } }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn powf(self, n: f32) -> f32 {
+        return powf(self, n);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn powf(f: f32, n: f32) -> f32 { (f as f64).powf(n as f64) as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn powf(f: f32, n: f32) -> f32 { unsafe { intrinsics::pow(f, n) } }
     }
 
     /// Takes the square root of a number.
@@ -532,11 +582,22 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn sqrt(self) -> f32 {
         if self < 0.0 {
             NAN
         } else {
             unsafe { intrinsics::sqrtf32(self) }
+        }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn sqrt(self) -> f32 {
+        if self < 0.0 {
+            NAN
+        } else {
+            unsafe { intrinsics::sqrt(self) }
         }
     }
 
@@ -556,6 +617,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn exp(self) -> f32 {
         return expf(self);
 
@@ -566,6 +628,18 @@ impl f32 {
         fn expf(f: f32) -> f32 { unsafe { intrinsics::expf32(f) } }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn exp(self) -> f32 {
+        return expf(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn expf(f: f32) -> f32 { (f as f64).exp() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn expf(f: f32) -> f32 { unsafe { intrinsics::exp(f) } }
+    }
     /// Returns `2^(self)`.
     ///
     /// ```
@@ -580,8 +654,15 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn exp2(self) -> f32 {
         unsafe { intrinsics::exp2f32(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn exp2(self) -> f32 {
+        unsafe { intrinsics::exp2(self) }
     }
 
     /// Returns the natural logarithm of the number.
@@ -600,6 +681,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn ln(self) -> f32 {
         return logf(self);
 
@@ -608,6 +690,19 @@ impl f32 {
         fn logf(f: f32) -> f32 { (f as f64).ln() as f32 }
         #[cfg(not(target_env = "msvc"))]
         fn logf(f: f32) -> f32 { unsafe { intrinsics::logf32(f) } }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn ln(self) -> f32 {
+        return logf(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn logf(f: f32) -> f32 { (f as f64).ln() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn logf(f: f32) -> f32 { unsafe { intrinsics::log(f) } }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -645,8 +740,15 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn log2(self) -> f32 {
         unsafe { intrinsics::log2f32(self) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn log2(self) -> f32 {
+        unsafe { intrinsics::log2(self) }
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -663,6 +765,7 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(stage0)]
     pub fn log10(self) -> f32 {
         return log10f(self);
 
@@ -671,6 +774,19 @@ impl f32 {
         fn log10f(f: f32) -> f32 { (f as f64).log10() as f32 }
         #[cfg(not(target_env = "msvc"))]
         fn log10f(f: f32) -> f32 { unsafe { intrinsics::log10f32(f) } }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[cfg(not(stage0))]
+    pub fn log10(self) -> f32 {
+        return log10f(self);
+
+        // see notes above in `floor`
+        #[cfg(target_env = "msvc")]
+        fn log10f(f: f32) -> f32 { (f as f64).log10() as f32 }
+        #[cfg(not(target_env = "msvc"))]
+        fn log10f(f: f32) -> f32 { unsafe { intrinsics::log10(f) } }
     }
 
     /// Converts radians to degrees.
@@ -889,8 +1005,10 @@ impl f32 {
         // see notes in `core::f32::Float::floor`
         #[cfg(target_env = "msvc")]
         fn sinf(f: f32) -> f32 { (f as f64).sin() as f32 }
-        #[cfg(not(target_env = "msvc"))]
+        #[cfg(all(not(target_env = "msvc"), stage0))]
         fn sinf(f: f32) -> f32 { unsafe { intrinsics::sinf32(f) } }
+        #[cfg(all(not(target_env = "msvc"), not(stage0)))]
+        fn sinf(f: f32) -> f32 { unsafe { intrinsics::sin(f) } }
     }
 
     /// Computes the cosine of a number (in radians).
@@ -912,8 +1030,10 @@ impl f32 {
         // see notes in `core::f32::Float::floor`
         #[cfg(target_env = "msvc")]
         fn cosf(f: f32) -> f32 { (f as f64).cos() as f32 }
-        #[cfg(not(target_env = "msvc"))]
+        #[cfg(all(not(target_env = "msvc"), stage0))]
         fn cosf(f: f32) -> f32 { unsafe { intrinsics::cosf32(f) } }
+        #[cfg(all(not(target_env = "msvc"), not(stage0)))]
+        fn cosf(f: f32) -> f32 { unsafe { intrinsics::cos(f) } }
     }
 
     /// Computes the tangent of a number (in radians).

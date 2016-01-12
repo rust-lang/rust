@@ -416,101 +416,198 @@ extern "rust-intrinsic" {
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Returns the square root of an `f32`
+    #[cfg(stage0)]
     pub fn sqrtf32(x: f32) -> f32;
     /// Returns the square root of an `f64`
+    #[cfg(stage0)]
     pub fn sqrtf64(x: f64) -> f64;
+    /// Returns the square root of a floating point type `T`.
+    #[cfg(not(stage0))]
+    pub fn sqrt<T>(x: T) -> T;
 
     /// Raises an `f32` to an integer power.
+    #[cfg(stage0)]
     pub fn powif32(a: f32, x: i32) -> f32;
     /// Raises an `f64` to an integer power.
+    #[cfg(stage0)]
     pub fn powif64(a: f64, x: i32) -> f64;
+    /// Raises a floating point to an integer power.
+    #[cfg(not(stage0))]
+    pub fn powi<T>(a: T, x: i32) -> T;
 
     /// Returns the sine of an `f32`.
+    #[cfg(stage0)]
     pub fn sinf32(x: f32) -> f32;
     /// Returns the sine of an `f64`.
+    #[cfg(stage0)]
     pub fn sinf64(x: f64) -> f64;
+    /// Returns the sine of a floating point type `T`.
+    #[cfg(not(stage0))]
+    pub fn sin<T>(x: T) -> T;
 
     /// Returns the cosine of an `f32`.
+    #[cfg(stage0)]
     pub fn cosf32(x: f32) -> f32;
     /// Returns the cosine of an `f64`.
+    #[cfg(stage0)]
     pub fn cosf64(x: f64) -> f64;
+    /// Returns the cosine of a floating point type `T`.
+    #[cfg(not(stage0))]
+    pub fn cos<T>(x: T) -> T;
 
     /// Raises an `f32` to an `f32` power.
+    #[cfg(stage0)]
     pub fn powf32(a: f32, x: f32) -> f32;
     /// Raises an `f64` to an `f64` power.
+    #[cfg(stage0)]
     pub fn powf64(a: f64, x: f64) -> f64;
+    /// Raises floating point of type `T` to a floating point of type `T` power.
+    #[cfg(not(stage0))]
+    pub fn pow<T>(a: T, x: T) -> T;
 
     /// Returns the exponential of an `f32`.
+    #[cfg(stage0)]
     pub fn expf32(x: f32) -> f32;
     /// Returns the exponential of an `f64`.
+    #[cfg(stage0)]
     pub fn expf64(x: f64) -> f64;
+    /// Returns the exponential of a foating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn exp<T>(x: T) -> T;
 
     /// Returns 2 raised to the power of an `f32`.
+    #[cfg(stage0)]
     pub fn exp2f32(x: f32) -> f32;
     /// Returns 2 raised to the power of an `f64`.
+    #[cfg(stage0)]
     pub fn exp2f64(x: f64) -> f64;
+    /// Returns 2 raised to the power of a floating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn exp2<T>(x: T) -> T;
 
     /// Returns the natural logarithm of an `f32`.
+    #[cfg(stage0)]
     pub fn logf32(x: f32) -> f32;
     /// Returns the natural logarithm of an `f64`.
+    #[cfg(stage0)]
     pub fn logf64(x: f64) -> f64;
+    /// Returns the natural logarithm of a floating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn log<T>(x: T) -> T;
 
     /// Returns the base 10 logarithm of an `f32`.
+    #[cfg(stage0)]
     pub fn log10f32(x: f32) -> f32;
     /// Returns the base 10 logarithm of an `f64`.
+    #[cfg(stage0)]
     pub fn log10f64(x: f64) -> f64;
+    /// Returns the base 10 logarithm of a foating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn log10<T>(x: T) -> T;
 
     /// Returns the base 2 logarithm of an `f32`.
+    #[cfg(stage0)]
     pub fn log2f32(x: f32) -> f32;
     /// Returns the base 2 logarithm of an `f64`.
+    #[cfg(stage0)]
     pub fn log2f64(x: f64) -> f64;
+    /// Returns the base 2 logarithm of a floating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn log2<T>(x: T) -> T;
 
     /// Returns `a * b + c` for `f32` values.
+    #[cfg(stage0)]
     pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
     /// Returns `a * b + c` for `f64` values.
+    #[cfg(stage0)]
     pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
+    /// Returns `a * b + c` for floating point of type `T` values.
+    #[cfg(not(stage0))]
+    pub fn fma<T>(a: T, b: T, c: T) -> T;
 
     /// Returns the absolute value of an `f32`.
+    #[cfg(stage0)]
     pub fn fabsf32(x: f32) -> f32;
     /// Returns the absolute value of an `f64`.
+    #[cfg(stage0)]
     pub fn fabsf64(x: f64) -> f64;
+    /// Returns the absolute value of a floating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn fabs<T>(x: T) -> T;
 
     /// Copies the sign from `y` to `x` for `f32` values.
+    #[cfg(stage0)]
     pub fn copysignf32(x: f32, y: f32) -> f32;
     /// Copies the sign from `y` to `x` for `f64` values.
+    #[cfg(stage0)]
     pub fn copysignf64(x: f64, y: f64) -> f64;
+    /// Copies the sign from `y` to `x` for floating point values of type `T.
+    #[cfg(not(stage0))]
+    pub fn copysign<T>(x: T, y: T) -> T;
 
     /// Returns the largest integer less than or equal to an `f32`.
+    #[cfg(stage0)]
     pub fn floorf32(x: f32) -> f32;
     /// Returns the largest integer less than or equal to an `f64`.
+    #[cfg(stage0)]
     pub fn floorf64(x: f64) -> f64;
+    /// Returns the largest integer less than or equal to a floating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn floor<T>(x: T) -> T;
 
     /// Returns the smallest integer greater than or equal to an `f32`.
+    #[cfg(stage0)]
     pub fn ceilf32(x: f32) -> f32;
     /// Returns the smallest integer greater than or equal to an `f64`.
+    #[cfg(stage0)]
     pub fn ceilf64(x: f64) -> f64;
+    /// Returns the smallest integer greater than or equal to a floating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn ceil<T>(T: T) -> T;
 
     /// Returns the integer part of an `f32`.
+    #[cfg(stage0)]
     pub fn truncf32(x: f32) -> f32;
     /// Returns the integer part of an `f64`.
+    #[cfg(stage0)]
     pub fn truncf64(x: f64) -> f64;
+    /// Returns the integer part of an `f64`.
+    #[cfg(not(stage0))]
+    pub fn trunc<T>(x: T) -> T;
 
     /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
     /// if the argument is not an integer.
+    #[cfg(stage0)]
     pub fn rintf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
     /// if the argument is not an integer.
+    #[cfg(stage0)]
     pub fn rintf64(x: f64) -> f64;
+    /// Returns the nearest integer to a floating point of type `T`. May raise an inexact
+    /// floating-point exception if the argument is not an integer.
+    #[cfg(not(stage0))]
+    pub fn rint<T>(x: T) -> T;
 
     /// Returns the nearest integer to an `f32`.
+    #[cfg(stage0)]
     pub fn nearbyintf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`.
+    #[cfg(stage0)]
     pub fn nearbyintf64(x: f64) -> f64;
+    /// Returns the nearest integer to a floating point of type `T`.
+    #[cfg(not(stage0))]
+    pub fn nearbyint<T>(x: T) -> T;
 
     /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
+    #[cfg(stage0)]
     pub fn roundf32(x: f32) -> f32;
     /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
+    #[cfg(stage0)]
     pub fn roundf64(x: f64) -> f64;
+    /// Returns the nearest integer to a a floating point of type `T`.
+    /// Rounds half-way cases away from zero.
+    #[cfg(not(stage0))]
+    pub fn round<T>(x: T) -> T;
 
     /// Returns the number of bits set in an integer type `T`
     pub fn ctpop<T>(x: T) -> T;
