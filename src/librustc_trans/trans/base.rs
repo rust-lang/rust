@@ -1147,48 +1147,63 @@ pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>, val: ValueRef, f: F) -> 
     next_cx
 }
 
-pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
-    if cx.sess().opts.optimize == config::No {
+enum Lifetime { Start, End }
+
+// If LLVM lifetime intrinsic support is enabled (i.e. optimizations
+// on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
+// and the intrinsic for `lt` and passes them to `emit`, which is in
+// charge of generating code to call the passed intrinsic on whatever
+// block of generated code is targetted for the intrinsic.
+//
+// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
+// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
+fn core_lifetime_emit<'blk, 'tcx, F>(ccx: &'blk CrateContext<'blk, 'tcx>,
+                                     ptr: ValueRef,
+                                     lt: Lifetime,
+                                     emit: F)
+    where F: FnOnce(&'blk CrateContext<'blk, 'tcx>, machine::llsize, ValueRef)
+{
+    if ccx.sess().opts.optimize == config::No {
         return;
     }
 
-    let _icx = push_ctxt("lifetime_start");
-    let ccx = cx.ccx();
+    let _icx = push_ctxt(match lt {
+        Lifetime::Start => "lifetime_start",
+        Lifetime::End => "lifetime_end"
+    });
 
     let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
     if size == 0 {
         return;
     }
 
-    let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-    let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx,
-         lifetime_start,
-         &[C_u64(ccx, size), ptr],
-         None,
-         DebugLoc::None);
+    let lifetime_intrinsic = ccx.get_intrinsic(match lt {
+        Lifetime::Start => "llvm.lifetime.start",
+        Lifetime::End => "llvm.lifetime.end"
+    });
+    emit(ccx, size, lifetime_intrinsic)
+}
+
+pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
+    core_lifetime_emit(cx.ccx(), ptr, Lifetime::Start, |ccx, size, lifetime_start| {
+        let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
+        Call(cx,
+             lifetime_start,
+             &[C_u64(ccx, size), ptr],
+             None,
+             DebugLoc::None);
+    })
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
-    if cx.sess().opts.optimize == config::No {
-        return;
-    }
-
-    let _icx = push_ctxt("lifetime_end");
-    let ccx = cx.ccx();
-
-    let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
-    if size == 0 {
-        return;
-    }
-
-    let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-    let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx,
-         lifetime_end,
-         &[C_u64(ccx, size), ptr],
-         None,
-         DebugLoc::None);
+    core_lifetime_emit(cx.ccx(), ptr, Lifetime::End, |ccx, size, lifetime_end| {
+        let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
+        Call(cx,
+             lifetime_end,
+             &[C_u64(ccx, size), ptr],
+             None,
+             DebugLoc::None);
+    })
 }
 
 // Generates code for resumption of unwind at the end of a landing pad.
