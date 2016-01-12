@@ -350,7 +350,7 @@ mod prim_slice { }
 /// ```
 ///
 /// [`.as_ptr()`]: #method.as_ptr
-/// [`len()`]: # method.len
+/// [`len()`]: #method.len
 mod prim_str { }
 
 #[doc(primitive = "tuple")]
