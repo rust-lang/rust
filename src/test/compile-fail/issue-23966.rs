@@ -9,5 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    "".chars().fold(|_, _| (), ()); //~ ERROR is not implemented for the type `()`
+    "".chars().fold(|_, _| (), ());
+    //~^ ERROR E0277
+    //~| ERROR E0277
 }
