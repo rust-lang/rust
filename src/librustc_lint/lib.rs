@@ -146,6 +146,9 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
                     UNUSED_UNSAFE, PATH_STATEMENTS, UNUSED_ATTRIBUTES);
 
+    add_lint_group!(sess, FUTURE_INCOMPATIBLE,
+                    MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT);
+
     // We have one lint pass defined specially
     store.register_late_pass(sess, false, box lint::GatherNodeLevels);
 

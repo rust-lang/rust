@@ -2204,6 +2204,7 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span,
         // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
         // pass for the latter already ran.
         lint::raw_emit_lint(&ccx.tcx().sess,
+                            &ccx.tcx().sess.lint_store.borrow(),
                             lint::builtin::VARIANT_SIZE_DIFFERENCES,
                             *lvlsrc.unwrap(),
                             Some(sp),
