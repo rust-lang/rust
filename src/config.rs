@@ -270,6 +270,7 @@ create_config! {
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";
+    impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
     fn_empty_single_line: bool, true, "Put empty-body functions on a single line";
     fn_single_line: bool, false, "Put single-expression functions on a single line";
     fn_return_indent: ReturnIndent, ReturnIndent::WithArgs,
