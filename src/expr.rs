@@ -663,6 +663,7 @@ fn rewrite_if_else(context: &RewriteContext,
     let between_if_cond = mk_sp(span_after(span, "if", context.codemap),
                                 pat.map_or(cond.span.lo,
                                            |_| span_before(span, "let", context.codemap)));
+
     let between_if_cond_comment = extract_comment(between_if_cond, &context, offset, width);
 
     let after_cond_comment = extract_comment(mk_sp(cond.span.hi, if_block.span.lo),
@@ -680,23 +681,23 @@ fn rewrite_if_else(context: &RewriteContext,
         let rewrite = match else_block.node {
             // If the else expression is another if-else expression, prevent it
             // from being formatted on a single line.
-            ast::Expr_::ExprIfLet(ref pat, ref cond, ref if_block, ref else_block) => {
+            ast::Expr_::ExprIfLet(ref pat, ref cond, ref if_block, ref next_else_block) => {
                 rewrite_if_else(context,
                                 cond,
                                 if_block,
-                                else_block.as_ref().map(|e| &**e),
-                                mk_sp(span_after(span, "else", context.codemap), span.hi),
+                                next_else_block.as_ref().map(|e| &**e),
+                                mk_sp(else_block.span.lo, span.hi),
                                 Some(pat),
                                 width,
                                 offset,
                                 false)
             }
-            ast::Expr_::ExprIf(ref cond, ref if_block, ref else_block) => {
+            ast::Expr_::ExprIf(ref cond, ref if_block, ref next_else_block) => {
                 rewrite_if_else(context,
                                 cond,
                                 if_block,
-                                else_block.as_ref().map(|e| &**e),
-                                mk_sp(span_after(span, "else", context.codemap), span.hi),
+                                next_else_block.as_ref().map(|e| &**e),
+                                mk_sp(else_block.span.lo, span.hi),
                                 None,
                                 width,
                                 offset,

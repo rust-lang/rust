@@ -233,3 +233,14 @@ fn blocks() {
         println!("yay arithmetix!");
     };
 }
+
+fn issue767() {
+    if false {
+        if false {
+        } else {
+            // A let binding here seems necessary to trigger it.
+            let _ = ();
+        }
+    } else if let false = false {
+    }
+}
