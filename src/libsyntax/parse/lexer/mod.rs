@@ -1467,6 +1467,7 @@ impl<'a> StringReader<'a> {
 
     fn peeking_at_comment(&self) -> bool {
         (self.curr_is('/') && self.nextch_is('/')) || (self.curr_is('/') && self.nextch_is('*')) ||
+        // consider shebangs comments, but not inner attributes
         (self.curr_is('#') && self.nextch_is('!') && !self.nextnextch_is('['))
     }
 
