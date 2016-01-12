@@ -1158,24 +1158,27 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             offset += 1;
         } else {
             // Ascii case, try to skip forward quickly.
+            // When the pointer is aligned, read 2 words of data per iteration
+            // until we find a word containing a non-ascii byte.
+            const BYTES_PER_ITERATION: usize = 2 * usize::BYTES;
             let ptr = v.as_ptr();
             let align = (ptr as usize + offset) & (usize::BYTES - 1);
             if align == 0 {
-                // When the pointer is aligned, read 2 words of data per iteration
-                // until we find a word containing a non-ascii byte.
-                while offset <= len - 2 * usize::BYTES {
-                    unsafe {
-                        let u = *(ptr.offset(offset as isize) as *const usize);
-                        let v = *(ptr.offset((offset + usize::BYTES) as isize) as *const usize);
+                if len >= BYTES_PER_ITERATION {
+                    while offset <= len - BYTES_PER_ITERATION {
+                        unsafe {
+                            let u = *(ptr.offset(offset as isize) as *const usize);
+                            let v = *(ptr.offset((offset + usize::BYTES) as isize) as *const usize);
 
-                        // break if there is a nonascii byte
-                        let zu = contains_nonascii(u);
-                        let zv = contains_nonascii(v);
-                        if zu || zv {
-                            break;
+                            // break if there is a nonascii byte
+                            let zu = contains_nonascii(u);
+                            let zv = contains_nonascii(v);
+                            if zu || zv {
+                                break;
+                            }
                         }
+                        offset += BYTES_PER_ITERATION;
                     }
-                    offset += usize::BYTES * 2;
                 }
                 // step from the point where the wordwise loop stopped
                 while offset < len && v[offset] < 128 {
