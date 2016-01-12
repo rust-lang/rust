@@ -26,23 +26,34 @@ mod types {
     }
 
     pub type Alias = Priv; //~ WARN private type in public interface
+    //~^ WARNING HARD ERROR
     pub enum E {
         V1(Priv), //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
         V2 { field: Priv }, //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
     pub trait Tr {
         const C: Priv = Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
         type Alias = Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
         fn f1(arg: Priv) {} //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
         fn f2() -> Priv { panic!() } //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
     extern {
         pub static ES: Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
         pub fn ef1(arg: Priv); //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
         pub fn ef2() -> Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
     impl PubTr for Pub {
         type Alias = Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
 }
 
@@ -53,14 +64,21 @@ mod traits {
 
     pub type Alias<T: PrivTr> = T; //~ WARN private trait in public interface
     //~^ WARN trait bounds are not (yet) enforced in type definitions
+    //~| WARNING HARD ERROR
     pub trait Tr1: PrivTr {} //~ WARN private trait in public interface
+    //~^ WARNING HARD ERROR
     pub trait Tr2<T: PrivTr> {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     pub trait Tr3 {
         type Alias: PrivTr; //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
         fn f<T: PrivTr>(arg: T) {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     }
     impl<T: PrivTr> Pub<T> {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     impl<T: PrivTr> PubTr for Pub<T> {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
 }
 
 mod traits_where {
@@ -69,12 +87,17 @@ mod traits_where {
     pub trait PubTr {}
 
     pub type Alias<T> where T: PrivTr = T; //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     pub trait Tr2<T> where T: PrivTr {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     pub trait Tr3 {
         fn f<T>(arg: T) where T: PrivTr {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     }
     impl<T> Pub<T> where T: PrivTr {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     impl<T> PubTr for Pub<T> where T: PrivTr {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
 }
 
 mod generics {
@@ -84,9 +107,13 @@ mod generics {
     pub trait PubTr<T> {}
 
     pub trait Tr1: PrivTr<Pub> {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     pub trait Tr2: PubTr<Priv> {} //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     pub trait Tr3: PubTr<[Priv; 1]> {} //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     pub trait Tr4: PubTr<Pub<Priv>> {} //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
 }
 
 mod impls {
@@ -113,6 +140,7 @@ mod impls {
     }
     impl PubTr for Pub {
         type Alias = Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
 }
 
@@ -179,9 +207,11 @@ mod aliases_pub {
     pub trait Tr1: PrivUseAliasTr {} // OK
     // This should be OK, if type aliases are substituted
     pub trait Tr2: PrivUseAliasTr<PrivAlias> {} //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
 
     impl PrivAlias {
         pub fn f(arg: Priv) {} //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
     // This doesn't even parse
     // impl <Priv as PrivTr>::AssocAlias {
@@ -189,12 +219,15 @@ mod aliases_pub {
     // }
     impl PrivUseAliasTr for PrivUseAlias {
         type Check = Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
     impl PrivUseAliasTr for PrivAlias {
         type Check = Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
     impl PrivUseAliasTr for <Priv as PrivTr>::AssocAlias {
         type Check = Priv; //~ WARN private type in public interface
+        //~^ WARNING HARD ERROR
     }
 }
 
@@ -217,8 +250,11 @@ mod aliases_priv {
     impl PrivTr for Priv {}
 
     pub trait Tr1: PrivUseAliasTr {} //~ WARN private trait in public interface
+        //~^ WARNING HARD ERROR
     pub trait Tr2: PrivUseAliasTr<PrivAlias> {} //~ WARN private trait in public interface
      //~^ WARN private type in public interface
+        //~| WARNING HARD ERROR
+        //~| WARNING HARD ERROR
 
     impl PrivUseAlias {
         pub fn f(arg: Priv) {} // OK
