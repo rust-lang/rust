@@ -135,6 +135,13 @@ impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
     }
 }
 
+#[stable(feature = "string_box_error", since = "1.7.0")]
+impl<'a> From<&'a str> for Box<Error> {
+    fn from(err: &'a str) -> Box<Error> {
+        From::from(String::from(err))
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
     fn description(&self) -> &str { "failed to parse bool" }
