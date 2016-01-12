@@ -164,7 +164,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT),
-            reference: "RFC 218 <https://github.com/rust-lang/rfcs/blob/master/text/0218-empty-struct-with-braces.md>",
+            reference: "RFC 218 <https://github.com/rust-lang/rfcs/blob/\
+                        master/text/0218-empty-struct-with-braces.md>",
         },
         ]);
 
