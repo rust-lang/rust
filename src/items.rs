@@ -21,6 +21,7 @@ use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
+use syntax::codemap;
 
 use syntax::{ast, abi};
 use syntax::codemap::{Span, BytePos, mk_sp};
@@ -180,6 +181,10 @@ impl<'a> FmtVisitor<'a> {
         let mut newline_brace = newline_for_brace(self.config, &generics.where_clause);
         let context = self.get_context();
 
+        let block_snippet = self.snippet(codemap::mk_sp(block.span.lo, block.span.hi));
+        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty() ||
+                       !context.config.fn_empty_single_line;
+
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(&context,
                                                                          indent,
                                                                          ident,
@@ -192,7 +197,7 @@ impl<'a> FmtVisitor<'a> {
                                                                          vis,
                                                                          span,
                                                                          newline_brace,
-                                                                         true));
+                                                                         has_body));
 
         if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
             newline_brace = false;
@@ -1196,7 +1201,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                            (context.config.fn_args_layout == StructLitStyle::Block &&
                             ret_str.is_empty()) ||
                            (context.config.where_density == Density::CompressedIfEmpty &&
-                            !has_body) {
+                            !has_body && !result.contains('\n')) {
         Density::Compressed
     } else {
         Density::Tall
@@ -1213,6 +1218,12 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                          where_density,
                                                          "{",
                                                          Some(span.hi)));
+
+    if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
+       !where_clause_str.contains('\n') {
+        result.push('\n');
+    }
+
     result.push_str(&where_clause_str);
 
     Some((result, force_new_line_for_brace))

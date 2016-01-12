@@ -74,3 +74,6 @@ trait CoolTypes {
 trait CoolerTypes { fn dummy(&self) { 
 }
 }
+
+fn Foo<T>() where T: Bar {
+}
