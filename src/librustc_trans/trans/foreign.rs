@@ -40,6 +40,7 @@ use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::ast;
+use syntax::attr::AttrMetaMethods;
 
 use rustc_front::print::pprust;
 use rustc_front::hir;
@@ -119,8 +120,8 @@ pub fn register_static(ccx: &CrateContext,
     let llty = type_of::type_of(ccx, ty);
 
     let ident = link_name(foreign_item);
-    match attr::first_attr_value_str_by_name(&foreign_item.attrs,
-                                             "linkage") {
+    let c = match attr::first_attr_value_str_by_name(&foreign_item.attrs,
+                                                     "linkage") {
         // If this is a static with a linkage specified, then we need to handle
         // it a little specially. The typesystem prevents things like &T and
         // extern "C" fn() from being non-null, so we can't just declare a
@@ -165,7 +166,16 @@ pub fn register_static(ccx: &CrateContext,
         }
         None => // Generate an external declaration.
             declare::declare_global(ccx, &ident[..], llty),
+    };
+
+    // Handle thread-local external statics.
+    for attr in foreign_item.attrs.iter() {
+        if attr.check_name("thread_local") {
+            llvm::set_thread_local(c, true);
+        }
     }
+
+    return c;
 }
 
 // only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
