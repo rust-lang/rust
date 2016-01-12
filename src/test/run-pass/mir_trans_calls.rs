@@ -88,6 +88,15 @@ fn test8() -> isize {
     Two::two()
 }
 
+extern fn simple_extern(x: u32, y: (u32, u32)) -> u32 {
+    x + y.0 * y.1
+}
+
+#[rustc_mir]
+fn test9() -> u32 {
+    simple_extern(41, (42, 43))
+}
+
 #[rustc_mir]
 fn test_closure<F>(f: &F, x: i32, y: i32) -> i32
     where F: Fn(i32, i32) -> i32
@@ -117,6 +126,7 @@ fn main() {
     assert_eq!(test6(&Foo, 12367), 12367);
     assert_eq!(test7(), 1);
     assert_eq!(test8(), 2);
+    assert_eq!(test9(), 41 + 42 * 43);
 
     let closure = |x: i32, y: i32| { x + y };
     assert_eq!(test_closure(&closure, 100, 1), 101);
