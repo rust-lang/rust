@@ -1354,6 +1354,13 @@ pub fn alloca_dropped<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ty: Ty<'tcx>, name: &st
     let p = alloca(cx, llty, name);
     let b = cx.fcx.ccx.builder();
     b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
+
+    // This is just like `call_lifetime_start` (but latter expects a
+    // Block, which we do not have for `alloca_insert_pt`).
+    core_lifetime_emit(cx.ccx(), p, Lifetime::Start, |ccx, size, lifetime_start| {
+        let ptr = b.pointercast(p, Type::i8p(ccx));
+        b.call(lifetime_start, &[C_u64(ccx, size), ptr], None);
+    });
     memfill(&b, p, ty, adt::DTOR_DONE);
     p
 }

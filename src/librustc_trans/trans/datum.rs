@@ -513,7 +513,9 @@ impl<'tcx> Datum<'tcx, Rvalue> {
                     |this, bcx, llval| {
                         debug!("populate call for Datum::to_lvalue_datum_in_scope \
                                 self.ty={:?}", this.ty);
-                        call_lifetime_start(bcx, llval);
+                        // do not call_lifetime_start here; the
+                        // `InitAlloc::Dropped` will start scratch
+                        // value's lifetime at open of function body.
                         let bcx = this.store_to(bcx, llval);
                         bcx.fcx.schedule_lifetime_end(scope, llval);
                         bcx
