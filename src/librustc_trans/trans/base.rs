@@ -2727,7 +2727,7 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         None => {}
     }
 
-    match attr::find_export_name_attr(ccx.sess().diagnostic(), attrs) {
+    match attr::find_export_name_attr(Some(ccx.sess().diagnostic()), attrs) {
         // Use provided name
         Some(name) => name.to_string(),
         _ => {
