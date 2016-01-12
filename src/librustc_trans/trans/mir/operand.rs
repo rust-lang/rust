@@ -169,6 +169,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                          operand: OperandRef<'tcx>)
     {
         debug!("store_operand: operand={}", operand.repr(bcx));
+        // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
+        // value is through `undef`, and store itself is useless.
+        if common::type_is_zero_size(bcx.ccx(), operand.ty) {
+            return;
+        }
         match operand.val {
             OperandValue::Ref(r) => base::memcpy_ty(bcx, lldest, r, operand.ty),
             OperandValue::Immediate(s) => base::store_ty(bcx, s, lldest, operand.ty),
