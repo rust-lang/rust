@@ -46,10 +46,6 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         ast.make_mirror(self)
     }
 
-    pub fn unit_ty(&mut self) -> Ty<'tcx> {
-        self.tcx.mk_nil()
-    }
-
     pub fn usize_ty(&mut self) -> Ty<'tcx> {
         self.tcx.types.usize
     }

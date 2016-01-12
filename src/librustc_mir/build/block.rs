@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use build::{BlockAnd, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
 use rustc::mir::repr::*;
 use rustc_front::hir;
@@ -19,11 +19,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      mut block: BasicBlock,
                      ast_block: &'tcx hir::Block)
                      -> BlockAnd<()> {
-        let this = self;
-        let Block { extent, span: _, stmts, expr } = this.hir.mirror(ast_block);
-        this.in_scope(extent, block, |this| {
+        let Block { extent, span, stmts, expr } = self.hir.mirror(ast_block);
+        self.in_scope(extent, block, move |this| {
             unpack!(block = this.stmts(block, stmts));
-            this.into(destination, block, expr)
+            match expr {
+                Some(expr) => this.into(destination, block, expr),
+                None => {
+                    this.cfg.push_assign_unit(block, span, destination);
+                    block.unit()
+                }
+            }
         })
     }
 }
