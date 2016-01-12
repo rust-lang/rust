@@ -17,8 +17,8 @@ extern crate toml;
 extern crate env_logger;
 extern crate getopts;
 
-use rustfmt::{WriteMode, run, run_from_stdin};
-use rustfmt::config::Config;
+use rustfmt::{run, run_from_stdin};
+use rustfmt::config::{Config, WriteMode};
 
 use std::env;
 use std::fs::{self, File};
@@ -216,7 +216,7 @@ fn determine_operation(matches: &Matches) -> Operation {
                 Err(..) => return Operation::InvalidInput("Unrecognized write mode".into()),
             }
         }
-        None => WriteMode::Replace,
+        None => WriteMode::Default,
     };
 
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();

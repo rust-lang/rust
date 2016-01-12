@@ -34,12 +34,11 @@ use std::ops::{Add, Sub};
 use std::path::Path;
 use std::collections::HashMap;
 use std::fmt;
-use std::str::FromStr;
 
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
 use visitor::FmtVisitor;
-use config::Config;
+use config::{Config, WriteMode};
 
 #[macro_use]
 mod utils;
@@ -184,42 +183,6 @@ impl Sub<usize> for Indent {
 
     fn sub(self, rhs: usize) -> Indent {
         Indent::new(self.block_indent, self.alignment - rhs)
-    }
-}
-
-#[derive(Copy, Clone)]
-pub enum WriteMode {
-    // Backsup the original file and overwrites the orignal.
-    Replace,
-    // Overwrites original file without backup.
-    Overwrite,
-    // str is the extension of the new file.
-    NewFile(&'static str),
-    // Write the output to stdout.
-    Display,
-    // Write the diff to stdout.
-    Diff,
-    // Return the result as a mapping from filenames to Strings.
-    Return,
-    // Display how much of the input file was processed
-    Coverage,
-    // Unfancy stdout
-    Plain,
-}
-
-impl FromStr for WriteMode {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "replace" => Ok(WriteMode::Replace),
-            "display" => Ok(WriteMode::Display),
-            "overwrite" => Ok(WriteMode::Overwrite),
-            "diff" => Ok(WriteMode::Diff),
-            "coverage" => Ok(WriteMode::Coverage),
-            "plain" => Ok(WriteMode::Plain),
-            _ => Err(()),
-        }
     }
 }
 
@@ -445,16 +408,27 @@ pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     file_map
 }
 
+// Make sure that we are using the correct WriteMode,
+// preferring what is passed as an argument
+fn check_write_mode(arg: WriteMode, config: WriteMode) -> WriteMode {
+    match (arg, config) {
+        (WriteMode::Default, WriteMode::Default) => WriteMode::Replace,
+        (WriteMode::Default, mode) => mode,
+        (mode, _) => mode,
+    }
+}
+
 // args are the arguments passed on the command line, generally passed through
 // to the compiler.
 // write_mode determines what happens to the result of running rustfmt, see
 // WriteMode.
 pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
-    let mut result = format(file, config, write_mode);
+    let mode = check_write_mode(write_mode, config.write_mode);
+    let mut result = format(file, config, mode);
 
     print!("{}", fmt_lines(&mut result, config));
 
-    let write_result = filemap::write_all_files(&result, write_mode, config);
+    let write_result = filemap::write_all_files(&result, mode, config);
 
     if let Err(msg) = write_result {
         println!("Error writing files: {}", msg);
@@ -462,7 +436,8 @@ pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
 }
 
 // Similar to run, but takes an input String instead of a file to format
-pub fn run_from_stdin(input: String, mode: WriteMode, config: &Config) {
+pub fn run_from_stdin(input: String, write_mode: WriteMode, config: &Config) {
+    let mode = check_write_mode(write_mode, config.write_mode);
     let mut result = format_string(input, config, mode);
     fmt_lines(&mut result, config);
 

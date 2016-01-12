@@ -19,7 +19,8 @@ use std::io::{self, Read, BufRead, BufReader};
 use std::path::Path;
 
 use rustfmt::*;
-use rustfmt::config::{Config, ReportTactic};
+use rustfmt::filemap::write_system_newlines;
+use rustfmt::config::{Config, ReportTactic, WriteMode};
 use rustfmt::rustfmt_diff::*;
 
 static DIFF_CONTEXT_SIZE: usize = 3;
@@ -43,7 +44,7 @@ fn system_tests() {
     // Turn a DirEntry into a String that represents the relative path to the
     // file.
     let files = files.map(get_path_string);
-    let (_reports, count, fails) = check_files(files, WriteMode::Return);
+    let (_reports, count, fails) = check_files(files, WriteMode::Default);
 
     // Display results.
     println!("Ran {} system tests.", count);
@@ -71,7 +72,7 @@ fn idempotence_tests() {
                     .ok()
                     .expect("Couldn't read target dir.")
                     .map(get_path_string);
-    let (_reports, count, fails) = check_files(files, WriteMode::Return);
+    let (_reports, count, fails) = check_files(files, WriteMode::Default);
 
     // Display results.
     println!("Ran {} idempotent tests.", count);
@@ -90,7 +91,7 @@ fn self_tests() {
     // Hack because there's no `IntoIterator` impl for `[T; N]`.
     let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
 
-    let (reports, count, fails) = check_files(files, WriteMode::Return);
+    let (reports, count, fails) = check_files(files, WriteMode::Default);
     let mut warnings = 0;
 
     // Display results.
@@ -162,8 +163,16 @@ pub fn idempotent_check(filename: String,
     let mut file_map = format(Path::new(&filename), &config, write_mode);
     let format_report = fmt_lines(&mut file_map, &config);
 
-    // Won't panic, as we're not doing any IO.
-    let write_result = filemap::write_all_files(&file_map, WriteMode::Return, &config).unwrap();
+    let mut write_result = HashMap::new();
+    for (filename, text) in file_map.iter() {
+        let mut v = Vec::new();
+        // Won't panic, as we're not doing any IO.
+        write_system_newlines(&mut v, text, &config).unwrap();
+        // Won't panic, we are writing correct utf8.
+        let one_result = String::from_utf8(v).unwrap();
+        write_result.insert(filename.clone(), one_result);
+    }
+
     let target = sig_comments.get("target").map(|x| &(*x)[..]);
 
     handle_result(write_result, target, write_mode).map(|_| format_report)

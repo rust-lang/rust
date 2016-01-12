@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use WriteMode;
+use config::WriteMode;
 use visitor::FmtVisitor;
 use syntax::codemap::{self, BytePos, Span, Pos};
 use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
