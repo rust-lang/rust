@@ -329,9 +329,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
-            for export in self.export_map.get(&id).expect("module isn't found in export map") {
-                if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
-                    self.update(node_id, Some(AccessLevel::Exported));
+            if let Some(exports) = self.export_map.get(&id) {
+                for export in exports {
+                    if let Some(node_id) = self.tcx.map.as_local_node_id(export.def_id) {
+                        self.update(node_id, Some(AccessLevel::Exported));
+                    }
                 }
             }
         }
