@@ -271,43 +271,6 @@ def load_properties(f, interestingprops):
 
     return props
 
-# load all widths of want_widths, except those in except_cats
-def load_east_asian_width(want_widths, except_cats):
-    f = "EastAsianWidth.txt"
-    fetch(f)
-    widths = {}
-    re1 = re.compile("^([0-9A-F]+);(\w+) +# (\w+)")
-    re2 = re.compile("^([0-9A-F]+)\.\.([0-9A-F]+);(\w+) +# (\w+)")
-
-    for line in fileinput.input(f):
-        width = None
-        d_lo = 0
-        d_hi = 0
-        cat = None
-        m = re1.match(line)
-        if m:
-            d_lo = m.group(1)
-            d_hi = m.group(1)
-            width = m.group(2)
-            cat = m.group(3)
-        else:
-            m = re2.match(line)
-            if m:
-                d_lo = m.group(1)
-                d_hi = m.group(2)
-                width = m.group(3)
-                cat = m.group(4)
-            else:
-                continue
-        if cat in except_cats or width not in want_widths:
-            continue
-        d_lo = int(d_lo, 16)
-        d_hi = int(d_hi, 16)
-        if width not in widths:
-            widths[width] = []
-        widths[width].append((d_lo, d_hi))
-    return widths
-
 def escape_char(c):
     return "'\\u{%x}'" % c if c != 0 else "'\\0'"
 
@@ -316,12 +279,12 @@ def emit_bsearch_range_table(f):
 fn bsearch_range_table(c: char, r: &'static [(char, char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
     r.binary_search_by(|&(lo, hi)| {
-         if lo <= c && c <= hi {
-             Equal
+         if c < lo {
+             Greater
          } else if hi < c {
              Less
          } else {
-             Greater
+             Equal
          }
      })
      .is_ok()
@@ -356,34 +319,25 @@ def emit_property_module(f, mod, tbl, emit):
 def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
     f.write("""
-    use core::cmp::Ordering::{Equal, Less, Greater};
     use core::option::Option;
     use core::option::Option::{Some, None};
-    use core::result::Result::{Ok, Err};
 
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
-          None        => [c, '\\0', '\\0'],
-          Some(index) => to_lowercase_table[index].1
+            None        => [c, '\\0', '\\0'],
+            Some(index) => to_lowercase_table[index].1,
         }
     }
 
     pub fn to_upper(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_uppercase_table) {
             None        => [c, '\\0', '\\0'],
-            Some(index) => to_uppercase_table[index].1
+            Some(index) => to_uppercase_table[index].1,
         }
     }
 
     fn bsearch_case_table(c: char, table: &'static [(char, [char; 3])]) -> Option<usize> {
-        match table.binary_search_by(|&(key, _)| {
-            if c == key { Equal }
-            else if key < c { Less }
-            else { Greater }
-        }) {
-            Ok(i) => Some(i),
-            Err(_) => None,
-        }
+        table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
     }
 
 """)
@@ -396,47 +350,6 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
     emit_table(f, "to_uppercase_table",
         sorted(to_upper.iteritems(), key=operator.itemgetter(0)),
         is_pub=False, t_type = t_type, pfun=pfun)
-    f.write("}\n\n")
-
-def emit_charwidth_module(f, width_table):
-    f.write("pub mod charwidth {\n")
-    f.write("    use core::option::Option;\n")
-    f.write("    use core::option::Option::{Some, None};\n")
-    f.write("    use core::result::Result::{Ok, Err};\n")
-    f.write("""
-    fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
-        use core::cmp::Ordering::{Equal, Less, Greater};
-        match r.binary_search_by(|&(lo, hi, _, _)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) {
-            Ok(idx) => {
-                let (_, _, r_ncjk, r_cjk) = r[idx];
-                if is_cjk { r_cjk } else { r_ncjk }
-            }
-            Err(_) => 1
-        }
-    }
-""")
-
-    f.write("""
-    pub fn width(c: char, is_cjk: bool) -> Option<usize> {
-        match c as usize {
-            _c @ 0 => Some(0),          // null is zero width
-            cu if cu < 0x20 => None,    // control sequences have no width
-            cu if cu < 0x7F => Some(1), // ASCII
-            cu if cu < 0xA0 => None,    // more control sequences
-            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as usize)
-        }
-    }
-
-""")
-
-    f.write("    // character width table. Based on Markus Kuhn's free wcwidth() implementation,\n")
-    f.write("    //     http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c\n")
-    emit_table(f, "charwidth_table", width_table, "&'static [(char, char, u8, u8)]", is_pub=False,
-            pfun=lambda x: "(%s,%s,%s,%s)" % (escape_char(x[0]), escape_char(x[1]), x[2], x[3]))
     f.write("}\n\n")
 
 def emit_norm_module(f, canon, compat, combine, norm_props):
@@ -458,43 +371,6 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
             canon_comp[decomp[0]].append( (decomp[1], char) )
     canon_comp_keys = canon_comp.keys()
     canon_comp_keys.sort()
-
-def remove_from_wtable(wtable, val):
-    wtable_out = []
-    while wtable:
-        if wtable[0][1] < val:
-            wtable_out.append(wtable.pop(0))
-        elif wtable[0][0] > val:
-            break
-        else:
-            (wt_lo, wt_hi, width, width_cjk) = wtable.pop(0)
-            if wt_lo == wt_hi == val:
-                continue
-            elif wt_lo == val:
-                wtable_out.append((wt_lo+1, wt_hi, width, width_cjk))
-            elif wt_hi == val:
-                wtable_out.append((wt_lo, wt_hi-1, width, width_cjk))
-            else:
-                wtable_out.append((wt_lo, val-1, width, width_cjk))
-                wtable_out.append((val+1, wt_hi, width, width_cjk))
-    if wtable:
-        wtable_out.extend(wtable)
-    return wtable_out
-
-
-
-def optimize_width_table(wtable):
-    wtable_out = []
-    w_this = wtable.pop(0)
-    while wtable:
-        if w_this[1] == wtable[0][0] - 1 and w_this[2:3] == wtable[0][2:3]:
-            w_tmp = wtable.pop(0)
-            w_this = (w_this[0], w_tmp[1], w_tmp[2], w_tmp[3])
-        else:
-            wtable_out.append(w_this)
-            w_this = wtable.pop(0)
-    wtable_out.append(w_this)
-    return wtable_out
 
 if __name__ == "__main__":
     r = "tables.rs"
