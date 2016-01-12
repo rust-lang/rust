@@ -78,20 +78,21 @@ macro_rules! if_let_chain {
     };
 }
 
-/// Returns true if the two spans come from differing expansions (i.e. one is from a macro and one isn't)
+/// Returns true if the two spans come from differing expansions (i.e. one is from a macro and one
+/// isn't).
 pub fn differing_macro_contexts(sp1: Span, sp2: Span) -> bool {
     sp1.expn_id != sp2.expn_id
 }
-/// returns true if this expn_info was expanded by any macro
+/// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id, |info| info.is_some())
 }
 
-/// returns true if the macro that expanded the crate was outside of
-/// the current crate or was a compiler plugin
+/// Returns true if the macro that expanded the crate was outside of the current crate or was a
+/// compiler plugin.
 pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
-    /// invokes in_macro with the expansion info of the given span
-    /// slightly heavy, try to use this after other checks have already happened
+    /// Invokes in_macro with the expansion info of the given span slightly heavy, try to use this
+    /// after other checks have already happened.
     fn in_macro_ext<T: LintContext>(cx: &T, opt_info: Option<&ExpnInfo>) -> bool {
         // no ExpnInfo = no macro
         opt_info.map_or(false, |info| {
@@ -110,9 +111,12 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id, |info| in_macro_ext(cx, info))
 }
 
-/// check if a DefId's path matches the given absolute type path
-/// usage e.g. with
-/// `match_def_path(cx, id, &["core", "option", "Option"])`
+/// Check if a `DefId`'s path matches the given absolute type path usage.
+///
+/// # Examples
+/// ```
+/// match_def_path(cx, id, &["core", "option", "Option"])
+/// ```
 pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
     cx.tcx.with_path(def_id, |iter| {
         iter.zip(path)
@@ -120,7 +124,7 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
     })
 }
 
-/// check if type is struct or enum type with given def path
+/// Check if type is struct or enum type with given def path.
 pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     match ty.sty {
         ty::TyEnum(ref adt, _) | ty::TyStruct(ref adt, _) => match_def_path(cx, adt.did, path),
@@ -128,7 +132,7 @@ pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     }
 }
 
-/// check if method call given in "expr" belongs to given trait
+/// Check if the method call given in `expr` belongs to given trait.
 pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
 
@@ -145,9 +149,10 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     }
 }
 
-/// check if method call given in "expr" belongs to given trait
+/// Check if the method call given in `expr` belongs to given trait.
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
+
     let trt_id = cx.tcx
                    .tables
                    .borrow()
@@ -161,21 +166,31 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
     }
 }
 
-/// match a Path against a slice of segment string literals, e.g.
-/// `match_path(path, &["std", "rt", "begin_unwind"])`
+/// Match a `Path` against a slice of segment string literals.
+///
+/// # Examples
+/// ```
+/// match_path(path, &["std", "rt", "begin_unwind"])
+/// ```
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.identifier.name.as_str() == *b)
 }
 
-/// match a Path against a slice of segment string literals, e.g.
-/// `match_path(path, &["std", "rt", "begin_unwind"])`
+/// Match a `Path` against a slice of segment string literals, e.g.
+///
+/// # Examples
+/// ```
+/// match_path(path, &["std", "rt", "begin_unwind"])
+/// ```
 pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.identifier.name.as_str() == *b)
 }
 
-/// match an Expr against a chain of methods, and return the matched Exprs. For example, if `expr`
-/// represents the `.baz()` in `foo.bar().baz()`, `matched_method_chain(expr, &["bar", "baz"])`
-/// will return a Vec containing the Exprs for `.bar()` and `.baz()`
+/// Match an `Expr` against a chain of methods, and return the matched `Expr`s.
+///
+/// For example, if `expr` represents the `.baz()` in `foo.bar().baz()`,
+/// `matched_method_chain(expr, &["bar", "baz"])` will return a `Vec` containing the `Expr`s for
+/// `.bar()` and `.baz()`
 pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a MethodArgs>> {
     let mut current = expr;
     let mut matched = Vec::with_capacity(methods.len());
@@ -197,7 +212,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 }
 
 
-/// get the name of the item the expression is in, if available
+/// Get the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
     match cx.tcx.map.find(parent_id) {
@@ -208,7 +223,7 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     }
 }
 
-/// checks if a `let` decl is from a for loop desugaring
+/// Checks if a `let` decl is from a `for` loop desugaring.
 pub fn is_from_for_desugar(decl: &Decl) -> bool {
     if_let_chain! {
         [
@@ -222,31 +237,39 @@ pub fn is_from_for_desugar(decl: &Decl) -> bool {
 }
 
 
-/// convert a span to a code snippet if available, otherwise use default, e.g.
-/// `snippet(cx, expr.span, "..")`
+/// Convert a span to a code snippet if available, otherwise use default.
+///
+/// # Example
+/// ```
+/// snippet(cx, expr.span, "..")
+/// ```
 pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
 }
 
-/// Converts a span to a code snippet. Returns None if not available.
+/// Convert a span to a code snippet. Returns `None` if not available.
 pub fn snippet_opt<T: LintContext>(cx: &T, span: Span) -> Option<String> {
     cx.sess().codemap().span_to_snippet(span).ok()
 }
 
-/// convert a span (from a block) to a code snippet if available, otherwise use default, e.g.
-/// `snippet(cx, expr.span, "..")`
-/// This trims the code of indentation, except for the first line
-/// Use it for blocks or block-like things which need to be printed as such
+/// Convert a span (from a block) to a code snippet if available, otherwise use default.
+/// This trims the code of indentation, except for the first line. Use it for blocks or block-like
+/// things which need to be printed as such.
+///
+/// # Example
+/// ```
+/// snippet(cx, expr.span, "..")
+/// ```
 pub fn snippet_block<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
     trim_multiline(snip, true)
 }
 
-/// Like snippet_block, but add braces if the expr is not an ExprBlock
-/// Also takes an Option<String> which can be put inside the braces
+/// Like `snippet_block`, but add braces if the expr is not an `ExprBlock`.
+/// Also takes an `Option<String>` which can be put inside the braces.
 pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr, option: Option<String>, default: &'a str) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
-    let string = option.map_or("".to_owned(), |s| s);
+    let string = option.unwrap_or_default();
     if let ExprBlock(_) = expr.node {
         Cow::Owned(format!("{}{}", code, string))
     } else if string.is_empty() {
@@ -256,8 +279,7 @@ pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr, option: Option<String
     }
 }
 
-/// Trim indentation from a multiline string
-/// with possibility of ignoring the first line
+/// Trim indentation from a multiline string with possibility of ignoring the first line.
 pub fn trim_multiline(s: Cow<str>, ignore_first: bool) -> Cow<str> {
     let s_space = trim_multiline_inner(s, ignore_first, ' ');
     let s_tab = trim_multiline_inner(s_space, ignore_first, '\t');
@@ -297,7 +319,7 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
     }
 }
 
-/// get a parent expr if any – this is useful to constrain a lint
+/// Get a parent expressions if any – this is useful to constrain a lint.
 pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.map;
     let node_id: NodeId = e.id;
@@ -350,22 +372,7 @@ impl<'a> Deref for DiagnosticWrapper<'a> {
     }
 }
 
-#[cfg(not(feature="structured_logging"))]
 pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
-    let mut db = cx.struct_span_lint(lint, sp, msg);
-    if cx.current_level(lint) != Level::Allow {
-        db.fileline_help(sp,
-                         &format!("for further information visit https://github.com/Manishearth/rust-clippy/wiki#{}",
-                                  lint.name_lower()));
-    }
-    DiagnosticWrapper(db)
-}
-
-#[cfg(feature="structured_logging")]
-pub fn span_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str) -> DiagnosticWrapper<'a> {
-    // lint.name / lint.desc is can give details of the lint
-    // cx.sess().codemap() has all these nice functions for line/column/snippet details
-    // http://doc.rust-lang.org/syntax/codemap/struct.CodeMap.html#method.span_to_string
     let mut db = cx.struct_span_lint(lint, sp, msg);
     if cx.current_level(lint) != Level::Allow {
         db.fileline_help(sp,
@@ -419,7 +426,7 @@ pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint,
     db
 }
 
-/// return the base type for references and raw pointers
+/// Return the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
     match ty.sty {
         ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => walk_ptrs_ty(tm.ty),
@@ -427,7 +434,7 @@ pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
     }
 }
 
-/// return the base type for references and raw pointers, and count reference depth
+/// Return the base type for references and raw pointers, and count reference depth.
 pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
     fn inner(ty: ty::Ty, depth: usize) -> (ty::Ty, usize) {
         match ty.sty {
