@@ -32,7 +32,6 @@ name                                                                            
 [explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)                       | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
 [filter_next](https://github.com/Manishearth/rust-clippy/wiki#filter_next)                                     | warn    | using `filter(p).next()`, which is more succinctly expressed as `.find(p)`
 [float_cmp](https://github.com/Manishearth/rust-clippy/wiki#float_cmp)                                         | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
-[hashmap_entry](https://github.com/Manishearth/rust-clippy/wiki#hashmap_entry)                                 | warn    | use of `contains_key` followed by `insert` on a `HashMap`
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                     | warn    | using identity operations, e.g. `x + 0` or `y / 1`
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                   | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                 | warn    | `#[inline(always)]` is a bad idea in most cases
@@ -43,6 +42,7 @@ name                                                                            
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                               | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                                       | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque
 [map_clone](https://github.com/Manishearth/rust-clippy/wiki#map_clone)                                         | warn    | using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends `.cloned()` instead)
+[map_entry](https://github.com/Manishearth/rust-clippy/wiki#map_entry)                                         | warn    | use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`
 [match_bool](https://github.com/Manishearth/rust-clippy/wiki#match_bool)                                       | warn    | a match on boolean expression; recommends `if..else` block instead
 [match_overlapping_arm](https://github.com/Manishearth/rust-clippy/wiki#match_overlapping_arm)                 | warn    | a match has overlapping arms
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                               | warn    | a match or `if let` has all arms prefixed with `&`; the match expression can be dereferenced instead

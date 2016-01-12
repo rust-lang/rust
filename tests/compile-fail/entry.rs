@@ -2,9 +2,9 @@
 #![plugin(clippy)]
 #![allow(unused)]
 
-#![deny(hashmap_entry)]
+#![deny(map_entry)]
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 
 fn foo() {}
@@ -30,6 +30,12 @@ fn insert_if_absent2<K: Eq + Hash, V>(m: &mut HashMap<K, V>, k: K, v: V) {
 fn insert_if_absent3<K: Eq + Hash, V>(m: &mut HashMap<K, V>, k: K, v: V) {
     if !m.contains_key(&k) { foo(); m.insert(k, v) } else { None };
     //~^ERROR: usage of `contains_key` followed by `insert` on `HashMap`
+    //~^^HELP: Consider using `m.entry(k)`
+}
+
+fn insert_in_btreemap<K: Ord, V>(m: &mut BTreeMap<K, V>, k: K, v: V) {
+    if !m.contains_key(&k) { foo(); m.insert(k, v) } else { None };
+    //~^ERROR: usage of `contains_key` followed by `insert` on `BTreeMap`
     //~^^HELP: Consider using `m.entry(k)`
 }
 

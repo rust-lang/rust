@@ -71,7 +71,7 @@ pub mod temporary_assignment;
 pub mod transmute;
 pub mod cyclomatic_complexity;
 pub mod escape;
-pub mod hashmap;
+pub mod entry;
 pub mod misc_early;
 pub mod array_indexing;
 pub mod panic;
@@ -113,7 +113,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box types::UnitCmp);
     reg.register_late_lint_pass(box loops::LoopsPass);
     reg.register_late_lint_pass(box lifetimes::LifetimePass);
-    reg.register_late_lint_pass(box hashmap::HashMapLint);
+    reg.register_late_lint_pass(box entry::HashMapLint);
     reg.register_late_lint_pass(box ranges::StepByZero);
     reg.register_late_lint_pass(box types::CastPass);
     reg.register_late_lint_pass(box types::TypeComplexityPass);
@@ -167,10 +167,10 @@ pub fn plugin_registrar(reg: &mut Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
+        entry::MAP_ENTRY,
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
-        hashmap::HASHMAP_ENTRY,
         identity_op::IDENTITY_OP,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
