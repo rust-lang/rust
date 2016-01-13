@@ -247,7 +247,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
 #![feature(rand)]
-#![feature(range_inclusive)]
 #![feature(raw)]
 #![feature(repr_simd)]
 #![feature(reflect_marker)]
