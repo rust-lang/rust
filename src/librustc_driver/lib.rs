@@ -138,12 +138,9 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
     };
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let mut sess = build_session(sopts, input_file_path, descriptions,
+    let sess = build_session(sopts, input_file_path, descriptions,
                                  cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    if sess.unstable_options() {
-        sess.opts.show_span = matches.opt_str("show-span");
-    }
     let mut cfg = config::build_configuration(&sess);
     target_features::add_configuration(&mut cfg, &sess);
 
@@ -387,7 +384,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn build_controller(&mut self, sess: &Session) -> CompileController<'a> {
         let mut control = CompileController::basic();
 
-        if sess.opts.parse_only || sess.opts.show_span.is_some() ||
+        if sess.opts.parse_only || sess.opts.debugging_opts.show_span.is_some() ||
            sess.opts.debugging_opts.ast_json_noexpand {
             control.after_parse.stop = Compilation::Stop;
         }
