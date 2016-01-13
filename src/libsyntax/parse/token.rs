@@ -196,7 +196,7 @@ impl Token {
             BinOp(Or)                   => true, // in lambda syntax
             OrOr                        => true, // in lambda syntax
             AndAnd                      => true, // double borrow
-            DotDot                      => true, // range notation
+            DotDot | DotDotDot          => true, // range notation
             ModSep                      => true,
             Interpolated(NtExpr(..))    => true,
             Interpolated(NtIdent(..))   => true,

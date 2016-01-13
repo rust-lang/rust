@@ -763,7 +763,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }
-        ExprKind::Range(ref start, ref end) => {
+        ExprKind::Range(ref start, ref end, _) => {
             walk_list!(visitor, visit_expr, start);
             walk_list!(visitor, visit_expr, end);
         }

@@ -1273,9 +1273,10 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Index(el, er) => {
                 ExprKind::Index(folder.fold_expr(el), folder.fold_expr(er))
             }
-            ExprKind::Range(e1, e2) => {
+            ExprKind::Range(e1, e2, lim) => {
                 ExprKind::Range(e1.map(|x| folder.fold_expr(x)),
-                          e2.map(|x| folder.fold_expr(x)))
+                                e2.map(|x| folder.fold_expr(x)),
+                                lim)
             }
             ExprKind::Path(qself, path) => {
                 let qself = qself.map(|QSelf { ty, position }| {
