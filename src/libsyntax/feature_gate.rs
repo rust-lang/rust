@@ -241,7 +241,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("cfg_target_thread_local", "1.7.0", Some(29594), Active),
 
     // rustc internal
-    ("abi_vectorcall", "1.7.0", None, Active)
+    ("abi_vectorcall", "1.7.0", None, Active),
+
+    // a...b and ...b
+    ("inclusive_range_syntax", "1.7.0", Some(28237), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -549,6 +552,7 @@ pub struct Features {
     pub allow_placement_in: bool,
     pub allow_box: bool,
     pub allow_pushpop_unsafe: bool,
+    pub allow_inclusive_range: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
     /// spans of #![feature] attrs for stable language features. for error reporting
@@ -585,6 +589,7 @@ impl Features {
             allow_placement_in: false,
             allow_box: false,
             allow_pushpop_unsafe: false,
+            allow_inclusive_range: false,
             simd_ffi: false,
             unmarked_api: false,
             declared_stable_lang_features: Vec::new(),
@@ -998,6 +1003,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("type_ascription", e.span,
                                   "type ascription is experimental");
             }
+            ast::ExprRange(_, _, ast::RangeLimits::Closed) => {
+                self.gate_feature("inclusive_range_syntax",
+                                  e.span,
+                                  "inclusive range syntax is experimental");
+            }
             _ => {}
         }
         visit::walk_expr(self, e);
@@ -1184,6 +1194,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         allow_placement_in: cx.has_feature("placement_in_syntax"),
         allow_box: cx.has_feature("box_syntax"),
         allow_pushpop_unsafe: cx.has_feature("pushpop_unsafe"),
+        allow_inclusive_range: cx.has_feature("inclusive_range_syntax"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
         declared_stable_lang_features: accepted_features,
