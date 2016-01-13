@@ -1760,6 +1760,9 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     let lvalue = Lvalue::new_with_hint(caller_name, bcx, p_id, HintKind::DontZeroJustUse);
     let datum = Datum::new(llval, var_ty, lvalue);
 
+    debug!("mk_binding_alloca cleanup_scope={:?} llval={} var_ty={:?}",
+           cleanup_scope, bcx.ccx().tn().val_to_string(llval), var_ty);
+
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
     call_lifetime_start(bcx, llval);

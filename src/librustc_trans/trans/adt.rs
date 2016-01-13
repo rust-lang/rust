@@ -55,6 +55,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
 use trans::_match;
+use trans::base::InitAlloca;
 use trans::build::*;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
@@ -1279,7 +1280,12 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
             let scratch = unpack_datum!(bcx, datum::lvalue_scratch_datum(
                 bcx, tcx.dtor_type(), "drop_flag",
-                cleanup::CustomScope(custom_cleanup_scope), (), |_, bcx, _| bcx
+                InitAlloca::Uninit("drop flag itself has no dtor"),
+                cleanup::CustomScope(custom_cleanup_scope), (), |_, bcx, _| {
+                    debug!("no-op populate call for trans_drop_flag_ptr on dtor_type={:?}",
+                           tcx.dtor_type());
+                    bcx
+                }
             ));
             bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
                 let ptr = struct_field_ptr(variant_cx, st, MaybeSizedValue::sized(value),
