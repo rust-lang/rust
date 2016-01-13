@@ -45,6 +45,7 @@ mod utils;
 pub mod config;
 pub mod filemap;
 mod visitor;
+mod checkstyle;
 mod items;
 mod missed_spans;
 mod lists;

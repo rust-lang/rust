@@ -18,7 +18,8 @@ use std::fs::{self, File};
 use std::io::{self, Write, Read, stdout, BufWriter};
 
 use config::{NewlineStyle, Config, WriteMode};
-use rustfmt_diff::{make_diff, print_diff, Mismatch, DiffLine};
+use rustfmt_diff::{make_diff, print_diff, Mismatch};
+use checkstyle::{output_heading, output_footing, output_checkstyle_file};
 
 // A map of the files of a crate, with their new content
 pub type FileMap = HashMap<String, StringBuffer>;
@@ -38,86 +39,11 @@ pub fn write_all_files(file_map: &FileMap,
     for filename in file_map.keys() {
         try!(write_file(&file_map[filename], filename, mode, config));
     }
-    output_trailing(mode).ok();
+    output_footing(mode).ok();
 
     Ok(())
 }
 
-pub fn output_heading(mode: WriteMode) -> Result<(), io::Error> {
-    let stdout = stdout();
-    let mut stdout = stdout.lock();
-    match mode {
-        WriteMode::Checkstyle => {
-            let mut xml_heading = String::new();
-            xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-            xml_heading.push_str("\n");
-            xml_heading.push_str("<checkstyle version=\"4.3\">");
-            try!(write!(stdout, "{}", xml_heading));
-            Ok(())
-        }
-        _ => Ok(()),
-    }
-}
-
-pub fn output_trailing(mode: WriteMode) -> Result<(), io::Error> {
-    let stdout = stdout();
-    let mut stdout = stdout.lock();
-    match mode {
-        WriteMode::Checkstyle => {
-            let mut xml_tail = String::new();
-            xml_tail.push_str("</checkstyle>");
-            try!(write!(stdout, "{}", xml_tail));
-            Ok(())
-        }
-        _ => Ok(()),
-    }
-}
-
-pub fn output_checkstyle_file<T>(mut writer: T,
-                                 filename: &str,
-                                 diff: Vec<Mismatch>)
-                                 -> Result<(), io::Error>
-    where T: Write
-{
-    try!(write!(writer, "<file name=\"{}\">", filename));
-    for mismatch in diff {
-        for line in mismatch.lines {
-            match line {
-                DiffLine::Expected(ref str) => {
-                    let message = xml_escape_str(&str);
-                    // TODO XML encode str here.
-                    try!(write!(writer,
-                                "<error line=\"{}\" severity=\"warning\" message=\"Should be \
-                                 `{}`\" />",
-                                mismatch.line_number,
-                                message));
-                }
-                _ => {
-                    // Do nothing with context and expected.
-                }
-            }
-        }
-    }
-    try!(write!(writer, "</file>"));
-    Ok(())
-}
-
-// Convert special characters into XML entities.
-// This is needed for checkstyle output.
-fn xml_escape_str(string: &str) -> String {
-    let mut out = String::new();
-    for c in string.chars() {
-        match c {
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            '&' => out.push_str("&amp;"),
-            _ => out.push(c),
-        }
-    }
-    out
-}
 
 // Prints all newlines either as `\n` or as `\r\n`.
 pub fn write_system_newlines<T>(writer: T,
@@ -178,8 +104,8 @@ pub fn write_file(text: &StringBuffer,
                    text: &StringBuffer,
                    config: &Config)
                    -> Result<Vec<Mismatch>, io::Error> {
-        let ori_text, fmt_text = try!(source_and_formatted_text(text, filename, config));
-        Ok(make_diff(&ori_text, &fmt_text, 3))
+        let (ori, fmt) = try!(source_and_formatted_text(text, filename, config));
+        Ok(make_diff(&ori, &fmt, 3))
     }
 
     match mode {
