@@ -20,6 +20,7 @@ use ptr;
 use slice;
 use sync::Arc;
 use sys::handle::Handle;
+use sys::time::SystemTime;
 use sys::{c, cvt};
 use sys_common::FromInner;
 
@@ -421,17 +422,37 @@ impl FileAttr {
         FileType::new(self.data.dwFileAttributes, self.reparse_tag)
     }
 
-    pub fn created(&self) -> u64 { self.to_u64(&self.data.ftCreationTime) }
-    pub fn accessed(&self) -> u64 { self.to_u64(&self.data.ftLastAccessTime) }
-    pub fn modified(&self) -> u64 { self.to_u64(&self.data.ftLastWriteTime) }
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(self.data.ftLastWriteTime))
+    }
 
-    fn to_u64(&self, ft: &c::FILETIME) -> u64 {
-        (ft.dwLowDateTime as u64) | ((ft.dwHighDateTime as u64) << 32)
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(self.data.ftLastAccessTime))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(self.data.ftCreationTime))
+    }
+
+    pub fn modified_u64(&self) -> u64 {
+        to_u64(&self.data.ftLastWriteTime)
+    }
+
+    pub fn accessed_u64(&self) -> u64 {
+        to_u64(&self.data.ftLastAccessTime)
+    }
+
+    pub fn created_u64(&self) -> u64 {
+        to_u64(&self.data.ftCreationTime)
     }
 
     fn is_reparse_point(&self) -> bool {
         self.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
     }
+}
+
+fn to_u64(ft: &c::FILETIME) -> u64 {
+    (ft.dwLowDateTime as u64) | ((ft.dwHighDateTime as u64) << 32)
 }
 
 impl FilePermissions {
