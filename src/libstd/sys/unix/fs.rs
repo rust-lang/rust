@@ -58,7 +58,7 @@ pub struct OpenOptions {
     create: bool,
     create_new: bool,
     // system-specific
-    custom_flags: u32,
+    custom_flags: i32,
     mode: mode_t,
 }
 
@@ -259,7 +259,7 @@ impl OpenOptions {
     pub fn create(&mut self, create: bool) { self.create = create; }
     pub fn create_new(&mut self, create_new: bool) { self.create_new = create_new; }
 
-    pub fn custom_flags(&mut self, flags: u32) { self.custom_flags = flags; }
+    pub fn custom_flags(&mut self, flags: i32) { self.custom_flags = flags; }
     pub fn mode(&mut self, mode: raw::mode_t) { self.mode = mode as mode_t; }
 
     fn get_access_mode(&self) -> io::Result<c_int> {
