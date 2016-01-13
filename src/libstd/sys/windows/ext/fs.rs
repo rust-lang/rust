@@ -64,6 +64,28 @@ pub trait OpenOptionsExt {
     /// ```
     fn share_mode(&mut self, val: u32) -> &mut Self;
 
+    /// Sets extra flags for the `dwFileFlags` argument to the call to `CreateFile2`
+    /// (or combines it with `attributes` and `security_qos_flags` to set the
+    /// `dwFlagsAndAttributes` for `CreateFile`).
+    ///
+    /// Custom flags can only set flags, not remove flags set by Rusts options.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// extern crate winapi;
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::fs::OpenOptionsExt;
+    ///
+    /// let options = OpenOptions::new().create(true).write(true);
+    /// if cfg!(windows) { options.custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE); }
+    /// let file = options.open("foo.txt");
+    /// ```
+    #[unstable(feature = "expand_open_options",
+               reason = "recently added",
+               issue = "30014")]
+    fn custom_flags(&mut self, flags: u32) -> &mut Self;
+
     /// Sets the `dwFileAttributes` argument to the call to `CreateFile2` to
     /// the specified value (or combines it with `custom_flags` and
     /// `security_qos_flags` to set the `dwFlagsAndAttributes` for `CreateFile`).
@@ -112,6 +134,10 @@ impl OpenOptionsExt for OpenOptions {
 
     fn share_mode(&mut self, share: u32) -> &mut OpenOptions {
         self.as_inner_mut().share_mode(share); self
+    }
+
+    fn custom_flags(&mut self, flags: u32) -> &mut OpenOptions {
+        self.as_inner_mut().custom_flags(flags); self
     }
 
     fn attributes(&mut self, attributes: u32) -> &mut OpenOptions {

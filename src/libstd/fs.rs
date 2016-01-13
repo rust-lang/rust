@@ -519,44 +519,11 @@ impl OpenOptions {
     ///
     /// let file = OpenOptions::new().write(true).create_new(true).open("foo.txt");
     /// ```
-    #[stable(feature = "expand_open_options", since = "1.7.0")]
+    #[unstable(feature = "expand_open_options",
+               reason = "recently added",
+               issue = "30014")]
     pub fn create_new(&mut self, create_new: bool) -> &mut OpenOptions {
         self.0.create_new(create_new); self
-    }
-
-    /// Pass custom open flags to the operating system.
-    ///
-    /// Windows and the various flavours of Unix support flags that are not
-    /// cross-platform, but that can be useful in some circumstances. On Unix they will
-    /// be passed as the variable _flags_ to `open`, on Windows as the
-    /// _dwFlagsAndAttributes_ parameter.
-    ///
-    /// The cross-platform options of Rust can do magic: they can set any flag necessary
-    /// to ensure it works as expected. For example, `.append(true)` on Unix not only
-    /// sets the flag `O_APPEND`, but also automatically `O_WRONLY` or `O_RDWR`. This
-    /// special treatment is not available for the custom flags.
-    ///
-    /// Custom flags can only set flags, not remove flags set by Rusts options.
-    ///
-    /// For the custom flags on Unix, the bits that define the access mode are masked
-    /// out with `O_ACCMODE`, to ensure they do not interfere with the access mode set
-    /// by Rusts options.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,ignore
-    /// extern crate libc;
-    /// extern crate winapi;
-    /// use std::fs::OpenOptions;
-    ///
-    /// let options = OpenOptions::new().write(true);
-    /// if cfg!(unix) { options.custom_flags(libc::O_NOFOLLOW); }
-    /// if cfg!(windows) { options.custom_flags(winapi::FILE_FLAG_BACKUP_SEMANTICS); }
-    /// let file = options.open("foo.txt");
-    /// ```
-    #[stable(feature = "expand_open_options", since = "1.7.0")]
-    pub fn custom_flags(&mut self, flags: u32) -> &mut OpenOptions {
-        self.0.custom_flags(flags); self
     }
 
     /// Opens a file at `path` with the options specified by `self`.
