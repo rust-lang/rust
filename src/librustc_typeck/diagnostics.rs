@@ -3643,8 +3643,8 @@ register_diagnostics! {
 //  E0233,
 //  E0234,
 //  E0235, // structure constructor specifies a structure of type but
-    E0236, // no lang item for range syntax
-    E0237, // no lang item for range syntax
+//  E0236, // no lang item for range syntax
+//  E0237, // no lang item for range syntax
     E0238, // parenthesized parameters may only be used with a trait
 //  E0239, // `next` method of `Iterator` trait has unexpected type
 //  E0240,
