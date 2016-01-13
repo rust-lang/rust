@@ -446,8 +446,8 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
     // Check for future incompatibility lints and issue a stronger warning.
     if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {
         let explanation = format!("this was previously accepted by the compiler \
-                                   but is being phased out, \
-                                   and will become a hard error in a future release!");
+                                   but is being phased out; \
+                                   it will become a hard error in a future release!");
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
         if let Some(sp) = span {
