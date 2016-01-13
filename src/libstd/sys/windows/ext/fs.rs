@@ -25,45 +25,105 @@ use sys_common::{AsInnerMut, AsInner};
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to `CreateFile`
     /// with the specified value.
-    fn desired_access(&mut self, access: u32) -> &mut Self;
-
-    /// Overrides the `dwCreationDisposition` argument to the call to
-    /// `CreateFile` with the specified value.
     ///
-    /// This will override any values of the standard `create` flags, for
-    /// example.
-    fn creation_disposition(&mut self, val: u32) -> &mut Self;
-
-    /// Overrides the `dwFlagsAndAttributes` argument to the call to
-    /// `CreateFile` with the specified value.
+    /// This will override the `read`, `write`, and `append` flags on the
+    /// `OpenOptions` structure. This method provides fine-grained control
+    /// over the permissions to read, write and append data, attributes
+    /// (like hidden and system) and extended attributes.
     ///
-    /// This will override any values of the standard flags on the
-    /// `OpenOptions` structure.
-    fn flags_and_attributes(&mut self, val: u32) -> &mut Self;
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(open_options_ext)]
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::fs::OpenOptionsExt;
+    ///
+    /// // Open without read and write permission, for example if you only need to call `stat()`
+    /// // on the file
+    /// let file = OpenOptions::new().access_mode(0).open("foo.txt");
+    /// ```
+    fn access_mode(&mut self, access: u32) -> &mut Self;
 
     /// Overrides the `dwShareMode` argument to the call to `CreateFile` with
     /// the specified value.
     ///
-    /// This will override any values of the standard flags on the
-    /// `OpenOptions` structure.
+    /// By default `share_mode` is set to `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`.
+    /// Specifying less permissions denies others to read from, write to and/or
+    /// delete the file while it is open.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(open_options_ext)]
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::fs::OpenOptionsExt;
+    ///
+    /// let file = OpenOptions::new().write(true)
+    ///                              .share_mode(0) // Do not allow others to read or modify
+    ///                              .open("foo.txt");
+    /// ```
     fn share_mode(&mut self, val: u32) -> &mut Self;
+
+    /// Sets the `dwFileAttributes` argument to the call to `CreateFile2` to
+    /// the specified value (or combines it with `custom_flags` and
+    /// `security_qos_flags` to set the `dwFlagsAndAttributes` for `CreateFile`).
+    ///
+    /// If a _new_ file is created because it does not yet exist and `.create(true)` or
+    /// `.create_new(true)` are specified, the new file is given the attributes declared
+    /// with `.attributes()`.
+    ///
+    /// If an _existing_ file is opened with `.create(true).truncate(true)`, its
+    /// existing attributes are preserved and combined with the ones declared with
+    /// `.attributes()`.
+    ///
+    /// In all other cases the attributes get ignored.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// #![feature(open_options_ext)]
+    /// extern crate winapi;
+    /// use std::fs::OpenOptions;
+    /// use std::os::windows::fs::OpenOptionsExt;
+    ///
+    /// let file = OpenOptions::new().write(true).create(true)
+    ///                              .attributes(winapi::FILE_ATTRIBUTE_HIDDEN)
+    ///                              .open("foo.txt");
+    /// ```
+    fn attributes(&mut self, val: u32) -> &mut Self;
+
+    /// Sets the `dwSecurityQosFlags` argument to the call to `CreateFile2` to
+    /// the specified value (or combines it with `custom_flags` and `attributes`
+    /// to set the `dwFlagsAndAttributes` for `CreateFile`).
+    fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions;
+
+    /// Sets the `lpSecurityAttributes` argument to the call to `CreateFile` to
+    /// the specified value.
+    fn security_attributes(&mut self, attrs: sys::c::LPSECURITY_ATTRIBUTES) -> &mut OpenOptions;
 }
 
 #[unstable(feature = "open_options_ext",
            reason = "may require more thought/methods",
            issue = "27720")]
 impl OpenOptionsExt for OpenOptions {
-    fn desired_access(&mut self, access: u32) -> &mut OpenOptions {
-        self.as_inner_mut().desired_access(access); self
+    fn access_mode(&mut self, access: u32) -> &mut OpenOptions {
+        self.as_inner_mut().access_mode(access); self
     }
-    fn creation_disposition(&mut self, access: u32) -> &mut OpenOptions {
-        self.as_inner_mut().creation_disposition(access); self
+
+    fn share_mode(&mut self, share: u32) -> &mut OpenOptions {
+        self.as_inner_mut().share_mode(share); self
     }
-    fn flags_and_attributes(&mut self, access: u32) -> &mut OpenOptions {
-        self.as_inner_mut().flags_and_attributes(access); self
+
+    fn attributes(&mut self, attributes: u32) -> &mut OpenOptions {
+        self.as_inner_mut().attributes(attributes); self
     }
-    fn share_mode(&mut self, access: u32) -> &mut OpenOptions {
-        self.as_inner_mut().share_mode(access); self
+
+    fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions {
+        self.as_inner_mut().security_qos_flags(flags); self
+    }
+
+    fn security_attributes(&mut self, attrs: sys::c::LPSECURITY_ATTRIBUTES) -> &mut OpenOptions {
+        self.as_inner_mut().security_attributes(attrs); self
     }
 }
 

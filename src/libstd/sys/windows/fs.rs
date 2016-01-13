@@ -54,18 +54,22 @@ pub struct DirEntry {
     data: c::WIN32_FIND_DATAW,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct OpenOptions {
-    create: bool,
-    append: bool,
+    // generic
     read: bool,
     write: bool,
+    append: bool,
     truncate: bool,
-    desired_access: Option<c::DWORD>,
-    share_mode: Option<c::DWORD>,
-    creation_disposition: Option<c::DWORD>,
-    flags_and_attributes: Option<c::DWORD>,
-    security_attributes: usize, // *mut T doesn't have a Default impl
+    create: bool,
+    create_new: bool,
+    // system-specific
+    custom_flags: u32,
+    access_mode: Option<c::DWORD>,
+    attributes: c::DWORD,
+    share_mode: c::DWORD,
+    security_qos_flags: c::DWORD,
+    security_attributes: c::LPSECURITY_ATTRIBUTES,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -151,68 +155,84 @@ impl DirEntry {
 }
 
 impl OpenOptions {
-    pub fn new() -> OpenOptions { Default::default() }
+    pub fn new() -> OpenOptions {
+        OpenOptions {
+            // generic
+            read: false,
+            write: false,
+            append: false,
+            truncate: false,
+            create: false,
+            create_new: false,
+            // system-specific
+            custom_flags: 0,
+            access_mode: None,
+            share_mode: c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
+            attributes: 0,
+            security_qos_flags: 0,
+            security_attributes: ptr::null_mut(),
+        }
+    }
+
     pub fn read(&mut self, read: bool) { self.read = read; }
     pub fn write(&mut self, write: bool) { self.write = write; }
     pub fn append(&mut self, append: bool) { self.append = append; }
-    pub fn create(&mut self, create: bool) { self.create = create; }
     pub fn truncate(&mut self, truncate: bool) { self.truncate = truncate; }
-    pub fn creation_disposition(&mut self, val: u32) {
-        self.creation_disposition = Some(val);
-    }
-    pub fn flags_and_attributes(&mut self, val: u32) {
-        self.flags_and_attributes = Some(val);
-    }
-    pub fn desired_access(&mut self, val: u32) {
-        self.desired_access = Some(val);
-    }
-    pub fn share_mode(&mut self, val: u32) {
-        self.share_mode = Some(val);
-    }
+    pub fn create(&mut self, create: bool) { self.create = create; }
+    pub fn create_new(&mut self, create_new: bool) { self.create_new = create_new; }
+
+    pub fn custom_flags(&mut self, flags: u32) { self.custom_flags = flags; }
+    pub fn access_mode(&mut self, access_mode: u32) { self.access_mode = Some(access_mode); }
+    pub fn share_mode(&mut self, share_mode: u32) { self.share_mode = share_mode; }
+    pub fn attributes(&mut self, attrs: u32) { self.attributes = attrs; }
+    pub fn security_qos_flags(&mut self, flags: u32) { self.security_qos_flags = flags; }
     pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
-        self.security_attributes = attrs as usize;
+        self.security_attributes = attrs;
     }
 
-    fn get_desired_access(&self) -> c::DWORD {
-        self.desired_access.unwrap_or({
-            let mut base = if self.read {c::FILE_GENERIC_READ} else {0} |
-                           if self.write {c::FILE_GENERIC_WRITE} else {0};
-            if self.append {
-                base &= !c::FILE_WRITE_DATA;
-                base |= c::FILE_APPEND_DATA;
-            }
-            base
-        })
+    fn get_access_mode(&self) -> io::Result<c::DWORD> {
+        const ERROR_INVALID_PARAMETER: i32 = 87;
+
+        match (self.read, self.write, self.append, self.access_mode) {
+            (_, _, _, Some(mode)) => Ok(mode),
+            (true,  false, false, None) => Ok(c::GENERIC_READ),
+            (false, true,  false, None) => Ok(c::GENERIC_WRITE),
+            (true,  true,  false, None) => Ok(c::GENERIC_READ | c::GENERIC_WRITE),
+            (false, _,     true,  None) => Ok(c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA),
+            (true,  _,     true,  None) => Ok(c::GENERIC_READ |
+                                              (c::FILE_GENERIC_WRITE & !c::FILE_WRITE_DATA)),
+            (false, false, false, None) => Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER)),
+        }
     }
 
-    fn get_share_mode(&self) -> c::DWORD {
-        // libuv has a good comment about this, but the basic idea is that
-        // we try to emulate unix semantics by enabling all sharing by
-        // allowing things such as deleting a file while it's still open.
-        self.share_mode.unwrap_or(c::FILE_SHARE_READ |
-                                  c::FILE_SHARE_WRITE |
-                                  c::FILE_SHARE_DELETE)
-    }
+    fn get_creation_mode(&self) -> io::Result<c::DWORD> {
+        const ERROR_INVALID_PARAMETER: i32 = 87;
 
-    fn get_creation_disposition(&self) -> c::DWORD {
-        self.creation_disposition.unwrap_or({
-            match (self.create, self.truncate) {
-                (true, true) => c::CREATE_ALWAYS,
-                (true, false) => c::OPEN_ALWAYS,
-                (false, false) => c::OPEN_EXISTING,
-                (false, true) => {
-                    if self.write && !self.append {
-                        c::CREATE_ALWAYS
-                    } else {
-                        c::TRUNCATE_EXISTING
-                    }
-                }
-            }
-        })
+        match (self.write, self.append) {
+            (true,  false) => {}
+            (false, false) => if self.truncate || self.create || self.create_new {
+                                  return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
+                              },
+            (_,     true)  => if self.truncate && !self.create_new {
+                                  return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
+                              },
+        }
+
+        Ok(match (self.create, self.truncate, self.create_new) {
+                (false, false, false) => c::OPEN_EXISTING,
+                (true,  false, false) => c::OPEN_ALWAYS,
+                (false, true,  false) => c::TRUNCATE_EXISTING,
+                (true,  true,  false) => c::CREATE_ALWAYS,
+                (_,      _,    true)  => c::CREATE_NEW,
+           })
     }
 
     fn get_flags_and_attributes(&self) -> c::DWORD {
-        self.flags_and_attributes.unwrap_or(c::FILE_ATTRIBUTE_NORMAL)
+        self.custom_flags |
+        self.attributes |
+        self.security_qos_flags |
+        if self.security_qos_flags != 0 { c::SECURITY_SQOS_PRESENT } else { 0 } |
+        if self.create_new { c::FILE_FLAG_OPEN_REPARSE_POINT } else { 0 }
     }
 }
 
@@ -221,8 +241,8 @@ impl File {
         let mut opts = OpenOptions::new();
         opts.read(!write);
         opts.write(write);
-        opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT |
-                                  c::FILE_FLAG_BACKUP_SEMANTICS);
+        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT |
+                          c::FILE_FLAG_BACKUP_SEMANTICS);
         File::open(path, &opts)
     }
 
@@ -230,10 +250,10 @@ impl File {
         let path = try!(to_u16s(path));
         let handle = unsafe {
             c::CreateFileW(path.as_ptr(),
-                           opts.get_desired_access(),
-                           opts.get_share_mode(),
+                           try!(opts.get_access_mode()),
+                           opts.share_mode,
                            opts.security_attributes as *mut _,
-                           opts.get_creation_disposition(),
+                           try!(opts.get_creation_mode()),
                            opts.get_flags_and_attributes(),
                            ptr::null_mut())
         };
@@ -533,7 +553,10 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     // metadata information is.
     if attr.is_reparse_point() {
         let mut opts = OpenOptions::new();
-        opts.flags_and_attributes(c::FILE_FLAG_BACKUP_SEMANTICS);
+        // No read or write permissions are necessary
+        opts.access_mode(0);
+        // This flag is so we can open directories too
+        opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
         let file = try!(File::open(p, &opts));
         file.file_attr()
     } else {
@@ -577,9 +600,10 @@ fn get_path(f: &File) -> io::Result<PathBuf> {
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
-    opts.read(true);
+    // No read or write permissions are necessary
+    opts.access_mode(0);
     // This flag is so we can open directories too
-    opts.flags_and_attributes(c::FILE_FLAG_BACKUP_SEMANTICS);
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
     let f = try!(File::open(p, &opts));
     get_path(&f)
 }

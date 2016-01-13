@@ -50,9 +50,15 @@ pub struct DirEntry {
 
 #[derive(Clone)]
 pub struct OpenOptions {
-    flags: c_int,
+    // generic
     read: bool,
     write: bool,
+    append: bool,
+    truncate: bool,
+    create: bool,
+    create_new: bool,
+    // system-specific
+    custom_flags: u32,
     mode: mode_t,
 }
 
@@ -233,43 +239,58 @@ impl DirEntry {
 impl OpenOptions {
     pub fn new() -> OpenOptions {
         OpenOptions {
-            flags: libc::O_CLOEXEC,
+            // generic
             read: false,
             write: false,
+            append: false,
+            truncate: false,
+            create: false,
+            create_new: false,
+            // system-specific
+            custom_flags: 0,
             mode: 0o666,
         }
     }
 
-    pub fn read(&mut self, read: bool) {
-        self.read = read;
-    }
+    pub fn read(&mut self, read: bool) { self.read = read; }
+    pub fn write(&mut self, write: bool) { self.write = write; }
+    pub fn append(&mut self, append: bool) { self.append = append; }
+    pub fn truncate(&mut self, truncate: bool) { self.truncate = truncate; }
+    pub fn create(&mut self, create: bool) { self.create = create; }
+    pub fn create_new(&mut self, create_new: bool) { self.create_new = create_new; }
 
-    pub fn write(&mut self, write: bool) {
-        self.write = write;
-    }
+    pub fn custom_flags(&mut self, flags: u32) { self.custom_flags = flags; }
+    pub fn mode(&mut self, mode: raw::mode_t) { self.mode = mode as mode_t; }
 
-    pub fn append(&mut self, append: bool) {
-        self.flag(libc::O_APPEND, append);
-    }
-
-    pub fn truncate(&mut self, truncate: bool) {
-        self.flag(libc::O_TRUNC, truncate);
-    }
-
-    pub fn create(&mut self, create: bool) {
-        self.flag(libc::O_CREAT, create);
-    }
-
-    pub fn mode(&mut self, mode: raw::mode_t) {
-        self.mode = mode as mode_t;
-    }
-
-    fn flag(&mut self, bit: c_int, on: bool) {
-        if on {
-            self.flags |= bit;
-        } else {
-            self.flags &= !bit;
+    fn get_access_mode(&self) -> io::Result<c_int> {
+        match (self.read, self.write, self.append) {
+            (true,  false, false) => Ok(libc::O_RDONLY),
+            (false, true,  false) => Ok(libc::O_WRONLY),
+            (true,  true,  false) => Ok(libc::O_RDWR),
+            (false, _,     true)  => Ok(libc::O_WRONLY | libc::O_APPEND),
+            (true,  _,     true)  => Ok(libc::O_RDWR | libc::O_APPEND),
+            (false, false, false) => Err(Error::from_raw_os_error(libc::EINVAL)),
         }
+    }
+
+    fn get_creation_mode(&self) -> io::Result<c_int> {
+        match (self.write, self.append) {
+            (true,  false) => {}
+            (false, false) => if self.truncate || self.create || self.create_new {
+                                  return Err(Error::from_raw_os_error(libc::EINVAL));
+                              },
+            (_,     true)  => if self.truncate && !self.create_new {
+                                  return Err(Error::from_raw_os_error(libc::EINVAL));
+                              },
+        }
+
+        Ok(match (self.create, self.truncate, self.create_new) {
+                (false, false, false) => 0,
+                (true,  false, false) => libc::O_CREAT,
+                (false, true,  false) => libc::O_TRUNC,
+                (true,  true,  false) => libc::O_CREAT | libc::O_TRUNC,
+                (_,      _,    true)  => libc::O_CREAT | libc::O_EXCL,
+           })
     }
 }
 
@@ -280,12 +301,10 @@ impl File {
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
-        let flags = opts.flags | match (opts.read, opts.write) {
-            (true, true) => libc::O_RDWR,
-            (false, true) => libc::O_WRONLY,
-            (true, false) |
-            (false, false) => libc::O_RDONLY,
-        };
+        let flags = libc::O_CLOEXEC |
+                    try!(opts.get_access_mode()) |
+                    try!(opts.get_creation_mode()) |
+                    (opts.custom_flags as c_int & !libc::O_ACCMODE);
         let fd = try!(cvt_r(|| unsafe {
             libc::open(path.as_ptr(), flags, opts.mode as c_int)
         }));
