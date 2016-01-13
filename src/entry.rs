@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
-use utils::{get_item_name, is_exp_equal, match_type, snippet, span_help_and_lint, walk_ptrs_ty};
+use utils::{get_item_name, is_exp_equal, match_type, snippet, span_lint_and_then, walk_ptrs_ty};
 use utils::{BTREEMAP_PATH, HASHMAP_PATH};
 
 /// **What it does:** This lint checks for uses of `contains_key` + `insert` on `HashMap` or
@@ -92,20 +92,21 @@ fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: 
             is_exp_equal(cx, key, &params[1])
         ], {
             let help = if sole_expr {
-                format!("Consider using `{}.entry({}).or_insert({})`",
+                format!("{}.entry({}).or_insert({})",
                         snippet(cx, map.span, ".."),
                         snippet(cx, params[1].span, ".."),
                         snippet(cx, params[2].span, ".."))
             }
             else {
-                format!("Consider using `{}.entry({})`",
+                format!("{}.entry({})",
                         snippet(cx, map.span, ".."),
                         snippet(cx, params[1].span, ".."))
             };
 
-            span_help_and_lint(cx, MAP_ENTRY, span,
-                               &format!("usage of `contains_key` followed by `insert` on `{}`", kind),
-                               &help);
+            span_lint_and_then(cx, MAP_ENTRY, span,
+                               &format!("usage of `contains_key` followed by `insert` on `{}`", kind), |db| {
+                db.span_suggestion(span, "Consider using", help.clone());
+            });
         }
     }
 }
