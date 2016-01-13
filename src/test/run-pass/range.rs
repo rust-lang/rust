@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -44,6 +44,7 @@ pub fn main() {
     let _ = 0_usize..4+4-3;
     let _ = 0..foo();
 
+    let _ = { &42..&100 }; // references to literals are OK
     let _ = ..42_usize;
 
     // Test we can use two different types with a common supertype.

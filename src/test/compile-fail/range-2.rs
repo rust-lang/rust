@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,8 +12,10 @@
 
 pub fn main() {
     let r = {
-        &42..&42
-        //~^ ERROR borrowed value does not live long enough
-        //~^^ ERROR borrowed value does not live long enough
+        let a = 42;
+        let b = 42;
+        &a..&b
+        //~^ ERROR `a` does not live long enough
+        //~^^ ERROR `b` does not live long enough
     };
 }
