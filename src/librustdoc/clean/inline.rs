@@ -459,7 +459,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                     fill_in(cx, tcx, did, items);
                 }
                 cstore::DlDef(def) if item.vis == hir::Public => {
-                    if !visited.insert(def) { return }
+                    if !visited.insert(def) { continue }
                     match try_inline_def(cx, tcx, def) {
                         Some(i) => items.extend(i),
                         None => {}
