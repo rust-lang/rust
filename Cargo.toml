@@ -29,5 +29,4 @@ rustc-serialize = "0.3"
 
 [features]
 
-structured_logging = []
 debugging = []
