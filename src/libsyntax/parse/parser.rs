@@ -4046,10 +4046,12 @@ impl<'a> Parser<'a> {
             let mut err = self.diagnostic().struct_span_err(self.span, &msg);
 
             let span_hi = self.span.hi;
-            let span_hi = if self.parse_ty().is_ok() {
-                self.span.hi
-            } else {
-                span_hi
+            let span_hi = match self.parse_ty() {
+                Ok(..) => self.span.hi,
+                Err(ref mut err) => {
+                    err.cancel();
+                    span_hi
+                }
             };
 
             let msg = format!("did you mean a single argument type &'a Type, \
