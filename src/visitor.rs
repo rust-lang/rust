@@ -15,9 +15,9 @@ use syntax::visit;
 
 use strings::string_buffer::StringBuffer;
 
-use {Indent, WriteMode};
+use Indent;
 use utils;
-use config::Config;
+use config::{Config, WriteMode};
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;

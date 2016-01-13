@@ -120,6 +120,24 @@ configuration_option_enum! { ReportTactic:
     Never,
 }
 
+configuration_option_enum! { WriteMode:
+    // Used internally to represent when no option is given
+    // Treated as Replace.
+    Default,
+    // Backsup the original file and overwrites the orignal.
+    Replace,
+    // Overwrites original file without backup.
+    Overwrite,
+    // Write the output to stdout.
+    Display,
+    // Write the diff to stdout.
+    Diff,
+    // Display how much of the input file was processed
+    Coverage,
+    // Unfancy stdout
+    Plain,
+}
+
 // This trait and the following impl blocks are there so that we an use
 // UCFS inside the get_docs() function on types for configs.
 pub trait ConfigType {
@@ -323,4 +341,6 @@ create_config! {
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     match_wildcard_trailing_comma: bool, true, "Put a trailing comma after a wildcard arm";
+    write_mode: WriteMode, WriteMode::Default,
+        "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
 }

@@ -15,10 +15,9 @@ use strings::string_buffer::StringBuffer;
 
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{self, Write, Read, stdout};
+use std::io::{self, Write, Read, stdout, BufWriter};
 
-use WriteMode;
-use config::{NewlineStyle, Config};
+use config::{NewlineStyle, Config, WriteMode};
 use rustfmt_diff::{make_diff, print_diff};
 
 // A map of the files of a crate, with their new content
@@ -34,16 +33,48 @@ pub fn append_newlines(file_map: &mut FileMap) {
 pub fn write_all_files(file_map: &FileMap,
                        mode: WriteMode,
                        config: &Config)
-                       -> Result<(HashMap<String, String>), io::Error> {
-    let mut result = HashMap::new();
+                       -> Result<(), io::Error> {
     for filename in file_map.keys() {
-        let one_result = try!(write_file(&file_map[filename], filename, mode, config));
-        if let Some(r) = one_result {
-            result.insert(filename.clone(), r);
-        }
+        try!(write_file(&file_map[filename], filename, mode, config));
     }
 
-    Ok(result)
+    Ok(())
+}
+
+// Prints all newlines either as `\n` or as `\r\n`.
+pub fn write_system_newlines<T>(writer: T,
+                                text: &StringBuffer,
+                                config: &Config)
+                                -> Result<(), io::Error>
+    where T: Write
+{
+    // Buffer output, since we're writing a since char at a time.
+    let mut writer = BufWriter::new(writer);
+
+    let style = if config.newline_style == NewlineStyle::Native {
+        if cfg!(windows) {
+            NewlineStyle::Windows
+        } else {
+            NewlineStyle::Unix
+        }
+    } else {
+        config.newline_style
+    };
+
+    match style {
+        NewlineStyle::Unix => write!(writer, "{}", text),
+        NewlineStyle::Windows => {
+            for (c, _) in text.chars() {
+                match c {
+                    '\n' => try!(write!(writer, "\r\n")),
+                    '\r' => continue,
+                    c => try!(write!(writer, "{}", c)),
+                }
+            }
+            Ok(())
+        }
+        NewlineStyle::Native => unreachable!(),
+    }
 }
 
 pub fn write_file(text: &StringBuffer,
@@ -51,39 +82,6 @@ pub fn write_file(text: &StringBuffer,
                   mode: WriteMode,
                   config: &Config)
                   -> Result<Option<String>, io::Error> {
-
-    // prints all newlines either as `\n` or as `\r\n`
-    fn write_system_newlines<T>(mut writer: T,
-                                text: &StringBuffer,
-                                config: &Config)
-                                -> Result<(), io::Error>
-        where T: Write
-    {
-        let style = if config.newline_style == NewlineStyle::Native {
-            if cfg!(windows) {
-                NewlineStyle::Windows
-            } else {
-                NewlineStyle::Unix
-            }
-        } else {
-            config.newline_style
-        };
-
-        match style {
-            NewlineStyle::Unix => write!(writer, "{}", text),
-            NewlineStyle::Windows => {
-                for (c, _) in text.chars() {
-                    match c {
-                        '\n' => try!(write!(writer, "\r\n")),
-                        '\r' => continue,
-                        c => try!(write!(writer, "{}", c)),
-                    }
-                }
-                Ok(())
-            }
-            NewlineStyle::Native => unreachable!(),
-        }
-    }
 
     fn source_and_formatted_text(text: &StringBuffer,
                                  filename: &str,
@@ -123,11 +121,6 @@ pub fn write_file(text: &StringBuffer,
             let file = try!(File::create(filename));
             try!(write_system_newlines(file, text, config));
         }
-        WriteMode::NewFile(extn) => {
-            let filename = filename.to_owned() + "." + extn;
-            let file = try!(File::create(&filename));
-            try!(write_system_newlines(file, text, config));
-        }
         WriteMode::Plain => {
             let stdout = stdout();
             let stdout = stdout.lock();
@@ -146,13 +139,8 @@ pub fn write_file(text: &StringBuffer,
                            |line_num| format!("\nDiff at line {}:", line_num));
             }
         }
-        WriteMode::Return => {
-            // io::Write is not implemented for String, working around with
-            // Vec<u8>
-            let mut v = Vec::new();
-            try!(write_system_newlines(&mut v, text, config));
-            // won't panic, we are writing correct utf8
-            return Ok(Some(String::from_utf8(v).unwrap()));
+        WriteMode::Default => {
+            unreachable!("The WriteMode should NEVER Be default at this point!");
         }
     }
 
