@@ -268,7 +268,7 @@ impl<T> LinkedList<T> {
     /// println!("{}", b.len()); // prints 0
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn append(&mut self, other: &mut Self) {
+    pub fn append(&mut self, other: &mut LinkedList<T>) {
         match unsafe { self.list_tail.resolve_mut() } {
             None => {
                 self.length = other.length;
@@ -597,7 +597,7 @@ impl<T> LinkedList<T> {
     /// assert_eq!(splitted.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn split_off(&mut self, at: usize) -> Self {
+    pub fn split_off(&mut self, at: usize) -> LinkedList<T> {
         let len = self.len();
         assert!(at <= len, "Cannot split off at a nonexistent index");
         if at == 0 {
