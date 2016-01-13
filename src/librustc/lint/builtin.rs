@@ -127,6 +127,12 @@ declare_lint! {
     "unit struct or enum variant erroneously allowed to match via path::ident(..)"
 }
 
+declare_lint! {
+    pub RAW_POINTER_DERIVE,
+    Warn,
+    "uses of #[derive] with raw pointers are rarely correct"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -152,7 +158,8 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
-            CONST_ERR
+            CONST_ERR,
+            RAW_POINTER_DERIVE
         )
     }
 }
