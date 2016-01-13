@@ -8,7 +8,8 @@ use std::cmp::Ordering;
 use syntax::ast::Lit_::LitBool;
 use syntax::codemap::Span;
 
-use utils::{snippet, span_lint, span_note_and_lint, span_help_and_lint, in_external_macro, expr_block};
+use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
+use utils::{match_type, snippet, span_lint, span_note_and_lint, span_help_and_lint, in_external_macro, expr_block};
 
 /// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice. It is `Warn` by default.
 ///
@@ -109,9 +110,20 @@ impl LateLintPass for MatchPass {
 }
 
 fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
-    if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none() && arms[1].pats.len() == 1 &&
-       arms[1].guard.is_none() && arms[1].pats[0].node == PatWild && is_unit_expr(&arms[1].body) &&
-       (cx.tcx.expr_ty(ex).sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow) {
+    if arms.len() == 2 &&
+       arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
+       arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
+       is_unit_expr(&arms[1].body) {
+           let ty = cx.tcx.expr_ty(ex);
+           if ty.sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow {
+                check_single_match_single_pattern(cx, ex, arms, expr);
+                check_single_match_opt_like(cx, ex, arms, expr, ty);
+           }
+    }
+}
+
+fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+    if arms[1].pats[0].node == PatWild {
         span_help_and_lint(cx,
                            SINGLE_MATCH,
                            expr.span,
@@ -121,6 +133,39 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
                                     snippet(cx, arms[0].pats[0].span, ".."),
                                     snippet(cx, ex.span, ".."),
                                     expr_block(cx, &arms[0].body, None, "..")));
+    }
+}
+
+fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: ty::Ty) {
+    // list of candidate Enums we know will never get any more membre
+    let candidates = &[
+        (&COW_PATH, "Borrowed"),
+        (&COW_PATH, "Cow::Borrowed"),
+        (&COW_PATH, "Cow::Owned"),
+        (&COW_PATH, "Owned"),
+        (&OPTION_PATH, "None"),
+        (&RESULT_PATH, "Err"),
+        (&RESULT_PATH, "Ok"),
+    ];
+
+    let path = match arms[1].pats[0].node {
+        PatEnum(ref path, _) => path.to_string(),
+        PatIdent(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
+        _ => return
+    };
+
+    for &(ty_path, pat_path) in candidates {
+        if &path == pat_path && match_type(cx, ty, ty_path) {
+            span_help_and_lint(cx,
+                               SINGLE_MATCH,
+                               expr.span,
+                               "you seem to be trying to use match for destructuring a single pattern. Consider using \
+                                `if let`",
+                               &format!("try\nif let {} = {} {}",
+                                        snippet(cx, arms[0].pats[0].span, ".."),
+                                        snippet(cx, ex.span, ".."),
+                                        expr_block(cx, &arms[0].body, None, "..")));
+        }
     }
 }
 
