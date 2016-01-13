@@ -222,7 +222,7 @@ mod imp {
             // getentropy(2) permits a maximum buffer size of 256 bytes
             for s in v.chunks_mut(256) {
                 let ret = unsafe {
-                    libc::syscall(libc::NR_GETENTROPY, s.as_mut_ptr(), s.len())
+                    libc::getentropy(s.as_mut_ptr() as *mut libc::c_void, s.len())
                 };
                 if ret == -1 {
                     panic!("unexpected getentropy error: {}", errno());
