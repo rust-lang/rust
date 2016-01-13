@@ -1819,10 +1819,10 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Optio
         } else if stab.level == stability::Unstable {
             let unstable_extra = if show_reason {
                 match (!stab.feature.is_empty(), &cx.issue_tracker_base_url, stab.issue) {
-                    (true, &Some(ref tracker_url), Some(issue_no)) =>
+                    (true, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
                         format!(" (<code>{}</code> <a href=\"{}{}\">#{}</a>)",
                                 Escape(&stab.feature), tracker_url, issue_no, issue_no),
-                    (false, &Some(ref tracker_url), Some(issue_no)) =>
+                    (false, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
                         format!(" (<a href=\"{}{}\">#{}</a>)", Escape(&tracker_url), issue_no,
                                 issue_no),
                     (true, _, _) =>
