@@ -451,8 +451,8 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
         if let Some(sp) = span {
-            err.span_warn(sp, &explanation);
-            err.span_note(sp, &citation);
+            err.fileline_warn(sp, &explanation);
+            err.fileline_note(sp, &citation);
         } else {
             err.warn(&explanation);
             err.note(&citation);

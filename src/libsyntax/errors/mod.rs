@@ -200,6 +200,13 @@ impl<'a> DiagnosticBuilder<'a> {
         self.sub(Level::Note, msg, Some(sp), Some(EndSpan(sp)));
         self
     }
+    pub fn fileline_warn(&mut self ,
+                         sp: Span,
+                         msg: &str)
+                         -> &mut DiagnosticBuilder<'a>  {
+        self.sub(Level::Warning, msg, Some(sp), Some(FileLine(sp)));
+        self
+    }
     pub fn fileline_note(&mut self ,
                          sp: Span,
                          msg: &str)
