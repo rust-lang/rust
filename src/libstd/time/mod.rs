@@ -16,6 +16,7 @@ use error::Error;
 use fmt;
 use ops::{Add, Sub};
 use sys::time;
+use sys_common::FromInner;
 
 #[stable(feature = "time", since = "1.3.0")]
 pub use self::duration::Duration;
@@ -224,6 +225,12 @@ impl Error for SystemTimeError {
 impl fmt::Display for SystemTimeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "second time provided was later than self")
+    }
+}
+
+impl FromInner<time::SystemTime> for SystemTime {
+    fn from_inner(time: time::SystemTime) -> SystemTime {
+        SystemTime(time)
     }
 }
 

@@ -146,6 +146,12 @@ mod inner {
         }
     }
 
+    impl From<libc::timeval> for SystemTime {
+        fn from(t: libc::timeval) -> SystemTime {
+            SystemTime { t: t }
+        }
+    }
+
     impl PartialEq for SystemTime {
         fn eq(&self, other: &SystemTime) -> bool {
             self.t.tv_sec == other.t.tv_sec && self.t.tv_usec == other.t.tv_usec
@@ -279,6 +285,12 @@ mod inner {
 
         pub fn sub_duration(&self, other: &Duration) -> SystemTime {
             SystemTime { t: self.t.sub_duration(other) }
+        }
+    }
+
+    impl From<libc::timespec> for SystemTime {
+        fn from(t: libc::timespec) -> SystemTime {
+            SystemTime { t: Timespec { t: t } }
         }
     }
 
