@@ -857,9 +857,10 @@ impl str {
         Utf16Units { encoder: Utf16Encoder::new(self[..].chars()) }
     }
 
-    /// Returns `true` if the given `&str` is a sub-slice of this string slice.
+    /// Returns `true` if the given pattern matches a sub-slice of
+    /// this string slice.
     ///
-    /// Returns `false` if it's not.
+    /// Returns `false` if it does not.
     ///
     /// # Examples
     ///
@@ -876,9 +877,10 @@ impl str {
         core_str::StrExt::contains(self, pat)
     }
 
-    /// Returns `true` if the given `&str` is a prefix of this string slice.
+    /// Returns `true` if the given pattern matches a prefix of this
+    /// string slice.
     ///
-    /// Returns `false` if it's not.
+    /// Returns `false` if it does not.
     ///
     /// # Examples
     ///
@@ -895,9 +897,10 @@ impl str {
         core_str::StrExt::starts_with(self, pat)
     }
 
-    /// Returns `true` if the given `&str` is a suffix of this string slice.
+    /// Returns `true` if the given pattern matches a suffix of this
+    /// string slice.
     ///
-    /// Returns `false` if not.
+    /// Returns `false` if it does not.
     ///
     /// # Examples
     ///
@@ -1681,11 +1684,11 @@ impl str {
         core_str::StrExt::parse(self)
     }
 
-    /// Replaces all occurrences of one string with another.
+    /// Replaces all matches of a pattern with another string.
     ///
     /// `replace` creates a new [`String`], and copies the data from this string slice into it.
-    /// While doing so, it attempts to find a sub-`&str`. If it finds it, it replaces it with
-    /// the replacement string slice.
+    /// While doing so, it attempts to find matches of a pattern. If it finds any, it
+    /// replaces them with the replacement string slice.
     ///
     /// [`String`]: string/struct.String.html
     ///
@@ -1699,14 +1702,14 @@ impl str {
     /// assert_eq!("this is new", s.replace("old", "new"));
     /// ```
     ///
-    /// When a `&str` isn't found:
+    /// When the pattern doesn't match:
     ///
     /// ```
     /// let s = "this is old";
     /// assert_eq!(s, s.replace("cookie monster", "little lamb"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn replace(&self, from: &str, to: &str) -> String {
+    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
         for (start, part) in self.match_indices(from) {
