@@ -806,18 +806,18 @@ fn encode_inlined_item(ecx: &EncodeContext,
     let eii: &mut EncodeInlinedItem = &mut *eii;
     eii(ecx, rbml_w, ii);
 
-    encode_mir(ecx, rbml_w, ii);
-}
-
-fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, ii: InlinedItemRef) {
-    let id = match ii {
+    let node_id = match ii {
         InlinedItemRef::Item(item) => item.id,
         InlinedItemRef::TraitItem(_, trait_item) => trait_item.id,
         InlinedItemRef::ImplItem(_, impl_item) => impl_item.id,
         InlinedItemRef::Foreign(foreign_item) => foreign_item.id
     };
 
-    if let Some(mir) = ecx.mir_map.get(&id) {
+    encode_mir(ecx, rbml_w, node_id);
+}
+
+fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, node_id: NodeId) {
+    if let Some(mir) = ecx.mir_map.get(&node_id) {
         rbml_w.start_tag(tag_mir as usize);
         rbml_w.emit_opaque(|opaque_encoder| {
             tls::enter_encoding_context(ecx, opaque_encoder, |_, opaque_encoder| {
@@ -1435,6 +1435,9 @@ fn my_visit_expr(expr: &hir::Expr,
             rbml_w.end_tag();
 
             ecx.tcx.map.with_path(expr.id, |path| encode_path(rbml_w, path));
+
+            assert!(ecx.mir_map.contains_key(&expr.id));
+            encode_mir(ecx, rbml_w, expr.id);
 
             rbml_w.end_tag();
         }
