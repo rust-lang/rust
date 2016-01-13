@@ -28,7 +28,6 @@ use rustc::middle::def::Export;
 use syntax::ast;
 
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 
 struct ExportRecorder<'a, 'b: 'a, 'tcx: 'b> {
     resolver: &'a mut Resolver<'b, 'tcx>,
@@ -50,7 +49,7 @@ impl<'a, 'b, 'tcx:'b> DerefMut for ExportRecorder<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
-    fn record_exports_for_module_subtree(&mut self, module_: Rc<Module>) {
+    fn record_exports_for_module_subtree(&mut self, module_: Module<'b>) {
         // If this isn't a local krate, then bail out. We don't need to record
         // exports for nonlocal crates.
 
@@ -59,23 +58,23 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording exports for local \
                         module `{}`",
-                       module_to_string(&*module_));
+                       module_to_string(module_));
             }
             None => {
                 // Record exports for the root module.
                 debug!("(recording exports for module subtree) recording exports for root module \
                         `{}`",
-                       module_to_string(&*module_));
+                       module_to_string(module_));
             }
             Some(_) => {
                 // Bail out.
                 debug!("(recording exports for module subtree) not recording exports for `{}`",
-                       module_to_string(&*module_));
+                       module_to_string(module_));
                 return;
             }
         }
 
-        self.record_exports_for_module(&*module_);
+        self.record_exports_for_module(module_);
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
 
         for (_, child_name_bindings) in module_.children.borrow().iter() {
@@ -90,11 +89,11 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         }
 
         for (_, child_module) in module_.anonymous_children.borrow().iter() {
-            self.record_exports_for_module_subtree(child_module.clone());
+            self.record_exports_for_module_subtree(child_module);
         }
     }
 
-    fn record_exports_for_module(&mut self, module_: &Module) {
+    fn record_exports_for_module(&mut self, module_: Module<'b>) {
         let mut exports = Vec::new();
 
         self.add_exports_for_module(&mut exports, module_);
@@ -128,7 +127,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         }
     }
 
-    fn add_exports_for_module(&mut self, exports: &mut Vec<Export>, module_: &Module) {
+    fn add_exports_for_module(&mut self, exports: &mut Vec<Export>, module_: Module<'b>) {
         for (name, import_resolution) in module_.import_resolutions.borrow().iter() {
             let xs = [TypeNS, ValueNS];
             for &ns in &xs {
@@ -150,6 +149,6 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
 
 pub fn record(resolver: &mut Resolver) {
     let mut recorder = ExportRecorder { resolver: resolver };
-    let root_module = recorder.graph_root.clone();
+    let root_module = recorder.graph_root;
     recorder.record_exports_for_module_subtree(root_module);
 }
