@@ -99,6 +99,9 @@ pub trait OpenOptionsExt {
     ///
     /// If a new file is created as part of a `File::open_opts` call then this
     /// specified `mode` will be used as the permission bits for the new file.
+    /// If no `mode` is set, the default of `0o666` will be used.
+    /// The operating system masks out bits with the systems `umask`, to produce
+    /// the final permissions.
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&mut self, mode: raw::mode_t) -> &mut Self;
 }

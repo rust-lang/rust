@@ -375,7 +375,7 @@ impl<'a> Seek for &'a File {
 }
 
 impl OpenOptions {
-    /// Creates a blank net set of options ready for configuration.
+    /// Creates a blank new set of options ready for configuration.
     ///
     /// All options are initially set to `false`.
     ///
@@ -384,7 +384,8 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().open("foo.txt");
+    /// let mut options = OpenOptions::new();
+    /// let file = options.read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OpenOptions {
@@ -413,6 +414,9 @@ impl OpenOptions {
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
     ///
+    /// If a file already exist, the contents of that file get overwritten, but it is
+    /// not truncated.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -429,13 +433,29 @@ impl OpenOptions {
     ///
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
+    /// Note that setting `.write(true).append(true)` has the same effect as
+    /// setting only `.append(true)`.
+    ///
+    /// For most filesystems the operating system guarantees all writes are atomic:
+    /// no writes get mangled because another process writes at the same time.
+    ///
+    /// One maybe obvious note when using append-mode: make sure that all data that
+    /// belongs together, is written the the file in one operation. This can be done
+    /// by concatenating strings before passing them to `write()`, or using a buffered
+    /// writer (with a more than adequately sized buffer) and calling `flush()` when the
+    /// message is complete.
+    ///
+    /// If a file is opened with both read and append access, beware that after opening
+    /// and after every write the position for reading may be set at the end of the file.
+    /// So before writing save the current position (using `seek(SeekFrom::Current(0))`,
+    /// and restore it before the next read.
     ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().write(true).append(true).open("foo.txt");
+    /// let file = OpenOptions::new().append(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, append: bool) -> &mut OpenOptions {
@@ -446,6 +466,8 @@ impl OpenOptions {
     ///
     /// If a file is successfully opened with this option set it will truncate
     /// the file to 0 length if it already exists.
+    ///
+    /// The file must be opened with write access for truncate to work.
     ///
     /// # Examples
     ///
@@ -464,16 +486,77 @@ impl OpenOptions {
     /// This option indicates whether a new file will be created if the file
     /// does not yet already exist.
     ///
+    /// The file must be opened with write or append access in order to create
+    /// a new file.
+    ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().create(true).open("foo.txt");
+    /// let file = OpenOptions::new().write(true).create(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create(&mut self, create: bool) -> &mut OpenOptions {
         self.0.create(create); self
+    }
+
+    /// Sets the option to always create a new file.
+    ///
+    /// This option indicates whether a new file will be created.
+    /// No file is allowed to exist at the target location, also no (dangling)
+    /// symlink.
+    ///
+    /// if `.create_new(true)` is set, `.create()` and `.truncate()` are ignored.
+    ///
+    /// The file must be opened with write or append access in order to create
+    /// a new file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::OpenOptions;
+    ///
+    /// let file = OpenOptions::new().write(true).create_new(true).open("foo.txt");
+    /// ```
+    #[stable(feature = "expand_open_options", since = "1.7.0")]
+    pub fn create_new(&mut self, create_new: bool) -> &mut OpenOptions {
+        self.0.create_new(create_new); self
+    }
+
+    /// Pass custom open flags to the operating system.
+    ///
+    /// Windows and the various flavours of Unix support flags that are not
+    /// cross-platform, but that can be useful in some circumstances. On Unix they will
+    /// be passed as the variable _flags_ to `open`, on Windows as the
+    /// _dwFlagsAndAttributes_ parameter.
+    ///
+    /// The cross-platform options of Rust can do magic: they can set any flag necessary
+    /// to ensure it works as expected. For example, `.append(true)` on Unix not only
+    /// sets the flag `O_APPEND`, but also automatically `O_WRONLY` or `O_RDWR`. This
+    /// special treatment is not available for the custom flags.
+    ///
+    /// Custom flags can only set flags, not remove flags set by Rusts options.
+    ///
+    /// For the custom flags on Unix, the bits that define the access mode are masked
+    /// out with `O_ACCMODE`, to ensure they do not interfere with the access mode set
+    /// by Rusts options.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// extern crate libc;
+    /// extern crate winapi;
+    /// use std::fs::OpenOptions;
+    ///
+    /// let options = OpenOptions::new().write(true);
+    /// if cfg!(unix) { options.custom_flags(libc::O_NOFOLLOW); }
+    /// if cfg!(windows) { options.custom_flags(winapi::FILE_FLAG_BACKUP_SEMANTICS); }
+    /// let file = options.open("foo.txt");
+    /// ```
+    #[stable(feature = "expand_open_options", since = "1.7.0")]
+    pub fn custom_flags(&mut self, flags: u32) -> &mut OpenOptions {
+        self.0.custom_flags(flags); self
     }
 
     /// Opens a file at `path` with the options specified by `self`.
@@ -483,10 +566,12 @@ impl OpenOptions {
     /// This function will return an error under a number of different
     /// circumstances, to include but not limited to:
     ///
-    /// * Opening a file that does not exist with read access.
+    /// * Opening a file that does not exist without setting `create` or `create_new`.
     /// * Attempting to open a file with access that the user lacks
     ///   permissions for
     /// * Filesystem-level errors (full disk, etc)
+    /// * Invalid combinations of open options (truncate without write access,
+    ///   no access mode set, etc)
     ///
     /// # Examples
     ///
@@ -2098,61 +2183,108 @@ mod tests {
 
         let mut r = OO::new(); r.read(true);
         let mut w = OO::new(); w.write(true);
-        let mut rw = OO::new(); rw.write(true).read(true);
+        let mut rw = OO::new(); rw.read(true).write(true);
+        let mut a = OO::new(); a.append(true);
+        let mut ra = OO::new(); ra.read(true).append(true);
 
-        match r.open(&tmpdir.join("a")) {
-            Ok(..) => panic!(), Err(..) => {}
-        }
+        let invalid_options = if cfg!(windows) { "The parameter is incorrect" }
+                              else { "Invalid argument" };
 
-        // Perform each one twice to make sure that it succeeds the second time
-        // (where the file exists)
-        check!(c(&w).create(true).open(&tmpdir.join("b")));
-        assert!(tmpdir.join("b").exists());
-        check!(c(&w).create(true).open(&tmpdir.join("b")));
-        check!(w.open(&tmpdir.join("b")));
+        // Test various combinations of creation modes and access modes.
+        //
+        // Allowed:
+        // creation mode           | read  | write | read-write | append | read-append |
+        // :-----------------------|:-----:|:-----:|:----------:|:------:|:-----------:|
+        // not set (open existing) |   X   |   X   |     X      |   X    |      X      |
+        // create                  |       |   X   |     X      |   X    |      X      |
+        // truncate                |       |   X   |     X      |        |             |
+        // create and truncate     |       |   X   |     X      |        |             |
+        // create_new              |       |   X   |     X      |   X    |      X      |
+        //
+        // tested in reverse order, so 'create_new' creates the file, and 'open existing' opens it.
 
+        // write-only
+        check!(c(&w).create_new(true).open(&tmpdir.join("a")));
+        check!(c(&w).create(true).truncate(true).open(&tmpdir.join("a")));
+        check!(c(&w).truncate(true).open(&tmpdir.join("a")));
+        check!(c(&w).create(true).open(&tmpdir.join("a")));
+        check!(c(&w).open(&tmpdir.join("a")));
+
+        // read-only
+        error!(c(&r).create_new(true).open(&tmpdir.join("b")), invalid_options);
+        error!(c(&r).create(true).truncate(true).open(&tmpdir.join("b")), invalid_options);
+        error!(c(&r).truncate(true).open(&tmpdir.join("b")), invalid_options);
+        error!(c(&r).create(true).open(&tmpdir.join("b")), invalid_options);
+        check!(c(&r).open(&tmpdir.join("a"))); // try opening the file created with write_only
+
+        // read-write
+        check!(c(&rw).create_new(true).open(&tmpdir.join("c")));
+        check!(c(&rw).create(true).truncate(true).open(&tmpdir.join("c")));
+        check!(c(&rw).truncate(true).open(&tmpdir.join("c")));
         check!(c(&rw).create(true).open(&tmpdir.join("c")));
-        assert!(tmpdir.join("c").exists());
-        check!(c(&rw).create(true).open(&tmpdir.join("c")));
-        check!(rw.open(&tmpdir.join("c")));
+        check!(c(&rw).open(&tmpdir.join("c")));
 
-        check!(c(&w).append(true).create(true).open(&tmpdir.join("d")));
-        assert!(tmpdir.join("d").exists());
-        check!(c(&w).append(true).create(true).open(&tmpdir.join("d")));
-        check!(c(&w).append(true).open(&tmpdir.join("d")));
+        // append
+        check!(c(&a).create_new(true).open(&tmpdir.join("d")));
+        error!(c(&a).create(true).truncate(true).open(&tmpdir.join("d")), invalid_options);
+        error!(c(&a).truncate(true).open(&tmpdir.join("d")), invalid_options);
+        check!(c(&a).create(true).open(&tmpdir.join("d")));
+        check!(c(&a).open(&tmpdir.join("d")));
 
-        check!(c(&rw).append(true).create(true).open(&tmpdir.join("e")));
-        assert!(tmpdir.join("e").exists());
-        check!(c(&rw).append(true).create(true).open(&tmpdir.join("e")));
-        check!(c(&rw).append(true).open(&tmpdir.join("e")));
+        // read-append
+        check!(c(&ra).create_new(true).open(&tmpdir.join("e")));
+        error!(c(&ra).create(true).truncate(true).open(&tmpdir.join("e")), invalid_options);
+        error!(c(&ra).truncate(true).open(&tmpdir.join("e")), invalid_options);
+        check!(c(&ra).create(true).open(&tmpdir.join("e")));
+        check!(c(&ra).open(&tmpdir.join("e")));
 
-        check!(c(&w).truncate(true).create(true).open(&tmpdir.join("f")));
-        assert!(tmpdir.join("f").exists());
-        check!(c(&w).truncate(true).create(true).open(&tmpdir.join("f")));
-        check!(c(&w).truncate(true).open(&tmpdir.join("f")));
+        // Test opening a file without setting an access mode
+        let mut blank = OO::new();
+         error!(blank.create(true).open(&tmpdir.join("f")), invalid_options);
 
-        check!(c(&rw).truncate(true).create(true).open(&tmpdir.join("g")));
-        assert!(tmpdir.join("g").exists());
-        check!(c(&rw).truncate(true).create(true).open(&tmpdir.join("g")));
-        check!(c(&rw).truncate(true).open(&tmpdir.join("g")));
+        // Test write works
+        check!(check!(File::create(&tmpdir.join("h"))).write("foobar".as_bytes()));
 
-        check!(check!(File::create(&tmpdir.join("h"))).write("foo".as_bytes()));
+        // Test write fails for read-only
         check!(r.open(&tmpdir.join("h")));
         {
             let mut f = check!(r.open(&tmpdir.join("h")));
             assert!(f.write("wut".as_bytes()).is_err());
         }
+
+        // Test write overwrites
+        {
+            let mut f = check!(c(&w).open(&tmpdir.join("h")));
+            check!(f.write("baz".as_bytes()));
+        }
+        {
+            let mut f = check!(c(&r).open(&tmpdir.join("h")));
+            let mut b = vec![0; 6];
+            check!(f.read(&mut b));
+            assert_eq!(b, "bazbar".as_bytes());
+        }
+
+        // Test truncate works
+        {
+            let mut f = check!(c(&w).truncate(true).open(&tmpdir.join("h")));
+            check!(f.write("foo".as_bytes()));
+        }
+        assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
+
+        // Test append works
         assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
         {
-            let mut f = check!(c(&w).append(true).open(&tmpdir.join("h")));
+            let mut f = check!(c(&a).open(&tmpdir.join("h")));
             check!(f.write("bar".as_bytes()));
         }
         assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 6);
+
+        // Test .append(true) equals .write(true).append(true)
         {
-            let mut f = check!(c(&w).truncate(true).open(&tmpdir.join("h")));
-            check!(f.write("bar".as_bytes()));
+            let mut f = check!(c(&w).append(true).open(&tmpdir.join("h")));
+            check!(f.write("baz".as_bytes()));
         }
-        assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
+        assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 9);
     }
 
     #[test]
