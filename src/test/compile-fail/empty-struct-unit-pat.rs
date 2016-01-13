@@ -32,7 +32,7 @@ fn main() { //~ ERROR: compilation successful
     // }
     match e1 {
         Empty1(..) => () //~ WARN `Empty1` does not name a tuple variant or a tuple struct
-            //~^ WARN HARD ERROR
+            //~^ WARN hard error
     }
     // Rejected by parser as yet
     // match e2 {
@@ -40,6 +40,6 @@ fn main() { //~ ERROR: compilation successful
     // }
     match e2 {
         E::Empty2(..) => () //~ WARN `E::Empty2` does not name a tuple variant or a tuple struct
-            //~^ WARN HARD ERROR
+            //~^ WARN hard error
     }
 }
