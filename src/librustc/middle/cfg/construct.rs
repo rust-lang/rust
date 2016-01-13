@@ -317,12 +317,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.call(expr, pred, &l, Some(&**r).into_iter())
             }
 
-            hir::ExprRange(ref start, ref end) => {
-                let fields = start.as_ref().map(|e| &**e).into_iter()
-                    .chain(end.as_ref().map(|e| &**e));
-                self.straightline(expr, pred, fields)
-            }
-
             hir::ExprUnary(_, ref e) if self.tcx.is_method_call(expr.id) => {
                 self.call(expr, pred, &e, None::<hir::Expr>.iter())
             }
