@@ -49,9 +49,7 @@ mod m {
         pub fn size() -> usize { 12 }
     }
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "arm",
-              target_arch = "aarch64", target_arch = "powerpc64",
-              target_arch = "powerpc64le"))]
+    #[cfg(not(target_arch = "x86"))]
     pub mod m {
         pub fn align() -> usize { 8 }
         pub fn size() -> usize { 16 }

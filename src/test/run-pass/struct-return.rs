@@ -43,8 +43,7 @@ fn test1() {
     }
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "aarch64",
-          target_arch = "powerpc64", target_arch = "powerpc64le"))]
+#[cfg(target_pointer_width = "64")]
 fn test2() {
     unsafe {
         let f = Floats { a: 1.234567890e-15_f64,
@@ -60,7 +59,7 @@ fn test2() {
     }
 }
 
-#[cfg(any(target_arch = "x86", target_arch = "arm"))]
+#[cfg(target_pointer_width = "32")]
 fn test2() {
 }
 
