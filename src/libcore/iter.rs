@@ -4417,7 +4417,9 @@ macro_rules! range_exact_iter_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl ExactSizeIterator for ops::Range<$t> { }
 
-        #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
         impl ExactSizeIterator for ops::RangeInclusive<$t> { }
     )*)
 }

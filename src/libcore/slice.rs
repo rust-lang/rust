@@ -533,6 +533,8 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
+// FIXME implement indexing with inclusive ranges
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::Range<usize>> for [T] {
     type Output = [T];
