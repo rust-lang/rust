@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(any(target_arch = "x86", target_arch = "arm"))]
+#[cfg(any(target_pointer_width = "32"))]
 fn target() {
     assert_eq!(-1000isize as usize >> 3_usize, 536870787_usize);
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "aarch64",
-          target_arch = "powerpc64", target_arch = "powerpc64le"))]
+#[cfg(any(target_pointer_width = "64"))]
 fn target() {
     assert_eq!(-1000isize as usize >> 3_usize, 2305843009213693827_usize);
 }

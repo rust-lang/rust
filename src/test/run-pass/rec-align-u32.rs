@@ -35,15 +35,6 @@ struct Outer {
     t: Inner
 }
 
-
-#[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "aarch64",
-          target_arch = "powerpc64", target_arch = "powerpc64le"))]
-mod m {
-    pub fn align() -> usize { 4 }
-    pub fn size() -> usize { 8 }
-}
-
-#[cfg(target_arch = "x86_64")]
 mod m {
     pub fn align() -> usize { 4 }
     pub fn size() -> usize { 8 }
