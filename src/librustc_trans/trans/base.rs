@@ -1649,6 +1649,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
     // Create the drop-flag hints for every unfragmented path in the function.
     let tcx = fcx.ccx.tcx();
     let fn_did = tcx.map.local_def_id(fcx.id);
+    let tables = tcx.tables.borrow();
     let mut hints = fcx.lldropflag_hints.borrow_mut();
     let fragment_infos = tcx.fragment_infos.borrow();
 
@@ -1672,12 +1673,22 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
             let (var, datum) = match info {
                 ty::FragmentInfo::Moved { var, .. } |
                 ty::FragmentInfo::Assigned { var, .. } => {
-                    let datum = seen.get(&var).cloned().unwrap_or_else(|| {
-                        let datum = make_datum(var);
-                        seen.insert(var, datum.clone());
-                        datum
+                    let opt_datum = seen.get(&var).cloned().unwrap_or_else(|| {
+                        let ty = tables.node_types[&var];
+                        if fcx.type_needs_drop(ty) {
+                            let datum = make_datum(var);
+                            seen.insert(var, Some(datum.clone()));
+                            Some(datum)
+                        } else {
+                            // No drop call needed, so we don't need a dropflag hint
+                            None
+                        }
                     });
-                    (var, datum)
+                    if let Some(datum) = opt_datum {
+                        (var, datum)
+                    } else {
+                        continue
+                    }
                 }
             };
             match info {
