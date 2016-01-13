@@ -14,6 +14,11 @@ Now that you know more Rust, we can talk in detail about how this works.
 Ranges (the `0..10`) are 'iterators'. An iterator is something that we can
 call the `.next()` method on repeatedly, and it gives us a sequence of things.
 
+(By the way, a range with two dots like `0..10` is inclusive on the left (so it
+starts at 0) and exclusive on the right (so it ends at 9). A mathematician
+would write "[0, 10)". To get a range that goes all the way up to 10 you can
+write `0...10`.)
+
 Like this:
 
 ```rust
