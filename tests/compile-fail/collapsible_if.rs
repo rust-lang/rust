@@ -17,6 +17,30 @@ fn main() {
         }
     }
 
+    // Collaspe `else { if .. }` to `else if ..`
+    if x == "hello" {
+        print!("Hello ");
+    } else { //~ERROR: this `else { if .. }`
+             //~| HELP try
+             //~| SUGGESTION else if y == "world"
+        if y == "world" {
+            println!("world!")
+        }
+    }
+
+    if x == "hello" {
+        print!("Hello ");
+    } else { //~ERROR this `else { if .. }`
+             //~| HELP try
+             //~| SUGGESTION else if y == "world"
+        if y == "world" {
+            println!("world")
+        }
+        else {
+            println!("!")
+        }
+    }
+
     // Works because any if with an else statement cannot be collapsed.
     if x == "hello" {
         if y == "world" {

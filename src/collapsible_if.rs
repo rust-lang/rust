@@ -16,9 +16,11 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
 
-use utils::{in_macro, span_help_and_lint, snippet, snippet_block};
+use utils::{in_macro, snippet, snippet_block, span_lint_and_then};
 
-/// **What it does:** This lint checks for nested `if`-statements which can be collapsed by `&&`-combining their conditions. It is `Warn` by default.
+/// **What it does:** This lint checks for nested `if`-statements which can be collapsed by
+/// `&&`-combining their conditions and for `else { if .. } expressions that can be collapsed to
+/// `else if ..`. It is `Warn` by default.
 ///
 /// **Why is this bad?** Each `if`-statement adds one level of nesting, which makes code look more complex than it really is.
 ///
@@ -29,7 +31,8 @@ declare_lint! {
     pub COLLAPSIBLE_IF,
     Warn,
     "two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` \
-     can be written as `if x && y { foo() }`"
+     can be written as `if x && y { foo() }` and an `else { if .. } expression can be collapsed to \
+     `else if`"
 }
 
 #[derive(Copy,Clone)]
@@ -50,20 +53,44 @@ impl LateLintPass for CollapsibleIf {
 }
 
 fn check_if(cx: &LateContext, e: &Expr) {
-    if let ExprIf(ref check, ref then, None) = e.node {
-        if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
-               single_stmt_of_block(then) {
-            if e.span.expn_id != sp.expn_id {
-                return;
+    if let ExprIf(ref check, ref then, ref else_) = e.node {
+        match *else_ {
+            Some(ref else_) => {
+                if_let_chain! {[
+                    let ExprBlock(ref block) = else_.node,
+                    block.stmts.is_empty(),
+                    block.rules == BlockCheckMode::DefaultBlock,
+                    let Some(ref else_) = block.expr,
+                    let ExprIf(_, _, _) = else_.node
+                ], {
+                    span_lint_and_then(cx,
+                                       COLLAPSIBLE_IF,
+                                       block.span,
+                                       "this `else { if .. }` block can be collapsed", |db| {
+                        db.span_suggestion(block.span, "try",
+                                           format!("else {}",
+                                                   snippet_block(cx, else_.span, "..")));
+                    });
+                }}
             }
-            span_help_and_lint(cx,
-                               COLLAPSIBLE_IF,
-                               e.span,
-                               "this if statement can be collapsed",
-                               &format!("try\nif {} && {} {}",
-                                        check_to_string(cx, check),
-                                        check_to_string(cx, check_inner),
-                                        snippet_block(cx, content.span, "..")));
+            None => {
+                if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
+                       single_stmt_of_block(then) {
+                    if e.span.expn_id != sp.expn_id {
+                        return;
+                    }
+                    span_lint_and_then(cx,
+                                       COLLAPSIBLE_IF,
+                                       e.span,
+                                       "this if statement can be collapsed", |db| {
+                        db.span_suggestion(e.span, "try",
+                                           format!("if {} && {} {}",
+                                                   check_to_string(cx, check),
+                                                   check_to_string(cx, check_inner),
+                                                   snippet_block(cx, content.span, "..")));
+                    });
+                }
+            }
         }
     }
 }
@@ -90,16 +117,14 @@ fn single_stmt_of_block(block: &Block) -> Option<&Expr> {
         } else {
             None
         }
-    } else {
-        if block.stmts.is_empty() {
-            if let Some(ref p) = block.expr {
-                Some(p)
-            } else {
-                None
-            }
+    } else if block.stmts.is_empty() {
+        if let Some(ref p) = block.expr {
+            Some(p)
         } else {
             None
         }
+    } else {
+        None
     }
 }
 
