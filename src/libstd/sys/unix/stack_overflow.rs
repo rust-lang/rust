@@ -59,19 +59,19 @@ mod imp {
     static mut PAGE_SIZE: usize = 0;
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> *mut libc::c_void {
+    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
         #[repr(C)]
         struct siginfo_t {
             a: [libc::c_int; 3], // si_signo, si_code, si_errno,
             si_addr: *mut libc::c_void,
         }
 
-        (*(info as *const siginfo_t)).si_addr
+        (*(info as *const siginfo_t)).si_addr as usize
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> *mut libc::c_void {
-        (*info).si_addr
+    unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
+        (*info).si_addr as usize
     }
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
@@ -98,7 +98,7 @@ mod imp {
         use sys_common::util::report_overflow;
 
         let guard = thread_info::stack_guard().unwrap_or(0);
-        let addr = siginfo_si_addr(info) as usize;
+        let addr = siginfo_si_addr(info);
 
         // If the faulting address is within the guard page, then we print a
         // message saying so.
