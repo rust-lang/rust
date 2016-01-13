@@ -8,7 +8,7 @@ CFG_STATIC_LIB_NAME_x86_64-unknown-bitrig=lib$(1).a
 CFG_LIB_GLOB_x86_64-unknown-bitrig=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_x86_64-unknown-bitrig=$(1)-*.dylib.dSYM
 CFG_JEMALLOC_CFLAGS_x86_64-unknown-bitrig := -m64 -I/usr/include $(CFLAGS)
-CFG_GCCISH_CFLAGS_x86_64-unknown-bitrig := -Wall -Werror -fPIC -m64 -I/usr/include $(CFLAGS)
+CFG_GCCISH_CFLAGS_x86_64-unknown-bitrig := -Wall -Werror -fPIE -fPIC -m64 -I/usr/include $(CFLAGS)
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-bitrig := -shared -pic -pthread -m64 $(LDFLAGS)
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-bitrig := -Wl,--export-dynamic,--dynamic-list=
 CFG_LLC_FLAGS_x86_64-unknown-bitrig :=
