@@ -13,5 +13,5 @@
 
 fn avg<T=i32>(_: T) {}
 //~^ ERROR defaults for type parameters are only allowed
-//~| WARNING HARD ERROR
+//~| WARNING hard error
 fn main() {}
