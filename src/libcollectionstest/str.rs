@@ -270,6 +270,15 @@ fn test_replace_2d() {
 }
 
 #[test]
+fn test_replace_pattern() {
+    let data = "abcdαβγδabcdαβγδ";
+    assert_eq!(data.replace("dαβ", "😺😺😺"), "abc😺😺😺γδabc😺😺😺γδ");
+    assert_eq!(data.replace('γ', "😺😺😺"), "abcdαβ😺😺😺δabcdαβ😺😺😺δ");
+    assert_eq!(data.replace(&['a', 'γ'] as &[_], "😺😺😺"), "😺😺😺bcdαβ😺😺😺δ😺😺😺bcdαβ😺😺😺δ");
+    assert_eq!(data.replace(|c| c == 'γ', "😺😺😺"), "abcdαβ😺😺😺δabcdαβ😺😺😺δ");
+}
+
+#[test]
 fn test_slice() {
     assert_eq!("ab", &"abc"[0..2]);
     assert_eq!("bc", &"abc"[1..3]);
