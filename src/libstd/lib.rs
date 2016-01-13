@@ -410,6 +410,7 @@ pub mod num;
 pub mod thread;
 
 pub mod collections;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 pub mod dynamic_lib;
 pub mod env;
 pub mod ffi;
