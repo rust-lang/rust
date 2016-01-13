@@ -148,11 +148,10 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                                                mask_value,
                                                cmp_value));
                         }
-                    } else {
-                        if mask_value == 0 {
-                            span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
-                        }
+                    } else if mask_value == 0 {
+                        span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
+
                 }
                 BiBitOr => {
                     if mask_value | cmp_value != cmp_value {
@@ -177,10 +176,8 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                                   &format!("incompatible bit mask: `_ & {}` will always be lower than `{}`",
                                            mask_value,
                                            cmp_value));
-                    } else {
-                        if mask_value == 0 {
-                            span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
-                        }
+                    } else if mask_value == 0 {
+                        span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
                 }
                 BiBitOr => {
@@ -209,10 +206,8 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                                   &format!("incompatible bit mask: `_ & {}` will never be higher than `{}`",
                                            mask_value,
                                            cmp_value));
-                    } else {
-                        if mask_value == 0 {
-                            span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
-                        }
+                    } else if mask_value == 0 {
+                        span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
                 }
                 BiBitOr => {
