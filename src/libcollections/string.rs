@@ -62,6 +62,7 @@ use boxed::Box;
 /// hello.push_str("orld!");
 /// ```
 ///
+/// [`char`]: ../primitive.char.html
 /// [`push()`]: #method.push
 /// [`push_str()`]: #method.push_str
 ///
@@ -163,8 +164,8 @@ use boxed::Box;
 /// ```
 ///
 /// [`as_ptr()`]: #method.as_ptr
-/// [`len()`]: # method.len
-/// [`capacity()`]: # method.capacity
+/// [`len()`]: #method.len
+/// [`capacity()`]: #method.capacity
 ///
 /// If a `String` has enough capacity, adding elements to it will not
 /// re-allocate. For example, consider this program:
@@ -444,7 +445,7 @@ impl String {
     /// Converts a slice of bytes to a `String`, including invalid characters.
     ///
     /// A string slice ([`&str`]) is made of bytes ([`u8`]), and a slice of
-    /// bytes ([`&[u8]`]) is made of bytes, so this function converts between
+    /// bytes ([`&[u8]`][byteslice]) is made of bytes, so this function converts between
     /// the two. Not all byte slices are valid string slices, however: [`&str`]
     /// requires that it is valid UTF-8. During this conversion,
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
@@ -452,7 +453,7 @@ impl String {
     ///
     /// [`&str`]: ../primitive.str.html
     /// [`u8`]: ../primitive.u8.html
-    /// [`&[u8]`]: ../primitive.slice.html
+    /// [byteslice]: ../primitive.slice.html
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
@@ -1311,6 +1312,8 @@ impl FromUtf8Error {
     ///
     /// [`Utf8Error`]: ../str/struct.Utf8Error.html
     /// [`std::str`]: ../str/index.html
+    /// [`u8`]: ../primitive.u8.html
+    /// [`&str`]: ../primitive.str.html
     ///
     /// # Examples
     ///
