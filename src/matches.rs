@@ -9,7 +9,7 @@ use syntax::ast::Lit_::LitBool;
 use syntax::codemap::Span;
 
 use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
-use utils::{match_type, snippet, span_lint, span_note_and_lint, span_help_and_lint, in_external_macro, expr_block};
+use utils::{match_type, snippet, span_lint, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 
 /// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice. It is `Warn` by default.
 ///
@@ -124,15 +124,17 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 
 fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms[1].pats[0].node == PatWild {
-        span_help_and_lint(cx,
+        span_lint_and_then(cx,
                            SINGLE_MATCH,
                            expr.span,
-                           "you seem to be trying to use match for destructuring a single pattern. Consider using \
-                            `if let`",
-                           &format!("try\nif let {} = {} {}",
-                                    snippet(cx, arms[0].pats[0].span, ".."),
-                                    snippet(cx, ex.span, ".."),
-                                    expr_block(cx, &arms[0].body, None, "..")));
+                           "you seem to be trying to use match for destructuring a single pattern. \
+                           Consider using `if let`", |db| {
+                db.span_suggestion(expr.span, "try this",
+                                   format!("if let {} = {} {}",
+                                           snippet(cx, arms[0].pats[0].span, ".."),
+                                           snippet(cx, ex.span, ".."),
+                                           expr_block(cx, &arms[0].body, None, "..")));
+            });
     }
 }
 
@@ -156,15 +158,17 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
 
     for &(ty_path, pat_path) in candidates {
         if &path == pat_path && match_type(cx, ty, ty_path) {
-            span_help_and_lint(cx,
+            span_lint_and_then(cx,
                                SINGLE_MATCH,
                                expr.span,
-                               "you seem to be trying to use match for destructuring a single pattern. Consider using \
-                                `if let`",
-                               &format!("try\nif let {} = {} {}",
-                                        snippet(cx, arms[0].pats[0].span, ".."),
-                                        snippet(cx, ex.span, ".."),
-                                        expr_block(cx, &arms[0].body, None, "..")));
+                               "you seem to be trying to use match for destructuring a single pattern. \
+                               Consider using `if let`", |db| {
+                db.span_suggestion(expr.span, "try this",
+                                   format!("if let {} = {} {}",
+                                           snippet(cx, arms[0].pats[0].span, ".."),
+                                           snippet(cx, ex.span, ".."),
+                                           expr_block(cx, &arms[0].body, None, "..")));
+            });
         }
     }
 }
@@ -172,7 +176,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
 fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     // type of expression == bool
     if cx.tcx.expr_ty(ex).sty == ty::TyBool {
-        if arms.len() == 2 && arms[0].pats.len() == 1 {
+        let sugg = if arms.len() == 2 && arms[0].pats.len() == 1 {
             // no guards
             let exprs = if let PatLit(ref arm_bool) = arms[0].pats[0].node {
                 if let ExprLit(ref lit) = arm_bool.node {
@@ -187,56 +191,42 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
             } else {
                 None
             };
+
             if let Some((ref true_expr, ref false_expr)) = exprs {
                 if !is_unit_expr(true_expr) {
                     if !is_unit_expr(false_expr) {
-                        span_help_and_lint(cx,
-                                           MATCH_BOOL,
-                                           expr.span,
-                                           "you seem to be trying to match on a boolean expression. Consider using \
-                                            an if..else block:",
-                                           &format!("try\nif {} {} else {}",
-                                                    snippet(cx, ex.span, "b"),
-                                                    expr_block(cx, true_expr, None, ".."),
-                                                    expr_block(cx, false_expr, None, "..")));
+                        Some(format!("if {} {} else {}",
+                                     snippet(cx, ex.span, "b"),
+                                     expr_block(cx, true_expr, None, ".."),
+                                     expr_block(cx, false_expr, None, "..")))
                     } else {
-                        span_help_and_lint(cx,
-                                           MATCH_BOOL,
-                                           expr.span,
-                                           "you seem to be trying to match on a boolean expression. Consider using \
-                                            an if..else block:",
-                                           &format!("try\nif {} {}",
-                                                    snippet(cx, ex.span, "b"),
-                                                    expr_block(cx, true_expr, None, "..")));
+                        Some(format!("if {} {}",
+                                     snippet(cx, ex.span, "b"),
+                                     expr_block(cx, true_expr, None, "..")))
                     }
                 } else if !is_unit_expr(false_expr) {
-                    span_help_and_lint(cx,
-                                       MATCH_BOOL,
-                                       expr.span,
-                                       "you seem to be trying to match on a boolean expression. Consider using an \
-                                        if..else block:",
-                                       &format!("try\nif !{} {}",
-                                                snippet(cx, ex.span, "b"),
-                                                expr_block(cx, false_expr, None, "..")));
+                    Some(format!("try\nif !{} {}",
+                                 snippet(cx, ex.span, "b"),
+                                 expr_block(cx, false_expr, None, "..")))
                 } else {
-                    span_lint(cx,
-                              MATCH_BOOL,
-                              expr.span,
-                              "you seem to be trying to match on a boolean expression. Consider using an if..else \
-                               block");
+                    None
                 }
             } else {
-                span_lint(cx,
-                          MATCH_BOOL,
-                          expr.span,
-                          "you seem to be trying to match on a boolean expression. Consider using an if..else block");
+                None
             }
         } else {
-            span_lint(cx,
-                      MATCH_BOOL,
-                      expr.span,
-                      "you seem to be trying to match on a boolean expression. Consider using an if..else block");
-        }
+            None
+        };
+
+        span_lint_and_then(cx,
+                           MATCH_BOOL,
+                           expr.span,
+                           "you seem to be trying to match on a boolean expression. Consider using \
+                           an if..else block:", move |db| {
+            if let Some(ref sugg) = sugg {
+                db.span_suggestion(expr.span, "try this", sugg.clone());
+            }
+        });
     }
 }
 
