@@ -35,12 +35,12 @@ pub fn dumb_print(args: fmt::Arguments) {
 }
 
 pub fn abort(args: fmt::Arguments) -> ! {
-    dumb_print(format_args!("fatal runtime error: {}", args));
+    dumb_print(format_args!("fatal runtime error: {}\n", args));
     unsafe { intrinsics::abort(); }
 }
 
 #[allow(dead_code)] // stack overflow detection not enabled on all platforms
 pub unsafe fn report_overflow() {
-    dumb_print(format_args!("\nthread '{}' has overflowed its stack",
+    dumb_print(format_args!("\nthread '{}' has overflowed its stack\n",
                             thread::current().name().unwrap_or("<unknown>")));
 }

@@ -15,6 +15,7 @@ use io::{self, ErrorKind};
 use libc;
 use num::One;
 use ops::Neg;
+use alloc::oom;
 
 #[cfg(target_os = "android")]   pub use os::android as platform;
 #[cfg(target_os = "bitrig")]    pub use os::bitrig as platform;
@@ -45,6 +46,22 @@ pub mod thread_local;
 pub mod time;
 pub mod stdio;
 
+// A nicer handler for out-of-memory situations than the default one. This one
+// prints a message to stderr before aborting. It is critical that this code
+// does not allocate any memory since we are in an OOM situation. Any errors are
+// ignored while printing since there's nothing we can do about them and we are
+// about to exit anyways.
+fn oom_handler() -> ! {
+    use intrinsics;
+    let msg = "fatal runtime error: out of memory\n";
+    unsafe {
+        libc::write(libc::STDERR_FILENO,
+                    msg.as_ptr() as *const libc::c_void,
+                    msg.len() as libc::size_t);
+        intrinsics::abort();
+    }
+}
+
 #[cfg(not(any(target_os = "nacl", test)))]
 pub fn init() {
     use libc::signal;
@@ -58,10 +75,14 @@ pub fn init() {
     unsafe {
         assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
     }
+
+    oom::set_oom_handler(oom_handler);
 }
 
 #[cfg(all(target_os = "nacl", not(test)))]
-pub fn init() { }
+pub fn init() {
+    oom::set_oom_handler(oom_handler);
+}
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as libc::c_int {
