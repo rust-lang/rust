@@ -4,8 +4,14 @@
 #![deny(clippy)]
 #![allow(unused)]
 
+use std::borrow::Cow;
+
+enum Foo { Bar, Baz(u8) }
+use Foo::*;
+
 fn single_match(){
     let x = Some(1u8);
+
     match x {  //~ ERROR you seem to be trying to use match
                //~^ HELP try
         Some(y) => {
@@ -13,11 +19,7 @@ fn single_match(){
         }
         _ => ()
     }
-    // Not linted
-    match x {
-        Some(y) => println!("{:?}", y),
-        None => ()
-    }
+
     let z = (1u8,1u8);
     match z { //~ ERROR you seem to be trying to use match
               //~^ HELP try
@@ -35,6 +37,43 @@ fn single_match(){
     match z {
         (2...3, 7...9) => println!("{:?}", z),
         _ => println!("nope"),
+    }
+}
+
+fn single_match_know_enum() {
+    let x = Some(1u8);
+    let y : Result<_, i8> = Ok(1i8);
+
+    match x { //~ ERROR you seem to be trying to use match
+              //~^ HELP try
+        Some(y) => println!("{:?}", y),
+        None => ()
+    }
+
+    match y { //~ ERROR you seem to be trying to use match
+              //~^ HELP try
+        Ok(y) => println!("{:?}", y),
+        Err(..) => ()
+    }
+
+    let c = Cow::Borrowed("");
+
+    match c { //~ ERROR you seem to be trying to use match
+              //~^ HELP try
+        Cow::Borrowed(..) => println!("42"),
+        Cow::Owned(..) => (),
+    }
+
+    let z = Foo::Bar;
+    // no warning
+    match z {
+        Bar => println!("42"),
+        Baz(_) => (),
+    }
+
+    match z {
+        Baz(_) => println!("42"),
+        Bar => (),
     }
 }
 
