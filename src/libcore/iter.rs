@@ -4375,95 +4375,6 @@ impl<A> Iterator for StepBy<A, RangeFrom<A>> where
     }
 }
 
-/// An iterator over the range [start, stop]
-#[derive(Clone)]
-#[unstable(feature = "range_inclusive",
-           reason = "likely to be replaced by range notation and adapters",
-           issue = "27777")]
-#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
-#[allow(deprecated)]
-pub struct RangeInclusive<A> {
-    range: ops::Range<A>,
-    done: bool,
-}
-
-/// Returns an iterator over the range [start, stop].
-#[inline]
-#[unstable(feature = "range_inclusive",
-           reason = "likely to be replaced by range notation and adapters",
-           issue = "27777")]
-#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
-#[allow(deprecated)]
-pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
-    where A: Step + One + Clone
-{
-    RangeInclusive {
-        range: start..stop,
-        done: false,
-    }
-}
-
-#[unstable(feature = "range_inclusive",
-           reason = "likely to be replaced by range notation and adapters",
-           issue = "27777")]
-#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
-#[allow(deprecated)]
-impl<A> Iterator for RangeInclusive<A> where
-    A: PartialEq + Step + One + Clone,
-    for<'a> &'a A: Add<&'a A, Output = A>
-{
-    type Item = A;
-
-    #[inline]
-    fn next(&mut self) -> Option<A> {
-        self.range.next().or_else(|| {
-            if !self.done && self.range.start == self.range.end {
-                self.done = true;
-                Some(self.range.end.clone())
-            } else {
-                None
-            }
-        })
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (lo, hi) = self.range.size_hint();
-        if self.done {
-            (lo, hi)
-        } else {
-            let lo = lo.saturating_add(1);
-            let hi = hi.and_then(|x| x.checked_add(1));
-            (lo, hi)
-        }
-    }
-}
-
-#[unstable(feature = "range_inclusive",
-           reason = "likely to be replaced by range notation and adapters",
-           issue = "27777")]
-#[rustc_deprecated(since = "1.5.0", reason = "replaced with ... syntax")]
-#[allow(deprecated)]
-impl<A> DoubleEndedIterator for RangeInclusive<A> where
-    A: PartialEq + Step + One + Clone,
-    for<'a> &'a A: Add<&'a A, Output = A>,
-    for<'a> &'a A: Sub<Output=A>
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<A> {
-        if self.range.end > self.range.start {
-            let result = self.range.end.clone();
-            self.range.end = &self.range.end - &A::one();
-            Some(result)
-        } else if !self.done && self.range.start == self.range.end {
-            self.done = true;
-            Some(self.range.end.clone())
-        } else {
-            None
-        }
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::Range<A>> {
     type Item = A;
@@ -4505,6 +4416,9 @@ macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl ExactSizeIterator for ops::Range<$t> { }
+
+        #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+        impl ExactSizeIterator for ops::RangeInclusive<$t> { }
     )*)
 }
 
@@ -4564,6 +4478,99 @@ impl<A: Step + One> Iterator for ops::RangeFrom<A> where
     fn next(&mut self) -> Option<A> {
         let mut n = &self.start + &A::one();
         mem::swap(&mut n, &mut self.start);
+        Some(n)
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>
+{
+    type Item = A;
+
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        use ops::RangeInclusive::*;
+
+        // this function has a sort of odd structure due to borrowck issues
+        // we may need to replace self, so borrows of self.start and self.end need to end early
+
+        let (finishing, n) = match *self {
+            Empty { .. } => (None, None), // empty iterators yield no values
+
+            NonEmpty { ref mut start, ref mut end } => {
+                let one = A::one();
+                if start <= end {
+                    let mut n = &*start + &one;
+                    mem::swap(&mut n, start);
+
+                    // if the iterator is done iterating, it will change from NonEmpty to Empty
+                    // to avoid unnecessary drops or clones, we'll reuse either start or end
+                    // (they are equal now, so it doesn't matter which)
+                    // to pull out end, we need to swap something back in -- use the previously
+                    // created A::one() as a dummy value
+
+                    (if n == *end { Some(mem::replace(end, one)) } else { None },
+                    // ^ are we done yet?
+                    Some(n)) // < the value to output
+                } else {
+                    (Some(mem::replace(start, one)), None)
+                }
+            }
+        };
+
+        // turn into an empty iterator if this is the last value
+        if let Some(end) = finishing {
+            *self = Empty { at: end };
+        }
+
+        n
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        use ops::RangeInclusive::*;
+
+        match *self {
+            Empty { .. } => (0, Some(0)),
+
+            NonEmpty { ref start, ref end } =>
+                match Step::steps_between(start, end, &A::one()) {
+                    Some(hint) => (hint.saturating_add(1), hint.checked_add(1)),
+                    None => (0, None),
+                }
+        }
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<A: Step + One> DoubleEndedIterator for ops::RangeInclusive<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>,
+    for<'a> &'a A: Sub<&'a A, Output = A>
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        use ops::RangeInclusive::*;
+
+        // see Iterator::next for comments
+
+        let (finishing, n) = match *self {
+            Empty { .. } => return None,
+
+            NonEmpty { ref mut start, ref mut end } => {
+                let one = A::one();
+                let mut n = &*end - &one;
+                mem::swap(&mut n, end);
+
+                (if n == *start { Some(mem::replace(start, one)) } else { None },
+                 n)
+            }
+        };
+
+        if let Some(start) = finishing {
+            *self = Empty { at: start };
+        }
+
         Some(n)
     }
 }
