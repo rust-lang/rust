@@ -16,6 +16,42 @@
 //!
 //! [`String`]: struct.String.html
 //! [`ToString`]: trait.ToString.html
+//!
+//! # Examples
+//!
+//! There are multiple ways to create a new `String` from a string literal:
+//!
+//! ```rust
+//! let s = "Hello".to_string();
+//!
+//! let s = String::from("world");
+//! let s: String = "also this".into();
+//! ```
+//!
+//! You can create a new `String` from an existing one by concatenating with
+//! `+`:
+//!
+//! ```rust
+//! let s = "Hello".to_string();
+//!
+//! let message = s + " world!";
+//! ```
+//!
+//! If you have a vector of valid UTF-8 bytes, you can make a `String` out of
+//! it. You can do the reverse too.
+//!
+//! ```rust
+//! let sparkle_heart = vec![240, 159, 146, 150];
+//!
+//! // We know these bytes are valid, so we'll use `unwrap()`.
+//! let sparkle_heart = String::from_utf8(sparkle_heart).unwrap();
+//!
+//! assert_eq!("💖", sparkle_heart);
+//!
+//! let bytes = sparkle_heart.into_bytes();
+//!
+//! assert_eq!(bytes, [240, 159, 146, 150]);
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
