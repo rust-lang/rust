@@ -222,7 +222,7 @@ impl<T: ?Sized> Drop for IntermediateBox<T> {
 }
 
 impl<T> Box<T> {
-    /// Allocates memory on the heap and then moves `x` into it.
+    /// Allocates memory on the heap and then places `x` into it.
     ///
     /// # Examples
     ///
