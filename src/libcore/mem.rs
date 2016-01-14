@@ -130,7 +130,7 @@ pub fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
 
-/// Returns the size of the type that `val` points to in bytes.
+/// Returns the size of the given value in bytes.
 ///
 /// # Examples
 ///
