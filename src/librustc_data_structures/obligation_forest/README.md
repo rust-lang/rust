@@ -60,11 +60,9 @@ which includes three bits of information:
   
 #### Snapshots
 
-The `ObligationForest` supports a limited form of snapshots; see
-`start_snapshot`; `commit_snapshot`; and `rollback_snapshot`. In
-particular, you can use a snapshot to roll back new root
-obligations. However, it is an error to attempt to
-`process_obligations` during a snapshot.
+The `ObligationForest` supports snapshots; see
+`start_snapshot`; `commit_snapshot`; and `rollback_snapshot`. Snapshots roll
+back all externally visible state.
 
 ### Implementation details
 
@@ -74,7 +72,8 @@ the forest is stored in a vector. Each element of the vector is a node
 in some tree. Each node in the vector has the index of an (optional)
 parent and (for convenience) its root (which may be itself). It also
 has a current state, described by `NodeState`. After each
-processing step, we compress the vector to remove completed and error
-nodes, which aren't needed anymore.
+processing step, we compress the vector to remove completed and error nodes (or
+mark as 'popped' if we can't remove due to snapshotting), which aren't needed
+anymore.
 
   
