@@ -27,7 +27,7 @@ use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::iter::FromIterator;
 use core::mem;
-use core::ptr;
+use core::ptr::Shared;
 
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -40,12 +40,12 @@ pub struct LinkedList<T> {
 type Link<T> = Option<Box<Node<T>>>;
 
 struct Rawlink<T> {
-    p: *mut T,
+    p: Option<Shared<T>>,
 }
 
 impl<T> Copy for Rawlink<T> {}
-unsafe impl<T:Send> Send for Rawlink<T> {}
-unsafe impl<T:Sync> Sync for Rawlink<T> {}
+unsafe impl<T: Send> Send for Rawlink<T> {}
+unsafe impl<T: Sync> Sync for Rawlink<T> {}
 
 struct Node<T> {
     next: Link<T>,
@@ -55,7 +55,7 @@ struct Node<T> {
 
 /// An iterator over references to the items of a `LinkedList`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Iter<'a, T:'a> {
+pub struct Iter<'a, T: 'a> {
     head: &'a Link<T>,
     tail: Rawlink<Node<T>>,
     nelem: usize,
@@ -75,7 +75,7 @@ impl<'a, T> Clone for Iter<'a, T> {
 
 /// An iterator over mutable references to the items of a `LinkedList`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct IterMut<'a, T:'a> {
+pub struct IterMut<'a, T: 'a> {
     list: &'a mut LinkedList<T>,
     head: Rawlink<Node<T>>,
     tail: Rawlink<Node<T>>,
@@ -86,19 +86,19 @@ pub struct IterMut<'a, T:'a> {
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
-    list: LinkedList<T>
+    list: LinkedList<T>,
 }
 
 /// Rawlink is a type like Option<T> but for holding a raw pointer
 impl<T> Rawlink<T> {
     /// Like Option::None for Rawlink
     fn none() -> Self {
-        Rawlink{p: ptr::null_mut()}
+        Rawlink { p: None }
     }
 
     /// Like Option::Some for Rawlink
     fn some(n: &mut T) -> Self {
-        Rawlink{p: n}
+        unsafe { Rawlink { p: Some(Shared::new(n)) } }
     }
 
     /// Convert the `Rawlink` into an Option value
@@ -108,7 +108,7 @@ impl<T> Rawlink<T> {
     /// - Dereference of raw pointer.
     /// - Returns reference of arbitrary lifetime.
     unsafe fn resolve<'a>(&self) -> Option<&'a T> {
-        self.p.as_ref()
+        self.p.map(|p| &**p)
     }
 
     /// Convert the `Rawlink` into an Option value
@@ -118,7 +118,7 @@ impl<T> Rawlink<T> {
     /// - Dereference of raw pointer.
     /// - Returns reference of arbitrary lifetime.
     unsafe fn resolve_mut<'a>(&mut self) -> Option<&'a mut T> {
-        self.p.as_mut()
+        self.p.map(|p| &mut **p)
     }
 
     /// Return the `Rawlink` and replace with `Rawlink::none()`
@@ -139,13 +139,17 @@ impl<'a, T> From<&'a mut Link<T>> for Rawlink<Node<T>> {
 impl<T> Clone for Rawlink<T> {
     #[inline]
     fn clone(&self) -> Self {
-        Rawlink{p: self.p}
+        Rawlink { p: self.p }
     }
 }
 
 impl<T> Node<T> {
     fn new(v: T) -> Self {
-        Node{value: v, next: None, prev: Rawlink::none()}
+        Node {
+            value: v,
+            next: None,
+            prev: Rawlink::none(),
+        }
     }
 
     /// Update the `prev` link on `next`, then set self's next pointer.
@@ -192,7 +196,7 @@ impl<T> LinkedList<T> {
             self.length -= 1;
             match front_node.next.take() {
                 Some(node) => self.list_head = link_no_prev(node),
-                None => self.list_tail = Rawlink::none()
+                None => self.list_tail = Rawlink::none(),
             }
             front_node
         })
@@ -220,7 +224,7 @@ impl<T> LinkedList<T> {
                 self.list_tail = tail.prev;
                 match tail.prev.resolve_mut() {
                     None => self.list_head.take(),
-                    Some(tail_prev) => tail_prev.next.take()
+                    Some(tail_prev) => tail_prev.next.take(),
                 }
             })
         }
@@ -230,7 +234,9 @@ impl<T> LinkedList<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for LinkedList<T> {
     #[inline]
-    fn default() -> Self { LinkedList::new() }
+    fn default() -> Self {
+        LinkedList::new()
+    }
 }
 
 impl<T> LinkedList<T> {
@@ -238,7 +244,11 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Self {
-        LinkedList{list_head: None, list_tail: Rawlink::none(), length: 0}
+        LinkedList {
+            list_head: None,
+            list_tail: Rawlink::none(),
+            length: 0,
+        }
     }
 
     /// Moves all elements from `other` to the end of the list.
@@ -274,7 +284,7 @@ impl<T> LinkedList<T> {
                 self.length = other.length;
                 self.list_head = other.list_head.take();
                 self.list_tail = other.list_tail.take();
-            },
+            }
             Some(tail) => {
                 // Carefully empty `other`.
                 let o_tail = other.list_tail.take();
@@ -296,7 +306,11 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
-        Iter{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
+        Iter {
+            nelem: self.len(),
+            head: &self.list_head,
+            tail: self.list_tail,
+        }
     }
 
     /// Provides a forward iterator with mutable references.
@@ -307,7 +321,7 @@ impl<T> LinkedList<T> {
             nelem: self.len(),
             head: Rawlink::from(&mut self.list_head),
             tail: self.list_tail,
-            list: self
+            list: self,
         }
     }
 
@@ -452,9 +466,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
-        unsafe {
-            self.list_tail.resolve().map(|tail| &tail.value)
-        }
+        unsafe { self.list_tail.resolve().map(|tail| &tail.value) }
     }
 
     /// Provides a mutable reference to the back element, or `None` if the list
@@ -481,9 +493,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        unsafe {
-            self.list_tail.resolve_mut().map(|tail| &mut tail.value)
-        }
+        unsafe { self.list_tail.resolve_mut().map(|tail| &mut tail.value) }
     }
 
     /// Adds an element first in the list.
@@ -532,7 +542,7 @@ impl<T> LinkedList<T> {
     ///
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_front(&mut self) -> Option<T> {
-        self.pop_front_node().map(|box Node{value, ..}| value)
+        self.pop_front_node().map(|box Node { value, .. }| value)
     }
 
     /// Appends an element to the back of a list
@@ -568,7 +578,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_back(&mut self) -> Option<T> {
-        self.pop_back_node().map(|box Node{value, ..}| value)
+        self.pop_back_node().map(|box Node { value, .. }| value)
     }
 
     /// Splits the list into two at the given index. Returns everything after the given index,
@@ -617,7 +627,7 @@ impl<T> LinkedList<T> {
                 iter.next();
             }
             iter.head
-        }  else {
+        } else {
             // better off starting from the end
             let mut iter = self.iter_mut();
             for _ in 0..len - 1 - (at - 1) {
@@ -641,7 +651,7 @@ impl<T> LinkedList<T> {
         let second_part = LinkedList {
             list_head: second_part_head,
             list_tail: self.list_tail,
-            length: len - at
+            length: len - at,
         };
 
         // Fix the tail ptr of the first part
@@ -760,7 +770,9 @@ impl<'a, A> IterMut<'a, A> {
         //
         // The inserted node will not appear in further iteration.
         match unsafe { self.head.resolve_mut() } {
-            None => { self.list.push_back_node(ins_node); }
+            None => {
+                self.list.push_back_node(ins_node);
+            }
             Some(node) => {
                 let prev_node = match unsafe { node.prev.resolve_mut() } {
                     None => return self.list.push_front_node(ins_node),
@@ -830,11 +842,9 @@ impl<'a, A> IterMut<'a, A> {
                issue = "27794")]
     pub fn peek_next(&mut self) -> Option<&mut A> {
         if self.nelem == 0 {
-            return None
+            return None;
         }
-        unsafe {
-            self.head.resolve_mut().map(|head| &mut head.value)
-        }
+        unsafe { self.head.resolve_mut().map(|head| &mut head.value) }
     }
 }
 
@@ -843,7 +853,9 @@ impl<A> Iterator for IntoIter<A> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<Self::Item> { self.list.pop_front() }
+    fn next(&mut self) -> Option<Self::Item> {
+        self.list.pop_front()
+    }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -854,7 +866,9 @@ impl<A> Iterator for IntoIter<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> DoubleEndedIterator for IntoIter<A> {
     #[inline]
-    fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
+    fn next_back(&mut self) -> Option<A> {
+        self.list.pop_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -862,7 +876,7 @@ impl<A> ExactSizeIterator for IntoIter<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for LinkedList<A> {
-    fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> Self {
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
         let mut ret = LinkedList::new();
         ret.extend(iter);
         ret
@@ -877,14 +891,14 @@ impl<T> IntoIterator for LinkedList<T> {
     /// Consumes the list into an iterator yielding elements by value.
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        IntoIter{list: self}
+        IntoIter { list: self }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a LinkedList<T> {
     type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
+    type IntoIter = Iter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -896,21 +910,23 @@ impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(mut self) -> Self::IntoIter {
+    fn into_iter(mut self) -> IterMut<'a, T> {
         self.iter_mut()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for LinkedList<A> {
-    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T) {
-        for elt in iter { self.push_back(elt); }
+    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T) {
+        for elt in iter {
+            self.push_back(elt);
+        }
     }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
-    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
 }
@@ -918,13 +934,11 @@ impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialEq> PartialEq for LinkedList<A> {
     fn eq(&self, other: &Self) -> bool {
-        self.len() == other.len() &&
-            self.iter().eq(other.iter())
+        self.len() == other.len() && self.iter().eq(other.iter())
     }
 
     fn ne(&self, other: &LinkedList<A>) -> bool {
-        self.len() != other.len() ||
-            self.iter().ne(other.iter())
+        self.len() != other.len() || self.iter().ne(other.iter())
     }
 }
 
@@ -970,11 +984,19 @@ impl<A: Hash> Hash for LinkedList<A> {
     }
 }
 
+// Ensure that `LinkedList` and its read-only iterators are covariant in their type parameters.
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn a<'a>(x: LinkedList<&'static str>) -> LinkedList<&'a str> { x }
+    fn b<'i, 'a>(x: Iter<'i, &'static str>) -> Iter<'i, &'a str> { x }
+    fn c<'a>(x: IntoIter<&'static str>) -> IntoIter<&'a str> { x }
+}
+
 #[cfg(test)]
 mod tests {
     use std::clone::Clone;
     use std::iter::{Iterator, IntoIterator, Extend};
-    use std::option::Option::{Some, None, self};
+    use std::option::Option::{self, Some, None};
     use std::__rand::{thread_rng, Rng};
     use std::thread;
     use std::vec::Vec;
@@ -991,13 +1013,16 @@ mod tests {
         let mut last_ptr: Option<&Node<T>> = None;
         let mut node_ptr: &Node<T>;
         match list.list_head {
-            None => { assert_eq!(0, list.length); return }
+            None => {
+                assert_eq!(0, list.length);
+                return;
+            }
             Some(ref node) => node_ptr = &**node,
         }
         loop {
             match unsafe { (last_ptr, node_ptr.prev.resolve()) } {
-                (None   , None      ) => {}
-                (None   , _         ) => panic!("prev link for list_head"),
+                (None, None) => {}
+                (None, _) => panic!("prev link for list_head"),
                 (Some(p), Some(pptr)) => {
                     assert_eq!(p as *const Node<T>, pptr as *const Node<T>);
                 }
@@ -1054,8 +1079,8 @@ mod tests {
         }
 
         // Non-empty to non-empty
-        let v = vec![1,2,3,4,5];
-        let u = vec![9,8,1,2,3,4,5];
+        let v = vec![1, 2, 3, 4, 5];
+        let u = vec![9, 8, 1, 2, 3, 4, 5];
         let mut m = list_from(&v);
         let mut n = list_from(&u);
         m.append(&mut n);
@@ -1077,7 +1102,7 @@ mod tests {
 
     #[test]
     fn test_insert_prev() {
-        let mut m = list_from(&[0,2,4,6,8]);
+        let mut m = list_from(&[0, 2, 4, 6, 8]);
         let len = m.len();
         {
             let mut it = m.iter_mut();
@@ -1099,17 +1124,21 @@ mod tests {
         }
         check_links(&m);
         assert_eq!(m.len(), 3 + len * 2);
-        assert_eq!(m.into_iter().collect::<Vec<_>>(), [-2,0,1,2,3,4,5,6,7,8,9,0,1]);
+        assert_eq!(m.into_iter().collect::<Vec<_>>(),
+                   [-2, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1]);
     }
 
     #[test]
     fn test_send() {
-        let n = list_from(&[1,2,3]);
+        let n = list_from(&[1, 2, 3]);
         thread::spawn(move || {
             check_links(&n);
-            let a: &[_] = &[&1,&2,&3];
+            let a: &[_] = &[&1, &2, &3];
             assert_eq!(a, &n.iter().collect::<Vec<_>>()[..]);
-        }).join().ok().unwrap();
+        })
+            .join()
+            .ok()
+            .unwrap();
     }
 
     #[test]
@@ -1179,7 +1208,7 @@ mod tests {
                         v.remove(0);
                     }
                 }
-                2 | 4 =>  {
+                2 | 4 => {
                     m.push_front(-i);
                     v.insert(0, -i);
                 }
