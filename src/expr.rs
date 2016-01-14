@@ -1372,6 +1372,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 
     // Foo { a: Foo } - indent is +3, width is -5.
     let h_budget = width.checked_sub(path_str.len() + 5).unwrap_or(0);
+    // The 1 taken from the v_budget is for the comma.
     let (indent, v_budget) = match context.config.struct_lit_style {
         StructLitStyle::Visual => (offset + path_str.len() + 3, h_budget),
         StructLitStyle::Block => {
@@ -1416,7 +1417,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              |item| {
                                  match *item {
                                      StructLitField::Regular(ref field) => {
-                                         rewrite_field(inner_context, &field, v_budget, indent)
+                                         rewrite_field(inner_context,
+                                                       &field,
+                                                       v_budget.checked_sub(1).unwrap_or(0),
+                                                       indent)
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
@@ -1502,7 +1506,19 @@ fn rewrite_field(context: &RewriteContext,
     let expr = field.expr.rewrite(context,
                                   try_opt!(width.checked_sub(overhead)),
                                   offset + overhead);
-    expr.map(|s| format!("{}: {}", name, s))
+
+    match expr {
+        Some(e) => Some(format!("{}: {}", name, e)),
+        None => {
+            let expr_offset = offset.block_indent(&context.config);
+            let expr = field.expr.rewrite(context,
+                                          try_opt!(context.config
+                                                          .max_width
+                                                          .checked_sub(expr_offset.width())),
+                                          expr_offset);
+            expr.map(|s| format!("{}:\n{}{}", name, expr_offset.to_string(&context.config), s))
+        }
+    }
 }
 
 pub fn rewrite_tuple<'a, I>(context: &RewriteContext,

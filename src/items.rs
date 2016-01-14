@@ -663,7 +663,7 @@ fn format_struct_struct(context: &RewriteContext,
     }
 
     let item_indent = offset.block_indent(context.config);
-    // 2 = ","
+    // 1 = ","
     let item_budget = try_opt!(context.config.max_width.checked_sub(item_indent.width() + 1));
 
     let items = itemize_list(context.codemap,
