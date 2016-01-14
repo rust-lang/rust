@@ -114,12 +114,13 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// extern crate libc;
     /// use std::fs::OpenOptions;
     /// use std::os::unix::fs::OpenOptionsExt;
     ///
-    /// let options = OpenOptions::new().write(true);
+    /// let mut options = OpenOptions::new();
+    /// options.write(true);
     /// if cfg!(unix) { options.custom_flags(libc::O_NOFOLLOW); }
     /// let file = options.open("foo.txt");
     /// ```

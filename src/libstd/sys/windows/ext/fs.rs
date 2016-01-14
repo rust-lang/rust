@@ -77,7 +77,8 @@ pub trait OpenOptionsExt {
     /// use std::fs::OpenOptions;
     /// use std::os::windows::fs::OpenOptionsExt;
     ///
-    /// let options = OpenOptions::new().create(true).write(true);
+    /// let mut options = OpenOptions::new();
+    /// options.create(true).write(true);
     /// if cfg!(windows) { options.custom_flags(winapi::FILE_FLAG_DELETE_ON_CLOSE); }
     /// let file = options.open("foo.txt");
     /// ```
