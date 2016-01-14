@@ -75,8 +75,6 @@ You can run `rustfmt --help` for more information.
 
 ## How to build and test
 
-First make sure you've got Rust **1.4.0** or greater available, then:
-
 `cargo build` to build.
 
 `cargo test` to run all tests.
