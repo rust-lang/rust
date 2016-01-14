@@ -174,7 +174,7 @@ labels to triage issues:
 * Yellow, **A**-prefixed labels state which **area** of the project an issue
   relates to.
 
-* Magenta, **B**-prefixed labels identify bugs which **belong** elsewhere.
+* Magenta, **B**-prefixed labels identify bugs which are **blockers**.
 
 * Green, **E**-prefixed labels explain the level of **experience** necessary
   to fix the issue.
