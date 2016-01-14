@@ -222,12 +222,12 @@ impl<T: ?Sized> Drop for IntermediateBox<T> {
 }
 
 impl<T> Box<T> {
-    /// Allocates memory on the heap and then moves `x` into it.
+    /// Allocates memory on the heap and then places `x` into it.
     ///
     /// # Examples
     ///
     /// ```
-    /// let x = Box::new(5);
+    /// let five = Box::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
@@ -266,7 +266,7 @@ impl<T: ?Sized> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// let seventeen = Box::new(17u32);
+    /// let seventeen = Box::new(17);
     /// let raw = Box::into_raw(seventeen);
     /// let boxed_again = unsafe { Box::from_raw(raw) };
     /// ```
