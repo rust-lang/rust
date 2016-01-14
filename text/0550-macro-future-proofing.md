@@ -481,6 +481,9 @@ reasonable freedom and can be extended in the future.
 
 [RFC issue 1336]: https://github.com/rust-lang/rfcs/issues/1336
 
+- Updated by https://github.com/rust-lang/rfcs/pull/1462, which added
+  open square bracket into the follow set for types.
+
 # Appendices
 
 ## Appendix A: Algorithm for recognizing valid matchers.
