@@ -114,3 +114,12 @@ fn issue491() {
     Foo { a: aaaaaaaaaa, b: bbbbbbbb, c: cccccccccc, d: dddddddddd, /* a comment */
       e: eeeeeeeee };
 }
+
+fn issue698() {
+    Record {
+        ffffffffffffffffffffffffffields: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+    };
+    Record {
+        ffffffffffffffffffffffffffields: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+    }
+}
