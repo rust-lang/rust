@@ -1358,7 +1358,7 @@ pub trait Iterator {
     /// One of the keys to `collect()`'s power is that many things you might
     /// not think of as 'collections' actually are. For example, a [`String`]
     /// is a collection of [`char`]s. And a collection of [`Result<T, E>`] can
-    /// be thought of as single [`Result<Collection<T>, E>`]. See the examples
+    /// be thought of as single `Result<Collection<T>, E>`. See the examples
     /// below for more.
     ///
     /// [`String`]: ../string/struct.String.html
