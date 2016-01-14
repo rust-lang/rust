@@ -20,18 +20,36 @@ impl Unrelated {
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let vec2 = vec![1, 2, 3, 4];
-    for i in 0..vec.len() {      //~ERROR the loop variable `i` is only used to index `vec`.
+    for i in 0..vec.len() {
+        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in &vec`
         println!("{}", vec[i]);
     }
-    for i in 0..vec.len() {      //~ERROR the loop variable `i` is used to index `vec`.
+    for i in 0..vec.len() {
+        //~^ ERROR `i` is used to index `vec`. Consider using `for (i, item) in vec.iter().enumerate()`
         println!("{} {}", vec[i], i);
     }
     for i in 0..vec.len() {      // not an error, indexing more than one variable
         println!("{} {}", vec[i], vec2[i]);
     }
 
-    for i in 5..vec.len() {      // not an error, not starting with 0
+    for i in 5..vec.len() {
+        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().skip(5)`
         println!("{}", vec[i]);
+    }
+
+    for i in 5..10 {
+        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(10).skip(5)`
+        println!("{}", vec[i]);
+    }
+
+    for i in 5..vec.len() {
+        //~^ ERROR `i` is used to index `vec`. Consider using `for (i, item) in vec.iter().enumerate().skip(5)`
+        println!("{} {}", vec[i], i);
+    }
+
+    for i in 5..10 {
+        //~^ ERROR `i` is used to index `vec`. Consider using `for (i, item) in vec.iter().enumerate().take(10).skip(5)`
+        println!("{} {}", vec[i], i);
     }
 
     for i in 10..0 { //~ERROR this range is empty so this for loop will never run

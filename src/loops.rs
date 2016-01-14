@@ -8,7 +8,6 @@ use consts::{constant_simple, Constant};
 use rustc::front::map::Node::NodeBlock;
 use std::borrow::Cow;
 use std::collections::{HashSet, HashMap};
-use syntax::ast::Lit_::*;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro, expr_block,
             span_help_and_lint, is_integer_literal, get_enclosing_block};
@@ -247,54 +246,102 @@ impl LateLintPass for LoopsPass {
 }
 
 fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    // check for looping over a range and then indexing a sequence with it
-    // -> the iteratee must be a range literal
-    if let ExprRange(Some(ref l), _) = arg.node {
-        // Range should start with `0`
-        if let ExprLit(ref lit) = l.node {
-            if let LitInt(0, _) = lit.node {
+    check_for_loop_range(cx, pat, arg, body, expr);
+    check_for_loop_reverse_range(cx, arg, expr);
+    check_for_loop_explicit_iter(cx, arg, expr);
+    check_for_loop_explicit_counter(cx, arg, body, expr);
+}
 
-                // the var must be a single name
-                if let PatIdent(_, ref ident, _) = pat.node {
-                    let mut visitor = VarVisitor {
-                        cx: cx,
-                        var: ident.node.name,
-                        indexed: HashSet::new(),
-                        nonindex: false,
-                    };
-                    walk_expr(&mut visitor, body);
-                    // linting condition: we only indexed one variable
-                    if visitor.indexed.len() == 1 {
-                        let indexed = visitor.indexed
-                                             .into_iter()
-                                             .next()
-                                             .expect("Len was nonzero, but no contents found");
-                        if visitor.nonindex {
-                            span_lint(cx,
-                                      NEEDLESS_RANGE_LOOP,
-                                      expr.span,
-                                      &format!("the loop variable `{}` is used to index `{}`. Consider using `for \
-                                                ({}, item) in {}.iter().enumerate()` or similar iterators",
-                                               ident.node.name,
-                                               indexed,
-                                               ident.node.name,
-                                               indexed));
-                        } else {
-                            span_lint(cx,
-                                      NEEDLESS_RANGE_LOOP,
-                                      expr.span,
-                                      &format!("the loop variable `{}` is only used to index `{}`. Consider using \
-                                                `for item in &{}` or similar iterators",
-                                               ident.node.name,
-                                               indexed,
-                                               indexed));
-                        }
+/// Check for looping over a range and then indexing a sequence with it.
+/// The iteratee must be a range literal.
+fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
+    if let ExprRange(Some(ref l), ref r) = arg.node {
+        // the var must be a single name
+        if let PatIdent(_, ref ident, _) = pat.node {
+            let mut visitor = VarVisitor {
+                cx: cx,
+                var: ident.node.name,
+                indexed: HashSet::new(),
+                nonindex: false,
+            };
+            walk_expr(&mut visitor, body);
+            // linting condition: we only indexed one variable
+            if visitor.indexed.len() == 1 {
+                let indexed = visitor.indexed
+                                     .into_iter()
+                                     .next()
+                                     .expect("Len was nonzero, but no contents found");
+
+                let starts_at_zero = is_integer_literal(l, 0);
+
+                let skip: Cow<_> = if starts_at_zero {
+                    "".into()
+                }
+                else {
+                    format!(".skip({})", snippet(cx, l.span, "..")).into()
+                };
+
+                let take: Cow<_> = if let Some(ref r) = *r {
+                    if !is_len_call(&r, &indexed) {
+                        format!(".take({})", snippet(cx, r.span, "..")).into()
                     }
+                    else {
+                        "".into()
+                    }
+                } else {
+                    "".into()
+                };
+
+                if visitor.nonindex {
+                    span_lint(cx,
+                              NEEDLESS_RANGE_LOOP,
+                              expr.span,
+                              &format!("the loop variable `{}` is used to index `{}`. \
+                                        Consider using `for ({}, item) in {}.iter().enumerate(){}{}` or similar iterators",
+                                        ident.node.name,
+                                        indexed,
+                                        ident.node.name,
+                                        indexed,
+                                        take,
+                                        skip));
+                } else {
+                    let repl = if starts_at_zero && take.is_empty() {
+                        format!("&{}", indexed)
+                    }
+                    else {
+                        format!("{}.iter(){}{}", indexed, take, skip)
+                    };
+
+                    span_lint(cx,
+                              NEEDLESS_RANGE_LOOP,
+                              expr.span,
+                              &format!("the loop variable `{}` is only used to index `{}`. \
+                                        Consider using `for item in {}` or similar iterators",
+                                        ident.node.name,
+                                        indexed,
+                                        repl));
                 }
             }
         }
     }
+}
 
+fn is_len_call(expr: &Expr, var: &Name) -> bool {
+    if_let_chain! {[
+        let ExprMethodCall(method, _, ref len_args) = expr.node,
+        len_args.len() == 1,
+        method.node.as_str() == "len",
+        let ExprPath(_, ref path) = len_args[0].node,
+        path.segments.len() == 1,
+        &path.segments[0].identifier.name == var
+    ], {
+        return true;
+    }}
+
+    false
+}
+
+fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
     if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
         // ...and both sides are compile-time constant integers...
@@ -324,7 +371,9 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
             }
         }
     }
+}
 
+fn check_for_loop_explicit_iter(cx: &LateContext, arg: &Expr, expr: &Expr) {
     if let ExprMethodCall(ref method, _, ref args) = arg.node {
         // just the receiver, no arguments
         if args.len() == 1 {
@@ -356,6 +405,9 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
         }
     }
 
+}
+
+fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, expr: &Expr) {
     // Look for variables that are incremented once per loop iteration.
     let mut visitor = IncrementVisitor {
         cx: cx,
