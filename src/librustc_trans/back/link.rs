@@ -1063,10 +1063,6 @@ fn link_args(cmd: &mut Linker,
         cmd.args(&rpath::get_rpath_flags(&mut rpath_config));
     }
 
-    // Use the gold linker if possible instead of ld. It is much
-    // faster.
-    cmd.try_gold_linker();
-
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     if let Some(ref args) = sess.opts.cg.link_args {
