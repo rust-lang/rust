@@ -1366,7 +1366,7 @@ Optional Features:
   --enable-multilib       build many library versions (default)
   --enable-maintainer-mode  enable make rules and dependencies not useful
 			  (and sometimes confusing) to the casual installer
-  --enable-shared[=PKGS]  build shared libraries [default=no]
+  --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
@@ -3974,7 +3974,7 @@ am_lf='
 '
 case `pwd` in
   *[\\\"\#\$\&\'\`$am_lf]*)
-    as_fn_error "unsafe absolute working directory name: \``pwd`'" "$LINENO" 5;;
+    as_fn_error "unsafe absolute working directory name" "$LINENO" 5;;
 esac
 case $srcdir in
   *[\\\"\#\$\&\'\`$am_lf\ \	]*)
@@ -5691,7 +5691,7 @@ else
     lt_cv_sys_max_cmd_len=8192;
     ;;
 
-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly* | bitrig*)
+  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
     # This has been around since 386BSD, at least.  Likely further.
     if test -x /sbin/sysctl; then
       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
@@ -7658,7 +7658,16 @@ done
 
 
 # Set options
-# Check whether --enable-shared was given.
+
+
+
+        enable_dlopen=no
+
+
+  enable_win32_dll=no
+
+
+            # Check whether --enable-shared was given.
 if test "${enable_shared+set}" = set; then :
   enableval=$enable_shared; p=${PACKAGE-default}
     case $enableval in
@@ -7678,7 +7687,7 @@ if test "${enable_shared+set}" = set; then :
       ;;
     esac
 else
-  enable_shared=no
+  enable_shared=yes
 fi
 
 
@@ -7686,14 +7695,6 @@ fi
 
 
 
-
-
-
-
-        enable_dlopen=no
-
-
-  enable_win32_dll=no
 
 
 
@@ -9102,7 +9103,7 @@ _LT_EOF
 	if $NM -V 2>&1 | $GREP 'GNU' > /dev/null; then
 	  export_symbols_cmds='$NM -Bpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "W")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
 	else
-	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
+	  export_symbols_cmds='$NM -BCpg $libobjs $convenience | awk '\''{ if (((\$ 2 == "T") || (\$ 2 == "D") || (\$ 2 == "B") || (\$ 2 == "L")) && (substr(\$ 3,1,1) != ".")) { print \$ 3 } }'\'' | sort -u > $export_symbols'
 	fi
 	aix_use_runtimelinking=no
 
@@ -9373,7 +9374,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       ;;
 
     # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
-    freebsd* | dragonfly* | bitrig* | openbsd*)
+    freebsd* | dragonfly*)
       archive_cmds='$CC -shared -o $lib $libobjs $deplibs $compiler_flags'
       hardcode_libdir_flag_spec='-R$libdir'
       hardcode_direct=yes
@@ -11130,7 +11131,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11133 "configure"
+#line 11134 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11236,7 +11237,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11239 "configure"
+#line 11240 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11708,17 +11709,12 @@ $as_echo "#define HAVE_GETIPINFO 1" >>confdefs.h
   fi
 fi
 
-# When building as a target library, shared libraries may want to link
-# this in.  We don't want to provide another shared library to
-# complicate dependencies.  Instead, we just compile with -fPIC.
-PIC_FLAG=
-if test -n "${with_target_subdir}"; then
-  PIC_FLAG=-fPIC
-fi
-# Similarly, use -fPIC with --enable-host-shared:
+# Enable --enable-host-shared.
 # Check whether --enable-host-shared was given.
 if test "${enable_host_shared+set}" = set; then :
   enableval=$enable_host_shared; PIC_FLAG=-fPIC
+else
+  PIC_FLAG=
 fi
 
 
@@ -11730,7 +11726,10 @@ if test "${libbacktrace_cv_sys_sync+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
   if test -n "${with_target_subdir}"; then
-   libbacktrace_cv_sys_sync=yes
+   case "${host}" in
+   hppa*-*-hpux*) libbacktrace_cv_sys_sync=no ;;
+   *) libbacktrace_cv_sys_sync=yes ;;
+   esac
  else
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -12305,9 +12304,10 @@ else
     # simply assume that if we have mman.h, we have mmap.
     have_mmap=yes
     case "${host}" in
-    spu-*-*)
+    spu-*-*|*-*-msdosdjgpp)
         # The SPU does not have mmap, but it has a sys/mman.h header file
         # containing "mmap_eaddr" and the mmap flags, confusing the test.
+        # DJGPP also has sys/man.h, but no mmap
 	have_mmap=no ;;
     esac
   else
@@ -12407,6 +12407,7 @@ fi
 if test -n "${with_target_subdir}"; then
    case "${host}" in
    *-*-mingw*) have_fcntl=no ;;
+   spu-*-*) have_fcntl=no ;;
    *) have_fcntl=yes ;;
    esac
 else

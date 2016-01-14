@@ -1,5 +1,5 @@
 /* backtrace.c -- Entry point for stack backtrace library.
-   Copyright (C) 2012-2015 Free Software Foundation, Inc.
+   Copyright (C) 2012-2016 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
 Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,11 @@ POSSIBILITY OF SUCH DAMAGE.  */
 
 #include "config.h"
 
+#include <sys/types.h>
+
 #include "unwind.h"
 #include "backtrace.h"
+#include "internal.h"
 
 /* The main backtrace_full routine.  */
 
@@ -53,6 +56,8 @@ struct backtrace_data
   void *data;
   /* Value to return from backtrace_full.  */
   int ret;
+  /* Whether there is any memory available.  */
+  int can_alloc;
 };
 
 /* Unwind library callback routine.  This is passed to
@@ -80,8 +85,11 @@ unwind (struct _Unwind_Context *context, void *vdata)
   if (!ip_before_insn)
     --pc;
 
-  bdata->ret = backtrace_pcinfo (bdata->state, pc, bdata->callback,
-				 bdata->error_callback, bdata->data);
+  if (!bdata->can_alloc)
+    bdata->ret = bdata->callback (bdata->data, pc, NULL, 0, NULL);
+  else
+    bdata->ret = backtrace_pcinfo (bdata->state, pc, bdata->callback,
+				   bdata->error_callback, bdata->data);
   if (bdata->ret != 0)
     return _URC_END_OF_STACK;
 
@@ -96,6 +104,7 @@ backtrace_full (struct backtrace_state *state, int skip,
 		backtrace_error_callback error_callback, void *data)
 {
   struct backtrace_data bdata;
+  void *p;
 
   bdata.skip = skip + 1;
   bdata.state = state;
@@ -103,6 +112,18 @@ backtrace_full (struct backtrace_state *state, int skip,
   bdata.error_callback = error_callback;
   bdata.data = data;
   bdata.ret = 0;
+
+  /* If we can't allocate any memory at all, don't try to produce
+     file/line information.  */
+  p = backtrace_alloc (state, 4096, NULL, NULL);
+  if (p == NULL)
+    bdata.can_alloc = 0;
+  else
+    {
+      backtrace_free (state, p, 4096, NULL, NULL);
+      bdata.can_alloc = 1;
+    }
+
   _Unwind_Backtrace (unwind, &bdata);
   return bdata.ret;
 }

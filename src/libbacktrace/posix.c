@@ -1,5 +1,5 @@
 /* posix.c -- POSIX file I/O routines for the backtrace library.
-   Copyright (C) 2012-2015 Free Software Foundation, Inc.
+   Copyright (C) 2012-2016 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
 Redistribution and use in source and binary forms, with or without
@@ -64,7 +64,7 @@ backtrace_open (const char *filename, backtrace_error_callback error_callback,
   if (does_not_exist != NULL)
     *does_not_exist = 0;
 
-  descriptor = open (filename, O_RDONLY | O_BINARY | O_CLOEXEC);
+  descriptor = open (filename, (int) (O_RDONLY | O_BINARY | O_CLOEXEC));
   if (descriptor < 0)
     {
       if (does_not_exist != NULL && errno == ENOENT)
