@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{self, BufWriter};
@@ -57,7 +56,6 @@ pub trait Linker {
     fn no_whole_archives(&mut self);
     fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
                       tmpdir: &Path);
-    fn try_gold_linker(&mut self);
 }
 
 pub struct GnuLinker<'a> {
@@ -200,53 +198,6 @@ impl<'a> Linker for GnuLinker<'a> {
 
     fn export_symbols(&mut self, _: &Session, _: &CrateTranslation, _: &Path) {
         // noop, visibility in object files takes care of this
-    }
-
-    fn try_gold_linker(&mut self) {
-        // Only use gold under specific conditions that we know work
-
-        let gold_exists = match env::var_os("PATH") {
-            Some(ref env_path) => {
-                env::split_paths(env_path).any(|mut p| {
-                    p.push("ld.gold");
-                    p.exists()
-                })
-            }
-            None => false
-        };
-        let host_is_linux = cfg!(target_os = "linux");
-        // Defensively prevent trying to use gold for bogus cross-targets.
-        let target_is_host_compatible = {
-            let host_os_is_target_os = self.sess.target.target.target_os == env::consts::OS;
-            let host_arch_is_target_arch = self.sess.target.target.arch == env::consts::ARCH;
-            // Support x86_64->i686 and reverse
-            let host_and_target_are_x86ish =
-                (self.sess.target.target.arch == "x86" ||
-                 self.sess.target.target.arch == "x86_64") &&
-                (env::consts::ARCH == "x86" ||
-                 env::consts::ARCH == "x86_64");
-            host_os_is_target_os && (host_arch_is_target_arch || host_and_target_are_x86ish)
-        };
-        // We have strong confidence that x86 works, but not much
-        // visibility into other architectures.
-        let target_works_with_gold =
-            self.sess.target.target.arch == "x86" ||
-            self.sess.target.target.arch == "x86_64";
-        let opt_out = self.sess.opts.cg.disable_gold;
-
-        let can_use_gold =
-            gold_exists &&
-            host_is_linux &&
-            target_is_host_compatible &&
-            target_works_with_gold &&
-            !opt_out;
-
-        if can_use_gold {
-            info!("linking with ld.gold");
-            self.cmd.arg("-fuse-ld=gold");
-        } else {
-            info!("linking with ld");
-        }
     }
 }
 
@@ -407,6 +358,4 @@ impl<'a> Linker for MsvcLinker<'a> {
         arg.push(path);
         self.cmd.arg(&arg);
     }
-
-    fn try_gold_linker(&mut self) {}
 }
