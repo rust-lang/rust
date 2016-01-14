@@ -185,7 +185,7 @@ After `italic()` is over, its frame is deallocated, leaving only `bold()` and
 | **3**   | **c**|**1**  |
 | **2**   | **b**|**100**|
 | **1**   | **a**| **5** |
-| 0       | x    | 42    | 
+| 0       | x    | 42    |
 
 And then `bold()` ends, leaving only `main()`:
 
@@ -554,8 +554,8 @@ Managing the memory for the stack is trivial: The machine
 increments or decrements a single value, the so-called “stack pointer”.
 Managing memory for the heap is non-trivial: heap-allocated memory is freed at
 arbitrary points, and each block of heap-allocated memory can be of arbitrary
-size, the memory manager must generally work much harder to identify memory for
-reuse.
+size, so the memory manager must generally work much harder to
+identify memory for reuse.
 
 If you’d like to dive into this topic in greater detail, [this paper][wilson]
 is a great introduction.
@@ -579,4 +579,3 @@ comes at the cost of either significant runtime support (e.g. in the form of a
 garbage collector) or significant programmer effort (in the form of explicit
 memory management calls that require verification not provided by the Rust
 compiler).
-
