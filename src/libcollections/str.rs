@@ -1384,7 +1384,7 @@ impl str {
     ///
     /// For iterating from the front, the [`matches()`] method can be used.
     ///
-    /// [`matches`]: #method.matches
+    /// [`matches()`]: #method.matches
     ///
     /// # Examples
     ///

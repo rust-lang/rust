@@ -3677,10 +3677,10 @@ sites are:
 
 * `let` statements where an explicit type is given.
 
-   For example, `128` is coerced to have type `i8` in the following:
+   For example, `42` is coerced to have type `i8` in the following:
 
    ```rust
-   let _: i8 = 128;
+   let _: i8 = 42;
    ```
 
 * `static` and `const` statements (similar to `let` statements).
@@ -3690,36 +3690,36 @@ sites are:
   The value being coerced is the actual parameter, and it is coerced to
   the type of the formal parameter.
 
-  For example, `128` is coerced to have type `i8` in the following:
+  For example, `42` is coerced to have type `i8` in the following:
 
   ```rust
   fn bar(_: i8) { }
 
   fn main() {
-      bar(128);
+      bar(42);
   }
   ```
 
 * Instantiations of struct or variant fields
 
-  For example, `128` is coerced to have type `i8` in the following:
+  For example, `42` is coerced to have type `i8` in the following:
 
   ```rust
   struct Foo { x: i8 }
 
   fn main() {
-      Foo { x: 128 };
+      Foo { x: 42 };
   }
   ```
 
 * Function results, either the final line of a block if it is not
   semicolon-terminated or any expression in a `return` statement
 
-  For example, `128` is coerced to have type `i8` in the following:
+  For example, `42` is coerced to have type `i8` in the following:
 
   ```rust
   fn foo() -> i8 {
-      128
+      42
   }
   ```
 
