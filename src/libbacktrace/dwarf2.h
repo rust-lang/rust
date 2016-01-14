@@ -1,8 +1,6 @@
 /* Declarations and definitions of codes relating to the DWARF2 and
    DWARF3 symbolic debugging information formats.
-   Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012
-   Free Software Foundation, Inc.
+   Copyright (C) 1992-2015 Free Software Foundation, Inc.
 
    Written by Gary Funck (gary@intrepid.com) The Ada Joint Program
    Office (AJPO), Florida State University and Silicon Graphics Inc.
@@ -308,6 +306,12 @@ enum dwarf_source_language
     DW_LANG_Python = 0x0014,
     /* DWARF 5.  */
     DW_LANG_Go = 0x0016,
+
+    DW_LANG_C_plus_plus_11 = 0x001a, /* dwarf5.20141029.pdf DRAFT */
+    DW_LANG_C11 = 0x001d,
+    DW_LANG_C_plus_plus_14 = 0x0021,
+    DW_LANG_Fortran03 = 0x0022,
+    DW_LANG_Fortran08 = 0x0023,
 
     DW_LANG_lo_user = 0x8000,	/* Implementation-defined range start.  */
     DW_LANG_hi_user = 0xffff,	/* Implementation-defined range start.  */

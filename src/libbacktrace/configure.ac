@@ -1,5 +1,5 @@
 # configure.ac -- Backtrace configure script.
-# Copyright (C) 2012-2015 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -79,7 +79,7 @@ case "$AWK" in
 "") AC_MSG_ERROR([can't build without awk]) ;;
 esac
 
-LT_INIT([disable-shared])
+LT_INIT
 AM_PROG_LIBTOOL
 
 backtrace_supported=yes
@@ -161,25 +161,21 @@ else
   fi
 fi
 
-# When building as a target library, shared libraries may want to link
-# this in.  We don't want to provide another shared library to
-# complicate dependencies.  Instead, we just compile with -fPIC.
-PIC_FLAG=
-if test -n "${with_target_subdir}"; then
-  PIC_FLAG=-fPIC
-fi
-# Similarly, use -fPIC with --enable-host-shared:
+# Enable --enable-host-shared.
 AC_ARG_ENABLE(host-shared,
 [AS_HELP_STRING([--enable-host-shared],
 		[build host code as shared libraries])],
-[PIC_FLAG=-fPIC], [])
+[PIC_FLAG=-fPIC], [PIC_FLAG=])
 AC_SUBST(PIC_FLAG)
 
 # Test for __sync support.
 AC_CACHE_CHECK([__sync extensions],
 [libbacktrace_cv_sys_sync],
 [if test -n "${with_target_subdir}"; then
-   libbacktrace_cv_sys_sync=yes
+   case "${host}" in
+   hppa*-*-hpux*) libbacktrace_cv_sys_sync=no ;;
+   *) libbacktrace_cv_sys_sync=yes ;;
+   esac
  else
    AC_LINK_IFELSE(
      [AC_LANG_PROGRAM([int i;],
@@ -274,9 +270,10 @@ else
     # simply assume that if we have mman.h, we have mmap.
     have_mmap=yes
     case "${host}" in
-    spu-*-*)
+    spu-*-*|*-*-msdosdjgpp)
         # The SPU does not have mmap, but it has a sys/mman.h header file
         # containing "mmap_eaddr" and the mmap flags, confusing the test.
+        # DJGPP also has sys/man.h, but no mmap
 	have_mmap=no ;;
     esac
   else
@@ -332,6 +329,7 @@ fi
 if test -n "${with_target_subdir}"; then
    case "${host}" in
    *-*-mingw*) have_fcntl=no ;;
+   spu-*-*) have_fcntl=no ;;
    *) have_fcntl=yes ;;
    esac
 else
