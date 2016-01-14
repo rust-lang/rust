@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Temporal quantification.
+
+#![unstable(feature = "time", reason = "recently moved to libcore",
+            issue = "0")]  // FIXME: file tracking issue if this lands
+
 use ops::{Add, Sub, Mul, Div};
-use time::Instant;
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -57,21 +61,6 @@ impl Duration {
         let secs = secs + (nanos / NANOS_PER_SEC) as u64;
         let nanos = nanos % NANOS_PER_SEC;
         Duration { secs: secs, nanos: nanos }
-    }
-
-    /// Runs a closure, returning the duration of time it took to run the
-    /// closure.
-    #[unstable(feature = "duration_span",
-               reason = "unsure if this is the right API or whether it should \
-                         wait for a more general \"moment in time\" \
-                         abstraction",
-               issue = "27799")]
-    #[rustc_deprecated(reason = "use std::time::Instant instead",
-                       since = "1.6.0")]
-    pub fn span<F>(f: F) -> Duration where F: FnOnce() {
-        let start = Instant::now();
-        f();
-        start.elapsed()
     }
 
     /// Creates a new `Duration` from the specified number of seconds.
@@ -168,83 +157,5 @@ impl Div<u32> for Duration {
         let nanos = self.nanos / rhs + (extra_nanos as u32);
         debug_assert!(nanos < NANOS_PER_SEC);
         Duration { secs: secs, nanos: nanos }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Duration;
-
-    #[test]
-    fn creation() {
-        assert!(Duration::from_secs(1) != Duration::from_secs(0));
-        assert_eq!(Duration::from_secs(1) + Duration::from_secs(2),
-                   Duration::from_secs(3));
-        assert_eq!(Duration::from_millis(10) + Duration::from_secs(4),
-                   Duration::new(4, 10 * 1_000_000));
-        assert_eq!(Duration::from_millis(4000), Duration::new(4, 0));
-    }
-
-    #[test]
-    fn secs() {
-        assert_eq!(Duration::new(0, 0).as_secs(), 0);
-        assert_eq!(Duration::from_secs(1).as_secs(), 1);
-        assert_eq!(Duration::from_millis(999).as_secs(), 0);
-        assert_eq!(Duration::from_millis(1001).as_secs(), 1);
-    }
-
-    #[test]
-    fn nanos() {
-        assert_eq!(Duration::new(0, 0).subsec_nanos(), 0);
-        assert_eq!(Duration::new(0, 5).subsec_nanos(), 5);
-        assert_eq!(Duration::new(0, 1_000_000_001).subsec_nanos(), 1);
-        assert_eq!(Duration::from_secs(1).subsec_nanos(), 0);
-        assert_eq!(Duration::from_millis(999).subsec_nanos(), 999 * 1_000_000);
-        assert_eq!(Duration::from_millis(1001).subsec_nanos(), 1 * 1_000_000);
-    }
-
-    #[test]
-    fn add() {
-        assert_eq!(Duration::new(0, 0) + Duration::new(0, 1),
-                   Duration::new(0, 1));
-        assert_eq!(Duration::new(0, 500_000_000) + Duration::new(0, 500_000_001),
-                   Duration::new(1, 1));
-    }
-
-    #[test]
-    fn sub() {
-        assert_eq!(Duration::new(0, 1) - Duration::new(0, 0),
-                   Duration::new(0, 1));
-        assert_eq!(Duration::new(0, 500_000_001) - Duration::new(0, 500_000_000),
-                   Duration::new(0, 1));
-        assert_eq!(Duration::new(1, 0) - Duration::new(0, 1),
-                   Duration::new(0, 999_999_999));
-    }
-
-    #[test] #[should_panic]
-    fn sub_bad1() {
-        Duration::new(0, 0) - Duration::new(0, 1);
-    }
-
-    #[test] #[should_panic]
-    fn sub_bad2() {
-        Duration::new(0, 0) - Duration::new(1, 0);
-    }
-
-    #[test]
-    fn mul() {
-        assert_eq!(Duration::new(0, 1) * 2, Duration::new(0, 2));
-        assert_eq!(Duration::new(1, 1) * 3, Duration::new(3, 3));
-        assert_eq!(Duration::new(0, 500_000_001) * 4, Duration::new(2, 4));
-        assert_eq!(Duration::new(0, 500_000_001) * 4000,
-                   Duration::new(2000, 4000));
-    }
-
-    #[test]
-    fn div() {
-        assert_eq!(Duration::new(0, 1) / 2, Duration::new(0, 0));
-        assert_eq!(Duration::new(1, 1) / 3, Duration::new(0, 333_333_333));
-        assert_eq!(Duration::new(99, 999_999_000) / 100,
-                   Duration::new(0, 999_999_990));
     }
 }

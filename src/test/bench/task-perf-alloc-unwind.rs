@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax, duration, duration_span, vec_push_all)]
+#![feature(box_syntax, time2, vec_push_all)]
 
 use std::env;
 use std::thread;
-use std::time::Duration;
+use std::time::Instant;
 
 #[derive(Clone)]
 enum List<T> {
@@ -31,12 +31,11 @@ fn main() {
 
 fn run(repeat: isize, depth: isize) {
     for _ in 0..repeat {
-        let dur = Duration::span(|| {
-            let _ = thread::spawn(move|| {
-                recurse_or_panic(depth, None)
-            }).join();
-        });
-        println!("iter: {:?}", dur);
+        let start = Instant::now();
+        let _ = thread::spawn(move|| {
+            recurse_or_panic(depth, None)
+        }).join();
+        println!("iter: {:?}", start.elapsed());
     }
 }
 

@@ -140,6 +140,7 @@ pub mod iter;
 pub mod option;
 pub mod raw;
 pub mod result;
+pub mod time;
 
 pub mod slice;
 pub mod str;

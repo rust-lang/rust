@@ -14,12 +14,12 @@
 //
 // I *think* it's the same, more or less.
 
-#![feature(duration, duration_span)]
+#![feature(time2)]
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::env;
 use std::thread;
-use std::time::Duration;
+use std::time::Instant;
 
 enum request {
     get_count,
@@ -53,7 +53,8 @@ fn run(args: &[String]) {
     let num_bytes = 100;
     let mut result = None;
     let mut to_parent = Some(to_parent);
-    let dur = Duration::span(|| {
+    let start = Instant::now();
+    {
         let to_parent = to_parent.take().unwrap();
         let mut worker_results = Vec::new();
         let from_parent = if workers == 1 {
@@ -92,7 +93,8 @@ fn run(args: &[String]) {
         //to_child.send(stop);
         //move_out(to_child);
         result = Some(from_child.recv().unwrap());
-    });
+    }
+    let dur = start.elapsed();
     let result = result.unwrap();
     print!("Count is {}\n", result);
     print!("Test took {:?}\n", dur);

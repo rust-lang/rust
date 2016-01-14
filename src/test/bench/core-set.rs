@@ -10,7 +10,7 @@
 
 // ignore-pretty very bad with line comments
 
-#![feature(unboxed_closures, rand, std_misc, collections, duration, duration_span)]
+#![feature(unboxed_closures, rand, std_misc, collections, time2)]
 #![feature(bitset)]
 
 extern crate collections;
@@ -20,7 +20,7 @@ use std::collections::BTreeSet;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::env;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 struct Results {
     sequential_ints: Duration,
@@ -33,7 +33,9 @@ struct Results {
 }
 
 fn timed<F>(result: &mut Duration, op: F) where F: FnOnce() {
-    *result = Duration::span(op);
+    let start = Instant::now();
+    op();
+    *result = start.elapsed();
 }
 
 trait MutableSet<T> {
