@@ -108,11 +108,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     },
                     _ => {
                         for (i, operand) in operands.iter().enumerate() {
-                            // Note: perhaps this should be StructGep, but
-                            // note that in some cases the values here will
-                            // not be structs but arrays.
-                            let lldest_i = build::GEPi(bcx, dest.llval, &[0, i]);
-                            self.trans_operand_into(bcx, lldest_i, operand);
+                            let op = self.trans_operand(bcx, operand);
+                            // Do not generate stores and GEPis for zero-sized fields.
+                            if !common::type_is_zero_size(bcx.ccx(), op.ty) {
+                                // Note: perhaps this should be StructGep, but
+                                // note that in some cases the values here will
+                                // not be structs but arrays.
+                                let dest = build::GEPi(bcx, dest.llval, &[0, i]);
+                                self.store_operand(bcx, dest, op);
+                            }
                         }
                     }
                 }
