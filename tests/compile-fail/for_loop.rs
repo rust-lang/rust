@@ -32,6 +32,11 @@ fn main() {
         println!("{} {}", vec[i], vec2[i]);
     }
 
+    for i in 0..vec.len() {
+        //~^ ERROR `i` is only used to index `vec2`. Consider using `for item in vec2.iter().take(vec.len())`
+        println!("{}", vec2[i]);
+    }
+
     for i in 5..vec.len() {
         //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().skip(5)`
         println!("{}", vec[i]);
