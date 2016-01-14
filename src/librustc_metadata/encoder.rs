@@ -285,8 +285,9 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id_and_key(ecx, rbml_w, vid);
         encode_family(rbml_w, match variant.kind() {
-            ty::VariantKind::Unit | ty::VariantKind::Tuple => 'v',
-            ty::VariantKind::Struct => 'V'
+            ty::VariantKind::Struct => 'V',
+            ty::VariantKind::Tuple => 'v',
+            ty::VariantKind::Unit => 'w',
         });
         encode_name(rbml_w, variant.name);
         encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(id));
@@ -1043,7 +1044,11 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         /* Now, make an item for the class itself */
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id_and_key(ecx, rbml_w, def_id);
-        encode_family(rbml_w, 'S');
+        encode_family(rbml_w, match *struct_def {
+            hir::VariantData::Struct(..) => 'S',
+            hir::VariantData::Tuple(..) => 's',
+            hir::VariantData::Unit(..) => 'u',
+        });
         encode_bounds_and_type_for_item(rbml_w, ecx, index, item.id);
 
         encode_item_variances(rbml_w, ecx, item.id);
