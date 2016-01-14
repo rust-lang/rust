@@ -515,6 +515,7 @@ impl OpenOptions {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(expand_open_options)]
     /// use std::fs::OpenOptions;
     ///
     /// let file = OpenOptions::new().write(true).create_new(true).open("foo.txt");
