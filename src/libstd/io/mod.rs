@@ -112,7 +112,7 @@
 //! ```
 //!
 //! `BufWriter` doesn't add any new ways of writing; it just buffers every call
-//! to [`write()`][write]:
+//! to [`write()`][write()]:
 //!
 //! ```
 //! use std::io;
@@ -134,7 +134,7 @@
 //! # }
 //! ```
 //!
-//! [write]: trait.Write.html#tymethod.write
+//! [write()]: trait.Write.html#tymethod.write
 //!
 //! ## Standard input and output
 //!
@@ -399,7 +399,7 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
 ///
 /// [`File`][file]s implement `Read`:
 ///
-/// [file]: ../std/fs/struct.File.html
+/// [file]: ../fs/struct.File.html
 ///
 /// ```
 /// use std::io;
@@ -459,7 +459,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -501,7 +501,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -540,7 +540,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -600,7 +600,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -643,7 +643,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -682,7 +682,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -718,7 +718,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// #![feature(io)]
@@ -753,7 +753,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -789,7 +789,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// use std::io;
@@ -823,7 +823,7 @@ pub trait Read {
     ///
     /// [`File`][file]s implement `Read`:
     ///
-    /// [file]: ../std/fs/struct.File.html
+    /// [file]: ../fs/struct.File.html
     ///
     /// ```
     /// #![feature(io)]
