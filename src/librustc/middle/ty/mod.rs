@@ -49,7 +49,7 @@ use std::collections::{HashMap, HashSet};
 use syntax::ast::{self, CrateNum, Name, NodeId};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{DUMMY_SP, Span};
-use syntax::parse::token::{InternedString, special_idents};
+use syntax::parse::token::InternedString;
 
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait};
@@ -1353,6 +1353,7 @@ pub struct VariantDefData<'tcx, 'container: 'tcx> {
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
     pub fields: Vec<FieldDefData<'tcx, 'container>>,
+    pub kind: VariantKind,
 }
 
 pub struct FieldDefData<'tcx, 'container: 'tcx> {
@@ -1607,13 +1608,7 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
     }
 
     pub fn kind(&self) -> VariantKind {
-        match self.fields.get(0) {
-            None => VariantKind::Unit,
-            Some(&FieldDefData { name, .. }) if name == special_idents::unnamed_field.name => {
-                VariantKind::Tuple
-            }
-            Some(_) => VariantKind::Struct
-        }
+        self.kind
     }
 
     pub fn is_tuple_struct(&self) -> bool {
