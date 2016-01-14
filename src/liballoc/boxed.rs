@@ -227,7 +227,7 @@ impl<T> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// let x = Box::new(5);
+    /// let five = Box::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
