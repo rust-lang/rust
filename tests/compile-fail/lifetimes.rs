@@ -1,8 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![deny(needless_lifetimes)]
-#![allow(dead_code, unused_lifetimes)]
+#![deny(needless_lifetimes, unused_lifetimes)]
+#![allow(dead_code)]
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) { }
 //~^ERROR explicit lifetimes given
 
