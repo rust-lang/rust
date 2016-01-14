@@ -1147,48 +1147,63 @@ pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>, val: ValueRef, f: F) -> 
     next_cx
 }
 
-pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
-    if cx.sess().opts.optimize == config::No {
+enum Lifetime { Start, End }
+
+// If LLVM lifetime intrinsic support is enabled (i.e. optimizations
+// on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
+// and the intrinsic for `lt` and passes them to `emit`, which is in
+// charge of generating code to call the passed intrinsic on whatever
+// block of generated code is targetted for the intrinsic.
+//
+// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
+// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
+fn core_lifetime_emit<'blk, 'tcx, F>(ccx: &'blk CrateContext<'blk, 'tcx>,
+                                     ptr: ValueRef,
+                                     lt: Lifetime,
+                                     emit: F)
+    where F: FnOnce(&'blk CrateContext<'blk, 'tcx>, machine::llsize, ValueRef)
+{
+    if ccx.sess().opts.optimize == config::No {
         return;
     }
 
-    let _icx = push_ctxt("lifetime_start");
-    let ccx = cx.ccx();
+    let _icx = push_ctxt(match lt {
+        Lifetime::Start => "lifetime_start",
+        Lifetime::End => "lifetime_end"
+    });
 
     let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
     if size == 0 {
         return;
     }
 
-    let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-    let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx,
-         lifetime_start,
-         &[C_u64(ccx, size), ptr],
-         None,
-         DebugLoc::None);
+    let lifetime_intrinsic = ccx.get_intrinsic(match lt {
+        Lifetime::Start => "llvm.lifetime.start",
+        Lifetime::End => "llvm.lifetime.end"
+    });
+    emit(ccx, size, lifetime_intrinsic)
+}
+
+pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
+    core_lifetime_emit(cx.ccx(), ptr, Lifetime::Start, |ccx, size, lifetime_start| {
+        let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
+        Call(cx,
+             lifetime_start,
+             &[C_u64(ccx, size), ptr],
+             None,
+             DebugLoc::None);
+    })
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
-    if cx.sess().opts.optimize == config::No {
-        return;
-    }
-
-    let _icx = push_ctxt("lifetime_end");
-    let ccx = cx.ccx();
-
-    let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
-    if size == 0 {
-        return;
-    }
-
-    let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
-    let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx,
-         lifetime_end,
-         &[C_u64(ccx, size), ptr],
-         None,
-         DebugLoc::None);
+    core_lifetime_emit(cx.ccx(), ptr, Lifetime::End, |ccx, size, lifetime_end| {
+        let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
+        Call(cx,
+             lifetime_end,
+             &[C_u64(ccx, size), ptr],
+             None,
+             DebugLoc::None);
+    })
 }
 
 // Generates code for resumption of unwind at the end of a landing pad.
@@ -1285,12 +1300,81 @@ fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte:
            None);
 }
 
-pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> ValueRef {
+/// In general, when we create an scratch value in an alloca, the
+/// creator may not know if the block (that initializes the scratch
+/// with the desired value) actually dominates the cleanup associated
+/// with the scratch value.
+///
+/// To deal with this, when we do an alloca (at the *start* of whole
+/// function body), we optionally can also set the associated
+/// dropped-flag state of the alloca to "dropped."
+#[derive(Copy, Clone, Debug)]
+pub enum InitAlloca {
+    /// Indicates that the state should have its associated drop flag
+    /// set to "dropped" at the point of allocation.
+    Dropped,
+    /// Indicates the value of the associated drop flag is irrelevant.
+    /// The embedded string literal is a programmer provided argument
+    /// for why. This is a safeguard forcing compiler devs to
+    /// document; it might be a good idea to also emit this as a
+    /// comment with the alloca itself when emitting LLVM output.ll.
+    Uninit(&'static str),
+}
+
+
+pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                            t: Ty<'tcx>,
+                            name: &str) -> ValueRef {
+    // pnkfelix: I do not know why alloc_ty meets the assumptions for
+    // passing Uninit, but it was never needed (even back when we had
+    // the original boolean `zero` flag on `lvalue_scratch_datum`).
+    alloc_ty_init(bcx, t, InitAlloca::Uninit("all alloc_ty are uninit"), name)
+}
+
+/// This variant of `fn alloc_ty` does not necessarily assume that the
+/// alloca should be created with no initial value. Instead the caller
+/// controls that assumption via the `init` flag.
+///
+/// Note that if the alloca *is* initialized via `init`, then we will
+/// also inject an `llvm.lifetime.start` before that initialization
+/// occurs, and thus callers should not call_lifetime_start
+/// themselves.  But if `init` says "uninitialized", then callers are
+/// in charge of choosing where to call_lifetime_start and
+/// subsequently populate the alloca.
+///
+/// (See related discussion on PR #30823.)
+pub fn alloc_ty_init<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                             t: Ty<'tcx>,
+                             init: InitAlloca,
+                             name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
     assert!(!t.has_param_types());
-    alloca(bcx, ty, name)
+    match init {
+        InitAlloca::Dropped => alloca_dropped(bcx, t, name),
+        InitAlloca::Uninit(_) => alloca(bcx, ty, name),
+    }
+}
+
+pub fn alloca_dropped<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ty: Ty<'tcx>, name: &str) -> ValueRef {
+    let _icx = push_ctxt("alloca_dropped");
+    let llty = type_of::type_of(cx.ccx(), ty);
+    if cx.unreachable.get() {
+        unsafe { return llvm::LLVMGetUndef(llty.ptr_to().to_ref()); }
+    }
+    let p = alloca(cx, llty, name);
+    let b = cx.fcx.ccx.builder();
+    b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
+
+    // This is just like `call_lifetime_start` (but latter expects a
+    // Block, which we do not have for `alloca_insert_pt`).
+    core_lifetime_emit(cx.ccx(), p, Lifetime::Start, |ccx, size, lifetime_start| {
+        let ptr = b.pointercast(p, Type::i8p(ccx));
+        b.call(lifetime_start, &[C_u64(ccx, size), ptr], None);
+    });
+    memfill(&b, p, ty, adt::DTOR_DONE);
+    p
 }
 
 pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
@@ -1565,6 +1649,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
     // Create the drop-flag hints for every unfragmented path in the function.
     let tcx = fcx.ccx.tcx();
     let fn_did = tcx.map.local_def_id(fcx.id);
+    let tables = tcx.tables.borrow();
     let mut hints = fcx.lldropflag_hints.borrow_mut();
     let fragment_infos = tcx.fragment_infos.borrow();
 
@@ -1588,12 +1673,22 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
             let (var, datum) = match info {
                 ty::FragmentInfo::Moved { var, .. } |
                 ty::FragmentInfo::Assigned { var, .. } => {
-                    let datum = seen.get(&var).cloned().unwrap_or_else(|| {
-                        let datum = make_datum(var);
-                        seen.insert(var, datum.clone());
-                        datum
+                    let opt_datum = seen.get(&var).cloned().unwrap_or_else(|| {
+                        let ty = tables.node_types[&var];
+                        if fcx.type_needs_drop(ty) {
+                            let datum = make_datum(var);
+                            seen.insert(var, Some(datum.clone()));
+                            Some(datum)
+                        } else {
+                            // No drop call needed, so we don't need a dropflag hint
+                            None
+                        }
                     });
-                    (var, datum)
+                    if let Some(datum) = opt_datum {
+                        (var, datum)
+                    } else {
+                        continue
+                    }
                 }
             };
             match info {
@@ -1639,6 +1734,8 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
     let fcx = bcx.fcx;
     let arg_scope_id = cleanup::CustomScope(arg_scope);
 
+    debug!("create_datums_for_fn_args");
+
     // Return an array wrapping the ValueRefs that we get from `get_param` for
     // each argument into datums.
     //
@@ -1650,6 +1747,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
     // This alloca should be optimized away by LLVM's mem-to-reg pass in
     // the event it's not truly needed.
     let mut idx = fcx.arg_offset() as c_uint;
+    let uninit_reason = InitAlloca::Uninit("fn_arg populate dominates dtor");
     for (i, &arg_ty) in arg_tys.iter().enumerate() {
         let arg_datum = if !has_tupled_arg || i < arg_tys.len() - 1 {
             if type_of::arg_is_indirect(bcx.ccx(), arg_ty) &&
@@ -1669,9 +1767,12 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                 let data = get_param(fcx.llfn, idx);
                 let extra = get_param(fcx.llfn, idx + 1);
                 idx += 2;
-                unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "",
+                unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "", uninit_reason,
                                                         arg_scope_id, (data, extra),
                                                         |(data, extra), bcx, dst| {
+                    debug!("populate call for create_datum_for_fn_args \
+                            early fat arg, on arg[{}] ty={:?}", i, arg_ty);
+
                     Store(bcx, data, expr::get_dataptr(bcx, dst));
                     Store(bcx, extra, expr::get_meta(bcx, dst));
                     bcx
@@ -1684,9 +1785,16 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                               datum::lvalue_scratch_datum(bcx,
                                                           arg_ty,
                                                           "",
+                                                          uninit_reason,
                                                           arg_scope_id,
                                                           tmp,
-                                                          |tmp, bcx, dst| tmp.store_to(bcx, dst)))
+                                                          |tmp, bcx, dst| {
+
+                        debug!("populate call for create_datum_for_fn_args \
+                                early thin arg, on arg[{}] ty={:?}", i, arg_ty);
+
+                                                              tmp.store_to(bcx, dst)
+                                                          }))
             }
         } else {
             // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
@@ -1696,11 +1804,14 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                   datum::lvalue_scratch_datum(bcx,
                                                               arg_ty,
                                                               "tupled_args",
+                                                              uninit_reason,
                                                               arg_scope_id,
                                                               (),
                                                               |(),
                                                                mut bcx,
-                                                               llval| {
+                                                              llval| {
+                        debug!("populate call for create_datum_for_fn_args \
+                                tupled_args, on arg[{}] ty={:?}", i, arg_ty);
                         for (j, &tupled_arg_ty) in
                                     tupled_arg_tys.iter().enumerate() {
                             let lldest = StructGEP(bcx, llval, j);

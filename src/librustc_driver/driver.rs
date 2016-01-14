@@ -428,7 +428,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         println!("Pre-expansion node count:  {}", count_nodes(&krate));
     }
 
-    if let Some(ref s) = sess.opts.show_span {
+    if let Some(ref s) = sess.opts.debugging_opts.show_span {
         syntax::show_span::run(sess.diagnostic(), s, &krate);
     }
 

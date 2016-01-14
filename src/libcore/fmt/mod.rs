@@ -1569,7 +1569,7 @@ impl Debug for () {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Debug for PhantomData<T> {
+impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("PhantomData")
     }

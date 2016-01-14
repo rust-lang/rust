@@ -111,8 +111,15 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Always create an alloca even if zero-sized, to preserve
     // the non-null invariant of the inner slice ptr
-    let llfixed = base::alloc_ty(bcx, fixed_ty, "");
-    call_lifetime_start(bcx, llfixed);
+    let llfixed;
+    // Issue 30018: ensure state is initialized as dropped if necessary.
+    if fcx.type_needs_drop(vt.unit_ty) {
+        llfixed = base::alloc_ty_init(bcx, fixed_ty, InitAlloca::Dropped, "");
+    } else {
+        let uninit = InitAlloca::Uninit("fcx says vt.unit_ty is non-drop");
+        llfixed = base::alloc_ty_init(bcx, fixed_ty, uninit, "");
+        call_lifetime_start(bcx, llfixed);
+    };
 
     if count > 0 {
         // Arrange for the backing array to be cleaned up.
@@ -212,8 +219,8 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         bcx = expr::trans_into(bcx, &**element,
                                                SaveIn(lleltptr));
                         let scope = cleanup::CustomScope(temp_scope);
-                        fcx.schedule_lifetime_end(scope, lleltptr);
-                        fcx.schedule_drop_mem(scope, lleltptr, vt.unit_ty, None);
+                        // Issue #30822: mark memory as dropped after running destructor
+                        fcx.schedule_drop_and_fill_mem(scope, lleltptr, vt.unit_ty, None);
                     }
                     fcx.pop_custom_cleanup_scope(temp_scope);
                 }
