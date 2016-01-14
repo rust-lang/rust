@@ -62,7 +62,7 @@ mod cmath {
         pub fn hypotf(x: c_float, y: c_float) -> c_float;
     }
 
-    // See the comments in `core::float::Float::floor` for why MSVC is special
+    // See the comments in the `floor` function for why MSVC is special
     // here.
     #[cfg(not(target_env = "msvc"))]
     extern {
