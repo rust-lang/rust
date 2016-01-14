@@ -2156,12 +2156,6 @@ impl<'a> Parser<'a> {
                     let lo = self.last_span.lo;
                     return self.parse_while_expr(None, lo, attrs);
                 }
-                if self.token.is_keyword(keywords::Let) {
-                    // Catch this syntax error here, instead of in `check_strict_keywords`, so
-                    // that we can explicitly mention that let is not to be used as an expression
-                    let msg = "`let` is not an expression, so it cannot be used in this way";
-                    self.span_err(self.span, msg);
-                }
                 if self.token.is_lifetime() {
                     let lifetime = self.get_lifetime();
                     let lo = self.span.lo;
@@ -2224,6 +2218,11 @@ impl<'a> Parser<'a> {
                         ex = ExprBreak(None);
                     }
                     hi = self.last_span.hi;
+                } else if self.token.is_keyword(keywords::Let) {
+                    // Catch this syntax error here, instead of in `check_strict_keywords`, so
+                    // that we can explicitly mention that let is not to be used as an expression
+                    let msg = "`let` is not an expression, so it cannot be used in this way";
+                    return Err(self.fatal(&msg));
                 } else if self.check(&token::ModSep) ||
                         self.token.is_ident() &&
                         !self.check_keyword(keywords::True) &&
