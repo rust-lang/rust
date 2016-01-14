@@ -85,12 +85,12 @@ To run rustfmt after this, use `cargo run --bin rustfmt -- filename`. See the
 notes above on running rustfmt.
 
 
-## What style does Rustfmt use?
+## Configuring Rustfmt
 
 Rustfmt is designed to be very configurable. You can create a TOML file called
 rustfmt.toml, place it in the project directory and it will apply the options
 in that file. See `cargo run -- --config-help` for the options which are available,
-or if you prefer to see source code, [src/config.rs].
+or if you prefer to see source code, [src/config.rs](src/config.rs).
 
 By default, Rustfmt uses a style which (mostly) conforms to the
 [Rust style guidelines](https://github.com/rust-lang/rust/tree/master/src/doc/style).
