@@ -266,27 +266,33 @@ mod platform {
 pub enum Prefix<'a> {
     /// Prefix `\\?\`, together with the given component immediately following it.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Verbatim(&'a OsStr),
+    Verbatim(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr),
 
     /// Prefix `\\?\UNC\`, with the "server" and "share" components following it.
     #[stable(feature = "rust1", since = "1.0.0")]
-    VerbatimUNC(&'a OsStr, &'a OsStr),
+    VerbatimUNC(
+        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
+        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
+    ),
 
     /// Prefix like `\\?\C:\`, for the given drive letter
     #[stable(feature = "rust1", since = "1.0.0")]
-    VerbatimDisk(u8),
+    VerbatimDisk(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] u8),
 
     /// Prefix `\\.\`, together with the given component immediately following it.
     #[stable(feature = "rust1", since = "1.0.0")]
-    DeviceNS(&'a OsStr),
+    DeviceNS(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr),
 
     /// Prefix `\\server\share`, with the given "server" and "share" components.
     #[stable(feature = "rust1", since = "1.0.0")]
-    UNC(&'a OsStr, &'a OsStr),
+    UNC(
+        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
+        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
+    ),
 
     /// Prefix `C:` for the given disk drive.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Disk(u8),
+    Disk(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] u8),
 }
 
 impl<'a> Prefix<'a> {
@@ -528,7 +534,9 @@ pub enum Component<'a> {
     ///
     /// Does not occur on Unix.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Prefix(PrefixComponent<'a>),
+    Prefix(
+        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] PrefixComponent<'a>
+    ),
 
     /// The root directory component, appears after any prefix and before anything else
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -544,7 +552,7 @@ pub enum Component<'a> {
 
     /// A normal component, i.e. `a` and `b` in `a/b`
     #[stable(feature = "rust1", since = "1.0.0")]
-    Normal(&'a OsStr),
+    Normal(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr),
 }
 
 impl<'a> Component<'a> {

@@ -218,7 +218,7 @@ pub enum VarError {
     /// valid unicode data. The found data is returned as a payload of this
     /// variant.
     #[stable(feature = "env", since = "1.0.0")]
-    NotUnicode(OsString),
+    NotUnicode(#[cfg_attr(not(stage0), stable(feature = "env", since = "1.0.0"))] OsString),
 }
 
 #[stable(feature = "env", since = "1.0.0")]
