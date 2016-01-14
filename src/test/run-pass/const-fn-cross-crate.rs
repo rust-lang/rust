@@ -22,4 +22,5 @@ const FOO: usize = foo();
 
 fn main() {
     assert_eq!(FOO, 22);
+    let _: [i32; foo()] = [42; 22];
 }
