@@ -17,6 +17,26 @@
 //! Like many traits, these are often used as bounds for generic functions, to
 //! support arguments of multiple types.
 //!
+//! - Use `as` for reference-to-reference conversions
+//! - Use `into` when you want to consume the value
+//! - `from` is the more flexible way, which can convert values and references
+//!
+//! As a library writer, you should prefer implementing `From<T>` rather than
+//! `Into<U>`, as `From` is more flexible (you can't `Into` a reference, where
+//! you can impl `From` for a reference). `From` is also used for generic
+//! implementations.
+//!
+//! **Note:** these traits are for trivial conversion. **They must not fail**. If
+//! they can fail, use a dedicated method which return an `Option<T>` or
+//! a `Result<T, E>`.
+//!
+//! # Generic impl
+//!
+//! - `AsRef` and `AsMut` auto-dereference if the inner type is a reference
+//! - `From<U> for T` implies `Into<T> for U`
+//! - `From` and `Into` are reflexive, which means that all types can `into()`
+//! themselve and `from()` themselve
+//!
 //! See each trait for usage examples.
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -29,6 +49,10 @@ use marker::Sized;
 /// [the book][book] for more.
 ///
 /// [book]: ../../book/borrow-and-asref.html
+///
+/// **Note:** these traits are for trivial conversion. **They must not fail**. If
+/// they can fail, use a dedicated method which return an `Option<T>` or
+/// a `Result<T, E>`.
 ///
 /// # Examples
 ///
@@ -45,6 +69,12 @@ use marker::Sized;
 /// let s = "hello".to_string();
 /// is_hello(s);
 /// ```
+///
+/// # Generic Impls
+///
+/// - `AsRef` auto-dereference if the inner type is a reference or a mutable
+/// reference
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRef<T: ?Sized> {
     /// Performs the conversion.
@@ -53,6 +83,16 @@ pub trait AsRef<T: ?Sized> {
 }
 
 /// A cheap, mutable reference-to-mutable reference conversion.
+///
+/// **Note:** these traits are for trivial conversion. **They must not fail**. If
+/// they can fail, use a dedicated method which return an `Option<T>` or
+/// a `Result<T, E>`.
+///
+/// # Generic Impls
+///
+/// - `AsMut` auto-dereference if the inner type is a reference or a mutable
+/// reference
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
     /// Performs the conversion.
@@ -61,6 +101,10 @@ pub trait AsMut<T: ?Sized> {
 }
 
 /// A conversion that consumes `self`, which may or may not be expensive.
+///
+/// **Note:** these traits are for trivial conversion. **They must not fail**. If
+/// they can fail, use a dedicated method which return an `Option<T>` or
+/// a `Result<T, E>`.
 ///
 /// # Examples
 ///
@@ -75,6 +119,12 @@ pub trait AsMut<T: ?Sized> {
 /// let s = "hello".to_string();
 /// is_hello(s);
 /// ```
+///
+/// #Generic Impls
+///
+/// - `From<T> for U` implies `Into<U> for T`
+/// - `into()` is reflexive, which means that `Into<T> for T` is implemented
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -83,6 +133,10 @@ pub trait Into<T>: Sized {
 }
 
 /// Construct `Self` via a conversion.
+///
+/// **Note:** these traits are for trivial conversion. **They must not fail**. If
+/// they can fail, use a dedicated method which return an `Option<T>` or
+/// a `Result<T, E>`.
 ///
 /// # Examples
 ///
@@ -94,6 +148,11 @@ pub trait Into<T>: Sized {
 ///
 /// assert_eq!(string, other_string);
 /// ```
+/// # Generic impls
+///
+/// - `From<T> for U` implies `Into<U> for T`
+/// - `from()` is reflexive, which means that `From<T> for T` is implemented
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {
     /// Performs the conversion.
