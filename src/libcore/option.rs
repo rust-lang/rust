@@ -169,7 +169,7 @@ pub enum Option<T> {
     None,
     /// Some value `T`
     #[stable(feature = "rust1", since = "1.0.0")]
-    Some(T)
+    Some(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] T)
 }
 
 /////////////////////////////////////////////////////////////////////////////

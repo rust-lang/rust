@@ -1346,11 +1346,15 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied Entry.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Occupied(OccupiedEntry<'a, K, V>),
+    Occupied(
+        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] OccupiedEntry<'a, K, V>
+    ),
 
     /// A vacant Entry.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Vacant(VacantEntry<'a, K, V>),
+    Vacant(
+        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] VacantEntry<'a, K, V>
+    ),
 }
 
 /// Possible states of a VacantEntry.

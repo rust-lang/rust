@@ -32,10 +32,10 @@ use vec;
 pub enum SocketAddr {
     /// An IPv4 socket address which is a (ip, port) combination.
     #[stable(feature = "rust1", since = "1.0.0")]
-    V4(SocketAddrV4),
+    V4(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] SocketAddrV4),
     /// An IPv6 socket address
     #[stable(feature = "rust1", since = "1.0.0")]
-    V6(SocketAddrV6),
+    V6(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] SocketAddrV6),
 }
 
 /// An IPv4 socket address which is a (ip, port) combination.
