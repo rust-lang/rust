@@ -898,7 +898,7 @@ impl<T> IntoIterator for LinkedList<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a LinkedList<T> {
     type Item = &'a T;
-    type IntoIter = Iter<&'a T>;
+    type IntoIter = Iter<'a, Self::IntoIter>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
