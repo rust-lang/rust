@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-msvc -- sprintf isn't a symbol in msvcrt? maybe a #define?
-
 #![feature(libc, std_misc)]
 
 extern crate libc;
@@ -17,8 +15,9 @@ extern crate libc;
 use std::ffi::{CStr, CString};
 use libc::{c_char, c_int};
 
-
+#[cfg_attr(windows, link(name = "user32"))]
 extern {
+    #[cfg_attr(windows, link_name="wsprintfA")]
     fn sprintf(s: *mut c_char, format: *const c_char, ...) -> c_int;
 }
 
