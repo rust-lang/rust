@@ -132,7 +132,6 @@ pub struct Options {
     pub prints: Vec<PrintRequest>,
     pub cg: CodegenOptions,
     pub color: ColorConfig,
-    pub show_span: Option<String>,
     pub externs: HashMap<String, Vec<String>>,
     pub crate_name: Option<String>,
     /// An optional name to use as the crate for std during std injection,
@@ -243,7 +242,6 @@ pub fn basic_options() -> Options {
         prints: Vec::new(),
         cg: basic_codegen_options(),
         color: ColorConfig::Auto,
-        show_span: None,
         externs: HashMap::new(),
         crate_name: None,
         alt_std_name: None,
@@ -634,6 +632,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "don't clear the resolution tables after analysis"),
     keep_ast: bool = (false, parse_bool,
           "keep the AST after lowering it to HIR"),
+    show_span: Option<String> = (None, parse_opt_string,
+          "show spans for compiler debugging (expr|pat|ty)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -882,7 +882,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                       `hir` (the HIR), `hir,identified`, or
                       `hir,typed` (HIR with types for each node).",
                      "TYPE"),
-        opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
     ]);
     opts
 }
@@ -1123,7 +1122,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         prints: prints,
         cg: cg,
         color: color,
-        show_span: None,
         externs: externs,
         crate_name: crate_name,
         alt_std_name: None,
