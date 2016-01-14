@@ -161,14 +161,6 @@ pub fn write_file(text: &StringBuffer,
             // Output the XML tags for the lines that are different.
             try!(output_checkstyle_file(stdout, filename, diff));
         }
-        WriteMode::Return => {
-            // io::Write is not implemented for String, working around with
-            // Vec<u8>
-            let mut v = Vec::new();
-            try!(write_system_newlines(&mut v, text, config));
-            // won't panic, we are writing correct utf8
-            return Ok(Some(String::from_utf8(v).unwrap()));
-        }
     }
 
     Ok(None)

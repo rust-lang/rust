@@ -9,37 +9,31 @@
 // except according to those terms.
 use rustfmt_diff::{Mismatch, DiffLine};
 use std::io::{self, Write, Read, stdout};
-use WriteMode;
+use config::WriteMode;
 
 
 pub fn output_heading(mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
-    match mode {
-        WriteMode::Checkstyle => {
-            let mut xml_heading = String::new();
-            xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-            xml_heading.push_str("\n");
-            xml_heading.push_str("<checkstyle version=\"4.3\">");
-            try!(write!(stdout, "{}", xml_heading));
-            Ok(())
-        }
-        _ => Ok(()),
+    if mode == WriteMode::Checkstyle {
+        let mut xml_heading = String::new();
+        xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+        xml_heading.push_str("\n");
+        xml_heading.push_str("<checkstyle version=\"4.3\">");
+        try!(write!(stdout, "{}", xml_heading));
     }
+    Ok(())
 }
 
 pub fn output_footing(mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
-    match mode {
-        WriteMode::Checkstyle => {
-            let mut xml_tail = String::new();
-            xml_tail.push_str("</checkstyle>");
-            try!(write!(stdout, "{}", xml_tail));
-            Ok(())
-        }
-        _ => Ok(()),
+    if mode == WriteMode::Checkstyle {
+        let mut xml_tail = String::new();
+        xml_tail.push_str("</checkstyle>");
+        try!(write!(stdout, "{}", xml_tail));
     }
+    Ok(())
 }
 
 pub fn output_checkstyle_file<T>(mut writer: T,
