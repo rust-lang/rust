@@ -22,20 +22,18 @@
 //! - `from` is the more flexible way, which can convert values and references
 //!
 //! As a library writer, you should prefer implementing `From<T>` rather than
-//! `Into<U>`, as `From` is more flexible (you can't `Into` a reference, where
-//! you can impl `From` for a reference). `From` is also used for generic
-//! implementations.
+//! `Into<U>`, as `From` provides greater flexibility and offer the equivalent `Into`
+//! implementation for free thanks to a blanket implementation in the standard library.
 //!
-//! **Note:** these traits are for trivial conversion. **They must not fail**. If
-//! they can fail, use a dedicated method which return an `Option<T>` or
-//! a `Result<T, E>`.
+//! **Note: these traits must not fail**. If the conversion can fail, you must use a dedicated
+//! method which return an `Option<T>` or a `Result<T, E>`.
 //!
 //! # Generic impl
 //!
 //! - `AsRef` and `AsMut` auto-dereference if the inner type is a reference
 //! - `From<U> for T` implies `Into<T> for U`
 //! - `From` and `Into` are reflexive, which means that all types can `into()`
-//! themselve and `from()` themselve
+//!   themselves and `from()` themselves
 //!
 //! See each trait for usage examples.
 
@@ -50,9 +48,8 @@ use marker::Sized;
 ///
 /// [book]: ../../book/borrow-and-asref.html
 ///
-/// **Note:** these traits are for trivial conversion. **They must not fail**. If
-/// they can fail, use a dedicated method which return an `Option<T>` or
-/// a `Result<T, E>`.
+/// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
+/// return an `Option<T>` or a `Result<T, E>`.
 ///
 /// # Examples
 ///
@@ -73,7 +70,7 @@ use marker::Sized;
 /// # Generic Impls
 ///
 /// - `AsRef` auto-dereference if the inner type is a reference or a mutable
-/// reference
+/// reference (eg: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRef<T: ?Sized> {
@@ -84,14 +81,13 @@ pub trait AsRef<T: ?Sized> {
 
 /// A cheap, mutable reference-to-mutable reference conversion.
 ///
-/// **Note:** these traits are for trivial conversion. **They must not fail**. If
-/// they can fail, use a dedicated method which return an `Option<T>` or
-/// a `Result<T, E>`.
+/// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
+/// return an `Option<T>` or a `Result<T, E>`.
 ///
 /// # Generic Impls
 ///
 /// - `AsMut` auto-dereference if the inner type is a reference or a mutable
-/// reference
+/// reference (eg: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
@@ -102,9 +98,12 @@ pub trait AsMut<T: ?Sized> {
 
 /// A conversion that consumes `self`, which may or may not be expensive.
 ///
-/// **Note:** these traits are for trivial conversion. **They must not fail**. If
-/// they can fail, use a dedicated method which return an `Option<T>` or
-/// a `Result<T, E>`.
+/// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
+/// return an `Option<T>` or a `Result<T, E>`.
+///
+/// Library writer should not implement directly this trait, but should prefer the implementation
+/// of the `From` trait, which offer greater flexibility and provide the equivalent `Into`
+/// implementation for free thanks to a blanket implementation in the standard library.
 ///
 /// # Examples
 ///
@@ -134,9 +133,8 @@ pub trait Into<T>: Sized {
 
 /// Construct `Self` via a conversion.
 ///
-/// **Note:** these traits are for trivial conversion. **They must not fail**. If
-/// they can fail, use a dedicated method which return an `Option<T>` or
-/// a `Result<T, E>`.
+/// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
+/// return an `Option<T>` or a `Result<T, E>`.
 ///
 /// # Examples
 ///
