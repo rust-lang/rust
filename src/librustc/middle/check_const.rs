@@ -175,21 +175,6 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             _ => Mode::Var
         };
 
-        // Ensure the arguments are simple, not mutable/by-ref or patterns.
-        if mode == Mode::ConstFn {
-            for arg in &fd.inputs {
-                match arg.pat.node {
-                    hir::PatWild => {}
-                    hir::PatIdent(hir::BindByValue(hir::MutImmutable), _, None) => {}
-                    _ => {
-                        span_err!(self.tcx.sess, arg.pat.span, E0022,
-                                  "arguments of constant functions can only \
-                                   be immutable by-value bindings");
-                    }
-                }
-            }
-        }
-
         let qualif = self.with_mode(mode, |this| {
             this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
             intravisit::walk_fn(this, fk, fd, b, s);
@@ -397,24 +382,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_block(&mut self, block: &hir::Block) {
         // Check all statements in the block
         for stmt in &block.stmts {
-            let span = match stmt.node {
+            match stmt.node {
                 hir::StmtDecl(ref decl, _) => {
                     match decl.node {
-                        hir::DeclLocal(_) => decl.span,
-
+                        hir::DeclLocal(_) => {},
                         // Item statements are allowed
                         hir::DeclItem(_) => continue
                     }
                 }
-                hir::StmtExpr(ref expr, _) => expr.span,
-                hir::StmtSemi(ref semi, _) => semi.span,
-            };
-            self.add_qualif(ConstQualif::NOT_CONST);
-            if self.mode != Mode::Var {
-                span_err!(self.tcx.sess, span, E0016,
-                          "blocks in {}s are limited to items and \
-                           tail expressions", self.msg());
+                hir::StmtExpr(_, _) => {},
+                hir::StmtSemi(_, _) => {},
             }
+            self.add_qualif(ConstQualif::NOT_CONST);
+            // anything else should have been caught by check_const_fn
+            assert_eq!(self.mode, Mode::Var);
         }
         intravisit::walk_block(self, block);
     }
