@@ -1,7 +1,7 @@
 - Feature Name: grammar
 - Start Date: 2015-10-21
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1331](https://github.com/rust-lang/rfcs/pull/1331)
+- Rust Issue: [rust-lang/rust#30942](https://github.com/rust-lang/rust/issues/30942)
 
 # Summary
 [summary]: #summary
