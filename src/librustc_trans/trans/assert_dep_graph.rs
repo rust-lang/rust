@@ -45,7 +45,7 @@ use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
 use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
-use std::borrow::IntoCow;
+use graphviz::IntoCow;
 use std::env;
 use std::fs::File;
 use std::io::Write;

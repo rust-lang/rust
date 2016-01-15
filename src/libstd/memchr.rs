@@ -107,7 +107,7 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 #[allow(dead_code)]
 mod fallback {
     use cmp;
-    use usize;
+    use mem;
 
     const LO_U64: u64 = 0x0101010101010101;
     const HI_U64: u64 = 0x8080808080808080;
@@ -155,12 +155,13 @@ mod fallback {
         // - the last remaining part, < 2 word size
         let len = text.len();
         let ptr = text.as_ptr();
+        let usize_bytes = mem::size_of::<usize>();
 
         // search up to an aligned boundary
-        let align = (ptr as usize) & (usize::BYTES- 1);
+        let align = (ptr as usize) & (usize_bytes- 1);
         let mut offset;
         if align > 0 {
-            offset = cmp::min(usize::BYTES - align, len);
+            offset = cmp::min(usize_bytes - align, len);
             if let Some(index) = text[..offset].iter().position(|elt| *elt == x) {
                 return Some(index);
             }
@@ -171,11 +172,11 @@ mod fallback {
         // search the body of the text
         let repeated_x = repeat_byte(x);
 
-        if len >= 2 * usize::BYTES {
-            while offset <= len - 2 * usize::BYTES {
+        if len >= 2 * usize_bytes {
+            while offset <= len - 2 * usize_bytes {
                 unsafe {
                     let u = *(ptr.offset(offset as isize) as *const usize);
-                    let v = *(ptr.offset((offset + usize::BYTES) as isize) as *const usize);
+                    let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
 
                     // break if there is a matching byte
                     let zu = contains_zero_byte(u ^ repeated_x);
@@ -184,7 +185,7 @@ mod fallback {
                         break;
                     }
                 }
-                offset += usize::BYTES * 2;
+                offset += usize_bytes * 2;
             }
         }
 
@@ -202,12 +203,13 @@ mod fallback {
         // - the first remaining bytes, < 2 word size
         let len = text.len();
         let ptr = text.as_ptr();
+        let usize_bytes = mem::size_of::<usize>();
 
         // search to an aligned boundary
-        let end_align = (ptr as usize + len) & (usize::BYTES - 1);
+        let end_align = (ptr as usize + len) & (usize_bytes - 1);
         let mut offset;
         if end_align > 0 {
-            offset = len - cmp::min(usize::BYTES - end_align, len);
+            offset = len - cmp::min(usize_bytes - end_align, len);
             if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
                 return Some(offset + index);
             }
@@ -218,10 +220,10 @@ mod fallback {
         // search the body of the text
         let repeated_x = repeat_byte(x);
 
-        while offset >= 2 * usize::BYTES {
+        while offset >= 2 * usize_bytes {
             unsafe {
-                let u = *(ptr.offset(offset as isize - 2 * usize::BYTES as isize) as *const usize);
-                let v = *(ptr.offset(offset as isize - usize::BYTES as isize) as *const usize);
+                let u = *(ptr.offset(offset as isize - 2 * usize_bytes as isize) as *const usize);
+                let v = *(ptr.offset(offset as isize - usize_bytes as isize) as *const usize);
 
                 // break if there is a matching byte
                 let zu = contains_zero_byte(u ^ repeated_x);
@@ -230,7 +232,7 @@ mod fallback {
                     break;
                 }
             }
-            offset -= 2 * usize::BYTES;
+            offset -= 2 * usize_bytes;
         }
 
         // find the byte before the point the body loop stopped

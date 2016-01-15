@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(missing_docs)]
-#![unstable(feature = "wrapping", reason = "may be removed or relocated",
+#![unstable(feature = "old_wrapping", reason = "may be removed or relocated",
             issue = "27755")]
 
 use intrinsics::{add_with_overflow, sub_with_overflow, mul_with_overflow};
@@ -20,6 +20,9 @@ use ops::*;
 
 use ::{i8, i16, i32, i64, isize};
 
+#[unstable(feature = "old_wrapping", reason = "may be removed or relocated",
+           issue = "27755")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to inherent methods")]
 pub trait OverflowingOps {
     fn overflowing_add(self, rhs: Self) -> (Self, bool);
     fn overflowing_sub(self, rhs: Self) -> (Self, bool);
@@ -331,6 +334,7 @@ mod shift_max {
 
 macro_rules! signed_overflowing_impl {
     ($($t:ident)*) => ($(
+        #[allow(deprecated)]
         impl OverflowingOps for $t {
             #[inline(always)]
             fn overflowing_add(self, rhs: $t) -> ($t, bool) {
@@ -393,6 +397,7 @@ macro_rules! signed_overflowing_impl {
 
 macro_rules! unsigned_overflowing_impl {
     ($($t:ident)*) => ($(
+        #[allow(deprecated)]
         impl OverflowingOps for $t {
             #[inline(always)]
             fn overflowing_add(self, rhs: $t) -> ($t, bool) {
