@@ -33,7 +33,8 @@ fn main() {
 
     f1.foo(1usize);
     //~^ error: the trait `Foo<usize>` is not implemented for the type `Bar`
-    // | help: the following implementations were found:
-    // | help: implementation 1: `Foo<i32>`
-    // | help: implementation 2: `Foo<u8>`
+    //~| help: the following implementations were found:
+    //~| help:   <Bar as Foo<i32>>
+    //~| help:   <Bar as Foo<u8>>
+    //~| help: run `rustc --explain E0277`
 }
