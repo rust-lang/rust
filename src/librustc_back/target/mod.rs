@@ -80,7 +80,7 @@ pub struct Target {
     /// Vendor name to use for conditional compilation.
     pub target_vendor: String,
     /// Architecture to use for ABI considerations. Valid options: "x86", "x86_64", "arm",
-    /// "aarch64", "mips", and "powerpc". "mips" includes "mipsel".
+    /// "aarch64", "mips", "powerpc", "powerpc64" and "powerpc64le". "mips" includes "mipsel".
     pub arch: String,
     /// Optional settings with defaults.
     pub options: TargetOptions,
@@ -413,6 +413,8 @@ impl Target {
             mips_unknown_linux_gnu,
             mipsel_unknown_linux_gnu,
             powerpc_unknown_linux_gnu,
+            powerpc64_unknown_linux_gnu,
+            powerpc64le_unknown_linux_gnu,
             arm_unknown_linux_gnueabi,
             arm_unknown_linux_gnueabihf,
             aarch64_unknown_linux_gnu,

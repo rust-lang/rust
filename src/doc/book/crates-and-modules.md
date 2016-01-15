@@ -2,7 +2,7 @@
 
 When a project starts getting large, it’s considered good software
 engineering practice to split it up into a bunch of smaller pieces, and then
-fit them together. It’s also important to have a well-defined interface, so
+fit them together. It is also important to have a well-defined interface, so
 that some of your functionality is private, and some is public. To facilitate
 these kinds of things, Rust has a module system.
 

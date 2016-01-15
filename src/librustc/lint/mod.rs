@@ -41,7 +41,7 @@ use rustc_front::hir;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         raw_emit_lint, check_crate, check_ast_crate, gather_attrs,
-                        raw_struct_lint, GatherNodeLevels};
+                        raw_struct_lint, GatherNodeLevels, FutureIncompatibleInfo};
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]

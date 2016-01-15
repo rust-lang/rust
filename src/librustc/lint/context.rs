@@ -76,8 +76,20 @@ pub struct LintStore {
     /// is true if the lint group was added by a plugin.
     lint_groups: FnvHashMap<&'static str, (Vec<LintId>, bool)>,
 
+    /// Extra info for future incompatibility lints, descibing the
+    /// issue or RFC that caused the incompatibility.
+    future_incompatible: FnvHashMap<LintId, FutureIncompatibleInfo>,
+
     /// Maximum level a lint can be
     lint_cap: Option<Level>,
+}
+
+/// Extra information for a future incompatibility lint. See the call
+/// to `register_future_incompatible` in `librustc_lint/lib.rs` for
+/// guidelines.
+pub struct FutureIncompatibleInfo {
+    pub id: LintId,
+    pub reference: &'static str // e.g., a URL for an issue/PR/RFC or error code
 }
 
 /// The targed of the `by_name` map, which accounts for renaming/deprecation.
@@ -124,6 +136,7 @@ impl LintStore {
             late_passes: Some(vec!()),
             by_name: FnvHashMap(),
             levels: FnvHashMap(),
+            future_incompatible: FnvHashMap(),
             lint_groups: FnvHashMap(),
             lint_cap: None,
         }
@@ -181,6 +194,20 @@ impl LintStore {
                 self.levels.insert(id, (lint.default_level, Default));
             }
         }
+    }
+
+    pub fn register_future_incompatible(&mut self,
+                                        sess: Option<&Session>,
+                                        lints: Vec<FutureIncompatibleInfo>) {
+        let ids = lints.iter().map(|f| f.id).collect();
+        self.register_group(sess, false, "future_incompatible", ids);
+        for info in lints {
+            self.future_incompatible.insert(info.id, info);
+        }
+    }
+
+    pub fn future_incompatible(&self, id: LintId) -> Option<&FutureIncompatibleInfo> {
+        self.future_incompatible.get(&id)
     }
 
     pub fn register_group(&mut self, sess: Option<&Session>,
@@ -418,14 +445,18 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
-    let future_incompat_lints = &lints.lint_groups[builtin::FUTURE_INCOMPATIBLE];
-    let this_id = LintId::of(lint);
-    if future_incompat_lints.0.iter().any(|&id| id == this_id) {
-        let msg = "this lint will become a HARD ERROR in a future release!";
+    if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {
+        let explanation = format!("this was previously accepted by the compiler \
+                                   but is being phased out; \
+                                   it will become a hard error in a future release!");
+        let citation = format!("for more information, see {}",
+                               future_incompatible.reference);
         if let Some(sp) = span {
-            err.span_note(sp, msg);
+            err.fileline_warn(sp, &explanation);
+            err.fileline_note(sp, &citation);
         } else {
-            err.note(msg);
+            err.warn(&explanation);
+            err.note(&citation);
         }
     }
 
