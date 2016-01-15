@@ -205,7 +205,8 @@ mod arch {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64",
+          target_arch = "powerpc64le"))]
 mod arch {
     use super::{dev_t, mode_t};
     use os::raw::{c_long, c_int};
