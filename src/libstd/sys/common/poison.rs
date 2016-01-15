@@ -71,7 +71,7 @@ pub enum TryLockError<T> {
     /// The lock could not be acquired because another thread failed while holding
     /// the lock.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Poisoned(PoisonError<T>),
+    Poisoned(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] PoisonError<T>),
     /// The lock could not be acquired at this time because the operation would
     /// otherwise block.
     #[stable(feature = "rust1", since = "1.0.0")]

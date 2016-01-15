@@ -77,7 +77,6 @@ struct Annotator<'a, 'tcx: 'a> {
     parent_depr: Option<Deprecation>,
     access_levels: &'a AccessLevels,
     in_trait_impl: bool,
-    in_enum: bool,
 }
 
 impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
@@ -208,7 +207,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
 
     fn visit_item(&mut self, i: &Item) {
         let orig_in_trait_impl = self.in_trait_impl;
-        let orig_in_enum = self.in_enum;
         let mut kind = AnnotationKind::Required;
         match i.node {
             // Inherent impls and foreign modules serve only as containers for other items,
@@ -223,13 +221,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
                 self.in_trait_impl = true;
             }
             hir::ItemStruct(ref sd, _) => {
-                self.in_enum = false;
                 if !sd.is_struct() {
                     self.annotate(sd.id(), &i.attrs, i.span, AnnotationKind::Required, |_| {})
                 }
-            }
-            hir::ItemEnum(..) => {
-                self.in_enum = true;
             }
             _ => {}
         }
@@ -238,7 +232,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
             intravisit::walk_item(v, i)
         });
         self.in_trait_impl = orig_in_trait_impl;
-        self.in_enum = orig_in_enum;
     }
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
@@ -265,13 +258,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {
-        // FIXME: This is temporary, can't use attributes with tuple variant fields until snapshot
-        let kind = if self.in_enum && s.node.kind.is_unnamed() {
-            AnnotationKind::Prohibited
-        } else {
-            AnnotationKind::Required
-        };
-        self.annotate(s.node.id, &s.node.attrs, s.span, kind, |v| {
+        self.annotate(s.node.id, &s.node.attrs, s.span, AnnotationKind::Required, |v| {
             intravisit::walk_struct_field(v, s);
         });
     }
@@ -299,7 +286,6 @@ impl<'tcx> Index<'tcx> {
             parent_depr: None,
             access_levels: access_levels,
             in_trait_impl: false,
-            in_enum: false,
         };
         annotator.annotate(ast::CRATE_NODE_ID, &krate.attrs, krate.span, AnnotationKind::Required,
                            |v| intravisit::walk_crate(v, krate));
