@@ -505,9 +505,11 @@ Cargo checks to see if any of your project’s files have been modified, and onl
 rebuilds your project if they’ve changed since the last time you built it.
 
 With simple projects, Cargo doesn't bring a whole lot over just using `rustc`,
-but it will become useful in future. With complex projects composed of multiple
-crates, it’s much easier to let Cargo coordinate the build. With Cargo, you can
-run `cargo build`, and it should work the right way.
+but it will become useful in future. This is especially true when you start
+using crates; these are synonymous with a ‘library’ or ‘package’ in other
+programming languages. For complex projects composed of multiple crates, it’s
+much easier to let Cargo coordinate the build. Using Cargo, you can run `cargo
+build`, and it should work the right way.
 
 ## Building for Release
 
