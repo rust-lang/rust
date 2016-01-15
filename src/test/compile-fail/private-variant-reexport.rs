@@ -13,18 +13,22 @@
 
 mod m1 {
     pub use ::E::V; //~ WARN variant `V` is private, and cannot be reexported
+    //~^ WARNING hard error
 }
 
 mod m2 {
     pub use ::E::{V}; //~ WARN variant `V` is private, and cannot be reexported
+    //~^ WARNING hard error
 }
 
 mod m3 {
     pub use ::E::V::{self}; //~ WARN variant `V` is private, and cannot be reexported
+    //~^ WARNING hard error
 }
 
 mod m4 {
     pub use ::E::*; //~ WARN variant `V` is private, and cannot be reexported
+    //~^ WARNING hard error
 }
 
 enum E { V }
