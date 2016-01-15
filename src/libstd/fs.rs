@@ -414,8 +414,8 @@ impl OpenOptions {
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
     ///
-    /// If a file already exist, the contents of that file get overwritten, but it is
-    /// not truncated.
+    /// If a file already exist, any write calls on the file will overwrite its
+    /// contents, without truncating it.
     ///
     /// # Examples
     ///
@@ -436,19 +436,20 @@ impl OpenOptions {
     /// Note that setting `.write(true).append(true)` has the same effect as
     /// setting only `.append(true)`.
     ///
-    /// For most filesystems the operating system guarantees all writes are atomic:
-    /// no writes get mangled because another process writes at the same time.
+    /// For most filesystems the operating system guarantees all writes are
+    /// atomic: no writes get mangled because another process writes at the same
+    /// time.
     ///
-    /// One maybe obvious note when using append-mode: make sure that all data that
-    /// belongs together, is written the the file in one operation. This can be done
-    /// by concatenating strings before passing them to `write()`, or using a buffered
-    /// writer (with a more than adequately sized buffer) and calling `flush()` when the
-    /// message is complete.
+    /// One maybe obvious note when using append-mode: make sure that all data
+    /// that belongs together, is written the the file in one operation. This
+    /// can be done by concatenating strings before passing them to `write()`,
+    /// or using a buffered writer (with a more than adequately sized buffer)
+    /// and calling `flush()` when the message is complete.
     ///
-    /// If a file is opened with both read and append access, beware that after opening
-    /// and after every write the position for reading may be set at the end of the file.
-    /// So before writing save the current position (using `seek(SeekFrom::Current(0))`,
-    /// and restore it before the next read.
+    /// If a file is opened with both read and append access, beware that after
+    /// opening and after every write the position for reading may be set at the
+    /// end of the file. So before writing save the current position (using
+    /// `seek(SeekFrom::Current(0))`, and restore it before the next read.
     ///
     /// # Examples
     ///
@@ -507,7 +508,12 @@ impl OpenOptions {
     /// No file is allowed to exist at the target location, also no (dangling)
     /// symlink.
     ///
-    /// if `.create_new(true)` is set, `.create()` and `.truncate()` are ignored.
+    /// This option is usefull because it as atomic. Otherwise between checking
+    /// whether a file exists and creating a new one, the file may have been
+    /// created by another process (a TOCTOU race condition / attack).
+    ///
+    /// If `.create_new(true)` is set, `.create()` and `.truncate()` are
+    /// ignored.
     ///
     /// The file must be opened with write or append access in order to create
     /// a new file.
@@ -518,7 +524,9 @@ impl OpenOptions {
     /// #![feature(expand_open_options)]
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().write(true).create_new(true).open("foo.txt");
+    /// let file = OpenOptions::new().write(true)
+    ///                              .create_new(true)
+    ///                              .open("foo.txt");
     /// ```
     #[unstable(feature = "expand_open_options",
                reason = "recently added",
@@ -534,7 +542,8 @@ impl OpenOptions {
     /// This function will return an error under a number of different
     /// circumstances, to include but not limited to:
     ///
-    /// * Opening a file that does not exist without setting `create` or `create_new`.
+    /// * Opening a file that does not exist without setting `create` or
+    ///   `create_new`.
     /// * Attempting to open a file with access that the user lacks
     ///   permissions for
     /// * Filesystem-level errors (full disk, etc)

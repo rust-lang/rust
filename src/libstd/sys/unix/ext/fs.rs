@@ -107,10 +107,11 @@ pub trait OpenOptionsExt {
 
     /// Pass custom flags to the `flags` agument of `open`.
     ///
-    /// The bits that define the access mode are masked out with `O_ACCMODE`, to ensure
-    /// they do not interfere with the access mode set by Rusts options.
+    /// The bits that define the access mode are masked out with `O_ACCMODE`, to
+    /// ensure they do not interfere with the access mode set by Rusts options.
     ///
     /// Custom flags can only set flags, not remove flags set by Rusts options.
+    /// This options overwrites any previously set custom flags.
     ///
     /// # Examples
     ///
@@ -121,7 +122,9 @@ pub trait OpenOptionsExt {
     ///
     /// let mut options = OpenOptions::new();
     /// options.write(true);
-    /// if cfg!(unix) { options.custom_flags(libc::O_NOFOLLOW); }
+    /// if cfg!(unix) {
+    ///     options.custom_flags(libc::O_NOFOLLOW);
+    /// }
     /// let file = options.open("foo.txt");
     /// ```
     #[unstable(feature = "expand_open_options",

@@ -209,13 +209,15 @@ impl OpenOptions {
         const ERROR_INVALID_PARAMETER: i32 = 87;
 
         match (self.write, self.append) {
-            (true,  false) => {}
-            (false, false) => if self.truncate || self.create || self.create_new {
-                                  return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
-                              },
-            (_,     true)  => if self.truncate && !self.create_new {
-                                  return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
-                              },
+            (true, false) => {}
+            (false, false) =>
+                if self.truncate || self.create || self.create_new {
+                    return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
+                },
+            (_, true) =>
+                if self.truncate && !self.create_new {
+                    return Err(Error::from_raw_os_error(ERROR_INVALID_PARAMETER));
+                },
         }
 
         Ok(match (self.create, self.truncate, self.create_new) {
