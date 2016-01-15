@@ -247,21 +247,10 @@ impl LintStore {
     {
         match self.by_name.get(lint_name) {
             Some(&Id(lint_id)) => Ok(lint_id),
-            Some(&Renamed(ref new_name, lint_id)) => {
-                let warning = format!("lint {} has been renamed to {}",
-                                      lint_name, new_name);
-                match span {
-                    Some(span) => sess.span_warn(span, &warning[..]),
-                    None => sess.warn(&warning[..]),
-                };
+            Some(&Renamed(_, lint_id)) => {
                 Ok(lint_id)
             },
             Some(&Removed(ref reason)) => {
-                let warning = format!("lint {} has been removed: {}", lint_name, reason);
-                match span {
-                    Some(span) => sess.span_warn(span, &warning[..]),
-                    None => sess.warn(&warning[..])
-                }
                 Err(FindLintError::Removed)
             },
             None => Err(FindLintError::NotFound)
@@ -270,8 +259,12 @@ impl LintStore {
 
     pub fn process_command_line(&mut self, sess: &Session) {
         for &(ref lint_name, level) in &sess.opts.lint_opts {
+            check_lint_name_cmdline(sess, self,
+                                    &lint_name[..], level);
+
             match self.find_lint(&lint_name[..], sess, None) {
                 Ok(lint_id) => self.set_level(lint_id, (level, CommandLine)),
+                Err(FindLintError::Removed) => { }
                 Err(_) => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
                                                  .collect::<FnvHashMap<&'static str,
@@ -283,8 +276,11 @@ impl LintStore {
                                      self.set_level(*lint_id, (level, CommandLine)))
                              .collect::<Vec<()>>();
                         }
-                        None => sess.err(&format!("unknown {} flag: {}",
-                                                 level.as_str(), lint_name)),
+                        None => {
+                            // The lint or lint group doesn't exist.
+                            // This is an error, but it was handled
+                            // by check_lint_name_cmdline.
+                        }
                     }
                 }
             }
@@ -359,29 +355,39 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
                     -> Vec<Result<(InternedString, Level, Span), Span>> {
     let mut out = vec!();
     for attr in attrs {
-        let level = match Level::from_str(&attr.name()) {
-            None => continue,
-            Some(lvl) => lvl,
-        };
-
-        attr::mark_used(attr);
-
-        let meta = &attr.node.value;
-        let metas = match meta.node {
-            ast::MetaList(_, ref metas) => metas,
-            _ => {
-                out.push(Err(meta.span));
-                continue;
-            }
-        };
-
-        for meta in metas {
-            out.push(match meta.node {
-                ast::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
-                _ => Err(meta.span),
-            });
-        }
+        let r = gather_attr(attr);
+        out.extend(r.into_iter());
     }
+    out
+}
+
+pub fn gather_attr(attr: &ast::Attribute)
+                   -> Vec<Result<(InternedString, Level, Span), Span>> {
+    let mut out = vec!();
+
+    let level = match Level::from_str(&attr.name()) {
+        None => return out,
+        Some(lvl) => lvl,
+    };
+
+    attr::mark_used(attr);
+
+    let meta = &attr.node.value;
+    let metas = match meta.node {
+        ast::MetaList(_, ref metas) => metas,
+        _ => {
+            out.push(Err(meta.span));
+            return out;
+        }
+    };
+
+    for meta in metas {
+        out.push(match meta.node {
+            ast::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
+            _ => Err(meta.span),
+        });
+    }
+
     out
 }
 
@@ -587,9 +593,9 @@ pub trait LintContext: Sized {
                                                            (*lint_id, level, span))
                                                       .collect(),
                                 None => {
-                                    self.span_lint(builtin::UNKNOWN_LINTS, span,
-                                                   &format!("unknown `{}` attribute: `{}`",
-                                                            level.as_str(), lint_name));
+                                    // The lint or lint group doesn't exist.
+                                    // This is an error, but it was handled
+                                    // by check_lint_name_attribute.
                                     continue;
                                 }
                             }
@@ -901,6 +907,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        check_lint_name_attribute(self, attr);
         run_lints!(self, check_attribute, late_passes, attr);
     }
 }
@@ -1113,6 +1120,113 @@ impl LateLintPass for GatherNodeLevels {
         }
     }
 }
+
+enum CheckLintNameResult<'a> {
+    Ok,
+    // Lint doesn't exist
+    NoLint,
+    // The lint is either renamed or removed and a warning was
+    // generated in the DiagnosticBuilder
+    Mentioned(DiagnosticBuilder<'a>)
+}
+
+/// Checks the name of a lint for its existence, and whether it was
+/// renamed or removed. Generates a DiagnosticBuilder containing a
+/// warning for renamed and removed lints. This is over both lint
+/// names from attributes and those passed on the command line. Since
+/// it emits non-fatal warnings and there are *two* lint passes that
+/// inspect attributes, this is only run from the late pass to avoid
+/// printing duplicate warnings.
+fn check_lint_name<'a>(sess: &'a Session,
+                       lint_cx: &LintStore,
+                       lint_name: &str,
+                       span: Option<Span>) -> CheckLintNameResult<'a> {
+    match lint_cx.by_name.get(lint_name) {
+        Some(&Renamed(ref new_name, _)) => {
+            let warning = format!("lint {} has been renamed to {}",
+                                  lint_name, new_name);
+            let db = match span {
+                Some(span) => sess.struct_span_warn(span, &warning[..]),
+                None => sess.struct_warn(&warning[..]),
+            };
+            CheckLintNameResult::Mentioned(db)
+        },
+        Some(&Removed(ref reason)) => {
+            let warning = format!("lint {} has been removed: {}", lint_name, reason);
+            let db = match span {
+                Some(span) => sess.struct_span_warn(span, &warning[..]),
+                None => sess.struct_warn(&warning[..])
+            };
+            CheckLintNameResult::Mentioned(db)
+        },
+        None => {
+            match lint_cx.lint_groups.get(lint_name) {
+                None => {
+                    CheckLintNameResult::NoLint
+                }
+                Some(_) => {
+                    /* lint group exists */
+                    CheckLintNameResult::Ok
+                }
+            }
+        }
+        Some(_) => {
+            /* lint exists */
+            CheckLintNameResult::Ok
+        }
+    }
+}
+
+// Checks the validity of lint names derived from attributes
+fn check_lint_name_attribute(cx: &LateContext, attr: &ast::Attribute) {
+    for result in gather_attr(attr) {
+        match result {
+            Err(_) => {
+                // Malformed lint attr. Reported by with_lint_attrs
+                continue;
+            }
+            Ok((lint_name, _, span)) => {
+                match check_lint_name(&cx.tcx.sess, &cx.lints, &lint_name[..], Some(span)) {
+                    CheckLintNameResult::Ok => (),
+                    CheckLintNameResult::Mentioned(mut db) => {
+                        db.emit();
+                    }
+                    CheckLintNameResult::NoLint => {
+                        cx.span_lint(builtin::UNKNOWN_LINTS, span,
+                                     &format!("unknown lint: `{}`",
+                                              lint_name));
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Checks the validity of lint names derived from the command line
+fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
+                           lint_name: &str, level: Level) {
+    let db = match check_lint_name(sess, lint_cx, lint_name, None) {
+        CheckLintNameResult::Ok => None,
+        CheckLintNameResult::Mentioned(db) => Some(db),
+        CheckLintNameResult::NoLint => {
+            Some(sess.struct_err(&format!("unknown lint: `{}`", lint_name)))
+        }
+    };
+
+    if let Some(mut db) = db {
+        let msg = format!("requested on the command line with `{} {}`",
+                          match level {
+                              Level::Allow => "-A",
+                              Level::Warn => "-W",
+                              Level::Deny => "-D",
+                              Level::Forbid => "-F",
+                          },
+                          lint_name);
+        db.note(&msg);
+        db.emit();
+    }
+}
+
 
 /// Perform lint checking on a crate.
 ///
