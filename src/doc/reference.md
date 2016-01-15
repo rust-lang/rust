@@ -2044,7 +2044,7 @@ The following configurations must be defined by the implementation:
   production.  For example, it controls the behavior of the standard library's
   `debug_assert!` macro.
 * `target_arch = "..."` - Target CPU architecture, such as `"x86"`, `"x86_64"`
-  `"mips"`, `"powerpc"`, `"arm"`, or `"aarch64"`.
+  `"mips"`, `"powerpc"`, `"powerpc64"`, `"powerpc64le"`, `"arm"`, or `"aarch64"`.
 * `target_endian = "..."` - Endianness of the target CPU, either `"little"` or
   `"big"`.
 * `target_env = ".."` - An option provided by the compiler by default

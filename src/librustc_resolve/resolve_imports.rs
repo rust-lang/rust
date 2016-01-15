@@ -688,6 +688,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                             id: directive.id,
                             is_public: directive.is_public
                         };
+
+                        self.add_export(module_, target, &import_resolution[namespace]);
                         *used_public = name_binding.is_public();
                     }
                     UnboundResult => {
@@ -827,6 +829,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         dest_import_resolution[ns] = ImportResolution {
                             id: id, is_public: is_public, target: Some(target.clone())
                         };
+                        self.add_export(module_, *name, &dest_import_resolution[ns]);
                     }
                     _ => {}
                 }
@@ -919,6 +922,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                             id: id,
                             is_public: is_public
                         };
+                        self.add_export(module_, name, &dest_import_resolution[namespace]);
                     }
                 } else {
                     // FIXME #30159: This is required for backwards compatability.
@@ -933,6 +937,19 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                            dest_import_resolution,
                                                            import_directive.span,
                                                            name);
+    }
+
+    fn add_export(&mut self, module: Module<'b>, name: Name, resolution: &ImportResolution<'b>) {
+        if !resolution.is_public { return }
+        let node_id = match module.def_id() {
+            Some(def_id) => self.resolver.ast_map.as_local_node_id(def_id).unwrap(),
+            None => return,
+        };
+        let export = match resolution.target.as_ref().unwrap().binding.def() {
+            Some(def) => Export { name: name, def_id: def.def_id() },
+            None => return,
+        };
+        self.resolver.export_map.entry(node_id).or_insert(Vec::new()).push(export);
     }
 
     /// Checks that imported names and items don't have the same name.

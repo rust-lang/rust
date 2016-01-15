@@ -21,3 +21,9 @@ pub fn main() { }
 
 #[cfg(target_arch = "aarch64")]
 pub fn main() { }
+
+#[cfg(target_arch = "powerpc64")]
+pub fn main() { }
+
+#[cfg(target_arch = "powerpc64le")]
+pub fn main() { }
