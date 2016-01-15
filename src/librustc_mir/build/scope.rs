@@ -103,31 +103,41 @@ pub struct Scope<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct LoopScope {
-    pub extent: CodeExtent, // extent of the loop
-    pub continue_block: BasicBlock, // where to go on a `loop`
+    /// Extent of the loop
+    pub extent: CodeExtent,
+    /// Where the body of the loop begins
+    pub continue_block: BasicBlock,
+    /// Block to branch into when the loop terminates (either by being `break`-en out from, or by
+    /// having its condition to become false)
     pub break_block: BasicBlock, // where to go on a `break
+    /// Indicates the reachability of the break_block for this loop
+    pub might_break: bool
 }
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     /// Start a loop scope, which tracks where `continue` and `break`
     /// should branch to. See module comment for more details.
-    pub fn in_loop_scope<F, R>(&mut self,
+    ///
+    /// Returns the might_break attribute of the LoopScope used.
+    pub fn in_loop_scope<F>(&mut self,
                                loop_block: BasicBlock,
                                break_block: BasicBlock,
                                f: F)
-                               -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
+                               -> bool
+        where F: FnOnce(&mut Builder<'a, 'tcx>)
     {
         let extent = self.extent_of_innermost_scope();
         let loop_scope = LoopScope {
             extent: extent.clone(),
             continue_block: loop_block,
             break_block: break_block,
+            might_break: false
         };
         self.loop_scopes.push(loop_scope);
-        let r = f(self);
-        assert!(self.loop_scopes.pop().unwrap().extent == extent);
-        r
+        f(self);
+        let loop_scope = self.loop_scopes.pop().unwrap();
+        assert!(loop_scope.extent == extent);
+        loop_scope.might_break
     }
 
     /// Convenience wrapper that pushes a scope and then executes `f`
@@ -181,28 +191,21 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn find_loop_scope(&mut self,
                            span: Span,
                            label: Option<CodeExtent>)
-                           -> LoopScope {
-        let loop_scope =
-            match label {
-                None => {
-                    // no label? return the innermost loop scope
-                    self.loop_scopes.iter()
-                                    .rev()
-                                    .next()
-                }
-                Some(label) => {
-                    // otherwise, find the loop-scope with the correct id
-                    self.loop_scopes.iter()
-                                    .rev()
-                                    .filter(|loop_scope| loop_scope.extent == label)
-                                    .next()
-                }
-            };
-
-        match loop_scope {
-            Some(loop_scope) => loop_scope.clone(),
-            None => self.hir.span_bug(span, "no enclosing loop scope found?"),
-        }
+                           -> &mut LoopScope {
+        let Builder { ref mut loop_scopes, ref mut hir, .. } = *self;
+        match label {
+            None => {
+                // no label? return the innermost loop scope
+                loop_scopes.iter_mut().rev().next()
+            }
+            Some(label) => {
+                // otherwise, find the loop-scope with the correct id
+                loop_scopes.iter_mut()
+                           .rev()
+                           .filter(|loop_scope| loop_scope.extent == label)
+                           .next()
+            }
+        }.unwrap_or_else(|| hir.span_bug(span, "no enclosing loop scope found?"))
     }
 
     /// Branch out of `block` to `target`, exiting all scopes up to
@@ -214,20 +217,19 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                       extent: CodeExtent,
                       block: BasicBlock,
                       target: BasicBlock) {
-        let popped_scopes =
-            match self.scopes.iter().rev().position(|scope| scope.extent == extent) {
-                Some(p) => p + 1,
-                None => self.hir.span_bug(span, &format!("extent {:?} does not enclose",
-                                                              extent)),
-            };
+        let Builder { ref mut scopes, ref mut cfg, ref mut hir, .. } = *self;
 
-        for scope in self.scopes.iter_mut().rev().take(popped_scopes) {
+        let scope_count = 1 + scopes.iter().rev().position(|scope| scope.extent == extent)
+                                                 .unwrap_or_else(||{
+            hir.span_bug(span, &format!("extent {:?} does not enclose", extent))
+        });
+
+        for scope in scopes.iter_mut().rev().take(scope_count) {
             for &(kind, drop_span, ref lvalue) in &scope.drops {
-                self.cfg.push_drop(block, drop_span, kind, lvalue);
+                cfg.push_drop(block, drop_span, kind, lvalue);
             }
         }
-
-        self.cfg.terminate(block, Terminator::Goto { target: target });
+        cfg.terminate(block, Terminator::Goto { target: target });
     }
 
     /// Creates a path that performs all required cleanup for unwinding.
