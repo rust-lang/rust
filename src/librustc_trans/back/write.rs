@@ -144,10 +144,10 @@ fn target_feature(sess: &Session) -> String {
 
 fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
     match optimize {
-      config::No => llvm::CodeGenLevelNone,
-      config::Less => llvm::CodeGenLevelLess,
-      config::Default => llvm::CodeGenLevelDefault,
-      config::Aggressive => llvm::CodeGenLevelAggressive,
+      config::OptLevel::No => llvm::CodeGenLevelNone,
+      config::OptLevel::Less => llvm::CodeGenLevelLess,
+      config::OptLevel::Default => llvm::CodeGenLevelDefault,
+      config::OptLevel::Aggressive => llvm::CodeGenLevelAggressive,
     }
 }
 
@@ -303,13 +303,13 @@ impl ModuleConfig {
         // slp vectorization at O3. Otherwise configure other optimization aspects
         // of this pass manager builder.
         self.vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
-                             (sess.opts.optimize == config::Default ||
-                              sess.opts.optimize == config::Aggressive);
+                             (sess.opts.optimize == config::OptLevel::Default ||
+                              sess.opts.optimize == config::OptLevel::Aggressive);
         self.vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                            sess.opts.optimize == config::Aggressive;
+                            sess.opts.optimize == config::OptLevel::Aggressive;
 
-        self.merge_functions = sess.opts.optimize == config::Default ||
-                               sess.opts.optimize == config::Aggressive;
+        self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
+                               sess.opts.optimize == config::OptLevel::Aggressive;
     }
 }
 
