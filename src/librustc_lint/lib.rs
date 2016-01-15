@@ -172,9 +172,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     // We have one lint pass defined specially
     store.register_late_pass(sess, false, box lint::GatherNodeLevels);
 
-    // Insert temporary renamings for a one-time deprecation
+    // Register renamed and removed lints
     store.register_renamed("unknown_features", "unused_features");
-
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
     store.register_removed("negate_unsigned", "cast a signed value instead");
+    store.register_removed("raw_pointer_derive", "using derive with raw pointers is ok");
+    // This was renamed to raw_pointer_derive, which was then removed,
+    // so it is also considered removed
+    store.register_removed("raw_pointer_deriving", "using derive with raw pointers is ok");
 }
