@@ -275,13 +275,15 @@ impl OpenOptions {
 
     fn get_creation_mode(&self) -> io::Result<c_int> {
         match (self.write, self.append) {
-            (true,  false) => {}
-            (false, false) => if self.truncate || self.create || self.create_new {
-                                  return Err(Error::from_raw_os_error(libc::EINVAL));
-                              },
-            (_,     true)  => if self.truncate && !self.create_new {
-                                  return Err(Error::from_raw_os_error(libc::EINVAL));
-                              },
+            (true, false) => {}
+            (false, false) =>
+                if self.truncate || self.create || self.create_new {
+                    return Err(Error::from_raw_os_error(libc::EINVAL));
+                },
+            (_, true) =>
+                if self.truncate && !self.create_new {
+                    return Err(Error::from_raw_os_error(libc::EINVAL));
+                },
         }
 
         Ok(match (self.create, self.truncate, self.create_new) {
