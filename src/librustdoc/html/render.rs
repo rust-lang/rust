@@ -819,7 +819,7 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
     F: FnMut(&str),
 {
     // make it relative, if possible
-    let p = p.relative_from(src_root).unwrap_or(p);
+    let p = p.strip_prefix(src_root).unwrap_or(p);
 
     let mut iter = p.iter().map(|x| x.to_str().unwrap()).peekable();
     while let Some(c) = iter.next() {

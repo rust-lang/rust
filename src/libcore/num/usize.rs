@@ -14,4 +14,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-uint_module! { usize, isize, ::isize::BITS }
+#[cfg(target_pointer_width = "32")]
+uint_module! { usize, isize, 32 }
+#[cfg(target_pointer_width = "64")]
+uint_module! { usize, isize, 64 }

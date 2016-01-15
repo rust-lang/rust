@@ -26,6 +26,7 @@ use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
 use util::nodemap::NodeMap;
 
+use graphviz::IntoCow;
 use syntax::{ast, abi};
 use rustc_front::hir::Expr;
 use rustc_front::hir;
@@ -35,8 +36,7 @@ use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap;
 
-use std::borrow::{Cow, IntoCow};
-use std::num::wrapping::OverflowingOps;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
 use std::hash;

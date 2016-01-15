@@ -89,6 +89,9 @@ impl Ipv4Addr {
     }
 
     /// Returns true if this is a loopback address (127.0.0.0/8).
+    ///
+    /// This property is defined by RFC 6890
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
     }
@@ -100,6 +103,7 @@ impl Ipv4Addr {
     ///  - 10.0.0.0/8
     ///  - 172.16.0.0/12
     ///  - 192.168.0.0/16
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_private(&self) -> bool {
         match (self.octets()[0], self.octets()[1]) {
             (10, _) => true,
@@ -110,6 +114,9 @@ impl Ipv4Addr {
     }
 
     /// Returns true if the address is link-local (169.254.0.0/16).
+    ///
+    /// This property is defined by RFC 6890
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_link_local(&self) -> bool {
         self.octets()[0] == 169 && self.octets()[1] == 254
     }
@@ -130,7 +137,9 @@ impl Ipv4Addr {
 
     /// Returns true if this is a multicast address.
     ///
-    /// Multicast addresses have a most significant octet between 224 and 239.
+    /// Multicast addresses have a most significant octet between 224 and 239,
+    /// and is defined by RFC 5771
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
@@ -138,6 +147,7 @@ impl Ipv4Addr {
     /// Returns true if this is a broadcast address.
     ///
     /// A broadcast address has all octets set to 255 as defined in RFC 919.
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_broadcast(&self) -> bool {
         self.octets()[0] == 255 && self.octets()[1] == 255 &&
         self.octets()[2] == 255 && self.octets()[3] == 255
@@ -150,6 +160,7 @@ impl Ipv4Addr {
     /// - 192.0.2.0/24 (TEST-NET-1)
     /// - 198.51.100.0/24 (TEST-NET-2)
     /// - 203.0.113.0/24 (TEST-NET-3)
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_documentation(&self) -> bool {
         match(self.octets()[0], self.octets()[1], self.octets()[2], self.octets()[3]) {
             (192, 0, 2, _) => true,
@@ -302,11 +313,17 @@ impl Ipv6Addr {
     }
 
     /// Returns true for the special 'unspecified' address ::.
+    ///
+    /// This property is defined in RFC 6890.
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_unspecified(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 0]
     }
 
     /// Returns true if this is a loopback address (::1).
+    ///
+    /// This property is defined in RFC 6890.
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
         self.segments() == [0, 0, 0, 0, 0, 0, 0, 1]
     }
@@ -378,7 +395,9 @@ impl Ipv6Addr {
 
     /// Returns true if this is a multicast address.
     ///
-    /// Multicast addresses have the form ff00::/8.
+    /// Multicast addresses have the form ff00::/8, and this property is defined
+    /// by RFC 3956.
+    #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_multicast(&self) -> bool {
         (self.segments()[0] & 0xff00) == 0xff00
     }

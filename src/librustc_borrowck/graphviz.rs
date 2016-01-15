@@ -23,7 +23,7 @@ use dot;
 use rustc::middle::cfg::CFGIndex;
 use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use std::rc::Rc;
-use std::borrow::IntoCow;
+use dot::IntoCow;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Variant {

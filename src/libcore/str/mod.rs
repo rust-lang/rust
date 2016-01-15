@@ -32,7 +32,6 @@ use option::Option::{self, None, Some};
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};
-use usize;
 
 pub mod pattern;
 
@@ -1160,15 +1159,16 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
-            const BYTES_PER_ITERATION: usize = 2 * usize::BYTES;
+            let usize_bytes = mem::size_of::<usize>();
+            let bytes_per_iteration = 2 * usize_bytes;
             let ptr = v.as_ptr();
-            let align = (ptr as usize + offset) & (usize::BYTES - 1);
+            let align = (ptr as usize + offset) & (usize_bytes - 1);
             if align == 0 {
-                if len >= BYTES_PER_ITERATION {
-                    while offset <= len - BYTES_PER_ITERATION {
+                if len >= bytes_per_iteration {
+                    while offset <= len - bytes_per_iteration {
                         unsafe {
                             let u = *(ptr.offset(offset as isize) as *const usize);
-                            let v = *(ptr.offset((offset + usize::BYTES) as isize) as *const usize);
+                            let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
 
                             // break if there is a nonascii byte
                             let zu = contains_nonascii(u);
@@ -1177,7 +1177,7 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                                 break;
                             }
                         }
-                        offset += BYTES_PER_ITERATION;
+                        offset += bytes_per_iteration;
                     }
                 }
                 // step from the point where the wordwise loop stopped

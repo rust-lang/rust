@@ -275,20 +275,20 @@ impl LateLintPass for TypeLimits {
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
                 ast::TyIs => int_ty_bits(target_int_ty, target_int_ty),
-                ast::TyI8 =>    i8::BITS  as u64,
-                ast::TyI16 =>   i16::BITS as u64,
-                ast::TyI32 =>   i32::BITS as u64,
-                ast::TyI64 =>   i64::BITS as u64
+                ast::TyI8 => 8,
+                ast::TyI16 => 16 as u64,
+                ast::TyI32 => 32,
+                ast::TyI64 => 64,
             }
         }
 
         fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
                 ast::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
-                ast::TyU8 =>    u8::BITS  as u64,
-                ast::TyU16 =>   u16::BITS as u64,
-                ast::TyU32 =>   u32::BITS as u64,
-                ast::TyU64 =>   u64::BITS as u64
+                ast::TyU8 => 8,
+                ast::TyU16 => 16,
+                ast::TyU32 => 32,
+                ast::TyU64 => 64,
             }
         }
 
