@@ -62,7 +62,7 @@ use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::save;
 use rustc::session::{config, Session, build_session};
-use rustc::session::config::{Input, PrintRequest, OutputType};
+use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
 use rustc::lint;
@@ -72,6 +72,7 @@ use rustc::util::common::time;
 
 use std::cmp::max;
 use std::cmp::Ordering::Equal;
+use std::default::Default;
 use std::env;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
@@ -126,7 +127,7 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
 
     let descriptions = diagnostics_registry();
 
-    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.color));
+    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.error_format));
 
     let (odir, ofile) = make_output(&matches);
     let (input, input_file_path) = match make_input(&matches.free) {
@@ -214,7 +215,7 @@ pub trait CompilerCalls<'a> {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &diagnostics::registry::Registry,
-                      _: errors::ColorConfig)
+                      _: ErrorOutputType)
                       -> Compilation {
         Compilation::Continue
     }
@@ -290,7 +291,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       descriptions: &diagnostics::registry::Registry,
-                      color: errors::ColorConfig)
+                      output: ErrorOutputType)
                       -> Compilation {
         match matches.opt_str("explain") {
             Some(ref code) => {
@@ -305,7 +306,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         print!("{}", &description[1..]);
                     }
                     None => {
-                        early_error(color, &format!("no extended information for {}", code));
+                        early_error(output, &format!("no extended information for {}", code));
                     }
                 }
                 return Compilation::Stop;
@@ -339,10 +340,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 if should_stop == Compilation::Stop {
                     return None;
                 }
-                early_error(sopts.color, "no input filename given");
+                early_error(sopts.error_format, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(sopts.color, "multiple input filenames provided"),
+            _ => early_error(sopts.error_format, "multiple input filenames provided"),
         }
 
         None
@@ -432,7 +433,7 @@ impl RustcDefaultCalls {
                     println!("{}", String::from_utf8(v).unwrap());
                 }
                 &Input::Str(_) => {
-                    early_error(sess.opts.color, "cannot list metadata for stdin");
+                    early_error(ErrorOutputType::default(), "cannot list metadata for stdin");
                 }
             }
             return Compilation::Stop;
@@ -459,7 +460,7 @@ impl RustcDefaultCalls {
                 PrintRequest::CrateName => {
                     let input = match input {
                         Some(input) => input,
-                        None => early_error(sess.opts.color, "no input file provided"),
+                        None => early_error(ErrorOutputType::default(), "no input file provided"),
                     };
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = driver::build_output_filenames(input, odir, ofile, attrs, sess);
@@ -752,7 +753,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                             &opt.opt_group.short_name
                         };
                         if m.opt_present(opt_name) {
-                            early_error(errors::ColorConfig::Auto,
+                            early_error(ErrorOutputType::default(),
                                         &format!("use of unstable option '{}' requires -Z \
                                                   unstable-options",
                                                  opt_name));
@@ -761,7 +762,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                 }
                 m
             }
-            Err(f) => early_error(errors::ColorConfig::Auto, &f.to_string()),
+            Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
         }
     }
 

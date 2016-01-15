@@ -43,7 +43,7 @@ pub trait Emitter {
 /// maximum number of lines we will print for each error; arbitrary.
 const MAX_LINES: usize = 6;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ColorConfig {
     Auto,
     Always,

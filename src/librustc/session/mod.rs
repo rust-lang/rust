@@ -17,7 +17,8 @@ use util::nodemap::{NodeMap, FnvHashMap};
 use syntax::ast::{NodeId, NodeIdAssigner, Name};
 use syntax::codemap::Span;
 use syntax::errors::{self, DiagnosticBuilder};
-use syntax::errors::emitter::{Emitter, BasicEmitter};
+use syntax::errors::emitter::{Emitter, BasicEmitter, EmitterWriter};
+use syntax::errors::json::JsonEmitter;
 use syntax::diagnostics;
 use syntax::feature_gate;
 use syntax::parse;
@@ -405,12 +406,19 @@ pub fn build_session(sopts: config::Options,
     let treat_err_as_bug = sopts.treat_err_as_bug;
 
     let codemap = Rc::new(codemap::CodeMap::new());
+    let emitter: Box<Emitter> = match sopts.error_format {
+        config::ErrorOutputType::HumanReadable(color_config) => {
+            Box::new(EmitterWriter::stderr(color_config, Some(registry), codemap.clone()))
+        }
+        config::ErrorOutputType::Json => {
+            Box::new(JsonEmitter::stderr(Some(registry), codemap.clone()))
+        }
+    };
+
     let diagnostic_handler =
-        errors::Handler::new(sopts.color,
-                             Some(registry),
-                             can_print_warnings,
-                             treat_err_as_bug,
-                             codemap.clone());
+        errors::Handler::with_emitter(can_print_warnings,
+                                      treat_err_as_bug,
+                                      emitter);
 
     build_session_(sopts, local_crate_source_file, diagnostic_handler, codemap, cstore)
 }
@@ -473,13 +481,23 @@ pub fn build_session_(sopts: config::Options,
     sess
 }
 
-pub fn early_error(color: errors::ColorConfig, msg: &str) -> ! {
-    let mut emitter = BasicEmitter::stderr(color);
+pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
+    let mut emitter: Box<Emitter> = match output {
+        config::ErrorOutputType::HumanReadable(color_config) => {
+            Box::new(BasicEmitter::stderr(color_config))
+        }
+        config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+    };
     emitter.emit(None, msg, None, errors::Level::Fatal);
     panic!(errors::FatalError);
 }
 
-pub fn early_warn(color: errors::ColorConfig, msg: &str) {
-    let mut emitter = BasicEmitter::stderr(color);
+pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
+    let mut emitter: Box<Emitter> = match output {
+        config::ErrorOutputType::HumanReadable(color_config) => {
+            Box::new(BasicEmitter::stderr(color_config))
+        }
+        config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
+    };
     emitter.emit(None, msg, None, errors::Level::Warning);
 }

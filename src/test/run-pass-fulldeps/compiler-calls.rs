@@ -35,7 +35,7 @@ impl<'a> CompilerCalls<'a> for TestCalls {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &diagnostics::registry::Registry,
-                      _: errors::emitter::ColorConfig)
+                      _: config::ErrorOutputType)
                       -> Compilation {
         self.count *= 2;
         Compilation::Continue
