@@ -31,57 +31,95 @@ use sys::{self, cvt, cvt_r};
 
 #[derive(Clone)]
 pub struct Command {
-    pub program: CString,
-    pub args: Vec<CString>,
-    pub env: Option<HashMap<OsString, OsString>>,
-    pub cwd: Option<CString>,
-    pub uid: Option<uid_t>,
-    pub gid: Option<gid_t>,
-    pub session_leader: bool,
+    program: CString,
+    args: Vec<CString>,
+    env: Option<HashMap<OsString, OsString>>, // Guaranteed to have no NULs.
+    cwd: Option<CString>,
+    uid: Option<uid_t>,
+    gid: Option<gid_t>,
+    session_leader: bool,
+    saw_nul: bool,
 }
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
+        let mut saw_nul = false;
         Command {
-            program: os2c(program),
+            program: os2c(program, &mut saw_nul),
             args: Vec::new(),
             env: None,
             cwd: None,
             uid: None,
             gid: None,
             session_leader: false,
+            saw_nul: saw_nul,
         }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(os2c(arg));
+        self.args.push(os2c(arg, &mut self.saw_nul));
     }
     pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        self.args.extend(args.map(os2c));
+        let mut saw_nul = self.saw_nul;
+        self.args.extend(args.map(|arg| os2c(arg, &mut saw_nul)));
+        self.saw_nul = saw_nul;
     }
     fn init_env_map(&mut self) {
         if self.env.is_none() {
+            // Will not add NULs to env: preexisting environment will not contain any.
             self.env = Some(env::vars_os().collect());
         }
     }
     pub fn env(&mut self, key: &OsStr, val: &OsStr) {
+        let k = OsString::from_vec(os2c(key, &mut self.saw_nul).into_bytes());
+        let v = OsString::from_vec(os2c(val, &mut self.saw_nul).into_bytes());
+
+        // Will not add NULs to env: return without inserting if any were seen.
+        if self.saw_nul {
+            return;
+        }
+
         self.init_env_map();
-        self.env.as_mut().unwrap().insert(key.to_os_string(), val.to_os_string());
+        self.env.as_mut()
+            .unwrap()
+            .insert(k, v);
     }
     pub fn env_remove(&mut self, key: &OsStr) {
         self.init_env_map();
-        self.env.as_mut().unwrap().remove(&key.to_os_string());
+        self.env.as_mut().unwrap().remove(key);
     }
     pub fn env_clear(&mut self) {
         self.env = Some(HashMap::new())
     }
     pub fn cwd(&mut self, dir: &OsStr) {
-        self.cwd = Some(os2c(dir));
+        self.cwd = Some(os2c(dir, &mut self.saw_nul));
+    }
+    pub fn uid(&mut self, id: uid_t) {
+        self.uid = Some(id);
+    }
+    pub fn gid(&mut self, id: gid_t) {
+        self.gid = Some(id);
+    }
+    pub fn session_leader(&mut self, session_leader: bool) {
+        self.session_leader = session_leader;
     }
 }
 
-fn os2c(s: &OsStr) -> CString {
-    CString::new(s.as_bytes()).unwrap()
+fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
+    CString::new(s.as_bytes()).unwrap_or_else(|_e| {
+        *saw_nul = true;
+        CString::new("<string-with-nul>").unwrap()
+    })
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{:?}", self.program));
+        for arg in &self.args {
+            try!(write!(f, " {:?}", arg));
+        }
+        Ok(())
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,6 +213,10 @@ impl Process {
                  in_fd: Stdio,
                  out_fd: Stdio,
                  err_fd: Stdio) -> io::Result<Process> {
+        if cfg.saw_nul {
+            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
+        }
+
         let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
 
         let (envp, _a, _b) = make_envp(cfg.env.as_ref());
