@@ -325,14 +325,11 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprRepeat(ref v, ref c) => ExprKind::Repeat {
                 value: v.to_ref(),
-                count: Expr {
+                count: Constant {
                     ty: cx.tcx.expr_ty(c),
-                    temp_lifetime: None,
                     span: c.span,
-                    kind: ExprKind::Literal {
-                        literal: cx.const_eval_literal(c)
-                    }
-                }.to_ref()
+                    literal: cx.const_eval_literal(c)
+                }
             },
             hir::ExprRet(ref v) =>
                 ExprKind::Return { value: v.to_ref() },
