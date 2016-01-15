@@ -1586,7 +1586,8 @@ pub fn is_extern_item(cdata: Cmd, id: DefIndex, tcx: &ty::ctxt) -> bool {
     };
 
     if applicable {
-        attr::contains_extern_indicator(&get_attributes(item_doc))
+        attr::contains_extern_indicator(tcx.sess.diagnostic(),
+                                        &get_attributes(item_doc))
     } else {
         false
     }

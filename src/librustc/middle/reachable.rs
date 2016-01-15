@@ -237,7 +237,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 } else {
                     false
                 };
-                if reachable || attr::contains_extern_indicator(&item.attrs) {
+                let is_extern = attr::contains_extern_indicator(&self.tcx.sess.diagnostic(),
+                                                                &item.attrs);
+                if reachable || is_extern {
                     self.reachable_symbols.insert(search_item);
                 }
             }

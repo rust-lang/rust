@@ -298,16 +298,16 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
 }
 
 /// Find the value of #[export_name=*] attribute and check its validity.
-pub fn find_export_name_attr(diag: Option<&Handler>, attrs: &[Attribute]) -> Option<InternedString> {
+pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<InternedString> {
     attrs.iter().fold(None, |ia,attr| {
         if attr.check_name("export_name") {
             if let s@Some(_) = attr.value_str() {
                 s
             } else {
-                diag.map(|d| d.struct_span_err(attr.span,
+                diag.struct_span_err(attr.span,
                                      "export_name attribute has invalid format")
                     .help("use #[export_name=\"*\"]")
-                    .emit());
+                    .emit();
                 None
             }
         } else {
@@ -316,9 +316,9 @@ pub fn find_export_name_attr(diag: Option<&Handler>, attrs: &[Attribute]) -> Opt
     })
 }
 
-pub fn contains_extern_indicator(attrs: &[Attribute]) -> bool {
+pub fn contains_extern_indicator(diag: &Handler, attrs: &[Attribute]) -> bool {
     contains_name(attrs, "no_mangle") ||
-        find_export_name_attr(None, attrs).is_some()
+        find_export_name_attr(diag, attrs).is_some()
 }
 
 #[derive(Copy, Clone, PartialEq)]
