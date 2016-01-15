@@ -1,7 +1,8 @@
 #![feature(plugin)]
-
 #![plugin(clippy)]
+
 #![deny(clippy)]
+#![allow(boxed_local)]
 
 macro_rules! boxit {
     ($init:expr, $x:ty) => {

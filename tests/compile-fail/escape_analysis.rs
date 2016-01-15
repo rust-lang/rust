@@ -19,6 +19,10 @@ fn warn_call() {
     x.foo(); 
 }
 
+fn warn_arg(x: Box<A>) { //~ ERROR local variable
+    x.foo();
+}
+
 fn warn_rename_call() {
     let x = box A;
 
