@@ -26,4 +26,5 @@ fn main() {
     meh(foo);
     //~^ ERROR: mismatched types:
     //~| NOTE: conflicting type parameter defaults `bool` and `char`
+    //~| NOTE:  ...that was applied to an unconstrained type variable here
 }
