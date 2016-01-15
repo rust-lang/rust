@@ -48,11 +48,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Terminator::Switch { ref discr, ref adt_def, ref targets } => {
-                let adt_ty = bcx.tcx().lookup_item_type(adt_def.did).ty;
-                let represented_ty = adt::represent_type(bcx.ccx(), adt_ty);
-
                 let discr_lvalue = self.trans_lvalue(bcx, discr);
-                let discr = adt::trans_get_discr(bcx, &represented_ty, discr_lvalue.llval, None);
+                let ty = discr_lvalue.ty.to_ty(bcx.tcx());
+                let repr = adt::represent_type(bcx.ccx(), ty);
+                let discr = adt::trans_get_discr(bcx, &repr, discr_lvalue.llval, None);
 
                 // The else branch of the Switch can't be hit, so branch to an unreachable
                 // instruction so LLVM knows that
@@ -61,7 +60,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let switch = build::Switch(bcx, discr, unreachable_blk.llbb, targets.len());
                 assert_eq!(adt_def.variants.len(), targets.len());
                 for (adt_variant, target) in adt_def.variants.iter().zip(targets) {
-                    let llval = adt::trans_case(bcx, &*represented_ty, adt_variant.disr_val);
+                    let llval = adt::trans_case(bcx, &*repr, adt_variant.disr_val);
                     let llbb = self.llblock(*target);
 
                     build::AddCase(switch, llval, llbb)

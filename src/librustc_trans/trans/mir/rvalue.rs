@@ -98,13 +98,19 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
-                    // Unit struct or variant; both are translated very differently compared to any
-                    // other aggregate
-                    mir::AggregateKind::Adt(adt_def, index, _)
-                    if adt_def.variants[index].kind() == ty::VariantKind::Unit => {
+                    mir::AggregateKind::Adt(adt_def, index, _) => {
                         let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
                         let disr = adt_def.variants[index].disr_val;
                         adt::trans_set_discr(bcx, &*repr, dest.llval, disr);
+                        for (i, operand) in operands.iter().enumerate() {
+                            let op = self.trans_operand(bcx, operand);
+                            // Do not generate stores and GEPis for zero-sized fields.
+                            if !common::type_is_zero_size(bcx.ccx(), op.ty) {
+                                let val = adt::MaybeSizedValue::sized(dest.llval);
+                                let lldest_i = adt::trans_field_ptr(bcx, &*repr, val, disr, i);
+                                self.store_operand(bcx, lldest_i, op);
+                            }
+                        }
                     },
                     _ => {
                         for (i, operand) in operands.iter().enumerate() {
