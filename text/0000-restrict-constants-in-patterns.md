@@ -6,22 +6,43 @@
 # Summary
 [summary]: #summary
 
-Feature-gate the use of constants in patterns unless those constants
-have simple types, like integers, booleans, and characters. The
-semantics of constants in general were never widely discussed and the
-compiler's current implementation is not broadly agreed upon (though
-it has many proponents). The intention of adding a feature-gate is to
-give us time to discuss and settle on the desired semantics in an
-"affirmative" way.
+The current compiler implements a more expansive semantics for pattern
+matching than was originally intended. This RFC introduces several
+mechanisms to reign in these semantics without actually breaking
+(much, if any) extant code:
 
-Because the compiler currently accepts a larger set of constants, this
-is a backwards incompatible change. This is justified as part of the
-["underspecified language semantics" clause of RFC 1122][ls]. A
-[crater run] found 14 regressions on crates.io, which suggests that
-the impact of this change on real code would be minimal.
+- Introduce a feature-gated attribute `#[structural_match]` which can
+  be applied to a struct or enum `T` to indicate that constants of
+  type `T` can be used within patterns.
+- Have `#[derive(Eq)]` automatically apply this attribute to
+  the struct or enum that it decorates. **Automatically inserted attributes
+  do not require use of feature-gate.**
+- When expanding constants of struct or enum type into equivalent
+  patterns, require that the struct or enum type is decorated with
+  `#[structural_match]`. Constants of builtin types are always
+  expanded.
 
-Note: this was also discussed on an [internals thread]. Major points
-from that thread are summarized either inline or in alternatives.
+The practical effect of these changes will be to prevent the use of
+constants in patterns unless the type of those constants is either a
+built-in type (like `i32` or `&str`) or a user-defined constant for
+which `Eq` is **derived** (not merely *implemented*).
+
+To be clear, this `#[structural_match]` attribute is **never intended
+to be stabilized**. Rather, the intention of this change is to
+restrict constant patterns to those cases that everyone can agree on
+for now. We can then have further discussion to settle the best
+semantics in the long term.
+
+Because the compiler currently accepts arbitrary constant patterns,
+this is technically a backwards incompatible change. However, the
+design of the RFC means that existing code that uses constant patterns
+will generally "just work". The justification for this change is that
+it is clarifying
+["underspecified language semantics" clause, as described in RFC 1122][ls].
+
+**Note:** this was also discussed on an [internals thread]. Major
+points from that thread are summarized either inline or in
+alternatives.
 
 [ls]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md#underspecified-language-semantics
 [crater run]: https://gist.github.com/nikomatsakis/26096ec2a2df3c1fb224
@@ -391,51 +412,54 @@ variant* is distinct from matching against a *constant*.
 # Detailed design
 [design]: #detailed-design
 
-Define the set of builtin types `B` as follows:
+The goal of this RFC is not to decide between semantic and structural
+equality. Rather, the goal is to restrict pattern matching to that subset
+of types where the two variants behave roughly the same.
 
-```
-B = i8 | i16 | i32 | i64 | isize  // signed integers
-  | u8 | u16 | u32 | u64 | usize  // unsigned integers
-  | char                          // characters 
-  | bool                          // booleans
-  | (B, ..., B)                   // tuples of builtin types
-```
+### The structural match attribute
 
-Any constants appearing in a pattern whose type is not a member of `B`
-will be feature-gated. This feature-gate will be phased in using a
-deprecation cycle, as usual.
+We will introduce an attribute `#[structural_match]` which can be
+applied to struct and enum types. Explicit use of this attribute will
+(naturally) be feature-gated. When converting a constant value into a
+pattern, if the constant is of struct or enum type, we will check
+whether this attribute is present on the struct -- if so, we will
+convert the value as we do today. If not, we will report an error that
+the struct/enum value cannot be used in a pattern.
+
+### Behavior of `#[derive(Eq)]`
+
+When deriving the `Eq` trait, we will add the `#[structural_match]` to
+the type in question. Attributes added in this way will be **exempt from
+the feature gate**.
+
+### Phasing
+
+We will not make this change instantaneously. Rather, for at least one
+release cycle, users who are pattern matching on struct types that
+lack `#[structural_match]` will be warned about imminent breakage.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-This is a breaking change, which means some people will have to change
-their code. Moreover, code that is currently using constants of disallowed
-types becomes slightly more verbose. For example:
-
-```rust
-match foo {
-    Some(CONSTANT) => ...,
-    None => ...,
-}
-```
-
-would now be written:
-
-```rust
-match foo {
-    Some(v) if v == CONSTANT => ...,
-    None => ...,
-}
-```
+This is a breaking change, which means some people might have to
+change their code. However, that is considered extremely unlikely,
+because such users would have to be pattern matching on constants that
+are not comparable for equality (this is likely a bug in any case).
 
 # Alternatives
 [alternatives]: #alternatives
 
-**No changes.** Naturally we could opt to keep the semantics as they
-are. The advantages and disadvantages are discussed above.
+ **Limit matching to builtin types.** An earlier version of this RFC
+limited matching to builtin types like integers (and tuples of
+integers). This RFC is a generalization of that which also
+accommodates struct types that derive `Eq`.
+
+**Embrace current semantics (structural equality).** Naturally we
+could opt to keep the semantics as they are. The advantages and
+disadvantages are discussed above.
 
 **Embrace semantic equality.** We could opt to just go straight
-towards "semantic equality". Howver, it seems better to reset the
+towards "semantic equality". However, it seems better to reset the
 semantics to a base point that everyone can agree on, and then extend
 from that base point. Moreover, adopting semantic equality straight
 out would be a riskier breaking change, as it could silently change
@@ -470,14 +494,27 @@ constants for that purpose.
 [unresolved]: #unresolved-questions
 
 **Should we also adjust the exhaustiveness and match analysis
-algorithm to be more conservative around constants?** This RFC just
-proposes limiting the types of constants that can be used in a match
-pattern. However, since the code currently inlines the actual values
-of constants before doing exhaustiveness checking, this also implies
-that it can compute exhaustiveness and dead-code in cases where it
-arguably should not be able to.
+algorithm to be more conservative around user-defined structs and
+enums?** This RFC leaves exhaustiveness and dead-code checking
+unchanged. If we adopted semantic equality semantics, then we would
+have to assume that the `Eq` impls are not buggy in order for the
+exhaustiveness checking to continue working like this (that is, we
+would have to assume that `x == x` always returned true). That said,
+this might be OK, so long as the compiler handles the failure in some
+graceful way, rather than generating undefined behavior. Furthermore,
+in practice it is rather challenging to successfully make an
+exhaustive match using user-defined constants unless they are
+something trivial like newtype'd bools.
 
-For example, the following code
+Still, for maximum flexibility, the ideal behavior would be to be
+conservative around exhaustiveness checking, but still detect and warn
+about "dead-code" arms (e.g., `match foo { C => _, C => _ }`). We
+would want to determine how possible this is.
+
+**What about exhaustiveness etc on builtin types?** Even if we ignore
+user-defined types, there are complications around exhaustiveness
+checking for constants of any kind related to associated constants and
+other possible future extensions.  For example, the following code
 [fails to compile](http://is.gd/PJjNKl) because it contains dead-code:
 
 ```rust
@@ -512,14 +549,17 @@ fn bar<T:Trait>(foo: u64) {
 
 Here, although it may well be that `T::X == T::Y`, we can't know for
 sure. So, for consistency, we may wish to treat all constants opaquely
-regardless of whether we are in a generic context or not.
+regardless of whether we are in a generic context or not. (However, it
+also seems reasonable to make a "best effort" attempt at
+exhaustiveness and dead pattern checking, erring on the conservative
+side in those cases where constants cannot be fully evaluated.)
 
-Another argument in favor of treating all constants opaquely is that
-the current behavior can leak details that perhaps were intended to be
-hidden. For example, imagine that I define a fn `hash` that, given a
-previous hash and a value, produces a new hash.  Because I am lazy and
-prototyping my system, I decide for now to just ignore the new value
-and pass the old hash through:
+A different argument in favor of treating all constants opaquely is
+that the current behavior can leak details that perhaps were intended
+to be hidden. For example, imagine that I define a fn `hash` that,
+given a previous hash and a value, produces a new hash.  Because I am
+lazy and prototyping my system, I decide for now to just ignore the
+new value and pass the old hash through:
 
 ```rust
 const fn add_to_hash(prev_hash: u64, _value: u64) -> u64 {
