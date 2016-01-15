@@ -19,7 +19,7 @@ use std::io::{self, Write, Read, stdout, BufWriter};
 
 use config::{NewlineStyle, Config, WriteMode};
 use rustfmt_diff::{make_diff, print_diff, Mismatch};
-use checkstyle::{output_heading, output_footing, output_checkstyle_file};
+use checkstyle::{output_header, output_footer, output_checkstyle_file};
 
 // A map of the files of a crate, with their new content
 pub type FileMap = HashMap<String, StringBuffer>;
@@ -35,11 +35,11 @@ pub fn write_all_files(file_map: &FileMap,
                        mode: WriteMode,
                        config: &Config)
                        -> Result<(), io::Error> {
-    output_heading(mode).ok();
+    output_header(mode).ok();
     for filename in file_map.keys() {
         try!(write_file(&file_map[filename], filename, mode, config));
     }
-    output_footing(mode).ok();
+    output_footer(mode).ok();
 
     Ok(())
 }

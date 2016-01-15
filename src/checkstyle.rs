@@ -12,7 +12,7 @@ use std::io::{self, Write, Read, stdout};
 use config::WriteMode;
 
 
-pub fn output_heading(mode: WriteMode) -> Result<(), io::Error> {
+pub fn output_header(mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
     if mode == WriteMode::Checkstyle {
@@ -25,7 +25,7 @@ pub fn output_heading(mode: WriteMode) -> Result<(), io::Error> {
     Ok(())
 }
 
-pub fn output_footing(mode: WriteMode) -> Result<(), io::Error> {
+pub fn output_footer(mode: WriteMode) -> Result<(), io::Error> {
     let stdout = stdout();
     let mut stdout = stdout.lock();
     if mode == WriteMode::Checkstyle {
