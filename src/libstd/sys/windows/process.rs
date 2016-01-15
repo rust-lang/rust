@@ -18,7 +18,7 @@ use env;
 use ffi::{OsString, OsStr};
 use fmt;
 use fs;
-use io::{self, Error};
+use io::{self, Error, ErrorKind};
 use libc::c_void;
 use mem;
 use os::windows::ffi::OsStrExt;
@@ -43,13 +43,21 @@ fn mk_key(s: &OsStr) -> OsString {
     })
 }
 
+fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
+    if str.as_ref().encode_wide().any(|b| b == 0) {
+        Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"))
+    } else {
+        Ok(str)
+    }
+}
+
 #[derive(Clone)]
 pub struct Command {
-    pub program: OsString,
-    pub args: Vec<OsString>,
-    pub env: Option<HashMap<OsString, OsString>>,
-    pub cwd: Option<OsString>,
-    pub detach: bool, // not currently exposed in std::process
+    program: OsString,
+    args: Vec<OsString>,
+    env: Option<HashMap<OsString, OsString>>,
+    cwd: Option<OsString>,
+    detach: bool, // not currently exposed in std::process
 }
 
 impl Command {
@@ -89,6 +97,16 @@ impl Command {
     }
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(dir.to_os_string())
+    }
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{:?}", self.program));
+        for arg in &self.args {
+            try!(write!(f, " {:?}", arg));
+        }
+        Ok(())
     }
 }
 
@@ -153,7 +171,7 @@ impl Process {
         si.hStdError = stderr.raw();
 
         let program = program.as_ref().unwrap_or(&cfg.program);
-        let mut cmd_str = make_command_line(program, &cfg.args);
+        let mut cmd_str = try!(make_command_line(program, &cfg.args));
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
@@ -162,8 +180,8 @@ impl Process {
             flags |= c::DETACHED_PROCESS | c::CREATE_NEW_PROCESS_GROUP;
         }
 
-        let (envp, _data) = make_envp(cfg.env.as_ref());
-        let (dirp, _data) = make_dirp(cfg.cwd.as_ref());
+        let (envp, _data) = try!(make_envp(cfg.env.as_ref()));
+        let (dirp, _data) = try!(make_dirp(cfg.cwd.as_ref()));
         let mut pi = zeroed_process_information();
         try!(unsafe {
             // `CreateProcess` is racy!
@@ -265,22 +283,24 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
     }
 }
 
-// Produces a wide string *without terminating null*
-fn make_command_line(prog: &OsStr, args: &[OsString]) -> Vec<u16> {
+// Produces a wide string *without terminating null*; returns an error if
+// `prog` or any of the `args` contain a nul.
+fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
-    append_arg(&mut cmd, prog);
+    try!(append_arg(&mut cmd, prog));
     for arg in args {
         cmd.push(' ' as u16);
-        append_arg(&mut cmd, arg);
+        try!(append_arg(&mut cmd, arg));
     }
-    return cmd;
+    return Ok(cmd);
 
-    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr) {
+    fn append_arg(cmd: &mut Vec<u16>, arg: &OsStr) -> io::Result<()> {
         // If an argument has 0 characters then we need to quote it to ensure
         // that it actually gets passed through on the command line or otherwise
         // it will be dropped entirely when parsed on the other end.
+        try!(ensure_no_nuls(arg));
         let arg_bytes = &arg.as_inner().inner.as_inner();
         let quote = arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
             || arg_bytes.is_empty();
@@ -312,11 +332,12 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> Vec<u16> {
             }
             cmd.push('"' as u16);
         }
+        Ok(())
     }
 }
 
 fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
-             -> (*mut c_void, Vec<u16>) {
+             -> io::Result<(*mut c_void, Vec<u16>)> {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
@@ -325,26 +346,27 @@ fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
             let mut blk = Vec::new();
 
             for pair in env {
-                blk.extend(pair.0.encode_wide());
+                blk.extend(try!(ensure_no_nuls(pair.0)).encode_wide());
                 blk.push('=' as u16);
-                blk.extend(pair.1.encode_wide());
+                blk.extend(try!(ensure_no_nuls(pair.1)).encode_wide());
                 blk.push(0);
             }
             blk.push(0);
-            (blk.as_mut_ptr() as *mut c_void, blk)
+            Ok((blk.as_mut_ptr() as *mut c_void, blk))
         }
-        _ => (ptr::null_mut(), Vec::new())
+        _ => Ok((ptr::null_mut(), Vec::new()))
     }
 }
 
-fn make_dirp(d: Option<&OsString>) -> (*const u16, Vec<u16>) {
+fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
+
     match d {
         Some(dir) => {
-            let mut dir_str: Vec<u16> = dir.encode_wide().collect();
+            let mut dir_str: Vec<u16> = try!(ensure_no_nuls(dir)).encode_wide().collect();
             dir_str.push(0);
-            (dir_str.as_ptr(), dir_str)
+            Ok((dir_str.as_ptr(), dir_str))
         },
-        None => (ptr::null(), Vec::new())
+        None => Ok((ptr::null(), Vec::new()))
     }
 }
 
@@ -397,11 +419,12 @@ mod tests {
     #[test]
     fn test_make_command_line() {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            String::from_utf16(
-                &make_command_line(OsStr::new(prog),
-                                   &args.iter()
-                                        .map(|a| OsString::from(a))
-                                        .collect::<Vec<OsString>>())).unwrap()
+            let command_line = &make_command_line(OsStr::new(prog),
+                                                  &args.iter()
+                                                       .map(|a| OsString::from(a))
+                                                       .collect::<Vec<OsString>>())
+                                    .unwrap();
+            String::from_utf16(command_line).unwrap()
         }
 
         assert_eq!(
