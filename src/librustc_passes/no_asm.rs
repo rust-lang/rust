@@ -12,7 +12,7 @@
 /// Inline asm isn't allowed on virtual ISA based targets, so we reject it
 /// here.
 
-use session::Session;
+use rustc::session::Session;
 
 use syntax::ast;
 use syntax::visit::Visitor;

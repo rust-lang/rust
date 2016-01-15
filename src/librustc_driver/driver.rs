@@ -632,7 +632,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     time(time_passes,
          "checking for inline asm in case the target doesn't support it",
-         || middle::check_no_asm::check_crate(sess, &krate));
+         || ::rustc_passes::no_asm::check_crate(sess, &krate));
 
     // One final feature gating of the true AST that gets compiled
     // later, to make sure we've got everything (e.g. configuration
@@ -646,6 +646,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });
+
+    time(time_passes,
+         "const fn bodies and arguments",
+         || ::rustc_passes::const_fn::check_crate(sess, &krate));
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
