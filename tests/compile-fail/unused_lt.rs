@@ -52,6 +52,13 @@ pub fn parse2<'a, I>(_it: &mut I) where I: Iterator<Item=&'a str>{
     unimplemented!()
 }
 
+struct X { x: u32 }
+
+impl X {
+    fn self_ref_with_lifetime<'a>(&'a self) {}
+    fn explicit_self_with_lifetime<'a>(self: &'a Self) {}
+}
+
 fn main() {
 
 }

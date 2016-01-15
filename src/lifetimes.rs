@@ -77,7 +77,7 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, g
                   span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
-    report_extra_lifetimes(cx, decl, &generics);
+    report_extra_lifetimes(cx, decl, &generics, slf);
 }
 
 fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>, named_lts: &[LifetimeDef]) -> bool {
@@ -303,14 +303,25 @@ impl<'v> Visitor<'v> for LifetimeChecker {
     }
 }
 
-fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics) {
+fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl,
+                          generics: &Generics, slf: Option<&ExplicitSelf>) {
     let hs = generics.lifetimes
                      .iter()
                      .map(|lt| (lt.lifetime.name, lt.lifetime.span))
                      .collect();
     let mut checker = LifetimeChecker(hs);
+
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
+
+    if let Some(slf) = slf {
+        match slf.node {
+            SelfRegion(Some(ref lt), _, _) => checker.visit_lifetime(lt),
+            SelfExplicit(ref t, _) => walk_ty(&mut checker, t),
+            _ => {}
+        }
+    }
+
     for (_, v) in checker.0 {
         span_lint(cx, UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");
     }
