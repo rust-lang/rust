@@ -158,14 +158,14 @@ fn match_my_opt_none() -> i32 {
     }
 }
 
-// #[miri_run(expected = "Int(13)")]
-// fn match_opt_some() -> i32 {
-//     let x = Some(13);
-//     match x {
-//         Some(data)  => data,
-//         None => 42,
-//     }
-// }
+#[miri_run(expected = "Int(13)")]
+fn match_opt_some() -> i32 {
+    let x = Some(13);
+    match x {
+        Some(data)  => data,
+        None => 42,
+    }
+}
 
 /// Test calling a very simple function from the standard library.
 #[miri_run(expected = "Int(1)")]
