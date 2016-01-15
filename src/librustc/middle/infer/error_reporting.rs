@@ -479,6 +479,14 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                          trace: TypeTrace<'tcx>,
                          terr: &TypeError<'tcx>)
                          -> DiagnosticBuilder<'tcx> {
+        fn is_simple_type<'tcx>(ty: Ty<'tcx>) -> bool {
+            use middle::ty::TypeVariants::*;
+            match ty.sty {
+                TyBool | TyChar | TyInt(_) | TyUint(_) | TyFloat(_) => true,
+                _ => false,
+            }
+        }
+
         let expected_found_str = match self.values_str(&trace.values) {
             Some(v) => v,
             None => {
@@ -486,13 +494,23 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
+        let is_simple_error = if let &TypeError::Sorts(ref values) = terr {
+            is_simple_type(values.expected) && is_simple_type(values.found)
+        } else {
+            false
+        };
+        let err = if is_simple_error {
+            expected_found_str
+        } else {
+            format!("{} ({})", expected_found_str, terr)
+        };
+
         let mut err = struct_span_err!(self.tcx.sess,
                                        trace.origin.span(),
                                        E0308,
-                                       "{}: {} ({})",
+                                       "{}: {}",
                                        trace.origin,
-                                       expected_found_str,
-                                       terr);
+                                       err);
 
         self.check_and_note_conflicting_crates(&mut err, terr, trace.origin.span());
 

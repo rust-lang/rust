@@ -20,14 +20,10 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected `u16`
     //~| found `u8`
-    //~| expected u16
-    //~| found u8
     identity_u16(y);
     //~^ ERROR mismatched types
     //~| expected `u16`
     //~| found `i32`
-    //~| expected u16
-    //~| found i32
 
     let a = 3;
 
@@ -38,7 +34,4 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected `u16`
     //~| found `isize`
-    //~| expected u16
-    //~| found isize
-
 }

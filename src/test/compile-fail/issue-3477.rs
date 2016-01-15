@@ -13,6 +13,4 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected `char`
     //~| found `u8`
-    //~| expected char
-    //~| found u8
 }
