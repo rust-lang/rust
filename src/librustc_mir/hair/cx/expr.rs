@@ -53,7 +53,6 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     // Find the actual method implementation being called and
                     // build the appropriate UFCS call expression with the
                     // callee-object as self parameter.
-
                     let method = method_callee(cx, self, ty::MethodCall::expr(self.id));
                     let mut argrefs = vec![fun.to_ref()];
                     argrefs.extend(args.iter().map(|a| a.to_ref()));
@@ -64,12 +63,40 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                         args: argrefs,
                     }
                 } else {
-                    ExprKind::Call {
-                        ty: &cx.tcx.node_id_to_type(fun.id),
-                        fun: fun.to_ref(),
-                        args: args.to_ref(),
+                    let adt_data = if let hir::ExprPath(..) = fun.node {
+                        // Tuple-like ADTs are represented as ExprCall. We convert them here.
+                        expr_ty.ty_adt_def().and_then(|adt_def|{
+                            match cx.tcx.def_map.borrow()[&fun.id].full_def() {
+                                def::DefVariant(_, variant_id, false) => {
+                                    Some((adt_def, adt_def.variant_index_with_id(variant_id)))
+                                },
+                                def::DefStruct(_) => {
+                                    Some((adt_def, 0))
+                                },
+                                _ => None
+                            }
+                        })
+                    } else { None };
+                    if let Some((adt_def, index)) = adt_data {
+                        let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(fun.id).substs);
+                        let field_refs = args.iter().enumerate().map(|(idx, e)| FieldExprRef {
+                            name: Field::new(idx),
+                            expr: e.to_ref()
+                        }).collect();
+                        ExprKind::Adt {
+                            adt_def: adt_def,
+                            substs: substs,
+                            variant_index: index,
+                            fields: field_refs,
+                            base: None
+                        }
+                    } else {
+                        ExprKind::Call {
+                            ty: cx.tcx.node_id_to_type(fun.id),
+                            fun: fun.to_ref(),
+                            args: args.to_ref(),
+                        }
                     }
-
                 }
             }
 
@@ -549,10 +576,11 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
         def::DefFn(def_id, _) => (def_id, ItemKind::Function),
         def::DefMethod(def_id) => (def_id, ItemKind::Method),
         def::DefStruct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
-            // A tuple-struct constructor.
+            // A tuple-struct constructor. Should only be reached if not called in the same
+            // expression.
             ty::TyBareFn(..) => (def_id, ItemKind::Function),
-            // This is a special case: a unit struct which is used as a value. We return a
-            // completely different ExprKind here to account for this special case.
+            // A unit struct which is used as a value. We return a completely different ExprKind
+            // here to account for this special case.
             ty::TyStruct(adt_def, substs) => return ExprKind::Adt {
                 adt_def: adt_def,
                 variant_index: 0,
@@ -563,7 +591,8 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
             ref sty => panic!("unexpected sty: {:?}", sty)
         },
         def::DefVariant(enum_id, variant_id, false) => match cx.tcx.node_id_to_type(expr.id).sty {
-            // A variant constructor.
+            // A variant constructor. Should only be reached if not called in the same
+            // expression.
             ty::TyBareFn(..) => (variant_id, ItemKind::Function),
             // A unit variant, similar special case to the struct case above.
             ty::TyEnum(adt_def, substs) => {
@@ -900,6 +929,7 @@ fn loop_label<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr) -> Cod
     }
 }
 
+/// Converts a list of named fields (i.e. for struct-like struct/enum ADTs) into FieldExprRef.
 fn field_refs<'tcx>(variant: VariantDef<'tcx>,
                     fields: &'tcx [hir::Field])
                     -> Vec<FieldExprRef<'tcx>>
