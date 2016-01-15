@@ -14,7 +14,7 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp, ItemKind};
+use rustc::mir::repr::{Constant, BinOp, BorrowKind, Field, Literal, Mutability, UnOp, ItemKind};
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
@@ -213,10 +213,7 @@ pub enum ExprKind<'tcx> {
     },
     Repeat {
         value: ExprRef<'tcx>,
-        // FIXME(#29789): Add a separate hair::Constant<'tcx> so this could be more explicit about
-        // its contained data. Currently this should only contain expression of ExprKind::Literal
-        // kind.
-        count: ExprRef<'tcx>,
+        count: Constant<'tcx>,
     },
     Vec {
         fields: Vec<ExprRef<'tcx>>,
@@ -341,7 +338,6 @@ pub struct FieldPattern<'tcx> {
     pub field: Field,
     pub pattern: Pattern<'tcx>,
 }
-
 ///////////////////////////////////////////////////////////////////////////
 // The Mirror trait
 
