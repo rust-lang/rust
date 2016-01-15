@@ -146,11 +146,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // start the loop
                 this.cfg.terminate(block, Terminator::Goto { target: loop_block });
 
-                this.in_loop_scope(loop_block, exit_block, |this| {
+                let might_break = this.in_loop_scope(loop_block, exit_block, move |this| {
                     // conduct the test, if necessary
                     let body_block;
-                    let opt_cond_expr = opt_cond_expr; // FIXME rustc bug
                     if let Some(cond_expr) = opt_cond_expr {
+                        // This loop has a condition, ergo its exit_block is reachable.
+                        this.find_loop_scope(expr_span, None).might_break = true;
+
                         let loop_block_end;
                         let cond = unpack!(loop_block_end = this.as_operand(loop_block, cond_expr));
                         body_block = this.cfg.start_new_block();
@@ -163,21 +165,22 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         body_block = loop_block;
                     }
 
-                    // execute the body, branching back to the test
-                    // We write body’s “return value” into the destination of loop. This is fine,
-                    // because:
-                    //
-                    // * In Rust both loop expression and its body are required to have `()`
-                    //   as the “return value”;
-                    // * The destination will be considered uninitialised (given it was
-                    //   uninitialised before the loop) during the first iteration, thus
-                    //   disallowing its use inside the body. Alternatively, if it was already
-                    //   initialised, the `destination` can only possibly have a value of `()`,
-                    //   therefore, “mutating” the destination during iteration is fine.
-                    let body_block_end = unpack!(this.into(destination, body_block, body));
+                    // The “return” value of the loop body must always be an unit, but we cannot
+                    // reuse that as a “return” value of the whole loop expressions, because some
+                    // loops are diverging (e.g. `loop {}`). Thus, we introduce a unit temporary as
+                    // the destination for the loop body and assign the loop’s own “return” value
+                    // immediately after the iteration is finished.
+                    let tmp = this.get_unit_temp();
+                    // Execute the body, branching back to the test.
+                    let body_block_end = unpack!(this.into(&tmp, body_block, body));
                     this.cfg.terminate(body_block_end, Terminator::Goto { target: loop_block });
-                    exit_block.unit()
-                })
+                });
+                // If the loop may reach its exit_block, we assign an empty tuple to the
+                // destination to keep the MIR well-formed.
+                if might_break {
+                    this.cfg.push_assign_unit(exit_block, expr_span, destination);
+                }
+                exit_block.unit()
             }
             ExprKind::Assign { lhs, rhs } => {
                 // Note: we evaluate assignments right-to-left. This
@@ -217,7 +220,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                        |loop_scope| loop_scope.continue_block)
             }
             ExprKind::Break { label } => {
-                this.break_or_continue(expr_span, label, block, |loop_scope| loop_scope.break_block)
+                this.break_or_continue(expr_span, label, block, |loop_scope| {
+                    loop_scope.might_break = true;
+                    loop_scope.break_block
+                })
             }
             ExprKind::Return { value } => {
                 block = match value {
@@ -303,11 +309,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                             block: BasicBlock,
                             exit_selector: F)
                             -> BlockAnd<()>
-        where F: FnOnce(&LoopScope) -> BasicBlock
+        where F: FnOnce(&mut LoopScope) -> BasicBlock
     {
-        let loop_scope = self.find_loop_scope(span, label);
-        let exit_block = exit_selector(&loop_scope);
-        self.exit_scope(span, loop_scope.extent, block, exit_block);
+        let (exit_block, extent) = {
+            let loop_scope = self.find_loop_scope(span, label);
+            (exit_selector(loop_scope), loop_scope.extent)
+        };
+        self.exit_scope(span, extent, block, exit_block);
         self.cfg.start_new_block().unit()
     }
 }

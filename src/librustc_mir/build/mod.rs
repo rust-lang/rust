@@ -26,6 +26,7 @@ pub struct Builder<'a, 'tcx: 'a> {
     var_decls: Vec<VarDecl<'tcx>>,
     var_indices: FnvHashMap<ast::NodeId, u32>,
     temp_decls: Vec<TempDecl<'tcx>>,
+    unit_temp: Option<Lvalue<'tcx>>,
 }
 
 struct CFG<'tcx> {
@@ -96,6 +97,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         temp_decls: vec![],
         var_decls: vec![],
         var_indices: FnvHashMap(),
+        unit_temp: None
     };
 
     assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -155,6 +157,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
             block.and(arg_decls)
         })
+    }
+
+    fn get_unit_temp(&mut self) -> Lvalue<'tcx> {
+        match self.unit_temp {
+            Some(ref tmp) => tmp.clone(),
+            None => {
+                let ty = self.hir.unit_ty();
+                let tmp = self.temp(ty);
+                self.unit_temp = Some(tmp.clone());
+                tmp
+            }
+        }
     }
 }
 
