@@ -49,6 +49,7 @@ struct Baz<'x> {
 
 impl<'a> Baz<'a> {
     fn baz2<'b>(&self, x: &isize) -> (&'b isize, &'b isize) {
+         //~^ HELP: parameter as shown: fn baz2<'b>(&self, x: &'b isize) -> (&'a isize, &'a isize)
         // The lifetime that gets assigned to `x` seems somewhat random.
         // I have disabled this test for the time being. --pcwalton
         (self.bar, x) //~ ERROR: cannot infer
