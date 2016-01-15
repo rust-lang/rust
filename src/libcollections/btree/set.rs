@@ -453,7 +453,7 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// If the set did not have a value present, `true` is returned.
     ///
-    /// If the set did have this key present, that value is returned, and the
+    /// If the set did have this key present, `false` is returned, and the
     /// entry is not updated. See the [module-level documentation] for more.
     ///
     /// [module-level documentation]: index.html#insert-and-complex-keys
