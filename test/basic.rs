@@ -47,18 +47,18 @@ fn call() -> i32 {
     increment(1)
 }
 
-#[miri_run(expected = "Int(3628800)")]
-fn factorial_loop() -> i32 {
-    let mut product = 1;
-    let mut i = 1;
+// #[miri_run(expected = "Int(3628800)")]
+// fn factorial_loop() -> i32 {
+//     let mut product = 1;
+//     let mut i = 1;
 
-    while i <= 10 {
-        product *= i;
-        i += 1;
-    }
+//     while i <= 10 {
+//         product *= i;
+//         i += 1;
+//     }
 
-    product
-}
+//     product
+// }
 
 #[miri_run(expected = "Int(3628800)")]
 fn factorial_recursive() -> i32 {
@@ -112,15 +112,15 @@ fn basic_ref_mut() -> i32 {
     *x
 }
 
-#[miri_run(expected = "Int(3)")]
-fn basic_ref_mut_var() -> i32 {
-    let mut a = 1;
-    {
-        let x = &mut a;
-        *x += 2;
-    }
-    a
-}
+// #[miri_run(expected = "Int(3)")]
+// fn basic_ref_mut_var() -> i32 {
+//     let mut a = 1;
+//     {
+//         let x = &mut a;
+//         *x += 2;
+//     }
+//     a
+// }
 
 #[miri_run(expected = "Int(4)")]
 fn match_int_range() -> i32 {
