@@ -119,6 +119,11 @@ fn any_fixed_vec() {
     assert!(!test.is::<[usize; 10]>());
 }
 
+#[test]
+fn any_unsized() {
+    fn is_any<T: Any + ?Sized>() {}
+    is_any::<[i32]>();
+}
 
 #[bench]
 fn bench_downcast_ref(b: &mut Bencher) {
