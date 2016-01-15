@@ -11,16 +11,22 @@
 #![feature(associated_consts)]
 
 pub trait Foo {
-    const MIN: i32;
-
-    fn get_min() -> i32 {
-        Self::MIN //~ ERROR E0329
-    }
+    const Y: usize;
 }
 
-fn get_min<T: Foo>() -> i32 {
-    T::MIN; //~ ERROR E0329
-    <T as Foo>::MIN //~ ERROR E0329
+struct Abc;
+impl Foo for Abc {
+    const Y: usize = 8;
 }
 
-fn main() {}
+struct Def;
+impl Foo for Def {
+    const Y: usize = 33;
+}
+
+pub fn test<A: Foo, B: Foo>() {
+    let _array = [4; <A as Foo>::Y]; //~ error: expected constant integer
+}
+
+fn main() {
+}
