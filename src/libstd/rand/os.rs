@@ -30,14 +30,19 @@ mod imp {
                   target_arch = "x86",
                   target_arch = "arm",
                   target_arch = "aarch64",
-                  target_arch = "powerpc")))]
+                  target_arch = "powerpc",
+                  target_arch = "powerpc64",
+                  target_arch = "powerpc64le")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
         #[cfg(target_arch = "x86_64")]
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;
-        #[cfg(any(target_arch = "arm", target_arch = "powerpc"))]
+        #[cfg(target_arch = "arm")]
         const NR_GETRANDOM: libc::c_long = 384;
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64",
+                  target_arch = "powerpc64le"))]
+        const NR_GETRANDOM: libc::c_long = 359;
         #[cfg(target_arch = "aarch64")]
         const NR_GETRANDOM: libc::c_long = 278;
 
@@ -51,7 +56,9 @@ mod imp {
                       target_arch = "x86",
                       target_arch = "arm",
                       target_arch = "aarch64",
-                      target_arch = "powerpc"))))]
+                      target_arch = "powerpc",
+                      target_arch = "powerpc64",
+                      target_arch = "powerpc64le"))))]
     fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
 
     fn getrandom_fill_bytes(v: &mut [u8]) {
@@ -88,7 +95,9 @@ mod imp {
                   target_arch = "x86",
                   target_arch = "arm",
                   target_arch = "aarch64",
-                  target_arch = "powerpc")))]
+                  target_arch = "powerpc",
+                  target_arch = "powerpc64",
+                  target_arch = "powerpc64le")))]
     fn is_getrandom_available() -> bool {
         use sync::atomic::{AtomicBool, Ordering};
         use sync::Once;
@@ -116,7 +125,9 @@ mod imp {
                       target_arch = "x86",
                       target_arch = "arm",
                       target_arch = "aarch64",
-                      target_arch = "powerpc"))))]
+                      target_arch = "powerpc",
+                      target_arch = "powerpc64",
+                      target_arch = "powerpc64le"))))]
     fn is_getrandom_available() -> bool { false }
 
     /// A random number generator that retrieves randomness straight from

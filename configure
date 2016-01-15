@@ -499,11 +499,16 @@ case $CFG_CPUTYPE in
         CFG_CPUTYPE=aarch64
         ;;
 
-    # At some point, when ppc64[le] support happens, this will need to do
-    # something clever. For now it's safe to assume that we're only ever
-    # interested in building 32 bit.
-    powerpc | ppc | ppc64)
+    powerpc | ppc)
         CFG_CPUTYPE=powerpc
+        ;;
+
+    powerpc64 | ppc64)
+        CFG_CPUTYPE=powerpc64
+        ;;
+
+    powerpc64le | ppc64le)
+        CFG_CPUTYPE=powerpc64le
         ;;
 
     x86_64 | x86-64 | x64 | amd64)
