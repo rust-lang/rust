@@ -170,7 +170,6 @@ extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
                                             AtomicOrdering order,
                                             unsigned alignment) {
     LoadInst* li = new LoadInst(unwrap(source),0);
-    li->setVolatile(true);
     li->setAtomic(order);
     li->setAlignment(alignment);
     return wrap(unwrap(B)->Insert(li, Name));
@@ -182,7 +181,6 @@ extern "C" LLVMValueRef LLVMBuildAtomicStore(LLVMBuilderRef B,
                                              AtomicOrdering order,
                                              unsigned alignment) {
     StoreInst* si = new StoreInst(unwrap(val),unwrap(target));
-    si->setVolatile(true);
     si->setAtomic(order);
     si->setAlignment(alignment);
     return wrap(unwrap(B)->Insert(si));
