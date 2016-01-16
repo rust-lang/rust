@@ -910,6 +910,13 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_primitive(&self) -> bool {
+        match self.sty {
+            TyBool | TyChar | TyInt(_) | TyUint(_) | TyFloat(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn is_ty_var(&self) -> bool {
         match self.sty {
             TyInfer(TyVar(_)) => true,
