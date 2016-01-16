@@ -486,13 +486,24 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
+        let is_simple_error = if let &TypeError::Sorts(ref values) = terr {
+            values.expected.is_primitive() && values.found.is_primitive()
+        } else {
+            false
+        };
+
+        let expected_found_str = if is_simple_error {
+            expected_found_str
+        } else {
+            format!("{} ({})", expected_found_str, terr)
+        };
+
         let mut err = struct_span_err!(self.tcx.sess,
                                        trace.origin.span(),
                                        E0308,
-                                       "{}: {} ({})",
+                                       "{}: {}",
                                        trace.origin,
-                                       expected_found_str,
-                                       terr);
+                                       expected_found_str);
 
         self.check_and_note_conflicting_crates(&mut err, terr, trace.origin.span());
 
