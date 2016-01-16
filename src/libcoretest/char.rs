@@ -216,3 +216,43 @@ fn test_decode_utf16() {
     check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);
     check(&[0xD800, 0], &[Err(0xD800), Ok('\0')]);
 }
+
+#[test]
+fn ed_iterator_specializations() {
+    // Check counting
+    assert_eq!('\n'.escape_default().count(), 2);
+    assert_eq!('c'.escape_default().count(), 1);
+    assert_eq!(' '.escape_default().count(), 1);
+    assert_eq!('\\'.escape_default().count(), 2);
+    assert_eq!('\''.escape_default().count(), 2);
+
+    // Check nth
+
+    // Check that OoB is handled correctly
+    assert_eq!('\n'.escape_default().nth(2), None);
+    assert_eq!('c'.escape_default().nth(1), None);
+    assert_eq!(' '.escape_default().nth(1), None);
+    assert_eq!('\\'.escape_default().nth(2), None);
+    assert_eq!('\''.escape_default().nth(2), None);
+
+    // Check the first char
+    assert_eq!('\n'.escape_default().nth(0), Some('\\'));
+    assert_eq!('c'.escape_default().nth(0), Some('c'));
+    assert_eq!(' '.escape_default().nth(0), Some(' '));
+    assert_eq!('\\'.escape_default().nth(0), Some('\\'));
+    assert_eq!('\''.escape_default().nth(0), Some('\\'));
+
+    // Check the second char
+    assert_eq!('\n'.escape_default().nth(1), Some('n'));
+    assert_eq!('\\'.escape_default().nth(1), Some('\\'));
+    assert_eq!('\''.escape_default().nth(1), Some('\''));
+
+    // Check the last char
+    assert_eq!('\n'.escape_default().last(), Some('n'));
+    assert_eq!('c'.escape_default().last(), Some('c'));
+    assert_eq!(' '.escape_default().last(), Some(' '));
+    assert_eq!('\\'.escape_default().last(), Some('\\'));
+    assert_eq!('\''.escape_default().last(), Some('\''));
+}
+
+

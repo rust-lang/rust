@@ -537,4 +537,49 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Done => (0, Some(0)),
         }
     }
+
+    fn count(self) -> usize {
+        match self.state {
+            EscapeDefaultState::Char(_) => 1,
+            EscapeDefaultState::Unicode(iter) => iter.count(),
+            EscapeDefaultState::Done => 0,
+            EscapeDefaultState::Backslash(_) => 2,
+        }
+    }
+
+    fn nth(&mut self, n: usize) -> Option<char> {
+        match self.state {
+            EscapeDefaultState::Backslash(c) if n == 0 => {
+                self.state = EscapeDefaultState::Char(c);
+                Some('\\')
+            },
+            EscapeDefaultState::Backslash(c) if n == 1 => {
+                self.state = EscapeDefaultState::Done;
+                Some(c)
+            },
+            EscapeDefaultState::Backslash(_) => {
+                self.state = EscapeDefaultState::Done;
+                None
+            },
+            EscapeDefaultState::Char(c) => {
+                self.state = EscapeDefaultState::Done;
+
+                if n == 0 {
+                    Some(c)
+                } else {
+                    None
+                }
+            },
+            EscapeDefaultState::Done => return None,
+            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
+        }
+    }
+
+    fn last(self) -> Option<char> {
+        match self.state {
+            EscapeDefaultState::Unicode(iter) => iter.last(),
+            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
+        }
+    }
 }
