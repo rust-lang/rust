@@ -1077,10 +1077,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn atomic_cmpxchg(&self, dst: ValueRef,
                          cmp: ValueRef, src: ValueRef,
                          order: AtomicOrdering,
-                         failure_order: AtomicOrdering) -> ValueRef {
+                         failure_order: AtomicOrdering,
+                         weak: llvm::Bool) -> ValueRef {
         unsafe {
             llvm::LLVMBuildAtomicCmpXchg(self.llbuilder, dst, cmp, src,
-                                         order, failure_order)
+                                         order, failure_order, weak)
         }
     }
     pub fn atomic_rmw(&self, op: AtomicBinOp,
