@@ -200,6 +200,38 @@ macro_rules! try {
     })
 }
 
+/// Helper macro for unwrapping `Option` values while returning early with a
+/// None if the value of the expression is `None`. Can only be used in
+/// functions that return `Option` because of the early return of `None` that
+/// it provides.
+///
+/// # Examples
+///
+/// ```
+/// /// function for dividing and then doubling the value
+/// fn double_divide(num: f64, den: f64) -> Option<f64> {
+///     let value = some!(divide(num, den));
+///     Some(value * 2f64)
+/// }
+///
+/// // This is equivalent to:
+/// fn double_divide(num: f64, den: f64) -> Option<f64> {
+///     let value = match divide(num, den) {
+///         Some(value) => value,
+///         None => return None,
+///     };
+///     Some(value * 2f64)
+/// }
+/// ```
+#[macro_export]
+#[unstable]
+macro_rules! some {
+    ($expr:expr) => (match $expr {
+        Some(val) => val,
+        None => return None,
+    })
+}
+
 /// Use the `format!` syntax to write data into a buffer.
 ///
 /// This macro is typically used with a buffer of `&mut `[`Write`][write].
