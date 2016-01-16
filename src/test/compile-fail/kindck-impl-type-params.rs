@@ -27,14 +27,12 @@ fn f<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a = &t as &Gettable<T>;
     //~^ ERROR the trait `core::marker::Send` is not implemented
-    //~^^ ERROR the trait `core::marker::Copy` is not implemented
 }
 
 fn g<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a: &Gettable<T> = &t;
     //~^ ERROR the trait `core::marker::Send` is not implemented
-    //~^^ ERROR the trait `core::marker::Copy` is not implemented
 }
 
 fn foo<'a>() {

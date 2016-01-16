@@ -13,8 +13,8 @@
 
 extern crate libc;
 
-trait Mirror { type It; }
-impl<T> Mirror for T { type It = Self; }
+trait Mirror { type It: ?Sized; }
+impl<T: ?Sized> Mirror for T { type It = Self; }
 #[repr(C)]
 pub struct StructWithProjection(*mut <StructWithProjection as Mirror>::It);
 #[repr(C)]

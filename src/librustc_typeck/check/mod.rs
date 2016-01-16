@@ -305,7 +305,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
            -> Inherited<'a, 'tcx> {
 
         Inherited {
-            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env), true),
+            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env)),
             locals: RefCell::new(NodeMap()),
             tables: tables,
             deferred_call_resolutions: RefCell::new(DefIdMap()),
@@ -1235,15 +1235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return ty;
         }
 
-        // If not, try resolving any new fcx obligations that have cropped up.
-        self.select_new_obligations();
-        ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        if !ty.has_infer_types() {
-            debug!("resolve_type_vars_if_possible: ty={:?}", ty);
-            return ty;
-        }
-
-        // If not, try resolving *all* pending obligations as much as
+        // If not, try resolving pending obligations as much as
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
@@ -2029,22 +2021,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
         }
     }
-
-    /// Try to select any fcx obligation that we haven't tried yet, in an effort
-    /// to improve inference. You could just call
-    /// `select_obligations_where_possible` except that it leads to repeated
-    /// work.
-    fn select_new_obligations(&self) {
-        match
-            self.inh.infcx.fulfillment_cx
-            .borrow_mut()
-            .select_new_obligations(self.infcx())
-        {
-            Ok(()) => { }
-            Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
-        }
-    }
-
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
@@ -2496,7 +2472,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // an "opportunistic" vtable resolution of any trait bounds on
         // the call. This helps coercions.
         if check_blocks {
-            fcx.select_new_obligations();
+            fcx.select_obligations_where_possible();
         }
 
         // For variadic functions, we don't have a declared type for all of
@@ -4126,7 +4102,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn check_representable(tcx: &ty::ctxt,
                            sp: Span,
                            item_id: ast::NodeId,
-                           designation: &str) -> bool {
+                           _designation: &str) -> bool {
     let rty = tcx.node_id_to_type(item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -4136,9 +4112,8 @@ pub fn check_representable(tcx: &ty::ctxt,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
-            struct_span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation)
-                .fileline_help(sp, "wrap the inner value in a box to make it representable")
-                .emit();
+            let item_def_id = tcx.map.local_def_id(item_id);
+            traits::recursive_type_with_infinite_size_error(tcx, item_def_id).emit();
             return false
         }
         Representability::Representable | Representability::ContainsRecursive => (),

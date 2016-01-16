@@ -22,6 +22,6 @@ fn main() {
         x: 3
     };
 
-    let baz: Foo<usize> = panic!();
+    let baz: Foo<usize> = loop { };
     //~^ ERROR not implemented
 }
