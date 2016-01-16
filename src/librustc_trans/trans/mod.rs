@@ -14,6 +14,7 @@ use middle::cstore::LinkMeta;
 pub use self::base::trans_crate;
 pub use self::context::CrateContext;
 pub use self::common::gensym_name;
+pub use self::disr::Disr;
 
 #[macro_use]
 mod macros;
@@ -45,6 +46,7 @@ mod controlflow;
 mod datum;
 mod debuginfo;
 mod declare;
+mod disr;
 mod expr;
 mod foreign;
 mod glue;

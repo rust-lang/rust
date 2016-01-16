@@ -24,6 +24,7 @@ use trans::common::*;
 use trans::declare;
 use trans::foreign;
 use middle::ty::{self, Ty};
+use trans::Disr;
 use rustc::front::map as hir_map;
 
 use rustc_front::hir;
@@ -207,7 +208,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             assert_eq!(v.node.name, variant.name);
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
-            trans_enum_variant(ccx, fn_node_id, variant.disr_val, psubsts, d);
+            trans_enum_variant(ccx, fn_node_id, Disr::from(variant.disr_val), psubsts, d);
             d
         }
         hir_map::NodeImplItem(impl_item) => {

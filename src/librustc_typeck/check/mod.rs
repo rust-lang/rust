@@ -4178,7 +4178,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     sp: Span,
                                     vs: &'tcx [hir::Variant],
                                     id: ast::NodeId) {
-
+    // disr_in_range should be removed once we have forced type hints for consts
     fn disr_in_range(ccx: &CrateCtxt,
                      ty: attr::IntType,
                      disr: ty::Disr) -> bool {

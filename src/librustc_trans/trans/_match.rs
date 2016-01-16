@@ -215,6 +215,7 @@ use trans::expr::{self, Dest};
 use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
+use trans::Disr;
 use middle::ty::{self, Ty};
 use session::config::NoDebugInfo;
 use util::common::indenter;
@@ -249,7 +250,7 @@ impl<'a> ConstantExpr<'a> {
 enum Opt<'a, 'tcx> {
     ConstantValue(ConstantExpr<'a>, DebugLoc),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>, DebugLoc),
-    Variant(ty::Disr, Rc<adt::Repr<'tcx>>, DefId, DebugLoc),
+    Variant(Disr, Rc<adt::Repr<'tcx>>, DefId, DebugLoc),
     SliceLengthEqual(usize, DebugLoc),
     SliceLengthGreaterOrEqual(/* prefix length */ usize,
                               /* suffix length */ usize,
@@ -670,7 +671,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
                         let variant = tcx.lookup_adt_def(enum_id).variant_with_id(var_id);
-                        Variant(variant.disr_val,
+                        Variant(Disr::from(variant.disr_val),
                                 adt::represent_node(bcx, cur.id),
                                 var_id,
                                 debug_loc)
@@ -704,7 +705,7 @@ struct ExtractedBlock<'blk, 'tcx: 'blk> {
 
 fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     repr: &adt::Repr<'tcx>,
-                                    disr_val: ty::Disr,
+                                    disr_val: Disr,
                                     val: MatchInput)
                                     -> ExtractedBlock<'blk, 'tcx> {
     let _icx = push_ctxt("match::extract_variant_args");
@@ -1189,7 +1190,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
     let adt_vals = if any_irrefutable_adt_pat(bcx.tcx(), m, col) {
         let repr = adt::represent_type(bcx.ccx(), left_ty);
-        let arg_count = adt::num_args(&*repr, 0);
+        let arg_count = adt::num_args(&*repr, Disr(0));
         let (arg_count, struct_val) = if type_is_sized(bcx.tcx(), left_ty) {
             (arg_count, val.val)
         } else {
@@ -1201,7 +1202,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         };
         let mut field_vals: Vec<ValueRef> = (0..arg_count).map(|ix|
             // By definition, these are all sized
-            adt::trans_field_ptr(bcx, &*repr, adt::MaybeSizedValue::sized(struct_val), 0, ix)
+            adt::trans_field_ptr(bcx, &*repr, adt::MaybeSizedValue::sized(struct_val), Disr(0), ix)
         ).collect();
 
         match left_ty.sty {
@@ -1217,7 +1218,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let meta = Load(bcx, expr::get_meta(bcx, val.val));
                 let struct_val = adt::MaybeSizedValue::unsized_(struct_val, meta);
 
-                let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
+                let data = adt::trans_field_ptr(bcx, &*repr, struct_val, Disr(0), arg_count);
                 Store(bcx, data, expr::get_dataptr(bcx, scratch));
                 Store(bcx, meta, expr::get_meta(bcx, scratch));
                 field_vals.push(scratch);
@@ -1855,7 +1856,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     let vinfo = ccx.tcx().lookup_adt_def(enum_id).variant_with_id(var_id);
                     let args = extract_variant_args(bcx,
                                                     &*repr,
-                                                    vinfo.disr_val,
+                                                    Disr::from(vinfo.disr_val),
                                                     val);
                     if let Some(ref sub_pat) = *sub_pats {
                         for (i, &argval) in args.vals.iter().enumerate() {
@@ -1878,7 +1879,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             let val = adt::MaybeSizedValue::sized(val.val);
                             for (i, elem) in elems.iter().enumerate() {
                                 let fldptr = adt::trans_field_ptr(bcx, &*repr,
-                                                                  val, 0, i);
+                                                                  val, Disr(0), i);
                                 bcx = bind_irrefutable_pat(
                                     bcx,
                                     &**elem,
@@ -1937,7 +1938,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let repr = adt::represent_node(bcx, pat.id);
             let val = adt::MaybeSizedValue::sized(val.val);
             for (i, elem) in elems.iter().enumerate() {
-                let fldptr = adt::trans_field_ptr(bcx, &*repr, val, 0, i);
+                let fldptr = adt::trans_field_ptr(bcx, &*repr, val, Disr(0), i);
                 bcx = bind_irrefutable_pat(
                     bcx,
                     &**elem,

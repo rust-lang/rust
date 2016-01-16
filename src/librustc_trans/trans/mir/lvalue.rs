@@ -20,6 +20,7 @@ use trans::debuginfo::DebugLoc;
 use trans::machine;
 use trans::type_of;
 use llvm;
+use trans::Disr;
 
 use std::ptr;
 
@@ -137,7 +138,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         } else {
                             adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
                         };
-                        (adt::trans_field_ptr(bcx, &base_repr, base, discr, field.index()),
+                        (adt::trans_field_ptr(bcx, &base_repr, base, Disr(discr), field.index()),
                          if is_sized {
                              ptr::null_mut()
                          } else {

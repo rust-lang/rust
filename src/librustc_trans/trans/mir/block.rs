@@ -18,6 +18,7 @@ use trans::common::{self, Block};
 use trans::debuginfo::DebugLoc;
 use trans::type_of;
 use trans::type_::Type;
+use trans::Disr;
 
 use super::MirContext;
 use super::operand::OperandValue::{FatPtr, Immediate, Ref};
@@ -60,7 +61,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let switch = build::Switch(bcx, discr, unreachable_blk.llbb, targets.len());
                 assert_eq!(adt_def.variants.len(), targets.len());
                 for (adt_variant, target) in adt_def.variants.iter().zip(targets) {
-                    let llval = adt::trans_case(bcx, &*repr, adt_variant.disr_val);
+                    let llval = adt::trans_case(bcx, &*repr, Disr::from(adt_variant.disr_val));
                     let llbb = self.llblock(*target);
 
                     build::AddCase(switch, llval, llbb)
