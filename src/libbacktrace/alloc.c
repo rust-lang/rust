@@ -1,5 +1,5 @@
 /* alloc.c -- Memory allocation without mmap.
-   Copyright (C) 2012-2015 Free Software Foundation, Inc.
+   Copyright (C) 2012-2016 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
 Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,8 @@ POSSIBILITY OF SUCH DAMAGE.  */
    backtrace functions may not be safely invoked from a signal
    handler.  */
 
-/* Allocate memory like malloc.  */
+/* Allocate memory like malloc.  If ERROR_CALLBACK is NULL, don't
+   report an error.  */
 
 void *
 backtrace_alloc (struct backtrace_state *state ATTRIBUTE_UNUSED,
@@ -55,7 +56,10 @@ backtrace_alloc (struct backtrace_state *state ATTRIBUTE_UNUSED,
 
   ret = malloc (size);
   if (ret == NULL)
-    error_callback (data, "malloc", errno);
+    {
+      if (error_callback)
+	error_callback (data, "malloc", errno);
+    }
   return ret;
 }
 

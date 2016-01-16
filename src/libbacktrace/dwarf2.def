@@ -1,9 +1,7 @@
 /* -*- c -*-
    Declarations and definitions of codes relating to the DWARF2 and
    DWARF3 symbolic debugging information formats.
-   Copyright (C) 1992, 1993, 1995, 1996, 1997, 1999, 2000, 2001, 2002,
-   2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012
-   Free Software Foundation, Inc.
+   Copyright (C) 1992-2015 Free Software Foundation, Inc.
 
    Written by Gary Funck (gary@intrepid.com) The Ada Joint Program
    Office (AJPO), Florida State University and Silicon Graphics Inc.
@@ -133,6 +131,8 @@ DW_TAG (DW_TAG_shared_type, 0x40)
 DW_TAG (DW_TAG_type_unit, 0x41)
 DW_TAG (DW_TAG_rvalue_reference_type, 0x42)
 DW_TAG (DW_TAG_template_alias, 0x43)
+/* DWARF 5.  */
+DW_TAG (DW_TAG_atomic_type, 0x47)
 
 DW_TAG_DUP (DW_TAG_lo_user, 0x4080)
 DW_TAG_DUP (DW_TAG_hi_user, 0xffff)
@@ -308,6 +308,8 @@ DW_AT (DW_AT_data_bit_offset, 0x6b)
 DW_AT (DW_AT_const_expr, 0x6c)
 DW_AT (DW_AT_enum_class, 0x6d)
 DW_AT (DW_AT_linkage_name, 0x6e)
+/* DWARF 5.  */
+DW_AT (DW_AT_noreturn, 0x87)
 
 DW_AT_DUP (DW_AT_lo_user, 0x2000) /* Implementation-defined range start.  */
 DW_AT_DUP (DW_AT_hi_user, 0x3fff) /* Implementation-defined range end.  */
@@ -383,6 +385,8 @@ DW_AT (DW_AT_GNU_all_call_sites, 0x2117)
 DW_AT (DW_AT_GNU_all_source_call_sites, 0x2118)
 /* Section offset into .debug_macro section.  */
 DW_AT (DW_AT_GNU_macros, 0x2119)
+/* Attribute for C++ deleted special member functions (= delete;).  */
+DW_AT (DW_AT_GNU_deleted, 0x211a)
 /* Extensions for Fission.  See http://gcc.gnu.org/wiki/DebugFission.  */
 DW_AT (DW_AT_GNU_dwo_name, 0x2130)
 DW_AT (DW_AT_GNU_dwo_id, 0x2131)
@@ -400,12 +404,33 @@ DW_AT (DW_AT_VMS_rtnbeg_pd_address, 0x2201)
    See http://gcc.gnu.org/wiki/DW_AT_GNAT_descriptive_type .  */
 DW_AT (DW_AT_use_GNAT_descriptive_type, 0x2301)
 DW_AT (DW_AT_GNAT_descriptive_type, 0x2302)
+/* Rational constant extension.
+   See https://gcc.gnu.org/wiki/DW_AT_GNU_numerator_denominator .  */
+DW_TAG (DW_AT_GNU_numerator, 0x2303)
+DW_TAG (DW_AT_GNU_denominator, 0x2304)
+/* Biased integer extension.
+   See https://gcc.gnu.org/wiki/DW_AT_GNU_bias .  */
+DW_TAG (DW_AT_GNU_bias, 0x2305)
 /* UPC extension.  */
 DW_AT (DW_AT_upc_threads_scaled, 0x3210)
 /* PGI (STMicroelectronics) extensions.  */
 DW_AT (DW_AT_PGI_lbase, 0x3a00)
 DW_AT (DW_AT_PGI_soffset, 0x3a01)
 DW_AT (DW_AT_PGI_lstride, 0x3a02)
+/* Apple extensions.  */
+DW_AT (DW_AT_APPLE_optimized, 0x3fe1)
+DW_AT (DW_AT_APPLE_flags, 0x3fe2)
+DW_AT (DW_AT_APPLE_isa, 0x3fe3)
+DW_AT (DW_AT_APPLE_block, 0x3fe4)
+DW_AT (DW_AT_APPLE_major_runtime_vers, 0x3fe5)
+DW_AT (DW_AT_APPLE_runtime_class, 0x3fe6)
+DW_AT (DW_AT_APPLE_omit_frame_ptr, 0x3fe7)
+DW_AT (DW_AT_APPLE_property_name, 0x3fe8)
+DW_AT (DW_AT_APPLE_property_getter, 0x3fe9)
+DW_AT (DW_AT_APPLE_property_setter, 0x3fea)
+DW_AT (DW_AT_APPLE_property_attribute, 0x3feb)
+DW_AT (DW_AT_APPLE_objc_complete_type, 0x3fec)
+DW_AT (DW_AT_APPLE_property, 0x3fed)
 DW_END_AT
 
 DW_FIRST_OP (DW_OP_addr, 0x03)

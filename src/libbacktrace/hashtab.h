@@ -1,6 +1,5 @@
-/* An expandable hash tables datatype.
-   Copyright (C) 1999, 2000, 2002, 2003, 2004, 2005, 2009, 2010
-   Free Software Foundation, Inc.
+/* An expandable hash tables datatype.  
+   Copyright (C) 1999-2015 Free Software Foundation, Inc.
    Contributed by Vladimir Makarov (vmakarov@cygnus.com).
 
 This program is free software; you can redistribute it and/or modify
@@ -39,10 +38,6 @@ extern "C" {
 
 #include "ansidecl.h"
 
-#ifndef GTY
-#define GTY(X)
-#endif
-
 /* The type for a hash code.  */
 typedef unsigned int hashval_t;
 
@@ -61,7 +56,7 @@ typedef int (*htab_eq) (const void *, const void *);
 /* Cleanup function called whenever a live element is removed from
    the hash table.  */
 typedef void (*htab_del) (void *);
-
+  
 /* Function called by htab_traverse for each live element.  The first
    arg is the slot of the element (which can be passed to htab_clear_slot
    if desired), the second arg is the auxiliary pointer handed to
@@ -97,7 +92,7 @@ typedef void (*htab_free_with_arg) (void *, void *);
    functions mentioned below.  The size of this structure is subject to
    change.  */
 
-struct GTY(()) htab {
+struct htab {
   /* Pointer to hash function.  */
   htab_hash hash_f;
 
@@ -108,7 +103,7 @@ struct GTY(()) htab {
   htab_del del_f;
 
   /* Table itself.  */
-  void ** GTY ((use_param, length ("%h.size"))) entries;
+  void **entries;
 
   /* Current size (in entries) of the hash table.  */
   size_t size;
@@ -132,7 +127,7 @@ struct GTY(()) htab {
   htab_free free_f;
 
   /* Alternate allocate/free functions, which take an extra argument.  */
-  void * GTY((skip)) alloc_arg;
+  void *alloc_arg;
   htab_alloc_with_arg alloc_with_arg_f;
   htab_free_with_arg free_with_arg_f;
 

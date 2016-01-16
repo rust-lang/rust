@@ -1,3 +1,70 @@
+2016-01-04  Jakub Jelinek  <jakub@redhat.com>
+
+	Update copyright years.
+
+2015-12-18  Andris Pavenis  <andris.pavenis@iki.fi>
+
+	* configure.ac: Specify that DJGPP do not have mmap even when sys/mman.h exists
+	* configure: Regenerate
+
+2015-12-09  John David Anglin  <danglin@gcc.gnu.org>
+
+	PR 68115/libfortran
+	* configure.ac: Set libbacktrace_cv_sys_sync to no on hppa*-*-hpux*.
+	* configure: Regenerate.
+	* elf.c (backtrace_initialize): Cast __sync_bool_compare_and_swap call
+	to void.
+
+2015-09-17  Ian Lance Taylor  <iant@google.com>
+
+	* posix.c (backtrace_open): Cast second argument of open() to int.
+
+2015-09-11  Ian Lance Taylor  <iant@google.com>
+
+	* Makefile.am (backtrace.lo): Depend on internal.h.
+	(sort.lo, stest.lo): Add explicit dependencies.
+	* Makefile.in: Rebuild.
+
+2015-09-09  Hans-Peter Nilsson  <hp@axis.com>
+
+	* backtrace.c: #include <sys/types.h>.
+
+2015-09-08  Ian Lance Taylor  <iant@google.com>
+
+	PR other/67457
+	* backtrace.c: #include "internal.h".
+	(struct backtrace_data): Add can_alloc field.
+	(unwind): If can_alloc is false, don't try to get file/line
+	information.
+	(backtrace_full): Set can_alloc field in bdata.
+	* alloc.c (backtrace_alloc): Don't call error_callback if it is
+	NULL.
+	* mmap.c (backtrace_alloc): Likewise.
+	* internal.h: Update comments for backtrace_alloc and
+	backtrace_free.
+
+2015-09-08  Ian Lance Taylor  <iant@google.com>
+
+	PR other/67457
+	* mmap.c (backtrace_alloc): Correct test for mmap failure.
+
+2015-08-31  Ulrich Weigand  <Ulrich.Weigand@de.ibm.com>
+
+	* configure.ac: For spu-*-* targets, set have_fcntl to no.
+	* configure: Regenerate.
+
+2015-08-27  Ulrich Weigand  <Ulrich.Weigand@de.ibm.com>
+
+	* configure.ac: Remove [disable-shared] argument to LT_INIT.
+	Remove setting PIC_FLAG when building as target library.
+	* configure: Regenerate.
+
+2015-08-26  Hans-Peter Nilsson  <hp@axis.com>
+
+	* configure.ac: Only compile with -fPIC if the target
+	supports it.
+	* configure: Regenerate.
+
 2015-08-24  Ulrich Weigand  <Ulrich.Weigand@de.ibm.com>
 
 	* configure.ac: Set have_mmap to no on spu-*-* targets.
@@ -497,3 +564,9 @@
 2012-09-17  Ian Lance Taylor  <iant@google.com>
 
 	* Initial implementation.
+
+Copyright (C) 2012-2016 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.

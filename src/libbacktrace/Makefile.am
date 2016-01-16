@@ -1,5 +1,5 @@
 # Makefile.am -- Backtrace Makefile.
-# Copyright (C) 2012-2015 Free Software Foundation, Inc.
+# Copyright (C) 2012-2016 Free Software Foundation, Inc.
 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -116,7 +116,7 @@ endif NATIVE
 
 INCDIR = $(top_srcdir)/../include
 alloc.lo: config.h backtrace.h internal.h
-backtrace.lo: config.h backtrace.h
+backtrace.lo: config.h backtrace.h internal.h
 btest.lo: (INCDIR)/filenames.h backtrace.h backtrace-supported.h
 dwarf.lo: config.h $(INCDIR)/dwarf2.h $(INCDIR)/dwarf2.def \
 	$(INCDIR)/filenames.h backtrace.h internal.h
@@ -130,5 +130,7 @@ posix.lo: config.h backtrace.h internal.h
 print.lo: config.h backtrace.h internal.h
 read.lo: config.h backtrace.h internal.h
 simple.lo: config.h backtrace.h internal.h
+sort.lo: config.h backtrace.h internal.h
+stest.lo: config.h backtrace.h internal.h
 state.lo: config.h backtrace.h backtrace-supported.h internal.h
 unknown.lo: config.h backtrace.h internal.h
