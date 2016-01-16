@@ -35,7 +35,8 @@ use std::cmp;
 use std::iter::once;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
-use syntax::abi::{PlatformIntrinsic, RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
+use syntax::abi::{PlatformIntrinsic, RustIntrinsic, Rust, RustCall, Stdcall};
+use syntax::abi::{Fastcall, Vectorcall, System};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
@@ -104,6 +105,7 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
 
         Stdcall => llvm::X86StdcallCallConv,
         Fastcall => llvm::X86FastcallCallConv,
+        Vectorcall => llvm::X86_VectorCall,
         C => llvm::CCallConv,
         Win64 => llvm::X86_64_Win64,
 

@@ -39,6 +39,7 @@ pub enum Abi {
     Cdecl,
     Stdcall,
     Fastcall,
+    Vectorcall,
     Aapcs,
     Win64,
 
@@ -85,6 +86,7 @@ const AbiDatas: &'static [AbiData] = &[
     AbiData {abi: Cdecl, name: "cdecl" },
     AbiData {abi: Stdcall, name: "stdcall" },
     AbiData {abi: Fastcall, name: "fastcall" },
+    AbiData {abi: Vectorcall, name: "vectorcall"},
     AbiData {abi: Aapcs, name: "aapcs" },
     AbiData {abi: Win64, name: "win64" },
 
