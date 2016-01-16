@@ -57,7 +57,7 @@ TARGET_CRATES := libc std flate arena term \
 RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_front rustc_platform_intrinsics \
-                rustc_plugin rustc_metadata
+                rustc_plugin rustc_metadata rustc_passes
 HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros
 TOOLS := compiletest rustdoc rustc rustbook error-index-generator
 
@@ -97,11 +97,12 @@ DEPS_rustc_data_structures := std log serialize
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
 	             rustc_trans rustc_privacy rustc_lint rustc_front rustc_plugin \
-                     rustc_metadata syntax_ext
+                     rustc_metadata syntax_ext rustc_passes
 DEPS_rustc_front := std syntax log serialize
 DEPS_rustc_lint := rustc log syntax
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_rustc_metadata := rustc rustc_front syntax rbml
+DEPS_rustc_passes := syntax rustc core
 DEPS_rustc_mir := rustc rustc_front syntax
 DEPS_rustc_resolve := arena rustc rustc_front log syntax
 DEPS_rustc_platform_intrinsics := rustc rustc_llvm

@@ -8,34 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we can't call random fns in a const fn or do other bad things.
+// test that const fn signature and body errors are checked
+// even in array lengths, which are evaluated before check_const
 
 #![feature(const_fn)]
 
-use std::mem::transmute;
+const X : usize = 2;
 
-fn random() -> u32 { 0 }
-
-const fn sub(x: &u32) -> usize {
-    unsafe { transmute(x) } //~ ERROR E0015
+const fn f(x: usize) -> usize {
+    let mut sum = 0; //~ ERROR: E0016
+    for i in 0..x { //~ ERROR: E0016
+        sum += i;
+    }
+    sum
 }
 
-const fn sub1() -> u32 {
-    random() //~ ERROR E0015
-}
-
-static Y: u32 = 0;
-
-const fn get_Y() -> u32 {
-    Y
-        //~^ ERROR E0013
-        //~| ERROR cannot refer to other statics by value
-}
-
-const fn get_Y_addr() -> &'static u32 {
-    &Y
-        //~^ ERROR E0013
-}
-
+#[allow(unused_variables)]
 fn main() {
+    let a : [i32; f(X)];
 }
