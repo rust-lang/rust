@@ -10,8 +10,8 @@
 
 pub fn main() {
     const z: &'static isize = {
-        let p = 3;
-        //~^ ERROR blocks in constants are limited to items and tail expressions
+        static p: isize = 3;
         &p
+        //~^ ERROR constants cannot refer to other statics, insert an intermediate constant instead
     };
 }

@@ -316,21 +316,6 @@ See [RFC 911] for more details on the design of `const fn`s.
 [RFC 911]: https://github.com/rust-lang/rfcs/blob/master/text/0911-const-fn.md
 "##,
 
-E0016: r##"
-Blocks in constants may only contain items (such as constant, function
-definition, etc...) and a tail expression. Example:
-
-```
-const FOO: i32 = { let x = 0; x }; // 'x' isn't an item!
-```
-
-To avoid it, you have to replace the non-item object:
-
-```
-const FOO: i32 = { const X : i32 = 0; X };
-```
-"##,
-
 E0017: r##"
 References in statics and constants may only refer to immutable values. Example:
 
@@ -420,24 +405,6 @@ code example:
 const X: i32 = 42 / 0;
 // error: attempted to divide by zero in a constant expression
 ```
-"##,
-
-E0022: r##"
-Constant functions are not allowed to mutate anything. Thus, binding to an
-argument with a mutable pattern is not allowed. For example,
-
-```
-const fn foo(mut x: u8) {
-    // do stuff
-}
-```
-
-is bad because the function body may not mutate `x`.
-
-Remove any mutable bindings from the argument list to fix this error. In case
-you need to mutate the argument, try lazily initializing a global variable
-instead of using a `const fn`, or refactoring the code to a functional style to
-avoid mutation if possible.
 "##,
 
 E0030: r##"
@@ -2358,7 +2325,6 @@ register_diagnostics! {
     E0316, // nested quantification of lifetimes
     E0453, // overruled by outer forbid
     E0471, // constant evaluation error: ..
-    E0472, // asm! is unsupported on this target
     E0473, // dereference of reference outside its lifetime
     E0474, // captured variable `..` does not outlive the enclosing closure
     E0475, // index of slice outside its lifetime
