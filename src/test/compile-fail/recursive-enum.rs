@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: invalid recursive enum type
-
 enum list<T> { cons(T, list<T>), nil }
+//~^ ERROR recursive type `list` has infinite size
 
 fn main() {}

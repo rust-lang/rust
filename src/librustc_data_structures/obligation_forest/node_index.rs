@@ -8,9 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo { foo: Option<Option<Foo>> }
-//~^ ERROR recursive type `Foo` has infinite size
+use core::nonzero::NonZero;
+use std::u32;
 
-impl Foo { fn bar(&self) {} }
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct NodeIndex {
+    index: NonZero<u32>
+}
 
-fn main() {}
+impl NodeIndex {
+    pub fn new(value: usize) -> NodeIndex {
+        assert!(value < (u32::MAX as usize));
+        unsafe {
+            NodeIndex { index: NonZero::new((value as u32) + 1) }
+        }
+    }
+
+    pub fn get(self) -> usize {
+        (*self.index - 1) as usize
+    }
+}
+

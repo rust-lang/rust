@@ -19,8 +19,8 @@ impl<T:Dot> Dot for Cons<T> {
     self.head * other.head + self.tail.dot(other.tail)
   }
 }
-fn test<T:Dot> (n:isize, i:isize, first:T, second:T) ->isize {
-  match n {    0 => {first.dot(second)} //~ ERROR overflow
+fn test<T:Dot> (n:isize, i:isize, first:T, second:T) ->isize { //~ ERROR recursion limit
+  match n {    0 => {first.dot(second)}
       // FIXME(#4287) Error message should be here. It should be
       // a type error to instantiate `test` at a type other than T.
     _ => {test (n-1, i+1, Cons {head:2*i+1, tail:first}, Cons{head:i*i, tail:second})}

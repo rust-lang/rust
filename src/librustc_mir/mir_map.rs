@@ -143,7 +143,7 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
 
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
 
-        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env), true);
+        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env));
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
             Ok(mut mir) => {

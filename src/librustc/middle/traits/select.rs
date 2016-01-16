@@ -711,7 +711,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // not update) the cache.
         let recursion_limit = self.infcx.tcx.sess.recursion_limit.get();
         if stack.obligation.recursion_depth >= recursion_limit {
-            report_overflow_error(self.infcx(), &stack.obligation);
+            report_overflow_error(self.infcx(), &stack.obligation, true);
         }
 
         // Check the cache. Note that we skolemize the trait-ref
@@ -2124,6 +2124,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            nested: ty::Binder<Vec<Ty<'tcx>>>)
                            -> VtableBuiltinData<PredicateObligation<'tcx>>
     {
+        debug!("vtable_builtin_data(obligation={:?}, bound={:?}, nested={:?})",
+               obligation, bound, nested);
+
         let trait_def = match self.tcx().lang_items.from_builtin_kind(bound) {
             Ok(def_id) => def_id,
             Err(_) => {

@@ -24,17 +24,21 @@
       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![feature(rustc_private, staged_api)]
 #![feature(hashmap_hasher)]
+#![feature(nonzero)]
+#![feature(rustc_private)]
+#![feature(staged_api)]
 
 #![cfg_attr(test, feature(test))]
 
+extern crate core;
 #[macro_use] extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod bitvec;
 pub mod graph;
 pub mod ivar;
+pub mod obligation_forest;
 pub mod snapshot_vec;
 pub mod transitive_relation;
 pub mod unify;

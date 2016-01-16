@@ -44,8 +44,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
             let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
             let infcx = infer::new_infer_ctxt(self.tcx,
                                               &self.tcx.tables,
-                                              Some(param_env.clone()),
-                                              false);
+                                              Some(param_env.clone()));
             let mut delegate = RvalueContextDelegate { tcx: self.tcx, param_env: &param_env };
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
             euv.walk_fn(fd, b);

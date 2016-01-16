@@ -8,9 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// OIBIT-based version of #29859, supertrait version. Test that using
+// a simple OIBIT `..` impl alone still doesn't allow arbitary bounds
+// to be synthesized.
+
+#![feature(optin_builtin_traits)]
+
+trait Magic: Copy {}
+impl Magic for .. {}
+
+fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
+
+#[derive(Debug)]
+struct NoClone;
+
 fn main() {
-    for (ref i,) in [].iter() { //~ ERROR mismatched types
-        i.clone();
-        //~^ ERROR: the type of this value must be known in this context
-    }
+    let (a, b) = copy(NoClone); //~ ERROR E0277
+    println!("{:?} {:?}", a, b);
 }
