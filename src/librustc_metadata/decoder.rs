@@ -101,12 +101,15 @@ enum Family {
     Mod,                   // m
     ForeignMod,            // n
     Enum,                  // t
-    TupleVariant,          // v
     StructVariant,         // V
+    TupleVariant,          // v
+    UnitVariant,           // w
     Impl,                  // i
-    DefaultImpl,              // d
+    DefaultImpl,           // d
     Trait,                 // I
     Struct,                // S
+    TupleStruct,           // s
+    UnitStruct,            // u
     PublicField,           // g
     InheritedField,        // N
     Constant,              // C
@@ -126,12 +129,15 @@ fn item_family(item: rbml::Doc) -> Family {
       'm' => Mod,
       'n' => ForeignMod,
       't' => Enum,
-      'v' => TupleVariant,
       'V' => StructVariant,
+      'v' => TupleVariant,
+      'w' => UnitVariant,
       'i' => Impl,
       'd' => DefaultImpl,
       'I' => Trait,
       'S' => Struct,
+      's' => TupleStruct,
+      'u' => UnitStruct,
       'g' => PublicField,
       'N' => InheritedField,
        c => panic!("unexpected family char: {}", c)
@@ -282,7 +288,7 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
         }
         ImmStatic => DlDef(def::DefStatic(did, false)),
         MutStatic => DlDef(def::DefStatic(did, true)),
-        Struct    => DlDef(def::DefStruct(did)),
+        Struct | TupleStruct | UnitStruct => DlDef(def::DefStruct(did)),
         Fn        => DlDef(def::DefFn(did, false)),
         CtorFn    => DlDef(def::DefFn(did, true)),
         Method | StaticMethod => {
@@ -302,7 +308,7 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
             let enum_did = item_require_parent_item(cdata, item);
             DlDef(def::DefVariant(enum_did, did, true))
         }
-        TupleVariant => {
+        TupleVariant | UnitVariant => {
             let enum_did = item_require_parent_item(cdata, item);
             DlDef(def::DefVariant(enum_did, did, false))
         }
@@ -365,6 +371,14 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                          item_id: DefIndex,
                          tcx: &ty::ctxt<'tcx>) -> ty::AdtDefMaster<'tcx>
 {
+    fn family_to_variant_kind<'tcx>(family: Family, tcx: &ty::ctxt<'tcx>) -> ty::VariantKind {
+        match family {
+            Struct | StructVariant => ty::VariantKind::Struct,
+            TupleStruct | TupleVariant => ty::VariantKind::Tuple,
+            UnitStruct | UnitVariant => ty::VariantKind::Unit,
+            _ => tcx.sess.bug(&format!("unexpected family: {:?}", family)),
+        }
+    }
     fn get_enum_variants<'tcx>(intr: &IdentInterner,
                                cdata: Cmd,
                                doc: rbml::Doc,
@@ -384,7 +398,8 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                 did: did,
                 name: item_name(intr, item),
                 fields: get_variant_fields(intr, cdata, item, tcx),
-                disr_val: disr
+                disr_val: disr,
+                kind: family_to_variant_kind(item_family(item), tcx),
             }
         }).collect()
     }
@@ -417,7 +432,8 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             did: did,
             name: item_name(intr, doc),
             fields: get_variant_fields(intr, cdata, doc, tcx),
-            disr_val: 0
+            disr_val: 0,
+            kind: family_to_variant_kind(item_family(doc), tcx),
         }
     }
 
@@ -428,7 +444,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             (ty::AdtKind::Enum,
              get_enum_variants(intr, cdata, doc, tcx))
         }
-        Struct => {
+        Struct | TupleStruct | UnitStruct => {
             let ctor_did =
                 reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).
                 map_or(did, |ctor_doc| translated_def_id(cdata, ctor_doc));

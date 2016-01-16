@@ -11,7 +11,12 @@
 // Empty struct defined with braces add names into type namespace
 // Empty struct defined without braces add names into both type and value namespaces
 
+// aux-build:empty-struct.rs
+
 #![feature(braced_empty_structs)]
+
+extern crate empty_struct;
+use empty_struct::*;
 
 struct Empty1 {}
 struct Empty2;
@@ -23,7 +28,7 @@ enum E {
     Empty5,
 }
 
-fn main() {
+fn local() {
     let e1: Empty1 = Empty1 {};
     let e2: Empty2 = Empty2 {};
     let e2: Empty2 = Empty2;
@@ -83,4 +88,60 @@ fn main() {
     let e11: Empty1 = Empty1 { ..e1 };
     let e22: Empty2 = Empty2 { ..e2 };
     let e33: Empty3 = Empty3 { ..e3 };
+}
+
+fn xcrate() {
+    let e1: XEmpty1 = XEmpty1 {};
+    let e2: XEmpty2 = XEmpty2 {};
+    let e2: XEmpty2 = XEmpty2;
+    let e3: XE = XE::XEmpty3 {};
+    // FIXME: Commented out tests are waiting for PR 30882 (fixes for variant namespaces)
+    // let e4: XE = XE::XEmpty4 {};
+    let e4: XE = XE::XEmpty4;
+
+    match e1 {
+        XEmpty1 {} => {}
+    }
+    match e2 {
+        XEmpty2 {} => {}
+    }
+    match e3 {
+        XE::XEmpty3 {} => {}
+        _ => {}
+    }
+    // match e4 {
+    //     XE::XEmpty4 {} => {}
+    //     _ => {}
+    // }
+
+    match e1 {
+        XEmpty1 { .. } => {}
+    }
+    match e2 {
+        XEmpty2 { .. } => {}
+    }
+    match e3 {
+        XE::XEmpty3 { .. } => {}
+        _ => {}
+    }
+    // match e4 {
+    //     XE::XEmpty4 { .. } => {}
+    //     _ => {}
+    // }
+
+    match e2 {
+        XEmpty2 => {}
+    }
+    // match e4 {
+    //     XE::XEmpty4 => {}
+    //     _ => {}
+    // }
+
+    let e11: XEmpty1 = XEmpty1 { ..e1 };
+    let e22: XEmpty2 = XEmpty2 { ..e2 };
+}
+
+fn main() {
+    local();
+    xcrate();
 }
