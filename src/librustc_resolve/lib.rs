@@ -1197,7 +1197,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     #[inline]
-    fn record_import_use(&mut self, import_id: NodeId, name: Name) {
+    fn record_import_use(&mut self, name: Name, ns: Namespace, resolution: &ImportResolution<'a>) {
+        let import_id = resolution.id;
+        self.used_imports.insert((import_id, ns));
+        match resolution.target.as_ref().and_then(|target| target.target_module.def_id()) {
+            Some(DefId { krate, .. }) => { self.used_crates.insert(krate); }
+            _ => {}
+        };
+
         if !self.make_glob_map {
             return;
         }
@@ -1596,24 +1603,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     debug!("(resolving name in module) import unresolved; bailing out");
                     return Indeterminate;
                 }
-                match import_resolution.target.clone() {
-                    None => {
-                        debug!("(resolving name in module) name found, but not in namespace {:?}",
-                               namespace);
+                if let Some(target) = import_resolution.target.clone() {
+                    debug!("(resolving name in module) resolved to import");
+                    if record_used {
+                        self.record_import_use(name, namespace, &import_resolution);
                     }
-                    Some(target) => {
-                        debug!("(resolving name in module) resolved to import");
-                        // track used imports and extern crates as well
-                        if record_used {
-                            let id = import_resolution.id;
-                            self.used_imports.insert((id, namespace));
-                            self.record_import_use(id, name);
-                            if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                                self.used_crates.insert(kid);
-                            }
-                        }
-                        return Success((target, true));
-                    }
+                    return Success((target, true));
                 }
             }
             Some(..) | None => {} // Continue.
@@ -3531,13 +3526,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
-                    let id = import.id;
-                    self.used_imports.insert((id, TypeNS));
                     let trait_name = self.get_trait_name(did);
-                    self.record_import_use(id, trait_name);
-                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                        self.used_crates.insert(kid);
-                    }
+                    self.record_import_use(trait_name, TypeNS, &import);
                 }
             }
 

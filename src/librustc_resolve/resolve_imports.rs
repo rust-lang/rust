@@ -460,12 +460,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
                 let target = resolution.target.clone();
                 if let Some(Target { target_module, binding, shadowable: _ }) = target {
-                    // track used imports and extern crates as well
-                    self.resolver.used_imports.insert((resolution.id, ns));
-                    self.resolver.record_import_use(resolution.id, name);
-                    if let Some(DefId { krate, .. }) = target_module.def_id() {
-                        self.resolver.used_crates.insert(krate);
-                    }
+                    self.resolver.record_import_use(name, ns, &resolution);
                     (Success((target_module, binding)), true)
                 } else {
                     (Failed(None), false)
