@@ -108,3 +108,8 @@ The `Empty` variant could be omitted, leaving two options:
 # Unresolved questions
 
 None so far.
+
+# Amendments
+
+* In rust-lang/rfcs#1320, this RFC was amended to change the `RangeInclusive`
+  type from a struct with a `finished` field to an enum.
