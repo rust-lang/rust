@@ -42,6 +42,4 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected `char`
     //~| found `bool`
-    //~| expected char
-    //~| found bool
 }
