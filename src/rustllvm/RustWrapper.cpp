@@ -191,11 +191,15 @@ extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,
                                                LLVMValueRef old,
                                                LLVMValueRef source,
                                                AtomicOrdering order,
-                                               AtomicOrdering failure_order) {
-    return wrap(unwrap(B)->CreateAtomicCmpXchg(unwrap(target), unwrap(old),
-                                               unwrap(source), order,
-                                               failure_order
-                                               ));
+                                               AtomicOrdering failure_order,
+                                               LLVMBool weak) {
+    AtomicCmpXchgInst* acxi = unwrap(B)->CreateAtomicCmpXchg(unwrap(target),
+                                                             unwrap(old),
+                                                             unwrap(source),
+                                                             order,
+                                                             failure_order);
+    acxi->setWeak(weak);
+    return wrap(acxi);
 }
 extern "C" LLVMValueRef LLVMBuildAtomicFence(LLVMBuilderRef B,
                                              AtomicOrdering order,

@@ -678,47 +678,52 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
             let split: Vec<&str> = name.split('_').collect();
-            assert!(split.len() >= 2, "Atomic intrinsic not correct format");
 
-            let order = if split.len() == 2 {
-                llvm::SequentiallyConsistent
-            } else {
-                match split[2] {
-                    "unordered" => llvm::Unordered,
-                    "relaxed" => llvm::Monotonic,
-                    "acq"     => llvm::Acquire,
-                    "rel"     => llvm::Release,
-                    "acqrel"  => llvm::AcquireRelease,
+            let (order, failorder) = match split.len() {
+                2 => (llvm::SequentiallyConsistent, llvm::SequentiallyConsistent),
+                3 => match split[2] {
+                    "unordered" => (llvm::Unordered, llvm::Unordered),
+                    "relaxed" => (llvm::Monotonic, llvm::Monotonic),
+                    "acq"     => (llvm::Acquire, llvm::Acquire),
+                    "rel"     => (llvm::Release, llvm::Monotonic),
+                    "acqrel"  => (llvm::AcquireRelease, llvm::Acquire),
+                    "failrelaxed" if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                        (llvm::SequentiallyConsistent, llvm::Monotonic),
+                    "failacq" if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                        (llvm::SequentiallyConsistent, llvm::Acquire),
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
-                }
+                },
+                4 => match (split[2], split[3]) {
+                    ("acq", "failrelaxed") if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                        (llvm::Acquire, llvm::Monotonic),
+                    ("acqrel", "failrelaxed") if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                        (llvm::AcquireRelease, llvm::Monotonic),
+                    _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
+                },
+                _ => ccx.sess().fatal("Atomic intrinsic not in correct format"),
             };
 
             match split[1] {
                 "cxchg" => {
-                    // See include/llvm/IR/Instructions.h for their implementation
-                    // of this, I assume that it's good enough for us to use for
-                    // now.
-                    let strongest_failure_ordering = match order {
-                        llvm::NotAtomic | llvm::Unordered =>
-                            ccx.sess().fatal("cmpxchg must be atomic"),
-
-                        llvm::Monotonic | llvm::Release =>
-                            llvm::Monotonic,
-
-                        llvm::Acquire | llvm::AcquireRelease =>
-                            llvm::Acquire,
-
-                        llvm::SequentiallyConsistent =>
-                            llvm::SequentiallyConsistent
-                    };
-
                     let tp_ty = *substs.types.get(FnSpace, 0);
                     let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
                     let cmp = from_arg_ty(bcx, llargs[1], tp_ty);
                     let src = from_arg_ty(bcx, llargs[2], tp_ty);
-                    let res = AtomicCmpXchg(bcx, ptr, cmp, src, order,
-                                            strongest_failure_ordering);
+                    let res = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::False);
                     ExtractValue(bcx, res, 0)
+                }
+
+                "cxchgweak" => {
+                    let tp_ty = *substs.types.get(FnSpace, 0);
+                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+                    let cmp = from_arg_ty(bcx, llargs[1], tp_ty);
+                    let src = from_arg_ty(bcx, llargs[2], tp_ty);
+                    let val = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::True);
+                    let result = ExtractValue(bcx, val, 0);
+                    let success = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
+                    Store(bcx, result, StructGEP(bcx, llresult, 0));
+                    Store(bcx, success, StructGEP(bcx, llresult, 1));
+                    C_nil(ccx)
                 }
 
                 "load" => {
