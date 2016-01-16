@@ -44,20 +44,6 @@ use std::mem::transmute;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64};
 use std::rc::Rc;
 
-fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
-    let opt_def = tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
-    match opt_def {
-        Some(def::DefConst(def_id)) |
-        Some(def::DefAssociatedConst(def_id)) => {
-            lookup_const_by_id(tcx, def_id, Some(e.id), None)
-        }
-        Some(def::DefVariant(enum_def, variant_def, _)) => {
-            lookup_variant_by_id(tcx, enum_def, variant_def)
-        }
-        _ => None
-    }
-}
-
 fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
                             enum_def: DefId,
                             variant_def: DefId)
@@ -382,12 +368,12 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
                     hir::PatStruct(path.clone(), hir::HirVec::new(), false),
                 Some(def::DefVariant(..)) =>
                     hir::PatEnum(path.clone(), None),
-                _ => {
-                    match lookup_const(tcx, expr) {
-                        Some(actual) => return const_expr_to_pat(tcx, actual, span),
-                        _ => unreachable!()
-                    }
-                }
+                Some(def::DefConst(def_id)) |
+                Some(def::DefAssociatedConst(def_id)) => {
+                    let expr = lookup_const_by_id(tcx, def_id, Some(expr.id), None).unwrap();
+                    return const_expr_to_pat(tcx, expr, span);
+                },
+                _ => unreachable!(),
             }
         }
 
