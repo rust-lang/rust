@@ -1,7 +1,5 @@
 /* ANSI and traditional C compatability macros
-   Copyright 1991, 1992, 1993, 1994, 1995, 1996, 1998, 1999, 2000, 2001,
-   2002, 2003, 2004, 2005, 2006, 2007, 2009, 2010, 2013
-   Free Software Foundation, Inc.
+   Copyright (C) 1991-2015 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
 This program is free software; you can redistribute it and/or modify
@@ -276,6 +274,15 @@ So instead we use the macro below and test it against specific values.  */
 # endif /* GNUC >= 4.3 */
 #endif /* ATTRIBUTE_HOT */
 
+/* Attribute 'no_sanitize_undefined' was valid as of gcc 4.9.  */
+#ifndef ATTRIBUTE_NO_SANITIZE_UNDEFINED
+# if (GCC_VERSION >= 4009)
+#  define ATTRIBUTE_NO_SANITIZE_UNDEFINED __attribute__ ((no_sanitize_undefined))
+# else
+#  define ATTRIBUTE_NO_SANITIZE_UNDEFINED
+# endif /* GNUC >= 4.9 */
+#endif /* ATTRIBUTE_NO_SANITIZE_UNDEFINED */
+
 /* We use __extension__ in some places to suppress -pedantic warnings
    about GCC extensions.  This feature didn't work properly before
    gcc 2.8.  */
@@ -304,6 +311,15 @@ So instead we use the macro below and test it against specific values.  */
 #define ENUM_BITFIELD(TYPE) __extension__ enum TYPE
 #else
 #define ENUM_BITFIELD(TYPE) unsigned int
+#endif
+
+    /* This is used to mark a class or virtual function as final.  */
+#if __cplusplus >= 201103L
+#define GCC_FINAL final
+#elif GCC_VERSION >= 4007
+#define GCC_FINAL __final
+#else
+#define GCC_FINAL
 #endif
 
 #ifdef __cplusplus

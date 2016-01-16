@@ -1,5 +1,5 @@
 /* internal.h -- Internal header file for stack backtrace library.
-   Copyright (C) 2012-2015 Free Software Foundation, Inc.
+   Copyright (C) 2012-2016 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
 Redistribution and use in source and binary forms, with or without
@@ -201,13 +201,15 @@ extern int backtrace_close (int descriptor,
 extern void backtrace_qsort (void *base, size_t count, size_t size,
 			     int (*compar) (const void *, const void *));
 
-/* Allocate memory.  This is like malloc.  */
+/* Allocate memory.  This is like malloc.  If ERROR_CALLBACK is NULL,
+   this does not report an error, it just returns NULL.  */
 
 extern void *backtrace_alloc (struct backtrace_state *state, size_t size,
 			      backtrace_error_callback error_callback,
 			      void *data) ATTRIBUTE_MALLOC;
 
-/* Free memory allocated by backtrace_alloc.  */
+/* Free memory allocated by backtrace_alloc.  If ERROR_CALLBACK is
+   NULL, this does not report an error.  */
 
 extern void backtrace_free (struct backtrace_state *state, void *mem,
 			    size_t size,

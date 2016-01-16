@@ -1,5 +1,5 @@
 /* pecoff.c -- Get debug data from a PE/COFFF file for backtraces.
-   Copyright (C) 2015 Free Software Foundation, Inc.
+   Copyright (C) 2015-2016 Free Software Foundation, Inc.
    Adapted from elf.c by Tristan Gingold, AdaCore.
 
 Redistribution and use in source and binary forms, with or without
@@ -602,7 +602,7 @@ coff_add (struct backtrace_state *state, int descriptor,
   const b_coff_section_header *sects;
   struct backtrace_view str_view;
   int str_view_valid;
-  size_t str_size;
+  uint32_t str_size;
   off_t str_off;
   struct backtrace_view syms_view;
   off_t syms_off;
