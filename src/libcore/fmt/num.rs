@@ -60,11 +60,11 @@ trait GenericRadix {
         // The radix can be as low as 2, so we need a buffer of at least 64
         // characters for a base 2 number.
         let zero = T::zero();
-        let is_positive = x >= zero;
+        let is_nonnegative = x >= zero;
         let mut buf = [0; 64];
         let mut curr = buf.len();
         let base = T::from_u8(self.base());
-        if is_positive {
+        if is_nonnegative {
             // Accumulate each digit of the number from the least significant
             // to the most significant figure.
             for byte in buf.iter_mut().rev() {
@@ -91,7 +91,7 @@ trait GenericRadix {
             }
         }
         let buf = unsafe { str::from_utf8_unchecked(&buf[curr..]) };
-        f.pad_integral(is_positive, self.prefix(), buf)
+        f.pad_integral(is_nonnegative, self.prefix(), buf)
     }
 }
 
@@ -268,8 +268,8 @@ macro_rules! impl_Display {
     impl fmt::Display for $t {
         #[allow(unused_comparisons)]
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            let is_positive = *self >= 0;
-            let mut n = if is_positive {
+            let is_nonnegative = *self >= 0;
+            let mut n = if is_nonnegative {
                 self.$conv_fn()
             } else {
                 // convert the negative num to positive by summing 1 to it's 2 complement
@@ -321,7 +321,7 @@ macro_rules! impl_Display {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
             };
-            f.pad_integral(is_positive, "", buf_slice)
+            f.pad_integral(is_nonnegative, "", buf_slice)
         }
     })*);
 }

@@ -852,7 +852,7 @@ impl<'a> Formatter<'a> {
     ///
     /// # Arguments
     ///
-    /// * is_positive - whether the original integer was positive or not.
+    /// * is_nonnegative - whether the original integer was either positive or zero.
     /// * prefix - if the '#' character (Alternate) is provided, this
     ///   is the prefix to put in front of the number.
     /// * buf - the byte array that the number has been formatted into
@@ -861,7 +861,7 @@ impl<'a> Formatter<'a> {
     /// the minimum width. It will not take precision into account.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad_integral(&mut self,
-                        is_positive: bool,
+                        is_nonnegative: bool,
                         prefix: &str,
                         buf: &str)
                         -> Result {
@@ -870,7 +870,7 @@ impl<'a> Formatter<'a> {
         let mut width = buf.len();
 
         let mut sign = None;
-        if !is_positive {
+        if !is_nonnegative {
             sign = Some('-'); width += 1;
         } else if self.sign_plus() {
             sign = Some('+'); width += 1;
