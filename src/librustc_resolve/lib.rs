@@ -662,10 +662,11 @@ enum ResolveResult<T> {
 }
 
 impl<T> ResolveResult<T> {
-    fn success(&self) -> bool {
-        match *self {
-            Success(_) => true,
-            _ => false,
+    fn and_then<U, F: FnOnce(T) -> ResolveResult<U>>(self, f: F) -> ResolveResult<U> {
+        match self {
+            Failed(msg) => Failed(msg),
+            Indeterminate => Indeterminate,
+            Success(t) => f(t),
         }
     }
 }
@@ -1335,8 +1336,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Span)
                            -> ResolveResult<(Module<'a>, LastPrivate)> {
-        let module_path_len = module_path.len();
-        assert!(module_path_len > 0);
+        if module_path.len() == 0 {
+            return Success((self.graph_root, LastMod(AllPublic))) // Use the crate root
+        }
 
         debug!("(resolving module path for import) processing `{}` rooted at `{}`",
                names_to_string(module_path),

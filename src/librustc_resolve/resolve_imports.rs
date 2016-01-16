@@ -332,92 +332,45 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                  module_: Module<'b>,
                                  import_directive: &ImportDirective)
                                  -> ResolveResult<()> {
-        let mut resolution_result = ResolveResult::Failed(None);
-        let module_path = &import_directive.module_path;
-
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
-               names_to_string(&module_path[..]),
+               names_to_string(&import_directive.module_path),
                module_to_string(&*module_));
 
-        // First, resolve the module path for the directive, if necessary.
-        let container = if module_path.is_empty() {
-            // Use the crate root.
-            Some((self.resolver.graph_root, LastMod(AllPublic)))
-        } else {
-            match self.resolver.resolve_module_path(module_,
-                                                    &module_path[..],
-                                                    UseLexicalScopeFlag::DontUseLexicalScope,
-                                                    import_directive.span) {
-                ResolveResult::Failed(err) => {
-                    resolution_result = ResolveResult::Failed(err);
-                    None
-                }
-                ResolveResult::Indeterminate => {
-                    resolution_result = ResolveResult::Indeterminate;
-                    None
-                }
-                ResolveResult::Success(container) => Some(container),
-            }
-        };
-
-        match container {
-            None => {}
-            Some((containing_module, lp)) => {
+        self.resolver
+            .resolve_module_path(module_,
+                                 &import_directive.module_path,
+                                 UseLexicalScopeFlag::DontUseLexicalScope,
+                                 import_directive.span)
+            .and_then(|(containing_module, lp)| {
                 // We found the module that the target is contained
                 // within. Attempt to resolve the import within it.
-
-                match import_directive.subclass {
-                    SingleImport(target, source) => {
-                        resolution_result = self.resolve_single_import(&module_,
-                                                                       containing_module,
-                                                                       target,
-                                                                       source,
-                                                                       import_directive,
-                                                                       lp);
-                    }
-                    GlobImport => {
-                        resolution_result = self.resolve_glob_import(&module_,
-                                                                     containing_module,
-                                                                     import_directive,
-                                                                     lp);
-                    }
+                if let SingleImport(target, source) = import_directive.subclass {
+                    self.resolve_single_import(&module_,
+                                               containing_module,
+                                               target,
+                                               source,
+                                               import_directive,
+                                               lp)
+                } else {
+                    self.resolve_glob_import(&module_, containing_module, import_directive, lp)
                 }
-            }
-        }
-
-        // Decrement the count of unresolved imports.
-        match resolution_result {
-            ResolveResult::Success(()) => {
+            })
+            .and_then(|()| {
+                // Decrement the count of unresolved imports.
                 assert!(self.resolver.unresolved_imports >= 1);
                 self.resolver.unresolved_imports -= 1;
-            }
-            _ => {
-                // Nothing to do here; just return the error.
-            }
-        }
 
-        // Decrement the count of unresolved globs if necessary. But only if
-        // the resolution result is a success -- other cases will
-        // be handled by the main loop.
-
-        if resolution_result.success() {
-            match import_directive.subclass {
-                GlobImport => {
+                if let GlobImport = import_directive.subclass {
                     module_.dec_glob_count();
                     if import_directive.is_public {
                         module_.dec_pub_glob_count();
                     }
                 }
-                SingleImport(..) => {
-                    // Ignore.
+                if import_directive.is_public {
+                    module_.dec_pub_count();
                 }
-            }
-            if import_directive.is_public {
-                module_.dec_pub_count();
-            }
-        }
-
-        return resolution_result;
+                Success(())
+            })
     }
 
     /// Resolves the name in the namespace of the module because it is being imported by
