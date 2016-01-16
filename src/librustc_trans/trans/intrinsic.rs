@@ -36,6 +36,7 @@ use trans::type_of;
 use trans::machine;
 use trans::type_::Type;
 use middle::ty::{self, Ty, TypeFoldable};
+use trans::Disr;
 use middle::subst::Substs;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
@@ -848,7 +849,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         let arg = adt::MaybeSizedValue::sized(llarg);
                         (0..contents.len())
                             .map(|i| {
-                                Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, arg, 0, i))
+                                Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, arg, Disr(0), i))
                             })
                             .collect()
                     }

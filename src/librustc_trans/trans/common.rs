@@ -161,6 +161,8 @@ pub fn gensym_name(name: &str) -> ast::Name {
 *
 */
 
+use trans::Disr;
+
 #[derive(Copy, Clone)]
 pub struct NodeIdAndSpan {
     pub id: ast::NodeId,
@@ -177,7 +179,7 @@ pub struct Field<'tcx>(pub ast::Name, pub Ty<'tcx>);
 
 /// The concrete version of ty::VariantDef
 pub struct VariantInfo<'tcx> {
-    pub discr: ty::Disr,
+    pub discr: Disr,
     pub fields: Vec<Field<'tcx>>
 }
 
@@ -195,7 +197,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 };
 
                 VariantInfo {
-                    discr: variant.disr_val,
+                    discr: Disr::from(variant.disr_val),
                     fields: variant.fields.iter().map(|f| {
                         Field(f.name, monomorphize::field_ty(tcx, substs, f))
                     }).collect()
@@ -204,7 +206,7 @@ impl<'tcx> VariantInfo<'tcx> {
 
             ty::TyTuple(ref v) => {
                 VariantInfo {
-                    discr: 0,
+                    discr: Disr(0),
                     fields: v.iter().enumerate().map(|(i, &t)| {
                         Field(token::intern(&i.to_string()), t)
                     }).collect()

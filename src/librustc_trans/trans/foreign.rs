@@ -27,6 +27,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
+use trans::Disr;
 use middle::infer;
 use middle::ty::{self, Ty};
 use middle::subst::Substs;
@@ -332,7 +333,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             llarg_rust
         } else {
             if passed_arg_tys[i].is_bool() {
-                let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
+                let val = LoadRangeAssert(bcx, llarg_rust, Disr(0), Disr(2), llvm::False);
                 Trunc(bcx, val, Type::i1(bcx.ccx()))
             } else {
                 Load(bcx, llarg_rust)

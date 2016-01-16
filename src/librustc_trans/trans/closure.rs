@@ -26,6 +26,7 @@ use trans::declare;
 use trans::expr;
 use trans::monomorphize::{MonoId};
 use trans::type_of::*;
+use trans::Disr;
 use middle::ty;
 use session::config::FullDebugInfo;
 
@@ -242,7 +243,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     for (i, freevar) in freevars.iter().enumerate() {
         let datum = expr::trans_local_var(bcx, freevar.def);
         let upvar_slot_dest = adt::trans_field_ptr(
-            bcx, &*repr, adt::MaybeSizedValue::sized(dest_addr), 0, i);
+            bcx, &*repr, adt::MaybeSizedValue::sized(dest_addr), Disr(0), i);
         let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
                                      closure_expr_id: id };
         match tcx.upvar_capture(upvar_id).unwrap() {
@@ -254,7 +255,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
             }
         }
     }
-    adt::trans_set_discr(bcx, &*repr, dest_addr, 0);
+    adt::trans_set_discr(bcx, &*repr, dest_addr, Disr(0));
 
     Some(bcx)
 }

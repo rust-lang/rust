@@ -85,6 +85,7 @@ use trans::type_::Type;
 use trans::type_of;
 use trans::type_of::*;
 use trans::value::Value;
+use trans::Disr;
 use util::common::indenter;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet};
@@ -489,7 +490,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         for (i, field) in variant.fields.iter().enumerate() {
             let arg = monomorphize::field_ty(tcx, substs, field);
             cx = f(cx,
-                   adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
+                   adt::trans_field_ptr(cx, repr, av, Disr::from(variant.disr_val), i),
                    arg);
         }
         return cx;
@@ -509,7 +510,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
             let repr = adt::represent_type(cx.ccx(), t);
             let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
             for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, discr, i);
+                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, Disr::from(discr), i);
 
                 let val = if common::type_is_sized(cx.tcx(), field_ty) {
                     llfld_a
@@ -525,7 +526,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         ty::TyClosure(_, ref substs) => {
             let repr = adt::represent_type(cx.ccx(), t);
             for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
-                let llupvar = adt::trans_field_ptr(cx, &*repr, value, 0, i);
+                let llupvar = adt::trans_field_ptr(cx, &*repr, value, Disr(0), i);
                 cx = f(cx, llupvar, upvar_ty);
             }
         }
@@ -541,7 +542,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         ty::TyTuple(ref args) => {
             let repr = adt::represent_type(cx.ccx(), t);
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, 0, i);
+                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, Disr(0), i);
                 cx = f(cx, llfld_a, *arg);
             }
         }
@@ -588,7 +589,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                         let variant_cx = fcx.new_temp_block(&format!("enum-iter-variant-{}",
                                                                      &variant.disr_val
                                                                              .to_string()));
-                        let case_val = adt::trans_case(cx, &*repr, variant.disr_val);
+                        let case_val = adt::trans_case(cx, &*repr, Disr::from(variant.disr_val));
                         AddCase(llswitch, case_val, variant_cx.llbb);
                         let variant_cx = iter_variant(variant_cx,
                                                       &*repr,
@@ -720,8 +721,8 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     continue;
                 }
 
-                let src_f = adt::trans_field_ptr(bcx, &src_repr, src, 0, i);
-                let dst_f = adt::trans_field_ptr(bcx, &dst_repr, dst, 0, i);
+                let src_f = adt::trans_field_ptr(bcx, &src_repr, src, Disr(0), i);
+                let dst_f = adt::trans_field_ptr(bcx, &dst_repr, dst, Disr(0), i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty);
                 } else {
@@ -1022,11 +1023,11 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) ->
     }
 
     let val = if t.is_bool() {
-        LoadRangeAssert(cx, ptr, 0, 2, llvm::False)
+        LoadRangeAssert(cx, ptr, Disr(0), Disr(2), llvm::False)
     } else if t.is_char() {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
-        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
+        LoadRangeAssert(cx, ptr, Disr(0), Disr(0x10FFFF + 1), llvm::False)
     } else if (t.is_region_ptr() || t.is_unique()) && !common::type_is_fat_ptr(cx.tcx(), t) {
         LoadNonNull(cx, ptr)
     } else {
@@ -2111,7 +2112,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn trans_enum_variant<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     ctor_id: ast::NodeId,
-                                    disr: ty::Disr,
+                                    disr: Disr,
                                     param_substs: &'tcx Substs<'tcx>,
                                     llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_enum_variant");
@@ -2121,7 +2122,7 @@ pub fn trans_enum_variant<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  ctor_ty: Ty<'tcx>,
-                                                 disr: ty::Disr,
+                                                 disr: Disr,
                                                  args: callee::CallArgs,
                                                  dest: expr::Dest,
                                                  debug_loc: DebugLoc)
@@ -2197,12 +2198,12 @@ pub fn trans_tuple_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     llfndecl: ValueRef) {
     let _icx = push_ctxt("trans_tuple_struct");
 
-    trans_enum_variant_or_tuple_like_struct(ccx, ctor_id, 0, param_substs, llfndecl);
+    trans_enum_variant_or_tuple_like_struct(ccx, ctor_id, Disr(0), param_substs, llfndecl);
 }
 
 fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                      ctor_id: ast::NodeId,
-                                                     disr: ty::Disr,
+                                                     disr: Disr,
                                                      param_substs: &'tcx Substs<'tcx>,
                                                      llfndecl: ValueRef) {
     let ctor_ty = ccx.tcx().node_id_to_type(ctor_id);
@@ -2233,7 +2234,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         let repr = adt::represent_type(ccx, result_ty.unwrap());
         let mut llarg_idx = fcx.arg_offset() as c_uint;
         for (i, arg_ty) in arg_tys.into_iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, &*repr, dest_val, disr, i);
+            let lldestptr = adt::trans_field_ptr(bcx, &*repr, dest_val, Disr::from(disr), i);
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 Store(bcx,
                       get_param(fcx.llfn, llarg_idx),
