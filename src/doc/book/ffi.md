@@ -478,6 +478,8 @@ are:
 * `aapcs`
 * `cdecl`
 * `fastcall`
+* `vectorcall`
+This is currently hidden behind the `abi_vectorcall` gate and is subject to change.
 * `Rust`
 * `rust-intrinsic`
 * `system`
