@@ -244,7 +244,7 @@ pub fn is_from_for_desugar(decl: &Decl) -> bool {
 /// snippet(cx, expr.span, "..")
 /// ```
 pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
-    cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
+    cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or_else(|_| Cow::Borrowed(default))
 }
 
 /// Convert a span to a code snippet. Returns `None` if not available.

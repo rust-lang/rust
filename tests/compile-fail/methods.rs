@@ -175,6 +175,33 @@ fn search_is_some() {
     let _ = foo.rposition().is_some();
 }
 
+/// Checks implementation of the OR_FUN_CALL lint
+fn or_fun_call() {
+    let foo = Some(vec![1]);
+    foo.unwrap_or(Vec::new());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION foo.unwrap_or_else(Vec::new);
+
+    let bar = Some(vec![1]);
+    bar.unwrap_or(Vec::with_capacity(12));
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION bar.unwrap_or_else(|| Vec::with_capacity(12));
+
+    let baz : Result<_, ()> = Ok(vec![1]);
+    baz.unwrap_or(Vec::new());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION baz.unwrap_or_else(|_| Vec::new());
+
+    let qux : Result<_, ()> = Ok(vec![1]);
+    qux.unwrap_or(Vec::with_capacity(12));
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION qux.unwrap_or_else(|_| Vec::with_capacity(12));
+}
+
 fn main() {
     use std::io;
 

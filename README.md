@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 92 lints included in this crate:
+There are 93 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -63,6 +63,7 @@ name                                                                            
 [option_map_unwrap_or](https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or)                   | warn    | using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as `map_or(a, f)`
 [option_map_unwrap_or_else](https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or_else)         | warn    | using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `map_or_else(g, f)`
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)                       | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
+[or_fun_call](https://github.com/Manishearth/rust-clippy/wiki#or_fun_call)                                     | warn    | using any `*or` method when the `*or_else` would do
 [out_of_bounds_indexing](https://github.com/Manishearth/rust-clippy/wiki#out_of_bounds_indexing)               | deny    | out of bound constant indexing
 [panic_params](https://github.com/Manishearth/rust-clippy/wiki#panic_params)                                   | warn    | missing parameters in `panic!`
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                       | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught

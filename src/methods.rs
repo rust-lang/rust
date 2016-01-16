@@ -4,6 +4,7 @@ use rustc::middle::ty;
 use rustc::middle::subst::{Subst, TypeSpace};
 use std::iter;
 use std::borrow::Cow;
+use syntax::ptr::P;
 
 use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args, match_trait_method,
             walk_ptrs_ty_depth, walk_ptrs_ty};
@@ -170,6 +171,25 @@ declare_lint!(pub SEARCH_IS_SOME, Warn,
               "using an iterator search followed by `is_some()`, which is more succinctly \
                expressed as a call to `any()`");
 
+/// **What it does:** This lint checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`, etc., and
+/// suggests to use `or_else`, `unwrap_or_else`, etc., instead.
+///
+/// **Why is this bad?** The function will always be called and potentially allocate an object
+/// in expressions such as:
+/// ```rust
+/// foo.unwrap_or(String::new())
+/// ```
+/// this can instead be written:
+/// ```rust
+/// foo.unwrap_or_else(String::new)
+/// ```
+///
+/// **Known problems:** If the function as side-effects, not calling it will change the semantic of
+/// the program, but you shouldn't rely on that anyway. The will won't catch
+/// `foo.unwrap_or(vec![])`.
+declare_lint!(pub OR_FUN_CALL, Warn,
+              "using any `*or` method when the `*or_else` would do");
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED,
@@ -181,13 +201,15 @@ impl LintPass for MethodsPass {
                     WRONG_PUB_SELF_CONVENTION,
                     OK_EXPECT,
                     OPTION_MAP_UNWRAP_OR,
-                    OPTION_MAP_UNWRAP_OR_ELSE)
+                    OPTION_MAP_UNWRAP_OR_ELSE,
+                    OR_FUN_CALL)
     }
 }
 
 impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprMethodCall(_, _, _) = expr.node {
+        if let ExprMethodCall(name, _, ref args) = expr.node {
+            // Chain calls
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                 lint_unwrap(cx, expr, arglists[0]);
             } else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
@@ -207,6 +229,8 @@ impl LateLintPass for MethodsPass {
             } else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
                 lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
             }
+
+            lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
         }
     }
 
@@ -254,6 +278,39 @@ impl LateLintPass for MethodsPass {
                     }
                 }
             }
+        }
+    }
+}
+
+/// Checks for the `OR_FUN_CALL` lint.
+fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>]) {
+    if args.len() == 2 && ["map_or", "ok_or", "or", "unwrap_or"].contains(&name) {
+        let self_ty = cx.tcx.expr_ty(&args[0]);
+
+        let is_result = if match_type(cx, self_ty, &RESULT_PATH) {
+            true
+        }
+        else if match_type(cx, self_ty, &OPTION_PATH) {
+            false
+        }
+        else {
+            return;
+        };
+
+        if let ExprCall(ref fun, ref or_args) = args[1].node {
+            let sugg = match (is_result, or_args.is_empty()) {
+                (true, _) => format!("|_| {}", snippet(cx, args[1].span, "..")),
+                (false, false) => format!("|| {}", snippet(cx, args[1].span, "..")),
+                (false, true) => format!("{}", snippet(cx, fun.span, "..")),
+            };
+
+            span_lint(cx, OR_FUN_CALL, expr.span,
+                      &format!("use of `{}` followed by a function call", name))
+                .span_suggestion(expr.span, "try this",
+                                 format!("{}.{}_else({})",
+                                         snippet(cx, args[0].span, "_"),
+                                         name,
+                                         sugg));
         }
     }
 }
