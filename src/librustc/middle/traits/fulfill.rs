@@ -281,7 +281,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             debug!("select_where_possible: outcome={:?}", outcome);
 
             // these are obligations that were proven to be true.
-            for pending_obligation in outcome.successful {
+            for pending_obligation in outcome.completed {
                 let predicate = &pending_obligation.obligation.predicate;
                 if predicate.is_global() {
                     selcx.tcx().fulfilled_predicates.borrow_mut()

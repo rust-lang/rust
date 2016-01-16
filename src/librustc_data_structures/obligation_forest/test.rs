@@ -21,7 +21,7 @@ fn push_pop() {
     //      A |-> A.1
     //        |-> A.2
     //        |-> A.3
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
+    let Outcome { completed: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
         match *obligation {
             "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
             "B" => Err("B is for broken"),
@@ -40,7 +40,7 @@ fn push_pop() {
     //      D |-> D.1
     //        |-> D.2
     forest.push_root("D");
-    let Outcome { successful: ok, errors: err, .. }: Outcome<&'static str, ()> =
+    let Outcome { completed: ok, errors: err, .. }: Outcome<&'static str, ()> =
         forest.process_obligations(|obligation, _| {
             match *obligation {
                 "A.1" => Ok(None),
@@ -58,7 +58,7 @@ fn push_pop() {
     // propagates to A.3.i, but not D.1 or D.2.
     //      D |-> D.1 |-> D.1.i
     //        |-> D.2 |-> D.2.i
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
+    let Outcome { completed: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
         match *obligation {
             "A.1" => Ok(Some(vec![])),
             "A.2" => Err("A is for apple"),
@@ -72,7 +72,7 @@ fn push_pop() {
                                  backtrace: vec!["A.2", "A"] }]);
 
     // fourth round: error in D.1.i that should propagate to D.2.i
-    let Outcome { successful: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
+    let Outcome { completed: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
         match *obligation {
             "D.1.i" => Err("D is for dumb"),
             _ => panic!("unexpected obligation {:?}", obligation),
@@ -96,7 +96,7 @@ fn success_in_grandchildren() {
     let mut forest = ObligationForest::new();
     forest.push_root("A");
 
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, _| {
             match *obligation {
                 "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
@@ -106,7 +106,7 @@ fn success_in_grandchildren() {
     assert!(ok.is_empty());
     assert!(err.is_empty());
 
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, _| {
             match *obligation {
                 "A.1" => Ok(Some(vec![])),
@@ -118,7 +118,7 @@ fn success_in_grandchildren() {
     assert_eq!(ok, vec!["A.3", "A.1"]);
     assert!(err.is_empty());
 
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, _| {
             match *obligation {
                 "A.2.i" => Ok(Some(vec!["A.2.i.a"])),
@@ -129,7 +129,7 @@ fn success_in_grandchildren() {
     assert_eq!(ok, vec!["A.2.ii"]);
     assert!(err.is_empty());
 
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, _| {
             match *obligation {
                 "A.2.i.a" => Ok(Some(vec![])),
@@ -139,7 +139,7 @@ fn success_in_grandchildren() {
     assert_eq!(ok, vec!["A.2.i.a", "A.2.i", "A.2", "A"]);
     assert!(err.is_empty());
 
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|_, _| unreachable!());
     assert!(ok.is_empty());
     assert!(err.is_empty());
@@ -151,7 +151,7 @@ fn to_errors_no_throw() {
     // only yields one of them (and does not panic, in particular).
     let mut forest = ObligationForest::new();
     forest.push_root("A");
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, _| {
             match *obligation {
                 "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
@@ -170,7 +170,7 @@ fn backtrace() {
     // only yields one of them (and does not panic, in particular).
     let mut forest: ObligationForest<&'static str> = ObligationForest::new();
     forest.push_root("A");
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, mut backtrace| {
             assert!(backtrace.next().is_none());
             match *obligation {
@@ -180,7 +180,7 @@ fn backtrace() {
         });
     assert!(ok.is_empty());
     assert!(err.is_empty());
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, mut backtrace| {
             assert!(backtrace.next().unwrap() == &"A");
             assert!(backtrace.next().is_none());
@@ -191,7 +191,7 @@ fn backtrace() {
         });
     assert!(ok.is_empty());
     assert!(err.is_empty());
-    let Outcome { successful: ok, errors: err, .. } =
+    let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations::<(),_>(|obligation, mut backtrace| {
             assert!(backtrace.next().unwrap() == &"A.1");
             assert!(backtrace.next().unwrap() == &"A");
