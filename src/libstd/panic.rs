@@ -136,7 +136,7 @@ pub trait RefRecoverSafe {}
 ///
 /// let mut variable = 4;
 ///
-/// // This code will not compile becuause the closure captures `&mut variable`
+/// // This code will not compile because the closure captures `&mut variable`
 /// // which is not considered panic safe by default.
 ///
 /// // panic::recover(|| {

@@ -788,15 +788,12 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(slice_sort_by_key)]
-    ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// v.sort_by_key(|k| k.abs());
     /// assert!(v == [1, 2, -3, 4, -5]);
     /// ```
-    #[unstable(feature = "slice_sort_by_key", reason = "recently added",
-               issue = "27724")]
+    #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
     pub fn sort_by_key<B, F>(&mut self, mut f: F)
         where F: FnMut(&T) -> B, B: Ord
@@ -829,29 +826,25 @@ impl<T> [T] {
         merge_sort(self, compare)
     }
 
-    /// Copies as many elements from `src` as it can into `self` (the
-    /// shorter of `self.len()` and `src.len()`). Returns the number
-    /// of elements copied.
+    /// Copies the elements from `src` into `self`.
+    ///
+    /// The length of this slice must be the same as the slice passed in.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two slices have different lengths.
     ///
     /// # Example
     ///
     /// ```rust
-    /// #![feature(clone_from_slice)]
-    ///
     /// let mut dst = [0, 0, 0];
-    /// let src = [1, 2];
+    /// let src = [1, 2, 3];
     ///
-    /// assert!(dst.clone_from_slice(&src) == 2);
-    /// assert!(dst == [1, 2, 0]);
-    ///
-    /// let src2 = [3, 4, 5, 6];
-    /// assert!(dst.clone_from_slice(&src2) == 3);
-    /// assert!(dst == [3, 4, 5]);
+    /// dst.clone_from_slice(&src);
+    /// assert!(dst == [1, 2, 3]);
     /// ```
-    #[unstable(feature = "clone_from_slice", issue = "27750")]
-    pub fn clone_from_slice(&mut self, src: &[T]) -> usize
-        where T: Clone
-    {
+    #[stable(feature = "clone_from_slice", since = "1.7.0")]
+    pub fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
     }
 

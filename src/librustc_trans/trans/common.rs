@@ -119,11 +119,9 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 }
 
 /// Identifies types which we declare to be equivalent to `void` in C for the purpose of function
-/// return types. These are `()`, bot, and uninhabited enums. Note that all such types are also
-/// zero-size, but not all zero-size types use a `void` return type (in order to aid with C ABI
-/// compatibility).
-pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
-    ty.is_nil() || ty.is_empty(ccx.tcx())
+/// return types. These are `()`, bot, uninhabited enums and all other zero-sized types.
+pub fn return_type_is_void<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.is_nil() || ty.is_empty(ccx.tcx()) || type_is_zero_size(ccx, ty)
 }
 
 /// Generates a unique symbol based off the name given. This is used to create

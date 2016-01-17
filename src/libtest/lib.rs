@@ -1275,8 +1275,7 @@ pub mod bench {
         let ns_iter_summ = bs.auto_bench(f);
 
         let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
-        let iter_s = 1_000_000_000 / ns_iter;
-        let mb_s = (bs.bytes * iter_s) / 1_000_000;
+        let mb_s = bs.bytes * 1000 / ns_iter;
 
         BenchSamples {
             ns_iter_summ: ns_iter_summ,

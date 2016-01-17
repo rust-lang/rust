@@ -33,7 +33,6 @@
 #![feature(libc)]
 #![feature(rand)]
 #![feature(rustc_private)]
-#![feature(clone_from_slice)]
 #![feature(staged_api)]
 #![feature(step_by)]
 #![cfg_attr(test, feature(test, rand))]

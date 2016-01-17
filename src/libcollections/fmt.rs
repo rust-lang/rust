@@ -490,7 +490,11 @@ pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{ArgumentV1, Arguments, write, radix, Radix, RadixFmt};
+pub use core::fmt::{ArgumentV1, Arguments, write};
+#[unstable(feature = "fmt_radix", issue = "27728")]
+#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
+#[allow(deprecated)]
+pub use core::fmt::{radix, Radix, RadixFmt};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 

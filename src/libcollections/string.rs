@@ -66,6 +66,7 @@ use core::str::pattern::Pattern;
 use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use rustc_unicode::str as unicode_str;
 
+#[allow(deprecated)]
 use borrow::{Cow, IntoCow};
 use range::RangeArgument;
 use str::{self, FromStr, Utf8Error, Chars};
@@ -783,10 +784,15 @@ impl String {
 
     /// Extracts a string slice containing the entire string.
     #[inline]
-    #[unstable(feature = "convert",
-               reason = "waiting on RFC revision",
-               issue = "27729")]
+    #[stable(feature = "string_as_str", since = "1.7.0")]
     pub fn as_str(&self) -> &str {
+        self
+    }
+
+    /// Extracts a string slice containing the entire string.
+    #[inline]
+    #[stable(feature = "string_as_str", since = "1.7.0")]
+    pub fn as_mut_str(&mut self) -> &mut str {
         self
     }
 
@@ -1794,6 +1800,7 @@ impl Into<Vec<u8>> for String {
 
 #[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`",
            issue= "27735")]
+#[allow(deprecated)]
 impl IntoCow<'static, str> for String {
     #[inline]
     fn into_cow(self) -> Cow<'static, str> {
@@ -1803,6 +1810,7 @@ impl IntoCow<'static, str> for String {
 
 #[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`",
            issue = "27735")]
+#[allow(deprecated)]
 impl<'a> IntoCow<'a, str> for &'a str {
     #[inline]
     fn into_cow(self) -> Cow<'a, str> {

@@ -12,6 +12,10 @@
             reason = "the interaction between semaphores and the acquisition/release \
                       of resources is currently unclear",
             issue = "27798")]
+#![rustc_deprecated(since = "1.7.0",
+                    reason = "easily confused with system sempahores and not \
+                              used enough to pull its weight")]
+#![allow(deprecated)]
 
 use ops::Drop;
 use sync::{Mutex, Condvar};
