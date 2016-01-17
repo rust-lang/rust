@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-msvc everything is the system allocator on msvc
+// ignore-windows everything is the system allocator on windows
 // ignore-musl no dylibs on musl right now
 // ignore-bitrig no jemalloc on bitrig
 // ignore-openbsd no jemalloc on openbsd
