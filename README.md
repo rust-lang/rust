@@ -78,7 +78,7 @@ build.
 Download [MinGW from
 here](http://mingw-w64.org/doku.php/download/mingw-builds), and choose the
 `threads=win32,exceptions=dwarf/seh` flavor when installing. After installing,
-add its `bin` directory to your `PATH`. This is due to #28260, in the future,
+add its `bin` directory to your `PATH`. This is due to [#28260](https://github.com/rust-lang/rust/issues/28260), in the future,
 installing from pacman should be just fine.
 
    ```
