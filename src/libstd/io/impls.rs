@@ -156,7 +156,7 @@ impl<'a> Read for &'a [u8] {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.len());
         let (a, b) = self.split_at(amt);
-        buf.clone_from_slice(a);
+        buf[..amt].clone_from_slice(a);
         *self = b;
         Ok(amt)
     }

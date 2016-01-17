@@ -13,8 +13,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-use self::wrapping::OverflowingOps;
-
 use char::CharExt;
 use cmp::{Eq, PartialOrd};
 use convert::From;
@@ -464,15 +462,13 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(5i32.checked_rem(2), Some(1));
         /// assert_eq!(5i32.checked_rem(0), None);
         /// assert_eq!(i32::MIN.checked_rem(-1), None);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_rem(self, other: Self) -> Option<Self> {
             if other == 0 {
@@ -491,14 +487,12 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(5i32.checked_neg(), Some(-5));
         /// assert_eq!(i32::MIN.checked_neg(), None);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_neg(self) -> Option<Self> {
             let (a, b) = self.overflowing_neg();
@@ -513,12 +507,10 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10i32.checked_shl(4), Some(0x100));
         /// assert_eq!(0x10i32.checked_shl(33), None);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_shl(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shl(rhs);
@@ -533,12 +525,10 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10i32.checked_shr(4), Some(0x1));
         /// assert_eq!(0x10i32.checked_shr(33), None);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_shr(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shr(rhs);
@@ -595,15 +585,13 @@ macro_rules! int_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(100i32.saturating_mul(127), 12700);
         /// assert_eq!((1i32 << 23).saturating_mul(1 << 23), i32::MAX);
         /// assert_eq!((-1i32 << 23).saturating_mul(1 << 23), i32::MIN);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn saturating_mul(self, other: Self) -> Self {
             self.checked_mul(other).unwrap_or_else(|| {
@@ -796,15 +784,13 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(5i32.overflowing_add(2), (7, false));
         /// assert_eq!(i32::MAX.overflowing_add(1), (i32::MIN, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_add(self, rhs: Self) -> (Self, bool) {
             unsafe {
                 let (a, b) = $add_with_overflow(self as $ActualT,
@@ -824,15 +810,13 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(5i32.overflowing_sub(2), (3, false));
         /// assert_eq!(i32::MIN.overflowing_sub(1), (i32::MAX, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
             unsafe {
                 let (a, b) = $sub_with_overflow(self as $ActualT,
@@ -852,13 +836,11 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(5i32.overflowing_mul(2), (10, false));
         /// assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
             unsafe {
                 let (a, b) = $mul_with_overflow(self as $ActualT,
@@ -882,15 +864,13 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(5i32.overflowing_div(2), (2, false));
         /// assert_eq!(i32::MIN.overflowing_div(-1), (i32::MIN, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
             if self == Self::min_value() && rhs == -1 {
                 (self, true)
@@ -914,15 +894,13 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(5i32.overflowing_rem(2), (1, false));
         /// assert_eq!(i32::MIN.overflowing_rem(-1), (0, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
             if self == Self::min_value() && rhs == -1 {
                 (0, true)
@@ -944,15 +922,13 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::i32;
         ///
         /// assert_eq!(2i32.overflowing_neg(), (-2, false));
         /// assert_eq!(i32::MIN.overflowing_neg(), (i32::MIN, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_neg(self) -> (Self, bool) {
             if self == Self::min_value() {
                 (Self::min_value(), true)
@@ -974,13 +950,11 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10i32.overflowing_shl(4), (0x100, false));
         /// assert_eq!(0x10i32.overflowing_shl(36), (0x100, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
@@ -998,13 +972,11 @@ macro_rules! int_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10i32.overflowing_shr(4), (0x1, false));
         /// assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
@@ -1542,12 +1514,10 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(5u32.checked_rem(2), Some(1));
         /// assert_eq!(5u32.checked_rem(0), None);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_rem(self, other: Self) -> Option<Self> {
             if other == 0 {
@@ -1555,6 +1525,26 @@ macro_rules! uint_impl {
             } else {
                 Some(self % other)
             }
+        }
+
+        /// Checked negation. Computes `-self`, returning `None` unless `self ==
+        /// 0`.
+        ///
+        /// Note that negating any positive integer will overflow.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// assert_eq!(0u32.checked_neg(), Some(0));
+        /// assert_eq!(1u32.checked_neg(), None);
+        /// ```
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[inline]
+        pub fn checked_neg(self) -> Option<Self> {
+            let (a, b) = self.overflowing_neg();
+            if b {None} else {Some(a)}
         }
 
         /// Checked shift left. Computes `self << rhs`, returning `None`
@@ -1565,12 +1555,10 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10u32.checked_shl(4), Some(0x100));
         /// assert_eq!(0x10u32.checked_shl(33), None);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_shl(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shl(rhs);
@@ -1585,12 +1573,10 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10u32.checked_shr(4), Some(0x1));
         /// assert_eq!(0x10u32.checked_shr(33), None);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn checked_shr(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shr(rhs);
@@ -1647,14 +1633,12 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::u32;
         ///
         /// assert_eq!(100u32.saturating_mul(127), 12700);
         /// assert_eq!((1u32 << 23).saturating_mul(1 << 23), u32::MAX);
         /// ```
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
         pub fn saturating_mul(self, other: Self) -> Self {
             self.checked_mul(other).unwrap_or(Self::max_value())
@@ -1833,15 +1817,13 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::u32;
         ///
         /// assert_eq!(5u32.overflowing_add(2), (7, false));
         /// assert_eq!(u32::MAX.overflowing_add(1), (0, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_add(self, rhs: Self) -> (Self, bool) {
             unsafe {
                 let (a, b) = $add_with_overflow(self as $ActualT,
@@ -1861,15 +1843,13 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// use std::u32;
         ///
         /// assert_eq!(5u32.overflowing_sub(2), (3, false));
         /// assert_eq!(0u32.overflowing_sub(1), (u32::MAX, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
             unsafe {
                 let (a, b) = $sub_with_overflow(self as $ActualT,
@@ -1889,13 +1869,11 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(5u32.overflowing_mul(2), (10, false));
         /// assert_eq!(1_000_000_000u32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
             unsafe {
                 let (a, b) = $mul_with_overflow(self as $ActualT,
@@ -1920,12 +1898,10 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(5u32.overflowing_div(2), (2, false));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
             (self / rhs, false)
         }
@@ -1946,12 +1922,10 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(5u32.overflowing_rem(2), (1, false));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
             (self % rhs, false)
         }
@@ -1968,13 +1942,11 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0u32.overflowing_neg(), (0, false));
         /// assert_eq!(2u32.overflowing_neg(), (-2i32 as u32, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_neg(self) -> (Self, bool) {
             ((!self).wrapping_add(1), self != 0)
         }
@@ -1992,13 +1964,11 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10u32.overflowing_shl(4), (0x100, false));
         /// assert_eq!(0x10u32.overflowing_shl(36), (0x100, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
@@ -2016,13 +1986,11 @@ macro_rules! uint_impl {
         /// Basic usage
         ///
         /// ```
-        /// #![feature(wrapping)]
-        ///
         /// assert_eq!(0x10u32.overflowing_shr(4), (0x1, false));
         /// assert_eq!(0x10u32.overflowing_shr(36), (0x1, true));
         /// ```
         #[inline]
-        #[unstable(feature = "wrapping", issue = "27755")]
+        #[stable(feature = "wrapping", since = "1.7.0")]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }

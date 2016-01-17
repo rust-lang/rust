@@ -219,7 +219,6 @@
 #![feature(cfg_target_vendor)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_internals)]
-#![feature(clone_from_slice)]
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
@@ -240,6 +239,7 @@
 #![feature(linkage)]
 #![feature(macro_reexport)]
 #![feature(num_bits_bytes)]
+#![feature(old_wrapping)]
 #![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
@@ -266,7 +266,6 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
-#![feature(wrapping)]
 #![feature(zero_one)]
 
 // Don't link to std. We are std.

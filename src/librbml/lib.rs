@@ -123,7 +123,6 @@
 
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(clone_from_slice)]
 
 #![cfg_attr(test, feature(test))]
 
@@ -972,7 +971,7 @@ pub mod writer {
                 {
                     let last_size_pos = last_size_pos as usize;
                     let data = &self.writer.get_ref()[last_size_pos+4..cur_pos as usize];
-                    buf.clone_from_slice(data);
+                    buf[..size].clone_from_slice(data);
                 }
 
                 // overwrite the size and data and continue

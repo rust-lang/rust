@@ -195,6 +195,7 @@ pub trait Hasher {
 mod impls {
     use prelude::v1::*;
 
+    use mem;
     use slice;
     use super::*;
 
@@ -207,9 +208,7 @@ mod impls {
                 }
 
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
-                    // FIXME(#23542) Replace with type ascription.
-                    #![allow(trivial_casts)]
-                    let newlen = data.len() * ::$ty::BYTES;
+                    let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
                     state.write(unsafe { slice::from_raw_parts(ptr, newlen) })
                 }

@@ -10,6 +10,8 @@
 
 //! Integer and floating-point number formatting
 
+#![allow(deprecated)]
+
 // FIXME: #6220 Implement floating point formatting
 
 use prelude::v1::*;
@@ -143,6 +145,7 @@ radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
 #[unstable(feature = "fmt_radix",
            reason = "may be renamed or move to a different module",
            issue = "27728")]
+#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
 pub struct Radix {
     base: u8,
 }
@@ -173,6 +176,7 @@ impl GenericRadix for Radix {
 #[unstable(feature = "fmt_radix",
            reason = "may be renamed or move to a different module",
            issue = "27728")]
+#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
 #[derive(Copy, Clone)]
 pub struct RadixFmt<T, R>(T, R);
 
@@ -189,6 +193,7 @@ pub struct RadixFmt<T, R>(T, R);
 #[unstable(feature = "fmt_radix",
            reason = "may be renamed or move to a different module",
            issue = "27728")]
+#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
 pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
     RadixFmt(x, Radix::new(base))
 }

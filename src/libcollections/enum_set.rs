@@ -81,6 +81,7 @@ pub trait CLike {
     fn from_usize(usize) -> Self;
 }
 
+#[allow(deprecated)]
 fn bit<E: CLike>(e: &E) -> usize {
     use core::usize;
     let value = e.to_usize();

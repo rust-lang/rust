@@ -49,7 +49,6 @@ use result::Result::{Ok, Err};
 use ptr;
 use mem;
 use marker::{Send, Sync, self};
-use num::wrapping::OverflowingOps;
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use raw::Slice as RawSlice;
@@ -151,8 +150,8 @@ pub trait SliceExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
-    #[unstable(feature = "clone_from_slice", issue= "27750")]
-    fn clone_from_slice(&mut self, &[Self::Item]) -> usize where Self::Item: Clone;
+    #[stable(feature = "clone_from_slice", since = "1.7.0")]
+    fn clone_from_slice(&mut self, &[Self::Item]) where Self::Item: Clone;
 }
 
 // Use macros to be generic over const/mut
@@ -476,14 +475,12 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn clone_from_slice(&mut self, src: &[T]) -> usize where T: Clone {
-        let min = cmp::min(self.len(), src.len());
-        let dst = &mut self[.. min];
-        let src = &src[.. min];
-        for i in 0..min {
-            dst[i].clone_from(&src[i]);
+    fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
+        assert!(self.len() == src.len(),
+                "destination and source slices have different lengths");
+        for (dst, src) in self.iter_mut().zip(src) {
+            dst.clone_from(src);
         }
-        min
     }
 }
 

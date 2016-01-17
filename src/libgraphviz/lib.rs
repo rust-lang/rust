@@ -47,9 +47,9 @@
 //! which is cyclic.
 //!
 //! ```rust
-//! #![feature(rustc_private, into_cow)]
+//! #![feature(rustc_private)]
 //!
-//! use std::borrow::IntoCow;
+//! use graphviz::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
 //!
@@ -281,12 +281,11 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(allow(unused_variables), deny(warnings))))]
 
-#![feature(into_cow)]
 #![feature(str_escape)]
 
 use self::LabelText::*;
 
-use std::borrow::{IntoCow, Cow};
+use std::borrow::{Cow, ToOwned};
 use std::io::prelude::*;
 use std::io;
 
@@ -719,6 +718,34 @@ pub fn render_opts<'a,
     writeln(w, &["}"])
 }
 
+pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
+    fn into_cow(self) -> Cow<'a, B>;
+}
+
+impl<'a> IntoCow<'a, str> for String {
+    fn into_cow(self) -> Cow<'a, str> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a> IntoCow<'a, str> for &'a str {
+    fn into_cow(self) -> Cow<'a, str> {
+        Cow::Borrowed(self)
+    }
+}
+
+impl<'a, T: Clone> IntoCow<'a, [T]> for Vec<T> {
+    fn into_cow(self) -> Cow<'a, [T]> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a, T: Clone> IntoCow<'a, [T]> for &'a [T] {
+    fn into_cow(self) -> Cow<'a, [T]> {
+        Cow::Borrowed(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use self::NodeLabels::*;
@@ -726,7 +753,7 @@ mod tests {
     use super::LabelText::{self, LabelStr, EscStr, HtmlStr};
     use std::io;
     use std::io::prelude::*;
-    use std::borrow::IntoCow;
+    use IntoCow;
 
     /// each node is an index in a vector in the graph.
     type Node = usize;

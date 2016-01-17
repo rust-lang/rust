@@ -12,9 +12,8 @@
 // type is `&mut [u8]`, passes in a pointer to the lvalue and not a
 // temporary. Issue #19147.
 
-#![feature(clone_from_slice)]
-
 use std::slice;
+use std::cmp;
 
 trait MyWriter {
     fn my_write(&mut self, buf: &[u8]) -> Result<(), ()>;
@@ -22,7 +21,8 @@ trait MyWriter {
 
 impl<'a> MyWriter for &'a mut [u8] {
     fn my_write(&mut self, buf: &[u8]) -> Result<(), ()> {
-        self.clone_from_slice(buf);
+        let amt = cmp::min(self.len(), buf.len());
+        self[..amt].clone_from_slice(&buf[..amt]);
 
         let write_len = buf.len();
         unsafe {
