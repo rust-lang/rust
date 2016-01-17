@@ -12,6 +12,7 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::linux_base::opts();
+    base.cpu = "ppc64le".to_string();
     base.pre_link_args.push("-m64".to_string());
 
     Target {
