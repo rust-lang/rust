@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-// ignore-msvc no jemalloc on msvc
+// ignore-windows no jemalloc on windows
 // ignore-bitrig no jemalloc on bitrig
 // ignore-openbsd no jemalloc on openbsd
 
