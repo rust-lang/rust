@@ -346,6 +346,38 @@ fn test_bad_zst() {
     }
 }
 
+#[test]
+fn test_clone() {
+    let mut map = BTreeMap::new();
+    let size = 100;
+    assert_eq!(map.len(), 0);
+
+    for i in 0..size {
+        assert_eq!(map.insert(i, 10*i), None);
+        assert_eq!(map.len(), i + 1);
+        assert_eq!(map, map.clone());
+    }
+
+    for i in 0..size {
+        assert_eq!(map.insert(i, 100*i), Some(10*i));
+        assert_eq!(map.len(), size);
+        assert_eq!(map, map.clone());
+    }
+
+    for i in 0..size/2 {
+        assert_eq!(map.remove(&(i*2)), Some(i*200));
+        assert_eq!(map.len(), size - i - 1);
+        assert_eq!(map, map.clone());
+    }
+
+    for i in 0..size/2 {
+        assert_eq!(map.remove(&(2*i)), None);
+        assert_eq!(map.remove(&(2*i+1)), Some(i*200 + 100));
+        assert_eq!(map.len(), size/2 - i - 1);
+        assert_eq!(map, map.clone());
+    }
+}
+
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};
