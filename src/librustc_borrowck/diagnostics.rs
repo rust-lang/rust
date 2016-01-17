@@ -293,6 +293,94 @@ let c = &i; // still ok!
 ```
 "##,
 
+E0507: r##"
+You tried to move out of a value which was borrowed. Erroneous code example:
+
+```
+use std::cell::RefCell;
+
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+
+    x.borrow().nothing_is_true(); // error: cannot move out of borrowed content
+}
+```
+
+Here, the `nothing_is_true` method takes the ownership of `self`. However,
+`self` cannot be moved because `.borrow()` only provides an `&TheDarkKnight`,
+which is a borrow of the content owned by the `RefCell`. To fix this error,
+you have three choices:
+
+* Try to avoid moving the variable.
+* Somehow reclaim the ownership.
+* Implement the `Copy` trait on the type.
+
+Examples:
+
+```
+use std::cell::RefCell;
+
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(&self) {} // First case, we don't take ownership
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+
+    x.borrow().nothing_is_true(); // ok!
+}
+```
+
+Or:
+
+```
+use std::cell::RefCell;
+
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+    let x = x.into_inner(); // we get back ownership
+
+    x.nothing_is_true(); // ok!
+}
+```
+
+Or:
+
+```
+use std::cell::RefCell;
+
+#[derive(Clone, Copy)] // we implement the Copy trait
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+fn main() {
+    let x = RefCell::new(TheDarkKnight);
+
+    x.borrow().nothing_is_true(); // ok!
+}
+```
+
+You can find more information about borrowing in the rust-book:
+http://doc.rust-lang.org/stable/book/references-and-borrowing.html
+"##,
+
 }
 
 register_diagnostics! {
@@ -306,7 +394,6 @@ register_diagnostics! {
     E0504, // cannot move `..` into closure because it is borrowed
     E0505, // cannot move out of `..` because it is borrowed
     E0506, // cannot assign to `..` because it is borrowed
-    E0507, // cannot move out of ..
     E0508, // cannot move out of type `..`, a non-copy fixed-size array
     E0509, // cannot move out of type `..`, which defines the `Drop` trait
 }
