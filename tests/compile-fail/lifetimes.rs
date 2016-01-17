@@ -119,5 +119,9 @@ fn alias_with_lt3<'a>(_foo: &FooAlias<'a> ) -> &'a str { unimplemented!() }
 // no warning, two input lifetimes
 fn alias_with_lt4<'a, 'b>(_foo: &'a FooAlias<'b> ) -> &'a str { unimplemented!() }
 
+fn named_input_elided_output<'a>(_arg: &'a str) -> &str { unimplemented!() } //~ERROR explicit lifetimes given
+
+fn elided_input_named_output<'a>(_arg: &str) -> &'a str { unimplemented!() }
+
 fn main() {
 }
