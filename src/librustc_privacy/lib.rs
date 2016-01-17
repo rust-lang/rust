@@ -811,8 +811,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             def::DefConst(..) => ck("const"),
             def::DefAssociatedConst(..) => ck("associated const"),
             def::DefVariant(..) => ck("variant"),
-            def::DefTy(_, false) => ck("type"),
-            def::DefTy(_, true) => ck("enum"),
+            def::DefTyAlias(..) => ck("type"),
+            def::DefEnum(..) => ck("enum"),
             def::DefTrait(..) => ck("trait"),
             def::DefStruct(..) => ck("struct"),
             def::DefMethod(..) => ck("method"),
@@ -887,7 +887,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             hir::ExprPath(..) => {
 
-                if let def::DefStruct(_) = self.tcx.resolve_expr(expr) {
+                if let def::DefStruct(..) = self.tcx.resolve_expr(expr) {
                     let expr_ty = self.tcx.expr_ty(expr);
                     let def = match expr_ty.sty {
                         ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
@@ -1515,7 +1515,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     // free type aliases, but this isn't done yet.
                     return
                 }
-                def::DefStruct(def_id) | def::DefTy(def_id, _) |
+                def::DefStruct(def_id) | def::DefEnum(def_id) | def::DefTyAlias(def_id) |
                 def::DefTrait(def_id) | def::DefAssociatedTy(def_id, _) => {
                     // Non-local means public (private items can't leave their crate, modulo bugs)
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {

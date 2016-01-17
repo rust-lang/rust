@@ -894,7 +894,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
                     const_deref_ptr(cx, try!(get_const_val(cx, def_id, e, param_substs)))
                 }
-                def::DefVariant(enum_did, variant_did, _) => {
+                def::DefVariant(enum_did, variant_did) => {
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);
                     match vinfo.kind() {
                         ty::VariantKind::Unit => {
@@ -909,7 +909,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         }
                     }
                 }
-                def::DefStruct(_) => {
+                def::DefStruct(..) => {
                     if let ty::TyBareFn(..) = ety.sty {
                         // Tuple struct.
                         expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
@@ -938,7 +938,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let def = cx.tcx().def_map.borrow()[&callee.id].full_def();
             let arg_vals = try!(map_list(args));
             match def {
-                def::DefFn(did, _) | def::DefMethod(did) => {
+                def::DefFn(did) | def::DefMethod(did) => {
                     try!(const_fn_call(
                         cx,
                         ExprId(callee.id),
@@ -948,7 +948,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trueconst,
                     ))
                 }
-                def::DefStruct(_) => {
+                def::DefStruct(..) => {
                     if ety.is_simd() {
                         C_vector(&arg_vals[..])
                     } else {
@@ -956,7 +956,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         adt::trans_const(cx, &*repr, Disr(0), &arg_vals[..])
                     }
                 }
-                def::DefVariant(enum_did, variant_did, _) => {
+                def::DefVariant(enum_did, variant_did) => {
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);
                     adt::trans_const(cx,

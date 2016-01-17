@@ -760,8 +760,8 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefStruct(_)) => vec!(Single),
-                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(DefStruct(..)) => vec!(Single),
+                Some(DefVariant(_, id)) => vec!(Variant(id)),
                 _ => vec!()
             },
         hir::PatEnum(..) =>
@@ -769,7 +769,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(DefVariant(_, id)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         hir::PatQPath(..) =>
@@ -780,7 +780,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(DefVariant(_, id)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         hir::PatLit(ref expr) =>
@@ -872,7 +872,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefVariant(_, id, _)) => if *constructor == Variant(id) {
+                Some(DefVariant(_, id)) => if *constructor == Variant(id) {
                     Some(vec!())
                 } else {
                     None
@@ -887,7 +887,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 DefConst(..) | DefAssociatedConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
-                DefVariant(_, id, _) if *constructor != Variant(id) => None,
+                DefVariant(_, id) if *constructor != Variant(id) => None,
                 DefVariant(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.iter().map(|p| &**p).collect(),

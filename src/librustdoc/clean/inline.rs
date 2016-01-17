@@ -76,22 +76,23 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             record_extern_fqn(cx, did, clean::TypeTrait);
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }
-        def::DefFn(did, false) => {
-            // If this function is a tuple struct constructor, we just skip it
+        def::DefFn(did) => {
             record_extern_fqn(cx, did, clean::TypeFunction);
             clean::FunctionItem(build_external_function(cx, tcx, did))
         }
-        def::DefStruct(did) => {
+        def::DefStruct(did)
+                // If this is a struct constructor, we skip it
+                if tcx.sess.cstore.tuple_struct_definition_if_ctor(did).is_none() => {
             record_extern_fqn(cx, did, clean::TypeStruct);
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
         }
-        def::DefTy(did, false) => {
+        def::DefTyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeTypedef);
             ret.extend(build_impls(cx, tcx, did));
             build_type(cx, tcx, did)
         }
-        def::DefTy(did, true) => {
+        def::DefEnum(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
             ret.extend(build_impls(cx, tcx, did));
             build_type(cx, tcx, did)

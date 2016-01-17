@@ -34,6 +34,6 @@ fn main() {
         Empty1(..) => () //~ ERROR unresolved enum variant, struct or const `Empty1`
     }
     match xe1 {
-        XEmpty1(..) => () //~ ERROR `XEmpty1` does not name a tuple variant or a tuple struct
+        XEmpty1(..) => () //~ ERROR unresolved enum variant, struct or const `XEmpty1`
     }
 }

@@ -1007,11 +1007,7 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
         name: name,
         disr_val: disr_val,
         fields: fields,
-        kind: match *def {
-            hir::VariantData::Struct(..) => ty::VariantKind::Struct,
-            hir::VariantData::Tuple(..) => ty::VariantKind::Tuple,
-            hir::VariantData::Unit(..) => ty::VariantKind::Unit,
-        }
+        kind: VariantKind::from_variant_data(def),
     }
 }
 

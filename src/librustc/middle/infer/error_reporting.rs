@@ -1404,7 +1404,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         Some(d) => d.full_def()
                     };
                     match a_def {
-                        def::DefTy(did, _) | def::DefStruct(did) => {
+                        def::DefEnum(did) | def::DefTyAlias(did) | def::DefStruct(did) => {
                             let generics = self.tcx.lookup_item_type(did).generics;
 
                             let expected =
@@ -1452,7 +1452,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         }
                         _ => ()
                     }
-
                 }
 
                 hir::TyPtr(ref mut_ty) => {

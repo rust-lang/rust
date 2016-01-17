@@ -547,7 +547,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             def::DefStruct(def_id) |
-            def::DefTy(def_id, _) |
+            def::DefEnum(def_id) |
+            def::DefTyAlias(def_id) |
             def::DefTrait(def_id) |
             def::DefTyParam(_, _, def_id, _) => {
                 Some(Data::TypeRefData(TypeRefData {
@@ -591,7 +592,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     decl_id: Some(decl_id),
                 }))
             }
-            def::DefFn(def_id, _) => {
+            def::DefFn(def_id) => {
                 Some(Data::FunctionCallData(FunctionCallData {
                     ref_id: def_id,
                     span: sub_span.unwrap(),

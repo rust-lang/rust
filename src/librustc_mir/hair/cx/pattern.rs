@@ -290,7 +290,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                        -> PatternKind<'tcx> {
         let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
         match def {
-            def::DefVariant(enum_id, variant_id, _) => {
+            def::DefVariant(enum_id, variant_id) => {
                 let adt_def = self.cx.tcx.lookup_adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
                     PatternKind::Variant {
@@ -303,9 +303,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 }
             }
 
-            // NB: resolving to DefStruct means the struct *constructor*,
-            // not the struct as a type.
-            def::DefStruct(..) | def::DefTy(..) => {
+            def::DefStruct(..) | def::DefTyAlias(..) => {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 

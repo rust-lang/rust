@@ -164,7 +164,7 @@ pub mod mytest {
     // Even though the inner `A` struct is a publicly exported item (usable from
     // external crates through `foo::foo`, it should not be accessible through
     // its definition path (which has the private `i` module).
-    use self::foo::i::A; //~ ERROR: type `A` is inaccessible
+    use self::foo::i::A; //~ ERROR: struct `A` is inaccessible
                          //~^ NOTE: module `i` is private
 
     pub mod foo {

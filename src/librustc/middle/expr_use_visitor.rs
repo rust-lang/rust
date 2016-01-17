@@ -1077,7 +1077,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             // struct or enum pattern.
                         }
 
-                        Some(def::DefVariant(enum_did, variant_did, _is_struct)) => {
+                        Some(def::DefVariant(enum_did, variant_did)) => {
                             let downcast_cmt =
                                 if tcx.lookup_adt_def(enum_did).is_univariant() {
                                     cmt_pat
@@ -1093,7 +1093,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             delegate.matched_pat(pat, downcast_cmt, match_mode);
                         }
 
-                        Some(def::DefStruct(..)) | Some(def::DefTy(_, false)) => {
+                        Some(def::DefStruct(..)) | Some(def::DefTyAlias(..)) => {
                             // A struct (in either the value or type
                             // namespace; we encounter the former on
                             // e.g. patterns for unit structs).
@@ -1113,19 +1113,8 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             // `matched_pat` call.
                         }
 
-                        Some(def @ def::DefTy(_, true)) => {
-                            // An enum's type -- should never be in a
-                            // pattern.
-
-                            if !tcx.sess.has_errors() {
-                                let msg = format!("Pattern has unexpected type: {:?} and type {:?}",
-                                                  def,
-                                                  cmt_pat.ty);
-                                tcx.sess.span_bug(pat.span, &msg)
-                            }
-                        }
-
                         Some(def) => {
+                            // An enum type should never be in a pattern.
                             // Remaining cases are e.g. DefFn, to
                             // which identifiers within patterns
                             // should not resolve. However, we do

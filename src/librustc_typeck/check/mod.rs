@@ -1421,11 +1421,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
     {
         let (adt, variant) = match def {
-            def::DefVariant(enum_id, variant_id, _) => {
+            def::DefVariant(enum_id, variant_id) => {
                 let adt = self.tcx().lookup_adt_def(enum_id);
                 (adt, adt.variant_with_id(variant_id))
             }
-            def::DefTy(did, _) | def::DefStruct(did) => {
+            def::DefStruct(did) | def::DefTyAlias(did) => {
                 let typ = self.tcx().lookup_item_type(did);
                 if let ty::TyStruct(adt, _) = typ.ty.sty {
                     (adt, adt.struct_variant())
@@ -4271,13 +4271,14 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
              ty::GenericPredicates::empty())
         }
-        def::DefFn(id, _) | def::DefMethod(id) |
-        def::DefStatic(id, _) | def::DefVariant(_, id, _) |
+        def::DefFn(id) | def::DefMethod(id) |
+        def::DefStatic(id, _) | def::DefVariant(_, id) |
         def::DefStruct(id) | def::DefConst(id) | def::DefAssociatedConst(id) => {
             (fcx.tcx().lookup_item_type(id), fcx.tcx().lookup_predicates(id))
         }
         def::DefTrait(_) |
-        def::DefTy(..) |
+        def::DefEnum(..) |
+        def::DefTyAlias(..) |
         def::DefAssociatedTy(..) |
         def::DefPrimTy(_) |
         def::DefTyParam(..) |
@@ -4385,7 +4386,8 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefSelfTy(..) |
         def::DefStruct(..) |
         def::DefVariant(..) |
-        def::DefTy(..) |
+        def::DefEnum(..) |
+        def::DefTyAlias(..) |
         def::DefAssociatedTy(..) |
         def::DefTrait(..) |
         def::DefPrimTy(..) |

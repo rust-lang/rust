@@ -256,15 +256,16 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         match def {
             def::DefMod(_) |
             def::DefForeignMod(_) => Some(recorder::ModRef),
-            def::DefStruct(_) => Some(recorder::TypeRef),
-            def::DefTy(..) |
+            def::DefStruct(..) => Some(recorder::TypeRef),
+            def::DefEnum(..) |
+            def::DefTyAlias(..) |
             def::DefAssociatedTy(..) |
             def::DefTrait(_) => Some(recorder::TypeRef),
             def::DefStatic(_, _) |
             def::DefConst(_) |
             def::DefAssociatedConst(..) |
             def::DefLocal(..) |
-            def::DefVariant(_, _, _) |
+            def::DefVariant(..) |
             def::DefUpvar(..) => Some(recorder::VarRef),
 
             def::DefFn(..) => Some(recorder::FnRef),
@@ -691,7 +692,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefStatic(_,_) |
             def::DefConst(..) |
             def::DefAssociatedConst(..) |
-            def::DefStruct(_) |
+            def::DefStruct(..) |
             def::DefVariant(..) |
             def::DefFn(..) => self.write_sub_paths_truncated(path, false),
             _ => {}
@@ -1174,7 +1175,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                             "qualified path for local variable def in arm");
                     self.fmt.variable_str(p.span, Some(p.span), id, &path_to_string(p), &value, "")
                 }
-                def::DefVariant(..) | def::DefTy(..) | def::DefStruct(..) => {
+                def::DefVariant(..) | def::DefEnum(..) |
+                def::DefTyAlias(..) | def::DefStruct(..) => {
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 // FIXME(nrc) what are these doing here?

@@ -11,6 +11,7 @@
 #![feature(associated_consts)]
 
 struct Foo;
+type FooWorkaround = Foo;
 
 enum Bar {
     Var1,
@@ -42,7 +43,7 @@ fn main() {
     });
     // Trait impl
     assert!(match Bar::Var1 {
-        Foo::THEBAR => true,
+        FooWorkaround::THEBAR => true,
         _ => false,
     });
     assert!(match Bar::Var1 {

@@ -1060,7 +1060,7 @@ impl LateLintPass for MutableTransmutes {
                 hir::ExprPath(..) => (),
                 _ => return None
             }
-            if let def::DefFn(did, _) = cx.tcx.resolve_expr(expr) {
+            if let def::DefFn(did) = cx.tcx.resolve_expr(expr) {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }

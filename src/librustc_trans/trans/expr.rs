@@ -910,7 +910,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_def_lvalue");
     match def {
         def::DefFn(..) | def::DefMethod(..) |
-        def::DefStruct(_) | def::DefVariant(..) => {
+        def::DefStruct(..) | def::DefVariant(..) => {
             let datum = trans_def_fn_unadjusted(bcx.ccx(), ref_expr, def,
                                                 bcx.fcx.param_substs);
             DatumBlock::new(bcx, datum.to_expr_datum())
@@ -1283,7 +1283,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     match def {
-        def::DefVariant(tid, vid, _) => {
+        def::DefVariant(tid, vid) => {
             let variant = bcx.tcx().lookup_adt_def(tid).variant_with_id(vid);
             if let ty::VariantKind::Tuple = variant.kind() {
                 // N-ary variant.
@@ -1300,7 +1300,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 return bcx;
             }
         }
-        def::DefStruct(_) => {
+        def::DefStruct(..) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
                 ty::TyStruct(def, _) if def.has_dtor() => {
@@ -1327,8 +1327,8 @@ pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
     match def {
-        def::DefFn(did, _) |
-        def::DefStruct(did) | def::DefVariant(_, did, _) => {
+        def::DefFn(did) |
+        def::DefStruct(did) | def::DefVariant(_, did) => {
             callee::trans_fn_ref(ccx, did, ExprId(ref_expr.id), param_substs)
         }
         def::DefMethod(method_did) => {
@@ -2587,7 +2587,7 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
     match expr.node {
         hir::ExprPath(..) => {
             match tcx.resolve_expr(expr) {
-                def::DefStruct(_) | def::DefVariant(..) => {
+                def::DefStruct(..) | def::DefVariant(..) => {
                     if let ty::TyBareFn(..) = tcx.node_id_to_type(expr.id).sty {
                         // ctor function
                         ExprKind::RvalueDatum
@@ -2595,12 +2595,6 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
                         ExprKind::RvalueDps
                     }
                 }
-
-                // Special case: A unit like struct's constructor must be called without () at the
-                // end (like `UnitStruct`) which means this is an ExprPath to a DefFn. But in case
-                // of unit structs this is should not be interpreted as function pointer but as
-                // call to the constructor.
-                def::DefFn(_, true) => ExprKind::RvalueDps,
 
                 // Fn pointers are just scalar values.
                 def::DefFn(..) | def::DefMethod(..) => ExprKind::RvalueDatum,

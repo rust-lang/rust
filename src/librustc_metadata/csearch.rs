@@ -18,7 +18,7 @@ use middle::cstore::{CrateStore, CrateSource, ChildItem, FoundAst};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use middle::def;
 use middle::lang_items;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, VariantKind};
 use middle::def_id::{DefId, DefIndex};
 
 use rustc::front::map as hir_map;
@@ -375,6 +375,17 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let path = decoder::def_path(&*cdata, def.index);
         let local_path = cdata.local_def_path();
         local_path.into_iter().chain(path).collect()
+    }
+
+    fn variant_kind(&self, def_id: DefId) -> Option<VariantKind> {
+        let cdata = self.get_crate_data(def_id.krate);
+        decoder::get_variant_kind(&cdata, def_id.index)
+    }
+
+    fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
+    {
+        let cdata = self.get_crate_data(struct_def_id.krate);
+        decoder::get_struct_ctor_def_id(&cdata, struct_def_id.index)
     }
 
     fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>

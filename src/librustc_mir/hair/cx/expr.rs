@@ -67,10 +67,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                         // Tuple-like ADTs are represented as ExprCall. We convert them here.
                         expr_ty.ty_adt_def().and_then(|adt_def|{
                             match cx.tcx.def_map.borrow()[&fun.id].full_def() {
-                                def::DefVariant(_, variant_id, false) => {
+                                def::DefVariant(_, variant_id) => {
                                     Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                                 },
-                                def::DefStruct(_) => {
+                                def::DefStruct(..) => {
                                     Some((adt_def, 0))
                                 },
                                 _ => None
@@ -231,7 +231,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     }
                     ty::TyEnum(adt, substs) => {
                         match cx.tcx.def_map.borrow()[&self.id].full_def() {
-                            def::DefVariant(enum_id, variant_id, _) => {
+                            def::DefVariant(enum_id, variant_id) => {
                                 debug_assert!(adt.did == enum_id);
                                 let index = adt.variant_index_with_id(variant_id);
                                 let field_refs = field_refs(&adt.variants[index], fields);
@@ -573,7 +573,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
     let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
     let (def_id, kind) = match def {
         // A regular function.
-        def::DefFn(def_id, _) => (def_id, ItemKind::Function),
+        def::DefFn(def_id) => (def_id, ItemKind::Function),
         def::DefMethod(def_id) => (def_id, ItemKind::Method),
         def::DefStruct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A tuple-struct constructor. Should only be reached if not called in the same
@@ -590,7 +590,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
             },
             ref sty => panic!("unexpected sty: {:?}", sty)
         },
-        def::DefVariant(enum_id, variant_id, false) => match cx.tcx.node_id_to_type(expr.id).sty {
+        def::DefVariant(enum_id, variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A variant constructor. Should only be reached if not called in the same
             // expression.
             ty::TyBareFn(..) => (variant_id, ItemKind::Function),
