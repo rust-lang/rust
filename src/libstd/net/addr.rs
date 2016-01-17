@@ -140,13 +140,13 @@ impl SocketAddrV6 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 { ntoh(self.inner.sin6_port) }
 
-    /// Returns scope ID associated with this address, corresponding to the
-    /// `sin6_flowinfo` field in C.
+    /// Returns the flow information associated with this address,
+    /// corresponding to the `sin6_flowinfo` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn flowinfo(&self) -> u32 { ntoh(self.inner.sin6_flowinfo) }
 
-    /// Returns scope ID associated with this address, corresponding to the
-    /// `sin6_scope_id` field in C.
+    /// Returns the scope ID associated with this address,
+    /// corresponding to the `sin6_scope_id` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn scope_id(&self) -> u32 { ntoh(self.inner.sin6_scope_id) }
 }
