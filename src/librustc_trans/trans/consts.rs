@@ -37,6 +37,7 @@ use trans::declare;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
+use trans::Disr;
 use middle::subst::Substs;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::AdjustUnsafeFnPointer;
@@ -740,7 +741,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 (CastTy::Int(IntTy::CEnum), CastTy::Int(_)) => {
                     let repr = adt::represent_type(cx, t_expr);
                     let discr = adt::const_get_discrim(cx, &*repr, v);
-                    let iv = C_integral(cx.int_type(), discr, false);
+                    let iv = C_integral(cx.int_type(), discr.0, false);
                     let s = adt::is_discr_signed(&*repr) as Bool;
                     llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
                 },
@@ -807,7 +808,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprTup(ref es) => {
             let repr = adt::represent_type(cx, ety);
             let vals = try!(map_list(&es[..]));
-            adt::trans_const(cx, &*repr, 0, &vals[..])
+            adt::trans_const(cx, &*repr, Disr(0), &vals[..])
         },
         hir::ExprStruct(_, ref fs, ref base_opt) => {
             let repr = adt::represent_type(cx, ety);
@@ -898,7 +899,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     match vinfo.kind() {
                         ty::VariantKind::Unit => {
                             let repr = adt::represent_type(cx, ety);
-                            adt::trans_const(cx, &*repr, vinfo.disr_val, &[])
+                            adt::trans_const(cx, &*repr, Disr::from(vinfo.disr_val), &[])
                         }
                         ty::VariantKind::Tuple => {
                             expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
@@ -952,7 +953,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         C_vector(&arg_vals[..])
                     } else {
                         let repr = adt::represent_type(cx, ety);
-                        adt::trans_const(cx, &*repr, 0, &arg_vals[..])
+                        adt::trans_const(cx, &*repr, Disr(0), &arg_vals[..])
                     }
                 }
                 def::DefVariant(enum_did, variant_did, _) => {
@@ -960,7 +961,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);
                     adt::trans_const(cx,
                                      &*repr,
-                                     vinfo.disr_val,
+                                     Disr::from(vinfo.disr_val),
                                      &arg_vals[..])
                 }
                 _ => cx.sess().span_bug(e.span, "expected a struct, variant, or const fn def"),
