@@ -144,7 +144,6 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
             match (&input_lts[0], &output_lts[0]) {
                 (&Named(n1), &Named(n2)) if n1 == n2 => true,
                 (&Named(_), &Unnamed) => true,
-                (&Unnamed, &Named(_)) => true,
                 _ => false, // already elided, different named lifetimes
                 // or something static going on
             }
