@@ -12,6 +12,7 @@ use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::FromIterator;
+use core::marker::PhantomData;
 use core::ops::Index;
 use core::{fmt, intrinsics, mem, ptr};
 
@@ -158,7 +159,8 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
             Found(handle) => {
                 Some(OccupiedEntry {
                     handle: handle,
-                    length: &mut self.length
+                    length: &mut self.length,
+                    _marker: PhantomData,
                 }.remove_kv().0)
             },
             GoDown(_) => None
@@ -172,7 +174,8 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
                 VacantEntry {
                     key: key,
                     handle: handle,
-                    length: &mut self.length
+                    length: &mut self.length,
+                    _marker: PhantomData,
                 }.insert(());
                 None
             }
@@ -223,7 +226,10 @@ pub struct Range<'a, K: 'a, V: 'a> {
 /// A mutable iterator over a sub-range of BTreeMap's entries.
 pub struct RangeMut<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
-    back: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>
+    back: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
+
+    // Be invariant in `K` and `V`
+    _marker: PhantomData<&'a mut (K, V)>,
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
@@ -247,7 +253,10 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     key: K,
     handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
-    length: &'a mut usize
+    length: &'a mut usize,
+
+    // Be invariant in `K` and `V`
+    _marker: PhantomData<&'a mut (K, V)>,
 }
 
 /// An occupied Entry.
@@ -259,7 +268,10 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
         marker::LeafOrInternal
     >, marker::KV>,
 
-    length: &'a mut usize
+    length: &'a mut usize,
+
+    // Be invariant in `K` and `V`
+    _marker: PhantomData<&'a mut (K, V)>,
 }
 
 impl<K: Ord, V> BTreeMap<K, V> {
@@ -415,7 +427,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
             Found(handle) => {
                 Some(OccupiedEntry {
                     handle: handle,
-                    length: &mut self.length
+                    length: &mut self.length,
+                    _marker: PhantomData,
                 }.remove())
             },
             GoDown(_) => None
@@ -568,7 +581,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
         RangeMut {
             front: front,
-            back: back
+            back: back,
+            _marker: PhantomData
         }
     }
 
@@ -593,12 +607,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
         match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => Occupied(OccupiedEntry {
                 handle: handle,
-                length: &mut self.length
+                length: &mut self.length,
+                _marker: PhantomData,
             }),
             GoDown(handle) => Vacant(VacantEntry {
                 key: key,
                 handle: handle,
-                length: &mut self.length
+                length: &mut self.length,
+                _marker: PhantomData,
             })
         }
     }
@@ -1235,6 +1251,7 @@ impl<K, V> BTreeMap<K, V> {
             range: RangeMut {
                 front: first_leaf_edge(root1),
                 back: last_leaf_edge(root2),
+                _marker: PhantomData,
             },
             length: self.length
         }
