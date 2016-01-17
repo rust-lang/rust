@@ -23,42 +23,61 @@ use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const USER_READ: raw::mode_t = 0o400;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const USER_WRITE: raw::mode_t = 0o200;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const USER_EXECUTE: raw::mode_t = 0o100;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const USER_RWX: raw::mode_t = 0o700;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const GROUP_READ: raw::mode_t = 0o040;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const GROUP_WRITE: raw::mode_t = 0o020;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const GROUP_EXECUTE: raw::mode_t = 0o010;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const GROUP_RWX: raw::mode_t = 0o070;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const OTHER_READ: raw::mode_t = 0o004;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const OTHER_WRITE: raw::mode_t = 0o002;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const OTHER_EXECUTE: raw::mode_t = 0o001;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const OTHER_RWX: raw::mode_t = 0o007;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const ALL_READ: raw::mode_t = 0o444;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const ALL_WRITE: raw::mode_t = 0o222;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const ALL_EXECUTE: raw::mode_t = 0o111;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const ALL_RWX: raw::mode_t = 0o777;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const SETUID: raw::mode_t = 0o4000;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const SETGID: raw::mode_t = 0o2000;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
+#[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
 pub const STICKY_BIT: raw::mode_t = 0o1000;
 
 /// Unix-specific extensions to `Permissions`

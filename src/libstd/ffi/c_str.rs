@@ -150,7 +150,7 @@ pub struct NulError(usize, Vec<u8>);
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
 #[derive(Clone, PartialEq, Debug)]
-#[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+#[stable(feature = "cstring_into", since = "1.7.0")]
 pub struct IntoStringError {
     inner: CString,
     error: Utf8Error,
@@ -235,7 +235,7 @@ impl CString {
     /// Converts the `CString` into a `String` if it contains valid Unicode data.
     ///
     /// On failure, ownership of the original `CString` is returned.
-    #[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+    #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_string(self) -> Result<String, IntoStringError> {
         String::from_utf8(self.into_bytes())
             .map_err(|e| IntoStringError {
@@ -248,9 +248,8 @@ impl CString {
     ///
     /// The returned buffer does **not** contain the trailing nul separator and
     /// it is guaranteed to not have any interior nul bytes.
-    #[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+    #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes(self) -> Vec<u8> {
-        // FIXME: Once this method becomes stable, add an `impl Into<Vec<u8>> for CString`
         let mut vec = self.inner.into_vec();
         let _nul = vec.pop();
         debug_assert_eq!(_nul, Some(0u8));
@@ -259,7 +258,7 @@ impl CString {
 
     /// Equivalent to the `into_bytes` function except that the returned vector
     /// includes the trailing nul byte.
-    #[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+    #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes_with_nul(self) -> Vec<u8> {
         self.inner.into_vec()
     }
@@ -294,6 +293,13 @@ impl ops::Deref for CString {
 impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[stable(feature = "cstring_into", since = "1.7.0")]
+impl From<CString> for Vec<u8> {
+    fn from(s: CString) -> Vec<u8> {
+        s.into_bytes()
     }
 }
 
@@ -348,29 +354,33 @@ impl From<NulError> for io::Error {
 impl IntoStringError {
     /// Consumes this error, returning original `CString` which generated the
     /// error.
-    #[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+    #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_cstring(self) -> CString {
         self.inner
     }
 
     /// Access the underlying UTF-8 error that was the cause of this error.
-    #[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+    #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn utf8_error(&self) -> Utf8Error {
         self.error
     }
 }
 
-#[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+#[stable(feature = "cstring_into", since = "1.7.0")]
 impl Error for IntoStringError {
     fn description(&self) -> &str {
-        Error::description(&self.error)
+        "C string contained non-utf8 bytes"
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        Some(&self.error)
     }
 }
 
-#[unstable(feature = "cstring_into", reason = "recently added", issue = "29157")]
+#[stable(feature = "cstring_into", since = "1.7.0")]
 impl fmt::Display for IntoStringError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.error, f)
+        self.description().fmt(f)
     }
 }
 

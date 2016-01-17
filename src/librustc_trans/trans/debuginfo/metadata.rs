@@ -990,8 +990,8 @@ pub fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                 cx.sess().warn("debuginfo: Invalid path to crate's local root source file!");
                 fallback_path(cx)
             } else {
-                match abs_path.relative_from(work_dir) {
-                    Some(ref p) if p.is_relative() => {
+                match abs_path.strip_prefix(work_dir) {
+                    Ok(ref p) if p.is_relative() => {
                         if p.starts_with(Path::new("./")) {
                             path2cstr(p)
                         } else {

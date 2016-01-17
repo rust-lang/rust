@@ -100,7 +100,7 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
 
     // check significant digits
     for i in 1..cut.unwrap_or(expected.len() - 1) {
-        expected_.clone_from_slice(&expected[..i]);
+        expected_[..i].clone_from_slice(&expected[..i]);
         let mut expectedk_ = expectedk;
         if expected[i] >= b'5' {
             // check if this is a rounding-to-even case.
@@ -147,7 +147,7 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
     // check infinite zero digits
     if let Some(cut) = cut {
         for i in cut..expected.len()-1 {
-            expected_.clone_from_slice(&expected[..cut]);
+            expected_[..cut].clone_from_slice(&expected[..cut]);
             for c in &mut expected_[cut..i] { *c = b'0'; }
 
             try_exact!(f(&decoded) => &mut buf, &expected_[..i], expectedk;
