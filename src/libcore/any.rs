@@ -99,7 +99,7 @@ pub trait Any: Reflect + 'static {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Reflect + 'static> Any for T {
+impl<T: Reflect + 'static + ?Sized > Any for T {
     fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
 
