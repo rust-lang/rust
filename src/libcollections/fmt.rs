@@ -348,8 +348,8 @@
 //! The fill character is provided normally in conjunction with the `width`
 //! parameter. This indicates that if the value being formatted is smaller than
 //! `width` some extra characters will be printed around it. The extra
-//! characters are specified by `fill`, and the alignment can be one of two
-//! options:
+//! characters are specified by `fill`, and the alignment can be one of the
+//! following options:
 //!
 //! * `<` - the argument is left-aligned in `width` columns
 //! * `^` - the argument is center-aligned in `width` columns
