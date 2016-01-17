@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The pointer-sized unsigned integer type.
-//!
-//! *[See also the `usize` primitive type](../primitive.usize.html).*
+#![crate_type="lib"]
+extern crate foo;
+use foo::Foo;
 
-#![stable(feature = "rust1", since = "1.0.0")]
-
-#[cfg(target_pointer_width = "32")]
-uint_module! { usize, isize, 32 }
-#[cfg(target_pointer_width = "64")]
-uint_module! { usize, isize, 64 }
+pub fn crash() -> Box<Foo> {
+  Box::new(Foo::new())
+}

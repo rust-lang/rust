@@ -252,10 +252,13 @@ impl Write for Cursor<Vec<u8>> {
 
         // Figure out what bytes will be used to overwrite what's currently
         // there (left), and what will be appended on the end (right)
-        let space = self.inner.len() - pos as usize;
-        let (left, right) = buf.split_at(cmp::min(space, buf.len()));
-        self.inner[(pos as usize)..].clone_from_slice(left);
-        self.inner.extend_from_slice(right);
+        {
+            let pos = pos as usize;
+            let space = self.inner.len() - pos;
+            let (left, right) = buf.split_at(cmp::min(space, buf.len()));
+            self.inner[pos..pos + left.len()].clone_from_slice(left);
+            self.inner.extend_from_slice(right);
+        }
 
         // Bump us forward
         self.set_position(pos + buf.len() as u64);

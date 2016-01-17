@@ -22,7 +22,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(into_cow)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

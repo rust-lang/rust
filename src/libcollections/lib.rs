@@ -32,7 +32,6 @@
 #![feature(alloc)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(clone_from_slice)]
 #![feature(core_intrinsics)]
 #![feature(decode_utf16)]
 #![feature(drop_in_place)]

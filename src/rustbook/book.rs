@@ -126,9 +126,9 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
         let title = line[start_bracket + 1..end_bracket].to_string();
         let indent = &line[..star_idx];
 
-        let path_from_root = match src.join(given_path).relative_from(src) {
-            Some(p) => p.to_path_buf(),
-            None => {
+        let path_from_root = match src.join(given_path).strip_prefix(src) {
+            Ok(p) => p.to_path_buf(),
+            Err(..) => {
                 errors.push(format!("paths in SUMMARY.md must be relative, \
                                      but path '{}' for section '{}' is not.",
                                      given_path, title));

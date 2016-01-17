@@ -15,7 +15,6 @@ use hash::{Hash, Hasher};
 use marker;
 use mem::{align_of, size_of};
 use mem;
-use num::wrapping::OverflowingOps;
 use ops::{Deref, DerefMut};
 use ptr::{self, Unique};
 use collections::hash_state::HashState;

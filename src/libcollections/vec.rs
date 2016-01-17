@@ -73,6 +73,7 @@ use core::ops;
 use core::ptr;
 use core::slice;
 
+#[allow(deprecated)]
 use borrow::{Cow, IntoCow};
 
 use super::range::RangeArgument;
@@ -464,9 +465,7 @@ impl<T> Vec<T> {
     ///
     /// Equivalent to `&s[..]`.
     #[inline]
-    #[unstable(feature = "convert",
-               reason = "waiting on RFC revision",
-               issue = "27729")]
+    #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_slice(&self) -> &[T] {
         self
     }
@@ -475,9 +474,7 @@ impl<T> Vec<T> {
     ///
     /// Equivalent to `&mut s[..]`.
     #[inline]
-    #[unstable(feature = "convert",
-               reason = "waiting on RFC revision",
-               issue = "27729")]
+    #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         &mut self[..]
     }
@@ -1516,6 +1513,7 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Owned(self)
@@ -1523,6 +1521,7 @@ impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
     fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Borrowed(self)

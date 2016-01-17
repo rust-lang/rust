@@ -181,6 +181,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// Returns the wrapped `Formatter`.
     #[unstable(feature = "debug_builder_formatter", reason = "recently added",
                issue = "27782")]
+    #[rustc_deprecated(since = "1.7.0", reason = "will be removed")]
     pub fn formatter(&mut self) -> &mut fmt::Formatter<'b> {
         &mut self.fmt
     }
