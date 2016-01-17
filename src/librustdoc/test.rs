@@ -319,6 +319,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
     } else {
         prog.push_str("fn main() {\n    ");
         prog.push_str(&everything_else.replace("\n", "\n    "));
+        prog = prog.trim().into();
         prog.push_str("\n}");
     }
 
