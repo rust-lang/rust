@@ -320,7 +320,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 {
     match process_predicate1(selcx, pending_obligation, backtrace, region_obligations) {
         Ok(Some(v)) => {
-            // FIXME the right thing to do here, I think, is to permit
+            // FIXME(#30977) the right thing to do here, I think, is to permit
             // DAGs. That is, we should detect whenever this predicate
             // has appeared somewhere in the current tree./ If it's a
             // parent, that's a cycle, and we should either error out
