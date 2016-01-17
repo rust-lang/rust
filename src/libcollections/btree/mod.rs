@@ -9,6 +9,7 @@
 // except according to those terms.
 
 mod node;
+mod search;
 pub mod map;
 pub mod set;
 
