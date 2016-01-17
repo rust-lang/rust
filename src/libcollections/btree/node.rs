@@ -407,7 +407,7 @@ impl<K, V> Node<K, V> {
             unsafe {
                 let data = match self.edges {
                     None => heap::EMPTY as *mut Node<K, V>,
-                    Some(ref mut p) => **p as *mut Node<K, V>,
+                    Some(ref p) => **p as *mut Node<K, V>,
                 };
                 slice::from_raw_parts_mut(data, len + 1)
             }
