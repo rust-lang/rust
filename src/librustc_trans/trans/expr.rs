@@ -71,6 +71,7 @@ use trans::machine;
 use trans::meth;
 use trans::tvec;
 use trans::type_of;
+use trans::Disr;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer, CustomCoerceUnsized};
 use middle::ty::{self, Ty};
@@ -549,8 +550,8 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let iter = src_fields.iter().zip(target_fields).enumerate();
             for (i, (src_ty, target_ty)) in iter {
-                let ll_source = adt::trans_field_ptr(bcx, &repr_source, source_val, 0, i);
-                let ll_target = adt::trans_field_ptr(bcx, &repr_target, target_val, 0, i);
+                let ll_source = adt::trans_field_ptr(bcx, &repr_source, source_val, Disr(0), i);
+                let ll_target = adt::trans_field_ptr(bcx, &repr_target, target_val, Disr(0), i);
 
                 // If this is the field we need to coerce, recurse on it.
                 if i == coerce_index {
@@ -1154,7 +1155,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 args.iter().enumerate().map(|(i, arg)| (i, &**arg)).collect();
             trans_adt(bcx,
                       expr_ty(bcx, expr),
-                      0,
+                      Disr(0),
                       &numbered_fields[..],
                       None,
                       dest,
@@ -1295,7 +1296,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // Nullary variant.
                 let ty = expr_ty(bcx, ref_expr);
                 let repr = adt::represent_type(bcx.ccx(), ty);
-                adt::trans_set_discr(bcx, &*repr, lldest, variant.disr_val);
+                adt::trans_set_discr(bcx, &*repr, lldest, Disr::from(variant.disr_val));
                 return bcx;
             }
         }
@@ -1304,7 +1305,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match ty.sty {
                 ty::TyStruct(def, _) if def.has_dtor() => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
-                    adt::trans_set_discr(bcx, &*repr, lldest, 0);
+                    adt::trans_set_discr(bcx, &*repr, lldest, Disr(0));
                 }
                 _ => {}
             }
@@ -1466,7 +1467,7 @@ pub struct StructBaseInfo<'a, 'tcx> {
 /// which remaining fields are copied; see comments on `StructBaseInfo`.
 pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                  ty: Ty<'tcx>,
-                                 discr: ty::Disr,
+                                 discr: Disr,
                                  fields: &[(usize, &hir::Expr)],
                                  optbase: Option<StructBaseInfo<'a, 'tcx>>,
                                  dest: Dest,
@@ -1534,7 +1535,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         debug_location.apply(bcx.fcx);
 
         // Second, trans the base to the dest.
-        assert_eq!(discr, 0);
+        assert_eq!(discr, Disr(0));
 
         let addr = adt::MaybeSizedValue::sized(addr);
         match expr_kind(bcx.tcx(), &*base.expr) {

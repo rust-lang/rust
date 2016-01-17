@@ -25,6 +25,7 @@ use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
 use trans::tvec;
+use trans::Disr;
 
 use super::MirContext;
 use super::operand::{OperandRef, OperandValue};
@@ -100,8 +101,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, index, _) => {
                         let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
-                        let disr = adt_def.variants[index].disr_val;
-                        adt::trans_set_discr(bcx, &*repr, dest.llval, disr);
+                        let disr = Disr::from(adt_def.variants[index].disr_val);
+                        adt::trans_set_discr(bcx, &*repr, dest.llval, Disr::from(disr));
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.

@@ -50,6 +50,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
+use trans::Disr;
 use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::MethodCall;
 use rustc_front::hir;
@@ -68,7 +69,7 @@ pub struct MethodData {
 pub enum CalleeData<'tcx> {
     // Constructor for enum variant/tuple-like-struct
     // i.e. Some, Ok
-    NamedTupleConstructor(ty::Disr),
+    NamedTupleConstructor(Disr),
 
     // Represents a (possibly monomorphized) top-level fn item or method
     // item. Note that this is just the fn-ptr and is not a Rust closure
@@ -151,7 +152,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
             } => {
                 Callee {
                     bcx: bcx,
-                    data: NamedTupleConstructor(0),
+                    data: NamedTupleConstructor(Disr(0)),
                     ty: expr_ty
                 }
             }
@@ -195,14 +196,14 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
 
                 Callee {
                     bcx: bcx,
-                    data: NamedTupleConstructor(vinfo.disr_val),
+                    data: NamedTupleConstructor(Disr::from(vinfo.disr_val)),
                     ty: expr_ty
                 }
             }
             def::DefStruct(_) => {
                 Callee {
                     bcx: bcx,
-                    data: NamedTupleConstructor(0),
+                    data: NamedTupleConstructor(Disr(0)),
                     ty: expr_ty
                 }
             }
@@ -863,7 +864,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                     bcx,
                     field_type,
                     |srcval| {
-                        adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
+                        adt::trans_field_ptr(bcx, repr_ptr, srcval, Disr(0), i)
                     }).to_expr_datum();
                 bcx = trans_arg_datum(bcx,
                                       field_type,
