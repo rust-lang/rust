@@ -552,19 +552,14 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           def::DefAssociatedConst(..) | def::DefFn(..) | def::DefMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
+
           def::DefMod(_) | def::DefForeignMod(_) |
-          def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
+          def::DefTrait(_) | def::DefEnum(..) | def::DefTyAlias(..) | def::DefPrimTy(_) |
           def::DefTyParam(..) |
           def::DefLabel(_) | def::DefSelfTy(..) |
           def::DefAssociatedTy(..) => {
-              Ok(Rc::new(cmt_ {
-                  id:id,
-                  span:span,
-                  cat:Categorization::StaticItem,
-                  mutbl: McImmutable,
-                  ty:expr_ty,
-                  note: NoteNone
-              }))
+              self.tcx().sess.span_bug(span, &format!("Unexpected definition in \
+                                                       memory categorization: {:?}", def));
           }
 
           def::DefStatic(_, mutbl) => {
@@ -1218,7 +1213,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         // alone) because struct patterns can refer to struct types or
         // to struct variants within enums.
         let cmt = match opt_def {
-            Some(def::DefVariant(enum_did, variant_did, _))
+            Some(def::DefVariant(enum_did, variant_did))
                 // univariant enums do not need downcasts
                 if !self.tcx().lookup_adt_def(enum_did).is_univariant() => {
                     self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)

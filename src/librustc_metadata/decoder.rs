@@ -33,7 +33,7 @@ use middle::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TypeFoldable, VariantKind};
 
 use rustc::mir;
 use rustc::mir::visit::MutVisitor;
@@ -89,27 +89,22 @@ pub fn load_xrefs(data: &[u8]) -> index::DenseIndex {
     index::DenseIndex::from_buf(index.data, index.start, index.end)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Family {
     ImmStatic,             // c
     MutStatic,             // b
     Fn,                    // f
-    CtorFn,                // o
     StaticMethod,          // F
     Method,                // h
     Type,                  // y
     Mod,                   // m
     ForeignMod,            // n
     Enum,                  // t
-    StructVariant,         // V
-    TupleVariant,          // v
-    UnitVariant,           // w
+    Variant(VariantKind),  // V, v, w
     Impl,                  // i
     DefaultImpl,           // d
     Trait,                 // I
-    Struct,                // S
-    TupleStruct,           // s
-    UnitStruct,            // u
+    Struct(VariantKind),   // S, s, u
     PublicField,           // g
     InheritedField,        // N
     Constant,              // C
@@ -122,22 +117,21 @@ fn item_family(item: rbml::Doc) -> Family {
       'c' => ImmStatic,
       'b' => MutStatic,
       'f' => Fn,
-      'o' => CtorFn,
       'F' => StaticMethod,
       'h' => Method,
       'y' => Type,
       'm' => Mod,
       'n' => ForeignMod,
       't' => Enum,
-      'V' => StructVariant,
-      'v' => TupleVariant,
-      'w' => UnitVariant,
+      'V' => Variant(VariantKind::Struct),
+      'v' => Variant(VariantKind::Tuple),
+      'w' => Variant(VariantKind::Unit),
       'i' => Impl,
       'd' => DefaultImpl,
       'I' => Trait,
-      'S' => Struct,
-      's' => TupleStruct,
-      'u' => UnitStruct,
+      'S' => Struct(VariantKind::Struct),
+      's' => Struct(VariantKind::Tuple),
+      'u' => Struct(VariantKind::Unit),
       'g' => PublicField,
       'N' => InheritedField,
        c => panic!("unexpected family char: {}", c)
@@ -271,6 +265,18 @@ fn item_name(intr: &IdentInterner, item: rbml::Doc) -> ast::Name {
     }
 }
 
+fn family_to_variant_kind<'tcx>(family: Family) -> Option<ty::VariantKind> {
+    match family {
+        Struct(VariantKind::Struct) | Variant(VariantKind::Struct) =>
+            Some(ty::VariantKind::Struct),
+        Struct(VariantKind::Tuple) | Variant(VariantKind::Tuple) =>
+            Some(ty::VariantKind::Tuple),
+        Struct(VariantKind::Unit) | Variant(VariantKind::Unit) =>
+            Some(ty::VariantKind::Unit),
+        _ => None,
+    }
+}
+
 fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
     let fam = item_family(item);
     match fam {
@@ -288,9 +294,8 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
         }
         ImmStatic => DlDef(def::DefStatic(did, false)),
         MutStatic => DlDef(def::DefStatic(did, true)),
-        Struct | TupleStruct | UnitStruct => DlDef(def::DefStruct(did)),
-        Fn        => DlDef(def::DefFn(did, false)),
-        CtorFn    => DlDef(def::DefFn(did, true)),
+        Struct(..) => DlDef(def::DefStruct(did)),
+        Fn        => DlDef(def::DefFn(did)),
         Method | StaticMethod => {
             DlDef(def::DefMethod(did))
         }
@@ -299,21 +304,17 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
                 let trait_did = item_require_parent_item(cdata, item);
                 DlDef(def::DefAssociatedTy(trait_did, did))
             } else {
-                DlDef(def::DefTy(did, false))
+                DlDef(def::DefTyAlias(did))
             }
         }
         Mod => DlDef(def::DefMod(did)),
         ForeignMod => DlDef(def::DefForeignMod(did)),
-        StructVariant => {
+        Variant(..) => {
             let enum_did = item_require_parent_item(cdata, item);
-            DlDef(def::DefVariant(enum_did, did, true))
-        }
-        TupleVariant | UnitVariant => {
-            let enum_did = item_require_parent_item(cdata, item);
-            DlDef(def::DefVariant(enum_did, did, false))
+            DlDef(def::DefVariant(enum_did, did))
         }
         Trait => DlDef(def::DefTrait(did)),
-        Enum => DlDef(def::DefTy(did, true)),
+        Enum => DlDef(def::DefEnum(did)),
         Impl | DefaultImpl => DlImpl(did),
         PublicField | InheritedField => DlField,
     }
@@ -371,11 +372,9 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                          item_id: DefIndex,
                          tcx: &ty::ctxt<'tcx>) -> ty::AdtDefMaster<'tcx>
 {
-    fn family_to_variant_kind<'tcx>(family: Family, tcx: &ty::ctxt<'tcx>) -> ty::VariantKind {
-        match family {
-            Struct | StructVariant => ty::VariantKind::Struct,
-            TupleStruct | TupleVariant => ty::VariantKind::Tuple,
-            UnitStruct | UnitVariant => ty::VariantKind::Unit,
+    fn expect_variant_kind<'tcx>(family: Family, tcx: &ty::ctxt<'tcx>) -> ty::VariantKind {
+        match family_to_variant_kind(family) {
+            Some(kind) => kind,
             _ => tcx.sess.bug(&format!("unexpected family: {:?}", family)),
         }
     }
@@ -399,7 +398,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                 name: item_name(intr, item),
                 fields: get_variant_fields(intr, cdata, item, tcx),
                 disr_val: disr,
-                kind: family_to_variant_kind(item_family(item), tcx),
+                kind: expect_variant_kind(item_family(item), tcx),
             }
         }).collect()
     }
@@ -433,7 +432,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             name: item_name(intr, doc),
             fields: get_variant_fields(intr, cdata, doc, tcx),
             disr_val: 0,
-            kind: family_to_variant_kind(item_family(doc), tcx),
+            kind: expect_variant_kind(item_family(doc), tcx),
         }
     }
 
@@ -444,7 +443,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             (ty::AdtKind::Enum,
              get_enum_variants(intr, cdata, doc, tcx))
         }
-        Struct | TupleStruct | UnitStruct => {
+        Struct(..) => {
             let ctor_did =
                 reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).
                 map_or(did, |ctor_doc| translated_def_id(cdata, ctor_doc));
@@ -1084,6 +1083,19 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
             }
         })
     }).collect()
+}
+
+pub fn get_variant_kind(cdata: Cmd, node_id: DefIndex) -> Option<VariantKind>
+{
+    let item = cdata.lookup_item(node_id);
+    family_to_variant_kind(item_family(item))
+}
+
+pub fn get_struct_ctor_def_id(cdata: Cmd, node_id: DefIndex) -> Option<DefId>
+{
+    let item = cdata.lookup_item(node_id);
+    reader::maybe_get_doc(item, tag_items_data_item_struct_ctor).
+        map(|ctor_doc| translated_def_id(cdata, ctor_doc))
 }
 
 /// If node_id is the constructor of a tuple struct, retrieve the NodeId of

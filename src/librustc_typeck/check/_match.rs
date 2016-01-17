@@ -693,10 +693,12 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
-        ty::TyEnum(enum_def, expected_substs)
-            if def == def::DefVariant(enum_def.did, def.def_id(), false) =>
-        {
+        ty::TyEnum(enum_def, expected_substs) => {
             let variant = enum_def.variant_of_def(def);
+            if variant.kind() == ty::VariantKind::Struct {
+                report_bad_struct_kind(false);
+                return;
+            }
             if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
                 // Matching unit variants with tuple variant patterns (`UnitVariant(..)`)
                 // is allowed for backward compatibility.

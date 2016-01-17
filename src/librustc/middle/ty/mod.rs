@@ -1429,8 +1429,18 @@ impl<'tcx> Decodable for AdtDef<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Enum }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum VariantKind { Struct, Tuple, Unit }
+
+impl VariantKind {
+    pub fn from_variant_data(vdata: &hir::VariantData) -> Self {
+        match *vdata {
+            hir::VariantData::Struct(..) => VariantKind::Struct,
+            hir::VariantData::Tuple(..) => VariantKind::Tuple,
+            hir::VariantData::Unit(..) => VariantKind::Unit,
+        }
+    }
+}
 
 impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     fn new(tcx: &ctxt<'tcx>,
@@ -1577,8 +1587,8 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
 
     pub fn variant_of_def(&self, def: def::Def) -> &VariantDefData<'tcx, 'container> {
         match def {
-            def::DefVariant(_, vid, _) => self.variant_with_id(vid),
-            def::DefStruct(..) | def::DefTy(..) => self.struct_variant(),
+            def::DefVariant(_, vid) => self.variant_with_id(vid),
+            def::DefStruct(..) | def::DefTyAlias(..) => self.struct_variant(),
             _ => panic!("unexpected def {:?} in variant_of_def", def)
         }
     }

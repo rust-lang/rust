@@ -2076,7 +2076,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // check for imports shadowing primitive types
                 let check_rename = |this: &Self, id, name| {
                     match this.def_map.borrow().get(&id).map(|d| d.full_def()) {
-                        Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
+                        Some(DefEnum(..)) | Some(DefTyAlias(..)) | Some(DefStruct(..)) |
+                        Some(DefTrait(..)) | None => {
                             this.check_if_primitive_type_name(name, item.span);
                         }
                         _ => {}
@@ -2236,7 +2237,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       path_depth)));
 
                 // If it's a typedef, give a note
-                if let DefTy(..) = path_res.base_def {
+                if let DefTyAlias(..) = path_res.base_def {
                     err.span_note(trait_path.span,
                                   "`type` aliases cannot be used for traits");
                 }
@@ -3425,9 +3426,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if allowed == Everything {
             // Look for a field with the same name in the current self_type.
             match self.def_map.borrow().get(&node_id).map(|d| d.full_def()) {
-                Some(DefTy(did, _)) |
+                Some(DefEnum(did)) |
+                Some(DefTyAlias(did)) |
                 Some(DefStruct(did)) |
-                Some(DefVariant(_, did, _)) => match self.structs.get(&did) {
+                Some(DefVariant(_, did)) => match self.structs.get(&did) {
                     None => {}
                     Some(fields) => {
                         if fields.iter().any(|&field_name| name == field_name) {
@@ -3518,7 +3520,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // scopes looking for it.
                 if let Some(path_res) = resolution {
                     // Check if struct variant
-                    if let DefVariant(_, _, true) = path_res.base_def {
+                    let is_struct_variant = if let DefVariant(_, variant_id) = path_res.base_def {
+                        self.structs.contains_key(&variant_id)
+                    } else {
+                        false
+                    };
+                    if is_struct_variant {
+                        let _ = self.structs.contains_key(&path_res.base_def.def_id());
                         let path_name = path_names_to_string(path, 0);
 
                         let mut err = resolve_struct_error(self,
@@ -3561,7 +3569,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     self.record_def(expr.id, err_path_resolution());
                     match type_res.map(|r| r.base_def) {
-                        Some(DefTy(struct_id, _)) if self.structs.contains_key(&struct_id) => {
+                        Some(DefStruct(..)) => {
                             let mut err = resolve_struct_error(self,
                                 expr.span,
                                 ResolutionError::StructVariantUsedAsFunction(&*path_name));

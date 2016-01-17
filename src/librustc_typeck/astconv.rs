@@ -1471,7 +1471,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                      projection_bounds,
                                      &[])
         }
-        def::DefTy(did, _) | def::DefStruct(did) => {
+        def::DefEnum(did) | def::DefTyAlias(did) | def::DefStruct(did) => {
             prohibit_type_params(tcx, base_segments.split_last().unwrap().1);
             ast_path_to_ty(this,
                            rscope,

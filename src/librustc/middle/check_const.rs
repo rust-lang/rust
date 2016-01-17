@@ -610,11 +610,11 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprPath(..) => {
             let def = v.tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
             match def {
-                Some(def::DefVariant(_, _, _)) => {
+                Some(def::DefVariant(..)) => {
                     // Count the discriminator or function pointer.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
-                Some(def::DefStruct(_)) => {
+                Some(def::DefStruct(..)) => {
                     if let ty::TyBareFn(..) = node_ty.sty {
                         // Count the function pointer.
                         v.add_qualif(ConstQualif::NON_ZERO_SIZED);
@@ -678,7 +678,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     true
                 }
-                Some(def::DefFn(did, _)) => {
+                Some(def::DefFn(did)) => {
                     v.handle_const_fn_call(e, did, node_ty)
                 }
                 Some(def::DefMethod(did)) => {

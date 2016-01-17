@@ -26,7 +26,7 @@ use back::svh::Svh;
 use front::map as hir_map;
 use middle::def;
 use middle::lang_items;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, VariantKind};
 use middle::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
 use session::Session;
@@ -211,6 +211,8 @@ pub trait CrateStore<'tcx> : Any {
 
     // resolve
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
+    fn variant_kind(&self, def_id: DefId) -> Option<VariantKind>;
+    fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>;
     fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>;
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
     fn item_children(&self, did: DefId) -> Vec<ChildItem>;
@@ -380,6 +382,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
 
     // resolve
     fn def_path(&self, def: DefId) -> hir_map::DefPath { unimplemented!() }
+    fn variant_kind(&self, def_id: DefId) -> Option<VariantKind> { unimplemented!() }
+    fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
+        { unimplemented!() }
     fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>
         { unimplemented!() }
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { unimplemented!() }

@@ -139,7 +139,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
         debug!("trans_def(def={:?}, ref_expr={:?})", def, ref_expr);
         let expr_ty = common::node_id_type(bcx, ref_expr.id);
         match def {
-            def::DefFn(did, _) if {
+            def::DefFn(did) if {
                 let maybe_def_id = inline::get_local_instance(bcx.ccx(), did);
                 let maybe_ast_node = maybe_def_id.and_then(|def_id| {
                     let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
@@ -156,7 +156,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                     ty: expr_ty
                 }
             }
-            def::DefFn(did, _) if match expr_ty.sty {
+            def::DefFn(did) if match expr_ty.sty {
                 ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic ||
                                           f.abi == synabi::PlatformIntrinsic,
                 _ => false
@@ -168,7 +168,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                 let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
                 Callee { bcx: bcx, data: Intrinsic(node_id, substs), ty: expr_ty }
             }
-            def::DefFn(did, _) => {
+            def::DefFn(did) => {
                 fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
                                             bcx.fcx.param_substs))
             }
@@ -190,7 +190,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                 };
                 fn_callee(bcx, fn_datum)
             }
-            def::DefVariant(tid, vid, _) => {
+            def::DefVariant(tid, vid) => {
                 let vinfo = bcx.tcx().lookup_adt_def(tid).variant_with_id(vid);
                 assert_eq!(vinfo.kind(), ty::VariantKind::Tuple);
 
@@ -200,7 +200,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                     ty: expr_ty
                 }
             }
-            def::DefStruct(_) => {
+            def::DefStruct(..) => {
                 Callee {
                     bcx: bcx,
                     data: NamedTupleConstructor(Disr(0)),
@@ -215,8 +215,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                 datum_callee(bcx, ref_expr)
             }
             def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
-            def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
-            def::DefLabel(..) | def::DefTyParam(..) |
+            def::DefEnum(..) | def::DefTyAlias(..) | def::DefPrimTy(..) |
+            def::DefAssociatedTy(..) | def::DefLabel(..) | def::DefTyParam(..) |
             def::DefSelfTy(..) | def::DefErr => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,

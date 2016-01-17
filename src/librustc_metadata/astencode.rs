@@ -376,7 +376,7 @@ fn decode_def(dcx: &DecodeContext, dsr: &mut reader::Decoder) -> def::Def {
 impl tr for def::Def {
     fn tr(&self, dcx: &DecodeContext) -> def::Def {
         match *self {
-          def::DefFn(did, is_ctor) => def::DefFn(did.tr(dcx), is_ctor),
+          def::DefFn(did) => def::DefFn(did.tr(dcx)),
           def::DefMethod(did) => def::DefMethod(did.tr(dcx)),
           def::DefSelfTy(opt_did, impl_ids) => { def::DefSelfTy(opt_did.map(|did| did.tr(dcx)),
                                                                 impl_ids.map(|(nid1, nid2)| {
@@ -393,11 +393,10 @@ impl tr for def::Def {
               let did = dcx.tcx.map.local_def_id(nid);
               def::DefLocal(did, nid)
           }
-          def::DefVariant(e_did, v_did, is_s) => {
-            def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)
-          },
+          def::DefVariant(e_did, v_did) => def::DefVariant(e_did.tr(dcx), v_did.tr(dcx)),
           def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
-          def::DefTy(did, is_enum) => def::DefTy(did.tr(dcx), is_enum),
+          def::DefEnum(did) => def::DefEnum(did.tr(dcx)),
+          def::DefTyAlias(did) => def::DefTyAlias(did.tr(dcx)),
           def::DefAssociatedTy(trait_did, did) =>
               def::DefAssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
           def::DefPrimTy(p) => def::DefPrimTy(p),

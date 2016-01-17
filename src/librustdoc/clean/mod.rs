@@ -2638,14 +2638,14 @@ fn register_def(cx: &DocContext, def: def::Def) -> DefId {
     debug!("register_def({:?})", def);
 
     let (did, kind) = match def {
-        def::DefFn(i, _) => (i, TypeFunction),
-        def::DefTy(i, false) => (i, TypeTypedef),
-        def::DefTy(i, true) => (i, TypeEnum),
+        def::DefFn(i) => (i, TypeFunction),
+        def::DefTyAlias(i) => (i, TypeTypedef),
+        def::DefEnum(i) => (i, TypeEnum),
         def::DefTrait(i) => (i, TypeTrait),
         def::DefStruct(i) => (i, TypeStruct),
         def::DefMod(i) => (i, TypeModule),
         def::DefStatic(i, _) => (i, TypeStatic),
-        def::DefVariant(i, _, _) => (i, TypeEnum),
+        def::DefVariant(i, _) => (i, TypeEnum),
         def::DefSelfTy(Some(def_id), _) => (def_id, TypeTrait),
         def::DefSelfTy(_, Some((impl_id, _))) => return cx.map.local_def_id(impl_id),
         _ => return def.def_id()

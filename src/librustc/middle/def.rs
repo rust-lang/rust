@@ -19,7 +19,7 @@ use rustc_front::hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
-    DefFn(DefId, bool /* is_ctor */),
+    DefFn(DefId),
     DefSelfTy(Option<DefId>,                    // trait id
               Option<(ast::NodeId, ast::NodeId)>),   // (impl id, self type id)
     DefMod(DefId),
@@ -29,8 +29,9 @@ pub enum Def {
     DefAssociatedConst(DefId),
     DefLocal(DefId, // def id of variable
              ast::NodeId), // node id of variable
-    DefVariant(DefId /* enum */, DefId /* variant */, bool /* is_structure */),
-    DefTy(DefId, bool /* is_enum */),
+    DefVariant(DefId /* enum */, DefId /* variant */),
+    DefEnum(DefId),
+    DefTyAlias(DefId),
     DefAssociatedTy(DefId /* trait */, DefId),
     DefTrait(DefId),
     DefPrimTy(hir::PrimTy),
@@ -40,14 +41,10 @@ pub enum Def {
              usize,        // index in the freevars list of the closure
              ast::NodeId), // expr node that creates the closure
 
-    /// Note that if it's a tuple struct's definition, the node id of the DefId
-    /// may either refer to the item definition's id or the VariantData.ctor_id.
-    ///
-    /// The cases that I have encountered so far are (this is not exhaustive):
-    /// - If it's a ty_path referring to some tuple struct, then DefMap maps
-    ///   it to a def whose id is the item definition's id.
-    /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
-    ///   it to a def whose id is the VariantData.ctor_id.
+    // If DefStruct lives in type namespace it denotes a struct item and its DefId refers
+    // to NodeId of the struct itself.
+    // If DefStruct lives in value namespace (e.g. tuple struct, unit struct expressions)
+    // it denotes a constructor and its DefId refers to NodeId of the struct's constructor.
     DefStruct(DefId),
     DefLabel(ast::NodeId),
     DefMethod(DefId),
@@ -121,7 +118,7 @@ impl Def {
             }
 
             DefFn(..) | DefMod(..) | DefForeignMod(..) | DefStatic(..) |
-            DefVariant(..) | DefTy(..) | DefAssociatedTy(..) |
+            DefVariant(..) | DefEnum(..) | DefTyAlias(..) | DefAssociatedTy(..) |
             DefTyParam(..) | DefStruct(..) | DefTrait(..) |
             DefMethod(..) | DefConst(..) | DefAssociatedConst(..) |
             DefPrimTy(..) | DefLabel(..) | DefSelfTy(..) | DefErr => {
@@ -132,8 +129,8 @@ impl Def {
 
     pub fn def_id(&self) -> DefId {
         match *self {
-            DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
-            DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
+            DefFn(id) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
+            DefVariant(_, id) | DefEnum(id) | DefTyAlias(id) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefStruct(id) | DefTrait(id) |
             DefMethod(id) | DefConst(id) | DefAssociatedConst(id) |
             DefLocal(id, _) | DefUpvar(id, _, _, _) => {
@@ -151,7 +148,7 @@ impl Def {
 
     pub fn variant_def_ids(&self) -> Option<(DefId, DefId)> {
         match *self {
-            DefVariant(enum_id, var_id, _) => {
+            DefVariant(enum_id, var_id) => {
                 Some((enum_id, var_id))
             }
             _ => None

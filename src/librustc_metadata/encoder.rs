@@ -508,15 +508,20 @@ fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 fn encode_info_for_struct_ctor<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                          rbml_w: &mut Encoder,
                                          name: Name,
-                                         ctor_id: NodeId,
+                                         struct_def: &hir::VariantData,
                                          index: &mut CrateIndex<'tcx>,
                                          struct_id: NodeId) {
+    let ctor_id = struct_def.id();
     let ctor_def_id = ecx.tcx.map.local_def_id(ctor_id);
 
     index.record(ctor_def_id, rbml_w);
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id_and_key(ecx, rbml_w, ctor_def_id);
-    encode_family(rbml_w, 'o');
+    encode_family(rbml_w, match *struct_def {
+        hir::VariantData::Struct(..) => 'S',
+        hir::VariantData::Tuple(..) => 's',
+        hir::VariantData::Unit(..) => 'u',
+    });
     encode_bounds_and_type_for_item(rbml_w, ecx, index, ctor_id);
     encode_name(rbml_w, name);
     ecx.tcx.map.with_path(ctor_id, |path| encode_path(rbml_w, path));
@@ -1084,7 +1089,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
         // If this is a tuple-like struct, encode the type of the constructor.
         if !struct_def.is_struct() {
-            encode_info_for_struct_ctor(ecx, rbml_w, item.name, struct_def.id(), index, item.id);
+            encode_info_for_struct_ctor(ecx, rbml_w, item.name, struct_def, index, item.id);
         }
       }
       hir::ItemDefaultImpl(unsafety, _) => {

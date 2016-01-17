@@ -28,7 +28,7 @@ mod inner {
 }
 
 fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B) {
-    //~^ ERROR: type `A` is private
+    //~^ ERROR: struct `A` is private
     //~^^ ERROR: struct `A` is private
 
     a.a;

@@ -332,7 +332,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
             }
             let path = match def.full_def() {
                 def::DefStruct(def_id) => def_to_path(tcx, def_id),
-                def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
+                def::DefVariant(_, variant_did) => def_to_path(tcx, variant_did),
                 def::DefFn(..) => return P(hir::Pat {
                     id: expr.id,
                     node: hir::PatLit(P(expr.clone())),
@@ -1052,10 +1052,10 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       (lookup_const_by_id(tcx, def_id, Some(e.id), None), None)
                   }
               }
-              Some(def::DefVariant(enum_def, variant_def, _)) => {
+              Some(def::DefVariant(enum_def, variant_def)) => {
                   (lookup_variant_by_id(tcx, enum_def, variant_def), None)
               }
-              Some(def::DefStruct(_)) => {
+              Some(def::DefStruct(..)) => {
                   return Ok(ConstVal::Struct(e.id))
               }
               Some(def::DefLocal(_, id)) => {
@@ -1066,7 +1066,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       (None, None)
                   }
               },
-              Some(def::DefMethod(id)) | Some(def::DefFn(id, _)) => return Ok(Function(id)),
+              Some(def::DefMethod(id)) | Some(def::DefFn(id)) => return Ok(Function(id)),
               _ => (None, None)
           };
           let const_expr = match const_expr {

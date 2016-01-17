@@ -16,6 +16,7 @@
 extern crate xcrate_unit_struct;
 
 fn main() {
-    let _ = xcrate_unit_struct::StructWithFields; //~ ERROR: unresolved name
+    let _ = xcrate_unit_struct::StructWithFields;
+    //~^ ERROR: `xcrate_unit_struct::StructWithFields` is the name of a struct or struct variant
     let _ = xcrate_unit_struct::Struct;
 }
