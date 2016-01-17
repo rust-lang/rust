@@ -285,9 +285,11 @@ This expands to
 
 ```text
 const char *state = "reticulating splines";
-int state = get_log_state();
-if (state > 0) {
-    printf("log(%d): %s\n", state, state);
+{
+    int state = get_log_state();
+    if (state > 0) {
+        printf("log(%d): %s\n", state, state);
+    }
 }
 ```
 
