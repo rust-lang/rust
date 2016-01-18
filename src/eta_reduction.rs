@@ -45,6 +45,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
             // || {foo(); bar()}; can't be reduced here
             return;
         }
+
         if let Some(ref ex) = blk.expr {
             if let ExprCall(ref caller, ref args) = ex.node {
                 if args.len() != decl.inputs.len() {
@@ -52,8 +53,8 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                     // is no way the closure is the same as the function
                     return;
                 }
-                if args.iter().any(|arg| is_adjusted(cx, arg)) {
-                    // Are the arguments type-adjusted? Then we need the closure
+                if is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)) {
+                    // Are the expression or the arguments type-adjusted? Then we need the closure
                     return;
                 }
                 let fn_ty = cx.tcx.expr_ty(caller);
