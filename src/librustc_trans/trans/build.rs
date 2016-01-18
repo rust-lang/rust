@@ -21,7 +21,6 @@ use syntax::codemap::Span;
 use trans::builder::Builder;
 use trans::type_::Type;
 use trans::debuginfo::DebugLoc;
-use trans::Disr;
 
 use libc::{c_uint, c_char};
 
@@ -578,8 +577,8 @@ pub fn AtomicLoad(cx: Block, pointer_val: ValueRef, order: AtomicOrdering) -> Va
 }
 
 
-pub fn LoadRangeAssert(cx: Block, pointer_val: ValueRef, lo: Disr,
-                       hi: Disr, signed: llvm::Bool) -> ValueRef {
+pub fn LoadRangeAssert(cx: Block, pointer_val: ValueRef, lo: u64,
+                       hi: u64, signed: llvm::Bool) -> ValueRef {
     if cx.unreachable.get() {
         let ccx = cx.fcx.ccx;
         let ty = val_ty(pointer_val);
@@ -592,7 +591,7 @@ pub fn LoadRangeAssert(cx: Block, pointer_val: ValueRef, lo: Disr,
             llvm::LLVMGetUndef(eltty.to_ref())
         }
     } else {
-        B(cx).load_range_assert(pointer_val, lo.0, hi.0, signed)
+        B(cx).load_range_assert(pointer_val, lo, hi, signed)
     }
 }
 
