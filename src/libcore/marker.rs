@@ -333,7 +333,7 @@ macro_rules! impls{
 /// use std::marker::PhantomData;
 ///
 /// # #[allow(dead_code)]
-/// struct Slice<'a, T:'a> {
+/// struct Slice<'a, T: 'a> {
 ///     start: *const T,
 ///     end: *const T,
 ///     phantom: PhantomData<&'a T>
@@ -428,18 +428,18 @@ mod impls {
 /// use std::any::Any;
 ///
 /// # #[allow(dead_code)]
-/// fn foo<T:Reflect+'static>(x: &T) {
+/// fn foo<T: Reflect + 'static>(x: &T) {
 ///     let any: &Any = x;
 ///     if any.is::<u32>() { println!("u32"); }
 /// }
 /// ```
 ///
-/// Without the declaration `T:Reflect`, `foo` would not type check
+/// Without the declaration `T: Reflect`, `foo` would not type check
 /// (note: as a matter of style, it would be preferable to write
-/// `T:Any`, because `T:Any` implies `T:Reflect` and `T:'static`, but
+/// `T: Any`, because `T: Any` implies `T: Reflect` and `T: 'static`, but
 /// we use `Reflect` here to show how it works). The `Reflect` bound
 /// thus serves to alert `foo`'s caller to the fact that `foo` may
-/// behave differently depending on whether `T=u32` or not. In
+/// behave differently depending on whether `T = u32` or not. In
 /// particular, thanks to the `Reflect` bound, callers know that a
 /// function declared like `fn bar<T>(...)` will always act in
 /// precisely the same way no matter what type `T` is supplied,
