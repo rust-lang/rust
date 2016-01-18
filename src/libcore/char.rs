@@ -471,6 +471,18 @@ impl Iterator for EscapeUnicode {
         let n = n + self.hex_digit_idx;
         (n, Some(n))
     }
+
+    fn last(self) -> Option<char> {
+        match self.state {
+            EscapeUnicodeState::Done => None,
+
+            EscapeUnicodeState::RightBrace |
+            EscapeUnicodeState::Value |
+            EscapeUnicodeState::LeftBrace |
+            EscapeUnicodeState::Type |
+            EscapeUnicodeState::Backslash => Some('}'),
+        }
+    }
 }
 
 /// An iterator that yields the literal escape code of a `char`.
