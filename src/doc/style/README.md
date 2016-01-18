@@ -1,4 +1,4 @@
-% Style Guidelines
+# Style Guidelines
 
 This document collects the emerging principles, conventions, abstractions, and
 best practices for writing Rust code.
