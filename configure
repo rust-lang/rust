@@ -1035,7 +1035,7 @@ then
         if [ -n "$CFG_OSX_CLANG_VERSION" ]
         then
             case $CFG_OSX_CLANG_VERSION in
-                (7.0*)
+                (7.*)
                 step_msg "found ok version of APPLE CLANG: $CFG_OSX_CLANG_VERSION"
                 ;;
                 (*)
