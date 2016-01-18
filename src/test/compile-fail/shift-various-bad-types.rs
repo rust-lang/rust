@@ -36,8 +36,6 @@ fn foo(p: &Panolpy) {
     //~^ ERROR mismatched types
     //~| expected `i32`
     //~| found `i64`
-    //~| expected i32
-    //~| found i64)
 }
 
 fn main() {
