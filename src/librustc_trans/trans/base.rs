@@ -1023,11 +1023,11 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) ->
     }
 
     let val = if t.is_bool() {
-        LoadRangeAssert(cx, ptr, Disr(0), Disr(2), llvm::False)
+        LoadRangeAssert(cx, ptr, 0, 2, llvm::False)
     } else if t.is_char() {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
-        LoadRangeAssert(cx, ptr, Disr(0), Disr(0x10FFFF + 1), llvm::False)
+        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
     } else if (t.is_region_ptr() || t.is_unique()) && !common::type_is_fat_ptr(cx.tcx(), t) {
         LoadNonNull(cx, ptr)
     } else {
