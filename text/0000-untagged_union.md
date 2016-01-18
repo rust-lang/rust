@@ -230,8 +230,11 @@ a field, should cause the compiler to treat the entire union as initialized.
 
 A union may have trait implementations, using the same syntax as a struct.
 
-The compiler should produce an error if a union field has a type that
-implements the `Drop` trait.
+The compiler should provide a lint if a union field has a type that implements
+the `Drop` trait.  The compiler may optionally provide a pragma to disable that
+lint, for code that intentionally stores a type with Drop in a union.  The
+compiler must never implicitly generate a Drop implementation for the union
+itself, though Rust code may explicitly implement Drop for a union type.
 
 ## Unions and undefined behavior
 
