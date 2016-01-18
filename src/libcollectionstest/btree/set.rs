@@ -254,3 +254,13 @@ fn test_recovery() {
 
     assert_eq!(s.iter().next(), None);
 }
+
+#[test]
+fn test_variance() {
+    use std::collections::btree_set::{IntoIter, Iter, Range};
+
+    fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> { v }
+    fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> { v }
+    fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> { v }
+    fn range<'a, 'new>(v: Range<'a, &'static str>) -> Range<'a, &'new str> { v }
+}
