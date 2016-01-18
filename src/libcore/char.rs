@@ -413,12 +413,12 @@ pub struct EscapeUnicode {
 
 #[derive(Clone, Debug)]
 enum EscapeUnicodeState {
-    Backslash,
-    Type,
-    LeftBrace,
-    Value,
-    RightBrace,
     Done,
+    RightBrace,
+    Value,
+    LeftBrace,
+    Type,
+    Backslash,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -457,16 +457,9 @@ impl Iterator for EscapeUnicode {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = match self.state {
-            EscapeUnicodeState::Backslash => 5,
-            EscapeUnicodeState::Type => 4,
-            EscapeUnicodeState::LeftBrace => 3,
-            EscapeUnicodeState::Value => 2,
-            EscapeUnicodeState::RightBrace => 1,
-            EscapeUnicodeState::Done => 0,
-        };
-        let n = n + self.hex_digit_idx;
+        let n = self.len();
         (n, Some(n))
     }
 
@@ -489,7 +482,20 @@ impl Iterator for EscapeUnicode {
 }
 
 #[stable(feature = "exact_size_escape", since = "1.11.0")]
-impl ExactSizeIterator for EscapeUnicode { }
+impl ExactSizeIterator for EscapeUnicode {
+    #[inline]
+    fn len(&self) -> usize {
+        // The match is a single memory access with no branching
+        self.hex_digit_idx + match self.state {
+            EscapeUnicodeState::Done => 0,
+            EscapeUnicodeState::RightBrace => 1,
+            EscapeUnicodeState::Value => 2,
+            EscapeUnicodeState::LeftBrace => 3,
+            EscapeUnicodeState::Type => 4,
+            EscapeUnicodeState::Backslash => 5,
+        }
+    }
+}
 
 /// An iterator that yields the literal escape code of a `char`.
 ///
@@ -506,9 +512,9 @@ pub struct EscapeDefault {
 
 #[derive(Clone, Debug)]
 enum EscapeDefaultState {
-    Backslash(char),
-    Char(char),
     Done,
+    Char(char),
+    Backslash(char),
     Unicode(EscapeUnicode),
 }
 
@@ -531,13 +537,10 @@ impl Iterator for EscapeDefault {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.state {
-            EscapeDefaultState::Char(_) => (1, Some(1)),
-            EscapeDefaultState::Backslash(_) => (2, Some(2)),
-            EscapeDefaultState::Unicode(ref iter) => iter.size_hint(),
-            EscapeDefaultState::Done => (0, Some(0)),
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
     #[inline]
@@ -583,7 +586,16 @@ impl Iterator for EscapeDefault {
 }
 
 #[stable(feature = "exact_size_escape", since = "1.11.0")]
-impl ExactSizeIterator for EscapeDefault { }
+impl ExactSizeIterator for EscapeDefault {
+    fn len(&self) -> usize {
+        match self.state {
+            EscapeDefaultState::Done => 0,
+            EscapeDefaultState::Char(_) => 1,
+            EscapeDefaultState::Backslash(_) => 2,
+            EscapeDefaultState::Unicode(ref iter) => iter.len(),
+        }
+    }
+}
 
 /// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
 /// value.
