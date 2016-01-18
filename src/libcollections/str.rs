@@ -302,7 +302,7 @@ impl str {
     /// # Safety
     ///
     /// Callers of this function are responsible that three preconditions are
-    /// satisifed:
+    /// satisfied:
     ///
     /// * `begin` must come before `end`.
     /// * `begin` and `end` must be byte positions within the string slice.
@@ -345,7 +345,7 @@ impl str {
     /// # Safety
     ///
     /// Callers of this function are responsible that three preconditions are
-    /// satisifed:
+    /// satisfied:
     ///
     /// * `begin` must come before `end`.
     /// * `begin` and `end` must be byte positions within the string slice.
