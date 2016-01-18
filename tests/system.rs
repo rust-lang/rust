@@ -63,6 +63,30 @@ fn coverage_tests() {
     assert!(fails == 0, "{} tests failed", fails);
 }
 
+#[test]
+fn checkstyle_test() {
+    let filename = "tests/target/fn-single-line.rs".to_string();
+    let expected = "tests/writemode/checkstyle.xml";
+
+    let output = run_rustfmt(filename.clone(), WriteMode::Checkstyle);
+
+    let mut expected_file = fs::File::open(&expected)
+                                .ok()
+                                .expect("Couldn't open target.");
+    let mut expected_text = String::new();
+    expected_file.read_to_string(&mut expected_text)
+                 .ok()
+                 .expect("Failed reading target.");
+
+    let mut failures = HashMap::new();
+    if expected_text != output {
+        let diff = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
+        failures.insert(filename, diff);
+        // print_mismatches(failures);
+        // assert!(false, "Text does not match expected output");
+    }
+}
+
 // Idempotence tests. Files in tests/target are checked to be unaltered by
 // rustfmt.
 #[test]
@@ -143,6 +167,37 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
     }
 
     assert!(t.reset().unwrap());
+}
+
+pub fn run_rustfmt(filename: String, write_mode: WriteMode) -> String {
+    let sig_comments = read_significant_comments(&filename);
+    let mut config = get_config(sig_comments.get("config").map(|x| &(*x)[..]));
+
+    for (key, val) in &sig_comments {
+        if key != "target" && key != "config" {
+            config.override_value(key, val);
+        }
+    }
+
+    // Don't generate warnings for to-do items.
+    config.report_todo = ReportTactic::Never;
+
+    // Simulate run()
+    let mut file_map = format(Path::new(&filename), &config, write_mode);
+    // TODO this writes directly to stdout making it impossible to test :(
+    let write_result = filemap::write_all_files(&file_map, write_mode, &config);
+    let res = write_result.unwrap();
+    String::new()
+
+    // for (filename, text) in file_map.iter() {
+    //     let mut v = Vec::new();
+    //     // Won't panic, as we're not doing any IO.
+    //     write_system_newlines(&mut v, text, &config).unwrap();
+    //     // Won't panic, we are writing correct utf8.
+    //     let one_result = String::from_utf8(v).unwrap();
+    //     write_result.insert(filename, one_result);
+    // }
+    // write_result.remove(&filename).unwrap().to_owned()
 }
 
 pub fn idempotent_check(filename: String,
