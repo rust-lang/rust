@@ -378,6 +378,22 @@ fn test_clone() {
     }
 }
 
+#[test]
+fn test_variance() {
+    use std::collections::btree_map::{Iter, IntoIter, Range, Keys, Values};
+
+    fn map_key<'new>(v: BTreeMap<&'static str, ()>) -> BTreeMap<&'new str, ()> { v }
+    fn map_val<'new>(v: BTreeMap<(), &'static str>) -> BTreeMap<(), &'new str> { v }
+    fn iter_key<'a, 'new>(v: Iter<'a, &'static str, ()>) -> Iter<'a, &'new str, ()> { v }
+    fn iter_val<'a, 'new>(v: Iter<'a, (), &'static str>) -> Iter<'a, (), &'new str> { v }
+    fn into_iter_key<'new>(v: IntoIter<&'static str, ()>) -> IntoIter<&'new str, ()> { v }
+    fn into_iter_val<'new>(v: IntoIter<(), &'static str>) -> IntoIter<(), &'new str> { v }
+    fn range_key<'a, 'new>(v: Range<'a, &'static str, ()>) -> Range<'a, &'new str, ()> { v }
+    fn range_val<'a, 'new>(v: Range<'a, (), &'static str>) -> Range<'a, (), &'new str> { v }
+    fn keys<'a, 'new>(v: Keys<'a, &'static str, ()>) -> Keys<'a, &'new str, ()> { v }
+    fn vals<'a, 'new>(v: Values<'a, (), &'static str>) -> Values<'a, (), &'new str> { v }
+}
+
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};
