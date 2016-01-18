@@ -478,8 +478,13 @@ impl<T> SliceExt for [T] {
     fn clone_from_slice(&mut self, src: &[T]) where T: Clone {
         assert!(self.len() == src.len(),
                 "destination and source slices have different lengths");
-        for (dst, src) in self.iter_mut().zip(src) {
-            dst.clone_from(src);
+        // NOTE: We need to explicitly slice them to the same length
+        // for bounds checking to be elided, and the optimizer will
+        // generate memcpy for simple cases (for example T = u8).
+        let len = self.len();
+        let src = &src[..len];
+        for i in 0..len {
+            self[i].clone_from(&src[i]);
         }
     }
 }
