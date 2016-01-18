@@ -14,7 +14,7 @@
 use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::fmt::Debug;
 use core::fmt;
-use core::iter::{Peekable, Map, FromIterator};
+use core::iter::{Peekable, FromIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
 use borrow::Borrow;
@@ -52,12 +52,12 @@ pub struct Iter<'a, T: 'a> {
 /// An owning iterator over a BTreeSet's items.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
-    iter: Map<::btree_map::IntoIter<T, ()>, fn((T, ())) -> T>,
+    iter: ::btree_map::IntoIter<T, ()>,
 }
 
 /// An iterator over a sub-range of BTreeSet's items.
 pub struct Range<'a, T: 'a> {
-    iter: Map<::btree_map::Range<'a, T, ()>, fn((&'a T, &'a ())) -> &'a T>,
+    iter: ::btree_map::Range<'a, T, ()>,
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
@@ -160,12 +160,7 @@ impl<T: Ord> BTreeSet<T> {
                                                            -> Range<'a, T>
         where T: Borrow<Min> + Borrow<Max>
     {
-        fn first<A, B>((a, _): (A, B)) -> A {
-            a
-        }
-        let first: fn((&'a T, &'a ())) -> &'a T = first; // coerce to fn pointer
-
-        Range { iter: self.map.range(min, max).map(first) }
+        Range { iter: self.map.range(min, max) }
     }
 }
 
@@ -548,12 +543,7 @@ impl<T> IntoIterator for BTreeSet<T> {
     /// assert_eq!(v, [1, 2, 3, 4]);
     /// ```
     fn into_iter(self) -> IntoIter<T> {
-        fn first<A, B>((a, _): (A, B)) -> A {
-            a
-        }
-        let first: fn((T, ())) -> T = first; // coerce to fn pointer
-
-        IntoIter { iter: self.map.into_iter().map(first) }
+        IntoIter { iter: self.map.into_iter() }
     }
 }
 
@@ -721,7 +711,7 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        self.iter.next()
+        self.iter.next().map(|(k, _)| k)
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
@@ -730,7 +720,7 @@ impl<T> Iterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<T> {
-        self.iter.next_back()
+        self.iter.next_back().map(|(k, _)| k)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -746,12 +736,12 @@ impl<'a, T> Iterator for Range<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        self.iter.next()
+        self.iter.next().map(|(k, _)| k)
     }
 }
 impl<'a, T> DoubleEndedIterator for Range<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> {
-        self.iter.next_back()
+        self.iter.next_back().map(|(k, _)| k)
     }
 }
 
