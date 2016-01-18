@@ -194,6 +194,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::OK_EXPECT,
         methods::OPTION_MAP_UNWRAP_OR,
         methods::OPTION_MAP_UNWRAP_OR_ELSE,
+        methods::OR_FUN_CALL,
         methods::SEARCH_IS_SOME,
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::STR_TO_STRING,

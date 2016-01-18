@@ -52,7 +52,7 @@ impl LintPass for EscapePass {
 impl LateLintPass for EscapePass {
     fn check_fn(&mut self, cx: &LateContext, _: visit::FnKind, decl: &FnDecl, body: &Block, _: Span, id: NodeId) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
-        let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(param_env), false);
+        let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(param_env));
         let mut v = EscapeDelegate {
             cx: cx,
             set: NodeSet(),

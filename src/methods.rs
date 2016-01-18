@@ -4,11 +4,14 @@ use rustc::middle::ty;
 use rustc::middle::subst::{Subst, TypeSpace};
 use std::iter;
 use std::borrow::Cow;
+use syntax::ptr::P;
+use syntax::codemap::Span;
 
 use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args, match_trait_method,
-            walk_ptrs_ty_depth, walk_ptrs_ty};
-use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
+            walk_ptrs_ty_depth, walk_ptrs_ty, get_trait_def_id, implements_trait};
+use utils::{DEFAULT_TRAIT_PATH, OPTION_PATH, RESULT_PATH, STRING_PATH};
 use utils::MethodArgs;
+use rustc::middle::cstore::CrateStore;
 
 use self::SelfKind::*;
 use self::OutType::*;
@@ -170,6 +173,28 @@ declare_lint!(pub SEARCH_IS_SOME, Warn,
               "using an iterator search followed by `is_some()`, which is more succinctly \
                expressed as a call to `any()`");
 
+/// **What it does:** This lint checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`, etc., and
+/// suggests to use `or_else`, `unwrap_or_else`, etc., or `unwrap_or_default` instead.
+///
+/// **Why is this bad?** The function will always be called and potentially allocate an object
+/// in expressions such as:
+/// ```rust
+/// foo.unwrap_or(String::new())
+/// ```
+/// this can instead be written:
+/// ```rust
+/// foo.unwrap_or_else(String::new)
+/// ```
+/// or
+/// ```rust
+/// foo.unwrap_or_default()
+/// ```
+///
+/// **Known problems:** If the function as side-effects, not calling it will change the semantic of
+/// the program, but you shouldn't rely on that anyway.
+declare_lint!(pub OR_FUN_CALL, Warn,
+              "using any `*or` method when the `*or_else` would do");
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED,
@@ -181,13 +206,15 @@ impl LintPass for MethodsPass {
                     WRONG_PUB_SELF_CONVENTION,
                     OK_EXPECT,
                     OPTION_MAP_UNWRAP_OR,
-                    OPTION_MAP_UNWRAP_OR_ELSE)
+                    OPTION_MAP_UNWRAP_OR_ELSE,
+                    OR_FUN_CALL)
     }
 }
 
 impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprMethodCall(_, _, _) = expr.node {
+        if let ExprMethodCall(name, _, ref args) = expr.node {
+            // Chain calls
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                 lint_unwrap(cx, expr, arglists[0]);
             } else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
@@ -207,6 +234,8 @@ impl LateLintPass for MethodsPass {
             } else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
                 lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
             }
+
+            lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
         }
     }
 
@@ -253,6 +282,99 @@ impl LateLintPass for MethodsPass {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Checks for the `OR_FUN_CALL` lint.
+fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>]) {
+    /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
+    fn check_unwrap_or_default(
+        cx: &LateContext,
+        name: &str,
+        fun: &Expr,
+        self_expr: &Expr,
+        arg: &Expr,
+        or_has_args: bool,
+        span: Span
+    ) -> bool {
+        if or_has_args {
+            return false;
+        }
+
+        if name == "unwrap_or" {
+            if let ExprPath(_, ref path) = fun.node {
+                let path : &str = &path.segments.last()
+                    .expect("A path must have at least one segment")
+                    .identifier.name.as_str();
+
+                if ["default", "new"].contains(&path) {
+                    let arg_ty = cx.tcx.expr_ty(arg);
+                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &DEFAULT_TRAIT_PATH) {
+                        default_trait_id
+                    }
+                    else {
+                        return false;
+                    };
+
+                    if implements_trait(cx, arg_ty, default_trait_id) {
+                        span_lint(cx, OR_FUN_CALL, span,
+                                  &format!("use of `{}` followed by a call to `{}`", name, path))
+                            .span_suggestion(span, "try this",
+                                             format!("{}.unwrap_or_default()",
+                                                     snippet(cx, self_expr.span, "_")));
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Check for `*or(foo())`.
+    fn check_general_case(
+        cx: &LateContext,
+        name: &str,
+        fun: &Expr,
+        self_expr: &Expr,
+        arg: &Expr,
+        or_has_args: bool,
+        span: Span
+    ) {
+        let self_ty = cx.tcx.expr_ty(self_expr);
+
+        let is_result = if match_type(cx, self_ty, &RESULT_PATH) {
+            true
+        }
+        else if match_type(cx, self_ty, &OPTION_PATH) {
+            false
+        }
+        else {
+            return;
+        };
+
+        let sugg = match (is_result, !or_has_args) {
+            (true, _) => format!("|_| {}", snippet(cx, arg.span, "..")),
+            (false, false) => format!("|| {}", snippet(cx, arg.span, "..")),
+            (false, true) => format!("{}", snippet(cx, fun.span, "..")),
+        };
+
+        span_lint(cx, OR_FUN_CALL, span,
+                  &format!("use of `{}` followed by a function call", name))
+            .span_suggestion(span, "try this",
+                             format!("{}.{}_else({})",
+                                     snippet(cx, self_expr.span, "_"),
+                                     name,
+                                     sugg));
+    }
+
+    if args.len() == 2 && ["map_or", "ok_or", "or", "unwrap_or"].contains(&name) {
+        if let ExprCall(ref fun, ref or_args) = args[1].node {
+            let or_has_args = !or_args.is_empty();
+            if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
+                check_general_case(cx, name, fun, &args[0], &args[1], or_has_args, expr.span);
             }
         }
     }

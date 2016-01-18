@@ -484,9 +484,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             if let Some(&PathResolution { base_def: DefConst(id), ..}) = lcx.tcx.def_map.borrow().get(&e.id) {
                 maybe_id = Some(id);
             }
-            // separate if lets to avoid doubleborrowing the defmap
+            // separate if lets to avoid double borrowing the def_map
             if let Some(id) = maybe_id {
-                if let Some(const_expr) = lookup_const_by_id(lcx.tcx, id, None) {
+                if let Some(const_expr) = lookup_const_by_id(lcx.tcx, id, None, None) {
                     let ret = self.expr(const_expr);
                     if ret.is_some() {
                         self.needed_resolution = true;

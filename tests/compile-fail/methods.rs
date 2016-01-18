@@ -175,6 +175,71 @@ fn search_is_some() {
     let _ = foo.rposition().is_some();
 }
 
+/// Checks implementation of the OR_FUN_CALL lint
+fn or_fun_call() {
+    struct Foo;
+
+    impl Foo {
+        fn new() -> Foo { Foo }
+    }
+
+    fn make<T>() -> T { unimplemented!(); }
+
+    let with_constructor = Some(vec![1]);
+    with_constructor.unwrap_or(make());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_constructor.unwrap_or_else(make)
+
+    let with_new = Some(vec![1]);
+    with_new.unwrap_or(Vec::new());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_new.unwrap_or_default();
+
+    let with_const_args = Some(vec![1]);
+    with_const_args.unwrap_or(Vec::with_capacity(12));
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_const_args.unwrap_or_else(|| Vec::with_capacity(12));
+
+    let with_err : Result<_, ()> = Ok(vec![1]);
+    with_err.unwrap_or(make());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_err.unwrap_or_else(|_| make());
+
+    let with_err_args : Result<_, ()> = Ok(vec![1]);
+    with_err_args.unwrap_or(Vec::with_capacity(12));
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_err_args.unwrap_or_else(|_| Vec::with_capacity(12));
+
+    let with_default_trait = Some(1);
+    with_default_trait.unwrap_or(Default::default());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_default_trait.unwrap_or_default();
+
+    let with_default_type = Some(1);
+    with_default_type.unwrap_or(u64::default());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_default_type.unwrap_or_default();
+
+    let with_vec = Some(vec![1]);
+    with_vec.unwrap_or(vec![]);
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
+
+    let without_default = Some(Foo);
+    without_default.unwrap_or(Foo::new());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION without_default.unwrap_or_else(Foo::new);
+}
+
 fn main() {
     use std::io;
 
