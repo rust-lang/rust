@@ -956,7 +956,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     assert_eq!(val_ty(ptr), llty.ptr_to());
     let bits = machine::llbitsize_of_real(bcx.ccx(), llty);
     assert!(bits <= 64);
-    let  bits = bits as usize;
+    let bits = bits as usize;
     let mask = Disr(!0u64 >> (64 - bits));
     // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
     // However, that is fine here (it would still represent the full range),
@@ -969,7 +969,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     } else {
         // llvm::ConstantRange can deal with ranges that wrap around,
         // so an overflow on (max + 1) is fine.
-        LoadRangeAssert(bcx, ptr, min, max.wrapping_add(Disr(1)), /* signed: */ True)
+        LoadRangeAssert(bcx, ptr, min.0, max.0.wrapping_add(1), /* signed: */ True)
     }
 }
 
