@@ -177,29 +177,55 @@ fn search_is_some() {
 
 /// Checks implementation of the OR_FUN_CALL lint
 fn or_fun_call() {
-    let foo = Some(vec![1]);
-    foo.unwrap_or(Vec::new());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION foo.unwrap_or_else(Vec::new);
+    fn make<T>() -> T { unimplemented!(); }
 
-    let bar = Some(vec![1]);
-    bar.unwrap_or(Vec::with_capacity(12));
+    let with_constructor = Some(vec![1]);
+    with_constructor.unwrap_or(make());
     //~^ERROR use of `unwrap_or`
     //~|HELP try this
-    //~|SUGGESTION bar.unwrap_or_else(|| Vec::with_capacity(12));
+    //~|SUGGESTION with_constructor.unwrap_or_else(make)
 
-    let baz : Result<_, ()> = Ok(vec![1]);
-    baz.unwrap_or(Vec::new());
+    let with_new = Some(vec![1]);
+    with_new.unwrap_or(Vec::new());
     //~^ERROR use of `unwrap_or`
     //~|HELP try this
-    //~|SUGGESTION baz.unwrap_or_else(|_| Vec::new());
+    //~|SUGGESTION with_new.unwrap_or_default();
 
-    let qux : Result<_, ()> = Ok(vec![1]);
-    qux.unwrap_or(Vec::with_capacity(12));
+    let with_const_args = Some(vec![1]);
+    with_const_args.unwrap_or(Vec::with_capacity(12));
     //~^ERROR use of `unwrap_or`
     //~|HELP try this
-    //~|SUGGESTION qux.unwrap_or_else(|_| Vec::with_capacity(12));
+    //~|SUGGESTION with_const_args.unwrap_or_else(|| Vec::with_capacity(12));
+
+    let with_err : Result<_, ()> = Ok(vec![1]);
+    with_err.unwrap_or(make());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_err.unwrap_or_else(|_| make());
+
+    let with_err_args : Result<_, ()> = Ok(vec![1]);
+    with_err_args.unwrap_or(Vec::with_capacity(12));
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_err_args.unwrap_or_else(|_| Vec::with_capacity(12));
+
+    let with_default_trait = Some(1);
+    with_default_trait.unwrap_or(Default::default());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_default_trait.unwrap_or_default();
+
+    let with_default_type = Some(1);
+    with_default_type.unwrap_or(u64::default());
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_default_type.unwrap_or_default();
+
+    let with_vec = Some(vec![1]);
+    with_vec.unwrap_or(vec![]);
+    //~^ERROR use of `unwrap_or`
+    //~|HELP try this
+    //~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
 }
 
 fn main() {
