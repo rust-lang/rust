@@ -318,7 +318,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
                         return false;
                     };
 
-                    if implements_trait(cx, arg_ty, default_trait_id) {
+                    if implements_trait(cx, arg_ty, default_trait_id, None) {
                         span_lint(cx, OR_FUN_CALL, span,
                                   &format!("use of `{}` followed by a call to `{}`", name, path))
                             .span_suggestion(span, "try this",

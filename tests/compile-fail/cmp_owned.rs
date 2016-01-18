@@ -21,4 +21,6 @@ fn main() {
     // as of 2015-08-14
 
     x != String::from("foo"); //~ERROR this creates an owned instance
+
+    42.to_string() == "42";
 }

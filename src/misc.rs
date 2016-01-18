@@ -11,7 +11,7 @@ use rustc::middle::const_eval::eval_const_expr_partial;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 
 use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint};
-use utils::{span_help_and_lint, walk_ptrs_ty, is_integer_literal};
+use utils::{span_help_and_lint, walk_ptrs_ty, is_integer_literal, implements_trait};
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`. It is `Warn` by default.
 ///
@@ -210,18 +210,18 @@ impl LateLintPass for CmpOwned {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             if is_comparison_binop(cmp.node) {
-                check_to_owned(cx, left, right.span, true, cmp.span);
-                check_to_owned(cx, right, left.span, false, cmp.span)
+                check_to_owned(cx, left, right, true, cmp.span);
+                check_to_owned(cx, right, left, false, cmp.span)
             }
         }
     }
 }
 
-fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, op: Span) {
-    let snip = match expr.node {
+fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: Span) {
+    let (arg_ty, snip) = match expr.node {
         ExprMethodCall(Spanned{node: ref name, ..}, _, ref args) if args.len() == 1 => {
             if name.as_str() == "to_string" || name.as_str() == "to_owned" && is_str_arg(cx, args) {
-                snippet(cx, args[0].span, "..")
+                (cx.tcx.expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
                 return;
             }
@@ -229,7 +229,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, o
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let ExprPath(None, ref path) = path.node {
                 if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
-                    snippet(cx, v[0].span, "..")
+                    (cx.tcx.expr_ty(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;
                 }
@@ -239,6 +239,17 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, o
         }
         _ => return,
     };
+
+    let other_ty = cx.tcx.expr_ty(other);
+    let partial_eq_trait_id = match cx.tcx.lang_items.eq_trait() {
+        Some(id) => id,
+        None => return,
+    };
+
+    if !implements_trait(cx, arg_ty, partial_eq_trait_id, Some(vec![other_ty])) {
+        return;
+    }
+
     if left {
         span_lint(cx,
                   CMP_OWNED,
@@ -247,14 +258,14 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other_span: Span, left: bool, o
                             compare without allocation",
                            snip,
                            snippet(cx, op, "=="),
-                           snippet(cx, other_span, "..")));
+                           snippet(cx, other.span, "..")));
     } else {
         span_lint(cx,
                   CMP_OWNED,
                   expr.span,
                   &format!("this creates an owned instance just for comparison. Consider using `{} {} {}` to \
                             compare without allocation",
-                           snippet(cx, other_span, ".."),
+                           snippet(cx, other.span, ".."),
                            snippet(cx, op, "=="),
                            snip));
     }

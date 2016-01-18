@@ -242,14 +242,14 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
 
 /// Check whether a type implements a trait.
 /// See also `get_trait_def_id`.
-pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId) -> bool {
+pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId, ty_params: Option<Vec<ty::Ty<'tcx>>>) -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None);
     let obligation = traits::predicate_for_trait_def(cx.tcx,
                                                      traits::ObligationCause::dummy(),
                                                      trait_id, 0, ty,
-                                                     vec![]);
+                                                     ty_params.unwrap_or_default());
 
     traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
 }
