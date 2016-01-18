@@ -1,5 +1,4 @@
 #![feature(plugin)]
-#![feature(convert)]
 #![plugin(clippy)]
 
 #![deny(clippy)]
