@@ -13,6 +13,4 @@ fn main() {
     //~^ ERROR if and else have incompatible types
     //~| expected `i32`
     //~| found `u32`
-    //~| expected i32
-    //~| found u32
 }
