@@ -496,6 +496,18 @@ impl Iterator for EscapeUnicode {
     fn count(self) -> usize {
         self.len()
     }
+
+    fn last(self) -> Option<char> {
+        match self.state {
+            EscapeUnicodeState::Done => None,
+
+            EscapeUnicodeState::RightBrace |
+            EscapeUnicodeState::Value |
+            EscapeUnicodeState::LeftBrace |
+            EscapeUnicodeState::Type |
+            EscapeUnicodeState::Backslash => Some('}'),
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.7.0")]
