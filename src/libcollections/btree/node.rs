@@ -97,13 +97,13 @@ impl<K, V> BoxedNode<K, V> {
         }
     }
 
-    unsafe fn from_ptr(ptr: NonZero<*mut LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::new(*ptr) }
+    unsafe fn from_ptr(ptr: NonZero<*const LeafNode<K, V>>) -> Self {
+        BoxedNode { ptr: Unique::new(*ptr as *mut LeafNode<K, V>) }
     }
 
-    fn as_ptr(&self) -> NonZero<*mut LeafNode<K, V>> {
+    fn as_ptr(&self) -> NonZero<*const LeafNode<K, V>> {
         unsafe {
-            NonZero::new(*self.ptr)
+            NonZero::new(*self.ptr as *const LeafNode<K, V>)
         }
     }
 }
@@ -209,6 +209,11 @@ impl<K, V> Root<K, V> {
     }
 }
 
+// N.B. `NodeRef` is always covariant in `K` and `V`, even when the `BorrowType`
+// is `Mut`. This is technically wrong, but cannot result in any unsafety due to
+// internal use of `NodeRef` because we stay completely generic over `K` and `V`.
+// However, whenever a public type wraps `NodeRef`, make sure that it has the
+// correct variance.
 /// A reference to a node.
 ///
 /// This type has a number of paramaters that controls how it acts:
@@ -223,8 +228,8 @@ impl<K, V> Root<K, V> {
 ///   `NodeRef` could be pointing to either type of node.
 pub struct NodeRef<BorrowType, K, V, Type> {
     height: usize,
-    node: NonZero<*mut LeafNode<K, V>>,
-    root: *mut Root<K, V>,
+    node: NonZero<*const LeafNode<K, V>>,
+    root: *const Root<K, V>,
     _marker: PhantomData<(BorrowType, Type)>
 }
 
@@ -401,7 +406,7 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
 
     fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {
         unsafe {
-            &mut **self.node
+            &mut *(*self.node as *mut LeafNode<K, V>)
         }
     }
 
@@ -434,7 +439,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     pub fn into_root_mut(self) -> &'a mut Root<K, V> {
         unsafe {
-            &mut *self.root
+            &mut *(self.root as *mut Root<K, V>)
         }
     }
 
