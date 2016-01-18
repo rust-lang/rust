@@ -21,6 +21,10 @@ fn main() {
     unsafe {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }
+
+    // See #515
+    let a: Option<Box<::std::ops::Deref<Target = [i32]>>> =
+        Some(vec![1i32, 2]).map(|v| -> Box<::std::ops::Deref<Target = [i32]>> { Box::new(v) });
 }
 
 fn meta<F>(f: F) where F: Fn(u8) {
