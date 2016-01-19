@@ -407,7 +407,6 @@ impl CStr {
     /// # fn main() {
     /// use std::ffi::CStr;
     /// use std::os::raw::c_char;
-    /// use std::str;
     ///
     /// extern {
     ///     fn my_string() -> *const c_char;
