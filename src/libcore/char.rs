@@ -449,34 +449,10 @@ impl Iterator for EscapeUnicode {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        match self.state {
-            EscapeUnicodeState::Backslash => {
-                self.state = EscapeUnicodeState::Type;
-                Some('\\')
-            }
-            EscapeUnicodeState::Type => {
-                self.state = EscapeUnicodeState::LeftBrace;
-                Some('u')
-            }
-            EscapeUnicodeState::LeftBrace => {
-                self.state = EscapeUnicodeState::Value;
-                Some('{')
-            }
-            EscapeUnicodeState::Value => {
-                let c = from_digit(((self.c as u32) >> (self.offset * 4)) & 0xf, 16).unwrap();
-                if self.offset == 0 {
-                    self.state = EscapeUnicodeState::RightBrace;
-                } else {
-                    self.offset -= 1;
-                }
-                Some(c)
-            }
-            EscapeUnicodeState::RightBrace => {
-                self.state = EscapeUnicodeState::Done;
-                Some('}')
-            }
-            EscapeUnicodeState::Done => None,
-        }
+        let state = self.state_len();
+        let offset = self.offset;
+
+        self.step(state, offset)
     }
 
     #[inline]
@@ -507,14 +483,58 @@ impl Iterator for EscapeUnicode {
 impl ExactSizeIterator for EscapeUnicode {
     #[inline]
     fn len(&self) -> usize {
+        self.offset + self.state_len()
+    }
+}
+
+impl EscapeUnicode {
+    #[inline]
+    fn state_len(&self) -> usize {
         // The match is a single memory access with no branching
-        self.offset + self.state {
+        match self.state {
             EscapeUnicodeState::Done => 0,
             EscapeUnicodeState::RightBrace => 1,
             EscapeUnicodeState::Value => 2,
             EscapeUnicodeState::LeftBrace => 3,
             EscapeUnicodeState::Type => 4,
             EscapeUnicodeState::Backslash => 5,
+        }
+    }
+
+    #[inline]
+    fn step(&mut self, state: usize, offset: usize) -> Option<char> {
+        self.offset = offset;
+
+        match state {
+            5 => {
+                self.state = EscapeUnicodeState::Type;
+                Some('\\')
+            }
+            4 => {
+                self.state = EscapeUnicodeState::LeftBrace;
+                Some('u')
+            }
+            3 => {
+                self.state = EscapeUnicodeState::LeftBrace;
+                Some('{')
+            }
+            2 => {
+                self.state = if offset == 0 {
+                    EscapeUnicodeState::RightBrace
+                } else {
+                    self.offset -= 1;
+                    EscapeUnicodeState::Value
+                };
+                from_digit(((self.c as u32) >> (offset * 4)) & 0xf, 16)
+            }
+            1 => {
+                self.state = EscapeUnicodeState::Done;
+                Some('}')
+            }
+            _ => {
+                self.state = EscapeUnicodeState::Done;
+                None
+            }
         }
     }
 }
