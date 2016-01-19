@@ -156,7 +156,9 @@ fn is_zero(v: Value) -> bool {
 
 Note that a pattern match on a union field that has a smaller size than the
 entire union must not make any assumptions about the value of the union's
-memory outside that field.
+memory outside that field.  For example, if a union contains a `u8` and a
+`u32`, matching on the `u8` may not perform a `u32`-sized comparison over the
+entire union.
 
 ## Borrowing union fields
 
