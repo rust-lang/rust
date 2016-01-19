@@ -34,7 +34,7 @@ fn struct_with_a_nested_enum_and_vector() {
 
 fn enum_with_multiple_missing_variants() {
     match Color::Red {
-    //~^ ERROR non-exhaustive patterns: `Red` not covered
+    //~^ ERROR non-exhaustive patterns: `Red`, `Green` not covered
         Color::CustomRGBA { .. } => ()
     }
 }
