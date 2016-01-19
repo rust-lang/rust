@@ -277,37 +277,73 @@ of unsafe code.
 # Alternatives
 [alternatives]: #alternatives
 
-- Don't do anything, and leave users of FFI interfaces with unions to continue
-  writing complex platform-specific transmute code.
-- Create macros to define unions and access their fields.  However, such macros
-  make field accesses and pattern matching look more cumbersome and less
-  structure-like.  The implementation and use of such macros provides strong
-  motivation to seek a better solution, and indeed existing writers and users
-  of such macros have specifically requested native syntax in Rust.
-- Define unions via a pragma modifying an existing keyword, such as via
-  `#[repr(union)] struct`.  Like the macro approach, this avoids breaking
-  existing code via a new keyword.  However, this would make declarations more
-  verbose and noisy, and would introduce potential confusion with `struct` (or
-  whatever existing construct the pragma modified).
-- Use a compound keyword like `unsafe union`, while not reserving `union` on
-  its own as a keyword, to avoid breaking use of `union` as an identifier.
-  Potentially more appealing syntax, if the Rust parser can support it.
-- Use a new operator to access union fields, rather than the same `.` operator
-  used for struct fields.  This would make union fields more obvious at the
-  time of access, rather than making them look syntactically identical to
-  struct fields despite the semantic difference in storage representation.
-- The [unsafe enum](https://github.com/rust-lang/rfcs/pull/724) proposal:
-  introduce untagged enums, identified with `unsafe enum`.  Pattern-matching
-  syntax would make field accesses significantly more verbose than structure
-  field syntax.
-- The [unsafe enum](https://github.com/rust-lang/rfcs/pull/724) proposal with
-  the addition of struct-like field access syntax.  The resulting field access
-  syntax would look much like this proposal; however, pairing an enum-style
-  definition with struct-style usage seems confusing for developers.  An
-  enum-based declaration leads users to expect enum-like syntax; a new
-  construct distinct from both enum and struct does not lead to such
-  expectations, and developers used to C unions will expect struct-like field
-  access for unions.
+This proposal has a substantial history, with many variants and alternatives
+prior to the current macro-based syntax.  Thanks to many people in the Rust
+community for helping to refine this RFC.
+
+As an alternative to the macro syntax, Rust could support unions via a new
+keyword instead.  However, any introduction of a new keyword will necessarily
+break some code that previously compiled, such as code using the keyword as an
+identifier.  Using `union` as the keyword would break the substantial volume of
+existing Rust code using `union` for other purposes, including [multiple
+functions in the standard
+library](https://doc.rust-lang.org/std/?search=union).  Another keyword such as
+`untagged_union` would reduce the likelihood of breaking code in practice;
+however, in the absence of an explicit policy for introducing new keywords,
+this RFC opts to not propose a new keyword.
+
+To avoid breakage caused by a new reserved keyword, Rust could use a compound
+keyword like `unsafe union` (currently not legal syntax in any context), while
+not reserving `union` on its own as a keyword, to avoid breaking use of `union`
+as an identifier.  This provides equally reasonable syntax, but potentially
+introduces more complexity in the Rust parser.
+
+In the absence of a new keyword, since unions represent unsafe, untagged sum
+types, and enum represents safe, tagged sum types, Rust could base unions on
+enum instead.  The [unsafe enum](https://github.com/rust-lang/rfcs/pull/724)
+proposal took this approach, introducing unsafe, untagged enums, identified
+with `unsafe enum`; further discussion around that proposal led to the
+suggestion of extending it with struct-like field access syntax.  Such a
+proposal would similarly eliminate explicit use of `std::mem::transmute`, and
+avoid the need to handle platform-specific size and alignment requirements for
+fields.
+
+The standard pattern-matching syntax of enums would make field accesses
+significantly more verbose than struct-like syntax, and in particular would
+typically require more code inside unsafe blocks.  Adding struct-like field
+access syntax would avoid that; however, pairing an enum-like definition with
+struct-like usage seems confusing for developers.  A declaration using `enum`
+leads users to expect enum-like syntax; a new construct distinct from both
+`enum` and `struct` avoids leading users to expect any particular syntax or
+semantics.  Furthermore, developers used to C unions will expect struct-like
+field access for unions.
+
+Since this proposal uses struct-like syntax for declaration, initialization,
+pattern matching, and field access, the original version of this RFC used a
+pragma modifying the `struct` keyword: `#[repr(union)] struct`.  However, while
+the proposed unions match struct syntax, they do not share the semantics of
+struct; most notably, unions represent a sum type, while structs represent a
+product type.  The new construct `union!` avoids the semantics attached to
+existing keywords.
+
+In the absence of any native support for unions, developers of existing Rust
+code have resorted to either complex platform-specific transmute code, or
+complex union-definition macros.  In the latter case, such macros make field
+accesses and pattern matching look more cumbersome and less structure-like, and
+still require detailed platform-specific knowledge of structure layout and
+field sizes.  The implementation and use of such macros provides strong
+motivation to seek a better solution, and indeed existing writers and users of
+such macros have specifically requested native syntax in Rust.
+
+Finally, to call more attention to reads and writes of union fields, field
+access could use a new access operator, rather than the same `.` operator used
+for struct fields.  This would make union fields more obvious at the time of
+access, rather than making them look syntactically identical to struct fields
+despite the semantic difference in storage representation.  However, this does
+not seem worth the additional syntactic complexity and divergence from other
+languages.  Union field accesses already require unsafe blocks, which calls
+attention to them.  Calls to unsafe functions use the same syntax as calls to
+safe functions.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
