@@ -30,6 +30,7 @@ use syntax::codemap::{mk_sp, Span};
 use syntax::diagnostic::{EmitterWriter, Handler};
 use syntax::parse::{self, ParseSess};
 
+use std::io::stdout;
 use std::ops::{Add, Sub};
 use std::path::Path;
 use std::collections::HashMap;
@@ -428,8 +429,8 @@ pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
     let mut result = format(file, config, mode);
 
     print!("{}", fmt_lines(&mut result, config));
-
-    let write_result = filemap::write_all_files(&result, mode, config);
+    let out = stdout();
+    let write_result = filemap::write_all_files(&result, out, mode, config);
 
     if let Err(msg) = write_result {
         println!("Error writing files: {}", msg);
@@ -442,7 +443,8 @@ pub fn run_from_stdin(input: String, write_mode: WriteMode, config: &Config) {
     let mut result = format_string(input, config, mode);
     fmt_lines(&mut result, config);
 
-    let write_result = filemap::write_file(&result["stdin"], "stdin", mode, config);
+    let mut out = stdout();
+    let write_result = filemap::write_file(&result["stdin"], "stdin", &mut out, mode, config);
 
     if let Err(msg) = write_result {
         panic!("Error writing to stdout: {}", msg);

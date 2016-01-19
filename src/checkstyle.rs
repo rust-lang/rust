@@ -8,30 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use rustfmt_diff::{Mismatch, DiffLine};
-use std::io::{self, Write, Read, stdout};
+use std::io::{self, Write, Read};
 use config::WriteMode;
 
 
-pub fn output_header(mode: WriteMode) -> Result<(), io::Error> {
-    let stdout = stdout();
-    let mut stdout = stdout.lock();
+pub fn output_header<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
+    where T: Write
+{
     if mode == WriteMode::Checkstyle {
         let mut xml_heading = String::new();
         xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
         xml_heading.push_str("\n");
         xml_heading.push_str("<checkstyle version=\"4.3\">");
-        try!(write!(stdout, "{}", xml_heading));
+        try!(write!(out, "{}", xml_heading));
     }
     Ok(())
 }
 
-pub fn output_footer(mode: WriteMode) -> Result<(), io::Error> {
-    let stdout = stdout();
-    let mut stdout = stdout.lock();
+pub fn output_footer<T>(out: &mut T, mode: WriteMode) -> Result<(), io::Error>
+    where T: Write
+{
     if mode == WriteMode::Checkstyle {
         let mut xml_tail = String::new();
         xml_tail.push_str("</checkstyle>");
-        try!(write!(stdout, "{}", xml_tail));
+        try!(write!(out, "{}", xml_tail));
     }
     Ok(())
 }

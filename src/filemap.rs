@@ -31,15 +31,18 @@ pub fn append_newlines(file_map: &mut FileMap) {
     }
 }
 
-pub fn write_all_files(file_map: &FileMap,
-                       mode: WriteMode,
-                       config: &Config)
-                       -> Result<(), io::Error> {
-    output_header(mode).ok();
+pub fn write_all_files<T>(file_map: &FileMap,
+                          mut out: T,
+                          mode: WriteMode,
+                          config: &Config)
+                          -> Result<(), io::Error>
+    where T: Write
+{
+    output_header(&mut out, mode).ok();
     for filename in file_map.keys() {
-        try!(write_file(&file_map[filename], filename, mode, config));
+        try!(write_file(&file_map[filename], filename, &mut out, mode, config));
     }
-    output_footer(mode).ok();
+    output_footer(&mut out, mode).ok();
 
     Ok(())
 }
@@ -81,11 +84,14 @@ pub fn write_system_newlines<T>(writer: T,
     }
 }
 
-pub fn write_file(text: &StringBuffer,
-                  filename: &str,
-                  mode: WriteMode,
-                  config: &Config)
-                  -> Result<Option<String>, io::Error> {
+pub fn write_file<T>(text: &StringBuffer,
+                     filename: &str,
+                     out: &mut T,
+                     mode: WriteMode,
+                     config: &Config)
+                     -> Result<Option<String>, io::Error>
+    where T: Write
+{
 
     fn source_and_formatted_text(text: &StringBuffer,
                                  filename: &str,
@@ -155,11 +161,8 @@ pub fn write_file(text: &StringBuffer,
             unreachable!("The WriteMode should NEVER Be default at this point!");
         }
         WriteMode::Checkstyle => {
-            let stdout = stdout();
-            let stdout = stdout.lock();
             let diff = try!(create_diff(filename, text, config));
-            // Output the XML tags for the lines that are different.
-            try!(output_checkstyle_file(stdout, filename, diff));
+            try!(output_checkstyle_file(out, filename, diff));
         }
     }
 
