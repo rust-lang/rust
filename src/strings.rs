@@ -134,13 +134,13 @@ impl LateLintPass for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         use std::ascii::AsciiExt;
         use syntax::ast::Lit_::LitStr;
-        use utils::snippet;
+        use utils::{snippet, in_macro};
 
         if let ExprMethodCall(ref name, _, ref args) = e.node {
             if name.node.as_str() == "as_bytes" {
                 if let ExprLit(ref lit) = args[0].node {
                     if let LitStr(ref lit_content, _) = lit.node {
-                        if lit_content.chars().all(|c| c.is_ascii()) {
+                        if lit_content.chars().all(|c| c.is_ascii()) && !in_macro(cx, e.span) {
                             let msg = format!("calling `as_bytes()` on a string literal. \
                                                Consider using a byte string literal instead: \
                                                `b{}`",
