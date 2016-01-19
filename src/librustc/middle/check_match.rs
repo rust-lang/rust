@@ -368,11 +368,10 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir::MatchSource) {
     match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
-            let witnesses = match &pats[..] {
-                [] => vec![DUMMY_WILD_PAT],
-                [p..] => {
-                    p.iter().map(|w| &**w ).collect()
-                }
+            let witnesses = if pats.is_empty() {
+                vec![DUMMY_WILD_PAT]
+            } else {
+                pats.iter().map(|w| &**w ).collect()
             };
             match source {
                 hir::MatchSource::ForLoopDesugar => {
@@ -392,10 +391,21 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
                 _ => {
                     let pattern_strings: Vec<_> = witnesses.iter().map(|w| {
                         pat_to_string(w)
-                    }).take(10).collect();
+                    }).collect();
+                    let (tail, head) = pattern_strings.split_last().unwrap();
+                    const HEAD_LIMIT: usize = 9;
+                    let joined_patterns = match head.len() {
+                        0 => tail.clone(),
+                        1...HEAD_LIMIT => head.join("`, `") + "` and `" + tail,
+                        _ => {
+                            let head_iter = head.to_owned().into_iter();
+                            let truncated_head: Vec<_> = head_iter.take(HEAD_LIMIT).collect();
+                            truncated_head.join("`, `") + "`, … and `" + tail
+                        }
+                    };
                     span_err!(cx.tcx.sess, sp, E0004,
                         "non-exhaustive patterns: `{}` not covered",
-                        pattern_strings.join("`, `")
+                        joined_patterns
                     );
                 },
             }

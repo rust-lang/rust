@@ -16,12 +16,6 @@ struct Foo {
     second: Option<[usize; 4]>
 }
 
-enum Color {
-    Red,
-    Green,
-    CustomRGBA { a: bool, r: u8, g: u8, b: u8 }
-}
-
 fn struct_with_a_nested_enum_and_vector() {
     match (Foo { first: true, second: None }) {
 //~^ ERROR non-exhaustive patterns: `Foo { first: false, second: Some([_, _, _, _]) }` not covered
@@ -32,10 +26,39 @@ fn struct_with_a_nested_enum_and_vector() {
     }
 }
 
-fn enum_with_multiple_missing_variants() {
+enum Color {
+    Red,
+    Green,
+    CustomRGBA { a: bool, r: u8, g: u8, b: u8 }
+}
+
+fn enum_with_two_missing_variants() {
     match Color::Red {
-    //~^ ERROR non-exhaustive patterns: `Red`, `Green` not covered
+    //~^ ERROR non-exhaustive patterns: `Red` and `Green` not covered
         Color::CustomRGBA { .. } => ()
+    }
+}
+
+enum Direction {
+    North, East, South, West
+}
+
+fn enum_with_three_or_more_missing_variants() {
+    match Direction::North {
+    //~^ ERROR non-exhaustive patterns: `East`, `South` and `West` not covered
+        Direction::North => ()
+    }
+}
+
+enum ExcessiveEnum {
+    First, Second, Third, Fourth, Fifth, Sixth, Seventh, Eighth, Ninth, Tenth, Eleventh, Twelfth
+}
+
+fn enum_with_excessive_missing_variants() {
+    match ExcessiveEnum::First {
+    //~^ ERROR `Sixth`, `Seventh`, `Eighth`, `Ninth`, `Tenth`, … and `Twelfth` not covered
+
+        ExcessiveEnum::First => ()
     }
 }
 
