@@ -95,6 +95,16 @@ use fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
     /// A method called when the value goes out of scope.
+    ///
+    /// When this method has been called, `self` has not yet been deallocated.
+    /// If it were, `self` would be a dangling reference.
+    ///
+    /// After this function is over, the memory of `self` will be deallocated.
+    ///
+    /// # Panics
+    ///
+    /// Given that a `panic!` will call `drop()` as it unwinds, any `panic!` in
+    /// a `drop()` implementation will likely abort.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }
