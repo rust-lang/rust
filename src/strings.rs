@@ -48,6 +48,22 @@ declare_lint! {
     "using `x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
+/// **What it does:** This lint matches the `as_bytes` method called on string
+/// literals that contain only ascii characters. It is `Warn` by default.
+///
+/// **Why is this bad?** Byte string literals (e.g. `b"foo"`) can be used instead. They are shorter but less discoverable than `as_bytes()`.
+///
+/// **Example:**
+///
+/// ```
+/// let bs = "a byte string".as_bytes();
+/// ```
+declare_lint! {
+    pub STRING_LIT_AS_BYTES,
+    Warn,
+    "calling `as_bytes` on a string literal; suggests using a byte string literal instead"
+}
+
 #[derive(Copy, Clone)]
 pub struct StringAdd;
 
@@ -102,5 +118,38 @@ fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
         }
         _ => false,
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct StringLitAsBytes;
+
+impl LintPass for StringLitAsBytes {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(STRING_LIT_AS_BYTES)
+    }
+}
+
+impl LateLintPass for StringLitAsBytes {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+        use std::ascii::AsciiExt;
+        use syntax::ast::Lit_::LitStr;
+        use utils::snippet;
+
+        if let ExprMethodCall(ref name, _, ref args) = e.node {
+            if name.node.as_str() == "as_bytes" {
+                if let ExprLit(ref lit) = args[0].node {
+                    if let LitStr(ref lit_content, _) = lit.node {
+                        if lit_content.chars().all(|c| c.is_ascii()) {
+                            let msg = format!("calling `as_bytes()` on a string literal. \
+                                               Consider using a byte string literal instead: \
+                                               `b{}`",
+                                               snippet(cx, args[0].span, r#""foo""#));
+                            span_lint(cx, STRING_LIT_AS_BYTES, e.span, &msg);
+                        }
+                    }
+                }
+            }
+        }
     }
 }

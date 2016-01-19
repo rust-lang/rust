@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 93 lints included in this crate:
+There are 94 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -83,6 +83,7 @@ name                                                                            
 [str_to_string](https://github.com/Manishearth/rust-clippy/wiki#str_to_string)                                 | warn    | using `to_string()` on a str, which should be `to_owned()`
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                       | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                         | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
+[string_lit_as_bytes](https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes)                     | warn    | calling `as_bytes` on a string literal; suggests using a byte string literal instead
 [string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                           | warn    | calling `String.to_string()` which is a no-op
 [temporary_assignment](https://github.com/Manishearth/rust-clippy/wiki#temporary_assignment)                   | warn    | assignments to temporaries
 [toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                           | warn    | An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take references with `&`.
