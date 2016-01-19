@@ -209,7 +209,7 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
     };
     // n == 4 is the usize/isize case
     if n == 4 {
-        ::std::usize::BITS
+        ::std::mem::size_of::<usize>() * 8
     } else {
         n
     }
