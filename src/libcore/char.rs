@@ -466,6 +466,23 @@ impl Iterator for EscapeUnicode {
         self.len()
     }
 
+    fn nth(&mut self, n: usize) -> Option<char> {
+        let remaining = self.len().saturating_sub(n);
+
+        // offset = (number of hex digits still to be emitted) - 1
+        // It can be computed from the remaining number of items by keeping
+        // into account that:
+        // - offset can never increase
+        // - the last 2 items (last hex digit, '}') are not counted in offset
+        let offset = ::cmp::min(self.offset, remaining.saturating_sub(2));
+
+        // state = number of items to be emitted for the state (as per state_len())
+        // It can be computed because (remaining number of items) = state + offset
+        let state = remaining - offset;
+
+        self.step(state, offset)
+    }
+
     fn last(self) -> Option<char> {
         match self.state {
             EscapeUnicodeState::Done => None,
