@@ -316,27 +316,20 @@ impl TestOpts {
 /// Result of parsing the options.
 pub type OptRes = Result<TestOpts, String>;
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn optgroups() -> Vec<getopts::OptGroup> {
-    vec![getopts::optflag("", "ignored", "Run ignored tests"),
-         getopts::optflag("", "test", "Run tests and not benchmarks"),
-         getopts::optflag("", "bench", "Run benchmarks instead of tests"),
-         getopts::optflag("h", "help", "Display this message (longer with --help)"),
-         getopts::optopt("",
-                         "logfile",
-                         "Write logs to the specified file instead of stdout",
-                         "PATH"),
-         getopts::optflag("",
-                          "nocapture",
-                          "don't capture stdout/stderr of each task, allow printing directly"),
-         getopts::optopt("",
-                         "color",
-                         "Configure coloring of output:
-            auto   = colorize if stdout \
-                          is a tty and tests are run on serially (default);
-            always = \
-                          always colorize output;
-            never  = never colorize output;",
-                         "auto|always|never")]
+    vec!(getopts::optflag("", "ignored", "Run ignored tests"),
+      getopts::optflag("", "test", "Run tests and not benchmarks"),
+      getopts::optflag("", "bench", "Run benchmarks instead of tests"),
+      getopts::optflag("h", "help", "Display this message (longer with --help)"),
+      getopts::optopt("", "logfile", "Write logs to the specified file instead \
+                          of stdout", "PATH"),
+      getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
+                                         task, allow printing directly"),
+      getopts::optopt("", "color", "Configure coloring of output:
+            auto   = colorize if stdout is a tty and tests are run on serially (default);
+            always = always colorize output;
+            never  = never colorize output;", "auto|always|never"))
 }
 
 fn usage(binary: &str) {
