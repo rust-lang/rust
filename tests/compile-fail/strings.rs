@@ -44,6 +44,14 @@ fn both() {
     assert_eq!(&x, &z);
 }
 
+#[allow(dead_code, unused_variables)]
+#[deny(string_lit_as_bytes)]
+fn str_lit_as_bytes() {
+    let bs = "hello there".as_bytes(); //~ERROR calling `as_bytes()`
+    // no warning, because this cannot be written as a byte string literal:
+    let ubs = "☃".as_bytes();
+}
+
 fn main() {
     add_only();
     add_assign_only();

@@ -135,6 +135,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
     reg.register_late_lint_pass(box panic::PanicPass);
+    reg.register_late_lint_pass(box strings::StringLitAsBytes);
 
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -225,6 +226,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         ranges::RANGE_ZIP_WITH_LEN,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
+        strings::STRING_LIT_AS_BYTES,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::USELESS_TRANSMUTE,
         types::BOX_VEC,
