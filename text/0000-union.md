@@ -1,4 +1,4 @@
-- Feature Name: `untagged_union`
+- Feature Name: `union`
 - Start Date: 2015-12-29
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -6,8 +6,8 @@
 # Summary
 [summary]: #summary
 
-Provide native support for C-compatible unions, defined via a new keyword
-`untagged_union`.
+Provide native support for C-compatible unions, defined via a built-in syntax
+macro `union!`.
 
 # Motivation
 [motivation]: #motivation
@@ -28,10 +28,14 @@ space-efficient or cache-efficient structures relying on value representation,
 such as machine-word-sized unions using the least-significant bits of aligned
 pointers to distinguish cases.
 
-The syntax proposed here avoids reserving `union` as the new keyword, as
-existing Rust code already uses `union` for other purposes, including [multiple
-functions in the standard
-library](https://doc.rust-lang.org/std/?search=union).
+The syntax proposed here avoids reserving a new keyword (such as `union`), and
+thus will not break any existing code.  This syntax also avoids adding a pragma
+to some existing keyword that doesn't quite fit, such as `struct` or `enum`,
+which avoids attaching any of the semantic significance of those keywords to
+this new construct.  Rust does not produce an error or warning about the
+redefinition of a macro already defined in the standard library, so the
+proposed syntax will not even break code that currently defines a macro named
+`union!`.
 
 To preserve memory safety, accesses to union fields may only occur in `unsafe`
 code.  Commonly, code using unions will provide safe wrappers around unsafe
@@ -43,17 +47,16 @@ union field accesses.
 ## Declaring a union type
 
 A union declaration uses the same field declaration syntax as a `struct`
-declaration, except with the keyword `untagged_union` in place of `struct`:
+declaration, except with `union!` in place of `struct`.
 
 ```rust
-untagged_union MyUnion {
+union! MyUnion {
     f1: u32,
     f2: f32,
 }
 ```
 
-`untagged_union` implies `#[repr(C)]` as the default representation, making
-`#[repr(C)] untagged_union` permissible but redundant.
+`union!` implies `#[repr(C)]` as the default representation.
 
 ## Instantiating a union
 
@@ -122,15 +125,14 @@ a union field without matching a specific value makes an irrefutable pattern.
 Both require unsafe code.
 
 Pattern matching may match a union as a field of a larger structure.  In
-particular, when using an `untagged_union` to implement a C tagged union via
-FFI, this allows matching on the tag and the corresponding field
-simultaneously:
+particular, when using a Rust union to implement a C tagged union via FFI, this
+allows matching on the tag and the corresponding field simultaneously:
 
 ```rust
 #[repr(u32)]
 enum Tag { I, F }
 
-untagged_union U {
+union! U {
     i: i32,
     f: f32,
 }
@@ -164,7 +166,7 @@ entire union, such that any borrow conflicting with a borrow of the union
 containing the union) will produce an error.
 
 ```rust
-untagged_union U {
+union! U {
     f1: u32,
     f2: f32,
 }
@@ -192,7 +194,7 @@ struct S {
     y: u32,
 }
 
-untagged_union U {
+union! U {
     s: S,
     both: u64,
 }
@@ -252,7 +254,7 @@ size of any of its fields, and the maximum alignment of any of its fields.
 Note that those maximums may come from different fields; for instance:
 
 ```rust
-untagged_union U {
+union! U {
     f1: u16,
     f2: [u8; 4],
 }
@@ -282,11 +284,11 @@ of unsafe code.
   structure-like.  The implementation and use of such macros provides strong
   motivation to seek a better solution, and indeed existing writers and users
   of such macros have specifically requested native syntax in Rust.
-- Define unions without a new keyword `untagged_union`, such as via
-  `#[repr(union)] struct`.  This would avoid any possibility of breaking
-  existing code that uses the keyword, but would make declarations more
-  verbose, and introduce potential confusion with `struct` (or whatever
-  existing construct the `#[repr(union)]` attribute modifies).
+- Define unions via a pragma modifying an existing keyword, such as via
+  `#[repr(union)] struct`.  Like the macro approach, this avoids breaking
+  existing code via a new keyword.  However, this would make declarations more
+  verbose and noisy, and would introduce potential confusion with `struct` (or
+  whatever existing construct the pragma modified).
 - Use a compound keyword like `unsafe union`, while not reserving `union` on
   its own as a keyword, to avoid breaking use of `union` as an identifier.
   Potentially more appealing syntax, if the Rust parser can support it.
