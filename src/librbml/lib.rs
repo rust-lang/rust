@@ -217,10 +217,15 @@ pub enum EbmlEncoderTag {
 const NUM_TAGS: usize = 0x1000;
 const NUM_IMPLICIT_TAGS: usize = 0x0e;
 
-static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [1, 2, 4, 8 /* EsU* */, 1, 2, 4,
-                                                    8 /* ESI* */, 1 /* EsBool */,
-                                                    4 /* EsChar */, 4, 8 /* EsF* */, 1,
-                                                    4 /* EsSub* */];
+#[cfg_attr(rustfmt, rustfmt_skip)]
+static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [
+    1, 2, 4, 8, // EsU*
+    1, 2, 4, 8, // ESI*
+    1, // EsBool
+    4, // EsChar
+    4, 8, // EsF*
+    1, 4, // EsSub*
+];
 
 #[derive(Debug)]
 pub enum Error {
@@ -1444,8 +1449,16 @@ mod tests {
 
     #[test]
     fn test_vuint_at() {
-        let data = &[0x80, 0xff, 0x40, 0x00, 0x7f, 0xff, 0x20, 0x00, 0x00, 0x3f, 0xff, 0xff, 0x10,
-                     0x00, 0x00, 0x00, 0x1f, 0xff, 0xff, 0xff];
+        let data = &[
+            0x80,
+            0xff,
+            0x40, 0x00,
+            0x7f, 0xff,
+            0x20, 0x00, 0x00,
+            0x3f, 0xff, 0xff,
+            0x10, 0x00, 0x00, 0x00,
+            0x1f, 0xff, 0xff, 0xff
+        ];
 
         let mut res: reader::Res;
 
