@@ -1,6 +1,6 @@
 #![feature(plugin_registrar, box_syntax)]
 #![feature(rustc_private, collections)]
-#![feature(num_bits_bytes, iter_arith)]
+#![feature(iter_arith)]
 #![feature(custom_attribute)]
 #![allow(unknown_lints)]
 
