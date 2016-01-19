@@ -280,4 +280,20 @@ fn main() {
     println!("index: {}", index);
 
     for_loop_over_option_and_result();
+
+    let m : HashMap<u64, u64> = HashMap::new();
+    for (_, v) in &m {
+        //~^ you seem to want to iterate on a map's values
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for v in &m.values()
+        let _v = v;
+    }
+
+    let rm = &m;
+    for (k, _values) in rm {
+        //~^ you seem to want to iterate on a map's keys
+        //~| HELP use the corresponding method
+        //~| SUGGESTION for k in rm.keys()
+        let _k = k;
+    }
 }

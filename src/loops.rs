@@ -10,8 +10,8 @@ use std::borrow::Cow;
 use std::collections::{HashSet, HashMap};
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro, expr_block,
-            span_help_and_lint, is_integer_literal, get_enclosing_block};
-use utils::{HASHMAP_PATH, VEC_PATH, LL_PATH, OPTION_PATH, RESULT_PATH};
+            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, walk_ptrs_ty};
+use utils::{BTREEMAP_PATH, HASHMAP_PATH, LL_PATH, OPTION_PATH, RESULT_PATH, VEC_PATH};
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index. It is `Warn` by default.
 ///
@@ -141,6 +141,24 @@ declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
 /// **Example:** `while let Some(val) = iter() { .. }`
 declare_lint!{ pub WHILE_LET_ON_ITERATOR, Warn, "using a while-let loop instead of a for loop on an iterator" }
 
+/// **What it does:** This warns when you iterate on a map (`HashMap` or `BTreeMap`) and ignore
+/// either the keys or values.
+///
+/// **Why is this bad?** Readability. There are `keys` and `values` methods that can be used to
+/// express that don't need the values or keys.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```rust
+/// for (k, _) in &map { .. }
+/// ```
+/// could be replaced by
+/// ```rust
+/// for k in map.keys() { .. }
+/// ```
+declare_lint!{ pub FOR_KV_MAP, Warn, "looping on a map using `iter` when `keys` or `values` would do" }
+
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
@@ -154,7 +172,8 @@ impl LintPass for LoopsPass {
                     REVERSE_RANGE_LOOP,
                     EXPLICIT_COUNTER_LOOP,
                     EMPTY_LOOP,
-                    WHILE_LET_ON_ITERATOR)
+                    WHILE_LET_ON_ITERATOR,
+                    FOR_KV_MAP)
     }
 }
 
@@ -270,6 +289,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
     check_for_loop_reverse_range(cx, arg, expr);
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
+    check_for_loop_over_map_kv(cx, pat, arg, expr);
 }
 
 /// Check for looping over a range and then indexing a sequence with it.
@@ -499,6 +519,53 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
     }
 }
 
+// Check for the FOR_KV_MAP lint.
+fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
+    if let PatTup(ref pat) = pat.node {
+        if pat.len() == 2 {
+            let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
+                (key, _) if pat_is_wild(key) => (&pat[1].span, "values"),
+                (_, value) if pat_is_wild(value) => (&pat[0].span, "keys"),
+                _ => return
+            };
+
+            let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
+            let arg_span = if let ExprAddrOf(_, ref expr) = arg.node {
+                expr.span
+            }
+            else {
+                arg.span
+            };
+
+            if match_type(cx, ty, &HASHMAP_PATH) ||
+               match_type(cx, ty, &BTREEMAP_PATH) {
+                span_lint_and_then(cx,
+                          FOR_KV_MAP,
+                          expr.span,
+                          &format!("you seem to want to iterate on a map's {}", kind),
+                          |db| {
+                    db.span_suggestion(expr.span,
+                                       "use the corresponding method",
+                                       format!("for {} in {}.{}()",
+                                               snippet(cx, *pat_span, ".."),
+                                               snippet(cx, arg_span, ".."),
+                                               kind));
+                });
+            }
+        }
+    }
+
+}
+
+// Return true if the pattern is a `PatWild` or an ident prefixed with '_'.
+fn pat_is_wild(pat: &Pat_) -> bool {
+    match *pat {
+        PatWild => true,
+        PatIdent(_, ident, None) if ident.node.name.as_str().starts_with('_') => true,
+        _ => false,
+    }
+}
+
 /// Recover the essential nodes of a desugared for loop:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`.
 fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
@@ -601,11 +668,14 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards
     let ty = cx.tcx.expr_ty(e);
-    is_iterable_array(ty) || match_type(cx, ty, &VEC_PATH) || match_type(cx, ty, &LL_PATH) ||
-    match_type(cx, ty, &HASHMAP_PATH) || match_type(cx, ty, &["std", "collections", "hash", "set", "HashSet"]) ||
+    is_iterable_array(ty) ||
+    match_type(cx, ty, &VEC_PATH) ||
+    match_type(cx, ty, &LL_PATH) ||
+    match_type(cx, ty, &HASHMAP_PATH) ||
+    match_type(cx, ty, &["std", "collections", "hash", "set", "HashSet"]) ||
     match_type(cx, ty, &["collections", "vec_deque", "VecDeque"]) ||
     match_type(cx, ty, &["collections", "binary_heap", "BinaryHeap"]) ||
-    match_type(cx, ty, &["collections", "btree", "map", "BTreeMap"]) ||
+    match_type(cx, ty, &BTREEMAP_PATH) ||
     match_type(cx, ty, &["collections", "btree", "set", "BTreeSet"])
 }
 

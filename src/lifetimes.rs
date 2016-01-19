@@ -352,7 +352,7 @@ fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics, 
         }
     }
 
-    for (_, v) in checker.0 {
+    for &v in checker.0.values() {
         span_lint(cx, UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");
     }
 }
