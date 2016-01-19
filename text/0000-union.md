@@ -37,7 +37,7 @@ redefinition of a macro already defined in the standard library, so the
 proposed syntax will not even break code that currently defines a macro named
 `union!`.
 
-To preserve memory safety, accesses to union fields may only occur in `unsafe`
+To preserve memory safety, accesses to union fields may only occur in unsafe
 code.  Commonly, code using unions will provide safe wrappers around unsafe
 union field accesses.
 
@@ -46,7 +46,7 @@ union field accesses.
 
 ## Declaring a union type
 
-A union declaration uses the same field declaration syntax as a `struct`
+A union declaration uses the same field declaration syntax as a struct
 declaration, except with `union!` in place of `struct`.
 
 ```rust
