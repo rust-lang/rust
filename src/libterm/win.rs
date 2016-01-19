@@ -91,7 +91,7 @@ fn bits_to_color(bits: u16) -> color::Color {
     color | (bits & 0x8) // copy the hi-intensity bit
 }
 
-impl<T: Write+Send+'static> WinConsole<T> {
+impl<T: Write + Send + 'static> WinConsole<T> {
     fn apply(&mut self) {
         let _unused = self.buf.flush();
         let mut accum: WORD = 0;
@@ -148,7 +148,7 @@ impl<T: Write> Write for WinConsole<T> {
     }
 }
 
-impl<T: Write+Send+'static> Terminal for WinConsole<T> {
+impl<T: Write + Send + 'static> Terminal for WinConsole<T> {
     type Output = T;
 
     fn fg(&mut self, color: color::Color) -> io::Result<bool> {
