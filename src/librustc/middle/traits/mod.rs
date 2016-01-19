@@ -20,7 +20,6 @@ use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::subst;
 use middle::ty::{self, Ty, TypeFoldable};
-use middle::ty::fast_reject;
 use middle::infer::{self, fixup_err_to_string, InferCtxt};
 
 use std::rc::Rc;
@@ -618,15 +617,8 @@ impl<'tcx> FulfillmentError<'tcx> {
 
 impl<'tcx> TraitObligation<'tcx> {
     /// Creates the dep-node for selecting/evaluating this trait reference.
-    fn dep_node(&self, tcx: &ty::ctxt<'tcx>) -> DepNode {
-        let simplified_ty =
-            fast_reject::simplify_type(tcx,
-                                       self.predicate.skip_binder().self_ty(), // (*)
-                                       true);
-
-        // (*) skip_binder is ok because `simplify_type` doesn't care about regions
-
-        DepNode::TraitSelect(self.predicate.def_id(), simplified_ty)
+    fn dep_node(&self) -> DepNode {
+        DepNode::TraitSelect(self.predicate.def_id())
     }
 
     fn self_ty(&self) -> ty::Binder<Ty<'tcx>> {
