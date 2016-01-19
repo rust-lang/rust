@@ -9,13 +9,16 @@
 // except according to those terms.
 
 use llvm::{BasicBlockRef, ValueRef};
+use rustc::middle::ty;
 use rustc::mir::repr as mir;
+use syntax::abi::Abi;
 use trans::adt;
+use trans::attributes;
 use trans::base;
 use trans::build;
-use trans::attributes;
 use trans::common::{self, Block};
 use trans::debuginfo::DebugLoc;
+use trans::foreign;
 use trans::type_of;
 use trans::type_::Type;
 use trans::Disr;
@@ -57,7 +60,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // The else branch of the Switch can't be hit, so branch to an unreachable
                 // instruction so LLVM knows that
                 let unreachable_blk = self.unreachable_block();
-
                 let switch = build::Switch(bcx, discr, unreachable_blk.llbb, targets.len());
                 assert_eq!(adt_def.variants.len(), targets.len());
                 for (adt_variant, target) in adt_def.variants.iter().zip(targets) {
@@ -98,12 +100,24 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let debugloc = DebugLoc::None;
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
                 let mut llargs = Vec::with_capacity(args.len() + 1);
+                // Types of the arguments. We do not preallocate, because this vector is only
+                // filled when `is_foreign` is `true` and foreign calls are minority of the cases.
+                let mut arg_tys = Vec::new();
+
+                // Foreign-ABI functions are translated differently
+                let is_foreign = if let ty::TyBareFn(_, ref f) = callee.ty.sty {
+                    // We do not translate intrinsics here (they shouldn’t be functions)
+                    assert!(f.abi != Abi::RustIntrinsic && f.abi != Abi::PlatformIntrinsic);
+                    f.abi != Abi::Rust && f.abi != Abi::RustCall
+                } else {
+                    false
+                };
 
                 // Prepare the return value destination
                 let (ret_dest_ty, must_copy_dest) = if let Some(d) = kind.destination() {
                     let dest = self.trans_lvalue(bcx, d);
                     let ret_ty = dest.ty.to_ty(bcx.tcx());
-                    if type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
+                    if !is_foreign && type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
                         llargs.push(dest.llval);
                         (Some((dest, ret_ty)), false)
                     } else {
@@ -115,30 +129,35 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Process the rest of the args.
                 for arg in args {
-                    match self.trans_operand(bcx, arg).val {
+                    let operand = self.trans_operand(bcx, arg);
+                    match operand.val {
                         Ref(llval) | Immediate(llval) => llargs.push(llval),
                         FatPtr(b, e) => {
                             llargs.push(b);
                             llargs.push(e);
                         }
                     }
+                    if is_foreign {
+                        arg_tys.push(operand.ty);
+                    }
                 }
 
                 // Many different ways to call a function handled here
-                match (base::avoid_invoke(bcx), kind) {
+                match (is_foreign, base::avoid_invoke(bcx), kind) {
                     // The two cases below are the only ones to use LLVM’s `invoke`.
-                    (false, &mir::CallKind::DivergingCleanup(cleanup)) => {
+                    (false, false, &mir::CallKind::DivergingCleanup(cleanup)) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
+                        let unreachable_blk = self.unreachable_block();
                         build::Invoke(bcx,
                                       callee.immediate(),
                                       &llargs[..],
-                                      self.unreachable_block().llbb,
+                                      unreachable_blk.llbb,
                                       landingpad.llbb,
                                       Some(attrs),
                                       debugloc);
                     },
-                    (false, &mir::CallKind::ConvergingCleanup { ref targets, .. }) => {
+                    (false, false, &mir::CallKind::ConvergingCleanup { ref targets, .. }) => {
                         let cleanup = self.bcx(targets.1);
                         let landingpad = self.make_landing_pad(cleanup);
                         let (target, postinvoke) = if must_copy_dest {
@@ -184,14 +203,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             build::Br(target, postinvoketarget.llbb, debugloc);
                         }
                     },
-                    (_, &mir::CallKind::DivergingCleanup(_)) |
-                    (_, &mir::CallKind::Diverging) => {
+                    (false, _, &mir::CallKind::DivergingCleanup(_)) |
+                    (false, _, &mir::CallKind::Diverging) => {
                         build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
                         build::Unreachable(bcx);
                     }
-                    (_, k@&mir::CallKind::ConvergingCleanup { .. }) |
-                    (_, k@&mir::CallKind::Converging { .. }) => {
-                        // Bug #20046
+                    (false, _, k@&mir::CallKind::ConvergingCleanup { .. }) |
+                    (false, _, k@&mir::CallKind::Converging { .. }) => {
+                        // FIXME: Bug #20046
                         let target = match *k {
                             mir::CallKind::ConvergingCleanup { targets, .. } => targets.0,
                             mir::CallKind::Converging { target, .. } => target,
@@ -209,6 +228,25 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                         build::Br(bcx, self.llblock(target), debugloc);
                     }
+                    // Foreign functions
+                    (true, _, k) => {
+                        let (dest, _) = ret_dest_ty
+                            .expect("return destination is not set");
+                        bcx = foreign::trans_native_call(bcx,
+                                                   callee.ty,
+                                                   callee.immediate(),
+                                                   dest.llval,
+                                                   &llargs[..],
+                                                   arg_tys,
+                                                   debugloc);
+                        match *k {
+                            mir::CallKind::ConvergingCleanup { targets, .. } =>
+                                build::Br(bcx, self.llblock(targets.0), debugloc),
+                            mir::CallKind::Converging { target, .. } =>
+                                build::Br(bcx, self.llblock(target), debugloc),
+                            _ => ()
+                        };
+                    },
                 }
             }
         }
