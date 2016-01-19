@@ -1153,7 +1153,7 @@ impl isize {
         intrinsics::mul_with_overflow }
 }
 
-// `Int` + `UnsignedInt` implemented for signed integers
+// `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
     ($ActualT:ty, $BITS:expr,
      $ctpop:path,
@@ -1457,8 +1457,8 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!((-127i8).checked_sub(1), Some(-128));
-        /// assert_eq!((-128i8).checked_sub(1), None);
+        /// assert_eq!(1u8.checked_sub(1), Some(0));
+        /// assert_eq!(0u8.checked_sub(1), None);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1493,9 +1493,8 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!((-127i8).checked_div(-1), Some(127));
-        /// assert_eq!((-128i8).checked_div(-1), None);
-        /// assert_eq!((1i8).checked_div(0), None);
+        /// assert_eq!(128u8.checked_div(2), Some(64));
+        /// assert_eq!(1u8.checked_div(0), None);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1591,16 +1590,15 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!(100i8.saturating_add(1), 101);
-        /// assert_eq!(100i8.saturating_add(127), 127);
+        /// assert_eq!(100u8.saturating_add(1), 101);
+        /// assert_eq!(200u8.saturating_add(127), 255);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn saturating_add(self, other: Self) -> Self {
             match self.checked_add(other) {
-                Some(x)                       => x,
-                None if other >= Self::zero() => Self::max_value(),
-                None => Self::min_value(),
+                Some(x) => x,
+                None => Self::max_value(),
             }
         }
 
@@ -1612,16 +1610,15 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!(100i8.saturating_sub(127), -27);
-        /// assert_eq!((-100i8).saturating_sub(127), -128);
+        /// assert_eq!(100u8.saturating_sub(27), 73);
+        /// assert_eq!(13u8.saturating_sub(127), 0);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn saturating_sub(self, other: Self) -> Self {
             match self.checked_sub(other) {
-                Some(x)                       => x,
-                None if other >= Self::zero() => Self::min_value(),
-                None => Self::max_value(),
+                Some(x) => x,
+                None => Self::min_value(),
             }
         }
 
@@ -1652,8 +1649,8 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!(100i8.wrapping_add(27), 127);
-        /// assert_eq!(100i8.wrapping_add(127), -29);
+        /// assert_eq!(200u8.wrapping_add(55), 255);
+        /// assert_eq!(200u8.wrapping_add(155), 99);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1671,8 +1668,8 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!(0i8.wrapping_sub(127), -127);
-        /// assert_eq!((-2i8).wrapping_sub(127), 127);
+        /// assert_eq!(100u8.wrapping_sub(100), 0);
+        /// assert_eq!(100u8.wrapping_sub(155), 201);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1690,8 +1687,8 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!(10i8.wrapping_mul(12), 120);
-        /// assert_eq!(11i8.wrapping_mul(12), -124);
+        /// assert_eq!(10u8.wrapping_mul(12), 120);
+        /// assert_eq!(25u8.wrapping_mul(12), 44);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1701,15 +1698,11 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `self / other`,
-        /// wrapping around at the boundary of the type.
-        ///
-        /// The only case where such wrapping can occur is when one
-        /// divides `MIN / -1` on a signed type (where `MIN` is the
-        /// negative minimal value for the type); this is equivalent
-        /// to `-MIN`, a positive value that is too large to represent
-        /// in the type. In such a case, this function returns `MIN`
-        /// itself.
+        /// Wrapping (modular) division. Computes `self / other`.
+        /// Wrapped division on unsigned types is just normal division.
+        /// There's no way wrapping could ever happen.
+        /// This function exists, so that all operations
+        /// are accounted for in the wrapping operations.
         ///
         /// # Examples
         ///
@@ -1717,21 +1710,19 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// assert_eq!(100u8.wrapping_div(10), 10);
-        /// assert_eq!((-128i8).wrapping_div(-1), -128);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
-            self.overflowing_div(rhs).0
+            self / rhs
         }
 
-        /// Wrapping (modular) remainder. Computes `self % other`,
-        /// wrapping around at the boundary of the type.
-        ///
-        /// Such wrap-around never actually occurs mathematically;
-        /// implementation artifacts make `x % y` invalid for `MIN /
-        /// -1` on a signed type (where `MIN` is the negative
-        /// minimal value). In such a case, this function returns `0`.
+        /// Wrapping (modular) remainder. Computes `self % other`.
+        /// Wrapped remainder calculation on unsigned types is
+        /// just the regular remainder calculation.
+        /// There's no way wrapping could ever happen.
+        /// This function exists, so that all operations
+        /// are accounted for in the wrapping operations.
         ///
         /// # Examples
         ///
@@ -1739,30 +1730,32 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// assert_eq!(100i8.wrapping_rem(10), 0);
-        /// assert_eq!((-128i8).wrapping_rem(-1), 0);
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_rem(self, rhs: Self) -> Self {
-            self.overflowing_rem(rhs).0
+            self % rhs
         }
 
         /// Wrapping (modular) negation. Computes `-self`,
         /// wrapping around at the boundary of the type.
         ///
-        /// The only case where such wrapping can occur is when one
-        /// negates `MIN` on a signed type (where `MIN` is the
-        /// negative minimal value for the type); this is a positive
-        /// value that is too large to represent in the type. In such
-        /// a case, this function returns `MIN` itself.
+        /// Since unsigned types do not have negative equivalents
+        /// all applications of this function will wrap (except for `-0`).
+        /// For values smaller than the corresponding signed type's maximum
+        /// the result is the same as casting the corresponding signed value.
+        /// Any larger values are equivalent to `MAX + 1 - (val - MAX - 1)` where
+        /// `MAX` is the corresponding signed type's maximum.
         ///
         /// # Examples
         ///
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!(100i8.wrapping_neg(), -100);
-        /// assert_eq!((-128i8).wrapping_neg(), -128);
+        /// assert_eq!(100u8.wrapping_neg(), 156);
+        /// assert_eq!(0u8.wrapping_neg(), 0);
+        /// assert_eq!(180u8.wrapping_neg(), 76);
+        /// assert_eq!(180u8.wrapping_neg(), (127 + 1) - (180u8 - (127 + 1)));
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
@@ -2002,7 +1995,7 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// assert_eq!(2i32.pow(4), 16);
+        /// assert_eq!(2u32.pow(4), 16);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
