@@ -181,9 +181,7 @@ fn test() {
 	// let b2 = &mut u.f2; // This would produce an error
         *b1 = 5;
     }
-    unsafe {
-        assert_eq!(u.f1, 5);
-    }
+    assert_eq!(unsafe { u.f1 }, 5);
 }
 ```
 
@@ -211,10 +209,8 @@ fn test() {
         *bx = 5;
         *by = 10;
     }
-    unsafe {
-        assert_eq!(u.s.x, 5);
-        assert_eq!(u.s.y, 10);
-    }
+    assert_eq!(unsafe { u.s.x }, 5);
+    assert_eq!(unsafe { u.s.y }, 10);
 }
 ```
 
