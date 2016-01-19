@@ -14,7 +14,7 @@
 //! region parameterized.
 //!
 //! Most of the documentation on regions can be found in
-//! `middle/typeck/infer/region_inference.rs`
+//! `middle/infer/region_inference/README.md`
 
 use front::map as ast_map;
 use session::Session;
