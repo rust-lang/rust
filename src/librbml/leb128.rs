@@ -9,8 +9,7 @@
 // except according to those terms.
 
 #[inline]
-pub fn write_to_vec(vec: &mut Vec<u8>, position: &mut usize, byte: u8)
-{
+pub fn write_to_vec(vec: &mut Vec<u8>, position: &mut usize, byte: u8) {
     if *position == vec.len() {
         vec.push(byte);
     } else {
@@ -20,13 +19,9 @@ pub fn write_to_vec(vec: &mut Vec<u8>, position: &mut usize, byte: u8)
     *position += 1;
 }
 
-pub fn write_unsigned_leb128(out: &mut Vec<u8>,
-                             start_position: usize,
-                             mut value: u64)
-                             -> usize {
+pub fn write_unsigned_leb128(out: &mut Vec<u8>, start_position: usize, mut value: u64) -> usize {
     let mut position = start_position;
-    loop
-    {
+    loop {
         let mut byte = (value & 0x7F) as u8;
         value >>= 7;
         if value != 0 {
@@ -43,9 +38,7 @@ pub fn write_unsigned_leb128(out: &mut Vec<u8>,
     return position - start_position;
 }
 
-pub fn read_unsigned_leb128(data: &[u8],
-                            start_position: usize)
-                            -> (u64, usize) {
+pub fn read_unsigned_leb128(data: &[u8], start_position: usize) -> (u64, usize) {
     let mut result = 0;
     let mut shift = 0;
     let mut position = start_position;
@@ -63,15 +56,13 @@ pub fn read_unsigned_leb128(data: &[u8],
 }
 
 
-pub fn write_signed_leb128(out: &mut Vec<u8>,
-                           start_position: usize,
-                           mut value: i64) -> usize {
+pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, mut value: i64) -> usize {
     let mut position = start_position;
 
     loop {
         let mut byte = (value as u8) & 0x7f;
         value >>= 7;
-        let more = !((((value == 0 ) && ((byte & 0x40) == 0)) ||
+        let more = !((((value == 0) && ((byte & 0x40) == 0)) ||
                       ((value == -1) && ((byte & 0x40) != 0))));
         if more {
             byte |= 0x80; // Mark this byte to show that more bytes will follow.
@@ -87,9 +78,7 @@ pub fn write_signed_leb128(out: &mut Vec<u8>,
     return position - start_position;
 }
 
-pub fn read_signed_leb128(data: &[u8],
-                          start_position: usize)
-                          -> (i64, usize) {
+pub fn read_signed_leb128(data: &[u8], start_position: usize) -> (i64, usize) {
     let mut result = 0;
     let mut shift = 0;
     let mut position = start_position;
@@ -107,7 +96,7 @@ pub fn read_signed_leb128(data: &[u8],
     }
 
     if (shift < 64) && ((byte & 0x40) != 0) {
-        /* sign extend */
+        // sign extend
         result |= -(1i64 << shift);
     }
 
