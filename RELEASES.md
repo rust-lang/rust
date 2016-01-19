@@ -1,3 +1,156 @@
+Version 1.6.0 (2016-01-21)
+==========================
+
+Language
+--------
+
+* The `#![no_std]` attribute causes a crate to not be linked to the
+  standard library, but only the [core library][1.6co], as described
+  in [RFC 1184]. The core library defines common types and traits but
+  has no platform dependencies whatsoever, and is the basis for Rust
+  software in environments that cannot support a full port of the
+  standard library, such as operating systems. Most of the core
+  library is now stable.
+
+Libraries
+---------
+
+* Stabilized APIs:
+  [`Read::read_exact`], [`ErrorKind::UnexpectedEof`] (renamed from
+  `UnexpectedEOF`), [`fs::DirBuilder`], [`fs::DirBuilder::new`],
+  [`fs::DirBuilder::recursive`], [`fs::DirBuilder::create`],
+  [`os::unix::fs::DirBuilderExt`],
+  [`os::unix::fs::DirBuilderExt::mode`], [`vec::Drain`],
+  [`vec::Vec::drain`], [`string::Drain`], [`string::String::drain`],
+  [`vec_deque::Drain`], [`vec_deque::VecDeque::drain`],
+  [`collections::hash_map::Drain`],
+  [`collections::hash_map::HashMap::drain`],
+  [`collections::hash_set::Drain`],
+  [`collections::hash_set::HashSet::drain`],
+  [`collections::binary_heap::Drain`],
+  [`collections::binary_heap::BinaryHeap::drain`],
+  [`Vec::extend_from_slice`] (renamed from `push_all`),
+  [`Mutex::get_mut`], [`Mutex::into_inner`], [`RwLock::get_mut`],
+  [`RwLock::into_inner`], [`Iterator::min_by_key`] (renamed from
+  `min_by`), [`Iterator::max_by_key`] (renamed from `max_by`).
+* The [core library][1.6co] is stable, as are most of its APIs.
+* [The `assert_eq!` macro supports arguments that don't implement
+  `Sized`][1.6ae], such as arrays. In this way it behaves more like
+  `assert!`.
+* Several timer functions that take duration in milliseconds [are
+  deprecated in favor of those that take `Duration`][1.6ms]. These
+  include `Condvar::wait_timeout_ms`, `thread::sleep_ms`, and
+  `thread_park_timeout_ms`.
+* The algorithm by which `Vec` reserves additional elements was
+  [tweaked to not allocate excessive space][1.6a] while still growing
+  exponentially.
+* `From` conversions are [implemented from integers to floats][1.6f]
+  in cases where the conversion is lossless. Thus they are not
+  implemented for 32-bit ints to `f32`, nor for 64-bit ints to `f32`
+  or `f64`. They are also not implemented for `isize` and `usize`
+  because the implementations would be platform-specific. `From` is
+  also implemented from `f32` to `f64`.
+* `From<&Path>` and `From<PathBuf>` are implemented for `Cow<Path>`.
+* `From<T>` is implemented for `Box<T>`, `Rc<T>` and `Arc<T>`.
+* `IntoIterator` is implemented for `&PathBuf` and `&Path`.
+* [`BinaryHeap` was refactored][1.6bh] for modest performance
+  improvements.
+* Sorting slices that are already sorted [is 50% faster in some
+  cases][1.6s].
+
+Cargo
+-----
+
+* Cargo will look in `$CARGO_HOME/bin` for subcommands [by default][1.6c].
+* Cargo build scripts can specify their dependencies by emitting the
+  [`rerun-if-changed`][1.6rr] key.
+* crates.io will reject publication of crates with dependencies that
+  have a wildcard version constraint. Crates with wildcard
+  dependencies were seen to cause a variety of problems, as described
+  in [RFC 1241]. Disallowing them will create more predictable
+  development experience and a more stable ecosystem. Since 1.5
+  publication of such crates has emitted a warning.
+* `cargo clean` [accepts a `--release` flag][1.6cc] to clean the
+  release folder.  A variety of artifacts that Cargo failed to clean
+  are now correctly deleted.
+
+Misc
+----
+
+* The `unreachable_code` lint [warns when a function call's argument
+  diverges][1.6dv].
+* The parser indicates [failures that may be caused by
+  confusingly-similar Unicode characters][1.6uc]
+* Certain macro errors [are reported at definition time][1.6m], not
+  expansion.
+
+Compatibility Notes
+-------------------
+
+* The compiler no longer makes use of the [`RUST_PATH`][1.6rp]
+  environment variable when locating crates. This was a pre-cargo
+  feature for integrating with the package manager that was
+  accidentally never removed.
+* [A number of bugs were fixed in the privacy checker][1.6p] that
+  could cause previously-accepted code to break.
+* [Modules and unit/tuple structs may not share the same name][1.6ts].
+* [Bugs in pattern matching unit structs were fixed][1.6us]: the tuple
+  struct pattern syntax (`Foo(..)`) no longer can be used with unit
+  structs; patterns that share the same name as a const are now an
+  error.
+* A bug was fixed that causes [rustc not to apply default type
+  parameters][1.6xc] when resolving certain method implementations of
+  traits defined in other crates.
+
+[1.6a]: https://github.com/rust-lang/rust/pull/29454
+[1.6ae]: https://github.com/rust-lang/rust/pull/29770
+[1.6bh]: https://github.com/rust-lang/rust/pull/29811
+[1.6c]: https://github.com/rust-lang/cargo/pull/2192
+[1.6cc]: https://github.com/rust-lang/cargo/pull/2131
+[1.6co]: http://doc.rust-lang.org/beta/core/index.html
+[1.6dv]: https://github.com/rust-lang/rust/pull/30000
+[1.6f]: https://github.com/rust-lang/rust/pull/29129
+[1.6m]: https://github.com/rust-lang/rust/pull/29828
+[1.6ms]: https://github.com/rust-lang/rust/pull/29604
+[1.6p]: https://github.com/rust-lang/rust/pull/29726
+[1.6rp]: https://github.com/rust-lang/rust/pull/30034
+[1.6rr]: https://github.com/rust-lang/cargo/pull/2134
+[1.6s]: https://github.com/rust-lang/rust/pull/29675
+[1.6ts]: https://github.com/rust-lang/rust/issues/21546
+[1.6uc]: https://github.com/rust-lang/rust/pull/29837
+[1.6us]: https://github.com/rust-lang/rust/pull/29383
+[1.6xc]: https://github.com/rust-lang/rust/issues/30123
+[RFC 1184]: https://github.com/rust-lang/rfcs/blob/master/text/1184-stabilize-no_std.md
+[RFC 1241]: https://github.com/rust-lang/rfcs/blob/master/text/1241-no-wildcard-deps.md
+[`ErrorKind::UnexpectedEof`]: http://doc.rust-lang.org/nightly/std/io/enum.ErrorKind.html#variant.UnexpectedEof
+[`Iterator::max_by_key`]: http://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#method.max_by_key
+[`Iterator::min_by_key`]: http://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#method.min_by_key
+[`Mutex::get_mut`]: http://doc.rust-lang.org/nightly/std/sync/struct.Mutex.html#method.get_mut
+[`Mutex::into_inner`]: http://doc.rust-lang.org/nightly/std/sync/struct.Mutex.html#method.into_inner
+[`Read::read_exact`]: http://doc.rust-lang.org/nightly/std/io/trait.Read.html#method.read_exact
+[`RwLock::get_mut`]: http://doc.rust-lang.org/nightly/std/sync/struct.RwLock.html#method.get_mut
+[`RwLock::into_inner`]: http://doc.rust-lang.org/nightly/std/sync/struct.RwLock.html#method.into_inner
+[`Vec::extend_from_slice`]: http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html#method.extend_from_slice
+[`collections::binary_heap::BinaryHeap::drain`]: http://doc.rust-lang.org/nightly/std/collections/binary_heap/struct.BinaryHeap.html#method.drain
+[`collections::binary_heap::Drain`]: http://doc.rust-lang.org/nightly/std/collections/binary_heap/struct.Drain.html
+[`collections::hash_map::Drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.Drain.html
+[`collections::hash_map::HashMap::drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.HashMap.html#method.drain
+[`collections::hash_set::Drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_set/struct.Drain.html
+[`collections::hash_set::HashSet::drain`]: http://doc.rust-lang.org/nightly/std/collections/hash_set/struct.HashSet.html#method.drain
+[`fs::DirBuilder::create`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html#method.create
+[`fs::DirBuilder::new`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html#method.new
+[`fs::DirBuilder::recursive`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html#method.recursive
+[`fs::DirBuilder`]: http://doc.rust-lang.org/nightly/std/fs/struct.DirBuilder.html
+[`os::unix::fs::DirBuilderExt::mode`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html#tymethod.mode
+[`os::unix::fs::DirBuilderExt`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html
+[`string::Drain`]: http://doc.rust-lang.org/nightly/std/string/struct.Drain.html
+[`string::String::drain`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.drain
+[`vec::Drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Drain.html
+[`vec::Vec::drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.drain
+[`vec_deque::Drain`]: http://doc.rust-lang.org/nightly/std/collections/vec_deque/struct.Drain.html
+[`vec_deque::VecDeque::drain`]: http://doc.rust-lang.org/nightly/std/collections/vec_deque/struct.VecDeque.html#method.drain
+
+
 Version 1.5.0 (2015-12-10)
 ==========================
 
