@@ -151,7 +151,7 @@ pub struct TerminfoTerminal<T> {
     ti: TermInfo,
 }
 
-impl<T: Write+Send> Terminal for TerminfoTerminal<T> {
+impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
     type Output = T;
     fn fg(&mut self, color: color::Color) -> io::Result<bool> {
         let color = self.dim_if_necessary(color);
@@ -220,7 +220,7 @@ impl<T: Write+Send> Terminal for TerminfoTerminal<T> {
     }
 }
 
-impl<T: Write+Send> TerminfoTerminal<T> {
+impl<T: Write + Send> TerminfoTerminal<T> {
     /// Create a new TerminfoTerminal with the given TermInfo and Write.
     pub fn new_with_terminfo(out: T, terminfo: TermInfo) -> TerminfoTerminal<T> {
         let nc = if terminfo.strings.contains_key("setaf") &&
