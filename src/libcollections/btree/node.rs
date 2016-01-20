@@ -1027,6 +1027,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             }
             self.node.as_leaf_mut().len -= 1;
 
+            left_node.as_leaf_mut().len += right_len as u16 + 1;
+
             if self.node.height > 1 {
                 ptr::copy_nonoverlapping(
                     right_node.cast_unchecked().as_internal().edges.as_ptr(),
@@ -1057,8 +1059,6 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     mem::align_of::<LeafNode<K, V>>()
                 );
             }
-
-            left_node.as_leaf_mut().len += right_len as u16 + 1;
 
             Handle::new_edge(self.node, self.idx)
         }
