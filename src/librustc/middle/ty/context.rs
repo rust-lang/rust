@@ -367,7 +367,7 @@ pub struct ctxt<'tcx> {
     /// This is used to avoid duplicate work. Predicates are only
     /// added to this set when they mention only "global" names
     /// (i.e., no type or lifetime parameters).
-    pub fulfilled_predicates: RefCell<traits::FulfilledPredicates<'tcx>>,
+    pub fulfilled_predicates: RefCell<traits::GlobalFulfilledPredicates<'tcx>>,
 
     /// Caches the representation hints for struct definitions.
     repr_hint_cache: RefCell<DepTrackingMap<maps::ReprHints<'tcx>>>,
@@ -510,6 +510,7 @@ impl<'tcx> ctxt<'tcx> {
         let interner = RefCell::new(FnvHashMap());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
         let dep_graph = DepGraph::new(s.opts.incremental_compilation);
+        let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter(ctxt {
             arenas: arenas,
             interner: interner,
@@ -532,7 +533,7 @@ impl<'tcx> ctxt<'tcx> {
             adt_defs: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             super_predicates: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
-            fulfilled_predicates: RefCell::new(traits::FulfilledPredicates::new()),
+            fulfilled_predicates: RefCell::new(fulfilled_predicates),
             map: map,
             freevars: RefCell::new(freevars),
             tcache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),

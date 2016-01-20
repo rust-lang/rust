@@ -41,7 +41,7 @@ mod y {
     }
 
     // FIXME(#30741) tcx fulfillment cache not tracked
-    #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR no path
+    #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR OK
     #[rustc_then_this_would_need(TransCrateItem)] //~ ERROR no path
     pub fn take_foo_with_char() {
         take_foo::<char>('a');
@@ -54,7 +54,7 @@ mod y {
     }
 
     // FIXME(#30741) tcx fulfillment cache not tracked
-    #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR no path
+    #[rustc_then_this_would_need(TypeckItemBody)] //~ ERROR OK
     #[rustc_then_this_would_need(TransCrateItem)] //~ ERROR no path
     pub fn take_foo_with_u32() {
         take_foo::<u32>(22);

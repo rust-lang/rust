@@ -15,7 +15,6 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
-use dep_graph::DepNode;
 use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::subst;
@@ -36,7 +35,7 @@ pub use self::error_reporting::report_object_safety_error;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
-pub use self::fulfill::{FulfillmentContext, FulfilledPredicates, RegionObligation};
+pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::normalize;
 pub use self::project::Normalized;
@@ -616,11 +615,6 @@ impl<'tcx> FulfillmentError<'tcx> {
 }
 
 impl<'tcx> TraitObligation<'tcx> {
-    /// Creates the dep-node for selecting/evaluating this trait reference.
-    fn dep_node(&self) -> DepNode {
-        DepNode::TraitSelect(self.predicate.def_id())
-    }
-
     fn self_ty(&self) -> ty::Binder<Ty<'tcx>> {
         ty::Binder(self.predicate.skip_binder().self_ty())
     }
