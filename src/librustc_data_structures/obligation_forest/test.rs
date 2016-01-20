@@ -8,7 +8,85 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{ObligationForest, Outcome, Error};
+use super::{ObligationForest, Outcome, Error,
+            NodeState, Snapshot, NodeSuccess, NodeError, NodeErrorOrigin};
+
+#[test]
+fn node_states() {
+    const S0: Snapshot = Snapshot { len: 0 };
+    const S1: Snapshot = Snapshot { len: 1 };
+    const S2: Snapshot = Snapshot { len: 2 };
+    const S3: Snapshot = Snapshot { len: 3 };
+    // Create pending (implicitly at Sx, where x is whatever snapshot we choose; we choose 0).
+    let mut a = NodeState::Pending;
+    // Make it successful with 2 children in S1.
+    a.succeed(2, S1);
+    assert_eq!(
+        NodeState::Success(NodeSuccess {
+            num_incomplete_children: 2,
+            snapshot: S1,
+            reported: None
+        }), a);
+    // Report in S2
+    a.report(S2);
+    assert_eq!(
+        NodeState::Success(NodeSuccess {
+            num_incomplete_children: 2,
+            snapshot: S1,
+            reported: Some(S2)
+        }), a);
+    // Roll back to S1
+    a.rollback(S1);
+    assert_eq!(
+        NodeState::Success(NodeSuccess {
+            num_incomplete_children: 2,
+            snapshot: S1,
+            reported: None
+        }), a);
+    // Error in S3
+    a.error(S3);
+    assert_eq!(
+        NodeState::Error(NodeError {
+            origin: NodeErrorOrigin::Success(NodeSuccess {
+                num_incomplete_children: 2,
+                snapshot: S1,
+                reported: None
+            }),
+            snapshot: S3
+        }), a);
+    // Roll all the way back to S0, crossing the state boundaries between success and pending in
+    // snapshot space.
+    a.rollback(S0);
+    assert_eq!(NodeState::Pending, a);
+    // Succeed in S2, and error in S3,
+    a.succeed(1, S2);
+    a.error(S3);
+    assert!(a.is_pending(S0));
+    assert!(a.is_pending(S1));
+    assert!(!a.is_pending(S2));
+    assert!(!a.is_success(S1));
+    assert!(a.is_success(S2));
+    assert!(!a.is_success(S3));
+    assert!(!a.is_error(S2));
+    assert!(a.is_error(S3));
+    // Commit to S1
+    a.commit(S1);
+    assert_eq!(NodeState::Error(NodeError { origin: NodeErrorOrigin::Pending, snapshot: S1 }), a);
+    // Roll back to S0, succeed in S1, report, then commit to S0
+    a.rollback(S0);
+    a.succeed(1, S1);
+    a.report(S1);
+    assert!(!a.is_reported(S0));
+    assert!(a.is_reported(S1));
+    assert!(a.is_reported(S2));
+    a.commit(S0);
+    assert_eq!(
+        NodeState::Success(NodeSuccess {
+            num_incomplete_children: 1,
+            snapshot: S0,
+            reported: Some(S0)
+        }), a);
+}
 
 #[test]
 fn push_pop() {
