@@ -551,7 +551,7 @@ pub struct EscapeDefault {
 
 #[derive(Clone, Debug)]
 enum EscapeDefaultState {
-    Done,
+    Done(char),
     Char(char),
     Backslash(char),
     Unicode(EscapeUnicode),
@@ -568,10 +568,10 @@ impl Iterator for EscapeDefault {
                 Some('\\')
             }
             EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
+                self.state = EscapeDefaultState::Done(c);
                 Some(c)
             }
-            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Done(_) => None,
             EscapeDefaultState::Unicode(ref mut iter) => iter.next(),
         }
     }
@@ -594,15 +594,15 @@ impl Iterator for EscapeDefault {
                 Some('\\')
             },
             EscapeDefaultState::Backslash(c) if n == 1 => {
-                self.state = EscapeDefaultState::Done;
+                self.state = EscapeDefaultState::Done(c);
                 Some(c)
             },
-            EscapeDefaultState::Backslash(_) => {
-                self.state = EscapeDefaultState::Done;
+            EscapeDefaultState::Backslash(c) => {
+                self.state = EscapeDefaultState::Done(c);
                 None
             },
             EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
+                self.state = EscapeDefaultState::Done(c);
 
                 if n == 0 {
                     Some(c)
@@ -610,7 +610,7 @@ impl Iterator for EscapeDefault {
                     None
                 }
             },
-            EscapeDefaultState::Done => return None,
+            EscapeDefaultState::Done(_) => return None,
             EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
         }
     }
@@ -618,7 +618,7 @@ impl Iterator for EscapeDefault {
     fn last(self) -> Option<char> {
         match self.state {
             EscapeDefaultState::Unicode(iter) => iter.last(),
-            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Done(_) => None,
             EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
         }
     }
@@ -628,7 +628,7 @@ impl Iterator for EscapeDefault {
 impl ExactSizeIterator for EscapeDefault {
     fn len(&self) -> usize {
         match self.state {
-            EscapeDefaultState::Done => 0,
+            EscapeDefaultState::Done(_) => 0,
             EscapeDefaultState::Char(_) => 1,
             EscapeDefaultState::Backslash(_) => 2,
             EscapeDefaultState::Unicode(ref iter) => iter.len(),
