@@ -20,6 +20,7 @@
 use prelude::v1::*;
 
 use cmp;
+use slice;
 use usize;
 
 // Pattern
@@ -545,11 +546,21 @@ pub struct StrSearcher<'a, 'b> {
 #[derive(Clone, Debug)]
 enum StrSearcherImpl {
     Empty(EmptyNeedle),
+    Single(SingleByte),
     TwoWay(TwoWaySearcher),
 }
 
 #[derive(Clone, Debug)]
 struct EmptyNeedle {
+    position: usize,
+    end: usize,
+    is_match_fw: bool,
+    is_match_bw: bool,
+}
+
+#[derive(Clone, Debug)]
+struct SingleByte {
+    byte: u8,
     position: usize,
     end: usize,
     is_match_fw: bool,
@@ -567,6 +578,19 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
                     end: haystack.len(),
                     is_match_fw: true,
                     is_match_bw: true,
+                }),
+            }
+        } else if needle.len() == 1 {
+            // Note: A single byte needle must have a single ASCII byte.
+            StrSearcher {
+                haystack: haystack,
+                needle: needle,
+                searcher: StrSearcherImpl::Single(SingleByte {
+                    byte: needle.as_bytes()[0],
+                    position: 0,
+                    end: haystack.len(),
+                    is_match_fw: false,
+                    is_match_bw: false,
                 }),
             }
         } else {
@@ -598,6 +622,24 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
                     Some(ch) => {
                         searcher.position += ch.len_utf8();
                         SearchStep::Reject(pos, searcher.position)
+                    }
+                }
+            }
+            StrSearcherImpl::Single(ref mut searcher) => {
+                let pos = searcher.position;
+                if searcher.is_match_fw {
+                    searcher.is_match_fw = false;
+                    searcher.position += 1;
+                    SearchStep::Match(pos, pos + 1)
+                } else {
+                    match slice::bytes::find_byte(searcher.byte,
+                                                  &self.haystack.as_bytes()[pos..]) {
+                        None => SearchStep::Done,
+                        Some(index) => {
+                            searcher.position += index;
+                            searcher.is_match_fw = true;
+                            SearchStep::Reject(pos, searcher.position)
+                        }
                     }
                 }
             }
@@ -641,6 +683,18 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
                     }
                 }
             }
+            StrSearcherImpl::Single(ref mut searcher) => {
+                let pos = searcher.position;
+                searcher.is_match_fw = false;
+                match slice::bytes::find_byte(searcher.byte,
+                                              &self.haystack.as_bytes()[pos..]) {
+                    None => None,
+                    Some(index) => {
+                        searcher.position += index;
+                        Some((index, index + 1))
+                    }
+                }
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
                 // write out `true` and `false` cases to encourage the compiler
@@ -676,6 +730,24 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
                     }
                 }
             }
+            StrSearcherImpl::Single(ref mut searcher) => {
+                let end = searcher.position;
+                if searcher.is_match_bw {
+                    searcher.is_match_bw = false;
+                    searcher.end -= 1;
+                    SearchStep::Match(end - 1, end)
+                } else {
+                    match slice::bytes::rfind_byte(searcher.byte,
+                                                   &self.haystack.as_bytes()[..end]) {
+                        None => SearchStep::Done,
+                        Some(index) => {
+                            searcher.end = index + 1;
+                            searcher.is_match_bw = true;
+                            SearchStep::Reject(index, end)
+                        }
+                    }
+                }
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 if searcher.end == 0 {
                     return SearchStep::Done;
@@ -708,6 +780,18 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
                         SearchStep::Match(a, b) => return Some((a, b)),
                         SearchStep::Done => return None,
                         SearchStep::Reject(..) => { }
+                    }
+                }
+            }
+            StrSearcherImpl::Single(ref mut searcher) => {
+                let end = searcher.position;
+                searcher.is_match_bw = false;
+                match slice::bytes::rfind_byte(searcher.byte,
+                                              &self.haystack.as_bytes()[..end]) {
+                    None => None,
+                    Some(index) => {
+                        searcher.end = index;
+                        Some((index, index + 1))
                     }
                 }
             }
