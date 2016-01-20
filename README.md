@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 94 lints included in this crate:
+There are 95 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -20,6 +20,7 @@ name                                                                            
 [cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)                       | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
 [cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)                     | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
 [cast_sign_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss)                               | allow   | casts from signed types to unsigned types, e.g `x as u32` where `x: i32`
+[chars_next_cmp](https://github.com/Manishearth/rust-clippy/wiki#chars_next_cmp)                               | warn    | using `.chars().next()` to check if a string starts with a char
 [cmp_nan](https://github.com/Manishearth/rust-clippy/wiki#cmp_nan)                                             | deny    | comparisons to NAN (which will always return false, which is probably not intended)
 [cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                                         | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
 [collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                               | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`

@@ -7,11 +7,14 @@ use std::borrow::Cow;
 use syntax::ptr::P;
 use syntax::codemap::Span;
 
-use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args, match_trait_method,
-            walk_ptrs_ty_depth, walk_ptrs_ty, get_trait_def_id, implements_trait};
 use utils::{
-    BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH,
-    RESULT_PATH, STRING_PATH
+    get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path,
+    match_trait_method, match_type, method_chain_args, snippet, span_lint, span_lint_and_then,
+    span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth,
+};
+use utils::{
+    BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH,
+    STRING_PATH
 };
 use utils::MethodArgs;
 use rustc::middle::cstore::CrateStore;
@@ -176,6 +179,17 @@ declare_lint!(pub SEARCH_IS_SOME, Warn,
               "using an iterator search followed by `is_some()`, which is more succinctly \
                expressed as a call to `any()`");
 
+/// **What it does:** This lint `Warn`s on using `.chars().next()` on a `str` to check if it
+/// starts with a given char.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as `_.starts_with(_)`.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `name.chars().next() == Some('_')`
+declare_lint!(pub CHARS_NEXT_CMP, Warn,
+              "using `.chars().next()` to check if a string starts with a char");
+
 /// **What it does:** This lint checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`, etc., and
 /// suggests to use `or_else`, `unwrap_or_else`, etc., or `unwrap_or_default` instead.
 ///
@@ -210,39 +224,56 @@ impl LintPass for MethodsPass {
                     OK_EXPECT,
                     OPTION_MAP_UNWRAP_OR,
                     OPTION_MAP_UNWRAP_OR_ELSE,
-                    OR_FUN_CALL)
+                    OR_FUN_CALL,
+                    CHARS_NEXT_CMP)
     }
 }
 
 impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprMethodCall(name, _, ref args) = expr.node {
-            // Chain calls
-            if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                lint_unwrap(cx, expr, arglists[0]);
-            } else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
-                lint_to_string(cx, expr, arglists[0]);
-            } else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
-                lint_ok_expect(cx, expr, arglists[0]);
-            } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or"]) {
-                lint_map_unwrap_or(cx, expr, arglists[0], arglists[1]);
-            } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
-                lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
-            } else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
-                lint_filter_next(cx, expr, arglists[0]);
-            } else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
-                lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
-            } else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
-                lint_search_is_some(cx, expr, "position", arglists[0], arglists[1]);
-            } else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
-                lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
-            }
+        if in_macro(cx, expr.span) {
+            return;
+        }
 
-            lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
+        match expr.node {
+            ExprMethodCall(name, _, ref args) => {
+                // Chain calls
+                if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+                    lint_unwrap(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
+                    lint_to_string(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
+                    lint_ok_expect(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or"]) {
+                    lint_map_unwrap_or(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
+                    lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
+                    lint_filter_next(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
+                    lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
+                    lint_search_is_some(cx, expr, "position", arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
+                    lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
+                }
+
+                lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
+            }
+            ExprBinary(op, ref lhs, ref rhs) if op.node == BiEq || op.node == BiNe => {
+                if !lint_chars_next(cx, expr, lhs, rhs, op.node == BiEq) {
+                    lint_chars_next(cx, expr, rhs, lhs, op.node == BiEq);
+                }
+            }
+            _ => (),
         }
     }
 
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
+        if in_external_macro(cx, item.span) {
+            return;
+        }
+
         if let ItemImpl(_, _, _, None, ref ty, ref items) = item.node {
             for implitem in items {
                 let name = implitem.name;
@@ -568,6 +599,41 @@ fn lint_search_is_some(cx: &LateContext, expr: &Expr, search_method: &str, searc
             span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
         }
     }
+}
+
+/// Checks for the `CHARS_NEXT_CMP` lint.
+fn lint_chars_next(cx: &LateContext, expr: &Expr, chain: &Expr, other: &Expr, eq: bool) -> bool {
+    if_let_chain! {[
+        let Some(args) = method_chain_args(chain, &["chars", "next"]),
+        let ExprCall(ref fun, ref arg_char) = other.node,
+        arg_char.len() == 1,
+        let ExprPath(None, ref path) = fun.node,
+        path.segments.len() == 1 && path.segments[0].identifier.name.as_str() == "Some"
+    ], {
+        let self_ty = walk_ptrs_ty(cx.tcx.expr_ty_adjusted(&args[0][0]));
+
+        if self_ty.sty != ty::TyStr {
+            return false;
+        }
+
+        span_lint_and_then(cx,
+                           CHARS_NEXT_CMP,
+                           expr.span,
+                           "you should use the `starts_with` method",
+                           |db| {
+                               let sugg = format!("{}{}.starts_with({})",
+                                                  if eq { "" } else { "!" },
+                                                  snippet(cx, args[0][0].span, "_"),
+                                                  snippet(cx, arg_char[0].span, "_")
+                                                  );
+
+                               db.span_suggestion(expr.span, "like this", sugg);
+                           });
+
+        return true;
+    }}
+
+    false
 }
 
 // Given a `Result<T, E>` type, return its error type (`E`)

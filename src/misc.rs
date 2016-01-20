@@ -389,13 +389,14 @@ impl LateLintPass for UsedUnderscoreBinding {
                                 .last()
                                 .expect("path should always have at least one segment")
                                 .identifier;
-                ident.name.as_str().chars().next() == Some('_') && // starts with '_'
-                ident.name.as_str().chars().skip(1).next() != Some('_') &&  // doesn't start with "__"
-                ident.name != ident.unhygienic_name && is_used(cx, expr) // not in bang macro
+                ident.name.as_str().starts_with('_') &&
+                !ident.name.as_str().starts_with("__") &&
+                ident.name != ident.unhygienic_name &&
+                is_used(cx, expr) // not in bang macro
             }
             ExprField(_, spanned) => {
                 let name = spanned.node.as_str();
-                name.chars().next() == Some('_') && name.chars().skip(1).next() != Some('_')
+                name.starts_with('_') && !name.starts_with("__")
             }
             _ => false,
         };

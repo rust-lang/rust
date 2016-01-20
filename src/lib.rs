@@ -191,6 +191,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         matches::MATCH_OVERLAPPING_ARM,
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
+        methods::CHARS_NEXT_CMP,
         methods::FILTER_NEXT,
         methods::OK_EXPECT,
         methods::OPTION_MAP_UNWRAP_OR,
