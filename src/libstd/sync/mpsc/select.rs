@@ -58,6 +58,8 @@
             issue = "27800")]
 
 
+use fmt;
+
 use core::cell::{Cell, UnsafeCell};
 use core::marker;
 use core::ptr;
@@ -347,6 +349,20 @@ impl Iterator for Packets {
             unsafe { self.cur = (*self.cur).next; }
             ret
         }
+    }
+}
+
+#[stable(feature = "mpsc_debug", since = "1.7.0")]
+impl fmt::Debug for Select {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Select {{ .. }}")
+    }
+}
+
+#[stable(feature = "mpsc_debug", since = "1.7.0")]
+impl<'rx, T:Send+'rx> fmt::Debug for Handle<'rx, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Handle {{ .. }}")
     }
 }
 
@@ -761,5 +777,19 @@ mod tests {
                 assert_eq!(rx1.recv().unwrap(), 1);
             }
         }
+    }
+
+    #[test]
+    fn fmt_debug_select() {
+        let sel = Select::new();
+        assert_eq!(format!("{:?}", sel), "Select { .. }");
+    }
+
+    #[test]
+    fn fmt_debug_handle() {
+        let (_, rx) = channel::<i32>();
+        let sel = Select::new();
+        let mut handle = sel.handle(&rx);
+        assert_eq!(format!("{:?}", handle), "Handle { .. }");
     }
 }
