@@ -359,11 +359,18 @@ fn file_path_ext(file_path: &str) -> Option<&str> {
 }
 ```
 
-The `map` function here wraps the value returned by the `extension` function inside an `Option<_>` and since the `extension` function itself returns an `Option<&str>` the expression `file_name(file_path).map(|x| extension(x))` actually returns an `Option<Option<&str>>`.
+The `map` function here wraps the value returned by the `extension` function
+inside an `Option<_>` and since the `extension` function itself returns an
+`Option<&str>` the expression `file_name(file_path).map(|x| extension(x))`
+actually returns an `Option<Option<&str>>`.
 
-But since `file_path_ext` just returns `Option<&str>` (and not `Option<Option<&str>>`) we get a compilation error.
+But since `file_path_ext` just returns `Option<&str>` (and not
+`Option<Option<&str>>`) we get a compilation error.
 
-The result of the function taken by map as input is *always* [rewrapped with `Some`](#code-option-map). Instead, we need something like `map`, but which allows the caller to return a `Option<_>` directly without wrapping it in another `Option<_>`.
+The result of the function taken by map as input is *always* [rewrapped with
+`Some`](#code-option-map). Instead, we need something like `map`, but which
+allows the caller to return a `Option<_>` directly without wrapping it in
+another `Option<_>`.
 
 Its generic implementation is even simpler than `map`:
 
@@ -387,7 +394,9 @@ fn file_path_ext(file_path: &str) -> Option<&str> {
 }
 ```
 
-Side note: Since `and_then` essentially works like `map` but returns an `Option<_>` instead of an `Option<Option<_>>` it is known as `flatmap` in some other languages.
+Side note: Since `and_then` essentially works like `map` but returns an
+`Option<_>` instead of an `Option<Option<_>>` it is known as `flatmap` in some
+other languages.
 
 The `Option` type has many other combinators [defined in the standard
 library][5]. It is a good idea to skim this list and familiarize
