@@ -4,6 +4,8 @@
 #![allow(unused)]
 #![deny(clippy, clippy_pedantic)]
 
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::ops::Mul;
 
 struct T;
@@ -238,6 +240,18 @@ fn or_fun_call() {
     //~^ERROR use of `unwrap_or`
     //~|HELP try this
     //~|SUGGESTION without_default.unwrap_or_else(Foo::new);
+
+    let mut map = HashMap::<u64, String>::new();
+    map.entry(42).or_insert(String::new());
+    //~^ERROR use of `or_insert` followed by a function call
+    //~|HELP try this
+    //~|SUGGESTION map.entry(42).or_insert_with(String::new);
+
+    let mut btree = BTreeMap::<u64, String>::new();
+    btree.entry(42).or_insert(String::new());
+    //~^ERROR use of `or_insert` followed by a function call
+    //~|HELP try this
+    //~|SUGGESTION btree.entry(42).or_insert_with(String::new);
 }
 
 fn main() {

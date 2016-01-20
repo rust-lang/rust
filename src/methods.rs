@@ -9,7 +9,10 @@ use syntax::codemap::Span;
 
 use utils::{snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args, match_trait_method,
             walk_ptrs_ty_depth, walk_ptrs_ty, get_trait_def_id, implements_trait};
-use utils::{DEFAULT_TRAIT_PATH, OPTION_PATH, RESULT_PATH, STRING_PATH};
+use utils::{
+    BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH,
+    RESULT_PATH, STRING_PATH
+};
 use utils::MethodArgs;
 use rustc::middle::cstore::CrateStore;
 
@@ -343,19 +346,31 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
         or_has_args: bool,
         span: Span
     ) {
+        // (path, fn_has_argument, methods)
+        let know_types : &[(&[_], _, &[_], _)] = &[
+            (&BTREEMAP_ENTRY_PATH, false, &["or_insert"], "with"),
+            (&HASHMAP_ENTRY_PATH, false, &["or_insert"], "with"),
+            (&OPTION_PATH, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
+            (&RESULT_PATH, true, &["or", "unwrap_or"], "else"),
+        ];
+
         let self_ty = cx.tcx.expr_ty(self_expr);
 
-        let is_result = if match_type(cx, self_ty, &RESULT_PATH) {
-            true
-        }
-        else if match_type(cx, self_ty, &OPTION_PATH) {
-            false
-        }
-        else {
-            return;
-        };
+        let (fn_has_arguments, poss, suffix) =
+            if let Some(&(_, fn_has_arguments, poss, suffix)) = know_types.iter().find(|&&i| {
+                match_type(cx, self_ty, i.0)
+            }) {
+                (fn_has_arguments, poss, suffix)
+            }
+            else {
+                return
+            };
 
-        let sugg = match (is_result, !or_has_args) {
+        if !poss.contains(&name) {
+            return
+        }
+
+        let sugg = match (fn_has_arguments, !or_has_args) {
             (true, _) => format!("|_| {}", snippet(cx, arg.span, "..")),
             (false, false) => format!("|| {}", snippet(cx, arg.span, "..")),
             (false, true) => format!("{}", snippet(cx, fun.span, "..")),
@@ -364,13 +379,14 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
         span_lint(cx, OR_FUN_CALL, span,
                   &format!("use of `{}` followed by a function call", name))
             .span_suggestion(span, "try this",
-                             format!("{}.{}_else({})",
+                             format!("{}.{}_{}({})",
                                      snippet(cx, self_expr.span, "_"),
                                      name,
+                                     suffix,
                                      sugg));
     }
 
-    if args.len() == 2 && ["map_or", "ok_or", "or", "unwrap_or"].contains(&name) {
+    if args.len() == 2 {
         if let ExprCall(ref fun, ref or_args) = args[1].node {
             let or_has_args = !or_args.is_empty();
             if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {

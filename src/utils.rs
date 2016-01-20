@@ -20,10 +20,12 @@ pub type MethodArgs = HirVec<P<Expr>>;
 
 // module DefPaths for certain structs/enums we check for
 pub const BEGIN_UNWIND: [&'static str; 3] = ["std", "rt", "begin_unwind"];
+pub const BTREEMAP_ENTRY_PATH: [&'static str; 4] = ["collections", "btree", "map", "Entry"];
 pub const BTREEMAP_PATH: [&'static str; 4] = ["collections", "btree", "map", "BTreeMap"];
 pub const CLONE_PATH: [&'static str; 2] = ["Clone", "clone"];
 pub const COW_PATH: [&'static str; 3] = ["collections", "borrow", "Cow"];
 pub const DEFAULT_TRAIT_PATH: [&'static str; 3] = ["core", "default", "Default"];
+pub const HASHMAP_ENTRY_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const LL_PATH: [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 pub const MUTEX_PATH: [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
