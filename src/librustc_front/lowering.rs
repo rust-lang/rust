@@ -87,7 +87,8 @@ pub struct LoweringContext<'a> {
     cached_id: Cell<u32>,
     // Keep track of gensym'ed idents.
     gensym_cache: RefCell<HashMap<(NodeId, &'static str), hir::Ident>>,
-    // A copy of cached_id, but is also set to an id while it is being cached.
+    // A copy of cached_id, but is also set to an id while a node is lowered for
+    // the first time.
     gensym_key: Cell<u32>,
 }
 
@@ -114,30 +115,77 @@ impl<'a, 'hir> LoweringContext<'a> {
     }
 
     fn next_id(&self) -> NodeId {
-        let cached = self.cached_id.get();
-        if cached == 0 {
+        let cached_id = self.cached_id.get();
+        if cached_id == 0 {
             return self.id_assigner.next_node_id();
         }
 
-        self.cached_id.set(cached + 1);
-        cached
+        self.cached_id.set(cached_id + 1);
+        cached_id
     }
 
     fn str_to_ident(&self, s: &'static str) -> hir::Ident {
-        let cached_id = self.gensym_key.get();
-        if cached_id == 0 {
+        let gensym_key = self.gensym_key.get();
+        if gensym_key == 0 {
             return hir::Ident::from_name(token::gensym(s));
         }
 
-        let cached = self.gensym_cache.borrow().contains_key(&(cached_id, s));
+        let cached = self.gensym_cache.borrow().contains_key(&(gensym_key, s));
         if cached {
-            self.gensym_cache.borrow()[&(cached_id, s)]
+            self.gensym_cache.borrow()[&(gensym_key, s)]
         } else {
             let result = hir::Ident::from_name(token::gensym(s));
-            self.gensym_cache.borrow_mut().insert((cached_id, s), result);
+            self.gensym_cache.borrow_mut().insert((gensym_key, s), result);
             result
         }
     }
+}
+
+// Utility fn for setting and unsetting the cached id.
+fn cache_ids<'a, OP, R>(lctx: &LoweringContext, expr_id: NodeId, op: OP) -> R
+    where OP: FnOnce(&LoweringContext) -> R
+{
+    // Only reset the id if it was previously 0, i.e., was not cached.
+    // If it was cached, we are in a nested node, but our id count will
+    // still count towards the parent's count.
+    let reset_cached_id = lctx.cached_id.get() == 0;
+    // We always reset gensym_key so that if we use the same name in a nested
+    // node and after that node, they get different values.
+    let old_gensym_key = lctx.gensym_key.get();
+
+    {
+        let id_cache: &mut HashMap<_, _> = &mut lctx.id_cache.borrow_mut();
+
+        if id_cache.contains_key(&expr_id) {
+            let cached_id = lctx.cached_id.get();
+            if cached_id == 0 {
+                // We're entering a node where we need to track ids, but are not
+                // yet tracking.
+                lctx.cached_id.set(id_cache[&expr_id]);
+            } else {
+                // We're already tracking - check that the tracked id is the same
+                // as the expected id.
+                assert!(cached_id == id_cache[&expr_id], "id mismatch");
+            }
+            lctx.gensym_key.set(id_cache[&expr_id]);
+        } else {
+            // We've never lowered this node before, remember it for next time.
+            let next_id = lctx.id_assigner.peek_node_id();
+            id_cache.insert(expr_id, next_id);
+            lctx.gensym_key.set(next_id);
+            // self.cached_id is not set when we lower a node for the first time,
+            // only on re-lowering.
+        }
+    }
+
+    let result = op(lctx);
+
+    if reset_cached_id {
+        lctx.cached_id.set(0);
+    }
+    lctx.gensym_key.set(old_gensym_key);
+
+    result
 }
 
 pub fn lower_ident(_lctx: &LoweringContext, ident: Ident) -> hir::Ident {
@@ -916,47 +964,6 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
         },
         span: p.span,
     })
-}
-
-// Utility fn for setting and unsetting the cached id.
-fn cache_ids<'a, OP, R>(lctx: &LoweringContext, expr_id: NodeId, op: OP) -> R
-    where OP: FnOnce(&LoweringContext) -> R
-{
-    // Only reset the id if it was previously 0, i.e., was not cached.
-    // If it was cached, we are in a nested node, but our id count will
-    // still count towards the parent's count.
-    let reset_cached_id = lctx.cached_id.get() == 0;
-
-    {
-        let id_cache: &mut HashMap<_, _> = &mut lctx.id_cache.borrow_mut();
-
-        if id_cache.contains_key(&expr_id) {
-            let cached_id = lctx.cached_id.get();
-            if cached_id == 0 {
-                // We're entering a node where we need to track ids, but are not
-                // yet tracking.
-                lctx.cached_id.set(id_cache[&expr_id]);
-                lctx.gensym_key.set(id_cache[&expr_id]);
-            } else {
-                // We're already tracking - check that the tracked id is the same
-                // as the expected id.
-                assert!(cached_id == id_cache[&expr_id], "id mismatch");
-            }
-        } else {
-            let next_id = lctx.id_assigner.peek_node_id();
-            id_cache.insert(expr_id, next_id);
-            lctx.gensym_key.set(next_id);
-        }
-    }
-
-    let result = op(lctx);
-
-    if reset_cached_id {
-        lctx.cached_id.set(0);
-        lctx.gensym_key.set(0);
-    }
-
-    result
 }
 
 pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
@@ -1935,7 +1942,9 @@ mod test {
         let ast_while_let = assigner.fold_expr(ast_while_let);
         let ast_for = quote_expr!(&cx,
                                   for i in 0..10 {
-                                      foo(i);
+                                      for j in 0..10 {
+                                          foo(i, j);
+                                      }
                                   });
         let ast_for = assigner.fold_expr(ast_for);
         let ast_in = quote_expr!(&cx, in HEAP { foo() });
