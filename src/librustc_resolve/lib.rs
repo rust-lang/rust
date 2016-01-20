@@ -4019,10 +4019,8 @@ pub fn create_resolver<'a, 'tcx>(session: &'a Session,
     resolver.callback = callback;
 
     build_reduced_graph::build_reduced_graph(&mut resolver, krate);
-    session.abort_if_errors();
 
     resolve_imports::resolve_imports(&mut resolver);
-    session.abort_if_errors();
 
     resolver
 }

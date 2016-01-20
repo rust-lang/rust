@@ -555,6 +555,9 @@ impl Handler {
 pub enum Level {
     Bug,
     Fatal,
+    // An error which while not immediately fatal, should stop the compiler
+    // progressing beyond the current phase.
+    PhaseFatal,
     Error,
     Warning,
     Note,
@@ -573,7 +576,7 @@ impl fmt::Display for Level {
 impl Level {
     fn color(self) -> term::color::Color {
         match self {
-            Bug | Fatal | Error => term::color::BRIGHT_RED,
+            Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
             Warning => term::color::BRIGHT_YELLOW,
             Note => term::color::BRIGHT_GREEN,
             Help => term::color::BRIGHT_CYAN,
@@ -584,7 +587,7 @@ impl Level {
     fn to_str(self) -> &'static str {
         match self {
             Bug => "error: internal compiler error",
-            Fatal | Error => "error",
+            Fatal | PhaseFatal | Error => "error",
             Warning => "warning",
             Note => "note",
             Help => "help",

@@ -2357,7 +2357,11 @@ impl<'a> Parser<'a> {
 
     // Assuming we have just parsed `.foo` (i.e., a dot and an ident), continue
     // parsing into an expression.
-    fn parse_dot_suffix(&mut self, ident: Ident, ident_span: Span, self_value: P<Expr>) -> PResult<'a, P<Expr>> {
+    fn parse_dot_suffix(&mut self,
+                        ident: Ident,
+                        ident_span: Span,
+                        self_value: P<Expr>)
+                        -> PResult<'a, P<Expr>> {
         let (_, tys, bindings) = if self.eat(&token::ModSep) {
             try!(self.expect_lt());
             try!(self.parse_generic_values_after_lt())
@@ -2463,7 +2467,6 @@ impl<'a> Parser<'a> {
 
                   }
                   _ => {
-                    // TODO special case lifetime
                     // FIXME Could factor this out into non_fatal_unexpected or something.
                     let actual = self.this_token_to_string();
                     self.span_err(self.span, &format!("unexpected token: `{}`", actual));

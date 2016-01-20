@@ -258,15 +258,14 @@ impl<'a> CrateReader<'a> {
                             metadata: &MetadataBlob) {
         let crate_rustc_version = decoder::crate_rustc_version(metadata.as_slice());
         if crate_rustc_version != Some(rustc_version()) {
-            span_err!(self.sess, span, E0514,
-                      "the crate `{}` has been compiled with {}, which is \
-                       incompatible with this version of rustc",
-                      name,
-                      crate_rustc_version
-                          .as_ref().map(|s|&**s)
-                          .unwrap_or("an old version of rustc")
+            span_fatal!(self.sess, span, E0514,
+                        "the crate `{}` has been compiled with {}, which is \
+                         incompatible with this version of rustc",
+                        name,
+                        crate_rustc_version
+                            .as_ref().map(|s|&**s)
+                            .unwrap_or("an old version of rustc")
             );
-            self.sess.abort_if_errors();
         }
     }
 
@@ -511,7 +510,6 @@ impl<'a> CrateReader<'a> {
                     }
                 };
                 let span = mk_sp(lo, p.last_span.hi);
-                p.abort_if_errors();
 
                 // Mark the attrs as used
                 for attr in &attrs {
@@ -554,8 +552,7 @@ impl<'a> CrateReader<'a> {
                                   name,
                                   config::host_triple(),
                                   self.sess.opts.target_triple);
-            span_err!(self.sess, span, E0456, "{}", &message[..]);
-            self.sess.abort_if_errors();
+            span_fatal!(self.sess, span, E0456, "{}", &message[..]);
         }
 
         let registrar =
