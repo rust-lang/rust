@@ -838,6 +838,11 @@ impl<'tcx> TraitPredicate<'tcx> {
         self.trait_ref.def_id
     }
 
+    /// Creates the dep-node for selecting/evaluating this trait reference.
+    fn dep_node(&self) -> DepNode {
+        DepNode::TraitSelect(self.def_id())
+    }
+
     pub fn input_types(&self) -> &[Ty<'tcx>] {
         self.trait_ref.substs.types.as_slice()
     }
@@ -849,7 +854,13 @@ impl<'tcx> TraitPredicate<'tcx> {
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
+        // ok to skip binder since trait def-id does not care about regions
         self.0.def_id()
+    }
+
+    pub fn dep_node(&self) -> DepNode {
+        // ok to skip binder since depnode does not care about regions
+        self.0.dep_node()
     }
 }
 
