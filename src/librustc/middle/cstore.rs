@@ -24,7 +24,7 @@
 
 use back::svh::Svh;
 use front::map as hir_map;
-use middle::def;
+use middle::def::{self, Def};
 use middle::lang_items;
 use middle::ty::{self, Ty, VariantKind};
 use middle::def_id::{DefId, DefIndex};
@@ -84,7 +84,7 @@ enum_from_u32! {
 // Something that a name can resolve to.
 #[derive(Copy, Clone, Debug)]
 pub enum DefLike {
-    DlDef(def::Def),
+    DlDef(Def),
     DlImpl(DefId),
     DlField
 }

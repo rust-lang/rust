@@ -17,7 +17,7 @@ use syntax::attr::AttrMetaMethods;
 use rustc_front::hir;
 
 use rustc::middle::cstore::{self, CrateStore};
-use rustc::middle::def;
+use rustc::middle::def::Def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
 use rustc::middle::subst;
@@ -68,47 +68,47 @@ pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Name>)
 }
 
 fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
-                  def: def::Def) -> Option<Vec<clean::Item>> {
+                  def: Def) -> Option<Vec<clean::Item>> {
     let mut ret = Vec::new();
     let did = def.def_id();
     let inner = match def {
-        def::DefTrait(did) => {
+        Def::Trait(did) => {
             record_extern_fqn(cx, did, clean::TypeTrait);
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }
-        def::DefFn(did) => {
+        Def::Fn(did) => {
             record_extern_fqn(cx, did, clean::TypeFunction);
             clean::FunctionItem(build_external_function(cx, tcx, did))
         }
-        def::DefStruct(did)
+        Def::Struct(did)
                 // If this is a struct constructor, we skip it
                 if tcx.sess.cstore.tuple_struct_definition_if_ctor(did).is_none() => {
             record_extern_fqn(cx, did, clean::TypeStruct);
             ret.extend(build_impls(cx, tcx, did));
             clean::StructItem(build_struct(cx, tcx, did))
         }
-        def::DefTyAlias(did) => {
+        Def::TyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeTypedef);
             ret.extend(build_impls(cx, tcx, did));
             build_type(cx, tcx, did)
         }
-        def::DefEnum(did) => {
+        Def::Enum(did) => {
             record_extern_fqn(cx, did, clean::TypeEnum);
             ret.extend(build_impls(cx, tcx, did));
             build_type(cx, tcx, did)
         }
         // Assume that the enum type is reexported next to the variant, and
         // variants don't show up in documentation specially.
-        def::DefVariant(..) => return Some(Vec::new()),
-        def::DefMod(did) => {
+        Def::Variant(..) => return Some(Vec::new()),
+        Def::Mod(did) => {
             record_extern_fqn(cx, did, clean::TypeModule);
             clean::ModuleItem(build_module(cx, tcx, did))
         }
-        def::DefStatic(did, mtbl) => {
+        Def::Static(did, mtbl) => {
             record_extern_fqn(cx, did, clean::TypeStatic);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
-        def::DefConst(did) | def::DefAssociatedConst(did) => {
+        Def::Const(did) | Def::AssociatedConst(did) => {
             record_extern_fqn(cx, did, clean::TypeConst);
             clean::ConstantItem(build_const(cx, tcx, did))
         }
@@ -259,7 +259,7 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
                           impls: &mut Vec<clean::Item>) {
             match def {
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
-                cstore::DlDef(def::DefMod(did)) => {
+                cstore::DlDef(Def::Mod(did)) => {
                     for item in tcx.sess.cstore.item_children(did) {
                         populate_impls(cx, tcx, item.def, impls)
                     }
@@ -456,7 +456,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
         let mut visited = HashSet::new();
         for item in tcx.sess.cstore.item_children(did) {
             match item.def {
-                cstore::DlDef(def::DefForeignMod(did)) => {
+                cstore::DlDef(Def::ForeignMod(did)) => {
                     fill_in(cx, tcx, did, items);
                 }
                 cstore::DlDef(def) if item.vis == hir::Public => {

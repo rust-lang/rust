@@ -17,7 +17,7 @@
 
 use dep_graph::DepNode;
 use front::map as ast_map;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::ty;
 use middle::privacy;
@@ -108,7 +108,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                             // If this path leads to a constant, then we need to
                             // recurse into the constant to continue finding
                             // items that are reachable.
-                            def::DefConst(..) | def::DefAssociatedConst(..) => {
+                            Def::Const(..) | Def::AssociatedConst(..) => {
                                 self.worklist.push(node_id);
                             }
 

@@ -24,7 +24,7 @@ use front::map as ast_map;
 use front::map::LinkedPath;
 use middle;
 use middle::cstore::{self, CrateStore, LOCAL_CRATE};
-use middle::def::{self, ExportMap};
+use middle::def::{self, Def, ExportMap};
 use middle::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region::{CodeExtent};
@@ -587,7 +587,7 @@ pub type UpvarCaptureMap = FnvHashMap<UpvarId, UpvarCapture>;
 
 #[derive(Copy, Clone)]
 pub struct ClosureUpvar<'tcx> {
-    pub def: def::Def,
+    pub def: Def,
     pub span: Span,
     pub ty: Ty<'tcx>,
 }
@@ -1585,10 +1585,10 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             .expect("variant_index_with_id: unknown variant")
     }
 
-    pub fn variant_of_def(&self, def: def::Def) -> &VariantDefData<'tcx, 'container> {
+    pub fn variant_of_def(&self, def: Def) -> &VariantDefData<'tcx, 'container> {
         match def {
-            def::DefVariant(_, vid) => self.variant_with_id(vid),
-            def::DefStruct(..) | def::DefTyAlias(..) => self.struct_variant(),
+            Def::Variant(_, vid) => self.variant_with_id(vid),
+            Def::Struct(..) | Def::TyAlias(..) => self.struct_variant(),
             _ => panic!("unexpected def {:?} in variant_of_def", def)
         }
     }
@@ -1934,7 +1934,7 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn resolve_expr(&self, expr: &hir::Expr) -> def::Def {
+    pub fn resolve_expr(&self, expr: &hir::Expr) -> Def {
         match self.def_map.borrow().get(&expr.id) {
             Some(def) => def.full_def(),
             None => {
@@ -1952,15 +1952,15 @@ impl<'tcx> ctxt<'tcx> {
                 // rvalues.
                 match self.def_map.borrow().get(&expr.id) {
                     Some(&def::PathResolution {
-                        base_def: def::DefStatic(..), ..
+                        base_def: Def::Static(..), ..
                     }) | Some(&def::PathResolution {
-                        base_def: def::DefUpvar(..), ..
+                        base_def: Def::Upvar(..), ..
                     }) | Some(&def::PathResolution {
-                        base_def: def::DefLocal(..), ..
+                        base_def: Def::Local(..), ..
                     }) => {
                         true
                     }
-                    Some(&def::PathResolution { base_def: def::DefErr, .. })=> true,
+                    Some(&def::PathResolution { base_def: Def::Err, .. })=> true,
                     Some(..) => false,
                     None => self.sess.span_bug(expr.span, &format!(
                         "no def for path {}", expr.id))
@@ -2622,7 +2622,7 @@ pub enum ExplicitSelfCategory {
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
     /// The variable being accessed free.
-    pub def: def::Def,
+    pub def: Def,
 
     // First span where it is accessed (there can be multiple).
     pub span: Span

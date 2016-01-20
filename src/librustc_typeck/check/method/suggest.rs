@@ -18,7 +18,7 @@ use check::{self, FnCtxt};
 use front::map as hir_map;
 use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use middle::cstore::{self, CrateStore, DefLike};
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
@@ -432,10 +432,10 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                                cstore: &for<'a> cstore::CrateStore<'a>,
                                dl: cstore::DefLike) {
             match dl {
-                cstore::DlDef(def::DefTrait(did)) => {
+                cstore::DlDef(Def::Trait(did)) => {
                     traits.push(TraitInfo::new(did));
                 }
-                cstore::DlDef(def::DefMod(did)) => {
+                cstore::DlDef(Def::Mod(did)) => {
                     if !external_mods.insert(did) {
                         return;
                     }

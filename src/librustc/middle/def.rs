@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::Def::*;
-
 use middle::def_id::DefId;
 use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
@@ -19,36 +17,36 @@ use rustc_front::hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
-    DefFn(DefId),
-    DefSelfTy(Option<DefId>,                    // trait id
+    Fn(DefId),
+    SelfTy(Option<DefId>,                    // trait id
               Option<(ast::NodeId, ast::NodeId)>),   // (impl id, self type id)
-    DefMod(DefId),
-    DefForeignMod(DefId),
-    DefStatic(DefId, bool /* is_mutbl */),
-    DefConst(DefId),
-    DefAssociatedConst(DefId),
-    DefLocal(DefId, // def id of variable
+    Mod(DefId),
+    ForeignMod(DefId),
+    Static(DefId, bool /* is_mutbl */),
+    Const(DefId),
+    AssociatedConst(DefId),
+    Local(DefId, // def id of variable
              ast::NodeId), // node id of variable
-    DefVariant(DefId /* enum */, DefId /* variant */),
-    DefEnum(DefId),
-    DefTyAlias(DefId),
-    DefAssociatedTy(DefId /* trait */, DefId),
-    DefTrait(DefId),
-    DefPrimTy(hir::PrimTy),
-    DefTyParam(ParamSpace, u32, DefId, ast::Name),
-    DefUpvar(DefId,        // def id of closed over local
+    Variant(DefId /* enum */, DefId /* variant */),
+    Enum(DefId),
+    TyAlias(DefId),
+    AssociatedTy(DefId /* trait */, DefId),
+    Trait(DefId),
+    PrimTy(hir::PrimTy),
+    TyParam(ParamSpace, u32, DefId, ast::Name),
+    Upvar(DefId,        // def id of closed over local
              ast::NodeId,  // node id of closed over local
              usize,        // index in the freevars list of the closure
              ast::NodeId), // expr node that creates the closure
 
-    // If DefStruct lives in type namespace it denotes a struct item and its DefId refers
+    // If Def::Struct lives in type namespace it denotes a struct item and its DefId refers
     // to NodeId of the struct itself.
-    // If DefStruct lives in value namespace (e.g. tuple struct, unit struct expressions)
+    // If Def::Struct lives in value namespace (e.g. tuple struct, unit struct expressions)
     // it denotes a constructor and its DefId refers to NodeId of the struct's constructor.
-    DefStruct(DefId),
-    DefLabel(ast::NodeId),
-    DefMethod(DefId),
-    DefErr,
+    Struct(DefId),
+    Label(ast::NodeId),
+    Method(DefId),
+    Err,
 }
 
 /// The result of resolving a path.
@@ -112,16 +110,16 @@ pub struct Export {
 impl Def {
     pub fn var_id(&self) -> ast::NodeId {
         match *self {
-            DefLocal(_, id) |
-            DefUpvar(_, id, _, _) => {
+            Def::Local(_, id) |
+            Def::Upvar(_, id, _, _) => {
                 id
             }
 
-            DefFn(..) | DefMod(..) | DefForeignMod(..) | DefStatic(..) |
-            DefVariant(..) | DefEnum(..) | DefTyAlias(..) | DefAssociatedTy(..) |
-            DefTyParam(..) | DefStruct(..) | DefTrait(..) |
-            DefMethod(..) | DefConst(..) | DefAssociatedConst(..) |
-            DefPrimTy(..) | DefLabel(..) | DefSelfTy(..) | DefErr => {
+            Def::Fn(..) | Def::Mod(..) | Def::ForeignMod(..) | Def::Static(..) |
+            Def::Variant(..) | Def::Enum(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
+            Def::TyParam(..) | Def::Struct(..) | Def::Trait(..) |
+            Def::Method(..) | Def::Const(..) | Def::AssociatedConst(..) |
+            Def::PrimTy(..) | Def::Label(..) | Def::SelfTy(..) | Def::Err => {
                 panic!("attempted .def_id() on invalid {:?}", self)
             }
         }
@@ -129,18 +127,18 @@ impl Def {
 
     pub fn def_id(&self) -> DefId {
         match *self {
-            DefFn(id) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
-            DefVariant(_, id) | DefEnum(id) | DefTyAlias(id) | DefAssociatedTy(_, id) |
-            DefTyParam(_, _, id, _) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id) | DefConst(id) | DefAssociatedConst(id) |
-            DefLocal(id, _) | DefUpvar(id, _, _, _) => {
+            Def::Fn(id) | Def::Mod(id) | Def::ForeignMod(id) | Def::Static(id, _) |
+            Def::Variant(_, id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(_, id) |
+            Def::TyParam(_, _, id, _) | Def::Struct(id) | Def::Trait(id) |
+            Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
+            Def::Local(id, _) | Def::Upvar(id, _, _, _) => {
                 id
             }
 
-            DefLabel(..)  |
-            DefPrimTy(..) |
-            DefSelfTy(..) |
-            DefErr => {
+            Def::Label(..)  |
+            Def::PrimTy(..) |
+            Def::SelfTy(..) |
+            Def::Err => {
                 panic!("attempted .def_id() on invalid def: {:?}", self)
             }
         }
@@ -148,7 +146,7 @@ impl Def {
 
     pub fn variant_def_ids(&self) -> Option<(DefId, DefId)> {
         match *self {
-            DefVariant(enum_id, var_id) => {
+            Def::Variant(enum_id, var_id) => {
                 Some((enum_id, var_id))
             }
             _ => None

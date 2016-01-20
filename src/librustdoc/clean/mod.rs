@@ -36,7 +36,7 @@ use syntax::ptr::P;
 
 use rustc_trans::back::link;
 use rustc::middle::cstore::{self, CrateStore};
-use rustc::middle::def;
+use rustc::middle::def::Def;
 use rustc::middle::def_id::{DefId, DefIndex};
 use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
@@ -230,7 +230,7 @@ impl Clean<ExternalCrate> for CrateNum {
         cx.tcx_opt().map(|tcx| {
             for item in tcx.sess.cstore.crate_top_level_items(self.0) {
                 let did = match item.def {
-                    cstore::DlDef(def::DefMod(did)) => did,
+                    cstore::DlDef(Def::Mod(did)) => did,
                     _ => continue
                 };
                 let attrs = inline::load_attrs(cx, tcx, did);
@@ -2607,7 +2607,7 @@ fn resolve_type(cx: &DocContext,
     debug!("resolve_type: def={:?}", def);
 
     let is_generic = match def {
-        def::DefPrimTy(p) => match p {
+        Def::PrimTy(p) => match p {
             hir::TyStr => return Primitive(Str),
             hir::TyBool => return Primitive(Bool),
             hir::TyChar => return Primitive(Char),
@@ -2624,30 +2624,30 @@ fn resolve_type(cx: &DocContext,
             hir::TyFloat(ast::TyF32) => return Primitive(F32),
             hir::TyFloat(ast::TyF64) => return Primitive(F64),
         },
-        def::DefSelfTy(..) if path.segments.len() == 1 => {
+        Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(special_idents::type_self.name.to_string());
         }
-        def::DefSelfTy(..) | def::DefTyParam(..) => true,
+        Def::SelfTy(..) | Def::TyParam(..) => true,
         _ => false,
     };
     let did = register_def(&*cx, def);
     ResolvedPath { path: path, typarams: None, did: did, is_generic: is_generic }
 }
 
-fn register_def(cx: &DocContext, def: def::Def) -> DefId {
+fn register_def(cx: &DocContext, def: Def) -> DefId {
     debug!("register_def({:?})", def);
 
     let (did, kind) = match def {
-        def::DefFn(i) => (i, TypeFunction),
-        def::DefTyAlias(i) => (i, TypeTypedef),
-        def::DefEnum(i) => (i, TypeEnum),
-        def::DefTrait(i) => (i, TypeTrait),
-        def::DefStruct(i) => (i, TypeStruct),
-        def::DefMod(i) => (i, TypeModule),
-        def::DefStatic(i, _) => (i, TypeStatic),
-        def::DefVariant(i, _) => (i, TypeEnum),
-        def::DefSelfTy(Some(def_id), _) => (def_id, TypeTrait),
-        def::DefSelfTy(_, Some((impl_id, _))) => return cx.map.local_def_id(impl_id),
+        Def::Fn(i) => (i, TypeFunction),
+        Def::TyAlias(i) => (i, TypeTypedef),
+        Def::Enum(i) => (i, TypeEnum),
+        Def::Trait(i) => (i, TypeTrait),
+        Def::Struct(i) => (i, TypeStruct),
+        Def::Mod(i) => (i, TypeModule),
+        Def::Static(i, _) => (i, TypeStatic),
+        Def::Variant(i, _) => (i, TypeEnum),
+        Def::SelfTy(Some(def_id), _) => (def_id, TypeTrait),
+        Def::SelfTy(_, Some((impl_id, _))) => return cx.map.local_def_id(impl_id),
         _ => return def.def_id()
     };
     if did.is_local() { return did }

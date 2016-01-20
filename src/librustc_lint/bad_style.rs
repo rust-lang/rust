@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def;
+use middle::def::Def;
 use middle::ty;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -274,7 +274,7 @@ impl LateLintPass for NonSnakeCase {
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         if let &hir::PatIdent(_, ref path1, _) = &p.node {
             let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-            if let Some(def::DefLocal(..)) = def {
+            if let Some(Def::Local(..)) = def {
                 self.check_snake_case(cx, "variable", &path1.node.name.as_str(), Some(p.span));
             }
         }
@@ -362,7 +362,7 @@ impl LateLintPass for NonUpperCaseGlobals {
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
-            (&hir::PatIdent(_, ref path1, _), Some(def::DefConst(..))) => {
+            (&hir::PatIdent(_, ref path1, _), Some(Def::Const(..))) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
                                                       path1.node.name, p.span);
             }

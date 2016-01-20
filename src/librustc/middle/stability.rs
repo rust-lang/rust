@@ -17,7 +17,7 @@ use dep_graph::DepNode;
 use session::Session;
 use lint;
 use middle::cstore::{CrateStore, LOCAL_CRATE};
-use middle::def;
+use middle::def::Def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;
 use middle::privacy::AccessLevels;
@@ -561,8 +561,8 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
 pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Deprecation>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
-        Some(def::DefPrimTy(..)) => {}
-        Some(def::DefSelfTy(..)) => {}
+        Some(Def::PrimTy(..)) => {}
+        Some(Def::SelfTy(..)) => {}
         Some(def) => {
             maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
         }
@@ -573,7 +573,7 @@ pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
 pub fn check_path_list_item(tcx: &ty::ctxt, item: &hir::PathListItem,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>, &Option<Deprecation>)) {
     match tcx.def_map.borrow().get(&item.node.id()).map(|d| d.full_def()) {
-        Some(def::DefPrimTy(..)) => {}
+        Some(Def::PrimTy(..)) => {}
         Some(def) => {
             maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
         }

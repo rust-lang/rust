@@ -19,7 +19,7 @@ use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
 use llvm::{True, False, Bool};
 use middle::cfg;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::LangItem;
@@ -184,7 +184,7 @@ pub struct VariantInfo<'tcx> {
 impl<'tcx> VariantInfo<'tcx> {
     pub fn from_ty(tcx: &ty::ctxt<'tcx>,
                    ty: Ty<'tcx>,
-                   opt_def: Option<def::Def>)
+                   opt_def: Option<Def>)
                    -> Self
     {
         match ty.sty {
@@ -627,7 +627,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.tcx().map.node_to_string(id).to_string()
     }
 
-    pub fn def(&self, nid: ast::NodeId) -> def::Def {
+    pub fn def(&self, nid: ast::NodeId) -> Def {
         match self.tcx().def_map.borrow().get(&nid) {
             Some(v) => v.full_def(),
             None => {

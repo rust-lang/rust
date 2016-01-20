@@ -13,7 +13,7 @@ use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
-use middle::{check_const, def};
+use middle::check_const;
 use middle::cstore::LOCAL_CRATE;
 use middle::const_eval::{self, ConstVal, ConstEvalErr};
 use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
@@ -26,6 +26,7 @@ use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
 use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::const_eval::eval_const_expr_partial;
+use middle::def::Def;
 use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
@@ -297,7 +298,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // of just to get the `def` value
         let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
         match def {
-            def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
+            Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 if !ccx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
                     debug!("get_const_expr_as_global ({:?}): found const {:?}",
                            expr.id, def_id);
@@ -792,7 +793,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
             let opt_def = cx.tcx().def_map.borrow().get(&cur.id).map(|d| d.full_def());
-            if let Some(def::DefStatic(def_id, _)) = opt_def {
+            if let Some(Def::Static(def_id, _)) = opt_def {
                 common::get_static_val(cx, def_id, ety)
             } else {
                 // If this isn't the address of a static, then keep going through
@@ -881,20 +882,20 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprPath(..) => {
             let def = cx.tcx().def_map.borrow().get(&e.id).unwrap().full_def();
             match def {
-                def::DefLocal(_, id) => {
+                Def::Local(_, id) => {
                     if let Some(val) = fn_args.and_then(|args| args.get(&id).cloned()) {
                         val
                     } else {
                         cx.sess().span_bug(e.span, "const fn argument not found")
                     }
                 }
-                def::DefFn(..) | def::DefMethod(..) => {
+                Def::Fn(..) | Def::Method(..) => {
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
-                def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
+                Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                     const_deref_ptr(cx, try!(get_const_val(cx, def_id, e, param_substs)))
                 }
-                def::DefVariant(enum_did, variant_did) => {
+                Def::Variant(enum_did, variant_did) => {
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);
                     match vinfo.kind() {
                         ty::VariantKind::Unit => {
@@ -909,7 +910,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         }
                     }
                 }
-                def::DefStruct(..) => {
+                Def::Struct(..) => {
                     if let ty::TyBareFn(..) = ety.sty {
                         // Tuple struct.
                         expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
@@ -938,7 +939,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let def = cx.tcx().def_map.borrow()[&callee.id].full_def();
             let arg_vals = try!(map_list(args));
             match def {
-                def::DefFn(did) | def::DefMethod(did) => {
+                Def::Fn(did) | Def::Method(did) => {
                     try!(const_fn_call(
                         cx,
                         ExprId(callee.id),
@@ -948,7 +949,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trueconst,
                     ))
                 }
-                def::DefStruct(..) => {
+                Def::Struct(..) => {
                     if ety.is_simd() {
                         C_vector(&arg_vals[..])
                     } else {
@@ -956,7 +957,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         adt::trans_const(cx, &*repr, Disr(0), &arg_vals[..])
                     }
                 }
-                def::DefVariant(enum_did, variant_did) => {
+                Def::Variant(enum_did, variant_did) => {
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);
                     adt::trans_const(cx,
