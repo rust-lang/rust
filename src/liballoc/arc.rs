@@ -149,15 +149,15 @@ pub struct Weak<T: ?Sized> {
     _ptr: Shared<ArcInner<T>>,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 unsafe impl<T: ?Sized + Sync + Send> Send for Weak<T> {}
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Weak)")
@@ -681,7 +681,7 @@ impl<T: ?Sized> Clone for Weak<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///
