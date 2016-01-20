@@ -10,9 +10,9 @@
 
 #![feature(alloc_jemalloc, alloc_system)]
 
-#[cfg(not(any(target_env = "msvc", target_os = "bitrig", target_os = "openbsd")))]
+#[cfg(not(any(windows, target_os = "bitrig", target_os = "openbsd")))]
 extern crate alloc_jemalloc;
-#[cfg(any(target_env = "msvc", target_os = "bitrig", target_os = "openbsd"))]
+#[cfg(any(windows, target_os = "bitrig", target_os = "openbsd"))]
 extern crate alloc_system;
 
 fn main() {
