@@ -65,7 +65,7 @@ fn coverage_tests() {
 
 #[test]
 fn checkstyle_test() {
-    let filename = "tests/target/fn-single-line.rs".to_string();
+    let filename = "tests/source/fn-single-line.rs".to_string();
     let expected = "tests/writemode/checkstyle.xml";
 
     let output = run_rustfmt(filename.clone(), WriteMode::Checkstyle);
@@ -78,12 +78,12 @@ fn checkstyle_test() {
                  .ok()
                  .expect("Failed reading target.");
 
-    let mut failures = HashMap::new();
-    if expected_text != output {
-        let diff = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
-        failures.insert(filename, diff);
-        // print_mismatches(failures);
-        // assert!(false, "Text does not match expected output");
+    let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
+    if compare.len() > 0 {
+        let mut failures = HashMap::new();
+        failures.insert(filename, compare);
+        print_mismatches(failures);
+        assert!(false, "Text does not match expected output");
     }
 }
 
@@ -183,21 +183,10 @@ pub fn run_rustfmt(filename: String, write_mode: WriteMode) -> String {
     config.report_todo = ReportTactic::Never;
 
     // Simulate run()
-    let mut file_map = format(Path::new(&filename), &config, write_mode);
-    // TODO this writes directly to stdout making it impossible to test :(
-    let write_result = filemap::write_all_files(&file_map, write_mode, &config);
-    let res = write_result.unwrap();
-    String::new()
-
-    // for (filename, text) in file_map.iter() {
-    //     let mut v = Vec::new();
-    //     // Won't panic, as we're not doing any IO.
-    //     write_system_newlines(&mut v, text, &config).unwrap();
-    //     // Won't panic, we are writing correct utf8.
-    //     let one_result = String::from_utf8(v).unwrap();
-    //     write_result.insert(filename, one_result);
-    // }
-    // write_result.remove(&filename).unwrap().to_owned()
+    let mut out = Vec::new();
+    let file_map = format(Path::new(&filename), &config, write_mode);
+    let _ = filemap::write_all_files(&file_map, &mut out, write_mode, &config);
+    String::from_utf8(out).unwrap()
 }
 
 pub fn idempotent_check(filename: String,
