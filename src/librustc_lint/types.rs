@@ -104,11 +104,11 @@ impl LateLintPass for TypeLimits {
                 if let hir::ExprLit(ref lit) = expr.node {
                     match lit.node {
                         ast::LitInt(_, ast::UnsignedIntLit(_)) => {
-                            forbid_unsigned_negation(cx, e.span);
+                            forbid_unsigned_negation(cx, e.span, lit.span);
                         },
                         ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
                             if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
-                                forbid_unsigned_negation(cx, e.span);
+                                forbid_unsigned_negation(cx, e.span, lit.span);
                             }
                         },
                         _ => ()
@@ -116,7 +116,7 @@ impl LateLintPass for TypeLimits {
                 } else {
                     let t = cx.tcx.node_id_to_type(expr.id);
                     if let ty::TyUint(_) = t.sty {
-                        forbid_unsigned_negation(cx, e.span);
+                        forbid_unsigned_negation(cx, e.span, expr.span);
                     }
                 }
                 // propagate negation, if the negation itself isn't negated
@@ -344,11 +344,17 @@ impl LateLintPass for TypeLimits {
             }
         }
 
-        fn forbid_unsigned_negation(cx: &LateContext, span: Span) {
-            cx.sess()
-              .struct_span_err_with_code(span, "unary negation of unsigned integer", "E0519")
-              .span_help(span, "use a cast or the `!` operator")
-              .emit();
+        fn forbid_unsigned_negation(cx: &LateContext, span: Span, lit_span: Span) {
+            let mut err = cx.sess()
+                            .struct_span_err_with_code(span,
+                                                       "unary negation of unsigned integer",
+                                                       "E0519");
+              if let Ok(snip) = cx.sess().codemap().span_to_snippet(lit_span) {
+                err.span_suggestion(span, "try using a cast or the `!` operator:", snip);
+              } else {
+                err.span_help(span, "use a cast or the `!` operator");
+              }
+              err.emit();
         }
     }
 }
