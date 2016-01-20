@@ -98,7 +98,7 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 
     #[cfg(not(target_os = "linux"))]
     fn memrchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        haystack.iter().rposition(|&b| b == needle)
+        fallback::memrchr(needle, haystack)
     }
 
     memrchr_specific(needle, haystack)
