@@ -100,7 +100,7 @@ pub use rustc::session;
 pub use rustc::util;
 
 use front::map as hir_map;
-use middle::def;
+use middle::def::Def;
 use middle::infer::{self, TypeOrigin};
 use middle::subst;
 use middle::ty::{self, Ty, TypeFoldable};
@@ -162,7 +162,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
+fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> Def {
     match tcx.def_map.borrow().get(&id) {
         Some(x) => x.full_def(),
         None => {

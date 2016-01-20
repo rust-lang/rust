@@ -75,7 +75,7 @@ use middle::def_id::DefId;
 use front::map as ast_map;
 use middle::infer;
 use middle::check_const;
-use middle::def;
+use middle::def::Def;
 use middle::ty::adjustment;
 use middle::ty::{self, Ty};
 
@@ -542,27 +542,27 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                    id: ast::NodeId,
                    span: Span,
                    expr_ty: Ty<'tcx>,
-                   def: def::Def)
+                   def: Def)
                    -> McResult<cmt<'tcx>> {
         debug!("cat_def: id={} expr={:?} def={:?}",
                id, expr_ty, def);
 
         match def {
-          def::DefStruct(..) | def::DefVariant(..) | def::DefConst(..) |
-          def::DefAssociatedConst(..) | def::DefFn(..) | def::DefMethod(..) => {
+          Def::Struct(..) | Def::Variant(..) | Def::Const(..) |
+          Def::AssociatedConst(..) | Def::Fn(..) | Def::Method(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
 
-          def::DefMod(_) | def::DefForeignMod(_) |
-          def::DefTrait(_) | def::DefEnum(..) | def::DefTyAlias(..) | def::DefPrimTy(_) |
-          def::DefTyParam(..) |
-          def::DefLabel(_) | def::DefSelfTy(..) |
-          def::DefAssociatedTy(..) => {
+          Def::Mod(_) | Def::ForeignMod(_) |
+          Def::Trait(_) | Def::Enum(..) | Def::TyAlias(..) | Def::PrimTy(_) |
+          Def::TyParam(..) |
+          Def::Label(_) | Def::SelfTy(..) |
+          Def::AssociatedTy(..) => {
               self.tcx().sess.span_bug(span, &format!("Unexpected definition in \
                                                        memory categorization: {:?}", def));
           }
 
-          def::DefStatic(_, mutbl) => {
+          Def::Static(_, mutbl) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
@@ -573,7 +573,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               }))
           }
 
-          def::DefUpvar(_, var_id, _, fn_node_id) => {
+          Def::Upvar(_, var_id, _, fn_node_id) => {
               let ty = try!(self.node_ty(fn_node_id));
               match ty.sty {
                   ty::TyClosure(closure_id, _) => {
@@ -598,7 +598,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               }
           }
 
-          def::DefLocal(_, vid) => {
+          Def::Local(_, vid) => {
             Ok(Rc::new(cmt_ {
                 id: id,
                 span: span,
@@ -609,7 +609,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }))
           }
 
-          def::DefErr => panic!("DefErr in memory categorization")
+          Def::Err => panic!("Def::Err in memory categorization")
         }
     }
 
@@ -1197,7 +1197,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         (*op)(self, cmt.clone(), pat);
 
         let opt_def = if let Some(path_res) = self.tcx().def_map.borrow().get(&pat.id) {
-            if path_res.depth != 0 || path_res.base_def == def::DefErr {
+            if path_res.depth != 0 || path_res.base_def == Def::Err {
                 // Since patterns can be associated constants
                 // which are resolved during typeck, we might have
                 // some unresolved patterns reaching this stage
@@ -1213,7 +1213,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         // alone) because struct patterns can refer to struct types or
         // to struct variants within enums.
         let cmt = match opt_def {
-            Some(def::DefVariant(enum_did, variant_did))
+            Some(Def::Variant(enum_did, variant_did))
                 // univariant enums do not need downcasts
                 if !self.tcx().lookup_adt_def(enum_did).is_univariant() => {
                     self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
@@ -1231,7 +1231,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           }
           hir::PatEnum(_, Some(ref subpats)) => {
             match opt_def {
-                Some(def::DefVariant(..)) => {
+                Some(Def::Variant(..)) => {
                     // variant(x, y, z)
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = try!(self.pat_ty(&**subpat)); // see (*2)
@@ -1244,7 +1244,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                         try!(self.cat_pattern_(subcmt, &**subpat, op));
                     }
                 }
-                Some(def::DefStruct(..)) => {
+                Some(Def::Struct(..)) => {
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = try!(self.pat_ty(&**subpat)); // see (*2)
                         let cmt_field =
@@ -1254,7 +1254,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                         try!(self.cat_pattern_(cmt_field, &**subpat, op));
                     }
                 }
-                Some(def::DefConst(..)) | Some(def::DefAssociatedConst(..)) => {
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {
                     for subpat in subpats {
                         try!(self.cat_pattern_(cmt.clone(), &**subpat, op));
                     }

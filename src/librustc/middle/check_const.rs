@@ -29,7 +29,7 @@ use middle::ty::cast::{CastKind};
 use middle::const_eval::{self, ConstEvalErr};
 use middle::const_eval::ErrKind::IndexOpFeatureGated;
 use middle::const_eval::EvalHint::ExprTypeChecked;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
 use middle::infer;
@@ -610,21 +610,21 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprPath(..) => {
             let def = v.tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
             match def {
-                Some(def::DefVariant(..)) => {
+                Some(Def::Variant(..)) => {
                     // Count the discriminator or function pointer.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
-                Some(def::DefStruct(..)) => {
+                Some(Def::Struct(..)) => {
                     if let ty::TyBareFn(..) = node_ty.sty {
                         // Count the function pointer.
                         v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     }
                 }
-                Some(def::DefFn(..)) | Some(def::DefMethod(..)) => {
+                Some(Def::Fn(..)) | Some(Def::Method(..)) => {
                     // Count the function pointer.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
-                Some(def::DefStatic(..)) => {
+                Some(Def::Static(..)) => {
                     match v.mode {
                         Mode::Static | Mode::StaticMut => {}
                         Mode::Const | Mode::ConstFn => {
@@ -635,8 +635,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         Mode::Var => v.add_qualif(ConstQualif::NOT_CONST)
                     }
                 }
-                Some(def::DefConst(did)) |
-                Some(def::DefAssociatedConst(did)) => {
+                Some(Def::Const(did)) |
+                Some(Def::AssociatedConst(did)) => {
                     if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did,
                                                                        Some(e.id),
                                                                        None) {
@@ -644,7 +644,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         v.add_qualif(inner);
                     }
                 }
-                Some(def::DefLocal(..)) if v.mode == Mode::ConstFn => {
+                Some(Def::Local(..)) if v.mode == Mode::ConstFn => {
                     // Sadly, we can't determine whether the types are zero-sized.
                     v.add_qualif(ConstQualif::NOT_CONST | ConstQualif::NON_ZERO_SIZED);
                 }
@@ -672,16 +672,16 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
             let def = v.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
             let is_const = match def {
-                Some(def::DefStruct(..)) => true,
-                Some(def::DefVariant(..)) => {
+                Some(Def::Struct(..)) => true,
+                Some(Def::Variant(..)) => {
                     // Count the discriminator.
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     true
                 }
-                Some(def::DefFn(did)) => {
+                Some(Def::Fn(did)) => {
                     v.handle_const_fn_call(e, did, node_ty)
                 }
-                Some(def::DefMethod(did)) => {
+                Some(Def::Method(did)) => {
                     match v.tcx.impl_or_trait_item(did).container() {
                         ty::ImplContainer(_) => {
                             v.handle_const_fn_call(e, did, node_ty)

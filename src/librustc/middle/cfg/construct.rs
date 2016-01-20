@@ -10,7 +10,7 @@
 
 use rustc_data_structures::graph;
 use middle::cfg::*;
-use middle::def;
+use middle::def::Def;
 use middle::pat_util;
 use middle::ty;
 use syntax::ast;
@@ -591,7 +591,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
 
         match self.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
-            Some(def::DefLabel(loop_id)) => {
+            Some(Def::Label(loop_id)) => {
                 for l in &self.loop_scopes {
                     if l.loop_id == loop_id {
                         return *l;

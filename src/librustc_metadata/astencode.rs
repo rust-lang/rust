@@ -30,7 +30,7 @@ use middle::cstore::{InlinedItem, InlinedItemRef};
 use middle::ty::adjustment;
 use middle::ty::cast;
 use middle::check_const::ConstQualif;
-use middle::def;
+use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::privacy::{AllPublic, LastMod};
 use middle::region;
@@ -368,48 +368,48 @@ fn decode_ast(par_doc: rbml::Doc) -> InlinedItem {
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn decode_def(dcx: &DecodeContext, dsr: &mut reader::Decoder) -> def::Def {
-    let def: def::Def = Decodable::decode(dsr).unwrap();
+fn decode_def(dcx: &DecodeContext, dsr: &mut reader::Decoder) -> Def {
+    let def: Def = Decodable::decode(dsr).unwrap();
     def.tr(dcx)
 }
 
-impl tr for def::Def {
-    fn tr(&self, dcx: &DecodeContext) -> def::Def {
+impl tr for Def {
+    fn tr(&self, dcx: &DecodeContext) -> Def {
         match *self {
-          def::DefFn(did) => def::DefFn(did.tr(dcx)),
-          def::DefMethod(did) => def::DefMethod(did.tr(dcx)),
-          def::DefSelfTy(opt_did, impl_ids) => { def::DefSelfTy(opt_did.map(|did| did.tr(dcx)),
+          Def::Fn(did) => Def::Fn(did.tr(dcx)),
+          Def::Method(did) => Def::Method(did.tr(dcx)),
+          Def::SelfTy(opt_did, impl_ids) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
                                                                 impl_ids.map(|(nid1, nid2)| {
                                                                     (dcx.tr_id(nid1),
                                                                      dcx.tr_id(nid2))
                                                                 })) }
-          def::DefMod(did) => { def::DefMod(did.tr(dcx)) }
-          def::DefForeignMod(did) => { def::DefForeignMod(did.tr(dcx)) }
-          def::DefStatic(did, m) => { def::DefStatic(did.tr(dcx), m) }
-          def::DefConst(did) => { def::DefConst(did.tr(dcx)) }
-          def::DefAssociatedConst(did) => def::DefAssociatedConst(did.tr(dcx)),
-          def::DefLocal(_, nid) => {
+          Def::Mod(did) => { Def::Mod(did.tr(dcx)) }
+          Def::ForeignMod(did) => { Def::ForeignMod(did.tr(dcx)) }
+          Def::Static(did, m) => { Def::Static(did.tr(dcx), m) }
+          Def::Const(did) => { Def::Const(did.tr(dcx)) }
+          Def::AssociatedConst(did) => Def::AssociatedConst(did.tr(dcx)),
+          Def::Local(_, nid) => {
               let nid = dcx.tr_id(nid);
               let did = dcx.tcx.map.local_def_id(nid);
-              def::DefLocal(did, nid)
+              Def::Local(did, nid)
           }
-          def::DefVariant(e_did, v_did) => def::DefVariant(e_did.tr(dcx), v_did.tr(dcx)),
-          def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
-          def::DefEnum(did) => def::DefEnum(did.tr(dcx)),
-          def::DefTyAlias(did) => def::DefTyAlias(did.tr(dcx)),
-          def::DefAssociatedTy(trait_did, did) =>
-              def::DefAssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
-          def::DefPrimTy(p) => def::DefPrimTy(p),
-          def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
-          def::DefUpvar(_, nid1, index, nid2) => {
+          Def::Variant(e_did, v_did) => Def::Variant(e_did.tr(dcx), v_did.tr(dcx)),
+          Def::Trait(did) => Def::Trait(did.tr(dcx)),
+          Def::Enum(did) => Def::Enum(did.tr(dcx)),
+          Def::TyAlias(did) => Def::TyAlias(did.tr(dcx)),
+          Def::AssociatedTy(trait_did, did) =>
+              Def::AssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
+          Def::PrimTy(p) => Def::PrimTy(p),
+          Def::TyParam(s, index, def_id, n) => Def::TyParam(s, index, def_id.tr(dcx), n),
+          Def::Upvar(_, nid1, index, nid2) => {
               let nid1 = dcx.tr_id(nid1);
               let nid2 = dcx.tr_id(nid2);
               let did1 = dcx.tcx.map.local_def_id(nid1);
-              def::DefUpvar(did1, nid1, index, nid2)
+              Def::Upvar(did1, nid1, index, nid2)
           }
-          def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
-          def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid)),
-          def::DefErr => def::DefErr,
+          Def::Struct(did) => Def::Struct(did.tr(dcx)),
+          Def::Label(nid) => Def::Label(dcx.tr_id(nid)),
+          Def::Err => Def::Err,
         }
     }
 }

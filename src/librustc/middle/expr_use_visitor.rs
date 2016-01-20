@@ -19,7 +19,8 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use middle::{def, pat_util};
+use middle::pat_util;
+use middle::def::Def;
 use middle::def_id::{DefId};
 use middle::infer;
 use middle::mem_categorization as mc;
@@ -1077,7 +1078,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             // struct or enum pattern.
                         }
 
-                        Some(def::DefVariant(enum_did, variant_did)) => {
+                        Some(Def::Variant(enum_did, variant_did)) => {
                             let downcast_cmt =
                                 if tcx.lookup_adt_def(enum_did).is_univariant() {
                                     cmt_pat
@@ -1093,7 +1094,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             delegate.matched_pat(pat, downcast_cmt, match_mode);
                         }
 
-                        Some(def::DefStruct(..)) | Some(def::DefTyAlias(..)) => {
+                        Some(Def::Struct(..)) | Some(Def::TyAlias(..)) => {
                             // A struct (in either the value or type
                             // namespace; we encounter the former on
                             // e.g. patterns for unit structs).
@@ -1105,9 +1106,9 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             delegate.matched_pat(pat, cmt_pat, match_mode);
                         }
 
-                        Some(def::DefConst(..)) |
-                        Some(def::DefAssociatedConst(..)) |
-                        Some(def::DefLocal(..)) => {
+                        Some(Def::Const(..)) |
+                        Some(Def::AssociatedConst(..)) |
+                        Some(Def::Local(..)) => {
                             // This is a leaf (i.e. identifier binding
                             // or constant value to match); thus no
                             // `matched_pat` call.
@@ -1115,7 +1116,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
                         Some(def) => {
                             // An enum type should never be in a pattern.
-                            // Remaining cases are e.g. DefFn, to
+                            // Remaining cases are e.g. Def::Fn, to
                             // which identifiers within patterns
                             // should not resolve. However, we do
                             // encouter this when using the
@@ -1184,7 +1185,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     fn cat_captured_var(&mut self,
                         closure_id: ast::NodeId,
                         closure_span: Span,
-                        upvar_def: def::Def)
+                        upvar_def: Def)
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective

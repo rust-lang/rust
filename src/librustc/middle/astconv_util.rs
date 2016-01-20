@@ -14,7 +14,7 @@
  * Almost certainly this could (and should) be refactored out of existence.
  */
 
-use middle::def;
+use middle::def::Def;
 use middle::ty::{self, Ty};
 
 use syntax::codemap::Span;
@@ -72,7 +72,7 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
             }
             Some(d) => d.full_def()
         };
-        if let def::DefPrimTy(nty) = def {
+        if let Def::PrimTy(nty) = def {
             Some(prim_ty_to_ty(tcx, &path.segments, nty))
         } else {
             None

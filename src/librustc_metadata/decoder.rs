@@ -28,7 +28,7 @@ use rustc_front::hir;
 
 use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
-use middle::def;
+use middle::def::Def;
 use middle::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use middle::subst;
@@ -284,37 +284,37 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
             // Check whether we have an associated const item.
             match item_sort(item) {
                 Some('C') | Some('c') => {
-                    DlDef(def::DefAssociatedConst(did))
+                    DlDef(Def::AssociatedConst(did))
                 }
                 _ => {
                     // Regular const item.
-                    DlDef(def::DefConst(did))
+                    DlDef(Def::Const(did))
                 }
             }
         }
-        ImmStatic => DlDef(def::DefStatic(did, false)),
-        MutStatic => DlDef(def::DefStatic(did, true)),
-        Struct(..) => DlDef(def::DefStruct(did)),
-        Fn        => DlDef(def::DefFn(did)),
+        ImmStatic => DlDef(Def::Static(did, false)),
+        MutStatic => DlDef(Def::Static(did, true)),
+        Struct(..) => DlDef(Def::Struct(did)),
+        Fn        => DlDef(Def::Fn(did)),
         Method | StaticMethod => {
-            DlDef(def::DefMethod(did))
+            DlDef(Def::Method(did))
         }
         Type => {
             if item_sort(item) == Some('t') {
                 let trait_did = item_require_parent_item(cdata, item);
-                DlDef(def::DefAssociatedTy(trait_did, did))
+                DlDef(Def::AssociatedTy(trait_did, did))
             } else {
-                DlDef(def::DefTyAlias(did))
+                DlDef(Def::TyAlias(did))
             }
         }
-        Mod => DlDef(def::DefMod(did)),
-        ForeignMod => DlDef(def::DefForeignMod(did)),
+        Mod => DlDef(Def::Mod(did)),
+        ForeignMod => DlDef(Def::ForeignMod(did)),
         Variant(..) => {
             let enum_did = item_require_parent_item(cdata, item);
-            DlDef(def::DefVariant(enum_did, did))
+            DlDef(Def::Variant(enum_did, did))
         }
-        Trait => DlDef(def::DefTrait(did)),
-        Enum => DlDef(def::DefEnum(did)),
+        Trait => DlDef(Def::Trait(did)),
+        Enum => DlDef(Def::Enum(did)),
         Impl | DefaultImpl => DlImpl(did),
         PublicField | InheritedField => DlField,
     }
