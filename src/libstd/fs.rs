@@ -2265,6 +2265,12 @@ mod tests {
     }
 
     #[test]
+    fn _assert_send_sync() {
+        fn _assert_send_sync<T: Send + Sync>() {}
+        _assert_send_sync::<OpenOptions>();
+    }
+
+    #[test]
     fn binary_file() {
         let mut bytes = [0; 1024];
         StdRng::new().unwrap().fill_bytes(&mut bytes);

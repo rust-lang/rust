@@ -69,7 +69,7 @@ pub struct OpenOptions {
     attributes: c::DWORD,
     share_mode: c::DWORD,
     security_qos_flags: c::DWORD,
-    security_attributes: c::LPSECURITY_ATTRIBUTES,
+    security_attributes: usize, // FIXME: should be a reference
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -170,7 +170,7 @@ impl OpenOptions {
             share_mode: c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
             attributes: 0,
             security_qos_flags: 0,
-            security_attributes: ptr::null_mut(),
+            security_attributes: 0,
         }
     }
 
@@ -187,7 +187,7 @@ impl OpenOptions {
     pub fn attributes(&mut self, attrs: u32) { self.attributes = attrs; }
     pub fn security_qos_flags(&mut self, flags: u32) { self.security_qos_flags = flags; }
     pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
-        self.security_attributes = attrs;
+        self.security_attributes = attrs as usize;
     }
 
     fn get_access_mode(&self) -> io::Result<c::DWORD> {
