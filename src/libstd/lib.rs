@@ -250,7 +250,7 @@
 #![feature(repr_simd)]
 #![feature(reflect_marker)]
 #![feature(shared)]
-#![feature(slice_bytes)]
+#![feature(find_byte)]
 #![feature(slice_concat_ext)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]

@@ -1431,15 +1431,21 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 //
 
 /// Operations on `[u8]`.
-#[unstable(feature = "slice_bytes", reason = "needs review",
-           issue = "27740")]
-#[rustc_deprecated(reason = "unidiomatic functions not pulling their weight",
-                   since = "1.6.0")]
+#[unstable(feature = "find_byte", reason = "needs review",
+           issue = "0")]
 #[allow(deprecated)]
 pub mod bytes {
+    use cmp;
+    use iter::Iterator;
+    use mem;
+    use option::Option::{self, Some};
     use ptr;
     use slice::SliceExt;
 
+    #[unstable(feature = "slice_bytes", reason = "needs review",
+               issue = "27740")]
+    #[rustc_deprecated(reason = "unidiomatic functions not pulling their weight",
+                       since = "1.6.0")]
     /// A trait for operations on mutable `[u8]`s.
     pub trait MutableByteVector {
         /// Sets all bytes of the receiver to the given value.
@@ -1453,6 +1459,10 @@ pub mod bytes {
         }
     }
 
+    #[unstable(feature = "slice_bytes", reason = "needs review",
+               issue = "27740")]
+    #[rustc_deprecated(reason = "unidiomatic functions not pulling their weight",
+                       since = "1.6.0")]
     /// Copies data from `src` to `dst`
     ///
     /// Panics if the length of `dst` is less than the length of `src`.
@@ -1468,8 +1478,208 @@ pub mod bytes {
                                      len_src);
         }
     }
-}
 
+    // find_byte, rfind_byte ("memchr" / "memrchr") implementations
+
+    // use truncation to fit in usize
+    const LO_USIZE: usize = 0x0101010101010101u64 as usize;
+    const HI_USIZE: usize = 0x8080808080808080u64 as usize;
+
+    /// Return `true` if `x` contains any zero byte.
+    ///
+    /// From *Matters Computational*, J. Arndt
+    ///
+    /// "The idea is to subtract one from each of the bytes and then look for
+    /// bytes where the borrow propagated all the way to the most significant
+    /// bit."
+    #[inline]
+    fn contains_zero_byte(x: usize) -> bool {
+        x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0
+    }
+
+    #[cfg(target_pointer_width = "32")]
+    #[inline]
+    fn repeat_byte(b: u8) -> usize {
+        let mut rep = (b as usize) << 8 | b as usize;
+        rep = rep << 16 | rep;
+        rep
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[inline]
+    fn repeat_byte(b: u8) -> usize {
+        let mut rep = (b as usize) << 8 | b as usize;
+        rep = rep << 16 | rep;
+        rep = rep << 32 | rep;
+        rep
+    }
+
+    /// Returns the index corresponding to the first occurrence of `needle` in
+    /// `haystack`, or `None` if one is not found.
+    pub fn find_byte(needle: u8, haystack: &[u8]) -> Option<usize> {
+        // Scan for a single byte value by reading two `usize` words at a time.
+        //
+        // Split `haystack` in three parts
+        // - unaligned inital part, before the first word aligned address in text
+        // - body, scan by 2 words at a time
+        // - the last remaining part, < 2 word size
+        let len = haystack.len();
+        let ptr = haystack.as_ptr();
+        let usize_bytes = mem::size_of::<usize>();
+
+        // search up to an aligned boundary
+        let align = (ptr as usize) & (usize_bytes- 1);
+        let mut offset;
+        if align > 0 {
+            offset = cmp::min(usize_bytes - align, len);
+            if let Some(index) = haystack[..offset].iter().position(|elt| *elt == needle) {
+                return Some(index);
+            }
+        } else {
+            offset = 0;
+        }
+
+        // search the body of the haystack
+        let rep_needle = repeat_byte(needle);
+
+        if len >= 2 * usize_bytes {
+            while offset <= len - 2 * usize_bytes {
+                unsafe {
+                    let u = *(ptr.offset(offset as isize) as *const usize);
+                    let v = *(ptr.offset((offset + usize_bytes) as isize) as *const usize);
+
+                    // break if there is a matching byte
+                    let zu = contains_zero_byte(u ^ rep_needle);
+                    let zv = contains_zero_byte(v ^ rep_needle);
+                    if zu || zv {
+                        break;
+                    }
+                }
+                offset += usize_bytes * 2;
+            }
+        }
+
+        // find the byte after the point the body loop stopped
+        haystack[offset..].iter().position(|elt| *elt == needle).map(|i| offset + i)
+    }
+
+    /// Returns the index corresponding to the last occurrence of `needle` in
+    /// `haystack`, or `None` if one is not found.
+    pub fn rfind_byte(needle: u8, haystack: &[u8]) -> Option<usize> {
+        // Scan for a single byte value by reading two `usize` words at a time.
+        //
+        // Split `haystack` in three parts
+        // - unaligned tail, after the last word aligned address in text
+        // - body, scan by 2 words at a time
+        // - the first remaining bytes, < 2 word size
+        let len = haystack.len();
+        let ptr = haystack.as_ptr();
+        let usize_bytes = mem::size_of::<usize>();
+
+        // search to an aligned boundary
+        let end_align = (ptr as usize + len) & (usize_bytes - 1);
+        let mut offset;
+        if end_align > 0 {
+            offset = len - cmp::min(usize_bytes - end_align, len);
+            if let Some(index) = haystack[offset..].iter().rposition(|elt| *elt == needle) {
+                return Some(offset + index);
+            }
+        } else {
+            offset = len;
+        }
+
+        // search the body of the haystack
+        let rep_needle = repeat_byte(needle);
+
+        while offset >= 2 * usize_bytes {
+            unsafe {
+                let u = *(ptr.offset(offset as isize - 2 * usize_bytes as isize) as *const usize);
+                let v = *(ptr.offset(offset as isize - usize_bytes as isize) as *const usize);
+
+                // break if there is a matching byte
+                let zu = contains_zero_byte(u ^ rep_needle);
+                let zv = contains_zero_byte(v ^ rep_needle);
+                if zu || zv {
+                    break;
+                }
+            }
+            offset -= 2 * usize_bytes;
+        }
+
+        // find the byte before the point the body loop stopped
+        haystack[..offset].iter().rposition(|elt| *elt == needle)
+    }
+
+    #[test]
+    fn matches_one() {
+        assert_eq!(Some(0), find_byte(b'a', b"a"));
+    }
+
+    #[test]
+    fn matches_begin() {
+        assert_eq!(Some(0), find_byte(b'a', b"aaaa"));
+    }
+
+    #[test]
+    fn matches_end() {
+        assert_eq!(Some(4), find_byte(b'z', b"aaaaz"));
+    }
+
+    #[test]
+    fn matches_nul() {
+        assert_eq!(Some(4), find_byte(b'\x00', b"aaaa\x00"));
+    }
+
+    #[test]
+    fn matches_past_nul() {
+        assert_eq!(Some(5), find_byte(b'z', b"aaaa\x00z"));
+    }
+
+    #[test]
+    fn no_match_empty() {
+        assert_eq!(None, find_byte(b'a', b""));
+    }
+
+    #[test]
+    fn no_match() {
+        assert_eq!(None, find_byte(b'a', b"xyz"));
+    }
+
+    #[test]
+    fn matches_one_reversed() {
+        assert_eq!(Some(0), rfind_byte(b'a', b"a"));
+    }
+
+    #[test]
+    fn matches_begin_reversed() {
+        assert_eq!(Some(3), rfind_byte(b'a', b"aaaa"));
+    }
+
+    #[test]
+    fn matches_end_reversed() {
+        assert_eq!(Some(0), rfind_byte(b'z', b"zaaaa"));
+    }
+
+    #[test]
+    fn matches_nul_reversed() {
+        assert_eq!(Some(4), rfind_byte(b'\x00', b"aaaa\x00"));
+    }
+
+    #[test]
+    fn matches_past_nul_reversed() {
+        assert_eq!(Some(0), rfind_byte(b'z', b"z\x00aaaa"));
+    }
+
+    #[test]
+    fn no_match_empty_reversed() {
+        assert_eq!(None, rfind_byte(b'a', b""));
+    }
+
+    #[test]
+    fn no_match_reversed() {
+        assert_eq!(None, rfind_byte(b'a', b"xyz"));
+    }
+}
 
 
 //

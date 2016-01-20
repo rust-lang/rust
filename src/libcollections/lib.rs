@@ -46,7 +46,7 @@
 #![feature(num_bits_bytes)]
 #![feature(pattern)]
 #![feature(shared)]
-#![feature(slice_bytes)]
+#![feature(find_byte)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(step_by)]
