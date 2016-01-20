@@ -3037,6 +3037,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           check_ribs: bool,
                           record_used: bool)
                           -> Option<LocalDef> {
+        if identifier.name == special_idents::invalid.name {
+            return Some(LocalDef::from_def(DefErr));
+        }
+
         // First, check to see whether the name is a primitive type.
         if namespace == TypeNS {
             if let Some(&prim_ty) = self.primitive_type_table
