@@ -70,6 +70,7 @@ pub fn compile_input(sess: Session,
         (control.$point.callback)(state);
 
         if control.$point.stop == Compilation::Stop {
+            $tsess.abort_if_errors();
             return;
         }
     })}
@@ -469,7 +470,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     let mut feature_gated_cfgs = vec![];
     krate = time(time_passes, "configuration 1", || {
-        syntax::config::strip_unconfigured_items(sess.diagnostic(), krate, &mut feature_gated_cfgs)
+        sess.abort_if_new_errors(|| {
+            syntax::config::strip_unconfigured_items(sess.diagnostic(),
+                                                     krate,
+                                                     &mut feature_gated_cfgs)
+        })
     });
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
@@ -605,17 +610,23 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // JBC: make CFG processing part of expansion to avoid this problem:
 
     // strip again, in case expansion added anything with a #[cfg].
-    krate = time(time_passes, "configuration 2", || {
-        syntax::config::strip_unconfigured_items(sess.diagnostic(), krate, &mut feature_gated_cfgs)
-    });
+    krate = sess.abort_if_new_errors(|| {
+        let krate = time(time_passes, "configuration 2", || {
+            syntax::config::strip_unconfigured_items(sess.diagnostic(),
+                                                     krate,
+                                                     &mut feature_gated_cfgs)
+        });
 
-    time(time_passes, "gated configuration checking", || {
-        let features = sess.features.borrow();
-        feature_gated_cfgs.sort();
-        feature_gated_cfgs.dedup();
-        for cfg in &feature_gated_cfgs {
-            cfg.check_and_emit(sess.diagnostic(), &features, sess.codemap());
-        }
+        time(time_passes, "gated configuration checking", || {
+            let features = sess.features.borrow();
+            feature_gated_cfgs.sort();
+            feature_gated_cfgs.dedup();
+            for cfg in &feature_gated_cfgs {
+                cfg.check_and_emit(sess.diagnostic(), &features, sess.codemap());
+            }
+        });
+
+        krate
     });
 
     krate = time(time_passes, "maybe building test harness", || {

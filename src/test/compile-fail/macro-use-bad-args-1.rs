@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![no_std]
+
 #[macro_use(foo(bar))]  //~ ERROR bad macro import
 extern crate std;
-
-fn main() {
-}
