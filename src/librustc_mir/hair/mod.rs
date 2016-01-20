@@ -14,7 +14,8 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::repr::{Constant, BinOp, BorrowKind, Field, Literal, Mutability, UnOp, ItemKind};
+use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp, ItemKind,
+    TypedConstVal};
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
@@ -213,7 +214,7 @@ pub enum ExprKind<'tcx> {
     },
     Repeat {
         value: ExprRef<'tcx>,
-        count: Constant<'tcx>,
+        count: TypedConstVal<'tcx>,
     },
     Vec {
         fields: Vec<ExprRef<'tcx>>,
@@ -338,6 +339,7 @@ pub struct FieldPattern<'tcx> {
     pub field: Field,
     pub pattern: Pattern<'tcx>,
 }
+
 ///////////////////////////////////////////////////////////////////////////
 // The Mirror trait
 
