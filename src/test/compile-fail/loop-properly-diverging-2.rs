@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/* Make sure a loop{} with a break in it can't be
-   the tailexpr in the body of a diverging function */
-fn forever() -> ! {
-  loop {
-    break;
-  }
-  return 42; //~ ERROR `return` in a function declared as diverging
+fn forever2() -> i32 {
+  let x: i32 = loop { break }; //~ ERROR mismatched types
+  x
 }
 
-fn main() {
-}
+fn main() {}
