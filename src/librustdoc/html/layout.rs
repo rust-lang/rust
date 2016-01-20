@@ -148,7 +148,7 @@ r##"<!DOCTYPE html>
         "".to_string()
     } else {
         format!("<a href='{}{}/index.html'>\
-                 <img src='{}' alt='' width='100'></a>",
+                 <img src='{}' alt='logo' width='100'></a>",
                 page.root_path, layout.krate,
                 layout.logo)
     },
