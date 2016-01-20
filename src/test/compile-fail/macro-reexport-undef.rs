@@ -10,6 +10,8 @@
 
 // aux-build:two_macros.rs
 
+#![feature(macro_reexport)]
+
 #[macro_use(macro_two)]
 #[macro_reexport(no_way)] //~ ERROR reexported macro not found
 extern crate two_macros;

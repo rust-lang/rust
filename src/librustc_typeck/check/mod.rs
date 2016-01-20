@@ -4229,7 +4229,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             }
             // Check for unrepresentable discriminant values
             match hint {
-                attr::ReprAny | attr::ReprExtern => (),
+                attr::ReprAny | attr::ReprExtern => {
+                    disr_vals.push(current_disr_val);
+                }
                 attr::ReprInt(sp, ity) => {
                     if !disr_in_range(ccx, ity, current_disr_val) {
                         let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0082,
@@ -4239,14 +4241,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         err.emit();
                     }
                 }
-                attr::ReprSimd => {
-                    ccx.tcx.sess.bug("range_to_inttype: found ReprSimd on an enum");
-                }
-                attr::ReprPacked => {
-                    ccx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
-                }
+                // Error reported elsewhere.
+                attr::ReprSimd | attr::ReprPacked => {}
             }
-            disr_vals.push(current_disr_val);
         }
     }
 
