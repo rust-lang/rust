@@ -8,9 +8,9 @@ use syntax::ptr::P;
 use syntax::codemap::Span;
 
 use utils::{
-    snippet, span_lint, span_note_and_lint, match_path, match_type, method_chain_args,
-    match_trait_method, walk_ptrs_ty_depth, walk_ptrs_ty, get_trait_def_id, implements_trait,
-    span_lint_and_then
+    get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path,
+    match_trait_method, match_type, method_chain_args, snippet, span_lint, span_lint_and_then,
+    span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth,
 };
 use utils::{
     BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH,
@@ -231,6 +231,10 @@ impl LintPass for MethodsPass {
 
 impl LateLintPass for MethodsPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        if in_macro(cx, expr.span) {
+            return;
+        }
+
         match expr.node {
             ExprMethodCall(name, _, ref args) => {
                 // Chain calls
@@ -266,6 +270,10 @@ impl LateLintPass for MethodsPass {
     }
 
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
+        if in_external_macro(cx, item.span) {
+            return;
+        }
+
         if let ItemImpl(_, _, _, None, ref ty, ref items) = item.node {
             for implitem in items {
                 let name = implitem.name;
