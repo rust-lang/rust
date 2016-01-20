@@ -239,7 +239,6 @@ pub fn collect_language_items(session: &Session,
     collector.collect(krate);
     let LanguageItemCollector { mut items, .. } = collector;
     weak_lang_items::check_crate(krate, session, &mut items);
-    session.abort_if_errors();
     items
 }
 

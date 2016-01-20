@@ -98,7 +98,7 @@ pub fn parse_crate_from_source_str(name: String,
                                            cfg,
                                            name,
                                            source);
-    maybe_aborted(panictry!(p.parse_crate_mod()),p)
+    panictry!(p.parse_crate_mod())
 }
 
 pub fn parse_crate_attrs_from_source_str(name: String,
@@ -110,7 +110,7 @@ pub fn parse_crate_attrs_from_source_str(name: String,
                                            cfg,
                                            name,
                                            source);
-    maybe_aborted(panictry!(p.parse_inner_attributes()), p)
+    panictry!(p.parse_inner_attributes())
 }
 
 pub fn parse_expr_from_source_str(name: String,
@@ -119,7 +119,7 @@ pub fn parse_expr_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::Expr> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(panictry!(p.parse_expr()), p)
+    panictry!(p.parse_expr())
 }
 
 pub fn parse_item_from_source_str(name: String,
@@ -128,7 +128,7 @@ pub fn parse_item_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Option<P<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(panictry!(p.parse_item()), p)
+    panictry!(p.parse_item())
 }
 
 pub fn parse_meta_from_source_str(name: String,
@@ -137,7 +137,7 @@ pub fn parse_meta_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> P<ast::MetaItem> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(panictry!(p.parse_meta_item()), p)
+    panictry!(p.parse_meta_item())
 }
 
 pub fn parse_stmt_from_source_str(name: String,
@@ -151,7 +151,7 @@ pub fn parse_stmt_from_source_str(name: String,
         name,
         source
     );
-    maybe_aborted(panictry!(p.parse_stmt()), p)
+    panictry!(p.parse_stmt())
 }
 
 // Warning: This parses with quote_depth > 0, which is not the default.
@@ -168,7 +168,7 @@ pub fn parse_tts_from_source_str(name: String,
     );
     p.quote_depth += 1;
     // right now this is re-creating the token trees from ... token trees.
-    maybe_aborted(panictry!(p.parse_all_token_trees()),p)
+    panictry!(p.parse_all_token_trees())
 }
 
 // Create a new parser from a source string
@@ -265,16 +265,10 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
     p
 }
 
-/// Abort if necessary
-pub fn maybe_aborted<T>(result: T, p: Parser) -> T {
-    p.abort_if_errors();
-    result
-}
 
 fn abort_if_errors<'a, T>(result: PResult<'a, T>, p: &Parser) -> T {
     match result {
         Ok(c) => {
-            p.abort_if_errors();
             c
         }
         Err(mut e) => {

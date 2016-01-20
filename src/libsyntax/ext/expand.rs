@@ -1304,9 +1304,14 @@ pub fn expand_crate(mut cx: ExtCtxt,
             expander.cx.syntax_env.insert(name, extension);
         }
 
+        let err_count = cx.parse_sess.span_diagnostic.err_count();
         let mut ret = expander.fold_crate(c);
         ret.exported_macros = expander.cx.exported_macros.clone();
-        cx.parse_sess.span_diagnostic.abort_if_errors();
+
+        if cx.parse_sess.span_diagnostic.err_count() > err_count {
+            cx.parse_sess.span_diagnostic.abort_if_errors();
+        }
+
         ret
     };
     return (ret, cx.syntax_env.names);

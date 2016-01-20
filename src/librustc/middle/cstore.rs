@@ -270,8 +270,8 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
     let say = |s: &str| {
         match (sp, sess) {
             (_, None) => panic!("{}", s),
-            (Some(sp), Some(sess)) => sess.span_err(sp, s),
-            (None, Some(sess)) => sess.err(s),
+            (Some(sp), Some(sess)) => sess.span_fatal(sp, s),
+            (None, Some(sess)) => sess.fatal(s),
         }
     };
     if s.is_empty() {
@@ -281,10 +281,6 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
         if c.is_alphanumeric() { continue }
         if c == '_'  { continue }
         say(&format!("invalid character `{}` in crate name: `{}`", c, s));
-    }
-    match sess {
-        Some(sess) => sess.abort_if_errors(),
-        None => {}
     }
 }
 
