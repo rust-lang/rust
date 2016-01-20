@@ -550,7 +550,7 @@ CFG_SELF="$0"
 CFG_CONFIGURE_ARGS="$@"
 
 
-case "${CFG_SRC_DIR}" in  
+case "${CFG_SRC_DIR}" in
     *\ * )
         err "The path to the rust source directory contains spaces, which is not supported"
         ;;
@@ -889,6 +889,13 @@ then
     fi
 
     step_msg "on OpenBSD, disabling jemalloc"
+    CFG_DISABLE_JEMALLOC=1
+fi
+
+if [ $CFG_OSTYPE = pc-windows-gnu ]
+then
+    # FIXME(#31030) - there's not a great reason to disable jemalloc here
+    step_msg "on Windows, disabling jemalloc"
     CFG_DISABLE_JEMALLOC=1
 fi
 
