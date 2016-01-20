@@ -582,17 +582,10 @@ impl Iterator for EscapeDefault {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            }
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done(c);
-                Some(c)
-            }
-            EscapeDefaultState::Done(_) => None,
-            EscapeDefaultState::Unicode(ref mut iter) => iter.next(),
+        if let EscapeDefaultState::Unicode(ref mut iter) = self.state {
+            iter.next()
+        } else {
+            self.step(0)
         }
     }
 
@@ -608,31 +601,7 @@ impl Iterator for EscapeDefault {
     }
 
     fn nth(&mut self, n: usize) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) if n == 0 => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            },
-            EscapeDefaultState::Backslash(c) if n == 1 => {
-                self.state = EscapeDefaultState::Done(c);
-                Some(c)
-            },
-            EscapeDefaultState::Backslash(c) => {
-                self.state = EscapeDefaultState::Done(c);
-                None
-            },
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done(c);
-
-                if n == 0 {
-                    Some(c)
-                } else {
-                    None
-                }
-            },
-            EscapeDefaultState::Done(_) => return None,
-            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
-        }
+        self.step(n)
     }
 
     fn last(self) -> Option<char> {
@@ -652,6 +621,33 @@ impl ExactSizeIterator for EscapeDefault {
             EscapeDefaultState::Char(_) => 1,
             EscapeDefaultState::Backslash(_) => 2,
             EscapeDefaultState::Unicode(ref iter) => iter.len(),
+        }
+    }
+}
+
+impl EscapeDefault {
+    #[inline]
+    fn step(&mut self, n: usize) -> Option<char> {
+        let (remaining, c) = match self.state {
+            EscapeDefaultState::Done(c) => (0usize, c),
+            EscapeDefaultState::Char(c) => (1, c),
+            EscapeDefaultState::Backslash(c) => (2, c),
+            EscapeDefaultState::Unicode(ref mut iter) => return iter.nth(n),
+        };
+
+        match remaining.saturating_sub(n) {
+            2 => {
+                self.state = EscapeDefaultState::Char(c);
+                Some('\\')
+            }
+            1 => {
+                self.state = EscapeDefaultState::Done(c);
+                Some(c)
+            }
+            _ => {
+                self.state = EscapeDefaultState::Done(c);
+                None
+            }
         }
     }
 }
