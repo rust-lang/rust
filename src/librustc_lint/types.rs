@@ -350,7 +350,8 @@ impl LateLintPass for TypeLimits {
                                                        "unary negation of unsigned integer",
                                                        "E0519");
               if let Ok(snip) = cx.sess().codemap().span_to_snippet(lit_span) {
-                err.span_suggestion(span, "try using a cast or the `!` operator:", snip);
+                err.span_suggestion(span, "try using a cast or the `!` operator:",
+                                    format!("!{}", snip));
               } else {
                 err.span_help(span, "use a cast or the `!` operator");
               }
