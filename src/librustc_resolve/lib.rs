@@ -2752,7 +2752,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     };
                     if let Some(path_res) = resolution {
                         match path_res.base_def {
-                            DefVariant(..) | DefStruct(..) | DefConst(..) => {
+                            DefStruct(..) if path_res.depth == 0 => {
+                                self.record_def(pattern.id, path_res);
+                            }
+                            DefVariant(..) | DefConst(..) => {
                                 self.record_def(pattern.id, path_res);
                             }
                             DefStatic(..) => {
