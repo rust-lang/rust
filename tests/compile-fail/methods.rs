@@ -292,3 +292,15 @@ struct MyError(()); // doesn't implement Debug
 struct MyErrorWithParam<T> {
     x: T
 }
+
+fn starts_with() {
+    "".chars().next() == Some(' ');
+    //~^ ERROR starts_with
+    //~| HELP like this
+    //~| SUGGESTION "".starts_with(' ')
+
+    Some(' ') != "".chars().next();
+    //~^ ERROR starts_with
+    //~| HELP like this
+    //~| SUGGESTION !"".starts_with(' ')
+}
