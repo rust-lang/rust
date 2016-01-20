@@ -58,6 +58,10 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         self.tcx.types.bool
     }
 
+    pub fn unit_ty(&mut self) -> Ty<'tcx> {
+        self.tcx.mk_nil()
+    }
+
     pub fn str_literal(&mut self, value: token::InternedString) -> Literal<'tcx> {
         Literal::Value { value: ConstVal::Str(value) }
     }
