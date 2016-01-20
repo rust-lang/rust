@@ -2355,6 +2355,55 @@ impl<'a> Parser<'a> {
         )
     }
 
+    // Assuming we have just parsed `.foo` (i.e., a dot and an ident), continue
+    // parsing into an expression.
+    fn parse_dot_suffix(&mut self, ident: Ident, ident_span: Span, self_value: P<Expr>) -> PResult<'a, P<Expr>> {
+        let (_, tys, bindings) = if self.eat(&token::ModSep) {
+            try!(self.expect_lt());
+            try!(self.parse_generic_values_after_lt())
+        } else {
+            (Vec::new(), Vec::new(), Vec::new())
+        };
+
+        if !bindings.is_empty() {
+            let last_span = self.last_span;
+            self.span_err(last_span, "type bindings are only permitted on trait paths");
+        }
+
+        let lo = self_value.span.lo;
+
+        Ok(match self.token {
+            // expr.f() method call.
+            token::OpenDelim(token::Paren) => {
+                let mut es = try!(self.parse_unspanned_seq(
+                    &token::OpenDelim(token::Paren),
+                    &token::CloseDelim(token::Paren),
+                    seq_sep_trailing_allowed(token::Comma),
+                    |p| Ok(try!(p.parse_expr()))
+                ));
+                let hi = self.last_span.hi;
+
+                es.insert(0, self_value);
+                let id = spanned(ident_span.lo, ident_span.hi, ident);
+                let nd = self.mk_method_call(id, tys, es);
+                self.mk_expr(lo, hi, nd, None)
+            }
+            // Field access.
+            _ => {
+                if !tys.is_empty() {
+                    let last_span = self.last_span;
+                    self.span_err(last_span,
+                                  "field expressions may not \
+                                   have type parameters");
+                }
+
+                let id = spanned(ident_span.lo, ident_span.hi, ident);
+                let field = self.mk_field(self_value, id);
+                self.mk_expr(lo, ident_span.hi, field, None)
+            }
+        })
+    }
+
     fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>) -> PResult<'a, P<Expr>> {
         let mut e = e0;
         let lo = e.span.lo;
@@ -2364,50 +2413,11 @@ impl<'a> Parser<'a> {
             if self.eat(&token::Dot) {
                 match self.token {
                   token::Ident(i, _) => {
-                    let dot = self.last_span.hi;
+                    let dot_pos = self.last_span.hi;
                     hi = self.span.hi;
                     self.bump();
-                    let (_, tys, bindings) = if self.eat(&token::ModSep) {
-                        try!(self.expect_lt());
-                        try!(self.parse_generic_values_after_lt())
-                    } else {
-                        (Vec::new(), Vec::new(), Vec::new())
-                    };
 
-                    if !bindings.is_empty() {
-                        let last_span = self.last_span;
-                        self.span_err(last_span, "type bindings are only permitted on trait paths");
-                    }
-
-                    // expr.f() method call
-                    match self.token {
-                        token::OpenDelim(token::Paren) => {
-                            let mut es = try!(self.parse_unspanned_seq(
-                                &token::OpenDelim(token::Paren),
-                                &token::CloseDelim(token::Paren),
-                                seq_sep_trailing_allowed(token::Comma),
-                                |p| Ok(try!(p.parse_expr()))
-                            ));
-                            hi = self.last_span.hi;
-
-                            es.insert(0, e);
-                            let id = spanned(dot, hi, i);
-                            let nd = self.mk_method_call(id, tys, es);
-                            e = self.mk_expr(lo, hi, nd, None);
-                        }
-                        _ => {
-                            if !tys.is_empty() {
-                                let last_span = self.last_span;
-                                self.span_err(last_span,
-                                              "field expressions may not \
-                                               have type parameters");
-                            }
-
-                            let id = spanned(dot, hi, i);
-                            let field = self.mk_field(e, id);
-                            e = self.mk_expr(lo, hi, field, None);
-                        }
-                    }
+                    e = try!(self.parse_dot_suffix(i, mk_sp(dot_pos, hi), e));
                   }
                   token::Literal(token::Integer(n), suf) => {
                     let sp = self.span;
@@ -2452,7 +2462,17 @@ impl<'a> Parser<'a> {
                     self.abort_if_errors();
 
                   }
-                  _ => return self.unexpected()
+                  _ => {
+                    // TODO special case lifetime
+                    // FIXME Could factor this out into non_fatal_unexpected or something.
+                    let actual = self.this_token_to_string();
+                    self.span_err(self.span, &format!("unexpected token: `{}`", actual));
+
+                    let dot_pos = self.last_span.hi;
+                    e = try!(self.parse_dot_suffix(special_idents::invalid,
+                                                   mk_sp(dot_pos, dot_pos),
+                                                   e));
+                  }
                 }
                 continue;
             }
