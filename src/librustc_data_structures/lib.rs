@@ -24,7 +24,6 @@
       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![feature(hashmap_hasher)]
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
