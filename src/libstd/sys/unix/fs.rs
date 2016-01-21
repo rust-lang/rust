@@ -14,8 +14,7 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{dirent, readdir_r};
-use libc::{self, c_int, off_t, mode_t};
+use libc::{self, dirent, c_int, off_t, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -25,6 +24,8 @@ use sys::platform::raw;
 use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 use vec::Vec;
+#[cfg(target_os = "sunos")]
+use core_collections::borrow::ToOwned;
 
 pub struct File(FileDesc);
 
@@ -46,6 +47,12 @@ unsafe impl Sync for Dir {}
 pub struct DirEntry {
     entry: dirent,
     root: Arc<PathBuf>,
+    // We need to store an owned copy of the directory name
+    // on Solaris because a) it uses a zero-length array to
+    // store the name, b) its lifetime between readdir calls
+    // is not guaranteed.
+    #[cfg(target_os = "sunos")]
+    name: Arc<Vec<u8>>
 }
 
 #[derive(Clone)]
@@ -132,6 +139,32 @@ impl FromInner<raw::mode_t> for FilePermissions {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
+    #[cfg(target_os = "sunos")]
+    fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        unsafe {
+            loop {
+                let entry_ptr = libc::readdir(self.dirp.0);
+                if entry_ptr.is_null() {
+                    return None
+                }
+
+                let name = (*entry_ptr).d_name.as_ptr();
+                let namelen = libc::strlen(name) as usize;
+
+                let ret = DirEntry {
+                    entry: *entry_ptr,
+                    name: Arc::new(::slice::from_raw_parts(name as *const u8,
+                                                           namelen as usize).to_owned()),
+                    root: self.root.clone()
+                };
+                if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
+                    return Some(Ok(ret))
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "sunos"))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         unsafe {
             let mut ret = DirEntry {
@@ -140,7 +173,7 @@ impl Iterator for ReadDir {
             };
             let mut entry_ptr = ptr::null_mut();
             loop {
-                if readdir_r(self.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
+                if libc::readdir_r(self.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
                     return Some(Err(Error::last_os_error()))
                 }
                 if entry_ptr.is_null() {
@@ -174,6 +207,12 @@ impl DirEntry {
         lstat(&self.path())
     }
 
+    #[cfg(target_os = "sunos")]
+    pub fn file_type(&self) -> io::Result<FileType> {
+        stat(&self.path()).map(|m| m.file_type())
+    }
+
+    #[cfg(not(target_os = "sunos"))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
             libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
@@ -189,7 +228,8 @@ impl DirEntry {
 
     #[cfg(any(target_os = "macos",
               target_os = "ios",
-              target_os = "linux"))]
+              target_os = "linux",
+              target_os = "sunos"))]
     pub fn ino(&self) -> raw::ino_t {
         self.entry.d_ino
     }
@@ -233,6 +273,10 @@ impl DirEntry {
         unsafe {
             CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()
         }
+    }
+    #[cfg(target_os = "sunos")]
+    fn name_bytes(&self) -> &[u8] {
+        &*self.name
     }
 }
 

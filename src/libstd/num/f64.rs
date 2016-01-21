@@ -84,6 +84,38 @@ mod cmath {
     }
 }
 
+#[cfg(not(target_os = "sunos"))]
+macro_rules! log_wrapper {
+    ($num:ident, $f:ident) => (
+        unsafe { intrinsics::$f($num) }
+    )
+}
+
+// Illumos requires a wrapper around log, log2, and log10 functions
+// because of non-standard behavior (e.g. log(-n) returns -Inf instead
+// of expected NaN).
+#[cfg(target_os = "sunos")]
+macro_rules! log_wrapper {
+    ($num:ident, $f:ident) => (
+        if $num.is_finite() {
+            if $num > 0.0 {
+                return unsafe { intrinsics::$f($num) }
+            }
+            return if $num == 0.0 {
+                NEG_INFINITY // log(0) = -Inf
+            } else {
+                NAN // log(-ve) = NaN
+            }
+        } else if $num.is_nan() {
+            $num // log(NaN) = NaN
+        } else if $num > 0.0 {
+            $num // log(Inf) = Inf
+        } else {
+            return NAN // log(-Inf) = NaN
+        }
+    )
+}
+
 #[cfg(not(test))]
 #[lang = "f64"]
 impl f64 {
@@ -511,7 +543,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
-        unsafe { intrinsics::logf64(self) }
+        log_wrapper!(self, logf64)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -546,7 +578,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        unsafe { intrinsics::log2f64(self) }
+        log_wrapper!(self, log2f64)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -562,7 +594,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
-        unsafe { intrinsics::log10f64(self) }
+        log_wrapper!(self, log10f64)
     }
 
     /// Converts radians to degrees.

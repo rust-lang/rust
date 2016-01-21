@@ -28,6 +28,7 @@ pub enum Os {
     OsNetbsd,
     OsOpenbsd,
     OsNaCl,
+    OsSunos,
 }
 
 #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
@@ -147,6 +148,7 @@ impl fmt::Display for Os {
             OsNetbsd => "netbsd".fmt(f),
             OsOpenbsd => "openbsd".fmt(f),
             OsNaCl => "nacl".fmt(f),
+            OsSunos => "sunos".fmt(f),
         }
     }
 }
