@@ -604,7 +604,6 @@ pub struct ImplMethod<'tcx> {
 }
 
 impl<'tcx> ty::ctxt<'tcx> {
-    #[inline(never)] // is this perfy enough?
     pub fn get_impl_method(&self,
                            impl_def_id: DefId,
                            substs: Substs<'tcx>,
