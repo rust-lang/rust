@@ -1049,9 +1049,9 @@ pub enum ExprOrMethodCall {
 }
 
 pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            node: ExprOrMethodCall,
-                            param_substs: &subst::Substs<'tcx>)
-                            -> subst::Substs<'tcx> {
+                                node: ExprOrMethodCall,
+                                param_substs: &subst::Substs<'tcx>)
+                                -> subst::Substs<'tcx> {
     let tcx = ccx.tcx();
 
     let substs = match node {
@@ -1064,13 +1064,13 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     if substs.types.needs_infer() {
-            tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
-                                 node, substs));
-        }
+        tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
+                              node, substs));
+    }
 
-        monomorphize::apply_param_substs(tcx,
-                                         param_substs,
-                                         &substs.erase_regions())
+    monomorphize::apply_param_substs(tcx,
+                                     param_substs,
+                                     &substs.erase_regions())
 }
 
 pub fn langcall(bcx: Block,
