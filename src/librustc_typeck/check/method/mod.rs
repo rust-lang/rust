@@ -12,7 +12,7 @@
 
 use astconv::AstConv;
 use check::FnCtxt;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
@@ -334,7 +334,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               method_name: ast::Name,
                               self_ty: ty::Ty<'tcx>,
                               expr_id: ast::NodeId)
-                              -> Result<(def::Def, LastPrivate), MethodError<'tcx>>
+                              -> Result<(Def, LastPrivate), MethodError<'tcx>>
 {
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
@@ -346,8 +346,8 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
     let def_result = match pick.item {
-        ty::ImplOrTraitItem::MethodTraitItem(..) => def::DefMethod(def_id),
-        ty::ImplOrTraitItem::ConstTraitItem(..) => def::DefAssociatedConst(def_id),
+        ty::ImplOrTraitItem::MethodTraitItem(..) => Def::Method(def_id),
+        ty::ImplOrTraitItem::ConstTraitItem(..) => Def::AssociatedConst(def_id),
         ty::ImplOrTraitItem::TypeTraitItem(..) => {
             fcx.tcx().sess.span_bug(span, "resolve_ufcs: probe picked associated type");
         }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def;
+use middle::def::{self, Def};
 use middle::infer::{self, TypeOrigin};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
@@ -214,7 +214,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         hir::PatQPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);
             let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
-                if d.base_def == def::DefErr {
+                if d.base_def == Def::Err {
                     fcx.write_error(pat.id);
                     return;
                 }
@@ -223,7 +223,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 // This is just a sentinel for finish_resolving_def_to_ty.
                 let sentinel = fcx.tcx().map.local_def_id(ast::CRATE_NODE_ID);
                 def::PathResolution {
-                    base_def: def::DefMod(sentinel),
+                    base_def: Def::Mod(sentinel),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
@@ -410,10 +410,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     // subtyping.
 }
 
-fn check_assoc_item_is_const(pcx: &pat_ctxt, def: def::Def, span: Span) -> bool {
+fn check_assoc_item_is_const(pcx: &pat_ctxt, def: Def, span: Span) -> bool {
     match def {
-        def::DefAssociatedConst(..) => true,
-        def::DefMethod(..) => {
+        Def::AssociatedConst(..) => true,
+        Def::Method(..) => {
             span_err!(pcx.fcx.ccx.tcx.sess, span, E0327,
                       "associated items in match patterns must be constants");
             false
@@ -616,7 +616,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let tcx = pcx.fcx.ccx.tcx;
 
     let path_res = match tcx.def_map.borrow().get(&pat.id) {
-        Some(&path_res) if path_res.base_def != def::DefErr => path_res,
+        Some(&path_res) if path_res.base_def != Def::Err => path_res,
         _ => {
             fcx.write_error(pat.id);
 
@@ -693,10 +693,12 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
-        ty::TyEnum(enum_def, expected_substs)
-            if def == def::DefVariant(enum_def.did, def.def_id(), false) =>
-        {
+        ty::TyEnum(enum_def, expected_substs) => {
             let variant = enum_def.variant_of_def(def);
+            if variant.kind() == ty::VariantKind::Struct {
+                report_bad_struct_kind(false);
+                return;
+            }
             if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
                 // Matching unit variants with tuple variant patterns (`UnitVariant(..)`)
                 // is allowed for backward compatibility.

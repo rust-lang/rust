@@ -17,7 +17,8 @@ use front::map as ast_map;
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
 
-use middle::{def, pat_util, privacy, ty};
+use middle::{pat_util, privacy, ty};
+use middle::def::Def;
 use middle::def_id::{DefId};
 use lint;
 
@@ -94,13 +95,13 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
         self.tcx.def_map.borrow().get(id).map(|def| {
             match def.full_def() {
-                def::DefConst(_) | def::DefAssociatedConst(..) => {
+                Def::Const(_) | Def::AssociatedConst(..) => {
                     self.check_def_id(def.def_id());
                 }
                 _ if self.ignore_non_const_paths => (),
-                def::DefPrimTy(_) => (),
-                def::DefSelfTy(..) => (),
-                def::DefVariant(enum_id, variant_id, _) => {
+                Def::PrimTy(_) => (),
+                Def::SelfTy(..) => (),
+                Def::Variant(enum_id, variant_id) => {
                     self.check_def_id(enum_id);
                     if !self.ignore_variant_stack.contains(&variant_id) {
                         self.check_def_id(variant_id);

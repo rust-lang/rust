@@ -60,7 +60,7 @@ There are some shortcomings in this design:
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
 use lint;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
@@ -512,10 +512,10 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
     if let hir::TyPath(None, _) = ast_ty.node {
         let path_res = *tcx.def_map.borrow().get(&ast_ty.id).unwrap();
         match path_res.base_def {
-            def::DefSelfTy(Some(def_id), None) => {
+            Def::SelfTy(Some(def_id), None) => {
                 path_res.depth == 0 && def_id == tcx.map.local_def_id(param_id)
             }
-            def::DefTyParam(_, _, def_id, _) => {
+            Def::TyParam(_, _, def_id, _) => {
                 path_res.depth == 0 && def_id == tcx.map.local_def_id(param_id)
             }
             _ => {
@@ -1007,11 +1007,7 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
         name: name,
         disr_val: disr_val,
         fields: fields,
-        kind: match *def {
-            hir::VariantData::Struct(..) => ty::VariantKind::Struct,
-            hir::VariantData::Tuple(..) => ty::VariantKind::Tuple,
-            hir::VariantData::Unit(..) => ty::VariantKind::Unit,
-        }
+        kind: VariantKind::from_variant_data(def),
     }
 }
 

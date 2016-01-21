@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::ty;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 
 use std::env;
@@ -533,12 +533,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let def = def_map.get(&id).unwrap().full_def();
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         match def {
-            def::DefUpvar(..) |
-            def::DefLocal(..) |
-            def::DefStatic(..) |
-            def::DefConst(..) |
-            def::DefAssociatedConst(..) |
-            def::DefVariant(..) => {
+            Def::Upvar(..) |
+            Def::Local(..) |
+            Def::Static(..) |
+            Def::Const(..) |
+            Def::AssociatedConst(..) |
+            Def::Variant(..) => {
                 Some(Data::VariableRefData(VariableRefData {
                     name: self.span_utils.snippet(sub_span.unwrap()),
                     span: sub_span.unwrap(),
@@ -546,17 +546,18 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: def.def_id(),
                 }))
             }
-            def::DefStruct(def_id) |
-            def::DefTy(def_id, _) |
-            def::DefTrait(def_id) |
-            def::DefTyParam(_, _, def_id, _) => {
+            Def::Struct(def_id) |
+            Def::Enum(def_id) |
+            Def::TyAlias(def_id) |
+            Def::Trait(def_id) |
+            Def::TyParam(_, _, def_id, _) => {
                 Some(Data::TypeRefData(TypeRefData {
                     span: sub_span.unwrap(),
                     ref_id: def_id,
                     scope: self.enclosing_scope(id),
                 }))
             }
-            def::DefMethod(decl_id) => {
+            Def::Method(decl_id) => {
                 let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.impl_or_trait_item(decl_id);
@@ -591,14 +592,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     decl_id: Some(decl_id),
                 }))
             }
-            def::DefFn(def_id, _) => {
+            Def::Fn(def_id) => {
                 Some(Data::FunctionCallData(FunctionCallData {
                     ref_id: def_id,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(id),
                 }))
             }
-            def::DefMod(def_id) => {
+            Def::Mod(def_id) => {
                 Some(Data::ModRefData(ModRefData {
                     ref_id: def_id,
                     span: sub_span.unwrap(),
@@ -651,7 +652,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
         let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
-            def::DefPrimTy(_) | def::DefSelfTy(..) => None,
+            Def::PrimTy(_) | Def::SelfTy(..) => None,
             _ => Some(def.def_id()),
         }
     }

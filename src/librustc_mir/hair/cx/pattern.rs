@@ -12,7 +12,7 @@ use hair::*;
 use hair::cx::Cx;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_eval;
-use rustc::middle::def;
+use rustc::middle::def::Def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
 use rustc::middle::ty::{self, Ty};
 use rustc::mir::repr::*;
@@ -84,7 +84,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             {
                 let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
                 match def {
-                    def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
+                    Def::Const(def_id) | Def::AssociatedConst(def_id) =>
                         match const_eval::lookup_const_by_id(self.cx.tcx, def_id,
                                                              Some(pat.id), None) {
                             Some(const_expr) => {
@@ -290,7 +290,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                        -> PatternKind<'tcx> {
         let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
         match def {
-            def::DefVariant(enum_id, variant_id, _) => {
+            Def::Variant(enum_id, variant_id) => {
                 let adt_def = self.cx.tcx.lookup_adt_def(enum_id);
                 if adt_def.variants.len() > 1 {
                     PatternKind::Variant {
@@ -303,9 +303,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 }
             }
 
-            // NB: resolving to DefStruct means the struct *constructor*,
-            // not the struct as a type.
-            def::DefStruct(..) | def::DefTy(..) => {
+            Def::Struct(..) | Def::TyAlias(..) => {
                 PatternKind::Leaf { subpatterns: subpatterns }
             }
 

@@ -77,7 +77,7 @@ use rustc_front::hir;
 use rustc_front::print::pprust;
 
 use middle::cstore::CrateStore;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
 use middle::region;
@@ -1404,7 +1404,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         Some(d) => d.full_def()
                     };
                     match a_def {
-                        def::DefTy(did, _) | def::DefStruct(did) => {
+                        Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
                             let generics = self.tcx.lookup_item_type(did).generics;
 
                             let expected =
@@ -1452,7 +1452,6 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         }
                         _ => ()
                     }
-
                 }
 
                 hir::TyPtr(ref mut_ty) => {

@@ -31,6 +31,7 @@ use self::DuplicateCheckingMode::*;
 use rustc::middle::cstore::{CrateStore, ChildItem, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::middle::ty::VariantKind;
 
 use syntax::ast::{Name, NodeId};
 use syntax::attr::AttrMetaMethods;
@@ -315,7 +316,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     };
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent, name);
-                    let def = DefMod(def_id);
+                    let def = Def::Mod(def_id);
                     let external_module = self.new_module(parent_link, Some(def), false, true);
 
                     debug!("(build reduced graph for item) found extern `{}`",
@@ -333,7 +334,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateTypes, sp);
 
                 let parent_link = ModuleParentLink(parent, name);
-                let def = DefMod(self.ast_map.local_def_id(item.id));
+                let def = Def::Mod(self.ast_map.local_def_id(item.id));
                 let module = self.new_module(parent_link, Some(def), false, is_public);
                 name_bindings.define_module(module.clone(), sp);
                 module
@@ -346,20 +347,20 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateValues, sp);
                 let mutbl = m == hir::MutMutable;
 
-                name_bindings.define_value(DefStatic(self.ast_map.local_def_id(item.id), mutbl),
+                name_bindings.define_value(Def::Static(self.ast_map.local_def_id(item.id), mutbl),
                                            sp,
                                            modifiers);
                 parent
             }
             ItemConst(_, _) => {
                 self.add_child(name, parent, ForbidDuplicateValues, sp)
-                    .define_value(DefConst(self.ast_map.local_def_id(item.id)), sp, modifiers);
+                    .define_value(Def::Const(self.ast_map.local_def_id(item.id)), sp, modifiers);
                 parent
             }
             ItemFn(_, _, _, _, _, _) => {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateValues, sp);
 
-                let def = DefFn(self.ast_map.local_def_id(item.id), false);
+                let def = Def::Fn(self.ast_map.local_def_id(item.id));
                 name_bindings.define_value(def, sp, modifiers);
                 parent
             }
@@ -372,7 +373,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                    sp);
 
                 let parent_link = ModuleParentLink(parent, name);
-                let def = DefTy(self.ast_map.local_def_id(item.id), false);
+                let def = Def::TyAlias(self.ast_map.local_def_id(item.id));
                 let module = self.new_module(parent_link, Some(def), false, is_public);
                 name_bindings.define_module(module, sp);
                 parent
@@ -385,7 +386,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                    sp);
 
                 let parent_link = ModuleParentLink(parent, name);
-                let def = DefTy(self.ast_map.local_def_id(item.id), true);
+                let def = Def::Enum(self.ast_map.local_def_id(item.id));
                 let module = self.new_module(parent_link, Some(def), false, is_public);
                 name_bindings.define_module(module.clone(), sp);
 
@@ -414,14 +415,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings = self.add_child(name, parent, forbid, sp);
 
                 // Define a name in the type namespace.
-                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), false),
+                name_bindings.define_type(Def::Struct(self.ast_map.local_def_id(item.id)),
                                           sp,
                                           modifiers);
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
                 if let Some(cid) = ctor_id {
-                    name_bindings.define_value(DefStruct(self.ast_map.local_def_id(cid)),
+                    name_bindings.define_value(Def::Struct(self.ast_map.local_def_id(cid)),
                                                sp,
                                                modifiers);
                 }
@@ -455,7 +456,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Add all the items within to a new module.
                 let parent_link = ModuleParentLink(parent, name);
-                let def = DefTrait(def_id);
+                let def = Def::Trait(def_id);
                 let module_parent = self.new_module(parent_link, Some(def), false, is_public);
                 name_bindings.define_module(module_parent.clone(), sp);
 
@@ -468,17 +469,18 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                     match trait_item.node {
                         hir::ConstTraitItem(..) => {
-                            let def = DefAssociatedConst(self.ast_map.local_def_id(trait_item.id));
+                            let def = Def::AssociatedConst(self.ast_map.
+                                                                local_def_id(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                         hir::MethodTraitItem(..) => {
-                            let def = DefMethod(self.ast_map.local_def_id(trait_item.id));
+                            let def = Def::Method(self.ast_map.local_def_id(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                         hir::TypeTraitItem(..) => {
-                            let def = DefAssociatedTy(self.ast_map.local_def_id(item.id),
+                            let def = Def::AssociatedTy(self.ast_map.local_def_id(item.id),
                                                       self.ast_map.local_def_id(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_type(def, trait_item.span, DefModifiers::PUBLIC);
@@ -502,26 +504,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        parent: Module<'b>,
                                        variant_modifiers: DefModifiers) {
         let name = variant.node.name;
-        let is_exported = if variant.node.data.is_struct() {
+        if variant.node.data.is_struct() {
             // Not adding fields for variants as they are not accessed with a self receiver
             let variant_def_id = self.ast_map.local_def_id(variant.node.data.id());
             self.structs.insert(variant_def_id, Vec::new());
-            true
-        } else {
-            false
-        };
+        }
 
         let child = self.add_child(name, parent, ForbidDuplicateTypesAndValues, variant.span);
         // variants are always treated as importable to allow them to be glob
         // used
-        child.define_value(DefVariant(item_id,
-                                      self.ast_map.local_def_id(variant.node.data.id()),
-                                      is_exported),
+        child.define_value(Def::Variant(item_id, self.ast_map.local_def_id(variant.node.data.id())),
                            variant.span,
                            DefModifiers::PUBLIC | DefModifiers::IMPORTABLE | variant_modifiers);
-        child.define_type(DefVariant(item_id,
-                                     self.ast_map.local_def_id(variant.node.data.id()),
-                                     is_exported),
+        child.define_type(Def::Variant(item_id, self.ast_map.local_def_id(variant.node.data.id())),
                           variant.span,
                           DefModifiers::PUBLIC | DefModifiers::IMPORTABLE | variant_modifiers);
     }
@@ -541,10 +536,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         let def = match foreign_item.node {
             ForeignItemFn(..) => {
-                DefFn(self.ast_map.local_def_id(foreign_item.id), false)
+                Def::Fn(self.ast_map.local_def_id(foreign_item.id))
             }
             ForeignItemStatic(_, m) => {
-                DefStatic(self.ast_map.local_def_id(foreign_item.id), m)
+                Def::Static(self.ast_map.local_def_id(foreign_item.id), m)
             }
         };
         name_bindings.define_value(def, foreign_item.span, modifiers);
@@ -591,12 +586,18 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         if is_exported {
             self.external_exports.insert(def.def_id());
         }
+        let is_struct_ctor = if let Def::Struct(def_id) = def {
+            self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_some()
+        } else {
+            false
+        };
 
         match def {
-            DefMod(_) |
-            DefForeignMod(_) |
-            DefStruct(_) |
-            DefTy(..) => {
+            Def::Mod(_) |
+            Def::ForeignMod(_) |
+            Def::Struct(..) |
+            Def::Enum(..) |
+            Def::TyAlias(..) if !is_struct_ctor => {
                 if let Some(module_def) = child_name_bindings.type_ns.module() {
                     debug!("(building reduced graph for external crate) already created module");
                     module_def.def.set(Some(def));
@@ -613,14 +614,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         }
 
         match def {
-            DefMod(_) | DefForeignMod(_) => {}
-            DefVariant(_, variant_id, is_struct) => {
+            Def::Mod(_) | Def::ForeignMod(_) => {}
+            Def::Variant(_, variant_id) => {
                 debug!("(building reduced graph for external crate) building variant {}",
                        final_ident);
                 // variants are always treated as importable to allow them to be
                 // glob used
                 let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE;
-                if is_struct {
+                if self.session.cstore.variant_kind(variant_id) == Some(VariantKind::Struct) {
                     child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                     // Not adding fields for variants as they are not accessed with a self receiver
                     self.structs.insert(variant_id, Vec::new());
@@ -628,16 +629,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     child_name_bindings.define_value(def, DUMMY_SP, modifiers);
                 }
             }
-            DefFn(ctor_id, true) => {
-                child_name_bindings.define_value(
-                self.session.cstore.tuple_struct_definition_if_ctor(ctor_id)
-                    .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, modifiers);
-            }
-            DefFn(..) |
-            DefStatic(..) |
-            DefConst(..) |
-            DefAssociatedConst(..) |
-            DefMethod(..) => {
+            Def::Fn(..) |
+            Def::Static(..) |
+            Def::Const(..) |
+            Def::AssociatedConst(..) |
+            Def::Method(..) => {
                 debug!("(building reduced graph for external crate) building value (fn/static) {}",
                        final_ident);
                 // impl methods have already been defined with the correct importability
@@ -652,7 +648,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 }
                 child_name_bindings.define_value(def, DUMMY_SP, modifiers);
             }
-            DefTrait(def_id) => {
+            Def::Trait(def_id) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
 
@@ -680,7 +676,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module = self.new_module(parent_link, Some(def), true, is_public);
                 child_name_bindings.define_module(module, DUMMY_SP);
             }
-            DefTy(..) | DefAssociatedTy(..) => {
+            Def::Enum(..) | Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
 
@@ -689,33 +685,38 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     _ => modifiers & !DefModifiers::IMPORTABLE,
                 };
 
-                if let DefTy(..) = def {
+                if let Def::Enum(..) = def {
+                    child_name_bindings.type_ns.set_modifiers(modifiers);
+                } else if let Def::TyAlias(..) = def {
                     child_name_bindings.type_ns.set_modifiers(modifiers);
                 } else {
                     child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                 }
             }
-            DefStruct(def_id) => {
+            Def::Struct(..) if is_struct_ctor => {
+                // Do nothing
+            }
+            Def::Struct(def_id) => {
                 debug!("(building reduced graph for external crate) building type and value for \
                         {}",
                        final_ident);
-                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
-                let fields = self.session.cstore.struct_field_names(def_id);
 
-                if fields.is_empty() {
-                    child_name_bindings.define_value(def, DUMMY_SP, modifiers);
+                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+                if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
+                    child_name_bindings.define_value(Def::Struct(ctor_def_id), DUMMY_SP, modifiers);
                 }
 
                 // Record the def ID and fields of this struct.
+                let fields = self.session.cstore.struct_field_names(def_id);
                 self.structs.insert(def_id, fields);
             }
-            DefLocal(..) |
-            DefPrimTy(..) |
-            DefTyParam(..) |
-            DefUpvar(..) |
-            DefLabel(..) |
-            DefSelfTy(..) |
-            DefErr => {
+            Def::Local(..) |
+            Def::PrimTy(..) |
+            Def::TyParam(..) |
+            Def::Upvar(..) |
+            Def::Label(..) |
+            Def::SelfTy(..) |
+            Def::Err => {
                 panic!("didn't expect `{:?}`", def);
             }
         }
@@ -729,7 +730,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             DlDef(def) => {
                 // Add the new child item, if necessary.
                 match def {
-                    DefForeignMod(def_id) => {
+                    Def::ForeignMod(def_id) => {
                         // Foreign modules have no names. Recur and populate
                         // eagerly.
                         for child in self.session.cstore.item_children(def_id) {

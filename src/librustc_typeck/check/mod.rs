@@ -86,7 +86,7 @@ use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
-use middle::def;
+use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{TypeOrigin, type_variable};
@@ -1416,16 +1416,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Return the dict-like variant corresponding to a given `Def`.
     pub fn def_struct_variant(&self,
-                              def: def::Def,
+                              def: Def,
                               span: Span)
                               -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
     {
         let (adt, variant) = match def {
-            def::DefVariant(enum_id, variant_id, _) => {
+            Def::Variant(enum_id, variant_id) => {
                 let adt = self.tcx().lookup_adt_def(enum_id);
                 (adt, adt.variant_with_id(variant_id))
             }
-            def::DefTy(did, _) | def::DefStruct(did) => {
+            Def::Struct(did) | Def::TyAlias(did) => {
                 let typ = self.tcx().lookup_item_type(did);
                 if let ty::TyStruct(adt, _) = typ.ty.sty {
                     (adt, adt.struct_variant())
@@ -3167,7 +3167,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // Find the relevant variant
         let def = lookup_full_def(tcx, path.span, expr.id);
-        if def == def::DefErr {
+        if def == Def::Err {
             check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
             return;
         }
@@ -3337,7 +3337,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
                 // Create some fake resolution that can't possibly be a type.
                 def::PathResolution {
-                    base_def: def::DefMod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
+                    base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
@@ -3349,7 +3349,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           if let Some((opt_ty, segments, def)) =
                   resolve_ty_and_def_ufcs(fcx, path_res, opt_self_ty, path,
                                           expr.span, expr.id) {
-              if def != def::DefErr {
+              if def != Def::Err {
                   let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx,
                                                                                 expr.span,
                                                                                 def);
@@ -3758,7 +3758,7 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                                              node_id: ast::NodeId)
                                              -> Option<(Option<Ty<'tcx>>,
                                                         &'a [hir::PathSegment],
-                                                        def::Def)>
+                                                        Def)>
 {
 
     // If fully resolved already, we don't have to do anything.
@@ -4263,29 +4263,30 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 // Returns the type parameter count and the type for the given definition.
 fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 sp: Span,
-                                                defn: def::Def)
+                                                defn: Def)
                                                 -> (TypeScheme<'tcx>, GenericPredicates<'tcx>) {
     match defn {
-        def::DefLocal(_, nid) | def::DefUpvar(_, nid, _, _) => {
+        Def::Local(_, nid) | Def::Upvar(_, nid, _, _) => {
             let typ = fcx.local_ty(sp, nid);
             (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
              ty::GenericPredicates::empty())
         }
-        def::DefFn(id, _) | def::DefMethod(id) |
-        def::DefStatic(id, _) | def::DefVariant(_, id, _) |
-        def::DefStruct(id) | def::DefConst(id) | def::DefAssociatedConst(id) => {
+        Def::Fn(id) | Def::Method(id) |
+        Def::Static(id, _) | Def::Variant(_, id) |
+        Def::Struct(id) | Def::Const(id) | Def::AssociatedConst(id) => {
             (fcx.tcx().lookup_item_type(id), fcx.tcx().lookup_predicates(id))
         }
-        def::DefTrait(_) |
-        def::DefTy(..) |
-        def::DefAssociatedTy(..) |
-        def::DefPrimTy(_) |
-        def::DefTyParam(..) |
-        def::DefMod(..) |
-        def::DefForeignMod(..) |
-        def::DefLabel(..) |
-        def::DefSelfTy(..) |
-        def::DefErr => {
+        Def::Trait(_) |
+        Def::Enum(..) |
+        Def::TyAlias(..) |
+        Def::AssociatedTy(..) |
+        Def::PrimTy(_) |
+        Def::TyParam(..) |
+        Def::Mod(..) |
+        Def::ForeignMod(..) |
+        Def::Label(..) |
+        Def::SelfTy(..) |
+        Def::Err => {
             fcx.ccx.tcx.sess.span_bug(sp, &format!("expected value, found {:?}", defn));
         }
     }
@@ -4298,7 +4299,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   type_scheme: TypeScheme<'tcx>,
                                   type_predicates: &ty::GenericPredicates<'tcx>,
                                   opt_self_ty: Option<Ty<'tcx>>,
-                                  def: def::Def,
+                                  def: Def,
                                   span: Span,
                                   node_id: ast::NodeId) {
     debug!("instantiate_path(path={:?}, def={:?}, node_id={}, type_scheme={:?})",
@@ -4382,14 +4383,15 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let mut segment_spaces: Vec<_>;
     match def {
         // Case 1 and 1b. Reference to a *type* or *enum variant*.
-        def::DefSelfTy(..) |
-        def::DefStruct(..) |
-        def::DefVariant(..) |
-        def::DefTy(..) |
-        def::DefAssociatedTy(..) |
-        def::DefTrait(..) |
-        def::DefPrimTy(..) |
-        def::DefTyParam(..) => {
+        Def::SelfTy(..) |
+        Def::Struct(..) |
+        Def::Variant(..) |
+        Def::Enum(..) |
+        Def::TyAlias(..) |
+        Def::AssociatedTy(..) |
+        Def::Trait(..) |
+        Def::PrimTy(..) |
+        Def::TyParam(..) => {
             // Everything but the final segment should have no
             // parameters at all.
             segment_spaces = vec![None; segments.len() - 1];
@@ -4397,15 +4399,15 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Case 2. Reference to a top-level value.
-        def::DefFn(..) |
-        def::DefConst(..) |
-        def::DefStatic(..) => {
+        Def::Fn(..) |
+        Def::Const(..) |
+        Def::Static(..) => {
             segment_spaces = vec![None; segments.len() - 1];
             segment_spaces.push(Some(subst::FnSpace));
         }
 
         // Case 3. Reference to a method.
-        def::DefMethod(def_id) => {
+        Def::Method(def_id) => {
             let container = fcx.tcx().impl_or_trait_item(def_id).container();
             match container {
                 ty::TraitContainer(trait_did) => {
@@ -4426,7 +4428,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         }
 
-        def::DefAssociatedConst(def_id) => {
+        Def::AssociatedConst(def_id) => {
             let container = fcx.tcx().impl_or_trait_item(def_id).container();
             match container {
                 ty::TraitContainer(trait_did) => {
@@ -4450,12 +4452,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Other cases. Various nonsense that really shouldn't show up
         // here. If they do, an error will have been reported
         // elsewhere. (I hope)
-        def::DefMod(..) |
-        def::DefForeignMod(..) |
-        def::DefLocal(..) |
-        def::DefLabel(..) |
-        def::DefUpvar(..) |
-        def::DefErr => {
+        Def::Mod(..) |
+        Def::ForeignMod(..) |
+        Def::Local(..) |
+        Def::Label(..) |
+        Def::Upvar(..) |
+        Def::Err => {
             segment_spaces = vec![None; segments.len()];
         }
     }
@@ -4856,7 +4858,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &hir::Block) -> bool {
     // <id> nested anywhere inside the loop?
     (block_query(b, |e| {
         if let hir::ExprBreak(Some(_)) = e.node {
-            lookup_full_def(cx, e.span, e.id) == def::DefLabel(id)
+            lookup_full_def(cx, e.span, e.id) == Def::Label(id)
         } else {
             false
         }

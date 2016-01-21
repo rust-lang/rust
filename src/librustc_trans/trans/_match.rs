@@ -192,7 +192,7 @@ use llvm::{ValueRef, BasicBlockRef};
 use middle::check_match::StaticInliner;
 use middle::check_match;
 use middle::const_eval;
-use middle::def::{self, DefMap};
+use middle::def::{Def, DefMap};
 use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
 use middle::infer;
@@ -669,7 +669,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // This is either an enum variant or a variable binding.
                 let opt_def = tcx.def_map.borrow().get(&cur.id).map(|d| d.full_def());
                 match opt_def {
-                    Some(def::DefVariant(enum_id, var_id, _)) => {
+                    Some(Def::Variant(enum_id, var_id)) => {
                         let variant = tcx.lookup_adt_def(enum_id).variant_with_id(var_id);
                         Variant(Disr::from(variant.disr_val),
                                 adt::represent_node(bcx, cur.id),
@@ -800,13 +800,13 @@ fn any_irrefutable_adt_pat(tcx: &ty::ctxt, m: &[Match], col: usize) -> bool {
             hir::PatTup(_) => true,
             hir::PatStruct(..) => {
                 match tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                    Some(def::DefVariant(..)) => false,
+                    Some(Def::Variant(..)) => false,
                     _ => true,
                 }
             }
             hir::PatEnum(..) | hir::PatIdent(_, _, None) => {
                 match tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                    Some(def::DefStruct(..)) => true,
+                    Some(Def::Struct(..)) => true,
                     _ => false
                 }
             }
@@ -1452,19 +1452,19 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool {
     let (vid, field) = match discr.node {
         hir::ExprPath(..) => match bcx.def(discr.id) {
-            def::DefLocal(_, vid) | def::DefUpvar(_, vid, _, _) => (vid, None),
+            Def::Local(_, vid) | Def::Upvar(_, vid, _, _) => (vid, None),
             _ => return false
         },
         hir::ExprField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
-                Some(def::DefLocal(_, vid)) | Some(def::DefUpvar(_, vid, _, _)) => vid,
+                Some(Def::Local(_, vid)) | Some(Def::Upvar(_, vid, _, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::NamedField(field.node)))
         },
         hir::ExprTupField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
-                Some(def::DefLocal(_, vid)) | Some(def::DefUpvar(_, vid, _, _)) => vid,
+                Some(Def::Local(_, vid)) | Some(Def::Upvar(_, vid, _, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::PositionalField(field.node)))
@@ -1851,7 +1851,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::PatEnum(_, ref sub_pats) => {
             let opt_def = bcx.tcx().def_map.borrow().get(&pat.id).map(|d| d.full_def());
             match opt_def {
-                Some(def::DefVariant(enum_id, var_id, _)) => {
+                Some(Def::Variant(enum_id, var_id)) => {
                     let repr = adt::represent_node(bcx, pat.id);
                     let vinfo = ccx.tcx().lookup_adt_def(enum_id).variant_with_id(var_id);
                     let args = extract_variant_args(bcx,
@@ -1868,7 +1868,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         }
                     }
                 }
-                Some(def::DefStruct(..)) => {
+                Some(Def::Struct(..)) => {
                     match *sub_pats {
                         None => {
                             // This is a unit-like struct. Nothing to do here.

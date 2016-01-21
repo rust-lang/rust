@@ -28,7 +28,8 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use middle::{cfg, def, infer, stability, traits};
+use middle::{cfg, infer, stability, traits};
+use middle::def::Def;
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::subst::Substs;
@@ -163,7 +164,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
                 }
                 let def = def_map.get(&fieldpat.node.pat.id).map(|d| d.full_def());
                 if let Some(def_id) = cx.tcx.map.opt_local_def_id(fieldpat.node.pat.id) {
-                    def == Some(def::DefLocal(def_id, fieldpat.node.pat.id))
+                    def == Some(Def::Local(def_id, fieldpat.node.pat.id))
                 } else {
                     false
                 }
@@ -819,7 +820,7 @@ impl LateLintPass for UnconditionalRecursion {
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
-                        Some(def::DefMethod(def_id)) => {
+                        Some(Def::Method(def_id)) => {
                             let item_substs =
                                 tcx.tables.borrow().item_substs
                                                    .get(&callee.id)
@@ -1060,7 +1061,7 @@ impl LateLintPass for MutableTransmutes {
                 hir::ExprPath(..) => (),
                 _ => return None
             }
-            if let def::DefFn(did, _) = cx.tcx.resolve_expr(expr) {
+            if let Def::Fn(did) = cx.tcx.resolve_expr(expr) {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }

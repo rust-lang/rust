@@ -246,7 +246,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                 let pat_ty = cx.tcx.pat_ty(p);
                 if let ty::TyEnum(edef, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-                    if let Some(DefLocal(..)) = def {
+                    if let Some(Def::Local(..)) = def {
                         if edef.variants.iter().any(|variant|
                             variant.name == ident.node.unhygienic_name
                                 && variant.kind() == VariantKind::Unit
@@ -454,8 +454,8 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
             hir::PatIdent(..) | hir::PatEnum(..) | hir::PatQPath(..) => {
                 let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
-                    Some(DefAssociatedConst(did)) |
-                    Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did,
+                    Some(Def::AssociatedConst(did)) |
+                    Some(Def::Const(did)) => match lookup_const_by_id(self.tcx, did,
                                                                     Some(pat.id), None) {
                         Some(const_expr) => {
                             const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
@@ -757,19 +757,19 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     match pat.node {
         hir::PatIdent(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefStruct(_)) => vec!(Single),
-                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(Def::Struct(..)) => vec!(Single),
+                Some(Def::Variant(_, id)) => vec!(Variant(id)),
                 _ => vec!()
             },
         hir::PatEnum(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(Def::Variant(_, id)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         hir::PatQPath(..) =>
@@ -777,10 +777,10 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                                             been rewritten"),
         hir::PatStruct(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(Def::Variant(_, id)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         hir::PatLit(ref expr) =>
@@ -869,10 +869,10 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         hir::PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().get(&pat_id).map(|d| d.full_def());
             match opt_def {
-                Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
-                Some(DefVariant(_, id, _)) => if *constructor == Variant(id) {
+                Some(Def::Variant(_, id)) => if *constructor == Variant(id) {
                     Some(vec!())
                 } else {
                     None
@@ -884,11 +884,11 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         hir::PatEnum(_, ref args) => {
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             match def {
-                DefConst(..) | DefAssociatedConst(..) =>
+                Def::Const(..) | Def::AssociatedConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
-                DefVariant(_, id, _) if *constructor != Variant(id) => None,
-                DefVariant(..) | DefStruct(..) => {
+                Def::Variant(_, id) if *constructor != Variant(id) => None,
+                Def::Variant(..) | Def::Struct(..) => {
                     Some(match args {
                         &Some(ref args) => args.iter().map(|p| &**p).collect(),
                         &None => vec![DUMMY_WILD_PAT; arity],
