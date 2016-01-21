@@ -11,10 +11,10 @@
 // This compiler pass detects constants that refer to themselves
 // recursively.
 
-use front::map as ast_map;
-use session::Session;
-use middle::def::{Def, DefMap};
-use util::nodemap::NodeMap;
+use rustc::front::map as ast_map;
+use rustc::session::Session;
+use rustc::middle::def::{Def, DefMap};
+use rustc::util::nodemap::NodeMap;
 
 use syntax::{ast};
 use syntax::codemap::Span;

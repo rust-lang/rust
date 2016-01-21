@@ -13,7 +13,7 @@ use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
-use middle::check_const;
+use middle::const_qualif::ConstQualif;
 use middle::cstore::LOCAL_CRATE;
 use middle::const_eval::{self, ConstVal, ConstEvalErr};
 use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
@@ -274,8 +274,7 @@ fn get_const_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            -> Result<ValueRef, ConstEvalFailure> {
     let expr = get_const_expr(ccx, def_id, ref_expr, param_substs);
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-    match get_const_expr_as_global(ccx, expr, check_const::ConstQualif::empty(),
-                                   empty_substs, TrueConst::Yes) {
+    match get_const_expr_as_global(ccx, expr, ConstQualif::empty(), empty_substs, TrueConst::Yes) {
         Err(Runtime(err)) => {
             ccx.tcx().sess.span_err(expr.span, &err.description());
             Err(Compiletime(err))
@@ -286,7 +285,7 @@ fn get_const_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           expr: &hir::Expr,
-                                          qualif: check_const::ConstQualif,
+                                          qualif: ConstQualif,
                                           param_substs: &'tcx Substs<'tcx>,
                                           trueconst: TrueConst)
                                           -> Result<ValueRef, ConstEvalFailure> {
@@ -315,7 +314,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
     let ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs,
                                               &ccx.tcx().expr_ty(expr));
-    let val = if qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS) {
+    let val = if qualif.intersects(ConstQualif::NON_STATIC_BORROWS) {
         // Avoid autorefs as they would create global instead of stack
         // references, even when only the latter are correct.
         try!(const_expr_unadjusted(ccx, expr, ty, param_substs, None, trueconst))

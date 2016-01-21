@@ -74,7 +74,7 @@ use self::Aliasability::*;
 use middle::def_id::DefId;
 use front::map as ast_map;
 use middle::infer;
-use middle::check_const;
+use middle::const_qualif::ConstQualif;
 use middle::def::Def;
 use middle::ty::adjustment;
 use middle::ty::{self, Ty};
@@ -795,19 +795,19 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
         let qualif = self.tcx().const_qualif_map.borrow().get(&id).cloned()
-                               .unwrap_or(check_const::ConstQualif::NOT_CONST);
+                               .unwrap_or(ConstQualif::NOT_CONST);
 
         // Only promote `[T; 0]` before an RFC for rvalue promotions
         // is accepted.
         let qualif = match expr_ty.sty {
             ty::TyArray(_, 0) => qualif,
-            _ => check_const::ConstQualif::NOT_CONST
+            _ => ConstQualif::NOT_CONST
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
-        let re = if qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS) {
+        let re = if qualif.intersects(ConstQualif::NON_STATIC_BORROWS) {
             self.temporary_scope(id)
         } else {
             ty::ReStatic
