@@ -164,16 +164,31 @@ impl Eq for Span {}
 
 impl Encodable for Span {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        try!(s.emit_u32(self.lo.0));
-        s.emit_u32(self.hi.0)
+        s.emit_struct("Span", 2, |s| {
+            try!(s.emit_struct_field("lo", 0, |s| {
+                self.lo.encode(s)
+            }));
+
+            s.emit_struct_field("hi", 1, |s| {
+                self.hi.encode(s)
+            })
+        })
     }
 }
 
 impl Decodable for Span {
     fn decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
-        let lo = BytePos(try! { d.read_u32() });
-        let hi = BytePos(try! { d.read_u32() });
-        Ok(mk_sp(lo, hi))
+        d.read_struct("Span", 2, |d| {
+            let lo = try!(d.read_struct_field("lo", 0, |d| {
+                BytePos::decode(d)
+            }));
+
+            let hi = try!(d.read_struct_field("hi", 1, |d| {
+                BytePos::decode(d)
+            }));
+
+            Ok(mk_sp(lo, hi))
+        })
     }
 }
 
