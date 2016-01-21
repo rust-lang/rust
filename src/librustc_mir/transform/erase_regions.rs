@@ -143,8 +143,9 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
             Rvalue::Use(ref mut operand) => {
                 self.erase_regions_operand(operand)
             }
-            Rvalue::Repeat(ref mut operand, _) => {
+            Rvalue::Repeat(ref mut operand, ref mut value) => {
                 self.erase_regions_operand(operand);
+                value.ty = self.tcx.erase_regions(&value.ty);
             }
             Rvalue::Ref(ref mut region, _, ref mut lvalue) => {
                 *region = ty::ReStatic;
