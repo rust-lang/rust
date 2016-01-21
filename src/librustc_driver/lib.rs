@@ -104,49 +104,95 @@ pub mod target_features;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
+// Err(0) means compilation was stopped, but no errors were found.
+// This would be better as a dedicated enum, but using try! is so convenient.
+pub type CompileResult = Result<(), usize>;
+
+pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
+    if err_count == 0 {
+        Ok(())
+    } else {
+        Err(err_count)
+    }
+}
+
+#[inline]
+fn abort_msg(err_count: usize) -> String {
+    match err_count {
+        0 => "aborting with no errors (maybe a bug?)".to_owned(),
+        1 => "aborting due to previous error".to_owned(),
+        e => format!("aborting due to {} previous errors", e),
+    }
+}
+
+pub fn abort_on_err<T>(result: Result<T, usize>, sess: &Session) -> T {
+    match result {
+        Err(err_count) => {
+            sess.fatal(&abort_msg(err_count));
+        }
+        Ok(x) => x,
+    }
+}
+
 pub fn run(args: Vec<String>) -> isize {
-    monitor(move || run_compiler(&args, &mut RustcDefaultCalls));
+    monitor(move || {
+        let (result, session) = run_compiler(&args, &mut RustcDefaultCalls);
+        if let Err(err_count) = result {
+            if err_count > 0 {
+                match session {
+                    Some(sess) => sess.fatal(&abort_msg(err_count)),
+                    None => {
+                        let mut emitter =
+                            errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+                        emitter.emit(None, &abort_msg(err_count), None, errors::Level::Fatal);
+                        panic!(errors::FatalError);
+                    }
+                }
+            }
+        }
+    });
     0
 }
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
-pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
-    macro_rules! do_or_return {($expr: expr) => {
+pub fn run_compiler<'a>(args: &[String],
+                        callbacks: &mut CompilerCalls<'a>)
+                        -> (CompileResult, Option<Session>) {
+    macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
-            Compilation::Stop => return,
+            Compilation::Stop => return (Ok(()), $sess),
             Compilation::Continue => {}
         }
     }}
 
     let matches = match handle_options(args.to_vec()) {
         Some(matches) => matches,
-        None => return,
+        None => return (Ok(()), None),
     };
 
     let sopts = config::build_session_options(&matches);
 
     let descriptions = diagnostics_registry();
 
-    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.error_format));
+    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.error_format), None);
 
     let (odir, ofile) = make_output(&matches);
     let (input, input_file_path) = match make_input(&matches.free) {
         Some((input, input_file_path)) => callbacks.some_input(input, input_file_path),
         None => match callbacks.no_input(&matches, &sopts, &odir, &ofile, &descriptions) {
             Some((input, input_file_path)) => (input, input_file_path),
-            None => return,
+            None => return (Ok(()), None),
         },
     };
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let sess = build_session(sopts, input_file_path, descriptions,
-                                 cstore.clone());
+    let sess = build_session(sopts, input_file_path, descriptions, cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let mut cfg = config::build_configuration(&sess);
     target_features::add_configuration(&mut cfg, &sess);
 
-    do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile));
+    do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile), Some(sess));
 
     // It is somewhat unfortunate that this is hardwired in - this is forced by
     // the fact that pretty_print_input requires the session by value.
@@ -154,7 +200,7 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
     match pretty {
         Some((ppm, opt_uii)) => {
             pretty::pretty_print_input(sess, &cstore, cfg, &input, ppm, opt_uii, ofile);
-            return;
+            return (Ok(()), None);
         }
         None => {
             // continue
@@ -163,8 +209,9 @@ pub fn run_compiler<'a>(args: &[String], callbacks: &mut CompilerCalls<'a>) {
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess);
-    driver::compile_input(sess, &cstore, cfg, &input, &odir, &ofile,
-                          Some(plugins), control);
+    (driver::compile_input(&sess, &cstore, cfg, &input, &odir, &ofile,
+                           Some(plugins), control),
+     Some(sess))
 }
 
 // Extract output directory and file from matches.
