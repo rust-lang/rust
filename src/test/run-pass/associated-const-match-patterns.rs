@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:empty-struct.rs
+
 #![feature(associated_consts)]
+
+extern crate empty_struct;
+use empty_struct::XEmpty2 as XFoo;
 
 struct Foo;
 
@@ -27,6 +32,10 @@ trait HasBar {
 }
 
 impl HasBar for Foo {
+    const THEBAR: Bar = Bar::Var1;
+}
+
+impl HasBar for XFoo {
     const THEBAR: Bar = Bar::Var1;
 }
 
@@ -51,6 +60,18 @@ fn main() {
     });
     assert!(match Bar::Var1 {
         <Foo as HasBar>::THEBAR => true,
+        _ => false,
+    });
+    assert!(match Bar::Var1 {
+        XFoo::THEBAR => true,
+        _ => false,
+    });
+    assert!(match Bar::Var1 {
+        <XFoo>::THEBAR => true,
+        _ => false,
+    });
+    assert!(match Bar::Var1 {
+        <XFoo as HasBar>::THEBAR => true,
         _ => false,
     });
 }

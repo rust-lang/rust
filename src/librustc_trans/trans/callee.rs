@@ -22,7 +22,7 @@ use arena::TypedArena;
 use back::link;
 use llvm::{self, ValueRef, get_params};
 use middle::cstore::LOCAL_CRATE;
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
@@ -133,13 +133,13 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
     }
 
     fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             def: def::Def,
+                             def: Def,
                              ref_expr: &hir::Expr)
                              -> Callee<'blk, 'tcx> {
         debug!("trans_def(def={:?}, ref_expr={:?})", def, ref_expr);
         let expr_ty = common::node_id_type(bcx, ref_expr.id);
         match def {
-            def::DefFn(did, _) if {
+            Def::Fn(did) if {
                 let maybe_def_id = inline::get_local_instance(bcx.ccx(), did);
                 let maybe_ast_node = maybe_def_id.and_then(|def_id| {
                     let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
@@ -156,7 +156,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                     ty: expr_ty
                 }
             }
-            def::DefFn(did, _) if match expr_ty.sty {
+            Def::Fn(did) if match expr_ty.sty {
                 ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic ||
                                           f.abi == synabi::PlatformIntrinsic,
                 _ => false
@@ -168,11 +168,11 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                 let node_id = bcx.tcx().map.as_local_node_id(def_id).unwrap();
                 Callee { bcx: bcx, data: Intrinsic(node_id, substs), ty: expr_ty }
             }
-            def::DefFn(did, _) => {
+            Def::Fn(did) => {
                 fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
                                             bcx.fcx.param_substs))
             }
-            def::DefMethod(meth_did) => {
+            Def::Method(meth_did) => {
                 let method_item = bcx.tcx().impl_or_trait_item(meth_did);
                 let fn_datum = match method_item.container() {
                     ty::ImplContainer(_) => {
@@ -190,7 +190,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                 };
                 fn_callee(bcx, fn_datum)
             }
-            def::DefVariant(tid, vid, _) => {
+            Def::Variant(tid, vid) => {
                 let vinfo = bcx.tcx().lookup_adt_def(tid).variant_with_id(vid);
                 assert_eq!(vinfo.kind(), ty::VariantKind::Tuple);
 
@@ -200,24 +200,24 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                     ty: expr_ty
                 }
             }
-            def::DefStruct(_) => {
+            Def::Struct(..) => {
                 Callee {
                     bcx: bcx,
                     data: NamedTupleConstructor(Disr(0)),
                     ty: expr_ty
                 }
             }
-            def::DefStatic(..) |
-            def::DefConst(..) |
-            def::DefAssociatedConst(..) |
-            def::DefLocal(..) |
-            def::DefUpvar(..) => {
+            Def::Static(..) |
+            Def::Const(..) |
+            Def::AssociatedConst(..) |
+            Def::Local(..) |
+            Def::Upvar(..) => {
                 datum_callee(bcx, ref_expr)
             }
-            def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
-            def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
-            def::DefLabel(..) | def::DefTyParam(..) |
-            def::DefSelfTy(..) | def::DefErr => {
+            Def::Mod(..) | Def::ForeignMod(..) | Def::Trait(..) |
+            Def::Enum(..) | Def::TyAlias(..) | Def::PrimTy(..) |
+            Def::AssociatedTy(..) | Def::Label(..) | Def::TyParam(..) |
+            Def::SelfTy(..) | Def::Err => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     &format!("cannot translate def {:?} \

@@ -12,7 +12,7 @@
 //! `unsafe`.
 use self::RootUnsafeContext::*;
 
-use middle::def;
+use middle::def::Def;
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 
@@ -170,7 +170,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
             hir::ExprPath(..) => {
-                if let def::DefStatic(_, true) = self.tcx.resolve_expr(expr) {
+                if let Def::Static(_, true) = self.tcx.resolve_expr(expr) {
                     self.require_unsafe(expr.span, "use of mutable static");
                 }
             }

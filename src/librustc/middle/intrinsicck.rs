@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::DepNode;
-use middle::def::DefFn;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
@@ -235,7 +235,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         if let hir::ExprPath(..) = expr.node {
             match self.tcx.resolve_expr(expr) {
-                DefFn(did, _) if self.def_id_is_transmute(did) => {
+                Def::Fn(did) if self.def_id_is_transmute(did) => {
                     let typ = self.tcx.node_id_to_type(expr.id);
                     match typ.sty {
                         TyBareFn(_, ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {

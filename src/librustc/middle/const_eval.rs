@@ -17,7 +17,8 @@ use self::EvalHint::*;
 use front::map as ast_map;
 use front::map::blocks::FnLikeNode;
 use middle::cstore::{self, CrateStore, InlinedItem};
-use middle::{def, infer, subst, traits};
+use middle::{infer, subst, traits};
+use middle::def::Def;
 use middle::subst::Subst;
 use middle::def_id::DefId;
 use middle::pat_util::def_to_path;
@@ -331,9 +332,9 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
                entry.insert(def);
             }
             let path = match def.full_def() {
-                def::DefStruct(def_id) => def_to_path(tcx, def_id),
-                def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
-                def::DefFn(..) => return P(hir::Pat {
+                Def::Struct(def_id) => def_to_path(tcx, def_id),
+                Def::Variant(_, variant_did) => def_to_path(tcx, variant_did),
+                Def::Fn(..) => return P(hir::Pat {
                     id: expr.id,
                     node: hir::PatLit(P(expr.clone())),
                     span: span,
@@ -364,12 +365,12 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
         hir::ExprPath(_, ref path) => {
             let opt_def = tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def());
             match opt_def {
-                Some(def::DefStruct(..)) =>
+                Some(Def::Struct(..)) =>
                     hir::PatStruct(path.clone(), hir::HirVec::new(), false),
-                Some(def::DefVariant(..)) =>
+                Some(Def::Variant(..)) =>
                     hir::PatEnum(path.clone(), None),
-                Some(def::DefConst(def_id)) |
-                Some(def::DefAssociatedConst(def_id)) => {
+                Some(Def::Const(def_id)) |
+                Some(Def::AssociatedConst(def_id)) => {
                     let expr = lookup_const_by_id(tcx, def_id, Some(expr.id), None).unwrap();
                     return const_expr_to_pat(tcx, expr, span);
                 },
@@ -1002,7 +1003,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               None
           };
           let (const_expr, const_ty) = match opt_def {
-              Some(def::DefConst(def_id)) => {
+              Some(Def::Const(def_id)) => {
                   if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
                       match tcx.map.find(node_id) {
                           Some(ast_map::NodeItem(it)) => match it.node {
@@ -1017,7 +1018,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       (lookup_const_by_id(tcx, def_id, Some(e.id), None), None)
                   }
               }
-              Some(def::DefAssociatedConst(def_id)) => {
+              Some(Def::AssociatedConst(def_id)) => {
                   if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
                       match tcx.impl_or_trait_item(def_id).container() {
                           ty::TraitContainer(trait_id) => match tcx.map.find(node_id) {
@@ -1052,21 +1053,21 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       (lookup_const_by_id(tcx, def_id, Some(e.id), None), None)
                   }
               }
-              Some(def::DefVariant(enum_def, variant_def, _)) => {
+              Some(Def::Variant(enum_def, variant_def)) => {
                   (lookup_variant_by_id(tcx, enum_def, variant_def), None)
               }
-              Some(def::DefStruct(_)) => {
+              Some(Def::Struct(..)) => {
                   return Ok(ConstVal::Struct(e.id))
               }
-              Some(def::DefLocal(_, id)) => {
-                  debug!("DefLocal({:?}): {:?}", id, fn_args);
+              Some(Def::Local(_, id)) => {
+                  debug!("Def::Local({:?}): {:?}", id, fn_args);
                   if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
                       return Ok(val.clone());
                   } else {
                       (None, None)
                   }
               },
-              Some(def::DefMethod(id)) | Some(def::DefFn(id, _)) => return Ok(Function(id)),
+              Some(Def::Method(id)) | Some(Def::Fn(id)) => return Ok(Function(id)),
               _ => (None, None)
           };
           let const_expr = match const_expr {

@@ -32,7 +32,7 @@ use super::{escape, generated_code, recorder, SaveContext, PathCollector, Data};
 
 use session::Session;
 
-use middle::def;
+use middle::def::Def;
 use middle::def_id::DefId;
 use middle::ty;
 
@@ -239,8 +239,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
         let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
-            def::DefPrimTy(..) => None,
-            def::DefSelfTy(..) => None,
+            Def::PrimTy(..) => None,
+            Def::SelfTy(..) => None,
             _ => Some(def.def_id()),
         }
     }
@@ -254,27 +254,28 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
         let def = def_map.get(&ref_id).unwrap().full_def();
         match def {
-            def::DefMod(_) |
-            def::DefForeignMod(_) => Some(recorder::ModRef),
-            def::DefStruct(_) => Some(recorder::TypeRef),
-            def::DefTy(..) |
-            def::DefAssociatedTy(..) |
-            def::DefTrait(_) => Some(recorder::TypeRef),
-            def::DefStatic(_, _) |
-            def::DefConst(_) |
-            def::DefAssociatedConst(..) |
-            def::DefLocal(..) |
-            def::DefVariant(_, _, _) |
-            def::DefUpvar(..) => Some(recorder::VarRef),
+            Def::Mod(_) |
+            Def::ForeignMod(_) => Some(recorder::ModRef),
+            Def::Struct(..) => Some(recorder::TypeRef),
+            Def::Enum(..) |
+            Def::TyAlias(..) |
+            Def::AssociatedTy(..) |
+            Def::Trait(_) => Some(recorder::TypeRef),
+            Def::Static(_, _) |
+            Def::Const(_) |
+            Def::AssociatedConst(..) |
+            Def::Local(..) |
+            Def::Variant(..) |
+            Def::Upvar(..) => Some(recorder::VarRef),
 
-            def::DefFn(..) => Some(recorder::FnRef),
+            Def::Fn(..) => Some(recorder::FnRef),
 
-            def::DefSelfTy(..) |
-            def::DefLabel(_) |
-            def::DefTyParam(..) |
-            def::DefMethod(..) |
-            def::DefPrimTy(_) |
-            def::DefErr => {
+            Def::SelfTy(..) |
+            Def::Label(_) |
+            Def::TyParam(..) |
+            Def::Method(..) |
+            Def::PrimTy(_) |
+            Def::Err => {
                 self.sess.span_bug(span,
                                    &format!("lookup_def_kind for unexpected item: {:?}", def));
             }
@@ -679,7 +680,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let def_map = self.tcx.def_map.borrow();
         let def = def_map.get(&id).unwrap().full_def();
         match def {
-            def::DefMethod(did) => {
+            Def::Method(did) => {
                 let ti = self.tcx.impl_or_trait_item(did);
                 if let ty::MethodTraitItem(m) = ti {
                     if m.explicit_self == ty::ExplicitSelfCategory::Static {
@@ -687,13 +688,13 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     }
                 }
             }
-            def::DefLocal(..) |
-            def::DefStatic(_,_) |
-            def::DefConst(..) |
-            def::DefAssociatedConst(..) |
-            def::DefStruct(_) |
-            def::DefVariant(..) |
-            def::DefFn(..) => self.write_sub_paths_truncated(path, false),
+            Def::Local(..) |
+            Def::Static(_,_) |
+            Def::Const(..) |
+            Def::AssociatedConst(..) |
+            Def::Struct(..) |
+            Def::Variant(..) |
+            Def::Fn(..) => self.write_sub_paths_truncated(path, false),
             _ => {}
         }
     }
@@ -1163,7 +1164,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             }
             let def = def_map.get(&id).unwrap().full_def();
             match def {
-                def::DefLocal(_, id) => {
+                Def::Local(_, id) => {
                     let value = if immut == ast::MutImmutable {
                         self.span.snippet(p.span).to_string()
                     } else {
@@ -1174,13 +1175,14 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                             "qualified path for local variable def in arm");
                     self.fmt.variable_str(p.span, Some(p.span), id, &path_to_string(p), &value, "")
                 }
-                def::DefVariant(..) | def::DefTy(..) | def::DefStruct(..) => {
+                Def::Variant(..) | Def::Enum(..) |
+                Def::TyAlias(..) | Def::Struct(..) => {
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 // FIXME(nrc) what are these doing here?
-                def::DefStatic(_, _) |
-                def::DefConst(..) |
-                def::DefAssociatedConst(..) => {}
+                Def::Static(_, _) |
+                Def::Const(..) |
+                Def::AssociatedConst(..) => {}
                 _ => error!("unexpected definition kind when processing collected paths: {:?}",
                             def),
             }

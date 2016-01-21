@@ -737,7 +737,7 @@ enum TypeParameters<'a> {
 }
 
 // The rib kind controls the translation of local
-// definitions (`DefLocal`) to upvars (`DefUpvar`).
+// definitions (`Def::Local`) to upvars (`Def::Upvar`).
 #[derive(Copy, Clone, Debug)]
 enum RibKind {
     // No translation needs to be applied.
@@ -913,14 +913,14 @@ impl<'a> ModuleS<'a> {
 
     fn is_normal(&self) -> bool {
         match self.def.get() {
-            Some(DefMod(_)) | Some(DefForeignMod(_)) => true,
+            Some(Def::Mod(_)) | Some(Def::ForeignMod(_)) => true,
             _ => false,
         }
     }
 
     fn is_trait(&self) -> bool {
         match self.def.get() {
-            Some(DefTrait(_)) => true,
+            Some(Def::Trait(_)) => true,
             _ => false,
         }
     }
@@ -1243,7 +1243,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
            arenas: &'a ResolverArenas<'a>)
            -> Resolver<'a, 'tcx> {
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
-        let graph_root = ModuleS::new(NoParentLink, Some(DefMod(root_def_id)), false, true);
+        let graph_root = ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, true);
         let graph_root = arenas.modules.alloc(graph_root);
 
         Resolver {
@@ -2020,7 +2020,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                ItemRibKind),
                                              |this| {
                     let local_def_id = this.ast_map.local_def_id(item.id);
-                    this.with_self_rib(DefSelfTy(Some(local_def_id), None), |this| {
+                    this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_ty_param_bound, bounds);
 
@@ -2076,7 +2076,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // check for imports shadowing primitive types
                 let check_rename = |this: &Self, id, name| {
                     match this.def_map.borrow().get(&id).map(|d| d.full_def()) {
-                        Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
+                        Some(Def::Enum(..)) | Some(Def::TyAlias(..)) | Some(Def::Struct(..)) |
+                        Some(Def::Trait(..)) | None => {
                             this.check_if_primitive_type_name(name, item.span);
                         }
                         _ => {}
@@ -2142,7 +2143,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // plain insert (no renaming)
                     function_type_rib.bindings
                                      .insert(name,
-                                             DlDef(DefTyParam(space,
+                                             DlDef(Def::TyParam(space,
                                                               index as u32,
                                                               self.ast_map
                                                                   .local_def_id(type_parameter.id),
@@ -2225,7 +2226,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                path_depth: usize)
                                -> Result<PathResolution, ()> {
         if let Some(path_res) = self.resolve_path(id, trait_path, path_depth, TypeNS, true) {
-            if let DefTrait(_) = path_res.base_def {
+            if let Def::Trait(_) = path_res.base_def {
                 debug!("(resolving trait) found trait def: {:?}", path_res);
                 Ok(path_res)
             } else {
@@ -2236,7 +2237,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       path_depth)));
 
                 // If it's a typedef, give a note
-                if let DefTy(..) = path_res.base_def {
+                if let Def::TyAlias(..) = path_res.base_def {
                     err.span_note(trait_path.span,
                                   "`type` aliases cannot be used for traits");
                 }
@@ -2262,7 +2263,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &hir::WherePredicate::RegionPredicate(_) => {}
                 &hir::WherePredicate::EqPredicate(ref eq_pred) => {
                     let path_res = self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS, true);
-                    if let Some(PathResolution { base_def: DefTyParam(..), .. }) = path_res {
+                    if let Some(PathResolution { base_def: Def::TyParam(..), .. }) = path_res {
                         self.record_def(eq_pred.id, path_res.unwrap());
                     } else {
                         resolve_error(self,
@@ -2344,7 +2345,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // Resolve the self type.
                 this.visit_ty(self_type);
 
-                this.with_self_rib(DefSelfTy(trait_id, Some((item_id, self_type.id))), |this| {
+                this.with_self_rib(Def::SelfTy(trait_id, Some((item_id, self_type.id))), |this| {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             match impl_item.node {
@@ -2680,7 +2681,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             debug!("(resolving pattern) binding `{}`", renamed);
 
                             let def_id = self.ast_map.local_def_id(pattern.id);
-                            let def = DefLocal(def_id, pattern.id);
+                            let def = Def::Local(def_id, pattern.id);
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from
@@ -2751,10 +2752,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     };
                     if let Some(path_res) = resolution {
                         match path_res.base_def {
-                            DefVariant(..) | DefStruct(..) | DefConst(..) => {
+                            Def::Struct(..) if path_res.depth == 0 => {
                                 self.record_def(pattern.id, path_res);
                             }
-                            DefStatic(..) => {
+                            Def::Variant(..) | Def::Const(..) => {
+                                self.record_def(pattern.id, path_res);
+                            }
+                            Def::Static(..) => {
                                 resolve_error(&self,
                                               path.span,
                                               ResolutionError::StaticVariableReference);
@@ -2829,7 +2833,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         match path_res.base_def {
                             // All `<T as Trait>::CONST` should end up here, and
                             // have the trait already selected.
-                            DefAssociatedConst(..) => {
+                            Def::AssociatedConst(..) => {
                                 self.record_def(pattern.id, path_res);
                             }
                             _ => {
@@ -2906,13 +2910,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // For the two success cases, this lookup can be
                     // considered as not having a private component because
                     // the lookup happened only within the current module.
-                    Some(def @ DefVariant(..)) | Some(def @ DefStruct(..)) => {
+                    Some(def @ Def::Variant(..)) | Some(def @ Def::Struct(..)) => {
                         return FoundStructOrEnumVariant(def, LastMod(AllPublic));
                     }
-                    Some(def @ DefConst(..)) | Some(def @ DefAssociatedConst(..)) => {
+                    Some(def @ Def::Const(..)) | Some(def @ Def::AssociatedConst(..)) => {
                         return FoundConst(def, LastMod(AllPublic), name);
                     }
-                    Some(DefStatic(..)) => {
+                    Some(Def::Static(..)) => {
                         resolve_error(self, span, ResolutionError::StaticVariableReference);
                         return BareIdentifierPatternUnresolved;
                     }
@@ -2972,7 +2976,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 resolution = this.resolve_path(id, path, depth, TypeNS, true);
             });
         }
-        if let Some(DefMod(_)) = resolution.map(|r| r.base_def) {
+        if let Some(Def::Mod(_)) = resolution.map(|r| r.base_def) {
             // A module is not a valid type or value.
             resolution = None;
         }
@@ -3038,7 +3042,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if let Some(&prim_ty) = self.primitive_type_table
                                         .primitive_types
                                         .get(&identifier.unhygienic_name) {
-                return Some(LocalDef::from_def(DefPrimTy(prim_ty)));
+                return Some(LocalDef::from_def(Def::PrimTy(prim_ty)));
             }
         }
 
@@ -3062,10 +3066,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         };
         let mut def = local_def.def;
         match def {
-            DefUpvar(..) => {
+            Def::Upvar(..) => {
                 self.session.span_bug(span, &format!("unexpected {:?} in bindings", def))
             }
-            DefLocal(_, node_id) => {
+            Def::Local(_, node_id) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind => {
@@ -3079,7 +3083,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            .entry(function_id)
                                            .or_insert_with(|| NodeMap());
                             if let Some(&index) = seen.get(&node_id) {
-                                def = DefUpvar(node_def_id, node_id, index, function_id);
+                                def = Def::Upvar(node_def_id, node_id, index, function_id);
                                 continue;
                             }
                             let vec = self.freevars
@@ -3091,7 +3095,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 span: span,
                             });
 
-                            def = DefUpvar(node_def_id, node_id, depth, function_id);
+                            def = Def::Upvar(node_def_id, node_id, depth, function_id);
                             seen.insert(node_id, depth);
                         }
                         ItemRibKind | MethodRibKind => {
@@ -3113,7 +3117,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            DefTyParam(..) | DefSelfTy(..) => {
+            Def::TyParam(..) | Def::SelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | MethodRibKind | ClosureRibKind(..) => {
@@ -3425,9 +3429,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if allowed == Everything {
             // Look for a field with the same name in the current self_type.
             match self.def_map.borrow().get(&node_id).map(|d| d.full_def()) {
-                Some(DefTy(did, _)) |
-                Some(DefStruct(did)) |
-                Some(DefVariant(_, did, _)) => match self.structs.get(&did) {
+                Some(Def::Enum(did)) |
+                Some(Def::TyAlias(did)) |
+                Some(Def::Struct(did)) |
+                Some(Def::Variant(_, did)) => match self.structs.get(&did) {
                     None => {}
                     Some(fields) => {
                         if fields.iter().any(|&field_name| name == field_name) {
@@ -3444,7 +3449,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Look for a method in the current self type's impl module.
         if let Some(module) = get_module(self, path.span, &name_path) {
             if let Some(binding) = module.children.borrow().get(&name) {
-                if let Some(DefMethod(did)) = binding.value_ns.def() {
+                if let Some(Def::Method(did)) = binding.value_ns.def() {
                     if is_static_method(self, did) {
                         return StaticMethod(path_names_to_string(&path, 0));
                     }
@@ -3518,7 +3523,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // scopes looking for it.
                 if let Some(path_res) = resolution {
                     // Check if struct variant
-                    if let DefVariant(_, _, true) = path_res.base_def {
+                    let is_struct_variant = if let Def::Variant(_, variant_id) = path_res.base_def {
+                        self.structs.contains_key(&variant_id)
+                    } else {
+                        false
+                    };
+                    if is_struct_variant {
+                        let _ = self.structs.contains_key(&path_res.base_def.def_id());
                         let path_name = path_names_to_string(path, 0);
 
                         let mut err = resolve_struct_error(self,
@@ -3561,7 +3572,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     self.record_def(expr.id, err_path_resolution());
                     match type_res.map(|r| r.base_def) {
-                        Some(DefTy(struct_id, _)) if self.structs.contains_key(&struct_id) => {
+                        Some(Def::Struct(..)) => {
                             let mut err = resolve_struct_error(self,
                                 expr.span,
                                 ResolutionError::StructVariantUsedAsFunction(&*path_name));
@@ -3673,7 +3684,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ExprLoop(_, Some(label)) | ExprWhile(_, _, Some(label)) => {
                 self.with_label_rib(|this| {
-                    let def_like = DlDef(DefLabel(expr.id));
+                    let def_like = DlDef(Def::Label(expr.id));
 
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
@@ -3692,7 +3703,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                       label.span,
                                       ResolutionError::UndeclaredLabel(&label.node.name.as_str()))
                     }
-                    Some(DlDef(def @ DefLabel(_))) => {
+                    Some(DlDef(def @ Def::Label(_))) => {
                         // Since this def is a label, it is never read.
                         self.record_def(expr.id,
                                         PathResolution {
@@ -3768,7 +3779,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None => continue,
                     };
                     let trait_def_id = match def {
-                        DefTrait(trait_def_id) => trait_def_id,
+                        Def::Trait(trait_def_id) => trait_def_id,
                         _ => continue,
                     };
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
@@ -3784,7 +3795,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(ref target) => target,
                 };
                 let did = match target.binding.def() {
-                    Some(DefTrait(trait_def_id)) => trait_def_id,
+                    Some(Def::Trait(trait_def_id)) => trait_def_id,
                     Some(..) | None => continue,
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {
@@ -3939,7 +3950,7 @@ fn module_to_string<'a>(module: Module<'a>) -> String {
 
 fn err_path_resolution() -> PathResolution {
     PathResolution {
-        base_def: DefErr,
+        base_def: Def::Err,
         last_private: LastMod(AllPublic),
         depth: 0,
     }

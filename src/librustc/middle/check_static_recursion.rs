@@ -13,7 +13,7 @@
 
 use front::map as ast_map;
 use session::Session;
-use middle::def::{DefStatic, DefConst, DefAssociatedConst, DefVariant, DefMap};
+use middle::def::{Def, DefMap};
 use util::nodemap::NodeMap;
 
 use syntax::{ast};
@@ -238,9 +238,9 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
         match e.node {
             hir::ExprPath(..) => {
                 match self.def_map.get(&e.id).map(|d| d.base_def) {
-                    Some(DefStatic(def_id, _)) |
-                    Some(DefAssociatedConst(def_id)) |
-                    Some(DefConst(def_id)) => {
+                    Some(Def::Static(def_id, _)) |
+                    Some(Def::AssociatedConst(def_id)) |
+                    Some(Def::Const(def_id)) => {
                         if let Some(node_id) = self.ast_map.as_local_node_id(def_id) {
                             match self.ast_map.get(node_id) {
                                 ast_map::NodeItem(item) =>
@@ -263,7 +263,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                     // affect the specific variant used, but we need to check
                     // the whole enum definition to see what expression that
                     // might be (if any).
-                    Some(DefVariant(enum_id, variant_id, false)) => {
+                    Some(Def::Variant(enum_id, variant_id)) => {
                         if let Some(enum_node_id) = self.ast_map.as_local_node_id(enum_id) {
                             if let hir::ItemEnum(ref enum_def, ref generics) =
                                 self.ast_map.expect_item(enum_node_id).node
@@ -276,7 +276,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                             } else {
                                 self.sess.span_bug(e.span,
                                                    "`check_static_recursion` found \
-                                                    non-enum in DefVariant");
+                                                    non-enum in Def::Variant");
                             }
                         }
                     }

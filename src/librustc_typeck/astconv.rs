@@ -51,7 +51,7 @@
 use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_projection};
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
-use middle::def;
+use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
@@ -718,8 +718,8 @@ pub fn instantiate_mono_trait_ref<'tcx>(
 fn trait_def_id<'tcx>(this: &AstConv<'tcx>, trait_ref: &hir::TraitRef) -> DefId {
     let path = &trait_ref.path;
     match ::lookup_full_def(this.tcx(), path.span, trait_ref.ref_id) {
-        def::DefTrait(trait_def_id) => trait_def_id,
-        def::DefErr => {
+        Def::Trait(trait_def_id) => trait_def_id,
+        Def::Err => {
             this.tcx().sess.fatal("cannot continue compilation due to previous error");
         }
         _ => {
@@ -1028,7 +1028,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                 _ => None
             };
             match def {
-                Some(def::DefTrait(trait_def_id)) => {
+                Some(Def::Trait(trait_def_id)) => {
                     let mut projection_bounds = Vec::new();
                     let trait_ref = object_path_to_poly_trait_ref(this,
                                                                   rscope,
@@ -1263,9 +1263,9 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &ty::ctxt<'tcx>,
 fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                    span: Span,
                                    ty: Ty<'tcx>,
-                                   ty_path_def: def::Def,
+                                   ty_path_def: Def,
                                    item_segment: &hir::PathSegment)
-                                   -> (Ty<'tcx>, def::Def)
+                                   -> (Ty<'tcx>, Def)
 {
     let tcx = this.tcx();
     let assoc_name = item_segment.identifier.name;
@@ -1277,7 +1277,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     // Find the type of the associated item, and the trait where the associated
     // item is declared.
     let bound = match (&ty.sty, ty_path_def) {
-        (_, def::DefSelfTy(Some(trait_did), Some((impl_id, _)))) => {
+        (_, Def::SelfTy(Some(trait_did), Some((impl_id, _)))) => {
             // `Self` in an impl of a trait - we have a concrete self type and a
             // trait reference.
             let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(impl_id)).unwrap();
@@ -1306,7 +1306,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                 Err(ErrorReported) => return (tcx.types.err, ty_path_def),
             }
         }
-        (&ty::TyParam(_), def::DefSelfTy(Some(trait_did), None)) => {
+        (&ty::TyParam(_), Def::SelfTy(Some(trait_did), None)) => {
             let trait_node_id = tcx.map.as_local_node_id(trait_did).unwrap();
             match find_bound_for_assoc_item(this,
                                             trait_node_id,
@@ -1317,7 +1317,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                 Err(ErrorReported) => return (tcx.types.err, ty_path_def),
             }
         }
-        (&ty::TyParam(_), def::DefTyParam(_, _, param_did, param_name)) => {
+        (&ty::TyParam(_), Def::TyParam(_, _, param_did, param_name)) => {
             let param_node_id = tcx.map.as_local_node_id(param_did).unwrap();
             match find_bound_for_assoc_item(this,
                                             param_node_id,
@@ -1359,7 +1359,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         item.expect("missing associated type").def_id()
     };
 
-    (ty, def::DefAssociatedTy(trait_did, item_did))
+    (ty, Def::AssociatedTy(trait_did, item_did))
 }
 
 fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
@@ -1443,14 +1443,14 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                         rscope: &RegionScope,
                         span: Span,
                         param_mode: PathParamMode,
-                        def: &def::Def,
+                        def: &Def,
                         opt_self_ty: Option<Ty<'tcx>>,
                         base_segments: &[hir::PathSegment])
                         -> Ty<'tcx> {
     let tcx = this.tcx();
 
     match *def {
-        def::DefTrait(trait_def_id) => {
+        Def::Trait(trait_def_id) => {
             // N.B. this case overlaps somewhat with
             // TyObjectSum, see that fn for details
             let mut projection_bounds = Vec::new();
@@ -1471,7 +1471,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                      projection_bounds,
                                      &[])
         }
-        def::DefTy(did, _) | def::DefStruct(did) => {
+        Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
             prohibit_type_params(tcx, base_segments.split_last().unwrap().1);
             ast_path_to_ty(this,
                            rscope,
@@ -1480,11 +1480,11 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                            did,
                            base_segments.last().unwrap())
         }
-        def::DefTyParam(space, index, _, name) => {
+        Def::TyParam(space, index, _, name) => {
             prohibit_type_params(tcx, base_segments);
             tcx.mk_param(space, index, name)
         }
-        def::DefSelfTy(_, Some((_, self_ty_id))) => {
+        Def::SelfTy(_, Some((_, self_ty_id))) => {
             // Self in impl (we know the concrete type).
             prohibit_type_params(tcx, base_segments);
             if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&self_ty_id) {
@@ -1497,12 +1497,12 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                 tcx.sess.span_bug(span, "self type has not been fully resolved")
             }
         }
-        def::DefSelfTy(Some(_), None) => {
+        Def::SelfTy(Some(_), None) => {
             // Self in trait.
             prohibit_type_params(tcx, base_segments);
             tcx.mk_self_type()
         }
-        def::DefAssociatedTy(trait_did, _) => {
+        Def::AssociatedTy(trait_did, _) => {
             prohibit_type_params(tcx, &base_segments[..base_segments.len()-2]);
             qpath_to_ty(this,
                         rscope,
@@ -1513,7 +1513,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                         &base_segments[base_segments.len()-2],
                         base_segments.last().unwrap())
         }
-        def::DefMod(id) => {
+        Def::Mod(id) => {
             // Used as sentinel by callers to indicate the `<T>::A::B::C` form.
             // FIXME(#22519) This part of the resolution logic should be
             // avoided entirely for that form, once we stop needed a Def
@@ -1534,10 +1534,10 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
             opt_self_ty.expect("missing T in <T>::a::b::c")
         }
-        def::DefPrimTy(prim_ty) => {
+        Def::PrimTy(prim_ty) => {
             prim_ty_to_ty(tcx, base_segments, prim_ty)
         }
-        def::DefErr => {
+        Def::Err => {
             return this.tcx().types.err;
         }
         _ => {
@@ -1556,7 +1556,7 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                         rscope: &RegionScope,
                                         span: Span,
                                         param_mode: PathParamMode,
-                                        def: &def::Def,
+                                        def: &Def,
                                         opt_self_ty: Option<Ty<'tcx>>,
                                         base_segments: &[hir::PathSegment],
                                         assoc_segments: &[hir::PathSegment])
@@ -1658,7 +1658,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             } else if let Some(hir::QSelf { position: 0, .. }) = *maybe_qself {
                 // Create some fake resolution that can't possibly be a type.
                 def::PathResolution {
-                    base_def: def::DefMod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
+                    base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
@@ -2177,7 +2177,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
         match *ast_bound {
             hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
                 match ::lookup_full_def(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
-                    def::DefTrait(trait_did) => {
+                    Def::Trait(trait_did) => {
                         if tcx.try_add_builtin_trait(trait_did,
                                                      &mut builtin_bounds) {
                             let segments = &b.trait_ref.path.segments;

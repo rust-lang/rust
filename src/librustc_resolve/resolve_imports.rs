@@ -852,7 +852,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         if let Some(did) = target_module.def_id() {
             self.resolver.def_map.borrow_mut().insert(id,
                                                       PathResolution {
-                                                          base_def: DefMod(did),
+                                                          base_def: Def::Mod(did),
                                                           last_private: lp,
                                                           depth: 0,
                                                       });

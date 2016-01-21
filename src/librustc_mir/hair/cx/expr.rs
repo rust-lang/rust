@@ -14,7 +14,7 @@ use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::front::map;
-use rustc::middle::def;
+use rustc::middle::def::Def;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::pat_util;
 use rustc::middle::ty::{self, VariantDef, Ty};
@@ -67,10 +67,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                         // Tuple-like ADTs are represented as ExprCall. We convert them here.
                         expr_ty.ty_adt_def().and_then(|adt_def|{
                             match cx.tcx.def_map.borrow()[&fun.id].full_def() {
-                                def::DefVariant(_, variant_id, false) => {
+                                Def::Variant(_, variant_id) => {
                                     Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                                 },
-                                def::DefStruct(_) => {
+                                Def::Struct(..) => {
                                     Some((adt_def, 0))
                                 },
                                 _ => None
@@ -231,7 +231,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     }
                     ty::TyEnum(adt, substs) => {
                         match cx.tcx.def_map.borrow()[&self.id].full_def() {
-                            def::DefVariant(enum_id, variant_id, _) => {
+                            Def::Variant(enum_id, variant_id) => {
                                 debug_assert!(adt.did == enum_id);
                                 let index = adt.variant_index_with_id(variant_id);
                                 let field_refs = field_refs(&adt.variants[index], fields);
@@ -573,9 +573,9 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
     let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
     let (def_id, kind) = match def {
         // A regular function.
-        def::DefFn(def_id, _) => (def_id, ItemKind::Function),
-        def::DefMethod(def_id) => (def_id, ItemKind::Method),
-        def::DefStruct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
+        Def::Fn(def_id) => (def_id, ItemKind::Function),
+        Def::Method(def_id) => (def_id, ItemKind::Method),
+        Def::Struct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A tuple-struct constructor. Should only be reached if not called in the same
             // expression.
             ty::TyBareFn(..) => (def_id, ItemKind::Function),
@@ -590,7 +590,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
             },
             ref sty => panic!("unexpected sty: {:?}", sty)
         },
-        def::DefVariant(enum_id, variant_id, false) => match cx.tcx.node_id_to_type(expr.id).sty {
+        Def::Variant(enum_id, variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A variant constructor. Should only be reached if not called in the same
             // expression.
             ty::TyBareFn(..) => (variant_id, ItemKind::Function),
@@ -608,8 +608,8 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
             },
             ref sty => panic!("unexpected sty: {:?}", sty)
         },
-        def::DefConst(def_id) |
-        def::DefAssociatedConst(def_id) => {
+        Def::Const(def_id) |
+        Def::AssociatedConst(def_id) => {
             if let Some(v) = cx.try_const_eval_literal(expr) {
                 return ExprKind::Literal { literal: v };
             } else {
@@ -617,12 +617,12 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
             }
         }
 
-        def::DefStatic(node_id, _) => return ExprKind::StaticRef {
+        Def::Static(node_id, _) => return ExprKind::StaticRef {
             id: node_id,
         },
 
-        def @ def::DefLocal(..) |
-        def @ def::DefUpvar(..) => return convert_var(cx, expr, def),
+        def @ Def::Local(..) |
+        def @ Def::Upvar(..) => return convert_var(cx, expr, def),
 
         def =>
             cx.tcx.sess.span_bug(
@@ -636,18 +636,18 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
 
 fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                              expr: &'tcx hir::Expr,
-                             def: def::Def)
+                             def: Def)
                              -> ExprKind<'tcx> {
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
 
     match def {
-        def::DefLocal(_, node_id) => {
+        Def::Local(_, node_id) => {
             ExprKind::VarRef {
                 id: node_id,
             }
         }
 
-        def::DefUpvar(_, id_var, index, closure_expr_id) => {
+        Def::Upvar(_, id_var, index, closure_expr_id) => {
             debug!("convert_var(upvar({:?}, {:?}, {:?}))", id_var, index, closure_expr_id);
             let var_ty = cx.tcx.node_id_to_type(id_var);
 
@@ -922,7 +922,7 @@ fn capture_freevar<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
 
 fn loop_label<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr) -> CodeExtent {
     match cx.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
-        Some(def::DefLabel(loop_id)) => cx.tcx.region_maps.node_extent(loop_id),
+        Some(Def::Label(loop_id)) => cx.tcx.region_maps.node_extent(loop_id),
         d => {
             cx.tcx.sess.span_bug(expr.span, &format!("loop scope resolved to {:?}", d));
         }

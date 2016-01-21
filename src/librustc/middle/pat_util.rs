@@ -39,7 +39,7 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
         hir::PatIdent(_, _, None) |
         hir::PatStruct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(DefVariant(..)) => true,
+                Some(Def::Variant(..)) => true,
                 _ => false
             }
         }
@@ -54,7 +54,7 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
         hir::PatIdent(_, _, None) |
         hir::PatStruct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(DefVariant(..)) | Some(DefStruct(..)) => true,
+                Some(Def::Variant(..)) | Some(Def::Struct(..)) => true,
                 _ => false
             }
         }
@@ -66,7 +66,7 @@ pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
         hir::PatIdent(_, _, None) | hir::PatEnum(..) | hir::PatQPath(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) | Some(DefAssociatedConst(..)) => true,
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => true,
                 _ => false
             }
         }
@@ -82,7 +82,7 @@ pub fn pat_is_resolved_const(dm: &DefMap, pat: &hir::Pat) -> bool {
             match dm.get(&pat.id)
                     .and_then(|d| if d.depth == 0 { Some(d.base_def) }
                                   else { None } ) {
-                Some(DefConst(..)) | Some(DefAssociatedConst(..)) => true,
+                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => true,
                 _ => false
             }
         }
@@ -228,7 +228,7 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
             hir::PatIdent(_, _, None) |
             hir::PatStruct(..) => {
                 match dm.get(&p.id) {
-                    Some(&PathResolution { base_def: DefVariant(_, id, _), .. }) => {
+                    Some(&PathResolution { base_def: Def::Variant(_, id), .. }) => {
                         variants.push(id);
                     }
                     _ => ()

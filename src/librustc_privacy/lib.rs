@@ -37,7 +37,7 @@ use rustc_front::intravisit::{self, Visitor};
 
 use rustc::dep_graph::DepNode;
 use rustc::lint;
-use rustc::middle::def;
+use rustc::middle::def::{self, Def};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::middle::privacy::ImportUse::*;
@@ -172,7 +172,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn ty_level(&self, ty: &hir::Ty) -> Option<AccessLevel> {
         if let hir::TyPath(..) = ty.node {
             match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
-                def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {
+                Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {
                     Some(AccessLevel::Public)
                 }
                 def => {
@@ -294,7 +294,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemTy(ref ty, _) if item_level.is_some() => {
                 if let hir::TyPath(..) = ty.node {
                     match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
-                        def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {},
+                        Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {},
                         def => {
                             if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
                                 self.update(node_id, Some(AccessLevel::Reachable));
@@ -806,17 +806,17 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // be accurate and we can get slightly wonky error messages (but type
         // checking is always correct).
         match path_res.full_def() {
-            def::DefFn(..) => ck("function"),
-            def::DefStatic(..) => ck("static"),
-            def::DefConst(..) => ck("const"),
-            def::DefAssociatedConst(..) => ck("associated const"),
-            def::DefVariant(..) => ck("variant"),
-            def::DefTy(_, false) => ck("type"),
-            def::DefTy(_, true) => ck("enum"),
-            def::DefTrait(..) => ck("trait"),
-            def::DefStruct(..) => ck("struct"),
-            def::DefMethod(..) => ck("method"),
-            def::DefMod(..) => ck("module"),
+            Def::Fn(..) => ck("function"),
+            Def::Static(..) => ck("static"),
+            Def::Const(..) => ck("const"),
+            Def::AssociatedConst(..) => ck("associated const"),
+            Def::Variant(..) => ck("variant"),
+            Def::TyAlias(..) => ck("type"),
+            Def::Enum(..) => ck("enum"),
+            Def::Trait(..) => ck("trait"),
+            Def::Struct(..) => ck("struct"),
+            Def::Method(..) => ck("method"),
+            Def::Mod(..) => ck("module"),
             _ => {}
         }
     }
@@ -887,7 +887,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             hir::ExprPath(..) => {
 
-                if let def::DefStruct(_) = self.tcx.resolve_expr(expr) {
+                if let Def::Struct(..) = self.tcx.resolve_expr(expr) {
                     let expr_ty = self.tcx.expr_ty(expr);
                     let def = match expr_ty.sty {
                         ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
         let did = match self.tcx.def_map.borrow().get(&path_id).map(|d| d.full_def()) {
             // `int` etc. (None doesn't seem to occur.)
-            None | Some(def::DefPrimTy(..)) | Some(def::DefSelfTy(..)) => return false,
+            None | Some(Def::PrimTy(..)) | Some(Def::SelfTy(..)) => return false,
             Some(def) => def.def_id(),
         };
 
@@ -1503,10 +1503,10 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
         if let hir::TyPath(_, ref path) = ty.node {
             let def = self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
             match def {
-                def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {
+                Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {
                     // Public
                 }
-                def::DefAssociatedTy(..) if self.is_quiet => {
+                Def::AssociatedTy(..) if self.is_quiet => {
                     // Conservatively approximate the whole type alias as public without
                     // recursing into its components when determining impl publicity.
                     // For example, `impl <Type as Trait>::Alias {...}` may be a public impl
@@ -1515,8 +1515,8 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     // free type aliases, but this isn't done yet.
                     return
                 }
-                def::DefStruct(def_id) | def::DefTy(def_id, _) |
-                def::DefTrait(def_id) | def::DefAssociatedTy(def_id, _) => {
+                Def::Struct(def_id) | Def::Enum(def_id) | Def::TyAlias(def_id) |
+                Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
                     // Non-local means public (private items can't leave their crate, modulo bugs)
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                         let item = self.tcx.map.expect_item(node_id);

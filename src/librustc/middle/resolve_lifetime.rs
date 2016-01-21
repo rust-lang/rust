@@ -19,7 +19,7 @@ pub use self::DefRegion::*;
 use self::ScopeChain::*;
 
 use session::Session;
-use middle::def::{self, DefMap};
+use middle::def::{Def, DefMap};
 use middle::region;
 use middle::subst;
 use middle::ty;
@@ -205,7 +205,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
                 match self.def_map.get(&ty.id).map(|d| (d.base_def, d.depth)) {
-                    Some((def::DefTrait(..), 0)) => {
+                    Some((Def::Trait(..), 0)) => {
                         self.with(LateScope(&[], self.scope), |_, this| {
                             this.visit_path(path, ty.id);
                         });
