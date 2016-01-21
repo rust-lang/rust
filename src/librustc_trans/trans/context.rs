@@ -10,6 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
+use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig};
 use middle::cstore::LinkMeta;
 use middle::def::ExportMap;
 use middle::def_id::DefId;
@@ -33,6 +34,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
+use std::marker::PhantomData;
 use std::ptr;
 use std::rc::Rc;
 use syntax::ast;
@@ -161,8 +163,23 @@ pub struct LocalCrateContext<'tcx> {
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
 
-    trait_cache: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
-                                    traits::Vtable<'tcx, ()>>>,
+    trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
+}
+
+// Implement DepTrackingMapConfig for `trait_cache`
+pub struct TraitSelectionCache<'tcx> {
+    data: PhantomData<&'tcx ()>
+}
+
+impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
+    type Key = ty::PolyTraitRef<'tcx>;
+    type Value = traits::Vtable<'tcx, ()>;
+    fn to_dep_node(key: &ty::PolyTraitRef<'tcx>) -> DepNode {
+        ty::tls::with(|tcx| {
+            let lifted_key = tcx.lift(key).unwrap();
+            lifted_key.to_poly_trait_predicate().dep_node()
+        })
+    }
 }
 
 pub struct CrateContext<'a, 'tcx: 'a> {
@@ -478,7 +495,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
-                trait_cache: RefCell::new(FnvHashMap()),
+                trait_cache: RefCell::new(DepTrackingMap::new(shared.tcx
+                                                                    .dep_graph
+                                                                    .clone())),
             };
 
             local_ccx.int_type = Type::int(&local_ccx.dummy_ccx(shared));
@@ -752,8 +771,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
     }
 
-    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
-                                                     traits::Vtable<'tcx, ()>>> {
+    pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
         &self.local.trait_cache
     }
 
