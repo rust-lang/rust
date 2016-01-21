@@ -95,8 +95,7 @@ fn xcrate() {
     let e2: XEmpty2 = XEmpty2 {};
     let e2: XEmpty2 = XEmpty2;
     let e3: XE = XE::XEmpty3 {};
-    // FIXME: Commented out tests are waiting for PR 30882 (fixes for variant namespaces)
-    // let e4: XE = XE::XEmpty4 {};
+    let e4: XE = XE::XEmpty4 {};
     let e4: XE = XE::XEmpty4;
 
     match e1 {
@@ -109,10 +108,10 @@ fn xcrate() {
         XE::XEmpty3 {} => {}
         _ => {}
     }
-    // match e4 {
-    //     XE::XEmpty4 {} => {}
-    //     _ => {}
-    // }
+    match e4 {
+        XE::XEmpty4 {} => {}
+        _ => {}
+    }
 
     match e1 {
         XEmpty1 { .. } => {}
@@ -124,18 +123,18 @@ fn xcrate() {
         XE::XEmpty3 { .. } => {}
         _ => {}
     }
-    // match e4 {
-    //     XE::XEmpty4 { .. } => {}
-    //     _ => {}
-    // }
+    match e4 {
+        XE::XEmpty4 { .. } => {}
+        _ => {}
+    }
 
     match e2 {
         XEmpty2 => {}
     }
-    // match e4 {
-    //     XE::XEmpty4 => {}
-    //     _ => {}
-    // }
+    match e4 {
+        XE::XEmpty4 => {}
+        _ => {}
+    }
 
     let e11: XEmpty1 = XEmpty1 { ..e1 };
     let e22: XEmpty2 = XEmpty2 { ..e2 };
