@@ -26,3 +26,14 @@ fn fixed_size_array() {
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_array).len(), 0);
     assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_zero_sized).len(), 0);
 }
+
+#[test]
+fn from_tuple() {
+    let a: [u8; 3] = From::from((1, 2, 3));
+    assert_eq!(a, [1, 2, 3]);
+
+    let a: [u16; 5] = From::from((5, 6, 7, 8, 9));
+    assert_eq!(a, [5, 6, 7, 8, 9]);
+
+    let _: [bool; 0] = From::from(());
+}

@@ -22,7 +22,7 @@
 use borrow::{Borrow, BorrowMut};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use convert::{AsRef, AsMut};
+use convert::{AsRef, AsMut, From};
 use default::Default;
 use fmt;
 use hash::{Hash, self};
@@ -220,25 +220,43 @@ array_impls! {
     30 31 32
 }
 
-// The Default impls cannot be generated using the array_impls! macro because
+// Some impls cannot be generated using the array_impls! macro because
 // they require array literals.
 
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
+macro_rules! array_impl_variadic {
+    {$n:expr, $i:ident: $t:ident $(, $is:ident: $ts:ident)*} => {
         #[stable(since = "1.4.0", feature = "array_default")]
         impl<T> Default for [T; $n] where T: Default {
             fn default() -> [T; $n] {
                 [$t::default(), $($ts::default()),*]
             }
         }
-        array_impl_default!{($n - 1), $($ts)*}
+
+        #[unstable(feature = "array_from_tuple", reason = "recently added", issue = "0")]
+        impl<T> From<($t, $($ts),*)> for [T; $n] {
+            #[inline]
+            fn from(val: ($t, $($ts),*)) -> [T; $n] {
+                let ($i, $($is),*) = val;
+                [$i, $($is),*]
+            }
+        }
+
+        array_impl_variadic!{($n - 1), $($is: $ts),*}
     };
     {$n:expr,} => {
         #[stable(since = "1.4.0", feature = "array_default")]
         impl<T> Default for [T; $n] {
             fn default() -> [T; $n] { [] }
         }
+
+        #[unstable(feature = "array_from_tuple", reason = "recently added", issue = "0")]
+        impl<T> From<()> for [T; $n] {
+            #[inline]
+            fn from(_: ()) -> [T; $n] { [] }
+        }
     };
 }
 
-array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+array_impl_variadic!{32, a: T, b: T, c: T, d: T, e: T, f: T, g: T, h: T, i: T, j: T, k: T, l: T,
+                         m: T, n: T, o: T, p: T, q: T, r: T, s: T, t: T, u: T, v: T, w: T, x: T,
+                         y: T, z: T, aa: T, ab: T, ac: T, ad: T, ae: T, af: T}

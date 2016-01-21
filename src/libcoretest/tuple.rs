@@ -66,3 +66,15 @@ fn test_show() {
     let s = format!("{:?}", (1, "hi", true));
     assert_eq!(s, "(1, \"hi\", true)");
 }
+
+#[test]
+fn test_from_array() {
+    let a: (u8, u8, u8) = From::from([1, 2, 3]);
+    assert_eq!(a, (1, 2, 3));
+
+    let a: (u16, u16, u16, u16, u16) = From::from([5, 6, 7, 8, 9]);
+    assert_eq!(a, (5, 6, 7, 8, 9));
+
+    let a: [u8; 0] = [];
+    let _: () = From::from(a);
+}
