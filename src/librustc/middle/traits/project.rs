@@ -198,10 +198,10 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
 /// them with a fully resolved type where possible. The return value
 /// combines the normalized result and any additional obligations that
 /// were incurred as result.
-pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
-                               cause: ObligationCause<'tcx>,
-                               value: &T)
-                               -> Normalized<'tcx, T>
+pub fn normalize<'a, 'b, 'tcx, T>(selcx: &'a mut SelectionContext<'b,'tcx>,
+                                  cause: ObligationCause<'tcx>,
+                                  value: &T)
+                                 -> Normalized<'tcx, T>
     where T : TypeFoldable<'tcx>
 {
     normalize_with_depth(selcx, cause, 0, value)

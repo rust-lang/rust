@@ -127,7 +127,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         let (relations, default) = match old_value {
             Bounded { relations, default } => (relations, default),
             Known(_) => panic!("Asked to instantiate variable that is \
-                               already instantiated")
+                                already instantiated")
         };
 
         for &(dir, vid) in &relations {

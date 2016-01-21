@@ -104,7 +104,7 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
-pub type SkolemizationMap = FnvHashMap<ty::BoundRegion,ty::Region>;
+pub type SkolemizationMap = FnvHashMap<ty::BoundRegion, ty::Region>;
 
 /// Why did we require that the two types be related?
 ///
