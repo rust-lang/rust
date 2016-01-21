@@ -1,0 +1,25 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_trans"
+version = "0.0.0"
+
+[lib]
+name = "rustc_trans"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+arena = { path = "../libarena" }
+flate = { path = "../libflate" }
+getopts = { path = "../libgetopts" }
+graphviz = { path = "../libgraphviz" }
+log = { path = "../liblog" }
+rustc = { path = "../librustc" }
+rustc_back = { path = "../librustc_back" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_front = { path = "../librustc_front" }
+rustc_llvm = { path = "../librustc_llvm" }
+rustc_mir = { path = "../librustc_mir" }
+rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
+serialize = { path = "../libserialize" }
+syntax = { path = "../libsyntax" }
