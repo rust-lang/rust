@@ -32,10 +32,11 @@ enum Color {
     CustomRGBA { a: bool, r: u8, g: u8, b: u8 }
 }
 
-fn enum_with_two_missing_variants() {
+fn enum_with_single_missing_variant() {
     match Color::Red {
-    //~^ ERROR non-exhaustive patterns: `Red` and `Green` not covered
-        Color::CustomRGBA { .. } => ()
+    //~^ ERROR non-exhaustive patterns: `Red` not covered
+        Color::CustomRGBA { .. } => (),
+        Color::Green => ()
     }
 }
 
@@ -43,7 +44,7 @@ enum Direction {
     North, East, South, West
 }
 
-fn enum_with_three_or_more_missing_variants() {
+fn enum_with_multiple_missing_variants() {
     match Direction::North {
     //~^ ERROR non-exhaustive patterns: `East`, `South` and `West` not covered
         Direction::North => ()
@@ -56,7 +57,7 @@ enum ExcessiveEnum {
 
 fn enum_with_excessive_missing_variants() {
     match ExcessiveEnum::First {
-    //~^ ERROR `Sixth`, `Seventh`, `Eighth`, `Ninth`, `Tenth`, … and `Twelfth` not covered
+    //~^ ERROR `Second`, `Third`, `Fourth` and 8 more not covered
 
         ExcessiveEnum::First => ()
     }
