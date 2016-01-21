@@ -19,6 +19,8 @@ use std::process::Command;
 use build_helper::run;
 
 fn main() {
+    println!("cargo:rustc-cfg=cargobuild");
+
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
     if !target.contains("apple") && !target.contains("msvc") {

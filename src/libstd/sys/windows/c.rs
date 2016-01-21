@@ -966,6 +966,9 @@ pub enum EXCEPTION_DISPOSITION {
 #[link(name = "userenv")]
 #[link(name = "shell32")]
 #[link(name = "advapi32")]
+#[cfg(not(cargobuild))]
+extern {}
+
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD,
                       lpWSAData: LPWSADATA) -> c_int;

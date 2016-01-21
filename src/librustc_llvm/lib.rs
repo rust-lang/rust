@@ -609,6 +609,9 @@ pub mod debuginfo {
 // automatically updated whenever LLVM is updated to include an up-to-date
 // set of the libraries we need to link to LLVM for.
 #[link(name = "rustllvm", kind = "static")]
+#[cfg(not(cargobuild))]
+extern {}
+
 #[linked_from = "rustllvm"] // not quite true but good enough
 extern {
     /* Create and destroy contexts. */
@@ -2486,6 +2489,7 @@ impl Drop for OperandBundleDef {
 // parts of LLVM that rustllvm depends on aren't thrown away by the linker.
 // Works to the above fix for #15460 to ensure LLVM dependencies that
 // are only used by rustllvm don't get stripped by the linker.
+#[cfg(not(cargobuild))]
 mod llvmdeps {
     include! { env!("CFG_LLVM_LINKAGE_FILE") }
 }
