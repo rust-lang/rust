@@ -15,7 +15,6 @@ use io;
 use libc::{self, c_int, size_t};
 use net::{SocketAddr, Shutdown};
 use str;
-use sync::atomic::{AtomicBool, Ordering};
 use sys::fd::FileDesc;
 use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{getsockopt, setsockopt};
@@ -67,44 +66,7 @@ impl Socket {
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        // We want to atomically duplicate this file descriptor and set the
-        // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
-        // flag, however, isn't supported on older Linux kernels (earlier than
-        // 2.6.24).
-        //
-        // To detect this and ensure that CLOEXEC is still set, we
-        // follow a strategy similar to musl [1] where if passing
-        // F_DUPFD_CLOEXEC causes `fcntl` to return EINVAL it means it's not
-        // supported (the third parameter, 0, is always valid), so we stop
-        // trying that. We also *still* call the `set_cloexec` method as
-        // apparently some kernel at some point stopped setting CLOEXEC even
-        // though it reported doing so on F_DUPFD_CLOEXEC.
-        //
-        // Also note that Android doesn't have F_DUPFD_CLOEXEC, but get it to
-        // resolve so we at least compile this.
-        //
-        // [1]: http://comments.gmane.org/gmane.linux.lib.musl.general/2963
-        #[cfg(target_os = "android")]
-        use libc::F_DUPFD as F_DUPFD_CLOEXEC;
-        #[cfg(not(target_os = "android"))]
-        use libc::F_DUPFD_CLOEXEC;
-
-        let make_socket = |fd| {
-            let fd = FileDesc::new(fd);
-            fd.set_cloexec();
-            Socket(fd)
-        };
-        static TRY_CLOEXEC: AtomicBool = AtomicBool::new(true);
-        let fd = self.0.raw();
-        if !cfg!(target_os = "android") && TRY_CLOEXEC.load(Ordering::Relaxed) {
-            match cvt(unsafe { libc::fcntl(fd, F_DUPFD_CLOEXEC, 0) }) {
-                Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {
-                    TRY_CLOEXEC.store(false, Ordering::Relaxed);
-                }
-                res => return res.map(make_socket),
-            }
-        }
-        cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).map(make_socket)
+        self.0.duplicate().map(Socket)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
