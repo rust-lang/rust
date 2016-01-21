@@ -388,11 +388,12 @@ impl<'a> Context<'a> {
         }
 
         let dypair = self.dylibname();
+        let staticpair = self.staticlibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
         let dylib_prefix = format!("{}{}", dypair.0, self.crate_name);
         let rlib_prefix = format!("lib{}", self.crate_name);
-        let staticlib_prefix = format!("lib{}", self.crate_name);
+        let staticlib_prefix = format!("{}{}", staticpair.0, self.crate_name);
 
         let mut candidates = HashMap::new();
         let mut staticlibs = vec!();
@@ -425,7 +426,7 @@ impl<'a> Context<'a> {
                  false)
             } else {
                 if file.starts_with(&staticlib_prefix[..]) &&
-                   file.ends_with(".a") {
+                   file.ends_with(&staticpair.1) {
                     staticlibs.push(CrateMismatch {
                         path: path.to_path_buf(),
                         got: "static".to_string()
@@ -642,6 +643,13 @@ impl<'a> Context<'a> {
     fn dylibname(&self) -> (String, String) {
         let t = &self.target;
         (t.options.dll_prefix.clone(), t.options.dll_suffix.clone())
+    }
+
+    // Returns the corresponding (prefix, suffix) that files need to have for
+    // static libraries
+    fn staticlibname(&self) -> (String, String) {
+        let t = &self.target;
+        (t.options.staticlib_prefix.clone(), t.options.staticlib_suffix.clone())
     }
 
     fn find_commandline_library(&mut self, locs: &[String]) -> Option<Library> {
