@@ -444,6 +444,8 @@ pub mod hash_set {
 /// HashSet.
 #[unstable(feature = "hashmap_hasher", reason = "module was recently added",
            issue = "27713")]
+#[rustc_deprecated(since = "1.7.0", reason = "support moved to std::hash")]
+#[allow(deprecated)]
 pub mod hash_state {
     pub use super::hash::state::*;
 }
