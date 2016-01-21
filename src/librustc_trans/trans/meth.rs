@@ -189,7 +189,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               idx)
         }
         _ => {
-            // FIXME
+            // FIXME(#20847): handle at least VtableFnPointer
             tcx.sess.bug(&format!("static call to invalid vtable: {:?}",
                                  vtbl));
         }
