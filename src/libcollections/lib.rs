@@ -28,6 +28,7 @@
 
 #![allow(trivial_casts)]
 #![cfg_attr(test, allow(deprecated))] // rand
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(alloc)]
 #![feature(box_patterns)]

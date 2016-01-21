@@ -168,6 +168,7 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 #![deny(missing_docs)]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_syntax)]
 #![feature(const_fn)]

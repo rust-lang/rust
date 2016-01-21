@@ -22,6 +22,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
 #![feature(filling_drop)]
