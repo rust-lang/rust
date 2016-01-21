@@ -522,14 +522,6 @@ STAGE$(1)_T_$(2)_H_$(3) := \
 		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2)) \
                 $$(RUSTC_FLAGS_$(2))
 
-PERF_STAGE$(1)_T_$(2)_H_$(3) := \
-	$$(Q)$$(call CFG_RUN_TARG_$(3),$(1), \
-		$$(CFG_PERF_TOOL) \
-		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3)) \
-		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2)) \
-                $$(RUSTC_FLAGS_$(2))
-
 endef
 
 $(foreach build,$(CFG_HOST), \
