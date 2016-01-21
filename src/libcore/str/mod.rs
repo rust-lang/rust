@@ -244,6 +244,34 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     Ok(unsafe { from_utf8_unchecked(v) })
 }
 
+/// Forms a str from a pointer and a length.
+///
+/// The `len` argument is the number of bytes in the string.
+///
+/// # Safety
+///
+/// This function is unsafe as there is no guarantee that the given pointer is
+/// valid for `len` bytes, nor whether the lifetime inferred is a suitable
+/// lifetime for the returned str.
+///
+/// The data must be valid UTF-8
+///
+/// `p` must be non-null, even for zero-length str.
+///
+/// # Caveat
+///
+/// The lifetime for the returned str is inferred from its usage. To
+/// prevent accidental misuse, it's suggested to tie the lifetime to whichever
+/// source lifetime is safe in the context, such as by providing a helper
+/// function taking the lifetime of a host value for the str, or by explicit
+/// annotation.
+/// Performs the same functionality as `from_raw_parts`, except that a mutable
+/// str is returned.
+///
+unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
+    mem::transmute::<&mut [u8], &mut str>(slice::from_raw_parts_mut(p, len))
+}
+
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
@@ -1843,10 +1871,10 @@ impl StrExt for str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             let len = self.len();
+            let ptr = self.as_ptr() as *mut u8;
             unsafe {
-                let self2: &mut str = mem::transmute_copy(&self);
-                (self.slice_mut_unchecked(0, mid),
-                 self2.slice_mut_unchecked(mid, len))
+                (from_raw_parts_mut(ptr, mid),
+                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
             }
         } else {
             slice_error_fail(self, 0, mid)
