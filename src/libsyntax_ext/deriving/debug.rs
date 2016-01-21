@@ -13,7 +13,7 @@ use deriving::generic::ty::*;
 
 use syntax::ast;
 use syntax::ast::{MetaItem, Expr};
-use syntax::codemap::{Span, respan};
+use syntax::codemap::{Span, respan, DUMMY_SP};
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
@@ -87,7 +87,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                                                fmt,
                                                token::str_to_ident("debug_tuple"),
                                                vec![name]);
-                stmts.push(cx.stmt_let(span, true, builder, expr));
+                stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
                 for field in fields {
                     // Use double indirection to make sure this works for unsized types
@@ -109,7 +109,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                                                fmt,
                                                token::str_to_ident("debug_struct"),
                                                vec![name]);
-                stmts.push(cx.stmt_let(span, true, builder, expr));
+                stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
 
                 for field in fields {
                     let name = cx.expr_lit(field.span, ast::Lit_::LitStr(

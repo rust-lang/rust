@@ -30,7 +30,7 @@ use syntax::print::pprust::ty_to_string;
 
 use self::span_utils::SpanUtils;
 
-
+#[macro_use]
 pub mod span_utils;
 pub mod recorder;
 
@@ -209,21 +209,21 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         result
     }
 
-    pub fn get_item_data(&self, item: &ast::Item) -> Data {
+    pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
             ast::ItemFn(..) => {
                 let name = self.tcx.map.path_to_string(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
-
-                Data::FunctionData(FunctionData {
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::FunctionData(FunctionData {
                     id: item.id,
                     name: name,
                     qualname: qualname,
                     declaration: None,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
-                })
+                }))
             }
             ast::ItemStatic(ref typ, mt, ref expr) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
@@ -235,8 +235,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 };
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
-
-                Data::VariableData(VariableData {
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::VariableData(VariableData {
                     id: item.id,
                     name: item.ident.to_string(),
                     qualname: qualname,
@@ -244,13 +244,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                     value: value,
                     type_value: ty_to_string(&typ),
-                })
+                }))
             }
             ast::ItemConst(ref typ, ref expr) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
-
-                Data::VariableData(VariableData {
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::VariableData(VariableData {
                     id: item.id,
                     name: item.ident.to_string(),
                     qualname: qualname,
@@ -258,7 +258,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                     value: self.span_utils.snippet(expr.span),
                     type_value: ty_to_string(&typ),
-                })
+                }))
             }
             ast::ItemMod(ref m) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
@@ -267,28 +267,28 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let filename = cm.span_to_filename(m.inner);
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Mod);
-
-                Data::ModData(ModData {
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::ModData(ModData {
                     id: item.id,
                     name: item.ident.to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
                     filename: filename,
-                })
+                }))
             }
             ast::ItemEnum(..) => {
                 let enum_name = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let val = self.span_utils.snippet(item.span);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
-
-                Data::EnumData(EnumData {
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::EnumData(EnumData {
                     id: item.id,
                     value: val,
                     span: sub_span.unwrap(),
                     qualname: enum_name,
                     scope: self.enclosing_scope(item.id),
-                })
+                }))
             }
             ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
@@ -299,10 +299,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 match typ.node {
                     // Common case impl for a struct or something basic.
                     ast::TyPath(None, ref path) => {
-                        sub_span = self.span_utils.sub_span_for_type_name(path.span).unwrap();
+                        sub_span = self.span_utils.sub_span_for_type_name(path.span);
+                        filter!(self.span_utils, sub_span, path.span, None);
                         type_data = self.lookup_ref_id(typ.id).map(|id| {
                             TypeRefData {
-                                span: sub_span,
+                                span: sub_span.unwrap(),
                                 scope: parent,
                                 ref_id: id,
                             }
@@ -311,20 +312,21 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     _ => {
                         // Less useful case, impl for a compound type.
                         let span = typ.span;
-                        sub_span = self.span_utils.sub_span_for_type_name(span).unwrap_or(span);
+                        sub_span = self.span_utils.sub_span_for_type_name(span).or(Some(span));
                     }
                 }
 
                 let trait_data = trait_ref.as_ref()
                                           .and_then(|tr| self.get_trait_ref_data(tr, parent));
 
-                Data::ImplData(ImplData {
+                filter!(self.span_utils, sub_span, typ.span, None);
+                Some(Data::ImplData(ImplData {
                     id: item.id,
-                    span: sub_span,
+                    span: sub_span.unwrap(),
                     scope: parent,
                     trait_ref: trait_data,
                     self_ref: type_data,
-                })
+                }))
             }
             _ => {
                 // FIXME
@@ -333,12 +335,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_field_data(&self, field: &ast::StructField, scope: NodeId) -> Option<VariableData> {
+    pub fn get_field_data(&self, field: &ast::StructField,
+                          scope: NodeId) -> Option<VariableData> {
         match field.node.kind {
             ast::NamedField(ident, _) => {
                 let qualname = format!("::{}::{}", self.tcx.map.path_to_string(scope), ident);
                 let typ = self.tcx.node_types().get(&field.node.id).unwrap().to_string();
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
+                filter!(self.span_utils, sub_span, field.span, None);
                 Some(VariableData {
                     id: field.node.id,
                     name: ident.to_string(),
@@ -355,7 +359,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     // FIXME would be nice to take a MethodItem here, but the ast provides both
     // trait and impl flavours, so the caller must do the disassembly.
-    pub fn get_method_data(&self, id: ast::NodeId, name: ast::Name, span: Span) -> FunctionData {
+    pub fn get_method_data(&self, id: ast::NodeId,
+                           name: ast::Name, span: Span) -> Option<FunctionData> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let qualname = match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
@@ -430,29 +435,30 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         });
 
         let sub_span = self.span_utils.sub_span_after_keyword(span, keywords::Fn);
-
-        FunctionData {
+        filter!(self.span_utils, sub_span, span, None);
+        Some(FunctionData {
             id: id,
             name: name.to_string(),
             qualname: qualname,
             declaration: decl_id,
             span: sub_span.unwrap(),
             scope: self.enclosing_scope(id),
-        }
+        })
     }
 
     pub fn get_trait_ref_data(&self,
                               trait_ref: &ast::TraitRef,
                               parent: NodeId)
                               -> Option<TypeRefData> {
-        self.lookup_ref_id(trait_ref.ref_id).map(|def_id| {
+        self.lookup_ref_id(trait_ref.ref_id).and_then(|def_id| {
             let span = trait_ref.path.span;
-            let sub_span = self.span_utils.sub_span_for_type_name(span).unwrap_or(span);
-            TypeRefData {
-                span: sub_span,
+            let sub_span = self.span_utils.sub_span_for_type_name(span).or(Some(span));
+            filter!(self.span_utils, sub_span, span, None);
+            Some(TypeRefData {
+                span: sub_span.unwrap(),
                 scope: parent,
                 ref_id: def_id,
-            }
+            })
         })
     }
 
@@ -465,6 +471,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::TyStruct(def, _) => {
                         let f = def.struct_variant().field_named(ident.node.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
+                        filter!(self.span_utils, sub_span, expr.span, None);
                         return Some(Data::VariableRefData(VariableRefData {
                             name: ident.node.to_string(),
                             span: sub_span.unwrap(),
@@ -484,6 +491,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 match *ty {
                     ty::TyStruct(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
+                        filter!(self.span_utils, sub_span, path.span, None);
                         Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
                             scope: self.enclosing_scope(expr.id),
@@ -506,6 +514,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::TraitContainer(_) => (None, Some(method_id)),
                 };
                 let sub_span = self.span_utils.sub_span_for_meth_name(expr.span);
+                filter!(self.span_utils, sub_span, expr.span, None);
                 let parent = self.enclosing_scope(expr.id);
                 Some(Data::MethodCallData(MethodCallData {
                     span: sub_span.unwrap(),
@@ -532,6 +541,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
         let def = def_map.get(&id).unwrap().full_def();
         let sub_span = self.span_utils.span_for_last_ident(path.span);
+        filter!(self.span_utils, sub_span, path.span, None);
         match def {
             Def::Upvar(..) |
             Def::Local(..) |
@@ -559,6 +569,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             Def::Method(decl_id) => {
                 let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
+                filter!(self.span_utils, sub_span, path.span, None);
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.impl_or_trait_item(decl_id);
                     match ti.container() {
@@ -628,16 +639,17 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                               field_ref: &ast::Field,
                               variant: ty::VariantDef,
                               parent: NodeId)
-                              -> VariableRefData {
+                              -> Option<VariableRefData> {
         let f = variant.field_named(field_ref.ident.node.name);
         // We don't really need a sub-span here, but no harm done
         let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
-        VariableRefData {
+        filter!(self.span_utils, sub_span, field_ref.ident.span, None);
+        Some(VariableRefData {
             name: field_ref.ident.node.to_string(),
             span: sub_span.unwrap(),
             scope: parent,
             ref_id: f.did,
-        }
+        })
     }
 
     pub fn get_data_for_id(&self, _id: &NodeId) -> Data {
@@ -677,17 +689,15 @@ impl PathCollector {
 
 impl<'v> Visitor<'v> for PathCollector {
     fn visit_pat(&mut self, p: &ast::Pat) {
-        if generated_code(p.span) {
-            return;
-        }
-
         match p.node {
             ast::PatStruct(ref path, _, _) => {
-                self.collected_paths.push((p.id, path.clone(), ast::MutMutable, recorder::TypeRef));
+                self.collected_paths.push((p.id, path.clone(),
+                                           ast::MutMutable, recorder::TypeRef));
             }
             ast::PatEnum(ref path, _) |
             ast::PatQPath(_, ref path) => {
-                self.collected_paths.push((p.id, path.clone(), ast::MutMutable, recorder::VarRef));
+                self.collected_paths.push((p.id, path.clone(),
+                                           ast::MutMutable, recorder::VarRef));
             }
             ast::PatIdent(bm, ref path1, _) => {
                 debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
@@ -718,10 +728,6 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
                                cratename: &str,
                                odir: Option<&Path>) {
     let _ignore = tcx.dep_graph.in_ignore();
-
-    if generated_code(krate.span) {
-        return;
-    }
 
     assert!(analysis.glob_map.is_some());
 
@@ -780,8 +786,8 @@ fn escape(s: String) -> String {
     s.replace("\"", "\"\"")
 }
 
-// If the expression is a macro expansion or other generated code, run screaming
-// and don't index.
+// Helper function to determine if a span came from a
+// macro expansion or syntax extension.
 pub fn generated_code(span: Span) -> bool {
     span.expn_id != NO_EXPANSION || span == DUMMY_SP
 }

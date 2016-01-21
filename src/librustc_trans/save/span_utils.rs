@@ -66,13 +66,6 @@ impl<'a> SpanUtils<'a> {
     // sub_span starts at span.lo, so we need to adjust the positions etc.
     // If sub_span is None, we don't need to adjust.
     pub fn make_sub_span(&self, span: Span, sub_span: Option<Span>) -> Option<Span> {
-        let loc = self.sess.codemap().lookup_char_pos(span.lo);
-        assert!(!generated_code(span),
-                "generated code; we should not be processing this `{}` in {}, line {}",
-                self.snippet(span),
-                loc.file.name,
-                loc.line);
-
         match sub_span {
             None => None,
             Some(sub) => {
@@ -81,7 +74,7 @@ impl<'a> SpanUtils<'a> {
                 Some(Span {
                     lo: base + self.sess.codemap().lookup_byte_offset(sub.lo).pos,
                     hi: base + self.sess.codemap().lookup_byte_offset(sub.hi).pos,
-                    expn_id: NO_EXPANSION,
+                    expn_id: span.expn_id,
                 })
             }
         }
@@ -259,6 +252,9 @@ impl<'a> SpanUtils<'a> {
             let ts = toks.real_token();
             if ts.tok == token::Eof {
                 if bracket_count != 0 {
+                    if generated_code(span) {
+                        return vec!();
+                    }
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
                     self.sess.span_bug(span,
                                        &format!("Mis-counted brackets when breaking path? \
@@ -358,19 +354,12 @@ impl<'a> SpanUtils<'a> {
     // Returns a list of the spans of idents in a path.
     // E.g., For foo::bar<x,t>::baz, we return [foo, bar, baz] (well, their spans)
     pub fn spans_for_path_segments(&self, path: &ast::Path) -> Vec<Span> {
-        if generated_code(path.span) {
-            return vec!();
-        }
-
         self.spans_with_brackets(path.span, 0, -1)
     }
 
     // Return an owned vector of the subspans of the param identifier
     // tokens found in span.
     pub fn spans_for_ty_params(&self, span: Span, number: isize) -> Vec<Span> {
-        if generated_code(span) {
-            return vec!();
-        }
         // Type params are nested within one level of brackets:
         // i.e. we want Vec<A, B> from Foo<A, B<T,U>>
         self.spans_with_brackets(span, 1, number)
@@ -388,4 +377,40 @@ impl<'a> SpanUtils<'a> {
             self.sess.bug("span errors reached 1000, giving up");
         }
     }
+
+    /// Return true if the span is generated code, and
+    /// it is not a subspan of the root callsite.
+    ///
+    /// Used to filter out spans of minimal value,
+    /// such as references to macro internal variables.
+    pub fn filter_generated(&self, sub_span: Option<Span>, parent: Span) -> bool {
+        if !generated_code(parent) {
+            if sub_span.is_none() {
+                // Edge case - this occurs on generated code with incorrect expansion info.
+                return true;
+            }
+            return false;
+        }
+        // If sub_span is none, filter out generated code.
+        if sub_span.is_none() {
+            return true;
+        }
+        // A generated span is deemed invalid if it is not a sub-span of the root
+        // callsite. This filters out macro internal variables and most malformed spans.
+        let span = self.sess.codemap().source_callsite(parent);
+        !(parent.lo >= span.lo && parent.hi <= span.hi)
+    }
+}
+
+macro_rules! filter {
+    ($util: expr, $span: ident, $parent: expr, None) => {
+        if $util.filter_generated($span, $parent) {
+            return None;
+        }
+    };
+    ($util: expr, $span: ident, $parent: expr) => {
+        if $util.filter_generated($span, $parent) {
+            return;
+        }
+    };
 }
