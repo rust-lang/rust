@@ -3038,7 +3038,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           record_used: bool)
                           -> Option<LocalDef> {
         if identifier.name == special_idents::invalid.name {
-            return Some(LocalDef::from_def(DefErr));
+            return Some(LocalDef::from_def(Def::Err));
         }
 
         // First, check to see whether the name is a primitive type.
