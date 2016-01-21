@@ -140,6 +140,7 @@ dependencies = [
  "rustc_llvm 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_mir 0.0.0",
+ "rustc_passes 0.0.0",
  "rustc_plugin 0.0.0",
  "rustc_privacy 0.0.0",
  "rustc_resolve 0.0.0",
@@ -207,6 +208,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_passes"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
 name = "rustc_platform_intrinsics"
 version = "0.0.0"
 dependencies = [
@@ -222,6 +233,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_front 0.0.0",
  "rustc_metadata 0.0.0",
+ "rustc_mir 0.0.0",
  "syntax 0.0.0",
 ]
 

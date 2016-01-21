@@ -1,0 +1,30 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "std"
+version = "0.0.0"
+build = "build.rs"
+
+[lib]
+name = "std"
+path = "lib.rs"
+crate-type = ["dylib", "rlib"]
+test = false
+
+[dependencies]
+alloc = { path = "../liballoc" }
+alloc_jemalloc = { path = "../liballoc_jemalloc", optional = true }
+alloc_system = { path = "../liballoc_system" }
+collections = { path = "../libcollections" }
+core = { path = "../libcore" }
+libc = { path = "../rustc/libc_shim" }
+rand = { path = "../librand" }
+rustc_bitflags = { path = "../librustc_bitflags" }
+rustc_unicode = { path = "../librustc_unicode" }
+
+[build-dependencies]
+build_helper = { path = "../build_helper" }
+gcc = "0.3"
+
+[features]
+jemalloc = ["alloc_jemalloc"]
+debug-jemalloc = ["alloc_jemalloc/debug"]

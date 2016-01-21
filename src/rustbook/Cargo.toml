@@ -1,0 +1,13 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustbook"
+version = "0.0.0"
+
+[lib]
+name = "rustbook"
+path = "main.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+rustc_back = { path = "../librustc_back" }
+rustdoc = { path = "../librustdoc" }
