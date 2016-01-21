@@ -17,7 +17,7 @@ use self::NodesMatchingUII::*;
 
 use rustc_trans::back::link;
 
-use driver;
+use {driver, abort_on_err};
 
 use rustc::middle::ty;
 use rustc::middle::cfg;
@@ -194,21 +194,21 @@ impl PpSourceMode {
                 f(&annotation, payload, &ast_map.forest.krate)
             }
             PpmTyped => {
-                driver::phase_3_run_analysis_passes(sess,
-                                                    cstore,
-                                                    ast_map.clone(),
-                                                    arenas,
-                                                    id,
-                                                    resolve::MakeGlobMap::No,
-                                                    |tcx, _, _| {
-                                                        let annotation = TypedAnnotation {
-                                                            tcx: tcx,
-                                                        };
-                                                        let _ignore = tcx.dep_graph.in_ignore();
-                                                        f(&annotation,
-                                                          payload,
-                                                          &ast_map.forest.krate)
-                                                    })
+                abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                                                                 cstore,
+                                                                 ast_map.clone(),
+                                                                 arenas,
+                                                                 id,
+                                                                 resolve::MakeGlobMap::No,
+                                                                 |tcx, _, _| {
+                    let annotation = TypedAnnotation {
+                        tcx: tcx,
+                    };
+                    let _ignore = tcx.dep_graph.in_ignore();
+                    f(&annotation,
+                      payload,
+                      &ast_map.forest.krate)
+                }), sess)
             }
             _ => panic!("Should use call_with_pp_support"),
         }
@@ -694,8 +694,8 @@ pub fn pretty_print_input(sess: Session,
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
         match driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id[..], None) {
-            None => return,
-            Some(k) => driver::assign_node_ids(&sess, k),
+            Err(_) => return,
+            Ok(k) => driver::assign_node_ids(&sess, k),
         }
     } else {
         krate
@@ -818,19 +818,19 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
-                    driver::phase_3_run_analysis_passes(&sess,
-                                                        &cstore,
-                                                        ast_map,
-                                                        &arenas,
-                                                        &id,
-                                                        resolve::MakeGlobMap::No,
-                                                        |tcx, _, _| {
-                                                            print_flowgraph(variants,
-                                                                            tcx,
-                                                                            code,
-                                                                            mode,
-                                                                            out)
-                                                        })
+                    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+                                                                     &cstore,
+                                                                     ast_map,
+                                                                     &arenas,
+                                                                     &id,
+                                                                     resolve::MakeGlobMap::No,
+                                                                     |tcx, _, _| {
+                        print_flowgraph(variants,
+                                        tcx,
+                                        code,
+                                        mode,
+                                        out)
+                    }), &sess)
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs block, fn, or method; got \

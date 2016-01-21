@@ -176,15 +176,28 @@ impl Session {
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
+    pub fn track_errors<F, T>(&self, f: F) -> Result<T, usize>
+        where F: FnOnce() -> T
+    {
+        let mut count = self.err_count();
+        let result = f();
+        count -= self.err_count();
+        if count == 0 {
+            Ok(result)
+        } else {
+            Err(count)
+        }
+    }
     pub fn abort_if_new_errors<F, T>(&self, f: F) -> T
         where F: FnOnce() -> T
     {
-        let count = self.err_count();
-        let result = f();
-        if self.err_count() > count {
-            self.abort_if_errors();
+        match self.track_errors(f) {
+            Ok(result) => result,
+            Err(_) => {
+                self.abort_if_errors();
+                unreachable!();
+            }
         }
-        result
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
         self.diagnostic().span_warn(sp, msg)

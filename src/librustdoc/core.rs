@@ -10,7 +10,7 @@
 pub use self::MaybeTyped::*;
 
 use rustc_lint;
-use rustc_driver::{driver, target_features};
+use rustc_driver::{driver, target_features, abort_on_err};
 use rustc::session::{self, config};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
@@ -147,13 +147,13 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let arenas = ty::CtxtArenas::new();
     let hir_map = driver::make_map(&sess, &mut hir_forest);
 
-    driver::phase_3_run_analysis_passes(&sess,
-                                        &cstore,
-                                        hir_map,
-                                        &arenas,
-                                        &name,
-                                        resolve::MakeGlobMap::No,
-                                        |tcx, _, analysis| {
+    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+                                                     &cstore,
+                                                     hir_map,
+                                                     &arenas,
+                                                     &name,
+                                                     resolve::MakeGlobMap::No,
+                                                     |tcx, _, analysis| {
         let _ignore = tcx.dep_graph.in_ignore();
         let ty::CrateAnalysis { access_levels, .. } = analysis;
 
@@ -200,5 +200,5 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         *analysis.inlined.borrow_mut() = map;
         analysis.deref_trait_did = ctxt.deref_trait_did.get();
         (krate, analysis)
-    })
+    }), &sess)
 }
