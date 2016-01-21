@@ -75,6 +75,7 @@ pub mod entry;
 pub mod misc_early;
 pub mod array_indexing;
 pub mod panic;
+pub mod derive;
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -136,6 +137,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
     reg.register_late_lint_pass(box panic::PanicPass);
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
+    reg.register_late_lint_pass(box derive::Derive);
 
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -168,6 +170,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
+        derive::DERIVE_HASH_NOT_EQ,
         entry::MAP_ENTRY,
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
