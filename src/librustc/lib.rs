@@ -29,7 +29,6 @@
 #![feature(collections)]
 #![feature(const_fn)]
 #![feature(enumset)]
-#![feature(hashmap_hasher)]
 #![feature(iter_arith)]
 #![feature(libc)]
 #![feature(nonzero)]

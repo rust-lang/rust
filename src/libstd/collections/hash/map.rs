@@ -13,16 +13,12 @@ use self::SearchResult::*;
 use self::VacantEntryState::*;
 
 use borrow::Borrow;
-use clone::Clone;
-use cmp::{max, Eq, PartialEq};
-use default::Default;
+use cmp::max;
 use fmt::{self, Debug};
-use hash::{Hash, SipHasher};
-use iter::{self, Iterator, ExactSizeIterator, IntoIterator, FromIterator, Extend, Map};
-use marker::Sized;
+use hash::{Hash, SipHasher, BuildHasher};
+use iter::{self, Map, FromIterator};
 use mem::{self, replace};
-use ops::{Deref, FnMut, FnOnce, Index};
-use option::Option::{self, Some, None};
+use ops::{Deref, Index};
 use rand::{self, Rng};
 
 use super::table::{
@@ -39,7 +35,6 @@ use super::table::BucketState::{
     Empty,
     Full,
 };
-use super::state::HashState;
 
 const INITIAL_LOG2_CAP: usize = 5;
 const INITIAL_CAPACITY: usize = 1 << INITIAL_LOG2_CAP; // 2^5
@@ -307,7 +302,7 @@ fn test_resize_policy() {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashMap<K, V, S = RandomState> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
-    hash_state: S,
+    hash_builder: S,
 
     table: RawTable<K, V>,
 
@@ -455,10 +450,10 @@ impl<K, V, M> SearchResult<K, V, M> {
 }
 
 impl<K, V, S> HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     fn make_hash<X: ?Sized>(&self, x: &X) -> SafeHash where X: Hash {
-        table::make_hash(&self.hash_state, x)
+        table::make_hash(&self.hash_builder, x)
     }
 
     /// Search for a key, yielding the index if it's found in the hashtable.
@@ -528,38 +523,50 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> HashMap<K, V, RandomState> {
-        HashMap::with_capacity_and_hash_state(capacity, Default::default())
+        HashMap::with_capacity_and_hasher(capacity, Default::default())
     }
 }
 
 impl<K, V, S> HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
-    /// Creates an empty hashmap which will use the given hasher to hash keys.
+    /// Creates an empty hashmap which will use the given hash builder to hash
+    /// keys.
     ///
     /// The created map has the default initial capacity.
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
+    /// is designed to allow HashMaps to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(hashmap_hasher)]
-    ///
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
     ///
     /// let s = RandomState::new();
-    /// let mut map = HashMap::with_hash_state(s);
+    /// let mut map = HashMap::with_hasher(s);
     /// map.insert(1, 2);
     /// ```
     #[inline]
+    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+    pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
+        HashMap {
+            hash_builder: hash_builder,
+            resize_policy: DefaultResizePolicy::new(),
+            table: RawTable::new(0),
+        }
+    }
+
+    /// Deprecated, renamed to `with_hasher`
+    #[inline]
     #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
                issue = "27713")]
+    #[rustc_deprecated(since = "1.7.0", reason = "renamed to with_hasher")]
     pub fn with_hash_state(hash_state: S) -> HashMap<K, V, S> {
-        HashMap {
-            hash_state:    hash_state,
-            resize_policy: DefaultResizePolicy::new(),
-            table:         RawTable::new(0),
-        }
+        HashMap::with_hasher(hash_state)
     }
 
     /// Creates an empty HashMap with space for at least `capacity`
@@ -573,29 +580,37 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
-    /// #![feature(hashmap_hasher)]
-    ///
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
     ///
     /// let s = RandomState::new();
-    /// let mut map = HashMap::with_capacity_and_hash_state(10, s);
+    /// let mut map = HashMap::with_capacity_and_hasher(10, s);
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
-               issue = "27713")]
-    pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
-                                        -> HashMap<K, V, S> {
+    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S)
+                                    -> HashMap<K, V, S> {
         let resize_policy = DefaultResizePolicy::new();
         let min_cap = max(INITIAL_CAPACITY, resize_policy.min_capacity(capacity));
         let internal_cap = min_cap.checked_next_power_of_two().expect("capacity overflow");
         assert!(internal_cap >= capacity, "capacity overflow");
         HashMap {
-            hash_state:    hash_state,
+            hash_builder: hash_builder,
             resize_policy: resize_policy,
-            table:         RawTable::new(internal_cap),
+            table: RawTable::new(internal_cap),
         }
+    }
+
+    /// Deprecated, renamed to `with_capacity_and_hasher`
+    #[inline]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
+               issue = "27713")]
+    #[rustc_deprecated(since = "1.7.0",
+                       reason = "renamed to with_capacity_and_hasher")]
+    pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
+                                        -> HashMap<K, V, S> {
+        HashMap::with_capacity_and_hasher(capacity, hash_state)
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -1212,7 +1227,7 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> PartialEq for HashMap<K, V, S>
-    where K: Eq + Hash, V: PartialEq, S: HashState
+    where K: Eq + Hash, V: PartialEq, S: BuildHasher
 {
     fn eq(&self, other: &HashMap<K, V, S>) -> bool {
         if self.len() != other.len() { return false; }
@@ -1225,12 +1240,12 @@ impl<K, V, S> PartialEq for HashMap<K, V, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Eq for HashMap<K, V, S>
-    where K: Eq + Hash, V: Eq, S: HashState
+    where K: Eq + Hash, V: Eq, S: BuildHasher
 {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Debug for HashMap<K, V, S>
-    where K: Eq + Hash + Debug, V: Debug, S: HashState
+    where K: Eq + Hash + Debug, V: Debug, S: BuildHasher
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_map().entries(self.iter()).finish()
@@ -1240,10 +1255,10 @@ impl<K, V, S> Debug for HashMap<K, V, S>
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Default for HashMap<K, V, S>
     where K: Eq + Hash,
-          S: HashState + Default,
+          S: BuildHasher + Default,
 {
     fn default() -> HashMap<K, V, S> {
-        HashMap::with_hash_state(Default::default())
+        HashMap::with_hasher(Default::default())
     }
 }
 
@@ -1251,7 +1266,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
 impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
     where K: Eq + Hash + Borrow<Q>,
           Q: Eq + Hash,
-          S: HashState,
+          S: BuildHasher,
 {
     type Output = V;
 
@@ -1368,7 +1383,7 @@ enum VacantEntryState<K, V, M> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
@@ -1380,7 +1395,7 @@ impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
@@ -1392,7 +1407,7 @@ impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> IntoIterator for HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
@@ -1571,13 +1586,12 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState + Default
+    where K: Eq + Hash, S: BuildHasher + Default
 {
     fn from_iter<T: IntoIterator<Item=(K, V)>>(iterable: T) -> HashMap<K, V, S> {
         let iter = iterable.into_iter();
         let lower = iter.size_hint().0;
-        let mut map = HashMap::with_capacity_and_hash_state(lower,
-                                                            Default::default());
+        let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
         map.extend(iter);
         map
     }
@@ -1585,7 +1599,7 @@ impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
-    where K: Eq + Hash, S: HashState
+    where K: Eq + Hash, S: BuildHasher
 {
     fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
@@ -1596,7 +1610,7 @@ impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
 
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
 impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
-    where K: Eq + Hash + Copy, V: Copy, S: HashState
+    where K: Eq + Hash + Copy, V: Copy, S: BuildHasher
 {
     fn extend<T: IntoIterator<Item=(&'a K, &'a V)>>(&mut self, iter: T) {
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
@@ -1609,34 +1623,28 @@ impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 /// `Hasher`, but the hashers created by two different `RandomState`
 /// instances are unlikely to produce the same result for the same values.
 #[derive(Clone)]
-#[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered",
-           issue = "27713")]
+#[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
 pub struct RandomState {
     k0: u64,
     k1: u64,
 }
 
-#[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered",
-           issue = "27713")]
 impl RandomState {
     /// Constructs a new `RandomState` that is initialized with random keys.
     #[inline]
     #[allow(deprecated)] // rand
+    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn new() -> RandomState {
         let mut r = rand::thread_rng();
         RandomState { k0: r.gen(), k1: r.gen() }
     }
 }
 
-#[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered",
-           issue = "27713")]
-impl HashState for RandomState {
+#[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+impl BuildHasher for RandomState {
     type Hasher = SipHasher;
     #[inline]
-    fn hasher(&self) -> SipHasher {
+    fn build_hasher(&self) -> SipHasher {
         SipHasher::new_with_keys(self.k0, self.k1)
     }
 }
@@ -1650,7 +1658,7 @@ impl Default for RandomState {
 }
 
 impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
-    where K: Eq + Hash + Borrow<Q>, S: HashState, Q: Eq + Hash
+    where K: Eq + Hash + Borrow<Q>, S: BuildHasher, Q: Eq + Hash
 {
     type Key = K;
 

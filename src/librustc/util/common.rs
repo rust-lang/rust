@@ -12,10 +12,9 @@
 
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
-use std::collections::hash_state::HashState;
 use std::ffi::CString;
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::hash::{Hash, BuildHasher};
 use std::iter::repeat;
 use std::path::Path;
 use std::time::Instant;
@@ -217,7 +216,7 @@ pub trait MemoizationMap {
 }
 
 impl<K, V, S> MemoizationMap for RefCell<HashMap<K,V,S>>
-    where K: Hash+Eq+Clone, V: Clone, S: HashState
+    where K: Hash+Eq+Clone, V: Clone, S: BuildHasher
 {
     type Key = K;
     type Value = V;

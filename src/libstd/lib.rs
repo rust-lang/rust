@@ -231,6 +231,7 @@
 #![feature(float_from_str_radix)]
 #![feature(fnbox)]
 #![feature(heap_api)]
+#![feature(hashmap_hasher)]
 #![feature(int_error_internals)]
 #![feature(into_cow)]
 #![feature(lang_items)]
