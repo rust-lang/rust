@@ -339,7 +339,6 @@ pub fn args() -> Args {
 pub fn args() -> Args {
     use mem;
 
-    #[link(name = "objc")]
     extern {
         fn sel_registerName(name: *const libc::c_uchar) -> Sel;
         fn objc_msgSend(obj: NsId, sel: Sel, ...) -> NsId;
@@ -347,6 +346,8 @@ pub fn args() -> Args {
     }
 
     #[link(name = "Foundation", kind = "framework")]
+    #[link(name = "objc")]
+    #[cfg(not(cargobuild))]
     extern {}
 
     type Sel = *const libc::c_void;

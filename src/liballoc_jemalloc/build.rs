@@ -17,6 +17,8 @@ use std::process::Command;
 use build_helper::run;
 
 fn main() {
+    println!("cargo:rustc-cfg=cargobuild");
+
     let target = env::var("TARGET").unwrap();
     let host = env::var("HOST").unwrap();
     let build_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());

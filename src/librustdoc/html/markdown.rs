@@ -157,6 +157,9 @@ struct hoedown_buffer {
 
 // hoedown FFI
 #[link(name = "hoedown", kind = "static")]
+#[cfg(not(cargobuild))]
+extern {}
+
 extern {
     fn hoedown_html_renderer_new(render_flags: libc::c_uint,
                                  nesting_level: libc::c_int)

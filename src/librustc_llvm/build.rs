@@ -18,6 +18,8 @@ use std::path::PathBuf;
 use build_helper::output;
 
 fn main() {
+    println!("cargo:rustc-cfg=cargobuild");
+
     let target = env::var("TARGET").unwrap();
     let llvm_config = env::var_os("LLVM_CONFIG").map(PathBuf::from)
                            .unwrap_or_else(|| {

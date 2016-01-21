@@ -11,6 +11,7 @@
 extern crate gcc;
 
 fn main() {
+    println!("cargo:rustc-cfg=cargobuild");
     let mut cfg = gcc::Config::new();
     cfg.file("../rt/hoedown/src/autolink.c")
        .file("../rt/hoedown/src/buffer.c")

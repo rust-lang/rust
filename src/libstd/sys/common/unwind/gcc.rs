@@ -252,6 +252,9 @@ pub mod eh_frame_registry {
     // See also: rtbegin.rs, `unwind` module.
 
     #[link(name = "gcc_eh")]
+    #[cfg(not(cargobuild))]
+    extern {}
+
     extern {
         fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
         fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
