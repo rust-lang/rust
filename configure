@@ -1361,8 +1361,14 @@ for h in $CFG_HOST
 do
     for t in $CFG_TARGET
     do
+        # host bin dir stage0
+        make_dir $h/stage0/bin
+
         # host lib dir stage0
         make_dir $h/stage0/lib
+
+        # host test dir stage0
+        make_dir $h/stage0/test
 
         # target bin dir stage0
         make_dir $h/stage0/lib/rustlib/$t/bin
@@ -1370,7 +1376,7 @@ do
         # target lib dir stage0
         make_dir $h/stage0/lib/rustlib/$t/lib
 
-        for i in 0 1 2 3
+        for i in 1 2 3
         do
             # host bin dir
             make_dir $h/stage$i/bin
