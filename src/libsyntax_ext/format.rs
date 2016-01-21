@@ -14,7 +14,7 @@ use self::Position::*;
 use fmt_macros as parse;
 
 use syntax::ast;
-use syntax::codemap::{Span, respan};
+use syntax::codemap::{Span, respan, DUMMY_SP};
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
@@ -501,7 +501,7 @@ impl<'a, 'b> Context<'a, 'b> {
             };
 
             let name = self.ecx.ident_of(&format!("__arg{}", i));
-            pats.push(self.ecx.pat_ident(e.span, name));
+            pats.push(self.ecx.pat_ident(DUMMY_SP, name));
             locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty,
                                             self.ecx.expr_ident(e.span, name)));
             heads.push(self.ecx.expr_addr_of(e.span, e));
@@ -518,7 +518,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
             let lname = self.ecx.ident_of(&format!("__arg{}",
                                                   *name));
-            pats.push(self.ecx.pat_ident(e.span, lname));
+            pats.push(self.ecx.pat_ident(DUMMY_SP, lname));
             names[*self.name_positions.get(name).unwrap()] =
                 Some(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty,
                                          self.ecx.expr_ident(e.span, lname)));
