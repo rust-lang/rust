@@ -392,19 +392,21 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
                     let pattern_strings: Vec<_> = witnesses.iter().map(|w| {
                         pat_to_string(w)
                     }).collect();
-                    let (tail, head) = pattern_strings.split_last().unwrap();
-                    const HEAD_LIMIT: usize = 9;
-                    let joined_patterns = match head.len() {
-                        0 => tail.clone(),
-                        1...HEAD_LIMIT => head.join("`, `") + "` and `" + tail,
+                    const LIMIT: usize = 3;
+                    let joined_patterns = match pattern_strings.len() {
+                        0 => unreachable!(),
+                        1 => format!("`{}`", pattern_strings[0]),
+                        2...LIMIT => {
+                            let (tail, head) = pattern_strings.split_last().unwrap();
+                            format!("`{}`", head.join("`, `") + "` and `" + tail)
+                        },
                         _ => {
-                            let head_iter = head.to_owned().into_iter();
-                            let truncated_head: Vec<_> = head_iter.take(HEAD_LIMIT).collect();
-                            truncated_head.join("`, `") + "`, … and `" + tail
+                            let (head, tail) = pattern_strings.split_at(LIMIT);
+                            format!("`{}` and {} more", head.join("`, `"), tail.len())
                         }
                     };
                     span_err!(cx.tcx.sess, sp, E0004,
-                        "non-exhaustive patterns: `{}` not covered",
+                        "non-exhaustive patterns: {} not covered",
                         joined_patterns
                     );
                 },
