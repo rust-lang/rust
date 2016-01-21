@@ -31,98 +31,106 @@
 //! paths/files is based on Microsoft's logic in their vcvars bat files, but
 //! comments can also be found below leading through the various code paths.
 
-use std::process::Command;
-use session::Session;
-
 #[cfg(windows)]
 mod registry;
 
 #[cfg(windows)]
-pub fn link_exe_cmd(sess: &Session) -> Command {
+mod platform {
     use std::env;
     use std::ffi::OsString;
     use std::fs;
     use std::path::{Path, PathBuf};
-    use self::registry::{LOCAL_MACHINE};
+    use std::process::Command;
+    use session::Session;
+    use super::registry::{LOCAL_MACHINE};
 
-    let arch = &sess.target.target.arch;
-    let (binsub, libsub, vclibsub) =
-        match (bin_subdir(arch), lib_subdir(arch), vc_lib_subdir(arch)) {
-        (Some(x), Some(y), Some(z)) => (x, y, z),
-        _ => return Command::new("link.exe"),
-    };
-
-    // First we need to figure out whether the environment is already correctly
-    // configured by vcvars. We do this by looking at the environment variable
-    // `VCINSTALLDIR` which is always set by vcvars, and unlikely to be set
-    // otherwise. If it is defined, then we derive the path to `link.exe` from
-    // that and trust that everything else is configured correctly.
-    //
-    // If `VCINSTALLDIR` wasn't defined (or we couldn't find the linker where it
-    // claimed it should be), then we resort to finding everything ourselves.
-    // First we find where the latest version of MSVC is installed and what
-    // version it is. Then based on the version we find the appropriate SDKs.
-    //
-    // For MSVC 14 (VS 2015) we look for the Win10 SDK and failing that we look
-    // for the Win8.1 SDK. We also look for the Universal CRT.
-    //
-    // For MSVC 12 (VS 2013) we look for the Win8.1 SDK.
-    //
-    // For MSVC 11 (VS 2012) we look for the Win8 SDK.
-    //
-    // For all other versions the user has to execute the appropriate vcvars bat
-    // file themselves to configure the environment.
-    //
-    // If despite our best efforts we are still unable to find MSVC then we just
-    // blindly call `link.exe` and hope for the best.
-    return env::var_os("VCINSTALLDIR").and_then(|dir| {
-        debug!("Environment already configured by user. Assuming it works.");
-        let mut p = PathBuf::from(dir);
-        p.push("bin");
-        p.push(binsub);
-        p.push("link.exe");
-        if !p.is_file() { return None }
-        Some(Command::new(p))
-    }).or_else(|| {
-        get_vc_dir().and_then(|(ver, vcdir)| {
-            debug!("Found VC installation directory {:?}", vcdir);
-            let mut linker = vcdir.clone();
-            linker.push("bin");
-            linker.push(binsub);
-            linker.push("link.exe");
-            if !linker.is_file() { return None }
-            let mut cmd = Command::new(linker);
-            add_lib(&mut cmd, &vcdir.join("lib").join(vclibsub));
-            if ver == "14.0" {
-                if let Some(dir) = get_ucrt_dir() {
-                    debug!("Found Universal CRT {:?}", dir);
-                    add_lib(&mut cmd, &dir.join("ucrt").join(libsub));
-                }
-                if let Some(dir) = get_sdk10_dir() {
-                    debug!("Found Win10 SDK {:?}", dir);
-                    add_lib(&mut cmd, &dir.join("um").join(libsub));
-                } else if let Some(dir) = get_sdk81_dir() {
-                    debug!("Found Win8.1 SDK {:?}", dir);
-                    add_lib(&mut cmd, &dir.join("um").join(libsub));
-                }
-            } else if ver == "12.0" {
-                if let Some(dir) = get_sdk81_dir() {
-                    debug!("Found Win8.1 SDK {:?}", dir);
-                    add_lib(&mut cmd, &dir.join("um").join(libsub));
-                }
-            } else { // ver == "11.0"
-                if let Some(dir) = get_sdk8_dir() {
-                    debug!("Found Win8 SDK {:?}", dir);
-                    add_lib(&mut cmd, &dir.join("um").join(libsub));
-                }
-            }
-            Some(cmd)
+    // Cross toolchains depend on dlls from the host toolchain
+    // We can't just add it to the Command's PATH in `link_exe_cmd` because it
+    // is later overridden so we publicly expose it here instead
+    pub fn host_dll_path() -> Option<PathBuf> {
+        get_vc_dir().and_then(|(_, vcdir)| {
+            host_dll_subdir().map(|sub| {
+                vcdir.join("bin").join(sub)
+            })
         })
-    }).unwrap_or_else(|| {
-        debug!("Failed to locate linker.");
-        Command::new("link.exe")
-    });
+    }
 
+    pub fn link_exe_cmd(sess: &Session) -> Command {
+        let arch = &sess.target.target.arch;
+        let (binsub, libsub, vclibsub) =
+            match (bin_subdir(arch), lib_subdir(arch), vc_lib_subdir(arch)) {
+            (Some(x), Some(y), Some(z)) => (x, y, z),
+            _ => return Command::new("link.exe"),
+        };
+
+        // First we need to figure out whether the environment is already correctly
+        // configured by vcvars. We do this by looking at the environment variable
+        // `VCINSTALLDIR` which is always set by vcvars, and unlikely to be set
+        // otherwise. If it is defined, then we derive the path to `link.exe` from
+        // that and trust that everything else is configured correctly.
+        //
+        // If `VCINSTALLDIR` wasn't defined (or we couldn't find the linker where it
+        // claimed it should be), then we resort to finding everything ourselves.
+        // First we find where the latest version of MSVC is installed and what
+        // version it is. Then based on the version we find the appropriate SDKs.
+        //
+        // For MSVC 14 (VS 2015) we look for the Win10 SDK and failing that we look
+        // for the Win8.1 SDK. We also look for the Universal CRT.
+        //
+        // For MSVC 12 (VS 2013) we look for the Win8.1 SDK.
+        //
+        // For MSVC 11 (VS 2012) we look for the Win8 SDK.
+        //
+        // For all other versions the user has to execute the appropriate vcvars bat
+        // file themselves to configure the environment.
+        //
+        // If despite our best efforts we are still unable to find MSVC then we just
+        // blindly call `link.exe` and hope for the best.
+        return env::var_os("VCINSTALLDIR").and_then(|dir| {
+            debug!("Environment already configured by user. Assuming it works.");
+            let mut p = PathBuf::from(dir);
+            p.push("bin");
+            p.push(binsub);
+            p.push("link.exe");
+            if !p.is_file() { return None }
+            Some(Command::new(p))
+        }).or_else(|| {
+            get_vc_dir().and_then(|(ver, vcdir)| {
+                debug!("Found VC installation directory {:?}", vcdir);
+                let linker = vcdir.clone().join("bin").join(binsub).join("link.exe");
+                if !linker.is_file() { return None }
+                let mut cmd = Command::new(linker);
+                add_lib(&mut cmd, &vcdir.join("lib").join(vclibsub));
+                if ver == "14.0" {
+                    if let Some(dir) = get_ucrt_dir() {
+                        debug!("Found Universal CRT {:?}", dir);
+                        add_lib(&mut cmd, &dir.join("ucrt").join(libsub));
+                    }
+                    if let Some(dir) = get_sdk10_dir() {
+                        debug!("Found Win10 SDK {:?}", dir);
+                        add_lib(&mut cmd, &dir.join("um").join(libsub));
+                    } else if let Some(dir) = get_sdk81_dir() {
+                        debug!("Found Win8.1 SDK {:?}", dir);
+                        add_lib(&mut cmd, &dir.join("um").join(libsub));
+                    }
+                } else if ver == "12.0" {
+                    if let Some(dir) = get_sdk81_dir() {
+                        debug!("Found Win8.1 SDK {:?}", dir);
+                        add_lib(&mut cmd, &dir.join("um").join(libsub));
+                    }
+                } else { // ver == "11.0"
+                    if let Some(dir) = get_sdk8_dir() {
+                        debug!("Found Win8 SDK {:?}", dir);
+                        add_lib(&mut cmd, &dir.join("um").join(libsub));
+                    }
+                }
+                Some(cmd)
+            })
+        }).unwrap_or_else(|| {
+            debug!("Failed to locate linker.");
+            Command::new("link.exe")
+        });
+    }
     // A convenience function to make the above code simpler
     fn add_lib(cmd: &mut Command, lib: &Path) {
         let mut arg: OsString = "/LIBPATH:".into();
@@ -257,11 +265,23 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
             _ => None,
         }
     }
+    fn host_dll_subdir() -> Option<&'static str> {
+        if cfg!(target_arch = "x86_64") { Some("amd64") }
+        else if cfg!(target_arch = "x86") { Some("") }
+        else { None }
+    }
 }
 
 // If we're not on Windows, then there's no registry to search through and MSVC
 // wouldn't be able to run, so we just call `link.exe` and hope for the best.
 #[cfg(not(windows))]
-pub fn link_exe_cmd(_sess: &Session) -> Command {
-    Command::new("link.exe")
+mod platform {
+    use std::path::PathBuf;
+    use std::process::Command;
+    use session::Session;
+    pub fn link_exe_cmd(_sess: &Session) -> Command {
+        Command::new("link.exe")
+    }
+    pub fn host_dll_path() -> Option<PathBuf> { None }
 }
+pub use self::platform::*;
