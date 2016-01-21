@@ -10,12 +10,13 @@
 use self::LockstepIterSize::*;
 
 use ast;
+use ptr;
 use ast::{TokenTree, Ident, Name};
 use codemap::{Span, DUMMY_SP};
 use errors::Handler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};
-use parse::token::{Token, NtIdent, SpecialMacroVar};
+use parse::token::{Token, NtIdent, NtExpr, SpecialMacroVar};
 use parse::token;
 use parse::lexer::TokenAndSpan;
 
@@ -173,6 +174,11 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
     }
 }
 
+fn update_span(base: Span, expr: &mut ast::Expr) {
+    expr.span.lo = base.lo;
+    expr.span.hi = base.hi;
+}
+
 /// Return the next token from the TtReader.
 /// EFFECT: advances the reader's token field
 pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
@@ -279,6 +285,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             // FIXME #2887: think about span stuff here
             TokenTree::Token(sp, SubstNt(ident, namep)) => {
+                //println!("SubstNt {:?} {:?}", ident, sp);
                 r.stack.last_mut().unwrap().idx += 1;
                 match lookup_cur_matched(r, ident) {
                     None => {
@@ -293,8 +300,16 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             // (a) idents can be in lots of places, so it'd be a pain
                             // (b) we actually can, since it's a token.
                             MatchedNonterminal(NtIdent(ref sn, b)) => {
-                                r.cur_span = sn.span;
+                                r.cur_span = sp;
                                 r.cur_tok = token::Ident(sn.node, b);
+                                return ret_val;
+                            }
+                            MatchedNonterminal(NtExpr(ref expr)) => {
+                                let mut expr = (**expr).clone();
+                                update_span(sp, &mut expr);
+                                // FIXME(pcwalton): Bad copy.
+                                r.cur_span = sp;
+                                r.cur_tok = token::Interpolated(NtExpr(ptr::P(expr)));
                                 return ret_val;
                             }
                             MatchedNonterminal(ref other_whole_nt) => {
