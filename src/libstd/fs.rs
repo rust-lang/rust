@@ -436,19 +436,19 @@ impl OpenOptions {
     /// Note that setting `.write(true).append(true)` has the same effect as
     /// setting only `.append(true)`.
     ///
-    /// For most filesystems the operating system guarantees all writes are
+    /// For most filesystems, the operating system guarantees that all writes are
     /// atomic: no writes get mangled because another process writes at the same
     /// time.
     ///
     /// One maybe obvious note when using append-mode: make sure that all data
-    /// that belongs together, is written the the file in one operation. This
+    /// that belongs together is written to the file in one operation. This
     /// can be done by concatenating strings before passing them to `write()`,
-    /// or using a buffered writer (with a more than adequately sized buffer)
+    /// or using a buffered writer (with a buffer of adequate size),
     /// and calling `flush()` when the message is complete.
     ///
     /// If a file is opened with both read and append access, beware that after
-    /// opening and after every write the position for reading may be set at the
-    /// end of the file. So before writing save the current position (using
+    /// opening, and after every write, the position for reading may be set at the
+    /// end of the file. So, before writing, save the current position (using
     /// `seek(SeekFrom::Current(0))`, and restore it before the next read.
     ///
     /// # Examples
