@@ -585,6 +585,7 @@ fi
 BOOL_OPTIONS=""
 VAL_OPTIONS=""
 
+opt option-checking 1 "complain about unrecognized options"
 opt debug 0 "debug mode; disables optimization unless \`--enable-optimize\` given"
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
@@ -674,8 +675,11 @@ then
 fi
 
 # Validate Options
-step_msg "validating $CFG_SELF args"
-validate_opt
+if [ -z "$CFG_DISABLE_OPTION_CHECKING" ]
+then
+    step_msg "validating $CFG_SELF args"
+    validate_opt
+fi
 
 # Validate the release channel, and configure options
 case "$CFG_RELEASE_CHANNEL" in
