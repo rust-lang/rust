@@ -102,7 +102,7 @@ $(foreach host,$(CFG_HOST), \
 define LLVM_LINKAGE_DEPS
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.rustc_llvm: $$(LLVM_LINKAGE_PATH_$(2))
 RUSTFLAGS$(1)_rustc_llvm_T_$(2) += $$(shell echo $$(LLVM_ALL_COMPONENTS_$(2)) | tr '-' '_' |\
-	sed -e 's/^ //;s/\([^ ]*\)/\-\-cfg have_component_\1/g')
+	sed -e 's/^ //;s/\([^ ]*\)/\-\-cfg "llvm_component=\\"\1\\""/g')
 endef
 
 $(foreach source,$(CFG_HOST), \
