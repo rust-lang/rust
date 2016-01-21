@@ -9,7 +9,7 @@
 // except according to those terms.
 use self::Context::*;
 
-use session::Session;
+use rustc::session::Session;
 
 use syntax::codemap::Span;
 use rustc_front::intravisit::{self, Visitor};

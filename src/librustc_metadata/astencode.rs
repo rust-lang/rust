@@ -29,7 +29,7 @@ use tyencode;
 use middle::cstore::{InlinedItem, InlinedItemRef};
 use middle::ty::adjustment;
 use middle::ty::cast;
-use middle::check_const::ConstQualif;
+use middle::const_qualif::ConstQualif;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::privacy::{AllPublic, LastMod};

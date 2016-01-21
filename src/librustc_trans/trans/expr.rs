@@ -53,7 +53,7 @@ use self::lazy_binop_ty::*;
 
 use back::abi;
 use llvm::{self, ValueRef, TypeKind};
-use middle::check_const;
+use middle::const_qualif::ConstQualif;
 use middle::def::Def;
 use middle::lang_items::CoerceUnsizedTraitLangItem;
 use middle::subst::{Substs, VecPerParamSpace};
@@ -128,11 +128,8 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let qualif = *bcx.tcx().const_qualif_map.borrow().get(&expr.id).unwrap();
-    if !qualif.intersects(
-        check_const::ConstQualif::NOT_CONST |
-        check_const::ConstQualif::NEEDS_DROP
-    ) {
-        if !qualif.intersects(check_const::ConstQualif::PREFER_IN_PLACE) {
+    if !qualif.intersects(ConstQualif::NOT_CONST | ConstQualif::NEEDS_DROP) {
+        if !qualif.intersects(ConstQualif::PREFER_IN_PLACE) {
             if let SaveIn(lldest) = dest {
                 match consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
                                                        bcx.fcx.param_substs,
@@ -231,16 +228,13 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let fcx = bcx.fcx;
     let qualif = *bcx.tcx().const_qualif_map.borrow().get(&expr.id).unwrap();
-    let adjusted_global = !qualif.intersects(check_const::ConstQualif::NON_STATIC_BORROWS);
-    let global = if !qualif.intersects(
-        check_const::ConstQualif::NOT_CONST |
-        check_const::ConstQualif::NEEDS_DROP
-    ) {
+    let adjusted_global = !qualif.intersects(ConstQualif::NON_STATIC_BORROWS);
+    let global = if !qualif.intersects(ConstQualif::NOT_CONST | ConstQualif::NEEDS_DROP) {
         match consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
                                                             bcx.fcx.param_substs,
                                                             consts::TrueConst::No) {
             Ok(global) => {
-                if qualif.intersects(check_const::ConstQualif::HAS_STATIC_BORROWS) {
+                if qualif.intersects(ConstQualif::HAS_STATIC_BORROWS) {
                     // Is borrowed as 'static, must return lvalue.
 
                     // Cast pointer to global, because constants have different types.

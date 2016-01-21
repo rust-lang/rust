@@ -373,7 +373,7 @@ pub struct ctxt<'tcx> {
     repr_hint_cache: RefCell<DepTrackingMap<maps::ReprHints<'tcx>>>,
 
     /// Maps Expr NodeId's to their constant qualification.
-    pub const_qualif_map: RefCell<NodeMap<middle::check_const::ConstQualif>>,
+    pub const_qualif_map: RefCell<NodeMap<middle::const_qualif::ConstQualif>>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
     pub custom_coerce_unsized_kinds: RefCell<DefIdMap<ty::adjustment::CustomCoerceUnsized>>,
