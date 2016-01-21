@@ -319,7 +319,7 @@ pub fn variant_to_string(var: &hir::Variant) -> String {
 }
 
 pub fn arg_to_string(arg: &hir::Arg) -> String {
-    to_string(|s| s.print_arg(arg))
+    to_string(|s| s.print_arg(arg, false))
 }
 
 pub fn visibility_qualified(vis: hir::Visibility, s: &str) -> String {
@@ -1935,7 +1935,8 @@ impl<'a> State<'a> {
 
     pub fn print_fn_args(&mut self,
                          decl: &hir::FnDecl,
-                         opt_explicit_self: Option<&hir::ExplicitSelf_>)
+                         opt_explicit_self: Option<&hir::ExplicitSelf_>,
+                         is_closure: bool)
                          -> io::Result<()> {
         // It is unfortunate to duplicate the commasep logic, but we want the
         // self type and the args all in the same box.
@@ -1965,7 +1966,7 @@ impl<'a> State<'a> {
             } else {
                 try!(self.word_space(","));
             }
-            try!(self.print_arg(arg));
+            try!(self.print_arg(arg, is_closure));
         }
 
         self.end()
@@ -1976,7 +1977,7 @@ impl<'a> State<'a> {
                                  opt_explicit_self: Option<&hir::ExplicitSelf_>)
                                  -> io::Result<()> {
         try!(self.popen());
-        try!(self.print_fn_args(decl, opt_explicit_self));
+        try!(self.print_fn_args(decl, opt_explicit_self, false));
         if decl.variadic {
             try!(word(&mut self.s, ", ..."));
         }
@@ -1987,7 +1988,7 @@ impl<'a> State<'a> {
 
     pub fn print_fn_block_args(&mut self, decl: &hir::FnDecl) -> io::Result<()> {
         try!(word(&mut self.s, "|"));
-        try!(self.print_fn_args(decl, None));
+        try!(self.print_fn_args(decl, None, true));
         try!(word(&mut self.s, "|"));
 
         if let hir::DefaultReturn(..) = decl.output {
@@ -2204,10 +2205,10 @@ impl<'a> State<'a> {
         self.print_type(&*mt.ty)
     }
 
-    pub fn print_arg(&mut self, input: &hir::Arg) -> io::Result<()> {
+    pub fn print_arg(&mut self, input: &hir::Arg, is_closure: bool) -> io::Result<()> {
         try!(self.ibox(indent_unit));
         match input.ty.node {
-            hir::TyInfer => try!(self.print_pat(&*input.pat)),
+            hir::TyInfer if is_closure => try!(self.print_pat(&*input.pat)),
             _ => {
                 match input.pat.node {
                     hir::PatIdent(_, ref path1, _) if
