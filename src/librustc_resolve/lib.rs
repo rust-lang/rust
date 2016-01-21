@@ -420,12 +420,22 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              name)
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0423,
-                             "`{}` is the name of a struct or struct variant, but this expression \
-                             uses it like a function name",
-                             path_name)
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0423,
+                                           "`{}` is the name of a struct or \
+                                           struct variant, but this expression \
+                                           uses it like a function name",
+                                           path_name);
+            if resolver.emit_errors {
+                let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
+                                   path_name);
+                err.fileline_help(span, &msg);
+            } else {
+                let suggestion = format!("{} {{ /* fields */ }}", path_name);
+                err.span_suggestion(span, "did you mean to write", suggestion);
+            }
+            err
         }
         ResolutionError::SelfNotAvailableInStaticMethod => {
             struct_span_err!(resolver.session,
@@ -3521,18 +3531,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let DefVariant(_, _, true) = path_res.base_def {
                         let path_name = path_names_to_string(path, 0);
 
-                        let mut err = resolve_struct_error(self,
-                                        expr.span,
-                                        ResolutionError::StructVariantUsedAsFunction(&*path_name));
+                        resolve_error(self, expr.span,
+                                      ResolutionError::StructVariantUsedAsFunction(&*path_name));
 
-                        let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
-                                          path_name);
-                        if self.emit_errors {
-                            err.fileline_help(expr.span, &msg);
-                        } else {
-                            err.span_help(expr.span, &msg);
-                        }
-                        err.emit();
                         self.record_def(expr.id, err_path_resolution());
                     } else {
                         // Write the result into the def map.
@@ -3562,18 +3563,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.record_def(expr.id, err_path_resolution());
                     match type_res.map(|r| r.base_def) {
                         Some(DefTy(struct_id, _)) if self.structs.contains_key(&struct_id) => {
-                            let mut err = resolve_struct_error(self,
-                                expr.span,
-                                ResolutionError::StructVariantUsedAsFunction(&*path_name));
-
-                            let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
-                                              path_name);
-                            if self.emit_errors {
-                                err.fileline_help(expr.span, &msg);
-                            } else {
-                                err.span_help(expr.span, &msg);
-                            }
-                            err.emit();
+                            resolve_error(self, expr.span,
+                                          ResolutionError::StructVariantUsedAsFunction(&*path_name));
                         }
                         _ => {
                             // Keep reporting some errors even if they're ignored above.

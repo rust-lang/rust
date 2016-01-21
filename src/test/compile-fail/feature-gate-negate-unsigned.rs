@@ -18,25 +18,29 @@ impl std::ops::Neg for S {
 
 const _MAX: usize = -1;
 //~^ ERROR unary negation of unsigned integer
-//~| HELP use a cast or the `!` operator
+//~| HELP try using a cast or the `!` operator
 
 fn main() {
     let a = -1;
     //~^ ERROR unary negation of unsigned integer
-    //~| HELP use a cast or the `!` operator
+    //~| HELP try using a cast or the `!` operator
+    //~| SUGGESTION let a = !1;
     let _b : u8 = a; // for infering variable a to u8.
 
     -a;
     //~^ ERROR unary negation of unsigned integer
-    //~| HELP use a cast or the `!` operator
+    //~| HELP try using a cast or the `!` operator
+    //~| SUGGESTION !a
 
     let _d = -1u8;
     //~^ ERROR unary negation of unsigned integer
-    //~| HELP use a cast or the `!` operator
+    //~| HELP try using a cast or the `!` operator
+    //~| SUGGESTION let _d = !1u8;
 
     for _ in -10..10u8 {}
     //~^ ERROR unary negation of unsigned integer
-    //~| HELP use a cast or the `!` operator
+    //~| HELP try using a cast or the `!` operator
+    //~| SUGGESTION for _ in !10..10u8 {}
 
     -S; // should not trigger the gate; issue 26840
 }
