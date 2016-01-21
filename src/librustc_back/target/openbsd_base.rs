@@ -24,6 +24,9 @@ pub fn opts() -> TargetOptions {
             // libraries which follow this flag.  Thus, use it before
             // specifying libraries to link to.
             "-Wl,--as-needed".to_string(),
+
+            // Always enable NX protection when it is available
+            "-Wl,-z,noexecstack".to_string(),
         ),
         position_independent_executables: true,
         archive_format: "gnu".to_string(),
