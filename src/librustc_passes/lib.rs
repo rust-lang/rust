@@ -28,9 +28,16 @@
 
 extern crate core;
 extern crate rustc;
+extern crate rustc_front;
 
+#[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 
 pub mod diagnostics;
+
 pub mod const_fn;
+pub mod consts;
+pub mod loops;
 pub mod no_asm;
+pub mod rvalues;
+pub mod static_recursion;
