@@ -11,7 +11,7 @@
 //! An analysis to determine which temporaries require allocas and
 //! which do not.
 
-use rustc_data_structures::fnv::FnvHashSet;
+use rustc_data_structures::bitvec::BitVector;
 use rustc::mir::repr as mir;
 use rustc::mir::visit::{Visitor, LvalueContext};
 use trans::common::{self, Block};
@@ -19,8 +19,8 @@ use super::rvalue;
 
 pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
                                mir: &mir::Mir<'tcx>)
-                               -> FnvHashSet<usize> {
-    let mut analyzer = TempAnalyzer::new();
+                               -> BitVector {
+    let mut analyzer = TempAnalyzer::new(mir.temp_decls.len());
 
     analyzer.visit_mir(mir);
 
@@ -51,17 +51,27 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
 }
 
 struct TempAnalyzer {
-    lvalue_temps: FnvHashSet<usize>,
+    lvalue_temps: BitVector,
+    seen_assigned: BitVector
 }
 
 impl TempAnalyzer {
-    fn new() -> TempAnalyzer {
-        TempAnalyzer { lvalue_temps: FnvHashSet() }
+    fn new(temp_count: usize) -> TempAnalyzer {
+        TempAnalyzer {
+            lvalue_temps: BitVector::new(temp_count),
+            seen_assigned: BitVector::new(temp_count)
+        }
     }
 
     fn mark_as_lvalue(&mut self, temp: usize) {
         debug!("marking temp {} as lvalue", temp);
         self.lvalue_temps.insert(temp);
+    }
+
+    fn mark_assigned(&mut self, temp: usize) {
+        if !self.seen_assigned.insert(temp) {
+            self.mark_as_lvalue(temp);
+        }
     }
 }
 
@@ -74,6 +84,7 @@ impl<'tcx> Visitor<'tcx> for TempAnalyzer {
 
         match *lvalue {
             mir::Lvalue::Temp(index) => {
+                self.mark_assigned(index as usize);
                 if !rvalue::rvalue_creates_operand(rvalue) {
                     self.mark_as_lvalue(index as usize);
                 }

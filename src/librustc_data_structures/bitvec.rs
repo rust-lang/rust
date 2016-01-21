@@ -24,12 +24,14 @@ impl BitVector {
         (self.data[word] & mask) != 0
     }
 
+    /// Returns true if the bit has changed.
     pub fn insert(&mut self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);
         let data = &mut self.data[word];
         let value = *data;
-        *data = value | mask;
-        (value | mask) != value
+        let new_value = value | mask;
+        *data = new_value;
+        new_value != value
     }
 
     pub fn insert_all(&mut self, all: &BitVector) -> bool {
