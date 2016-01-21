@@ -83,12 +83,16 @@ ifeq ($(UNAME),Bitrig)
 	EXTRACFLAGS := -lm -lpthread
 	EXTRACXXFLAGS := -lc++ -lc++abi
 else
+ifeq ($(UNAME),SunOS)
+	EXTRACFLAGS := -lm -lpthread -lposix4 -lsocket
+else
 ifeq ($(UNAME),OpenBSD)
 	EXTRACFLAGS := -lm -lpthread
 	RUSTC := $(RUSTC) -C linker="$(word 1,$(CC:ccache=))"
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
 	EXTRACXXFLAGS := -lstdc++
+endif
 endif
 endif
 endif
