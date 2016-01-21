@@ -510,9 +510,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             self.structs.insert(variant_def_id, Vec::new());
         }
 
+        // Variants are always treated as importable to allow them to be glob used.
+        // All variants are defined in both type and value namespaces as future-proofing.
         let child = self.add_child(name, parent, ForbidDuplicateTypesAndValues, variant.span);
-        // variants are always treated as importable to allow them to be glob
-        // used
         child.define_value(Def::Variant(item_id, self.ast_map.local_def_id(variant.node.data.id())),
                            variant.span,
                            DefModifiers::PUBLIC | DefModifiers::IMPORTABLE | variant_modifiers);
@@ -618,15 +618,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             Def::Variant(_, variant_id) => {
                 debug!("(building reduced graph for external crate) building variant {}",
                        final_ident);
-                // variants are always treated as importable to allow them to be
-                // glob used
+                // Variants are always treated as importable to allow them to be glob used.
+                // All variants are defined in both type and value namespaces as future-proofing.
                 let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE;
+                child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+                child_name_bindings.define_value(def, DUMMY_SP, modifiers);
                 if self.session.cstore.variant_kind(variant_id) == Some(VariantKind::Struct) {
-                    child_name_bindings.define_type(def, DUMMY_SP, modifiers);
                     // Not adding fields for variants as they are not accessed with a self receiver
                     self.structs.insert(variant_id, Vec::new());
-                } else {
-                    child_name_bindings.define_value(def, DUMMY_SP, modifiers);
                 }
             }
             Def::Fn(..) |

@@ -39,6 +39,6 @@ fn main() {
         XEmpty1 => () // Not an error, `XEmpty1` is interpreted as a new binding
     }
     match xe3 {
-        XE::XEmpty3 => () //~ ERROR no associated item named `XEmpty3` found for type
+        XE::XEmpty3 => () //~ ERROR `XE::XEmpty3` does not name a tuple variant or a tuple struct
     }
 }
