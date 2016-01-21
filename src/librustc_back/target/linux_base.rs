@@ -26,6 +26,9 @@ pub fn opts() -> TargetOptions {
             // following libraries so we're sure to pass it as one of the first
             // arguments.
             "-Wl,--as-needed".to_string(),
+
+            // Always enable NX protection when it is available
+            "-Wl,-z,noexecstack".to_string(),
         ],
         position_independent_executables: true,
         archive_format: "gnu".to_string(),
