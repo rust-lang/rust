@@ -338,6 +338,12 @@ impl File {
         Ok(newpos as u64)
     }
 
+    pub fn duplicate(&self) -> io::Result<File> {
+        Ok(File {
+            handle: try!(self.handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)),
+        })
+    }
+
     pub fn handle(&self) -> &Handle { &self.handle }
 
     pub fn into_handle(self) -> Handle { self.handle }

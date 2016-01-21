@@ -309,6 +309,18 @@ impl File {
     pub fn metadata(&self) -> io::Result<Metadata> {
         self.inner.file_attr().map(Metadata)
     }
+
+    /// Creates a new independently owned handle to the underlying file.
+    ///
+    /// The returned `File` is a reference to the same state that this object
+    /// references. Both handles will read and write with the same cursor
+    /// position.
+    #[unstable(feature = "file_try_clone", reason = "newly added", issue = "31405")]
+    pub fn try_clone(&self) -> io::Result<File> {
+        Ok(File {
+            inner: try!(self.inner.duplicate())
+        })
+    }
 }
 
 impl AsInner<fs_imp::File> for File {
@@ -2281,6 +2293,28 @@ mod tests {
         let mut v = Vec::new();
         check!(check!(File::open(&tmpdir.join("test"))).read_to_end(&mut v));
         assert!(v == &bytes[..]);
+    }
+
+    #[test]
+    fn file_try_clone() {
+        let tmpdir = tmpdir();
+
+        let mut f1 = check!(OpenOptions::new()
+                                       .read(true)
+                                       .write(true)
+                                       .create(true)
+                                       .open(&tmpdir.join("test")));
+        let mut f2 = check!(f1.try_clone());
+
+        check!(f1.write_all(b"hello world"));
+        check!(f1.seek(SeekFrom::Start(2)));
+
+        let mut buf = vec![];
+        check!(f2.read_to_end(&mut buf));
+        assert_eq!(buf, b"llo world");
+        drop(f2);
+
+        check!(f1.write_all(b"!"));
     }
 
     #[test]
