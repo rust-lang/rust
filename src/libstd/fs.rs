@@ -378,15 +378,6 @@ impl OpenOptions {
     /// Creates a blank new set of options ready for configuration.
     ///
     /// All options are initially set to `false`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::fs::OpenOptions;
-    ///
-    /// let mut options = OpenOptions::new();
-    /// let file = options.read(true).open("foo.txt");
-    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OpenOptions {
         OpenOptions(fs_imp::OpenOptions::new())
