@@ -34,6 +34,7 @@ use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
 use rustc_front::hir;
 use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc_passes::{no_asm, loops, consts, const_fn, rvalues, static_recursion};
 use super::Compilation;
 
 use serialize::json;
@@ -632,7 +633,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     time(time_passes,
          "checking for inline asm in case the target doesn't support it",
-         || ::rustc_passes::no_asm::check_crate(sess, &krate));
+         || no_asm::check_crate(sess, &krate));
 
     // One final feature gating of the true AST that gets compiled
     // later, to make sure we've got everything (e.g. configuration
@@ -649,7 +650,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     time(time_passes,
          "const fn bodies and arguments",
-         || ::rustc_passes::const_fn::check_crate(sess, &krate));
+         || const_fn::check_crate(sess, &krate));
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
@@ -743,11 +744,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "loop checking",
-         || middle::check_loop::check_crate(sess, krate));
+         || loops::check_crate(sess, krate));
 
     time(time_passes,
          "static item recursion checking",
-         || middle::check_static_recursion::check_crate(sess, krate, &def_map.borrow(), &hir_map));
+         || static_recursion::check_crate(sess, krate, &def_map.borrow(), &hir_map));
 
     ty::ctxt::create_and_enter(sess,
                                arenas,
@@ -764,7 +765,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
                                    time(time_passes,
                                         "const checking",
-                                        || middle::check_const::check_crate(tcx));
+                                        || consts::check_crate(tcx));
 
                                    let access_levels =
                                        time(time_passes, "privacy checking", || {
@@ -805,7 +806,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
                                    time(time_passes,
                                         "rvalue checking",
-                                        || middle::check_rvalues::check_crate(tcx));
+                                        || rvalues::check_crate(tcx));
 
                                    // Avoid overwhelming user with errors if type checking failed.
                                    // I'm not sure how helpful this is, to be honest, but it avoids

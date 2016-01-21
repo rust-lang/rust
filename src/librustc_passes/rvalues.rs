@@ -11,12 +11,11 @@
 // Checks that all rvalues in a crate have statically known size. check_crate
 // is the public starting point.
 
-use dep_graph::DepNode;
-use middle::expr_use_visitor as euv;
-use middle::infer;
-use middle::mem_categorization as mc;
-use middle::ty::ParameterEnvironment;
-use middle::ty;
+use rustc::dep_graph::DepNode;
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::infer;
+use rustc::middle::mem_categorization as mc;
+use rustc::middle::ty::{self, ParameterEnvironment};
 
 use rustc_front::hir;
 use rustc_front::intravisit;
