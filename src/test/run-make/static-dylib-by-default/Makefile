@@ -2,7 +2,7 @@
 
 TO_LINK := $(call DYLIB,bar)
 ifdef IS_MSVC
-LINK_ARG = $(TO_LINK:dll=lib)
+LINK_ARG = $(TO_LINK:dll=dll.lib)
 else
 LINK_ARG = $(TO_LINK)
 endif

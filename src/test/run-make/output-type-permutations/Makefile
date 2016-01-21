@@ -4,8 +4,8 @@ all:
 	$(RUSTC) foo.rs --crate-type=rlib,dylib,staticlib
 	$(call REMOVE_RLIBS,bar)
 	$(call REMOVE_DYLIBS,bar)
-	rm $(TMPDIR)/libbar.a
-	rm -f $(TMPDIR)/bar.{exp,lib,pdb}
+	rm $(call STATICLIB,bar)
+	rm -f $(TMPDIR)/bar.{dll.exp,dll.lib,pdb}
 	# Check that $(TMPDIR) is empty.
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
@@ -78,7 +78,7 @@ all:
 	rm $(TMPDIR)/$(call BIN,foo)
 	$(RUSTC) foo.rs --crate-type=dylib --emit=link=$(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
-	rm -f $(TMPDIR)/foo.{exp,lib,pdb}
+	rm -f $(TMPDIR)/foo.{dll.exp,dll.lib,pdb}
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
 	$(RUSTC) foo.rs --crate-type=staticlib -o $(TMPDIR)/foo
@@ -133,7 +133,7 @@ all:
 	rm $(TMPDIR)/bar.ll
 	rm $(TMPDIR)/bar.s
 	rm $(TMPDIR)/bar.o
-	rm $(TMPDIR)/libbar.a
+	rm $(call STATICLIB,bar)
 	mv $(TMPDIR)/bar.bc $(TMPDIR)/foo.bc
 	# Don't check that the $(TMPDIR) is empty - we left `foo.bc` for later
 	# comparison.
