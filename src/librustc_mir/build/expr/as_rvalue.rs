@@ -44,7 +44,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, value));
-                let count = this.as_constant(count);
                 block.and(Rvalue::Repeat(value_operand, count))
             }
             ExprKind::Borrow { region, borrow_kind, arg } => {

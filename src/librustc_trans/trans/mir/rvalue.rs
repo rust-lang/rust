@@ -89,7 +89,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let elem = self.trans_operand(bcx, elem);
-                let size = self.trans_constant(bcx, count).immediate();
+                let size = self.trans_constval(bcx, &count.value, count.ty).immediate();
                 let base = expr::get_dataptr(bcx, dest.llval);
                 tvec::iter_vec_raw(bcx, base, elem.ty, size, |bcx, llslot, _| {
                     self.store_operand(bcx, llslot, elem);

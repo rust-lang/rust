@@ -213,9 +213,8 @@ macro_rules! make_mir_visitor {
                     }
 
                     Rvalue::Repeat(ref $($mutability)* value,
-                                   ref $($mutability)* len) => {
+                                   _) => {
                         self.visit_operand(value);
-                        self.visit_constant(len);
                     }
 
                     Rvalue::Ref(r, bk, ref $($mutability)* path) => {
