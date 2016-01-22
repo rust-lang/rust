@@ -26,10 +26,14 @@ more dots means more elements.
 `std::ops` defines
 
 ```rust
-pub struct RangeInclusive<T> {
-    pub start: T,
-    pub end: T,
-    pub finished: bool,
+pub enum RangeInclusive<T> {
+  Empty {
+    at: T,
+  },
+  NonEmpty {
+    start: T,
+    end: T,
+  }
 }
 
 pub struct RangeToInclusive<T> {
@@ -37,12 +41,11 @@ pub struct RangeToInclusive<T> {
 }
 ```
 
-Writing `a...b` in an expression desugars to `std::ops::RangeInclusive
-{ start: a, end: b, finished: false }`. Writing `...b` in an
+Writing `a...b` in an expression desugars to `std::ops::RangeInclusive::NonEmpty { start: a, end: b }`. Writing `...b` in an
 expression desugars to `std::ops::RangeToInclusive { end: b }`.
 
 `RangeInclusive` implements the standard traits (`Clone`, `Debug`
-etc.), and implements `Iterator`. The `finished` field is to allow the
+etc.), and implements `Iterator`. The `Empty` variant is to allow the
 `Iterator` implementation to work without hacks (see Alternatives).
 
 The use of `...` in a pattern remains as testing for inclusion
@@ -79,11 +82,12 @@ winner.
 This RFC doesn't propose non-double-ended syntax, like `a...`, `...b`
 or `...` since it isn't clear that this is so useful. Maybe it is.
 
-The `finished` field could be omitted, leaving two options:
+The `Empty` variant could be omitted, leaving two options:
 
+- `RangeInclusive` could be a struct including a `finished` field.
 - `a...b` only implements `IntoIterator`, not `Iterator`, by
   converting to a different type that does have the field. However,
-  this means that `a...b` behaves differently to `a..b`, so
+  this means that `a.. .b` behaves differently to `a..b`, so
   `(a...b).map(|x| ...)` doesn't work (the `..` version of that is
   used reasonably often, in the author's experience)
 - `a...b` can implement `Iterator` for types that can be stepped
@@ -104,3 +108,8 @@ The `finished` field could be omitted, leaving two options:
 # Unresolved questions
 
 None so far.
+
+# Amendments
+
+* In rust-lang/rfcs#1320, this RFC was amended to change the `RangeInclusive`
+  type from a struct with a `finished` field to an enum.
