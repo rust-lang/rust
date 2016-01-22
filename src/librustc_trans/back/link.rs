@@ -396,6 +396,9 @@ fn command_path(sess: &Session) -> OsString {
     if let Some(path) = env::var_os("PATH") {
         new_path.extend(env::split_paths(&path));
     }
+    if sess.target.target.options.is_like_msvc {
+        new_path.extend(msvc::host_dll_path());
+    }
     env::join_paths(new_path).unwrap()
 }
 
