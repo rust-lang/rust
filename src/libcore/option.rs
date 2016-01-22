@@ -295,8 +295,14 @@ impl<T> Option<T> {
     pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
-            None => panic!("{}", msg),
+            None => Self::expect_failed(msg),
         }
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn expect_failed(msg: &str) -> ! {
+        panic!("{}", msg)
     }
 
     /// Moves the value `v` out of the `Option<T>` if it is `Some(v)`.
