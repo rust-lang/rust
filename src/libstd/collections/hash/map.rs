@@ -393,7 +393,7 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> (K, V) {
         None => return (retkey, retval)
     };
 
-    while gap.full().distance() != 0 {
+    while gap.full().displacement() != 0 {
         gap = match gap.shift() {
             Some(b) => b,
             None => break
@@ -423,7 +423,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(mut bucket: FullBucketMut<'a, K, V>,
     // There can be at most `size - dib` buckets to displace, because
     // in the worst case, there are `size` elements and we already are
     // `distance` buckets away from the initial one.
-    let idx_end = starting_index + size - bucket.distance();
+    let idx_end = starting_index + size - bucket.displacement();
 
     loop {
         let (old_hash, old_key, old_val) = bucket.replace(hash, k, v);
@@ -446,7 +446,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(mut bucket: FullBucketMut<'a, K, V>,
                 Full(bucket) => bucket
             };
 
-            let probe_ib = full_bucket.index() - full_bucket.distance();
+            let probe_ib = full_bucket.index() - full_bucket.displacement();
 
             bucket = full_bucket;
 
@@ -731,7 +731,7 @@ impl<K, V, S> HashMap<K, V, S>
         loop {
             bucket = match bucket.peek() {
                 Full(full) => {
-                    if full.distance() == 0 {
+                    if full.displacement() == 0 {
                         // This bucket occupies its ideal spot.
                         // It indicates the start of another "cluster".
                         bucket = full.into_bucket();

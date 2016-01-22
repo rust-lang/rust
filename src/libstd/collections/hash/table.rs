@@ -370,7 +370,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
     ///
     /// In the cited blog posts above, this is called the "distance to
     /// initial bucket", or DIB. Also known as "probe count".
-    pub fn distance(&self) -> usize {
+    pub fn displacement(&self) -> usize {
         // Calculates the distance one has to travel when going from
         // `hash mod capacity` onwards to `idx mod capacity`, wrapping around
         // if the destination is not reached before the end of the table.
