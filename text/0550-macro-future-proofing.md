@@ -414,7 +414,7 @@ The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 
 - `FOLLOW(pat)` = `{FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}`
 - `FOLLOW(expr)` = `{FatArrow, Comma, Semicolon}`
-- `FOLLOW(ty)` = `{OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Semi, Or, Ident(as), Ident(where)}`
+- `FOLLOW(ty)` = `{OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Semi, Or, Ident(as), Ident(where), OpenDelim(Bracket)}`
 - `FOLLOW(stmt)` = `FOLLOW(expr)`
 - `FOLLOW(path)` = `FOLLOW(ty)`
 - `FOLLOW(block)` = any token
@@ -480,6 +480,9 @@ reasonable freedom and can be extended in the future.
   * expanded the follow set for `pat` to include `Or` (since Rust's grammar already requires `match (true,false) { PAT | PAT => {} }` and `|PAT| {}` to work); see also [RFC issue 1336][]. Also added `If` and `In` to follow set for `pat` (to make the specifiation match the old implementation).
 
 [RFC issue 1336]: https://github.com/rust-lang/rfcs/issues/1336
+
+- Updated by https://github.com/rust-lang/rfcs/pull/1462, which added
+  open square bracket into the follow set for types.
 
 # Appendices
 
