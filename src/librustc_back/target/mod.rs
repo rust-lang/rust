@@ -467,7 +467,7 @@ impl Target {
         };
 
         let target_path = env::var_os("RUST_TARGET_PATH")
-                              .unwrap_or(OsString::new());
+                              .unwrap_or(OsString::from("/etc/rustc/"));
 
         // FIXME 16351: add a sane default search path?
 
