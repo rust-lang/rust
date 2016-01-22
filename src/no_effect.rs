@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::middle::def::{DefStruct, DefVariant};
+use rustc::middle::def::Def;
 use rustc_front::hir::{Expr, ExprCall, ExprLit, ExprPath, ExprStruct};
 use rustc_front::hir::{Stmt, StmtSemi};
 
@@ -36,8 +36,8 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         ExprCall(ref callee, ref args) => {
             let def = cx.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
             match def {
-                Some(DefStruct(..)) |
-                Some(DefVariant(..)) => args.iter().all(|arg| has_no_effect(cx, arg)),
+                Some(Def::Struct(..)) |
+                Some(Def::Variant(..)) => args.iter().all(|arg| has_no_effect(cx, arg)),
                 _ => false,
             }
         }

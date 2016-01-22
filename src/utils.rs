@@ -235,7 +235,7 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
     };
 
     match def {
-        cstore::DlDef(def::DefTrait(trait_id)) => Some(trait_id),
+        cstore::DlDef(def::Def::Trait(trait_id)) => Some(trait_id),
         _ => None,
     }
 }

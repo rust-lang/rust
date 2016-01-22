@@ -3,7 +3,7 @@
 use rustc::lint::LateContext;
 use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::PathResolution;
-use rustc::middle::def::Def::*;
+use rustc::middle::def::Def;
 use rustc_front::hir::*;
 use syntax::ptr::P;
 use std::char;
@@ -481,7 +481,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     fn fetch_path(&mut self, e: &Expr) -> Option<Constant> {
         if let Some(lcx) = self.lcx {
             let mut maybe_id = None;
-            if let Some(&PathResolution { base_def: DefConst(id), ..}) = lcx.tcx.def_map.borrow().get(&e.id) {
+            if let Some(&PathResolution { base_def: Def::Const(id), ..}) = lcx.tcx.def_map.borrow().get(&e.id) {
                 maybe_id = Some(id);
             }
             // separate if lets to avoid double borrowing the def_map

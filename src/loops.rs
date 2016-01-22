@@ -3,7 +3,7 @@ use rustc_front::hir::*;
 use reexport::*;
 use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use rustc::middle::ty;
-use rustc::middle::def::DefLocal;
+use rustc::middle::def::Def;
 use consts::{constant_simple, Constant};
 use rustc::front::map::Node::NodeBlock;
 use std::borrow::Cow;
@@ -768,7 +768,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
 
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let Some(path_res) = cx.tcx.def_map.borrow().get(&expr.id) {
-        if let DefLocal(_, node_id) = path_res.base_def {
+        if let Def::Local(_, node_id) = path_res.base_def {
             return Some(node_id);
         }
     }

@@ -4,8 +4,8 @@
 
 use rustc::lint::*;
 use rustc_front::hir::*;
+use rustc::front::map::NodeItem;
 use rustc::middle::ty;
-use rustc::front::map::Node;
 
 use utils::{span_lint, match_type};
 use utils::{STRING_PATH, VEC_PATH};
@@ -42,7 +42,7 @@ impl LateLintPass for PtrArg {
 
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = item.node {
-            if let Some(Node::NodeItem(it)) = cx.tcx.map.find(cx.tcx.map.get_parent(item.id)) {
+            if let Some(NodeItem(it)) = cx.tcx.map.find(cx.tcx.map.get_parent(item.id)) {
                 if let ItemImpl(_, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
                 }
