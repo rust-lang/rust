@@ -1692,6 +1692,13 @@ impl fmt::Debug for ParseError {
     }
 }
 
+#[stable(feature = "str_parse_error2", since = "1.8.0")]
+impl fmt::Display for ParseError {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+        match *self {}
+    }
+}
+
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 impl PartialEq for ParseError {
     fn eq(&self, _: &ParseError) -> bool {
