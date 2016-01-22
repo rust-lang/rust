@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Stabilize the `volatile_load` and `volatile_store` intrinsics as `ptr::volatile_read` and `ptr::volatile_write`.
+Stabilize the `volatile_load` and `volatile_store` intrinsics as `ptr::read_volatile` and `ptr::write_volatile`.
 
 # Motivation
 [motivation]: #motivation
@@ -16,7 +16,7 @@ This is necessary to allow volatile access to memory-mapping I/O in stable code.
 # Detailed design
 [design]: #detailed-design
 
-`ptr::volatile_read` and `ptr::volatile_write` will work the same way as `ptr::read` and `ptr::write` respectively, except that the memory access will be done with volatile semantics. The semantics of a volatile access are already pretty well defined by the C standard and by LLVM.
+`ptr::read_volatile` and `ptr::write_volatile` will work the same way as `ptr::read` and `ptr::write` respectively, except that the memory access will be done with volatile semantics. The semantics of a volatile access are already pretty well defined by the C standard and by LLVM. In documentation we can refer to http://llvm.org/docs/LangRef.html#volatile-memory-accesses.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -26,7 +26,7 @@ None.
 # Alternatives
 [alternatives]: #alternatives
 
-We could also stabilize the `volatile_set_memory`, `volatile_copy_memory` and `volatile_copy_nonoverlapping_memory` intrinsics as `ptr::volatile_write_bytes`, `ptr::volatile_copy` and `ptr::volatile_copy_nonoverlapping`, but these are not as widely used and are not available in C.
+We could also stabilize the `volatile_set_memory`, `volatile_copy_memory` and `volatile_copy_nonoverlapping_memory` intrinsics as `ptr::write_bytes_volatile`, `ptr::copy_volatile` and `ptr::copy_nonoverlapping_volatile`, but these are not as widely used and are not available in C.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
