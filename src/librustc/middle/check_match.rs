@@ -616,7 +616,8 @@ fn missing_constructors(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
         .collect();
     all_constructors(cx, left_ty, max_slice_length)
         .into_iter()
-        .filter(|c| !used_constructors.contains(c)).collect()
+        .filter(|c| !used_constructors.contains(c))
+        .collect()
 }
 
 /// This determines the set of all possible constructors of a pattern matching
@@ -695,47 +696,44 @@ fn is_useful(cx: &MatchCheckCtxt,
 
     let constructors = pat_constructors(cx, v[0], left_ty, max_slice_length);
     if constructors.is_empty() {
-        match &missing_constructors(cx, matrix, left_ty, max_slice_length)[..] {
-            [] => {
-                all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
-                    match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
-                        UsefulWithWitness(pats) => UsefulWithWitness({
-                            let arity = constructor_arity(cx, &c, left_ty);
-                            let mut result = {
-                                let pat_slice = &pats[..];
-                                let subpats: Vec<_> = (0..arity).map(|i| {
-                                    pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
-                                }).collect();
-                                vec![construct_witness(cx, &c, subpats, left_ty)]
-                            };
-                            result.extend(pats.into_iter().skip(arity));
-                            result
-                        }),
-                        result => result
-                    }
-                }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
-            },
-
-            [constructors..] => {
-                let matrix = rows.iter().filter_map(|r| {
-                    if pat_is_binding_or_wild(&cx.tcx.def_map.borrow(), raw_pat(r[0])) {
-                        Some(r[1..].to_vec())
-                    } else {
-                        None
-                    }
-                }).collect();
-                match is_useful(cx, &matrix, &v[1..], witness) {
-                    UsefulWithWitness(pats) => {
-                        let mut new_pats: Vec<_> = constructors.into_iter().map(|constructor| {
-                            let arity = constructor_arity(cx, &constructor, left_ty);
-                            let wild_pats = vec![DUMMY_WILD_PAT; arity];
-                            construct_witness(cx, &constructor, wild_pats, left_ty)
-                        }).collect();
-                        new_pats.extend(pats);
-                        UsefulWithWitness(new_pats)
-                    },
+        let constructors = missing_constructors(cx, matrix, left_ty, max_slice_length);
+        if constructors.is_empty() {
+            all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
+                match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
+                    UsefulWithWitness(pats) => UsefulWithWitness({
+                        let arity = constructor_arity(cx, &c, left_ty);
+                        let mut result = {
+                            let pat_slice = &pats[..];
+                            let subpats: Vec<_> = (0..arity).map(|i| {
+                                pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
+                            }).collect();
+                            vec![construct_witness(cx, &c, subpats, left_ty)]
+                        };
+                        result.extend(pats.into_iter().skip(arity));
+                        result
+                    }),
                     result => result
                 }
+            }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
+        } else {
+            let matrix = rows.iter().filter_map(|r| {
+                if pat_is_binding_or_wild(&cx.tcx.def_map.borrow(), raw_pat(r[0])) {
+                    Some(r[1..].to_vec())
+                } else {
+                    None
+                }
+            }).collect();
+            match is_useful(cx, &matrix, &v[1..], witness) {
+                UsefulWithWitness(pats) => {
+                    let mut new_pats: Vec<_> = constructors.into_iter().map(|constructor| {
+                        let arity = constructor_arity(cx, &constructor, left_ty);
+                        let wild_pats = vec![DUMMY_WILD_PAT; arity];
+                        construct_witness(cx, &constructor, wild_pats, left_ty)
+                    }).collect();
+                    new_pats.extend(pats);
+                    UsefulWithWitness(new_pats)
+                },
+                result => result
             }
         }
     } else {
