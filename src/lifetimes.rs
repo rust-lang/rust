@@ -3,7 +3,7 @@ use reexport::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
 use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
-use rustc::middle::def::Def::{DefTy, DefTrait, DefStruct};
+use rustc::middle::def::Def;
 use std::collections::{HashSet, HashMap};
 
 use utils::{in_external_macro, span_lint};
@@ -206,13 +206,13 @@ impl<'v, 't> RefVisitor<'v, 't> {
             if params.lifetimes.is_empty() {
                 if let Some(def) = self.cx.tcx.def_map.borrow().get(&ty.id).map(|r| r.full_def()) {
                     match def {
-                        DefTy(def_id, _) | DefStruct(def_id) => {
+                        Def::TyAlias(def_id) | Def::Struct(def_id) => {
                             let type_scheme = self.cx.tcx.lookup_item_type(def_id);
                             for _ in type_scheme.generics.regions.as_slice() {
                                 self.record(&None);
                             }
                         }
-                        DefTrait(def_id) => {
+                        Def::Trait(def_id) => {
                             let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
                             for _ in &trait_def.generics.regions {
                                 self.record(&None);

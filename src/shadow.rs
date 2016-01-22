@@ -5,7 +5,7 @@ use syntax::codemap::Span;
 use rustc_front::intravisit::{Visitor, FnKind};
 
 use rustc::lint::*;
-use rustc::middle::def::Def::{DefVariant, DefStruct};
+use rustc::middle::def::Def;
 
 use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint, DiagnosticWrapper};
 
@@ -103,7 +103,7 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
 
 fn is_binding(cx: &LateContext, pat: &Pat) -> bool {
     match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-        Some(DefVariant(..)) | Some(DefStruct(..)) => false,
+        Some(Def::Variant(..)) | Some(Def::Struct(..)) => false,
         _ => true,
     }
 }

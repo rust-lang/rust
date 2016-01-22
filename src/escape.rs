@@ -1,7 +1,7 @@
 use rustc::lint::*;
+use rustc::front::map::Node::NodeStmt;
 use rustc_front::hir::*;
 use rustc_front::intravisit as visit;
-use rustc::front::map::Node;
 use rustc::middle::ty;
 use rustc::middle::ty::adjustment::AutoAdjustment;
 use rustc::middle::expr_use_visitor::*;
@@ -91,7 +91,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             return;
         }
         if let Categorization::Rvalue(..) = cmt.cat {
-            if let Some(Node::NodeStmt(st)) = self.cx
+            if let Some(NodeStmt(st)) = self.cx
                                                   .tcx
                                                   .map
                                                   .find(self.cx.tcx.map.get_parent_node(cmt.id)) {

@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::middle::const_eval::lookup_const_by_id;
-use rustc::middle::def::*;
+use rustc::middle::def::{Def, PathResolution};
 use rustc_front::hir::*;
 use rustc_front::util::is_comparison_binop;
 use syntax::codemap::Span;
@@ -274,7 +274,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u64> {
                 // borrowing.
                 let def_map = cx.tcx.def_map.borrow();
                 match def_map.get(&lit.id) {
-                    Some(&PathResolution { base_def: DefConst(def_id), ..}) => Some(def_id),
+                    Some(&PathResolution { base_def: Def::Const(def_id), ..}) => Some(def_id),
                     _ => None,
                 }
             }
