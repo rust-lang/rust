@@ -30,7 +30,7 @@ use getopts::{Matches, Options};
 /// Rustfmt operations.
 enum Operation {
     /// Format files and their child modules.
-    Format(Vec<PathBuf>, WriteMode),
+    Format(Vec<PathBuf>, WriteMode, Option<PathBuf>),
     /// Print the help message.
     Help,
     // Print version information
@@ -40,7 +40,7 @@ enum Operation {
     /// Invalid program input, including reason.
     InvalidInput(String),
     /// No file specified, read from stdin
-    Stdin(String, WriteMode),
+    Stdin(String, WriteMode, Option<PathBuf>),
 }
 
 /// Try to find a project file in the given directory and its parents. Returns the path of a the
@@ -95,6 +95,20 @@ fn resolve_config(dir: &Path) -> io::Result<(Config, Option<PathBuf>)> {
     Ok((Config::from_toml(&toml), Some(path)))
 }
 
+/// read the given config file path recursively if present else read the project file path
+fn match_cli_path_or_file(config_path: Option<PathBuf>,
+                          input_file: &Path)
+                          -> io::Result<(Config, Option<PathBuf>)> {
+
+    if let Some(config_file) = config_path {
+        let (toml, path) = try!(resolve_config(config_file.as_ref()));
+        if path.is_some() {
+            return Ok((toml, path));
+        }
+    }
+    resolve_config(input_file)
+}
+
 fn update_config(config: &mut Config, matches: &Matches) {
     config.verbose = matches.opt_present("verbose");
     config.skip_children = matches.opt_present("skip-children");
@@ -114,6 +128,11 @@ fn execute() -> i32 {
     opts.optflag("",
                  "config-help",
                  "show details of rustfmt configuration options");
+    opts.optopt("",
+                "config-path",
+                "Recursively searches the given path for the rustfmt.toml config file. If not \
+                 found reverts to the input file path",
+                "[Path for the configuration file]");
 
     let matches = match opts.parse(env::args().skip(1)) {
         Ok(m) => m,
@@ -142,23 +161,41 @@ fn execute() -> i32 {
             Config::print_docs();
             0
         }
-        Operation::Stdin(input, write_mode) => {
+        Operation::Stdin(input, write_mode, config_path) => {
             // try to read config from local directory
-            let (config, _) = resolve_config(&env::current_dir().unwrap())
+            let (config, _) = match_cli_path_or_file(config_path, &env::current_dir().unwrap())
                                   .expect("Error resolving config");
 
             run_from_stdin(input, write_mode, &config);
             0
         }
-        Operation::Format(files, write_mode) => {
+        Operation::Format(files, write_mode, config_path) => {
+            let mut config = Config::default();
+            let mut path = None;
+            // Load the config path file if provided
+            if let Some(config_file) = config_path {
+                let (cfg_tmp, path_tmp) = resolve_config(config_file.as_ref())
+                                              .expect(&format!("Error resolving config for {:?}",
+                                                               config_file));
+                config = cfg_tmp;
+                path = path_tmp;
+            };
+            if let Some(path) = path.as_ref() {
+                println!("Using rustfmt config file {}", path.display());
+            }
             for file in files {
-                let (mut config, path) = resolve_config(file.parent().unwrap())
-                                             .expect(&format!("Error resolving config for {}",
-                                                              file.display()));
-                if let Some(path) = path {
-                    println!("Using rustfmt config file {} for {}",
-                             path.display(),
-                             file.display());
+                // Check the file directory if the config-path could not be read or not provided
+                if path.is_none() {
+                    let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())
+                                                     .expect(&format!("Error resolving config \
+                                                                       for {}",
+                                                                      file.display()));
+                    if let Some(path) = path_tmp.as_ref() {
+                        println!("Using rustfmt config file {} for {}",
+                                 path.display(),
+                                 file.display());
+                    }
+                    config = config_tmp;
                 }
 
                 update_config(&mut config, &matches);
@@ -211,6 +248,16 @@ fn determine_operation(matches: &Matches) -> Operation {
         return Operation::Version;
     }
 
+    // Read the config_path and convert to parent dir if a file is provided.
+    let config_path: Option<PathBuf> = matches.opt_str("config-path")
+                                              .map(PathBuf::from)
+                                              .and_then(|dir| {
+                                                  if dir.is_file() {
+                                                      return dir.parent().map(|v| v.into());
+                                                  }
+                                                  Some(dir)
+                                              });
+
     // if no file argument is supplied, read from stdin
     if matches.free.is_empty() {
 
@@ -221,7 +268,7 @@ fn determine_operation(matches: &Matches) -> Operation {
         }
 
         // WriteMode is always plain for Stdin
-        return Operation::Stdin(buffer, WriteMode::Plain);
+        return Operation::Stdin(buffer, WriteMode::Plain, config_path);
     }
 
     let write_mode = match matches.opt_str("write-mode") {
@@ -236,5 +283,5 @@ fn determine_operation(matches: &Matches) -> Operation {
 
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
-    Operation::Format(files, write_mode)
+    Operation::Format(files, write_mode, config_path)
 }
