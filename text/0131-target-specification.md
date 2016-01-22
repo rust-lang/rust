@@ -65,8 +65,7 @@ deciding how to build for a given target. The process would look like:
 1. Look up the target triple in an internal map, and load that configuration
    if it exists. If that fails, check if the target name exists as a file, and
    try loading that. If the file does not exist, look up `<target>.json` in
-   the `RUST_TARGET_PATH`, which is a colon-separated list of directories
-   defaulting to `/etc/rustc`.
+   the `RUST_TARGET_PATH`, which is a colon-separated list of directories.
 2. If `-C linker` is specified, use that instead of the target-specified
    linker.
 3. If `-C link-args` is given, add those to the ones specified by the target.
