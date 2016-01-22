@@ -46,7 +46,8 @@ pub struct ObligationForest<O> {
 // once.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Snapshot {
-    len: usize
+    id: usize,
+    len: usize,
 }
 
 pub use self::node_index::NodeIndex;
@@ -150,7 +151,7 @@ impl<O: Debug + Clone> ObligationForest<O> {
     pub fn new() -> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
-            snapshots: vec![Snapshot::new(0)]
+            snapshots: vec![Snapshot::new(0, 0)]
         }
     }
 
@@ -167,8 +168,7 @@ impl<O: Debug + Clone> ObligationForest<O> {
     /// Get the current snapshot, initiating a new snapshot on top of it.
     pub fn start_snapshot(&mut self) -> Snapshot {
         let current_snapshot = self.current_snapshot();
-        let next_snapshot = Snapshot::new(self.nodes.len());
-        assert!(next_snapshot != current_snapshot);
+        let next_snapshot = current_snapshot.next(self.nodes.len());
         self.snapshots.push(next_snapshot.clone());
         current_snapshot
     }
@@ -744,6 +744,7 @@ impl Default for NodeScratch {
     }
 }
 impl Snapshot {
-    fn new(len: usize) -> Self { Snapshot { len: len } }
+    fn new(id: usize, len: usize) -> Self { Snapshot { id: id, len: len } }
+    fn next(&self, len: usize) -> Self { Snapshot { id: self.id + 1, len: len } }
 }
 

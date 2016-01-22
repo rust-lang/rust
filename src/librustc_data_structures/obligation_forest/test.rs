@@ -13,10 +13,10 @@ use super::{ObligationForest, Outcome, Error,
 
 #[test]
 fn node_states() {
-    const S0: Snapshot = Snapshot { len: 0 };
-    const S1: Snapshot = Snapshot { len: 1 };
-    const S2: Snapshot = Snapshot { len: 2 };
-    const S3: Snapshot = Snapshot { len: 3 };
+    const S0: Snapshot = Snapshot { id: 0, len: 0 };
+    const S1: Snapshot = Snapshot { id: 1, len: 1 };
+    const S2: Snapshot = Snapshot { id: 2, len: 2 };
+    const S3: Snapshot = Snapshot { id: 3, len: 3 };
     // Create pending (implicitly at Sx, where x is whatever snapshot we choose; we choose 0).
     let mut a = NodeState::Pending;
     // Make it successful with 2 children in S1.
@@ -318,6 +318,7 @@ fn snapshots_1() {
     forest.push_root("A");
     forest.push_root("B");
     snapshots.push(forest.start_snapshot());
+    snapshots.push(forest.start_snapshot());
     forest.push_root("C");
 
     // first round, B errors out, A has subtasks, and C completes, creating this:
@@ -450,25 +451,7 @@ fn snapshots_2() {
     forest.push_root("D");
     // Snapshots: | -> | -> | -> |
     snapshots.push(forest.start_snapshot());
-    let Outcome { completed: ok, errors: err, .. }: Outcome<&'static str, ()> =
-        forest.process_obligations(|obligation, _| {
-            match *obligation {
-                "A.1" => Ok(None),
-                "A.2" => Ok(None),
-                "A.3" => Ok(Some(vec!["A.3.i"])),
-                "C" => Ok(Some(vec![])),
-                "D" => Ok(Some(vec!["D.1", "D.2"])),
-                _ => unreachable!(),
-            }
-        });
-    assert_eq!(ok, vec!["C"]);
-    assert_eq!(err, Vec::new());
-
-    // Undo the entire previous action with uneven subtasks, then do it again
-    // Snapshots: | -> | -> |
-    forest.rollback_snapshot(snapshots.pop().unwrap());
-
-    // Snapshots: | -> | -> | -> |
+    // Snapshots: | -> | -> | -> | -> |
     snapshots.push(forest.start_snapshot());
     let Outcome { completed: ok, errors: err, .. }: Outcome<&'static str, ()> =
         forest.process_obligations(|obligation, _| {
@@ -484,7 +467,27 @@ fn snapshots_2() {
     assert_eq!(ok, vec!["C"]);
     assert_eq!(err, Vec::new());
 
-    // Snapshots: | -> | -> |
+    // Undo the entire previous action with uneven subtasks, then do it again
+    // Snapshots: | -> | -> | -> |
+    forest.rollback_snapshot(snapshots.pop().unwrap());
+
+    // Snapshots: | -> | -> | -> | -> |
+    snapshots.push(forest.start_snapshot());
+    let Outcome { completed: ok, errors: err, .. }: Outcome<&'static str, ()> =
+        forest.process_obligations(|obligation, _| {
+            match *obligation {
+                "A.1" => Ok(None),
+                "A.2" => Ok(None),
+                "A.3" => Ok(Some(vec!["A.3.i"])),
+                "C" => Ok(Some(vec![])),
+                "D" => Ok(Some(vec!["D.1", "D.2"])),
+                _ => unreachable!(),
+            }
+        });
+    assert_eq!(ok, vec!["C"]);
+    assert_eq!(err, Vec::new());
+
+    // Snapshots: | -> | -> | -> |
     forest.commit_snapshot(snapshots.pop().unwrap());
 
     // third round: ok in A.1 but trigger an error in A.2. Check that it
@@ -503,6 +506,8 @@ fn snapshots_2() {
     assert_eq!(ok, vec!["A.1"]);
     assert_eq!(err, vec![Error { error: "A is for apple",
                                  backtrace: vec!["A.2", "A"] }]);
+    // Snapshots: | -> | -> |
+    forest.commit_snapshot(snapshots.pop().unwrap());
 
     // fourth round: error in D.1.i that should propagate to D.2.i
     let Outcome { completed: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
