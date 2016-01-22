@@ -723,7 +723,7 @@ enum FallbackSuggestion {
 }
 
 #[derive(Copy, Clone)]
-enum TypeParameters<'a> {
+enum TypeParameters<'tcx, 'a> {
     NoTypeParameters,
     HasTypeParameters(// Type parameters.
                       &'a Generics,
@@ -733,13 +733,13 @@ enum TypeParameters<'a> {
                       ParamSpace,
 
                       // The kind of the rib used for type parameters.
-                      RibKind),
+                      RibKind<'tcx>),
 }
 
 // The rib kind controls the translation of local
 // definitions (`Def::Local`) to upvars (`Def::Upvar`).
 #[derive(Copy, Clone, Debug)]
-enum RibKind {
+enum RibKind<'a> {
     // No translation needs to be applied.
     NormalRibKind,
 
@@ -758,6 +758,9 @@ enum RibKind {
 
     // We're in a constant item. Can't refer to dynamic stuff.
     ConstantItemRibKind,
+
+    // We passed through an anonymous module.
+    AnonymousModuleRibKind(Module<'a>),
 }
 
 #[derive(Copy, Clone)]
@@ -799,13 +802,13 @@ enum BareIdentifierPatternResolution {
 
 /// One local scope.
 #[derive(Debug)]
-struct Rib {
+struct Rib<'a> {
     bindings: HashMap<Name, DefLike>,
-    kind: RibKind,
+    kind: RibKind<'a>,
 }
 
-impl Rib {
-    fn new(kind: RibKind) -> Rib {
+impl<'a> Rib<'a> {
+    fn new(kind: RibKind<'a>) -> Rib<'a> {
         Rib {
             bindings: HashMap::new(),
             kind: kind,
@@ -1180,13 +1183,13 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: Vec<Rib>,
+    value_ribs: Vec<Rib<'a>>,
 
     // The current set of local scopes, for types.
-    type_ribs: Vec<Rib>,
+    type_ribs: Vec<Rib<'a>>,
 
     // The current set of local scopes, for labels.
-    label_ribs: Vec<Rib>,
+    label_ribs: Vec<Rib<'a>>,
 
     // The trait that the current context can refer to.
     current_trait_ref: Option<(DefId, TraitRef)>,
@@ -1302,6 +1305,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                   external: bool,
                   is_public: bool) -> Module<'a> {
         self.arenas.modules.alloc(ModuleS::new(parent_link, def, external, is_public))
+    }
+
+    fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
+        match ns { ValueNS => &mut self.value_ribs, TypeNS => &mut self.type_ribs }
     }
 
     #[inline]
@@ -2122,7 +2129,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn with_type_parameter_rib<F>(&mut self, type_parameters: TypeParameters, f: F)
+    fn with_type_parameter_rib<'b, F>(&'b mut self, type_parameters: TypeParameters<'a, 'b>, f: F)
         where F: FnOnce(&mut Resolver)
     {
         match type_parameters {
@@ -2191,7 +2198,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn resolve_function(&mut self, rib_kind: RibKind, declaration: &FnDecl, block: &Block) {
+    fn resolve_function(&mut self, rib_kind: RibKind<'a>, declaration: &FnDecl, block: &Block) {
         // Create a value rib for the function.
         self.value_ribs.push(Rib::new(rib_kind));
 
@@ -2494,18 +2501,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_block(&mut self, block: &Block) {
         debug!("(resolving block) entering block");
-        self.value_ribs.push(Rib::new(NormalRibKind));
-
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        match orig_module.anonymous_children.borrow().get(&block.id) {
-            None => {
-                // Nothing to do.
-            }
-            Some(anonymous_module) => {
-                debug!("(resolving block) found anonymous module, moving down");
-                self.current_module = anonymous_module;
-            }
+        let anonymous_module =
+            orig_module.anonymous_children.borrow().get(&block.id).map(|module| *module);
+
+        if let Some(anonymous_module) = anonymous_module {
+            debug!("(resolving block) found anonymous module, moving down");
+            self.value_ribs.push(Rib::new(AnonymousModuleRibKind(anonymous_module)));
+            self.type_ribs.push(Rib::new(AnonymousModuleRibKind(anonymous_module)));
+            self.current_module = anonymous_module;
+        } else {
+            self.value_ribs.push(Rib::new(NormalRibKind));
         }
 
         // Check for imports appearing after non-item statements.
@@ -2538,6 +2545,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if !self.resolved {
             self.current_module = orig_module;
             self.value_ribs.pop();
+            if let Some(_) = anonymous_module {
+                self.type_ribs.pop();
+            }
         }
         debug!("(resolving block) leaving block");
     }
@@ -3072,7 +3082,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Def::Local(_, node_id) => {
                 for rib in ribs {
                     match rib.kind {
-                        NormalRibKind => {
+                        NormalRibKind | AnonymousModuleRibKind(..) => {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
@@ -3120,7 +3130,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Def::TyParam(..) | Def::SelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
-                        NormalRibKind | MethodRibKind | ClosureRibKind(..) => {
+                        NormalRibKind | MethodRibKind | ClosureRibKind(..) |
+                        AnonymousModuleRibKind(..) => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind => {
@@ -3271,13 +3282,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         namespace: Namespace)
                                         -> Option<LocalDef> {
         // Check the local set of ribs.
-        let (name, ribs) = match namespace {
-            ValueNS => (ident.name, &self.value_ribs),
-            TypeNS => (ident.unhygienic_name, &self.type_ribs),
-        };
+        let name = match namespace { ValueNS => ident.name, TypeNS => ident.unhygienic_name };
 
-        for (i, rib) in ribs.iter().enumerate().rev() {
-            if let Some(def_like) = rib.bindings.get(&name).cloned() {
+        for i in (0 .. self.get_ribs(namespace).len()).rev() {
+            if let Some(def_like) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
                 match def_like {
                     DlDef(def) => {
                         debug!("(resolving path in local ribs) resolved `{}` to {:?} at {}",
@@ -3294,6 +3302,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                name,
                                def_like);
                         return None;
+                    }
+                }
+            }
+
+            if let AnonymousModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
+                if let Success((target, _)) = self.resolve_name_in_module(module,
+                                                                          ident.unhygienic_name,
+                                                                          namespace,
+                                                                          PathSearch,
+                                                                          true) {
+                    if let Some(def) = target.binding.def() {
+                        return Some(LocalDef::from_def(def));
                     }
                 }
             }
