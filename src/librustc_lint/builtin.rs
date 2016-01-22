@@ -855,9 +855,7 @@ impl LateLintPass for UnconditionalRecursion {
                 // A trait method, from any number of possible sources.
                 // Attempt to select a concrete impl before checking.
                 ty::TraitContainer(trait_def_id) => {
-                    let trait_substs = callee_substs.clone().method_to_trait();
-                    let trait_substs = tcx.mk_substs(trait_substs);
-                    let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
+                    let trait_ref = callee_substs.to_trait_ref(tcx, trait_def_id);
                     let trait_ref = ty::Binder(trait_ref);
                     let span = tcx.map.span(expr_id);
                     let obligation =

@@ -14,7 +14,6 @@ use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
 use middle::subst::{Subst, Substs};
-use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
 use trans::base::*;
@@ -34,7 +33,7 @@ use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 
 use syntax::ast;
@@ -117,10 +116,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         ty::TraitContainer(trait_def_id) => {
-            let trait_substs = method.substs.clone().method_to_trait();
-            let trait_substs = bcx.tcx().mk_substs(trait_substs);
-            let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
-
+            let trait_ref = method.substs.to_trait_ref(bcx.tcx(), trait_def_id);
             let trait_ref = ty::Binder(bcx.monomorphize(&trait_ref));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={:?} trait_ref={:?} trait_ref id={:?} substs={:?}",
@@ -128,9 +124,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                    trait_ref,
                    trait_ref.0.def_id,
                    trait_ref.0.substs);
-            let origin = fulfill_obligation(bcx.ccx(),
-                                            span,
-                                            trait_ref.clone());
+            let origin = fulfill_obligation(bcx.ccx(), span, trait_ref);
             debug!("origin = {:?}", origin);
             trans_monomorphized_callee(bcx,
                                        method_call,
@@ -169,44 +163,9 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // type parameters that belong to the trait but also some that
     // belong to the method:
     let rcvr_substs = node_id_substs(ccx, ExprId(expr_id), param_substs);
-    let subst::SeparateVecsPerParamSpace {
-        types: rcvr_type,
-        selfs: rcvr_self,
-        fns: rcvr_method
-    } = rcvr_substs.types.split();
-
-    // Lookup the precise impl being called. To do that, we need to
-    // create a trait reference identifying the self type and other
-    // input type parameters. To create that trait reference, we have
-    // to pick apart the type parameters to identify just those that
-    // pertain to the trait. This is easiest to explain by example:
-    //
-    //     trait Convert {
-    //         fn from<U:Foo>(n: U) -> Option<Self>;
-    //     }
-    //     ...
-    //     let f = <Vec<i32> as Convert>::from::<String>(...)
-    //
-    // Here, in this call, which I've written with explicit UFCS
-    // notation, the set of type parameters will be:
-    //
-    //     rcvr_type: [] <-- nothing declared on the trait itself
-    //     rcvr_self: [Vec<i32>] <-- the self type
-    //     rcvr_method: [String] <-- method type parameter
-    //
-    // So we create a trait reference using the first two,
-    // basically corresponding to `<Vec<i32> as Convert>`.
-    // The remaining type parameters (`rcvr_method`) will be used below.
-    let trait_substs =
-        Substs::erased(VecPerParamSpace::new(rcvr_type,
-                                             rcvr_self,
-                                             Vec::new()));
-    let trait_substs = tcx.mk_substs(trait_substs);
-    debug!("trait_substs={:?}", trait_substs);
-    let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, trait_substs));
-    let vtbl = fulfill_obligation(ccx,
-                                  DUMMY_SP,
-                                  trait_ref);
+    debug!("rcvr_substs={:?}", rcvr_substs);
+    let trait_ref = ty::Binder(rcvr_substs.to_trait_ref(tcx, trait_id));
+    let vtbl = fulfill_obligation(ccx, DUMMY_SP, trait_ref);
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -216,33 +175,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             substs: impl_substs,
             nested: _ }) =>
         {
-            assert!(!impl_substs.types.needs_infer());
-
-            // Create the substitutions that are in scope. This combines
-            // the type parameters from the impl with those declared earlier.
-            // To see what I mean, consider a possible impl:
-            //
-            //    impl<T> Convert for Vec<T> {
-            //        fn from<U:Foo>(n: U) { ... }
-            //    }
-            //
-            // Recall that we matched `<Vec<i32> as Convert>`. Trait
-            // resolution will have given us a substitution
-            // containing `impl_substs=[[T=i32],[],[]]` (the type
-            // parameters defined on the impl). We combine
-            // that with the `rcvr_method` from before, which tells us
-            // the type parameters from the *method*, to yield
-            // `callee_substs=[[T=i32],[],[U=String]]`.
-            let subst::SeparateVecsPerParamSpace {
-                types: impl_type,
-                selfs: impl_self,
-                fns: _
-            } = impl_substs.types.split();
-            let callee_substs =
-                Substs::erased(VecPerParamSpace::new(impl_type,
-                                                     impl_self,
-                                                     rcvr_method));
-
+            let callee_substs = impl_substs.with_method_from(&rcvr_substs);
             let mth = tcx.get_impl_method(impl_did, callee_substs, mname);
             trans_fn_ref_with_substs(ccx, mth.method.def_id, ExprId(expr_id),
                                      param_substs,
@@ -256,6 +189,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               idx)
         }
         _ => {
+            // FIXME(#20847): handle at least VtableFnPointer
             tcx.sess.bug(&format!("static call to invalid vtable: {:?}",
                                  vtbl));
         }
@@ -285,11 +219,11 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             // create a concatenated set of substitutions which includes
             // those from the impl and those from the method:
-            let callee_substs =
-                combine_impl_and_methods_tps(
-                    bcx, MethodCallKey(method_call), vtable_impl.substs);
-
-            let mth = bcx.tcx().get_impl_method(impl_did, callee_substs, mname);
+            let meth_substs = node_id_substs(ccx,
+                                             MethodCallKey(method_call),
+                                             bcx.fcx.param_substs);
+            let impl_substs = vtable_impl.substs.with_method_from(&meth_substs);
+            let mth = bcx.tcx().get_impl_method(impl_did, impl_substs, mname);
             // translate the function
             let datum = trans_fn_ref_with_substs(bcx.ccx(),
                                                  mth.method.def_id,
@@ -343,43 +277,6 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 &format!("resolved vtable bad vtable {:?} in trans",
                         vtable));
         }
-    }
-}
-
- /// Creates a concatenated set of substitutions which includes those from the impl and those from
- /// the method.  This are some subtle complications here.  Statically, we have a list of type
- /// parameters like `[T0, T1, T2, M1, M2, M3]` where `Tn` are type parameters that appear on the
- /// receiver.  For example, if the receiver is a method parameter `A` with a bound like
- /// `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
- ///
- /// The weird part is that the type `A` might now be bound to any other type, such as `foo<X>`.
- /// In that case, the vector we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is to slice
- /// off the method type parameters and append them to the type parameters from the type that the
- /// receiver is mapped to.
-fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                            node: ExprOrMethodCall,
-                                            rcvr_substs: subst::Substs<'tcx>)
-                                            -> subst::Substs<'tcx>
-{
-    let ccx = bcx.ccx();
-
-    let node_substs = node_id_substs(ccx, node, bcx.fcx.param_substs);
-
-    debug!("rcvr_substs={:?}", rcvr_substs);
-    debug!("node_substs={:?}", node_substs);
-
-    // Break apart the type parameters from the node and type
-    // parameters from the receiver.
-    let node_method = node_substs.types.split().fns;
-    let subst::SeparateVecsPerParamSpace {
-        types: rcvr_type,
-        selfs: rcvr_self,
-        fns: rcvr_method
-    } = rcvr_substs.types.clone().split();
-    assert!(rcvr_method.is_empty());
-    subst::Substs {
-        regions: subst::ErasedRegions,
-        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, node_method)
     }
 }
 

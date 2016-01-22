@@ -1233,20 +1233,11 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                                 rcvr_substs: subst::Substs<'tcx>)
                                                 -> Option<&'tcx Expr>
 {
-    let subst::SeparateVecsPerParamSpace {
-        types: rcvr_type,
-        selfs: rcvr_self,
-        fns: _,
-    } = rcvr_substs.types.split();
-    let trait_substs =
-        subst::Substs::erased(subst::VecPerParamSpace::new(rcvr_type,
-                                                           rcvr_self,
-                                                           Vec::new()));
-    let trait_substs = tcx.mk_substs(trait_substs);
-    debug!("resolve_trait_associated_const: trait_substs={:?}",
-           trait_substs);
-    let trait_ref = ty::Binder(ty::TraitRef { def_id: trait_id,
-                                              substs: trait_substs });
+    let trait_ref = ty::Binder(
+        rcvr_substs.erase_regions().to_trait_ref(tcx, trait_id)
+    );
+    debug!("resolve_trait_associated_const: trait_ref={:?}",
+           trait_ref);
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);

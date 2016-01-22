@@ -14,6 +14,7 @@ pub use self::ParamSpace::*;
 pub use self::RegionSubsts::*;
 
 use middle::cstore;
+use middle::def_id::DefId;
 use middle::ty::{self, Ty};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 
@@ -142,16 +143,34 @@ impl<'tcx> Substs<'tcx> {
                        -> Substs<'tcx>
     {
         let Substs { types, regions } = self;
-        let types = types.with_vec(FnSpace, m_types);
-        let regions = regions.map(|r| r.with_vec(FnSpace, m_regions));
+        let types = types.with_slice(FnSpace, &m_types);
+        let regions = regions.map(|r| r.with_slice(FnSpace, &m_regions));
         Substs { types: types, regions: regions }
     }
 
-    pub fn method_to_trait(self) -> Substs<'tcx> {
-        let Substs { mut types, regions } = self;
+    pub fn with_method_from(self,
+                            meth_substs: &Substs<'tcx>)
+                            -> Substs<'tcx>
+    {
+        let Substs { types, regions } = self;
+        let types = types.with_slice(FnSpace, meth_substs.types.get_slice(FnSpace));
+        let regions = regions.map(|r| {
+            r.with_slice(FnSpace, meth_substs.regions().get_slice(FnSpace))
+        });
+        Substs { types: types, regions: regions }
+    }
+
+    /// Creates a trait-ref out of this substs, ignoring the FnSpace substs
+    pub fn to_trait_ref(&self, tcx: &ty::ctxt<'tcx>, trait_id: DefId)
+                        -> ty::TraitRef<'tcx> {
+        let Substs { mut types, regions } = self.clone();
         types.truncate(FnSpace, 0);
         let regions = regions.map(|mut r| { r.truncate(FnSpace, 0); r });
-        Substs { types: types, regions: regions }
+
+        ty::TraitRef {
+            def_id: trait_id,
+            substs: tcx.mk_substs(Substs { types: types, regions: regions })
+        }
     }
 }
 
@@ -288,10 +307,6 @@ impl<T> VecPerParamSpace<T> {
             self_limit: 0,
             content: Vec::new()
         }
-    }
-
-    pub fn params_from_type(types: Vec<T>) -> VecPerParamSpace<T> {
-        VecPerParamSpace::empty().with_vec(TypeSpace, types)
     }
 
     /// `t` is the type space.
@@ -483,11 +498,15 @@ impl<T> VecPerParamSpace<T> {
         }
     }
 
-    pub fn with_vec(mut self, space: ParamSpace, vec: Vec<T>)
+    pub fn with_slice(mut self, space: ParamSpace, slice: &[T])
                     -> VecPerParamSpace<T>
+        where T: Clone
     {
         assert!(self.is_empty_in(space));
-        self.replace(space, vec);
+        for t in slice {
+            self.push(space, t.clone());
+        }
+
         self
     }
 }
