@@ -18,7 +18,8 @@ use std::fs::{self, File};
 use std::io::{self, Write, Read, stdout, BufWriter};
 
 use config::{NewlineStyle, Config, WriteMode};
-use rustfmt_diff::{make_diff, print_diff};
+use rustfmt_diff::{make_diff, print_diff, Mismatch};
+use checkstyle::{output_header, output_footer, output_checkstyle_file};
 
 // A map of the files of a crate, with their new content
 pub type FileMap = HashMap<String, StringBuffer>;
@@ -30,16 +31,22 @@ pub fn append_newlines(file_map: &mut FileMap) {
     }
 }
 
-pub fn write_all_files(file_map: &FileMap,
-                       mode: WriteMode,
-                       config: &Config)
-                       -> Result<(), io::Error> {
+pub fn write_all_files<T>(file_map: &FileMap,
+                          mut out: T,
+                          mode: WriteMode,
+                          config: &Config)
+                          -> Result<(), io::Error>
+    where T: Write
+{
+    output_header(&mut out, mode).ok();
     for filename in file_map.keys() {
-        try!(write_file(&file_map[filename], filename, mode, config));
+        try!(write_file(&file_map[filename], filename, &mut out, mode, config));
     }
+    output_footer(&mut out, mode).ok();
 
     Ok(())
 }
+
 
 // Prints all newlines either as `\n` or as `\r\n`.
 pub fn write_system_newlines<T>(writer: T,
@@ -77,11 +84,14 @@ pub fn write_system_newlines<T>(writer: T,
     }
 }
 
-pub fn write_file(text: &StringBuffer,
-                  filename: &str,
-                  mode: WriteMode,
-                  config: &Config)
-                  -> Result<Option<String>, io::Error> {
+pub fn write_file<T>(text: &StringBuffer,
+                     filename: &str,
+                     out: &mut T,
+                     mode: WriteMode,
+                     config: &Config)
+                     -> Result<Option<String>, io::Error>
+    where T: Write
+{
 
     fn source_and_formatted_text(text: &StringBuffer,
                                  filename: &str,
@@ -94,6 +104,14 @@ pub fn write_file(text: &StringBuffer,
         try!(write_system_newlines(&mut v, text, config));
         let fmt_text = String::from_utf8(v).unwrap();
         Ok((ori_text, fmt_text))
+    }
+
+    fn create_diff(filename: &str,
+                   text: &StringBuffer,
+                   config: &Config)
+                   -> Result<Vec<Mismatch>, io::Error> {
+        let (ori, fmt) = try!(source_and_formatted_text(text, filename, config));
+        Ok(make_diff(&ori, &fmt, 3))
     }
 
     match mode {
@@ -141,6 +159,10 @@ pub fn write_file(text: &StringBuffer,
         }
         WriteMode::Default => {
             unreachable!("The WriteMode should NEVER Be default at this point!");
+        }
+        WriteMode::Checkstyle => {
+            let diff = try!(create_diff(filename, text, config));
+            try!(output_checkstyle_file(out, filename, diff));
         }
     }
 
