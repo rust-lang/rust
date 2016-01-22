@@ -294,22 +294,23 @@ impl<T> SliceExt for [T] {
     fn binary_search_by<F>(&self, mut f: F) -> Result<usize, usize> where
         F: FnMut(&T) -> Ordering
     {
-        let mut base : usize = 0;
-        let mut lim : usize = self.len();
+        let mut base = 0usize;
+        let mut s = self;
 
-        while lim != 0 {
-            let ix = base + (lim >> 1);
-            match f(&self[ix]) {
-                Equal => return Ok(ix),
-                Less => {
-                    base = ix + 1;
-                    lim -= 1;
-                }
-                Greater => ()
+        loop {
+            let (head, tail) = s.split_at(s.len() >> 1);
+            if tail.is_empty() {
+                return Err(base)
             }
-            lim >>= 1;
+            match f(&tail[0]) {
+                Less => {
+                    base += head.len() + 1;
+                    s = &tail[1..];
+                }
+                Greater => s = head,
+                Equal => return Ok(base + head.len()),
+            }
         }
-        Err(base)
     }
 
     #[inline]
