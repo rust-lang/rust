@@ -433,14 +433,13 @@ impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
                               span: Span,
                               sub_span: Option<Span>,
                               id: NodeId,
-                              ctor_id: NodeId,
                               name: &str,
                               typ: &str,
                               val: &str,
                               scope_id: NodeId) {
         let id = self.normalize_node_id(id);
+        let ctor_id = id;
         let scope_id = self.normalize_node_id(scope_id);
-        let ctor_id = self.normalize_node_id(ctor_id);
         self.check_and_record(VariantStruct,
                               span,
                               sub_span,
