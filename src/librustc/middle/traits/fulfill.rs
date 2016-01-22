@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use dep_graph::DepGraph;
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, TypeFoldable};
 use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
@@ -30,7 +31,12 @@ use super::select::SelectionContext;
 use super::Unimplemented;
 use super::util::predicate_for_builtin_bound;
 
-pub struct FulfilledPredicates<'tcx> {
+pub struct GlobalFulfilledPredicates<'tcx> {
+    set: FnvHashSet<ty::PolyTraitPredicate<'tcx>>,
+    dep_graph: DepGraph,
+}
+
+pub struct LocalFulfilledPredicates<'tcx> {
     set: FnvHashSet<ty::Predicate<'tcx>>
 }
 
@@ -56,7 +62,7 @@ pub struct FulfillmentContext<'tcx> {
     // initially-distinct type variables are unified after being
     // inserted. Deduplicating the predicate set on selection had a
     // significant performance cost the last time I checked.
-    duplicate_set: FulfilledPredicates<'tcx>,
+    duplicate_set: LocalFulfilledPredicates<'tcx>,
 
     // A list of all obligations that have been registered with this
     // fulfillment context.
@@ -106,7 +112,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
-            duplicate_set: FulfilledPredicates::new(),
+            duplicate_set: LocalFulfilledPredicates::new(),
             predicates: ObligationForest::new(),
             region_obligations: NodeMap(),
         }
@@ -240,7 +246,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         // local cache).  This is because the tcx cache maintains the
         // invariant that it only contains things that have been
         // proven, and we have not yet proven that `predicate` holds.
-        if predicate.is_global() && tcx.fulfilled_predicates.borrow().is_duplicate(predicate) {
+        if tcx.fulfilled_predicates.borrow().check_duplicate(predicate) {
             return true;
         }
 
@@ -283,10 +289,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             // these are obligations that were proven to be true.
             for pending_obligation in outcome.completed {
                 let predicate = &pending_obligation.obligation.predicate;
-                if predicate.is_global() {
-                    selcx.tcx().fulfilled_predicates.borrow_mut()
-                                                    .is_duplicate_or_add(predicate);
-                }
+                selcx.tcx().fulfilled_predicates.borrow_mut().add_if_global(predicate);
             }
 
             errors.extend(
@@ -329,6 +332,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             // However, this is a touch tricky, so I'm doing something
             // a bit hackier for now so that the `huge-struct.rs` passes.
 
+            let tcx = selcx.tcx();
+
             let retain_vec: Vec<_> = {
                 let mut dedup = FnvHashSet();
                 v.iter()
@@ -336,10 +341,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                      // Screen out obligations that we know globally
                      // are true. This should really be the DAG check
                      // mentioned above.
-                     if
-                         o.predicate.is_global() &&
-                         selcx.tcx().fulfilled_predicates.borrow().is_duplicate(&o.predicate)
-                     {
+                     if tcx.fulfilled_predicates.borrow().check_duplicate(&o.predicate) {
                          return false;
                      }
 
@@ -611,19 +613,59 @@ fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
 
 }
 
-impl<'tcx> FulfilledPredicates<'tcx> {
-    pub fn new() -> FulfilledPredicates<'tcx> {
-        FulfilledPredicates {
+impl<'tcx> LocalFulfilledPredicates<'tcx> {
+    pub fn new() -> LocalFulfilledPredicates<'tcx> {
+        LocalFulfilledPredicates {
             set: FnvHashSet()
         }
     }
 
-    pub fn is_duplicate(&self, key: &ty::Predicate<'tcx>) -> bool {
-        self.set.contains(key)
+    fn is_duplicate_or_add(&mut self, key: &ty::Predicate<'tcx>) -> bool {
+        // For a `LocalFulfilledPredicates`, if we find a match, we
+        // don't need to add a read edge to the dep-graph. This is
+        // because it means that the predicate has already been
+        // considered by this `FulfillmentContext`, and hence the
+        // containing task will already have an edge. (Here we are
+        // assuming each `FulfillmentContext` only gets used from one
+        // task; but to do otherwise makes no sense)
+        !self.set.insert(key.clone())
+    }
+}
+
+impl<'tcx> GlobalFulfilledPredicates<'tcx> {
+    pub fn new(dep_graph: DepGraph) -> GlobalFulfilledPredicates<'tcx> {
+        GlobalFulfilledPredicates {
+            set: FnvHashSet(),
+            dep_graph: dep_graph,
+        }
     }
 
-    fn is_duplicate_or_add(&mut self, key: &ty::Predicate<'tcx>) -> bool {
-        !self.set.insert(key.clone())
+    pub fn check_duplicate(&self, key: &ty::Predicate<'tcx>) -> bool {
+        if let ty::Predicate::Trait(ref data) = *key {
+            // For the global predicate registry, when we find a match, it
+            // may have been computed by some other task, so we want to
+            // add a read from the node corresponding to the predicate
+            // processing to make sure we get the transitive dependencies.
+            if self.set.contains(data) {
+                debug_assert!(data.is_global());
+                self.dep_graph.read(data.dep_node());
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    fn add_if_global(&mut self, key: &ty::Predicate<'tcx>) {
+        if let ty::Predicate::Trait(ref data) = *key {
+            // We only add things to the global predicate registry
+            // after the current task has proved them, and hence
+            // already has the required read edges, so we don't need
+            // to add any more edges here.
+            if data.is_global() {
+                self.set.insert(data.clone());
+            }
+        }
     }
 }
 
