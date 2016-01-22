@@ -19,7 +19,6 @@
 
 use self::Ordering::*;
 
-use mem;
 use marker::Sized;
 use option::Option::{self, Some};
 
@@ -119,10 +118,6 @@ pub enum Ordering {
 }
 
 impl Ordering {
-    unsafe fn from_i8_unchecked(v: i8) -> Ordering {
-        mem::transmute(v)
-    }
-
     /// Reverse the `Ordering`.
     ///
     /// * `Less` becomes `Greater`.
@@ -155,14 +150,10 @@ impl Ordering {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reverse(self) -> Ordering {
-        unsafe {
-            // this compiles really nicely (to a single instruction);
-            // an explicit match has a pile of branches and
-            // comparisons.
-            //
-            // NB. it is safe because of the explicit discriminants
-            // given above.
-            Ordering::from_i8_unchecked(-(self as i8))
+        match self {
+            Less => Greater,
+            Equal => Equal,
+            Greater => Less,
         }
     }
 }
