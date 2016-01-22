@@ -97,7 +97,7 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>) {
     let temps = mir.temp_decls.iter()
                               .map(|decl| bcx.monomorphize(&decl.ty))
                               .enumerate()
-                              .map(|(i, mty)| if lvalue_temps.contains(&i) {
+                              .map(|(i, mty)| if lvalue_temps.contains(i) {
                                   TempRef::Lvalue(LvalueRef::alloca(bcx,
                                                                     mty,
                                                                     &format!("temp{:?}", i)))
