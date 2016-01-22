@@ -144,8 +144,7 @@ TARGET_CRATES += alloc_jemalloc
 DEPS_std += alloc_jemalloc
 DEPS_alloc_jemalloc := core libc native:jemalloc
 ONLY_RLIB_alloc_jemalloc := 1
-else
-RUSTFLAGS_rustc_back := --cfg disable_jemalloc
+RUSTFLAGS_rustc_back := --cfg 'feature="jemalloc"'
 endif
 
 ################################################################################
