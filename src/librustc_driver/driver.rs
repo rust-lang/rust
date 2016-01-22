@@ -303,10 +303,10 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
 }
 
 impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
-    fn empty(input: &'a Input,
-             session: &'a Session,
-             out_dir: &'a Option<PathBuf>)
-             -> CompileState<'a, 'ast, 'tcx> {
+    pub fn empty(input: &'a Input,
+                 session: &'a Session,
+                 out_dir: &'a Option<PathBuf>)
+                 -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             input: input,
             session: session,
@@ -326,20 +326,20 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
         }
     }
 
-    fn state_after_parse(input: &'a Input,
-                         session: &'a Session,
-                         out_dir: &'a Option<PathBuf>,
-                         krate: &'a ast::Crate)
-                         -> CompileState<'a, 'ast, 'tcx> {
+    pub fn state_after_parse(input: &'a Input,
+                             session: &'a Session,
+                             out_dir: &'a Option<PathBuf>,
+                             krate: &'a ast::Crate)
+                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState { krate: Some(krate), ..CompileState::empty(input, session, out_dir) }
     }
 
-    fn state_after_expand(input: &'a Input,
-                          session: &'a Session,
-                          out_dir: &'a Option<PathBuf>,
-                          expanded_crate: &'a ast::Crate,
-                          crate_name: &'a str)
-                          -> CompileState<'a, 'ast, 'tcx> {
+    pub fn state_after_expand(input: &'a Input,
+                              session: &'a Session,
+                              out_dir: &'a Option<PathBuf>,
+                              expanded_crate: &'a ast::Crate,
+                              crate_name: &'a str)
+                              -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             expanded_crate: Some(expanded_crate),
@@ -347,15 +347,15 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
         }
     }
 
-    fn state_after_write_deps(input: &'a Input,
-                              session: &'a Session,
-                              out_dir: &'a Option<PathBuf>,
-                              hir_map: &'a hir_map::Map<'ast>,
-                              krate: &'a ast::Crate,
-                              hir_crate: &'a hir::Crate,
-                              crate_name: &'a str,
-                              lcx: &'a LoweringContext<'a>)
-                              -> CompileState<'a, 'ast, 'tcx> {
+    pub fn state_after_write_deps(input: &'a Input,
+                                  session: &'a Session,
+                                  out_dir: &'a Option<PathBuf>,
+                                  hir_map: &'a hir_map::Map<'ast>,
+                                  krate: &'a ast::Crate,
+                                  hir_crate: &'a hir::Crate,
+                                  crate_name: &'a str,
+                                  lcx: &'a LoweringContext<'a>)
+                                  -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             ast_map: Some(hir_map),
@@ -366,17 +366,17 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
         }
     }
 
-    fn state_after_analysis(input: &'a Input,
-                            session: &'a Session,
-                            out_dir: &'a Option<PathBuf>,
-                            krate: Option<&'a ast::Crate>,
-                            hir_crate: &'a hir::Crate,
-                            analysis: &'a ty::CrateAnalysis,
-                            mir_map: &'a MirMap<'tcx>,
-                            tcx: &'a ty::ctxt<'tcx>,
-                            lcx: &'a LoweringContext<'a>,
-                            crate_name: &'a str)
-                            -> CompileState<'a, 'ast, 'tcx> {
+    pub fn state_after_analysis(input: &'a Input,
+                                session: &'a Session,
+                                out_dir: &'a Option<PathBuf>,
+                                krate: Option<&'a ast::Crate>,
+                                hir_crate: &'a hir::Crate,
+                                analysis: &'a ty::CrateAnalysis,
+                                mir_map: &'a MirMap<'tcx>,
+                                tcx: &'a ty::ctxt<'tcx>,
+                                lcx: &'a LoweringContext<'a>,
+                                crate_name: &'a str)
+                                -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),
             mir_map: Some(mir_map),
@@ -390,11 +390,11 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     }
 
 
-    fn state_after_llvm(input: &'a Input,
-                        session: &'a Session,
-                        out_dir: &'a Option<PathBuf>,
-                        trans: &'a trans::CrateTranslation)
-                        -> CompileState<'a, 'ast, 'tcx> {
+    pub fn state_after_llvm(input: &'a Input,
+                            session: &'a Session,
+                            out_dir: &'a Option<PathBuf>,
+                            trans: &'a trans::CrateTranslation)
+                            -> CompileState<'a, 'ast, 'tcx> {
         CompileState { trans: Some(trans), ..CompileState::empty(input, session, out_dir) }
     }
 }
