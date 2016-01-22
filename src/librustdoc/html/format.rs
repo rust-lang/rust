@@ -456,23 +456,36 @@ impl fmt::Display for clean::Type {
                        decl.decl)
             }
             clean::Tuple(ref typs) => {
-                primitive_link(f, clean::PrimitiveTuple,
-                               &*match &**typs {
-                                    [ref one] => format!("({},)", one),
-                                    many => format!("({})", CommaSep(&many)),
-                               })
+                match &**typs {
+                    [] => primitive_link(f, clean::PrimitiveTuple, "()"),
+                    [ref one] => {
+                        try!(primitive_link(f, clean::PrimitiveTuple, "("));
+                        try!(write!(f, "{}", one));
+                        primitive_link(f, clean::PrimitiveTuple, ")")
+                    }
+                    many => {
+                        try!(primitive_link(f, clean::PrimitiveTuple, "("));
+                        try!(write!(f, "{}", CommaSep(&many)));
+                        primitive_link(f, clean::PrimitiveTuple, ")")
+                    }
+                }
             }
             clean::Vector(ref t) => {
-                primitive_link(f, clean::Slice, &format!("[{}]", **t))
+                try!(primitive_link(f, clean::Slice, &format!("[")));
+                try!(write!(f, "{}", t));
+                primitive_link(f, clean::Slice, &format!("]"))
             }
             clean::FixedVector(ref t, ref s) => {
+                try!(primitive_link(f, clean::PrimitiveType::Array, "["));
+                try!(write!(f, "{}", t));
                 primitive_link(f, clean::PrimitiveType::Array,
-                               &format!("[{}; {}]", **t, *s))
+                               &format!("; {}]", *s))
             }
             clean::Bottom => f.write_str("!"),
             clean::RawPointer(m, ref t) => {
-                primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
-                               &format!("*{}{}", RawMutableSpace(m), **t))
+                try!(primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
+                                    &format!("*{}", RawMutableSpace(m))));
+                write!(f, "{}", t)
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
