@@ -683,7 +683,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     // [x; 32]
-    Repeat(Operand<'tcx>, Constant<'tcx>),
+    Repeat(Operand<'tcx>, TypedConstVal<'tcx>),
 
     // &x or &mut x
     Ref(Region, BorrowKind, Lvalue<'tcx>),
@@ -889,6 +889,20 @@ pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub literal: Literal<'tcx>,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct TypedConstVal<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub span: Span,
+    pub value: ConstVal
+}
+
+impl<'tcx> Debug for TypedConstVal<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        try!(write!(fmt, "const "));
+        fmt_const_val(fmt, &self.value)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
