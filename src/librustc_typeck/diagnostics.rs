@@ -2565,24 +2565,6 @@ struct Bar<S, T> { x: Foo<S, T> }
 ```
 "##,
 
-//NB: not currently reachable
-E0247: r##"
-This error indicates an attempt to use a module name where a type is expected.
-For example:
-
-```
-mod MyMod {
-    mod MySubMod { }
-}
-
-fn do_something(x: MyMod::MySubMod) { }
-```
-
-In this example, we're attempting to take a parameter of type `MyMod::MySubMod`
-in the do_something function. This is not legal: `MyMod::MySubMod` is a module
-name, not a type.
-"##,
-
 E0248: r##"
 This error indicates an attempt to use a value where a type is expected. For
 example:
@@ -3438,6 +3420,7 @@ register_diagnostics! {
     E0242, // internal error looking up a definition
     E0245, // not a trait
 //  E0246, // invalid recursive type
+//  E0247,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0328, // cannot implement Unsize explicitly
