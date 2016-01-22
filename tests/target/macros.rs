@@ -1,4 +1,4 @@
-itemmacro!(this, is.not() .formatted(yet));
+itemmacro!(this, is.now().formatted(yay));
 
 fn main() {
     foo!();

@@ -33,7 +33,7 @@ use utils::{wrap_str, span_after};
 static FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
 
 // FIXME: use the enum from libsyntax?
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum MacroStyle {
     Parens,
     Brackets,
@@ -63,9 +63,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
         original_style
     };
 
-    if let MacroStyle::Braces = style {
-        return None;
-    } else if mac.node.tts.is_empty() {
+    if mac.node.tts.is_empty() {
         return if let MacroStyle::Parens = style {
             Some(format!("{}()", macro_name))
         } else {
@@ -76,22 +74,24 @@ pub fn rewrite_macro(mac: &ast::Mac,
     let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone(), Vec::new());
     let mut expr_vec = Vec::new();
 
-    loop {
-        expr_vec.push(match parser.parse_expr() {
-            Ok(expr) => expr,
-            Err(..) => return None,
-        });
+    if MacroStyle::Braces != style {
+        loop {
+            expr_vec.push(match parser.parse_expr() {
+                Ok(expr) => expr,
+                Err(..) => return None,
+            });
 
-        match parser.token {
-            Token::Eof => break,
-            Token::Comma => (),
-            _ => return None,
-        }
+            match parser.token {
+                Token::Eof => break,
+                Token::Comma => (),
+                _ => return None,
+            }
 
-        let _ = parser.bump();
+            let _ = parser.bump();
 
-        if parser.token == Token::Eof {
-            return None;
+            if parser.token == Token::Eof {
+                return None;
+            }
         }
     }
 
