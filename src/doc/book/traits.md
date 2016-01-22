@@ -280,7 +280,8 @@ it won’t affect you, unless you `use` that trait.
 There’s one more restriction on implementing traits: either the trait
 or the type you’re implementing it for must be defined by you. Or more
 precisely, one of them must be defined in the same crate as the `impl`
-you're writing.
+you're writing. For more on Rust's module and package system, see the
+chapter on [crates and modules][cm].
 
 So, we could implement the `HasArea` type for `i32`, because we defined
 `HasArea` in our code. But if we tried to implement `ToString`, a trait
@@ -291,6 +292,7 @@ One last thing about traits: generic functions with a trait bound use
 ‘monomorphization’ (mono: one, morph: form), so they are statically dispatched.
 What’s that mean? Check out the chapter on [trait objects][to] for more details.
 
+[cm]: crates-and-modules.html
 [to]: trait-objects.html
 
 # Multiple trait bounds
