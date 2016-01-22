@@ -1357,7 +1357,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 let target_mod_str = module_to_string(&*module);
                                 let current_mod_str = module_to_string(&*self.current_module);
 
-                                let prefix = if target_mod_str == current_mod_str {
+                                let prefix = if target_mod_str == current_mod_str && !path_str.starts_with("self::") {
                                     "self::".to_string()
                                 } else {
                                     format!("{}::", target_mod_str)
