@@ -47,7 +47,7 @@ use memchr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufReader<R> {
     inner: R,
-    buf: Vec<u8>,
+    buf: Box<[u8]>,
     pos: usize,
     cap: usize,
 }
@@ -92,7 +92,7 @@ impl<R: Read> BufReader<R> {
     pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
         BufReader {
             inner: inner,
-            buf: vec![0; cap],
+            buf: vec![0; cap].into_boxed_slice(),
             pos: 0,
             cap: 0,
         }
