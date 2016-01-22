@@ -27,6 +27,7 @@ pub const COW_PATH: [&'static str; 3] = ["collections", "borrow", "Cow"];
 pub const DEFAULT_TRAIT_PATH: [&'static str; 3] = ["core", "default", "Default"];
 pub const HASHMAP_ENTRY_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "HashMap"];
+pub const HASH_PATH: [&'static str; 2] = ["hash", "Hash"];
 pub const LL_PATH: [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 pub const MUTEX_PATH: [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
