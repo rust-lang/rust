@@ -16,7 +16,6 @@ use rustc::middle::ty::{self, Ty, TypeFoldable};
 use rustc::middle::subst::Substs;
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
-use rustc::middle::subst;
 use rustc::middle::traits;
 use rustc::mir::repr::ItemKind;
 use trans::common::{Block, fulfill_obligation};
@@ -46,7 +45,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ItemKind::Function => self.trans_fn_ref(bcx, ty, substs, did),
             ItemKind::Method => match bcx.tcx().impl_or_trait_item(did).container() {
                 ty::ImplContainer(_) => self.trans_fn_ref(bcx, ty, substs, did),
-                ty::TraitContainer(tdid) => self.trans_static_method(bcx, ty, did, tdid, substs)
+                ty::TraitContainer(tdid) => self.trans_trait_method(bcx, ty, did, tdid, substs)
             },
             ItemKind::Constant => {
                 let did = inline::maybe_instantiate_inline(bcx.ccx(), did);
@@ -98,16 +97,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    /// Translates references to static methods.
+    /// Translates references to trait methods.
     ///
     /// This is an adaptation of meth::trans_static_method_callee
-    pub fn trans_static_method(&mut self,
-                               bcx: Block<'bcx, 'tcx>,
-                               ty: Ty<'tcx>,
-                               method_id: DefId,
-                               trait_id: DefId,
-                               substs: &'tcx Substs<'tcx>)
-                               -> OperandRef<'tcx> {
+    pub fn trans_trait_method(&mut self,
+                              bcx: Block<'bcx, 'tcx>,
+                              ty: Ty<'tcx>,
+                              method_id: DefId,
+                              trait_id: DefId,
+                              substs: &'tcx Substs<'tcx>)
+                              -> OperandRef<'tcx> {
         debug!("trans_static_method(ty={:?}, method={}, trait={}, substs={:?})",
                 ty,
                 bcx.tcx().item_path_str(method_id),
@@ -116,34 +115,20 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         let ccx = bcx.ccx();
         let tcx = bcx.tcx();
-        let subst::SeparateVecsPerParamSpace {
-            types: rcvr_type,
-            selfs: rcvr_self,
-            fns: rcvr_method
-        } = substs.clone().types.split();
-        let trait_substs = Substs::erased(
-            subst::VecPerParamSpace::new(rcvr_type, rcvr_self, Vec::new())
-        );
-        let trait_substs = tcx.mk_substs(trait_substs);
-        let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, trait_substs));
+        let trait_ref = ty::Binder(substs.to_trait_ref(tcx, trait_id));
         let vtbl = fulfill_obligation(ccx, DUMMY_SP, trait_ref);
         match vtbl {
-            traits::VtableImpl(traits::VtableImplData { impl_def_id, substs: imp_substs, .. }) => {
-                assert!(!imp_substs.types.needs_infer());
+            traits::VtableImpl(traits::VtableImplData {
+                impl_def_id, substs: impl_substs, ..
+            }) => {
+                assert!(!impl_substs.types.needs_infer());
 
                 let mname = tcx.item_name(method_id);
 
-                let subst::SeparateVecsPerParamSpace {
-                    types: impl_type,
-                    selfs: impl_self,
-                    fns: _
-                } = imp_substs.types.split();
-                let callee_substs = Substs::erased(
-                    subst::VecPerParamSpace::new(impl_type, impl_self, rcvr_method)
-                );
+                let callee_substs = impl_substs.with_method_from(substs);
                 let mth = tcx.get_impl_method(impl_def_id, callee_substs, mname);
-                let mthsubsts = tcx.mk_substs(mth.substs);
-                self.trans_fn_ref(bcx, ty, mthsubsts, mth.method.def_id)
+                let mth_substs = tcx.mk_substs(mth.substs);
+                self.trans_fn_ref(bcx, ty, mth_substs, mth.method.def_id)
             },
             traits::VtableClosure(data) => {
                 let trait_closure_kind = bcx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
