@@ -32,7 +32,7 @@ Since `compare_and_swap` is stable, we can't simply add a second memory ordering
 fn compare_and_swap_explicit(&self, current: T, new: T, success: Ordering, failure: Ordering) -> T;
 ```
 
-The restrictions on the failure ordering are the same as C++11: only `SeqCst`, `Acquire` and `Relaxed` are allowed and it must be equal or weaker than the success ordering.
+The restrictions on the failure ordering are the same as C++11: only `SeqCst`, `Acquire` and `Relaxed` are allowed and it must be equal or weaker than the success ordering. Passing an invalid memory ordering will result in a panic, although this can often be optimized away since the ordering is usually statically known.
 
 The documentation for the original `compare_and_swap` is updated to say that it is equivalent to `compare_and_swap_explicit` with the following mapping for memory orders:
 
@@ -102,7 +102,9 @@ For consistency with `compare_and_swap`, `compare_and_swap_weak` also has a sepa
 # Alternatives
 [alternatives]: #alternatives
 
-One alternative for supporting failure orderings is to add new enum variants to `Ordering` instead of adding new methods with two ordering parameters. The following variants would need to be added: `AcquireFailRelaxed`, `AcqRelFailRelaxed`, `SeqCstFailRelaxed`, `SeqCstFailAcquire`. The downside is that the names are quite ugly and are only valid for `compare_and_swap`, not other atomic operations.
+One alternative for supporting failure orderings is to add new enum variants to `Ordering` instead of adding new methods with two ordering parameters. The following variants would need to be added: `AcquireFailRelaxed`, `AcqRelFailRelaxed`, `SeqCstFailRelaxed`, `SeqCstFailAcquire`. The downside is that the names are quite ugly and are only valid for `compare_and_swap`, not other atomic operations. It is also a breaking change to a stable enum.
+
+Another alternative is to deprecate the existing `compare_and_swap` functions and replace them with `compare_exchange` which takes two ordering parameters. The new name matches the one used by C++11 and C11, which is a good thing since Rust's memory model is based on the C++11 one.
 
 Not doing anything is also a possible option, but this will cause Rust to generate worse code for some lock-free algorithms.
 
