@@ -220,17 +220,10 @@ endif
 # The test suite
 ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring test,$(MAKECMDGOALS))  \
-               $(findstring perf,$(MAKECMDGOALS))  \
                $(findstring tidy,$(MAKECMDGOALS))),)
   CFG_INFO := $(info cfg: including test rules)
   include $(CFG_SRC_DIR)mk/tests.mk
   include $(CFG_SRC_DIR)mk/grammar.mk
-endif
-
-# Performance and benchmarking
-ifneq ($(findstring perf,$(MAKECMDGOALS)),)
-  CFG_INFO := $(info cfg: including perf rules)
-  include $(CFG_SRC_DIR)mk/perf.mk
 endif
 
 # Copy all the distributables to another directory for binary install
