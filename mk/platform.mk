@@ -77,23 +77,6 @@ define DEF_GOOD_VALGRIND
 endef
 $(foreach t,$(CFG_TARGET),$(eval $(call DEF_GOOD_VALGRIND,$(t))))
 
-ifneq ($(findstring linux,$(CFG_OSTYPE)),)
-  ifdef CFG_PERF
-    ifneq ($(CFG_PERF_WITH_LOGFD),)
-        CFG_PERF_TOOL := $(CFG_PERF) stat -r 3 --log-fd 2
-    else
-        CFG_PERF_TOOL := $(CFG_PERF) stat -r 3
-    endif
-  else
-    ifdef CFG_VALGRIND
-      CFG_PERF_TOOL := \
-        $(CFG_VALGRIND) --tool=cachegrind --cache-sim=yes --branch-sim=yes
-    else
-      CFG_PERF_TOOL := /usr/bin/time --verbose
-    endif
-  endif
-endif
-
 AR := ar
 
 define SET_FROM_CFG

@@ -50,11 +50,6 @@ ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
 endif
 
-# Arguments to the perf tests
-ifdef CFG_PERF_TOOL
-  CTEST_PERF_RUNTOOL = --runtool "$(CFG_PERF_TOOL)"
-endif
-
 CTEST_TESTARGS := $(TESTARGS)
 
 # --bench is only relevant for crate tests, not for the compile tests
@@ -69,12 +64,6 @@ endif
 # Setting locale ensures that gdb's output remains consistent.
 # This prevents tests from failing with some locales (fixes #17423).
 export LC_ALL=C
-
-# If we're running perf then set this environment variable
-# to put the benchmarks into 'hard mode'
-ifeq ($(MAKECMDGOALS),perf)
-  export RUST_BENCH=1
-endif
 
 TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 TEST_OK_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).ok
@@ -486,10 +475,6 @@ CODEGEN_RS := $(wildcard $(S)src/test/codegen/*.rs)
 CODEGEN_CC := $(wildcard $(S)src/test/codegen/*.cc)
 RUSTDOCCK_RS := $(wildcard $(S)src/test/rustdoc/*.rs)
 
-# perf tests are the same as bench tests only they run under
-# a performance monitor.
-PERF_RS := $(wildcard $(S)src/test/bench/*.rs)
-
 RPASS_TESTS := $(RPASS_RS)
 RPASS_VALGRIND_TESTS := $(RPASS_VALGRIND_RS)
 RPASS_FULL_TESTS := $(RPASS_FULL_RS)
@@ -499,7 +484,6 @@ RFAIL_TESTS := $(RFAIL_RS)
 CFAIL_TESTS := $(CFAIL_RS)
 PFAIL_TESTS := $(PFAIL_RS)
 BENCH_TESTS := $(BENCH_RS)
-PERF_TESTS := $(PERF_RS)
 PRETTY_TESTS := $(PRETTY_RS)
 DEBUGINFO_GDB_TESTS := $(DEBUGINFO_GDB_RS)
 DEBUGINFO_LLDB_TESTS := $(DEBUGINFO_LLDB_RS)
@@ -550,11 +534,6 @@ CTEST_SRC_BASE_bench = bench
 CTEST_BUILD_BASE_bench = bench
 CTEST_MODE_bench = run-pass
 CTEST_RUNTOOL_bench = $(CTEST_RUNTOOL)
-
-CTEST_SRC_BASE_perf = bench
-CTEST_BUILD_BASE_perf = perf
-CTEST_MODE_perf = run-pass
-CTEST_RUNTOOL_perf = $(CTEST_PERF_RUNTOOL)
 
 CTEST_SRC_BASE_debuginfo-gdb = debuginfo
 CTEST_BUILD_BASE_debuginfo-gdb = debuginfo-gdb
@@ -625,7 +604,7 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/compiletest$$(X_$(3)) \
 	$$(SREQ$(1)_T_$(2)_H_$(3))
 
-# Rules for the cfail/rfail/rpass/bench/perf test runner
+# Rules for the cfail/rfail/rpass/bench test runner
 
 # The tests select when to use debug configuration on their own;
 # remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
@@ -689,7 +668,6 @@ CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $$(RFAIL_TESTS)
 CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
 CTEST_DEPS_pfail_$(1)-T-$(2)-H-$(3) = $$(PFAIL_TESTS)
 CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
-CTEST_DEPS_perf_$(1)-T-$(2)-H-$(3) = $$(PERF_TESTS)
 CTEST_DEPS_debuginfo-gdb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_GDB_TESTS)
 CTEST_DEPS_debuginfo-lldb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_LLDB_TESTS) \
                                                $(S)src/etc/lldb_batchmode.py \
@@ -761,7 +739,7 @@ endif
 endef
 
 CTEST_NAMES = rpass rpass-valgrind rpass-full rfail-full cfail-full rfail cfail pfail \
-	bench perf debuginfo-gdb debuginfo-lldb codegen rustdocck
+	bench debuginfo-gdb debuginfo-lldb codegen rustdocck
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -934,7 +912,6 @@ TEST_GROUPS = \
 	cfail \
 	pfail \
 	bench \
-	perf \
 	rmake \
 	rustdocck \
 	debuginfo-gdb \
