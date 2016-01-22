@@ -1,6 +1,8 @@
 - Start Date: 2014-12-21
 - RFC PR: [550](https://github.com/rust-lang/rfcs/pull/550)
-- Rust Issue: [20563](https://github.com/rust-lang/rust/pull/20563)
+- Rust Issues:
+  - [20563](https://github.com/rust-lang/rust/pull/20563)
+  - [31135](https://github.com/rust-lang/rust/issues/31135)
 
 # Summary
 
