@@ -300,6 +300,10 @@ impl<R: Seek> Seek for BufReader<R> {
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
     buf: Vec<u8>,
+    // #30888: If the inner writer panics in a call to write, we don't want to
+    // write the buffered data a second time in BufWriter's destructor. This
+    // flag tells the Drop impl if it should skip the flush.
+    panicked: bool,
 }
 
 /// An error returned by `into_inner` which combines an error that
@@ -364,6 +368,7 @@ impl<W: Write> BufWriter<W> {
         BufWriter {
             inner: Some(inner),
             buf: Vec::with_capacity(cap),
+            panicked: false,
         }
     }
 
@@ -372,7 +377,11 @@ impl<W: Write> BufWriter<W> {
         let len = self.buf.len();
         let mut ret = Ok(());
         while written < len {
-            match self.inner.as_mut().unwrap().write(&self.buf[written..]) {
+            self.panicked = true;
+            let r = self.inner.as_mut().unwrap().write(&self.buf[written..]);
+            self.panicked = false;
+
+            match r {
                 Ok(0) => {
                     ret = Err(Error::new(ErrorKind::WriteZero,
                                          "failed to write the buffered data"));
@@ -455,7 +464,10 @@ impl<W: Write> Write for BufWriter<W> {
             try!(self.flush_buf());
         }
         if buf.len() >= self.buf.capacity() {
-            self.inner.as_mut().unwrap().write(buf)
+            self.panicked = true;
+            let r = self.inner.as_mut().unwrap().write(buf);
+            self.panicked = false;
+            r
         } else {
             let amt = cmp::min(buf.len(), self.buf.capacity());
             Write::write(&mut self.buf, &buf[..amt])
@@ -489,7 +501,7 @@ impl<W: Write + Seek> Seek for BufWriter<W> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
-        if self.inner.is_some() {
+        if self.inner.is_some() && !self.panicked {
             // dtors should not panic, so we ignore a failed flush
             let _r = self.flush_buf();
         }
@@ -777,6 +789,8 @@ mod tests {
     use prelude::v1::*;
     use io::prelude::*;
     use io::{self, BufReader, BufWriter, LineWriter, SeekFrom};
+    use sync::atomic::{AtomicUsize, Ordering};
+    use thread;
     use test;
 
     /// A dummy reader intended at testing short-reads propagation.
@@ -1063,6 +1077,29 @@ mod tests {
         // If writer panics *again* due to the flush error then the process will
         // abort.
         panic!();
+    }
+
+    #[test]
+    fn panic_in_write_doesnt_flush_in_drop() {
+        static WRITES: AtomicUsize = AtomicUsize::new(0);
+
+        struct PanicWriter;
+
+        impl Write for PanicWriter {
+            fn write(&mut self, _: &[u8]) -> io::Result<usize> {
+                WRITES.fetch_add(1, Ordering::SeqCst);
+                panic!();
+            }
+            fn flush(&mut self) -> io::Result<()> { Ok(()) }
+        }
+
+        thread::spawn(|| {
+            let mut writer = BufWriter::new(PanicWriter);
+            writer.write(b"hello world");
+            writer.flush();
+        }).join().err().unwrap();
+
+        assert_eq!(WRITES.load(Ordering::SeqCst), 1);
     }
 
     #[bench]
