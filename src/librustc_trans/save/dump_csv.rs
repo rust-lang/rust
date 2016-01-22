@@ -510,14 +510,28 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             qualname.push_str(name);
             let val = self.span.snippet(variant.span);
 
-            self.fmt.struct_variant_str(variant.span,
-                                        self.span.span_for_first_ident(variant.span),
-                                        variant.node.data.id(),
-                                        variant.node.data.id(),
-                                        &qualname,
-                                        &enum_data.qualname,
-                                        &val,
-                                        enum_data.id);
+            match variant.node.data {
+                ast::VariantData::Struct(..) => {
+                    self.fmt.struct_variant_str(variant.span,
+                                                self.span.span_for_first_ident(variant.span),
+                                                variant.node.data.id(),
+                                                &qualname,
+                                                &enum_data.qualname,
+                                                &val,
+                                                enum_data.scope);
+                }
+                _ => {
+                    self.fmt.tuple_variant_str(variant.span,
+                                               self.span.span_for_first_ident(variant.span),
+                                               variant.node.data.id(),
+                                               name,
+                                               &qualname,
+                                               &enum_data.qualname,
+                                               &val,
+                                               enum_data.scope);
+                }
+            }
+
 
             for field in variant.node.data.fields() {
                 self.process_struct_field_def(field, variant.node.data.id());
