@@ -270,22 +270,14 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
 
     /// Modifies the bucket pointer in place to make it point to the next slot.
     pub fn next(&mut self) {
-        // Branchless bucket iteration step.
-        // As we reach the end of the table...
-        // We take the current idx:          0111111b
-        // Xor it by its increment:        ^ 1000000b
-        //                               ------------
-        //                                   1111111b
-        // Then AND with the capacity:     & 1000000b
-        //                               ------------
-        // to get the backwards offset:      1000000b
-        // ... and it's zero at all other times.
-        let maybe_wraparound_dist = (self.idx ^ (self.idx + 1)) & self.table.capacity();
-        // Finally, we obtain the offset 1 or the offset -cap + 1.
-        let dist = 1 - (maybe_wraparound_dist as isize);
-
         self.idx += 1;
-
+        let range = self.table.capacity();
+        // This code is branchless thanks to a conditional move.
+        let dist = if self.idx & (range - 1) == 0 {
+            1 - range as isize
+        } else {
+            1
+        };
         unsafe {
             self.raw = self.raw.offset(dist);
         }
