@@ -22,9 +22,9 @@ semver = "0.2.1"
 
 [dev-dependencies]
 compiletest_rs = "0.0.11"
-regex = "*"
-regex_macros = "*"
-lazy_static = "*"
+regex = "0.1.47"
+regex_macros = "0.1.27"
+lazy_static = "0.1.15"
 rustc-serialize = "0.3"
 
 [features]
