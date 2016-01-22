@@ -390,15 +390,16 @@ pub fn get_ar_prog(sess: &Session) -> String {
 
 fn command_path(sess: &Session) -> OsString {
     // The compiler's sysroot often has some bundled tools, so add it to the
-    // PATH for the child.
-    let mut new_path = sess.host_filesearch(PathKind::All)
-                           .get_tools_search_paths();
-    if let Some(path) = env::var_os("PATH") {
-        new_path.extend(env::split_paths(&path));
-    }
+    // PATH for the child. Be sure that we *append* to the PATH so we favor the
+    // system tools if they're configured and otherwise just fall back to the
+    // bundled versions.
+    let path = env::var_os("PATH").unwrap_or(OsString::new());
+    let mut new_path = env::split_paths(&path).collect::<Vec<_>>();
     if sess.target.target.options.is_like_msvc {
         new_path.extend(msvc::host_dll_path());
     }
+    new_path.extend(sess.host_filesearch(PathKind::All)
+                        .get_tools_search_paths());
     env::join_paths(new_path).unwrap()
 }
 
