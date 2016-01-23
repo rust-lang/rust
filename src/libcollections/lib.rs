@@ -55,6 +55,7 @@
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag)]
+#![feature(str_substr_method)]
 #![cfg_attr(test, feature(clone_from_slice, rand, test))]
 
 #![no_std]

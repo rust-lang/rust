@@ -1589,6 +1589,12 @@ pub trait StrExt {
     fn is_empty(&self) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
+    #[unstable(feature="str_substr_method", 
+               issue = "0")]
+    fn substr_until(&self, start_index: usize, length: usize) -> Option<&str>;
+    #[unstable(feature="str_substr_method", 
+               issue = "0")]
+    fn substr(&self, start_index: usize) -> Option<&str>;
 }
 
 #[inline(never)]
@@ -1905,6 +1911,18 @@ impl StrExt for str {
 
     #[inline]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
+    
+    #[inline]
+    fn substr_until(&self, start_index: usize, length: usize) -> Option<&str> {
+        if length == 0 || self.is_empty() { return None; }
+        if start_index == 0 && length == self.len() { return Some(self); }
+        Some(&self[start_index .. start_index + length])
+    }
+    
+    #[inline]
+    fn substr(&self, start_index: usize) -> Option<&str> {
+        self.substr_until(start_index, self.len() - start_index)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

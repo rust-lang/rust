@@ -1683,6 +1683,49 @@ impl str {
     pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
         core_str::StrExt::parse(self)
     }
+    
+    /// Returns a string slice extracted from the starting index to
+    /// the end of the string.
+    ///
+    /// Returns [`None`] if length is zero, or if string is empty.
+    /// # Example
+    ///
+    /// Basic usage
+    ///
+    /// ```
+    /// #![feature(str_substr_method)]
+    ///
+    /// let string: String = String::from("Hello, world!");
+    ///
+    /// assert_eq!(Some("world!"), string.substr(7));
+    /// ```
+    #[unstable(feature="str_substr_method", 
+               issue = "0")]
+    #[inline]
+    pub fn substr(&self, start_index: usize) -> Option<&str> {
+        core_str::StrExt::substr(self, start_index)
+    }
+    
+    /// Returns a string slice extracted from between the starting index
+    /// to the specified length.
+    ///
+    /// # Example
+    ///
+    /// Basic usage
+    ///
+    /// ```
+    /// #![feature(str_substr_method)]
+    ///
+    /// let string: String = String::from("Hello, world!");
+    ///
+    /// assert_eq!(Some("wo"), string.substr(7, 2));
+    /// ```
+    #[unstable(feature="str_substr_method", 
+               issue = "0")]
+    #[inline]
+    pub fn substr_until(&self, start_index: usize, length: usize) -> Option<&str> {
+        core_str::StrExt::substr_until(self, start_index, length)
+    }
 
     /// Replaces all matches of a pattern with another string.
     ///
