@@ -51,14 +51,17 @@ read data from stdin. Alternatively, you can use `cargo fmt` to format all
 binary and library targets of your crate.
 
 You'll probably want to specify the write mode. Currently, there are modes for
-replace, overwrite, display, and coverage. The replace mode is the default
-and overwrites the original files after renaming them. In overwrite mode,
-rustfmt does not backup the source files. To print the output to stdout, use the
-display mode. The write mode can be set by passing the `--write-mode` flag on
-the command line.
+diff, replace, overwrite, display, coverage, and checkstyle.
 
-`rustfmt filename --write-mode=display` prints the output of rustfmt to the
-screen, for example.
+* `replace` Is the default and overwrites the original files after renaming them.
+* `overwrite` rustfmt does not backup the source files.
+* `display` Will print the formatted file to stdout.
+* `diff` Will print a diff between the current file and formatted file to stdout.
+* `checkstyle` Will output the lines that need to be corrected as a checkstyle XML file,
+  that can be used by tools like Jenkins.
+
+The write mode can be set by passing the `--write-mode` flag on
+the command line. For example `rustfmt --write-mode=display src/filename.rs`
 
 You can run `rustfmt --help` for more information.
 
