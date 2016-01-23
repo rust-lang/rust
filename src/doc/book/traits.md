@@ -277,16 +277,22 @@ This will compile without error.
 This means that even if someone does something bad like add methods to `i32`,
 it won’t affect you, unless you `use` that trait.
 
-There’s one more restriction on implementing traits: either the trait, or the
-type you’re writing the `impl` for, must be defined by you. So, we could
-implement the `HasArea` type for `i32`, because `HasArea` is in our code. But
-if we tried to implement `ToString`, a trait provided by Rust, for `i32`, we could
-not, because neither the trait nor the type are in our code.
+There’s one more restriction on implementing traits: either the trait
+or the type you’re implementing it for must be defined by you. Or more
+precisely, one of them must be defined in the same crate as the `impl`
+you're writing. For more on Rust's module and package system, see the
+chapter on [crates and modules][cm].
+
+So, we could implement the `HasArea` type for `i32`, because we defined
+`HasArea` in our code. But if we tried to implement `ToString`, a trait
+provided by Rust, for `i32`, we could not, because neither the trait nor
+the type are defined in our crate.
 
 One last thing about traits: generic functions with a trait bound use
 ‘monomorphization’ (mono: one, morph: form), so they are statically dispatched.
 What’s that mean? Check out the chapter on [trait objects][to] for more details.
 
+[cm]: crates-and-modules.html
 [to]: trait-objects.html
 
 # Multiple trait bounds
