@@ -414,7 +414,7 @@ impl OpenOptions {
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
     ///
-    /// If a file already exist, any write calls on the file will overwrite its
+    /// If the file already exists, any write calls on it will overwrite its
     /// contents, without truncating it.
     ///
     /// # Examples
