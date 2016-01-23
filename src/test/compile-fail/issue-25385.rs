@@ -18,6 +18,6 @@ fn main() {
     let a = 1i32;
     foo!(a);
 
-    foo!(1.i32.foo());
+    foo!(1i32.foo());
     //~^ ERROR attempted access of field `i32` on type `_`, but no field with that name was found
 }

@@ -24,7 +24,7 @@ macro_rules! write {
         unsafe {
             write(stdout, $arr.as_ptr() as *const i8,
                   $arr.len() * size_of($arr[0]));
-            //~^ ERROR mismatched types: expected `u64`, found `usize`
+            //~^ ERROR mismatched types
         }
     }}
 }
