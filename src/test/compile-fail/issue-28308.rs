@@ -10,5 +10,5 @@
 
 fn main() {
     assert!("foo");
-    //~^ ERROR cannot apply unary operator `!` to type `&'static str`'`
+    //~^ ERROR cannot apply unary operator `!` to type `&'static str`
 }
