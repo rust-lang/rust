@@ -29,8 +29,8 @@ use hir::def_id::DefId;
 use infer::{self, InferCtxt, TypeOrigin};
 use ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::fast_reject;
-use ty::fold::{TypeFoldable, TypeFolder};
-use ty::::subst::{self, Subst};
+use ty::fold::TypeFolder;
+use ty::subst::{self, Subst};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
     }
 }
 
-fn impl_self_ty<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
+fn impl_substs<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
                           did: DefId,
                           obligation: PredicateObligation<'tcx>)
                           -> subst::Substs<'tcx> {
@@ -82,10 +82,36 @@ fn impl_self_ty<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
     substs
 }
 
+/*fn check_type_parameters<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                   trait_substs: &subst::Substs<'tcx>,
+                                   impl_substs: &subst::Substs<'tcx>,
+                                   obligation: &PredicateObligation<'tcx>) -> bool {
+    let trait_types = trait_substs.types.as_slice();
+    let impl_types = impl_substs.types.as_slice();
+
+    let mut failed = 0;
+    for index_to_ignore in 0..trait_types.len() {
+        for (index, (trait_type, impl_type)) in trait_types.iter()
+                                                           .zip(impl_types.iter())
+                                                           .enumerate() {
+            if index_to_ignore != index &&
+                infer::mk_eqty(infcx, true,
+                               TypeOrigin::Misc(obligation.cause.span),
+                               trait_type,
+                               impl_type).is_err() {
+                failed += 1;
+                break;
+            }
+        }
+    }
+    failed == trait_types.len() - 1
+}*/
+
 fn get_current_failing_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                       trait_ref: &TraitRef<'tcx>,
                                       obligation: &PredicateObligation<'tcx>)
-                                     -> Option<DefId> {
+                                     -> Option<(DefId, subst::Substs<'tcx>)> {
+    println!("1");
     let simp = fast_reject::simplify_type(infcx.tcx,
                                           trait_ref.self_ty(),
                                           true);
@@ -93,24 +119,37 @@ fn get_current_failing_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
     match simp {
         Some(_) => {
-            let mut ret = None;
+            println!("2");
+            let mut matching_impls = Vec::new();
             trait_def.for_each_impl(infcx.tcx, |def_id| {
                 let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
-                let imp = imp.subst(infcx.tcx, &impl_self_ty(infcx, def_id, obligation.clone()));
-                if ret.is_none() {
-                    for error in infcx.reported_trait_errors.borrow().iter() {
-                        if let ty::Predicate::Trait(ref t) = error.predicate {
-                            if infer::mk_eqty(infcx, true, TypeOrigin::Misc(obligation.cause.span),
-                                              t.skip_binder().trait_ref.self_ty(),
-                                              imp.self_ty()).is_ok() {
-                                ret = Some(def_id);
-                                break;
-                            }
-                        }
-                    }
+                let substs = impl_substs(infcx, def_id, obligation.clone());
+                let imp = imp.subst(infcx.tcx, &substs);
+
+                if infer::mk_eqty(infcx, true,
+                                  TypeOrigin::Misc(obligation.cause.span),
+                                  trait_ref.self_ty(),
+                                  imp.self_ty()).is_ok() {
+                    //if check_type_parameters(infcx, &trait_ref.substs, &imp.substs, obligation) {
+                        matching_impls.push((def_id, imp.substs.clone()));
+                    //}
                 }
+                println!("=> {:?} /// {:?}", def_id, imp.substs);
             });
-            ret
+            if matching_impls.len() == 0 {
+                println!("3");
+                None
+            } else if matching_impls.len() == 1 {
+                println!("4");
+                Some(matching_impls[0].clone())
+            } else {
+                println!("5");
+                // we need to determine which type is the good one!
+                for &(ref m, ref n) in matching_impls.iter() {
+                    println!("=> {:?} /// {:?}", m, n);
+                }
+                Some(matching_impls[0].clone())
+            }
         },
         None => None,
     }
@@ -128,19 +167,21 @@ fn find_attr<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     None
 }
 
-fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                     trait_ref: &TraitRef<'tcx>,
-                                     obligation: &PredicateObligation<'tcx>)
-                                    -> Option<String> {
+fn on_unimplemented_note<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                   trait_ref: ty::PolyTraitRef<'tcx>,
+                                   obligation: &PredicateObligation<'tcx>) -> Option<String> {
+    let trait_ref = trait_ref.skip_binder();
+    //let def_id = trait_ref.def_id;
+    let mut report = None;
     let def_id = match get_current_failing_impl(infcx, trait_ref, obligation) {
-        Some(def_id) => {
+        Some((def_id, _)) => {
             if let Some(_) = find_attr(infcx, def_id, "rustc_on_unimplemented") {
                 def_id
             } else {
                 trait_ref.def_id
             }
         },
-        None         => trait_ref.def_id,
+        None => trait_ref.def_id,
     };
     let span = obligation.cause.span;
     let mut report = None;
@@ -572,11 +613,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 //     "the type `T` can't be frobnicated"
                                 // which is somewhat confusing.
                                 err.help(&format!("consider adding a `where {}` bound",
-                                    trait_ref.to_predicate()));
+                                                  trait_ref.to_predicate()));
                             } else if let Some(s) = on_unimplemented_note(infcx, trait_ref,
-                                                                          obligation.cause.span) {
-                                // Otherwise, if there is an on-unimplemented note,
-                                // display it.
+                                                                          obligation) {
+                                // If it has a custom "#[rustc_on_unimplemented]"
+                                // error message, let's display it!
                                 err.note(&s);
                             } else {
                                 let trait_ref = trait_predicate.to_poly_trait_ref();
@@ -624,6 +665,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 }
                                 err
                             }
+                            // Check if it has a custom "#[rustc_on_unimplemented]"
+                            // error message, report with that message if it does
+                            /*let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
+                                                                      obligation);
+                            if let Some(s) = custom_note {
+                                err.fileline_note(obligation.cause.span, &s);
+                            } else {
+                                note_obligation_cause(infcx, &mut err, obligation);
+                            }*/
+                            err.emit();
                         }
 
                         ty::Predicate::Equate(ref predicate) => {
