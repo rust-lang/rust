@@ -53,10 +53,10 @@ binary and library targets of your crate.
 You'll probably want to specify the write mode. Currently, there are modes for
 diff, replace, overwrite, display, coverage, and checkstyle.
 
-* `replace` Is the default and overwrites the original files after renaming them.
-* `overwrite` rustfmt does not backup the source files.
-* `display` Will print the formatted file to stdout.
-* `diff` Will print a diff between the current file and formatted file to stdout.
+* `replace` Is the default and overwrites the original files after creating backups of the files.
+* `overwrite` Overwrites the original files _without_ creating backups.
+* `display` Will print the formatted files to stdout.
+* `diff` Will print a diff between the original files and formatted files to stdout.
 * `checkstyle` Will output the lines that need to be corrected as a checkstyle XML file,
   that can be used by tools like Jenkins.
 
