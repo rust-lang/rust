@@ -107,7 +107,7 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-fn impl_self_ty<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
+fn impl_substs<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
                           did: DefId,
                           obligation: PredicateObligation<'tcx>)
                           -> subst::Substs<'tcx> {
@@ -127,10 +127,35 @@ fn impl_self_ty<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
     substs
 }
 
+fn check_type_parameters<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                   trait_substs: &subst::Substs<'tcx>,
+                                   impl_substs: &subst::Substs<'tcx>,
+                                   obligation: &PredicateObligation<'tcx>) -> bool {
+    let trait_types = trait_substs.types.as_slice();
+    let impl_types = impl_substs.types.as_slice();
+
+    let mut failed = 0;
+    for index_to_ignore in 0..trait_types.len() {
+        for (index, (trait_type, impl_type)) in trait_types.iter()
+                                                           .zip(impl_types.iter())
+                                                           .enumerate() {
+            if index_to_ignore != index &&
+               infer::mk_eqty(infcx, true,
+                              TypeOrigin::Misc(obligation.cause.span),
+                              trait_type,
+                              impl_type).is_err() {
+                failed += 1;
+                break;
+            }
+        }
+    }
+    failed == trait_types.len() - 1
+}
+
 fn get_current_failing_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                       trait_ref: &TraitRef<'tcx>,
                                       obligation: &PredicateObligation<'tcx>)
-                                     -> Option<DefId> {
+                                     -> Option<(DefId, subst::Substs<'tcx>)> {
     let simp = fast_reject::simplify_type(infcx.tcx,
                                           trait_ref.self_ty(),
                                           true);
@@ -138,24 +163,29 @@ fn get_current_failing_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
     match simp {
         Some(_) => {
-            let mut ret = None;
+            let mut matching_impls = Vec::new();
             trait_def.for_each_impl(infcx.tcx, |def_id| {
                 let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
-                let imp = imp.subst(infcx.tcx, &impl_self_ty(infcx, def_id, obligation.clone()));
-                if ret.is_none() {
-                    for error in infcx.reported_trait_errors.borrow().iter() {
-                        if let ty::Predicate::Trait(ref t) = error.predicate {
-                            if infer::mk_eqty(infcx, true, TypeOrigin::Misc(obligation.cause.span),
-                                              t.skip_binder().trait_ref.self_ty(),
-                                              imp.self_ty()).is_ok() {
-                                ret = Some(def_id);
-                                break;
-                            }
-                        }
+                let substs = impl_substs(infcx, def_id, obligation.clone());
+                let imp = imp.subst(infcx.tcx, &substs);
+
+                if infer::mk_eqty(infcx, true,
+                              TypeOrigin::Misc(obligation.cause.span),
+                              trait_ref.self_ty(),
+                              imp.self_ty()).is_ok() {
+                    if check_type_parameters(infcx, &trait_ref.substs, &imp.substs, obligation) {
+                        matching_impls.push((def_id, imp.substs.clone()));
                     }
                 }
             });
-            ret
+            if matching_impls.len() == 0 {
+                None
+            } else if matching_impls.len() == 1 {
+                Some(matching_impls[0].clone())
+            } else {
+                // we need to determine which type is the good one!
+                Some(matching_impls[0].clone())
+            }
         },
         None => None,
     }
@@ -178,14 +208,14 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                      obligation: &PredicateObligation<'tcx>)
                                     -> Option<String> {
     let def_id = match get_current_failing_impl(infcx, trait_ref, obligation) {
-        Some(def_id) => {
+        Some((def_id, _)) => {
             if let Some(_) = find_attr(infcx, def_id, "rustc_on_unimplemented") {
                 def_id
             } else {
                 trait_ref.def_id
             }
         },
-        None         => trait_ref.def_id,
+        None => trait_ref.def_id,
     };
     let span = obligation.cause.span;
     let mut report = None;
