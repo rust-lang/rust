@@ -111,7 +111,7 @@ If we're on Linux or a Mac, all we need to do is open a terminal and type this:
 $ curl -sSf https://static.rust-lang.org/rustup.sh | sh
 ```
 
-This will download a script, and stat the installation. If it all goes well,
+This will download a script, and start the installation. If it all goes well,
 you’ll see this appear:
 
 ```text
