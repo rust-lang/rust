@@ -16,7 +16,7 @@ Libraries
 ---------
 
 * Stabilized APIs:
-  [`Read::read_exact`], [`ErrorKind::UnexpectedEof`] (renamed from
+  [`Read::read_exact`], [`ErrorKind::UnexpectedEof`][] (renamed from
   `UnexpectedEOF`), [`fs::DirBuilder`], [`fs::DirBuilder::new`],
   [`fs::DirBuilder::recursive`], [`fs::DirBuilder::create`],
   [`os::unix::fs::DirBuilderExt`],
@@ -29,10 +29,10 @@ Libraries
   [`collections::hash_set::HashSet::drain`],
   [`collections::binary_heap::Drain`],
   [`collections::binary_heap::BinaryHeap::drain`],
-  [`Vec::extend_from_slice`] (renamed from `push_all`),
+  [`Vec::extend_from_slice`][] (renamed from `push_all`),
   [`Mutex::get_mut`], [`Mutex::into_inner`], [`RwLock::get_mut`],
-  [`RwLock::into_inner`], [`Iterator::min_by_key`] (renamed from
-  `min_by`), [`Iterator::max_by_key`] (renamed from `max_by`).
+  [`RwLock::into_inner`], [`Iterator::min_by_key`][] (renamed from
+  `min_by`), [`Iterator::max_by_key`][] (renamed from `max_by`).
 * The [core library][1.6co] is stable, as are most of its APIs.
 * [The `assert_eq!` macro supports arguments that don't implement
   `Sized`][1.6ae], such as arrays. In this way it behaves more like
