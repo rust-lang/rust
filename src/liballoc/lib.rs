@@ -75,31 +75,28 @@
 #![feature(allocator)]
 #![feature(box_syntax)]
 #![feature(coerce_unsized)]
+#![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
+#![feature(drop_in_place)]
+#![feature(dropck_parametricity)]
 #![feature(fundamental)]
 #![feature(lang_items)]
+#![feature(needs_allocator)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
-#![feature(placement_new_protocol)]
-#![feature(raw)]
 #![feature(shared)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
-#![feature(dropck_parametricity)]
 #![feature(unsize)]
-#![feature(drop_in_place)]
-#![feature(fn_traits)]
-#![feature(const_fn)]
-
-#![feature(needs_allocator)]
 
 // Issue# 30592: Systematically use alloc_system during stage0 since jemalloc
 // might be unavailable or disabled
 #![cfg_attr(stage0, feature(alloc_system))]
 
+#![cfg_attr(not(test), feature(raw, fn_traits, placement_new_protocol))]
 #![cfg_attr(test, feature(test, rustc_private, box_heap))]
 
 #[cfg(stage0)]

@@ -3149,7 +3149,6 @@ mod tests {
     use super::*;
 
     use ast;
-    use ast_util;
     use codemap;
     use parse::token;
 

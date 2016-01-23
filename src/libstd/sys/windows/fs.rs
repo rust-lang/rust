@@ -639,7 +639,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 fn directory_junctions_are_directories() {
     use ffi::OsStr;
     use env;
-    use rand::{self, StdRng, Rng};
+    use rand::{self, Rng};
     use vec::Vec;
 
     macro_rules! t {
@@ -683,7 +683,7 @@ fn directory_junctions_are_directories() {
             let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
             let mut db = data.as_mut_ptr()
                             as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
-            let mut buf = &mut (*db).ReparseTarget as *mut _;
+            let buf = &mut (*db).ReparseTarget as *mut _;
             let mut i = 0;
             let v = br"\??\";
             let v = v.iter().map(|x| *x as u16);

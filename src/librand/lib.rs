@@ -36,7 +36,7 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 
-#![cfg_attr(test, feature(test, rand, rustc_private, iter_order_deprecated))]
+#![cfg_attr(test, feature(test, rand, rustc_private))]
 
 #![allow(deprecated)]
 

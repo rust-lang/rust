@@ -1095,8 +1095,8 @@ mod tests {
 
         thread::spawn(|| {
             let mut writer = BufWriter::new(PanicWriter);
-            writer.write(b"hello world");
-            writer.flush();
+            let _ = writer.write(b"hello world");
+            let _ = writer.flush();
         }).join().err().unwrap();
 
         assert_eq!(WRITES.load(Ordering::SeqCst), 1);

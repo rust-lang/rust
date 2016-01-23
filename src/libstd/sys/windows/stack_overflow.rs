@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(test, allow(dead_code))]
+
 use sys_common::util::report_overflow;
 use sys::c;
 
