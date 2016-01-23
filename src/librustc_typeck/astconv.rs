@@ -1513,7 +1513,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                         &base_segments[base_segments.len()-2],
                         base_segments.last().unwrap())
         }
-        Def::Mod(id) => {
+        Def::Mod(..) => {
             // Used as sentinel by callers to indicate the `<T>::A::B::C` form.
             // FIXME(#22519) This part of the resolution logic should be
             // avoided entirely for that form, once we stop needed a Def
@@ -1522,15 +1522,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             // resolve Self::Foo, at the moment we can't resolve the former because
             // we don't have the trait information around, which is just sad.
 
-            if !base_segments.is_empty() {
-                let id_node = tcx.map.as_local_node_id(id).unwrap();
-                span_err!(tcx.sess,
-                          span,
-                          E0247,
-                          "found module name used as a type: {}",
-                          tcx.map.node_to_user_string(id_node));
-                return this.tcx().types.err;
-            }
+            assert!(base_segments.is_empty());
 
             opt_self_ty.expect("missing T in <T>::a::b::c")
         }
@@ -1541,10 +1533,9 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             return this.tcx().types.err;
         }
         _ => {
-            let id_node = tcx.map.as_local_node_id(def.def_id()).unwrap();
             span_err!(tcx.sess, span, E0248,
                       "found value `{}` used as a type",
-                      tcx.map.path_to_string(id_node));
+                      tcx.item_path_str(def.def_id()));
             return this.tcx().types.err;
         }
     }
