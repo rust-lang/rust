@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::default::Default;
 use std::mem;
 use std::__rand::{Rng, thread_rng};
 use std::rc::Rc;

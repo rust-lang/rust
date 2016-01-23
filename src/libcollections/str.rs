@@ -19,10 +19,6 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
-use core::clone::Clone;
-use core::iter::{Iterator, Extend};
-use core::option::Option::{self, Some, None};
-use core::result::Result;
 use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};

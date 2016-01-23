@@ -386,7 +386,6 @@ impl Stdio {
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
-    use str;
     use ffi::{OsStr, OsString};
     use super::make_command_line;
 

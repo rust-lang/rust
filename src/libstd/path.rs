@@ -3326,11 +3326,13 @@ mod tests {
                          "{:?}.ends_with({:?}), expected {:?}, got {:?}", $path1, $path2,
                          $ends_with, ends_with);
 
-                 let relative_from = path1.relative_from(path2).map(|p| p.to_str().unwrap());
+                 let relative_from = path1.strip_prefix(path2)
+                                          .map(|p| p.to_str().unwrap())
+                                          .ok();
                  let exp: Option<&str> = $relative_from;
                  assert!(relative_from == exp,
-                         "{:?}.relative_from({:?}), expected {:?}, got {:?}", $path1, $path2,
-                         exp, relative_from);
+                         "{:?}.strip_prefix({:?}), expected {:?}, got {:?}",
+                         $path1, $path2, exp, relative_from);
             });
         );
 

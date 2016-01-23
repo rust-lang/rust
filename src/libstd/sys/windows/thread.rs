@@ -83,6 +83,7 @@ impl Thread {
     pub fn into_handle(self) -> Handle { self.handle }
 }
 
+#[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     pub unsafe fn current() -> Option<usize> { None }
     pub unsafe fn init() -> Option<usize> { None }

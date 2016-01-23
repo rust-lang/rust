@@ -618,8 +618,8 @@ mod tests {
 
     // FIXME(#10380) these tests should not all be ignored on android.
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn smoke() {
         let p = Command::new("true").spawn();
         assert!(p.is_ok());
@@ -627,8 +627,8 @@ mod tests {
         assert!(p.wait().unwrap().success());
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn smoke_failure() {
         match Command::new("if-this-is-a-binary-then-the-world-has-ended").spawn() {
             Ok(..) => panic!(),
@@ -636,8 +636,8 @@ mod tests {
         }
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn exit_reported_right() {
         let p = Command::new("false").spawn();
         assert!(p.is_ok());
@@ -646,8 +646,9 @@ mod tests {
         drop(p.wait());
     }
 
-    #[cfg(all(unix, not(target_os="android")))]
     #[test]
+    #[cfg(unix)]
+    #[cfg_attr(target_os = "android", ignore)]
     fn signal_reported_right() {
         use os::unix::process::ExitStatusExt;
 
@@ -674,16 +675,16 @@ mod tests {
         return ret;
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn stdout_works() {
         let mut cmd = Command::new("echo");
         cmd.arg("foobar").stdout(Stdio::piped());
         assert_eq!(run_output(cmd), "foobar\n");
     }
 
-    #[cfg(all(unix, not(target_os="android")))]
     #[test]
+    #[cfg_attr(any(windows, target_os = "android"), ignore)]
     fn set_current_dir_works() {
         let mut cmd = Command::new("/bin/sh");
         cmd.arg("-c").arg("pwd")
@@ -692,8 +693,8 @@ mod tests {
         assert_eq!(run_output(cmd), "/\n");
     }
 
-    #[cfg(all(unix, not(target_os="android")))]
     #[test]
+    #[cfg_attr(any(windows, target_os = "android"), ignore)]
     fn stdin_works() {
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("read line; echo $line")
@@ -709,8 +710,9 @@ mod tests {
     }
 
 
-    #[cfg(all(unix, not(target_os="android")))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg(unix)]
     fn uid_works() {
         use os::unix::prelude::*;
         use libc;
@@ -722,8 +724,9 @@ mod tests {
         assert!(p.wait().unwrap().success());
     }
 
-    #[cfg(all(unix, not(target_os="android")))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
+    #[cfg(unix)]
     fn uid_to_root_fails() {
         use os::unix::prelude::*;
         use libc;
@@ -734,8 +737,8 @@ mod tests {
         assert!(Command::new("/bin/ls").uid(0).gid(0).spawn().is_err());
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn test_process_status() {
         let mut status = Command::new("false").status().unwrap();
         assert!(status.code() == Some(1));
@@ -752,8 +755,8 @@ mod tests {
         }
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn test_process_output_output() {
         let Output {status, stdout, stderr}
              = Command::new("echo").arg("hello").output().unwrap();
@@ -764,8 +767,8 @@ mod tests {
         assert_eq!(stderr, Vec::new());
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn test_process_output_error() {
         let Output {status, stdout, stderr}
              = Command::new("mkdir").arg(".").output().unwrap();
@@ -775,23 +778,23 @@ mod tests {
         assert!(!stderr.is_empty());
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn test_finish_once() {
         let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().code() == Some(1));
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn test_finish_twice() {
         let mut prog = Command::new("false").spawn().unwrap();
         assert!(prog.wait().unwrap().code() == Some(1));
         assert!(prog.wait().unwrap().code() == Some(1));
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
+    #[cfg_attr(target_os = "android", ignore)]
     fn test_wait_with_output_once() {
         let prog = Command::new("echo").arg("hello").stdout(Stdio::piped())
             .spawn().unwrap();
@@ -821,7 +824,6 @@ mod tests {
         cmd
     }
 
-    #[cfg(not(target_os="android"))]
     #[test]
     fn test_inherit_env() {
         use env;
@@ -830,34 +832,20 @@ mod tests {
         let output = String::from_utf8(result.stdout).unwrap();
 
         for (ref k, ref v) in env::vars() {
+            // don't check android RANDOM variables
+            if cfg!(target_os = "android") && *k == "RANDOM" {
+                continue
+            }
+
             // Windows has hidden environment variables whose names start with
             // equals signs (`=`). Those do not show up in the output of the
             // `set` command.
             assert!((cfg!(windows) && k.starts_with("=")) ||
                     k.starts_with("DYLD") ||
-                    output.contains(&format!("{}={}", *k, *v)),
+                    output.contains(&format!("{}={}", *k, *v)) ||
+                    output.contains(&format!("{}='{}'", *k, *v)),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
-        }
-    }
-    #[cfg(target_os="android")]
-    #[test]
-    fn test_inherit_env() {
-        use env;
-
-        let mut result = env_cmd().output().unwrap();
-        let output = String::from_utf8(result.stdout).unwrap();
-
-        for (ref k, ref v) in env::vars() {
-            // don't check android RANDOM variables
-            if *k != "RANDOM".to_string() {
-                assert!(output.contains(&format!("{}={}",
-                                                 *k,
-                                                 *v)) ||
-                        output.contains(&format!("{}=\'{}\'",
-                                                 *k,
-                                                 *v)));
-            }
         }
     }
 

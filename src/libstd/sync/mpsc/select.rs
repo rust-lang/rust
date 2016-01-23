@@ -789,7 +789,7 @@ mod tests {
     fn fmt_debug_handle() {
         let (_, rx) = channel::<i32>();
         let sel = Select::new();
-        let mut handle = sel.handle(&rx);
+        let handle = sel.handle(&rx);
         assert_eq!(format!("{:?}", handle), "Handle { .. }");
     }
 }
