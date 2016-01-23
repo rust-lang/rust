@@ -684,8 +684,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
-            Err(e) =>
-                panic!("called `Result::unwrap()` on an `Err` value: {:?}", e)
+            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", e),
         }
     }
 
@@ -706,7 +705,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     pub fn expect(self, msg: &str) -> T {
         match self {
             Ok(t) => t,
-            Err(e) => panic!("{}: {:?}", msg, e),
+            Err(e) => unwrap_failed(msg, e),
         }
     }
 }
@@ -734,11 +733,17 @@ impl<T: fmt::Debug, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap_err(self) -> E {
         match self {
-            Ok(t) =>
-                panic!("called `Result::unwrap_err()` on an `Ok` value: {:?}", t),
-            Err(e) => e
+            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", t),
+            Err(e) => e,
         }
     }
+}
+
+// This is a separate function to reduce the code size of the methods
+#[inline(never)]
+#[cold]
+fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
+    panic!("{}: {:?}", msg, error)
 }
 
 /////////////////////////////////////////////////////////////////////////////
