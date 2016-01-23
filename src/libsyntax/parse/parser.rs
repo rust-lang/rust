@@ -2322,18 +2322,29 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, P<Expr>> {
         let attrs = try!(self.parse_or_use_outer_attributes(already_parsed_attrs));
 
+        let interp = if let token::Interpolated(..) = self.token {
+            true
+        } else {
+            false
+        };
         let b = try!(self.parse_bottom_expr());
-        self.parse_dot_or_call_expr_with(b, attrs)
+        let lo = if interp {
+            self.last_span.lo
+        } else {
+            b.span.lo
+        };
+        self.parse_dot_or_call_expr_with(b, lo, attrs)
     }
 
     pub fn parse_dot_or_call_expr_with(&mut self,
                                        e0: P<Expr>,
+                                       lo: BytePos,
                                        attrs: ThinAttributes)
                                        -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
-        self.parse_dot_or_call_expr_with_(e0)
+        self.parse_dot_or_call_expr_with_(e0, lo)
         .map(|expr|
             expr.map(|mut expr| {
                 expr.attrs.update(|a| a.prepend(attrs));
@@ -2408,9 +2419,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>) -> PResult<'a, P<Expr>> {
+    fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>, lo: BytePos) -> PResult<'a, P<Expr>> {
         let mut e = e0;
-        let lo = e.span.lo;
         let mut hi;
         loop {
             // expr.f
@@ -3828,7 +3838,8 @@ impl<'a> Parser<'a> {
                             let e = self.mk_mac_expr(span.lo, span.hi,
                                                      mac.and_then(|m| m.node),
                                                      None);
-                            let e = try!(self.parse_dot_or_call_expr_with(e, attrs));
+                            let lo = e.span.lo;
+                            let e = try!(self.parse_dot_or_call_expr_with(e, lo, attrs));
                             let e = try!(self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e)));
                             try!(self.handle_expression_like_statement(
                                 e,
