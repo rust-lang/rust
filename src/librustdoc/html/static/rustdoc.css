@@ -383,7 +383,7 @@ a {
 }
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #e53700; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
 .content a.type { color: #e57300; }
 .content a.macro { color: #068000; }
 .block a.current.crate { font-weight: 500; }
