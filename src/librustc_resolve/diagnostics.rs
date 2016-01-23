@@ -207,7 +207,41 @@ https://doc.rust-lang.org/reference.html#statements
 E0317: r##"
 User-defined types or type parameters cannot shadow the primitive types.
 This error indicates you tried to define a type, struct or enum with the same
-name as an existing primitive type.
+name as an existing primitive type:
+
+```
+struct u8 {
+    // ...
+}
+```
+
+To fix this, simply name it something else.
+
+Such an error may also occur if you define a type parameter which shadows a
+primitive type. An example would be something like:
+
+```
+impl<u8> MyTrait for Option<u8> {
+    // ...
+}
+```
+
+In such a case, if you meant for `u8` to be a generic type parameter (i.e. any
+type can be used in its place), use something like `T` instead:
+
+```
+impl<T> MyTrait for Option<T> {
+    // ...
+}
+```
+
+On the other hand, if you wished to refer to the specific type `u8`, remove it
+from the type parameter list:
+
+```
+impl MyTrait for Option<u8> {
+    // ...
+}
 
 See the Types section of the reference for more information about the primitive
 types:

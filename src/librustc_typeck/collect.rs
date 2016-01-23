@@ -1918,8 +1918,8 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                 param.id,
                 param.span,
-                format!("defaults for type parameters are only allowed on type definitions, \
-                         like `struct` or `enum`"));
+                format!("defaults for type parameters are only allowed in `struct`, \
+                         `enum`, `type`, or `trait` definitions."));
         }
     }
 

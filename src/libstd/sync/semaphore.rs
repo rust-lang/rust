@@ -13,7 +13,7 @@
                       of resources is currently unclear",
             issue = "27798")]
 #![rustc_deprecated(since = "1.7.0",
-                    reason = "easily confused with system sempahores and not \
+                    reason = "easily confused with system semaphores and not \
                               used enough to pull its weight")]
 #![allow(deprecated)]
 
