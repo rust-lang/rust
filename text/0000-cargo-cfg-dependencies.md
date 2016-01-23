@@ -43,7 +43,7 @@ winapi = "0.2"
 [target."cfg(unix)".dependencies]
 unix-socket = "0.4"
 
-[target."cfg(target_os = \"macos\")".dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.2"
 ```
 
@@ -51,16 +51,6 @@ Specifically, the "target" listed here is considered special if it starts with
 the string "cfg(" and ends with ")". If this is not true then Cargo will
 continue to treat it as an opaque string and pass it to the compiler via
 `--target` (Cargo's current behavior).
-
-> **Note**: There's an [issue open against TOML][toml-issue] to support
-> single-quoted keys allowing more ergonomic syntax in some cases like:
->
-> ```toml
-> [target.'cfg(target_os = "macos")'.dependencies]
-> core-foundation = "0.2"
-> ```
-
-[toml-issue]: https://github.com/toml-lang/toml/issues/354
 
 Cargo will implement its own parser of this syntax inside the `cfg` expression,
 it will not rely on the compiler itself. The grammar, however, will be the same
