@@ -407,7 +407,6 @@ impl CStr {
     /// # fn main() {
     /// use std::ffi::CStr;
     /// use std::os::raw::c_char;
-    /// use std::str;
     ///
     /// extern {
     ///     fn my_string() -> *const c_char;
@@ -415,8 +414,7 @@ impl CStr {
     ///
     /// unsafe {
     ///     let slice = CStr::from_ptr(my_string());
-    ///     println!("string returned: {}",
-    ///              str::from_utf8(slice.to_bytes()).unwrap());
+    ///     println!("string returned: {}", slice.to_str().unwrap());
     /// }
     /// # }
     /// ```

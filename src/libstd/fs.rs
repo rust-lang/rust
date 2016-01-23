@@ -414,7 +414,7 @@ impl OpenOptions {
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
     ///
-    /// If a file already exist, any write calls on the file will overwrite its
+    /// If the file already exists, any write calls on it will overwrite its
     /// contents, without truncating it.
     ///
     /// # Examples
@@ -487,8 +487,8 @@ impl OpenOptions {
     /// This option indicates whether a new file will be created if the file
     /// does not yet already exist.
     ///
-    /// The file must be opened with write or append access in order to create
-    /// a new file.
+    /// In order for the file to be created, `write` or `append` access must
+    /// be used.
     ///
     /// # Examples
     ///
