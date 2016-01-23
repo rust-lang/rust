@@ -2269,6 +2269,8 @@ struct MyType<T>(T);
 impl<T> ForeignTrait for MyType<T> { ... } // Ok
 ```
 
+Please note that a type alias is not sufficient.
+
 For another example of an error, suppose there's another trait defined in `foo`
 named `ForeignTrait2` that takes two type parameters. Then this `impl` results
 in the same rule violation:
