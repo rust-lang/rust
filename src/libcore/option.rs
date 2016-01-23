@@ -295,7 +295,7 @@ impl<T> Option<T> {
     pub fn expect(self, msg: &str) -> T {
         match self {
             Some(val) => val,
-            None => panic!("{}", msg),
+            None => expect_failed(msg),
         }
     }
 
@@ -696,6 +696,14 @@ impl<T: Default> Option<T> {
         }
     }
 }
+
+// This is a separate function to reduce the code size of .expect() itself.
+#[inline(never)]
+#[cold]
+fn expect_failed(msg: &str) -> ! {
+    panic!("{}", msg)
+}
+
 
 /////////////////////////////////////////////////////////////////////////////
 // Trait implementations
