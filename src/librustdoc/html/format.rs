@@ -483,9 +483,17 @@ impl fmt::Display for clean::Type {
             }
             clean::Bottom => f.write_str("!"),
             clean::RawPointer(m, ref t) => {
-                try!(primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
-                                    &format!("*{}", RawMutableSpace(m))));
-                write!(f, "{}", t)
+                match **t {
+                    clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
+                        primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
+                                       &format!("*{}{}", RawMutableSpace(m), t))
+                    }
+                    _ => {
+                        try!(primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
+                                            &format!("*{}", RawMutableSpace(m))));
+                        write!(f, "{}", t)
+                    }
+                }
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
