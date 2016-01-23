@@ -182,6 +182,13 @@ impl Error for string::FromUtf16Error {
     }
 }
 
+#[stable(feature = "str_parse_error2", since = "1.8.0")]
+impl Error for string::ParseError {
+    fn description(&self) -> &str {
+        match *self {}
+    }
+}
+
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`
