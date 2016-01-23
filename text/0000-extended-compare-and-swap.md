@@ -24,17 +24,19 @@ While all of these variants are identical on x86, they can allow more efficient 
 # Detailed design
 [design]: #detailed-design
 
-## Memory ordering on failure
+Since `compare_and_swap` is stable, we can't simply add a second memory ordering parameter to it. This RFC proposes deprecating the `compare_and_swap` function and replacing it with `compare_exchange_strong` and `compare_exchange_weak`, which match the names of the equivalent C++11 functions.
 
-Since `compare_and_swap` is stable, we can't simply add a second memory ordering parameter to it. A new method is instead added to atomic types:
+## `compare_exchange_strong`
+
+A new method is instead added to atomic types:
 
 ```rust
-fn compare_and_swap_explicit(&self, current: T, new: T, success: Ordering, failure: Ordering) -> T;
+fn compare_exchange_strong(&self, current: T, new: T, success: Ordering, failure: Ordering) -> T;
 ```
 
 The restrictions on the failure ordering are the same as C++11: only `SeqCst`, `Acquire` and `Relaxed` are allowed and it must be equal or weaker than the success ordering. Passing an invalid memory ordering will result in a panic, although this can often be optimized away since the ordering is usually statically known.
 
-The documentation for the original `compare_and_swap` is updated to say that it is equivalent to `compare_and_swap_explicit` with the following mapping for memory orders:
+The documentation for the original `compare_and_swap` is updated to say that it is equivalent to `compare_exchange_strong` with the following mapping for memory orders:
 
 Original | Success | Failure
 -------- | ------- | -------
@@ -44,16 +46,15 @@ Release  | Release | Relaxed
 AcqRel   | AcqRel  | Acquire
 SeqCst   | SeqCst  | SeqCst
 
-## `compare_and_swap_weak`
+## `compare_exchange_weak`
 
-Two new methods are added to atomic types:
+A new method is instead added to atomic types:
 
 ```rust
-fn compare_and_swap_weak(&self, current: T, new: T, order: Ordering) -> (T, bool);
-fn compare_and_swap_weak_explicit(&self, current: T, new: T, success: Ordering, failure: Ordering) -> (T, bool);
+fn compare_exchange_weak(&self, current: T, new: T, success: Ordering, failure: Ordering) -> (T, bool);
 ```
 
-`compare_and_swap` does not need to return a success flag because it can be inferred by checking if the returned value is equal to the expected one. This is not possible for `compare_and_swap_weak` because it is allowed to fail spuriously, which means that it could fail to perform the swap even though the returned value is equal to the expected one.
+`compare_exchange_strong` does not need to return a success flag because it can be inferred by checking if the returned value is equal to the expected one. This is not possible for `compare_exchange_weak` because it is allowed to fail spuriously, which means that it could fail to perform the swap even though the returned value is equal to the expected one.
 
 A lock free algorithm using a loop would use the returned bool to determine whether to break out of the loop, and if not, use the returned value for the next iteration of the loop.
 
@@ -78,7 +79,7 @@ The following intrinsics need to be added to support relaxed memory orderings on
     pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> T;
 ```
 
-The following intrinsics need to be added to support `compare_and_swap_weak`:
+The following intrinsics need to be added to support `compare_exchange_weak`:
 
 ```rust
     pub fn atomic_cxchg_weak<T>(dst: *mut T, old: T, src: T) -> (T, bool);
@@ -97,14 +98,14 @@ The following intrinsics need to be added to support `compare_and_swap_weak`:
 
 Ideally support for failure memory ordering would be added by simply adding an extra parameter to the existing `compare_and_swap` function. However this is not possible because `compare_and_swap` is stable.
 
-For consistency with `compare_and_swap`, `compare_and_swap_weak` also has a separate explicit variant with two memory ordering parameters, even though ideally only a single method would be required.
+This RFC proposes deprecating a stable function, which may not be desirable.
 
 # Alternatives
 [alternatives]: #alternatives
 
 One alternative for supporting failure orderings is to add new enum variants to `Ordering` instead of adding new methods with two ordering parameters. The following variants would need to be added: `AcquireFailRelaxed`, `AcqRelFailRelaxed`, `SeqCstFailRelaxed`, `SeqCstFailAcquire`. The downside is that the names are quite ugly and are only valid for `compare_and_swap`, not other atomic operations. It is also a breaking change to a stable enum.
 
-Another alternative is to deprecate the existing `compare_and_swap` functions and replace them with `compare_exchange` which takes two ordering parameters. The new name matches the one used by C++11 and C11, which is a good thing since Rust's memory model is based on the C++11 one.
+Another alternative is to not deprecate `compare_and_swap` and instead add `compare_and_swap_explicit`, `compare_and_swap_weak` and `compare_and_swap_weak_explicit`. However the distiniction between the explicit and non-explicit isn't very clear and can lead to some confusion.
 
 Not doing anything is also a possible option, but this will cause Rust to generate worse code for some lock-free algorithms.
 
