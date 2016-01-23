@@ -69,6 +69,7 @@
 
 use marker::{Sized, Unsize};
 use fmt;
+use option::Option::{self, None, Some};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
@@ -1527,6 +1528,62 @@ pub struct RangeTo<Idx> {
 impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..{:?}", self.end)
+    }
+}
+
+/// **RangeArgument** is implemented by Rust's built-in range types, produced
+/// by range syntax like `..`, `a..`, `..b` or `c..d`.
+#[unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+pub trait RangeArgument<T> {
+    /// Start index (inclusive)
+    ///
+    /// Return start value if present, else `None`.
+    fn start(&self) -> Option<&T> {
+        None
+    }
+
+    /// End index (exclusive)
+    ///
+    /// Return end value if present, else `None`.
+    fn end(&self) -> Option<&T> {
+        None
+    }
+}
+
+#[unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for RangeFull {}
+
+#[unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for RangeFrom<T> {
+    fn start(&self) -> Option<&T> {
+        Some(&self.start)
+    }
+}
+
+#[unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for RangeTo<T> {
+    fn end(&self) -> Option<&T> {
+        Some(&self.end)
+    }
+}
+
+#[unstable(feature = "collections_range",
+            reason = "waiting for dust to settle on inclusive ranges",
+            issue = "30877")]
+impl<T> RangeArgument<T> for Range<T> {
+    fn start(&self) -> Option<&T> {
+        Some(&self.start)
+    }
+    fn end(&self) -> Option<&T> {
+        Some(&self.end)
     }
 }
 
