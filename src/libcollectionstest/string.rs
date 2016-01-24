@@ -372,6 +372,15 @@ fn test_into_boxed_str() {
     assert_eq!(&*ys, "hello my name is bob");
 }
 
+#[test]
+fn test_substr() {
+    let x = String::from("Hello, world!");
+    
+    assert_eq!(Some("Hello"), x.substr(..5));
+    assert_eq!(Some("world!"), x.substr(7..));
+    assert_eq!(Some("ello"), x.substr(1..5));
+}
+
 #[bench]
 fn bench_with_capacity(b: &mut Bencher) {
     b.iter(|| {
