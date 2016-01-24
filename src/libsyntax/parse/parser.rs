@@ -928,6 +928,7 @@ impl<'a> Parser<'a> {
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         self.last_token = if self.token.is_ident() ||
                           self.token.is_path() ||
+                          self.token.is_interpolated() ||
                           self.token == token::Comma {
             Some(Box::new(self.token.clone()))
         } else {
@@ -2322,13 +2323,9 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, P<Expr>> {
         let attrs = try!(self.parse_or_use_outer_attributes(already_parsed_attrs));
 
-        let interp = if let token::Interpolated(..) = self.token {
-            true
-        } else {
-            false
-        };
+        let is_interpolated = self.token.is_interpolated();
         let b = try!(self.parse_bottom_expr());
-        let lo = if interp {
+        let lo = if is_interpolated {
             self.last_span.lo
         } else {
             b.span.lo
@@ -2719,27 +2716,31 @@ impl<'a> Parser<'a> {
         let ex = match self.token {
             token::Not => {
                 self.bump();
+                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
                 let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                hi = if interpolated { prev_span.hi } else { e.span.hi };
                 self.mk_unary(UnNot, e)
             }
             token::BinOp(token::Minus) => {
                 self.bump();
+                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
                 let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                hi = if interpolated { prev_span.hi } else { e.span.hi };
                 self.mk_unary(UnNeg, e)
             }
             token::BinOp(token::Star) => {
                 self.bump();
+                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
                 let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                hi = if interpolated { prev_span.hi } else { e.span.hi };
                 self.mk_unary(UnDeref, e)
             }
             token::BinOp(token::And) | token::AndAnd => {
                 try!(self.expect_and());
                 let m = try!(self.parse_mutability());
+                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
                 let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                hi = if interpolated { prev_span.hi } else { e.span.hi };
                 ExprAddrOf(m, e)
             }
             token::Ident(..) if self.token.is_keyword(keywords::In) => {
@@ -2757,8 +2758,9 @@ impl<'a> Parser<'a> {
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
                 self.bump();
+                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
                 let subexpression = try!(self.parse_prefix_expr(None));
-                hi = subexpression.span.hi;
+                hi = if interpolated { prev_span.hi } else { subexpression.span.hi };
                 ExprBox(subexpression)
             }
             _ => return self.parse_dot_or_call_expr(Some(attrs))
@@ -2794,12 +2796,20 @@ impl<'a> Parser<'a> {
                 try!(self.parse_prefix_expr(attrs))
             }
         };
+
+
         if self.expr_is_complete(&*lhs) {
             // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
             return Ok(lhs);
         }
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
+
+            let lhs_span = match self.last_token {
+                Some(ref lt) if lt.is_interpolated() => self.last_span,
+                _ => lhs.span
+            };
+
             let cur_op_span = self.span;
             let restrictions = if op.is_assign_like() {
                 self.restrictions & Restrictions::RESTRICTION_NO_STRUCT_LITERAL
@@ -2815,13 +2825,13 @@ impl<'a> Parser<'a> {
             }
             // Special cases:
             if op == AssocOp::As {
-                let rhs = try!(self.parse_ty());
-                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
+               let rhs = try!(self.parse_ty());
+                lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprCast(lhs, rhs), None);
                 continue
             } else if op == AssocOp::Colon {
                 let rhs = try!(self.parse_ty());
-                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprType(lhs, rhs), None);
                 continue
             } else if op == AssocOp::DotDot {
@@ -2843,7 +2853,7 @@ impl<'a> Parser<'a> {
                     } else {
                         None
                     };
-                    let (lhs_span, rhs_span) = (lhs.span, if let Some(ref x) = rhs {
+                    let (lhs_span, rhs_span) = (lhs_span, if let Some(ref x) = rhs {
                         x.span
                     } else {
                         cur_op_span
@@ -2883,14 +2893,14 @@ impl<'a> Parser<'a> {
                 AssocOp::Equal | AssocOp::Less | AssocOp::LessEqual | AssocOp::NotEqual |
                 AssocOp::Greater | AssocOp::GreaterEqual => {
                     let ast_op = op.to_ast_binop().unwrap();
-                    let (lhs_span, rhs_span) = (lhs.span, rhs.span);
+                    let (lhs_span, rhs_span) = (lhs_span, rhs.span);
                     let binary = self.mk_binary(codemap::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, binary, None)
                 }
                 AssocOp::Assign =>
-                    self.mk_expr(lhs.span.lo, rhs.span.hi, ExprAssign(lhs, rhs), None),
+                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprAssign(lhs, rhs), None),
                 AssocOp::Inplace =>
-                    self.mk_expr(lhs.span.lo, rhs.span.hi, ExprInPlace(lhs, rhs), None),
+                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprInPlace(lhs, rhs), None),
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
                         token::Plus =>    BiAdd,
@@ -2904,7 +2914,7 @@ impl<'a> Parser<'a> {
                         token::Shl =>     BiShl,
                         token::Shr =>     BiShr
                     };
-                    let (lhs_span, rhs_span) = (lhs.span, rhs.span);
+                    let (lhs_span, rhs_span) = (lhs_span, rhs.span);
                     let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, aopexpr, None)
                 }
