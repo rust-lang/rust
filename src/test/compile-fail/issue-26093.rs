@@ -16,7 +16,5 @@ macro_rules! not_an_lvalue {
 }
 
 fn main() {
-
-    0 = 42;
     not_an_lvalue!(99);
 }
