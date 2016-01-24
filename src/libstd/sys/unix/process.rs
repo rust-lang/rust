@@ -439,11 +439,9 @@ fn make_argv(prog: &CString, args: &[CString])
 {
     let mut ptrs: Vec<*const libc::c_char> = Vec::with_capacity(args.len()+1);
 
-    // Convert the CStrings into an array of pointers. Note: the
-    // lifetime of the various CStrings involved is guaranteed to be
-    // larger than the lifetime of our invocation of cb, but this is
-    // technically unsafe as the callback could leak these pointers
-    // out of our scope.
+    // Convert the CStrings into an array of pointers. Also return the
+    // vector that owns the raw pointers, to ensure they live long
+    // enough.
     ptrs.push(prog.as_ptr());
     ptrs.extend(args.iter().map(|tmp| tmp.as_ptr()));
 
@@ -457,10 +455,9 @@ fn make_envp(env: Option<&HashMap<OsString, OsString>>)
              -> (*const c_void, Vec<Vec<u8>>, Vec<*const libc::c_char>)
 {
     // On posixy systems we can pass a char** for envp, which is a
-    // null-terminated array of "k=v\0" strings. Since we must create
-    // these strings locally, yet expose a raw pointer to them, we
-    // create a temporary vector to own the CStrings that outlives the
-    // call to cb.
+    // null-terminated array of "k=v\0" strings. As with make_argv, we
+    // return two vectors that own the data to ensure that they live
+    // long enough.
     if let Some(env) = env {
         let mut tmps = Vec::with_capacity(env.len());
 
