@@ -1051,7 +1051,7 @@ then
             esac
         else
             case $CFG_CLANG_VERSION in
-                (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7* | 3.8*)
+                (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7* | 3.8* | 3.9*)
                 step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
                 ;;
                 (*)
