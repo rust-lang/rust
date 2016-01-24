@@ -150,26 +150,36 @@ If you really want global mutable state, try using `static mut` or a global
 "##,
 
 E0018: r##"
-The value of static and const variables must be known at compile time. You
-can't cast a pointer as an integer because we can't know what value the
-address will take.
 
-However, pointers to other constants' addresses are allowed in constants,
-example:
+The value of static and constant integers must be known at compile time. You
+can't cast a pointer to an integer because the address of a pointer can
+vary.
+
+For example, if you write:
+```
+static MY_STATIC: u32 = 42;
+static MY_STATIC_ADDR: usize = &MY_STATIC as *const _ as usize;
+static WHAT: usize = (MY_STATIC_ADDR^17) + MY_STATIC_ADDR;
+```
+
+Then `MY_STATIC_ADDR` would contain the address of `MY_STATIC`. However,
+the address can change when the program is linked, as well as change
+between different executions due to ASLR, and many linkers would
+not be able to calculate the value of `WHAT`.
+
+On the other hand, static and constant pointers can point either to
+a known numeric address or to the address of a symbol.
 
 ```
-const X: u32 = 50;
-const Y: *const u32 = &X;
+static MY_STATIC_ADDR: &'static u32 = &MY_STATIC;
+// ... and also
+static MY_STATIC_ADDR2: *const u32 = &MY_STATIC;
+
+const CONST_ADDR: *const u8 = 0x5f3759df as *const u8;
 ```
 
-Therefore, casting one of these non-constant pointers to an integer results
-in a non-constant integer which lead to this error. Example:
-
-```
-const X: u32 = 1;
-const Y: usize = &X as *const u32 as usize;
-println!("{}", Y);
-```
+This does not pose a problem by itself because they can't be
+accessed directly.
 "##,
 
 E0019: r##"
@@ -347,55 +357,59 @@ From [RFC 246]:
 [RFC 246]: https://github.com/rust-lang/rfcs/pull/246
 "##,
 
+
 E0395: r##"
-The value assigned to a constant expression must be known at compile time,
-which is not the case when comparing raw pointers. Erroneous code example:
+The value assigned to a constant scalar must be known at compile time,
+which is not the case when comparing raw pointers.
 
+
+Erroneous code example:
 ```
-static foo: i32 = 42;
-static bar: i32 = 43;
+static FOO: i32 = 42;
+static BAR: i32 = 42;
 
-static baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
+static BAZ: bool = { (&FOO as *const i32) == (&BAR as *const i32) };
 // error: raw pointers cannot be compared in statics!
 ```
 
-Please check that the result of the comparison can be determined at compile time
-or isn't assigned to a constant expression. Example:
+The address assigned by the linker to `FOO` and `BAR` may or may not
+be identical, so the value of `BAZ` can't be determined.
+
+If you want to do the comparison, please do it at run-time.
+
+For example:
 
 ```
-static foo: i32 = 42;
-static bar: i32 = 43;
+static FOO: i32 = 42;
+static BAR: i32 = 42;
 
-let baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
+let baz: bool = { (&FOO as *const i32) == (&BAR as *const i32) };
 // baz isn't a constant expression so it's ok
 ```
 "##,
 
 E0396: r##"
-The value assigned to a constant expression must be known at compile time,
-which is not the case when dereferencing raw pointers. Erroneous code
-example:
+The value behind a raw pointer can't be determined at compile-time
+(or even link-time), which means it can't be used in a constant
+expression.
 
+For example:
 ```
-const foo: i32 = 42;
-const baz: *const i32 = (&foo as *const i32);
+const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
 
-const deref: i32 = *baz;
+const VALUE: u8 = unsafe { *REG_ADDR };
 // error: raw pointers cannot be dereferenced in constants
 ```
 
-To fix this error, please do not assign this value to a constant expression.
-Example:
+A possible fix is to dereference your pointer at some point in run-time.
+
+For example:
 
 ```
-const foo: i32 = 42;
-const baz: *const i32 = (&foo as *const i32);
+const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
 
-unsafe { let deref: i32 = *baz; }
-// baz isn't a constant expression so it's ok
+let reg_value = unsafe { *REG_ADDR };
 ```
-
-You'll also note that this assignment must be done in an unsafe block!
 "##,
 
 E0397: r##"
