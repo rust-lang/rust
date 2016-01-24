@@ -21,6 +21,8 @@ use option;
 use sys::net::netc as c;
 use sys_common::{FromInner, AsInner, IntoInner};
 use vec;
+use iter;
+use slice;
 
 /// Representation of a socket address for networking applications.
 ///
@@ -454,6 +456,15 @@ impl ToSocketAddrs for str {
         let host = try_opt!(parts_iter.next(), "invalid socket address");
         let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
         resolve_socket_addr(host, port)
+    }
+}
+
+#[stable(feature = "slice_to_socket_addrs", since = "1.8.0")]
+impl<'a> ToSocketAddrs for &'a [SocketAddr] {
+    type Iter = iter::Cloned<slice::Iter<'a, SocketAddr>>;
+
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
+        Ok(self.iter().cloned())
     }
 }
 
