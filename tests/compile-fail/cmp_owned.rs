@@ -3,8 +3,6 @@
 
 #[deny(cmp_owned)]
 fn main() {
-    let x = "oh";
-
     #[allow(str_to_string)]
     fn with_to_string(x : &str) {
         x != "foo".to_string();
@@ -13,6 +11,9 @@ fn main() {
         "foo".to_string() != x;
         //~^ ERROR this creates an owned instance just for comparison. Consider using `"foo" != x` to compare without allocation
     }
+
+    let x = "oh";
+
     with_to_string(x);
 
     x != "foo".to_owned(); //~ERROR this creates an owned instance
