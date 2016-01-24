@@ -65,7 +65,7 @@ ERR_IDX_GEN = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(ERR_IDX_GEN_EXE)
 
 D := $(S)src/doc
 
-DOC_TARGETS := book nomicon style error-index internals
+DOC_TARGETS := book nomicon style error-index
 COMPILER_DOC_TARGETS :=
 DOC_L10N_TARGETS :=
 
@@ -207,13 +207,6 @@ doc/nomicon/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/nomicon/*.md) | 
 	@$(call E, rustbook: $@)
 	$(Q)rm -rf doc/nomicon
 	$(Q)$(RUSTBOOK) build $(S)src/doc/nomicon doc/nomicon
-
-internals: doc/internals/index.html
-
-doc/internals/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/internals/*.md) | doc/
-	@$(call E, rustbook: $@)
-	$(Q)rm -rf doc/internals
-	$(Q)$(RUSTBOOK) build $(S)src/doc/internals doc/internals
 
 style: doc/style/index.html
 
