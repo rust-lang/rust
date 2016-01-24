@@ -223,6 +223,14 @@ impl Token {
         }
     }
 
+    /// Returns `true` if the token is interpolated.
+    pub fn is_interpolated(&self) -> bool {
+        match *self {
+            Interpolated(..) => true,
+            _                => false,
+        }
+    }
+
     /// Returns `true` if the token is an interpolated path.
     pub fn is_path(&self) -> bool {
         match *self {

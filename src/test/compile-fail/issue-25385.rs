@@ -19,5 +19,5 @@ fn main() {
     foo!(a);
 
     foo!(1i32.foo());
-    //~^ ERROR attempted access of field `i32` on type `_`, but no field with that name was found
+    //~^ ERROR no method named `foo` found for type `i32` in the current scope
 }
