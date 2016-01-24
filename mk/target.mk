@@ -25,6 +25,28 @@ RUST_LIB_FLAGS_ST0 += -W warnings
 RUST_LIB_FLAGS_ST1 += -D warnings
 RUST_LIB_FLAGS_ST2 += -D warnings
 
+# Macro that declares additional RUST_LIB_FLAGS for a crate at a particular
+# stage and target. Currently this is used to set the soname codegen flag.
+#
+# $(1) - stage
+# $(2) - target
+# $(3) - crate
+define RUST_CRATE_LIB_FLAGS
+ifdef CFG_ENABLE_SONAME
+# We do not set the soname at stage 0 since the bootstrap compiler does not
+# necessarily support it.
+ifneq ($(1),0)
+RUST_LIB_FLAGS_ST$(1)_$(3)_T_$(2) += \
+	-C soname=$$(call CFG_LIB_NAME_$(2),$(3)-$(CFG_FILENAME_EXTRA))
+endif
+endif
+endef
+
+$(foreach target,$(CFG_TARGET), \
+ $(foreach stage,$(STAGES), \
+  $(foreach crate,$(CRATES), \
+   $(eval $(call RUST_CRATE_LIB_FLAGS,$(stage),$(target),$(crate))))))
+
 # Macro that generates the full list of dependencies for a crate at a particular
 # stage/target/host tuple.
 #
@@ -89,6 +111,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 	$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(2)) \
 	    $$(subst @,,$$(STAGE$(1)_T_$(2)_H_$(3))) \
 		$$(RUST_LIB_FLAGS_ST$(1)) \
+		$$(RUST_LIB_FLAGS_ST$(1)_$(4)_T_$(2)) \
 		-L "$$(RT_OUTPUT_DIR_$(2))" \
 		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
 		$$(LLVM_STDCPP_RUSTFLAGS_$(2)) \
