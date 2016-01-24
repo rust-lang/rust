@@ -27,7 +27,7 @@ use iter::ExactSizeIterator;
 use iter::{Map, Cloned, Iterator, DoubleEndedIterator};
 use marker::Sized;
 use mem;
-use ops::{Fn, FnMut, FnOnce};
+use ops::{Fn, FnMut, FnOnce, RangeArgument};
 use option::Option::{self, None, Some};
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
@@ -1589,12 +1589,10 @@ pub trait StrExt {
     fn is_empty(&self) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
-    #[unstable(feature="str_substr_method", 
-               issue = "0")]
-    fn substr_until(&self, start_index: usize, length: usize) -> Option<&str>;
-    #[unstable(feature="str_substr_method", 
-               issue = "0")]
-    fn substr(&self, start_index: usize) -> Option<&str>;
+    #[unstable(feature="str_substr", 
+               issue = "31140")]
+    fn substr<R>(&self, range: R) -> Option<&str>
+        where R: RangeArgument<usize>;
 }
 
 #[inline(never)]
@@ -1913,15 +1911,17 @@ impl StrExt for str {
     fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
     
     #[inline]
-    fn substr_until(&self, start_index: usize, length: usize) -> Option<&str> {
-        if length == 0 || self.is_empty() { return None; }
-        if start_index == 0 && length == self.len() { return Some(self); }
-        Some(&self[start_index .. start_index + length])
-    }
-    
-    #[inline]
-    fn substr(&self, start_index: usize) -> Option<&str> {
-        self.substr_until(start_index, self.len() - start_index)
+    fn substr<R>(&self, range: R) -> Option<&str> 
+        where R: RangeArgument<usize>
+    {
+        let len = self.len();
+        let start = *range.start().unwrap_or(&0);
+        let end = *range.end().unwrap_or(&len);
+        
+        if self.is_char_boundary(start) &&
+            self.is_char_boundary(end) { return Some(&self[start .. end]); }
+        
+        None
     }
 }
 

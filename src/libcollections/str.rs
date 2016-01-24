@@ -27,6 +27,7 @@ use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
+use core::ops::RangeArgument;
 use rustc_unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
@@ -1685,7 +1686,7 @@ impl str {
     }
     
     /// Returns a string slice extracted from the starting index to
-    /// the end of the string.
+    /// the specified length.
     ///
     /// Returns [`None`] if length is zero, or if string is empty.
     /// # Example
@@ -1697,34 +1698,17 @@ impl str {
     ///
     /// let string: String = String::from("Hello, world!");
     ///
-    /// assert_eq!(Some("world!"), string.substr(7));
+    /// assert_eq!(Some("Hello"), string.substr(..5));
+    /// assert_eq!(Some("world!"), string.substr(7..));
+    /// assert_eq!(Some("ello"), string.substr(1..5));
     /// ```
-    #[unstable(feature="str_substr_method", 
-               issue = "0")]
+    #[unstable(feature="str_substr", 
+               issue = "31140")]
     #[inline]
-    pub fn substr(&self, start_index: usize) -> Option<&str> {
-        core_str::StrExt::substr(self, start_index)
-    }
-    
-    /// Returns a string slice extracted from between the starting index
-    /// to the specified length.
-    ///
-    /// # Example
-    ///
-    /// Basic usage
-    ///
-    /// ```
-    /// #![feature(str_substr_method)]
-    ///
-    /// let string: String = String::from("Hello, world!");
-    ///
-    /// assert_eq!(Some("wo"), string.substr(7, 2));
-    /// ```
-    #[unstable(feature="str_substr_method", 
-               issue = "0")]
-    #[inline]
-    pub fn substr_until(&self, start_index: usize, length: usize) -> Option<&str> {
-        core_str::StrExt::substr_until(self, start_index, length)
+    pub fn substr<R>(&self, range: R) -> Option<&str> 
+        where R: RangeArgument<usize>
+    {
+        core_str::StrExt::substr(self, range)
     }
 
     /// Replaces all matches of a pattern with another string.
