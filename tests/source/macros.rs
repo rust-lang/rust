@@ -1,5 +1,9 @@
 itemmacro!(this, is.now() .formatted(yay));
 
+itemmacro!(really, long.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbb() .is.formatted());
+
+itemmacro!{this, is.bracket().formatted()}
+
 fn main() {
     foo! ( );
 
