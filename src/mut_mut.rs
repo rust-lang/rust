@@ -37,15 +37,15 @@ impl LateLintPass for MutMut {
 }
 
 fn check_expr_mut(cx: &LateContext, expr: &Expr) {
-    if in_external_macro(cx, expr.span) {
-        return;
-    }
-
     fn unwrap_addr(expr: &Expr) -> Option<&Expr> {
         match expr.node {
             ExprAddrOf(MutMutable, ref e) => Some(e),
             _ => None,
         }
+    }
+
+    if in_external_macro(cx, expr.span) {
+        return;
     }
 
     unwrap_addr(expr).map_or((), |e| {

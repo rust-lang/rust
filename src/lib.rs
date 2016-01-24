@@ -43,6 +43,7 @@ pub mod needless_bool;
 pub mod approx_const;
 pub mod eta_reduction;
 pub mod identity_op;
+pub mod items_after_statements;
 pub mod minmax;
 pub mod mut_mut;
 pub mod mut_reference;
@@ -97,6 +98,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_early_lint_pass(box precedence::Precedence);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
+    reg.register_early_lint_pass(box items_after_statements::ItemsAfterStatemets);
     reg.register_late_lint_pass(box mut_mut::MutMut);
     reg.register_late_lint_pass(box mut_reference::UnnecessaryMutPassed);
     reg.register_late_lint_pass(box len_zero::LenZero);
@@ -176,6 +178,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
         identity_op::IDENTITY_OP,
+        items_after_statements::ITEMS_AFTER_STATEMENTS,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
         lifetimes::NEEDLESS_LIFETIMES,

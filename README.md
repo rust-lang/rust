@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 96 lints included in this crate:
+There are 97 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -37,6 +37,7 @@ name                                                                            
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                     | warn    | using identity operations, e.g. `x + 0` or `y / 1`
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                   | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                 | warn    | `#[inline(always)]` is a bad idea in most cases
+[items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)               | warn    | finds blocks where an item comes after a statement
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                               | warn    | for-looping over `_.next()` which is probably not intended
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                   | warn    | traits and impls that have `.len()` but not `.is_empty()`
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                           | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
