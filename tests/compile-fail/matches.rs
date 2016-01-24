@@ -3,11 +3,31 @@
 #![plugin(clippy)]
 #![deny(clippy)]
 #![allow(unused)]
+#![deny(single_match_else)]
 
 use std::borrow::Cow;
 
 enum Foo { Bar, Baz(u8) }
 use Foo::*;
+
+enum ExprNode {
+    ExprAddrOf,
+    Butterflies,
+    Unicorns,
+}
+
+static NODE: ExprNode = ExprNode::Unicorns;
+
+fn unwrap_addr() -> Option<&'static ExprNode> {
+    match ExprNode::Butterflies {   //~ ERROR you seem to be trying to use match
+                                    //~^ HELP try
+        ExprNode::ExprAddrOf => Some(&NODE),
+        _ => {
+            let x = 5;
+            None
+        },
+    }
+}
 
 fn single_match(){
     let x = Some(1u8);
@@ -33,7 +53,7 @@ fn single_match(){
         _ => ()
     }
 
-    // Not linted (content in the else)
+    // Not linted (no block with statements in the single arm)
     match z {
         (2...3, 7...9) => println!("{:?}", z),
         _ => println!("nope"),

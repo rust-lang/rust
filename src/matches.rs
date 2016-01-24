@@ -28,6 +28,23 @@ declare_lint!(pub SINGLE_MATCH, Warn,
               "a match statement with a single nontrivial arm (i.e, where the other arm \
                is `_ => {}`) is used; recommends `if let` instead");
 
+/// **What it does:** This lint checks for matches with a two arms where an `if let` will usually suffice. It is `Allow` by default.
+///
+/// **Why is this bad?** Just readability – `if let` nests less than a `match`.
+///
+/// **Known problems:** Personal style preferences may differ
+///
+/// **Example:**
+/// ```
+/// match x {
+///     Some(ref foo) -> bar(foo),
+///     _ => bar(other_ref),
+/// }
+/// ```
+declare_lint!(pub SINGLE_MATCH_ELSE, Allow,
+             "a match statement with a two arms where the second arm's pattern is a wildcard; \
+              recommends `if let` instead");
+
 /// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It also checks for `if let &foo = bar` blocks. It is `Warn` by default.
 ///
 /// **Why is this bad?** It just makes the code less readable. That reference destructuring adds nothing to the code.
@@ -89,7 +106,7 @@ pub struct MatchPass;
 
 impl LintPass for MatchPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SINGLE_MATCH, MATCH_REF_PATS, MATCH_BOOL)
+        lint_array!(SINGLE_MATCH, MATCH_REF_PATS, MATCH_BOOL, SINGLE_MATCH_ELSE)
     }
 }
 
@@ -112,34 +129,49 @@ impl LateLintPass for MatchPass {
 fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
        arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
-       arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
-       is_unit_expr(&arms[1].body) {
+       arms[1].pats.len() == 1 && arms[1].guard.is_none() {
+           let els = if is_unit_expr(&arms[1].body) {
+               None
+           } else if let ExprBlock(_) = arms[1].body.node {
+               // matches with blocks that contain statements are prettier as `if let + else`
+               Some(&*arms[1].body)
+           } else {
+               // allow match arms with just expressions
+               return;
+           };
            let ty = cx.tcx.expr_ty(ex);
            if ty.sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow {
-                check_single_match_single_pattern(cx, ex, arms, expr);
-                check_single_match_opt_like(cx, ex, arms, expr, ty);
+                check_single_match_single_pattern(cx, ex, arms, expr, els);
+                check_single_match_opt_like(cx, ex, arms, expr, ty, els);
            }
     }
 }
 
-fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
+fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
     if arms[1].pats[0].node == PatWild {
+        let lint = if els.is_some() {
+            SINGLE_MATCH_ELSE
+        } else {
+            SINGLE_MATCH
+        };
+        let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
         span_lint_and_then(cx,
-                           SINGLE_MATCH,
+                           lint,
                            expr.span,
                            "you seem to be trying to use match for destructuring a single pattern. \
                            Consider using `if let`", |db| {
                 db.span_suggestion(expr.span, "try this",
-                                   format!("if let {} = {} {}",
+                                   format!("if let {} = {} {}{}",
                                            snippet(cx, arms[0].pats[0].span, ".."),
                                            snippet(cx, ex.span, ".."),
-                                           expr_block(cx, &arms[0].body, None, "..")));
+                                           expr_block(cx, &arms[0].body, None, ".."),
+                                           els_str));
             });
     }
 }
 
-fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: ty::Ty) {
-    // list of candidate Enums we know will never get any more membre
+fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: ty::Ty, els: Option<&Expr>) {
+    // list of candidate Enums we know will never get any more members
     let candidates = &[
         (&COW_PATH, "Borrowed"),
         (&COW_PATH, "Cow::Borrowed"),
@@ -151,23 +183,37 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
     ];
 
     let path = match arms[1].pats[0].node {
-        PatEnum(ref path, _) => path.to_string(),
+        PatEnum(ref path, Some(ref inner)) => {
+            // contains any non wildcard patterns? e.g. Err(err)
+            if inner.iter().any(|pat| if let PatWild = pat.node { false } else { true }) {
+                return;
+            }
+            path.to_string()
+        },
+        PatEnum(ref path, None) => path.to_string(),
         PatIdent(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
         _ => return
     };
 
     for &(ty_path, pat_path) in candidates {
         if &path == pat_path && match_type(cx, ty, ty_path) {
+            let lint = if els.is_some() {
+                SINGLE_MATCH_ELSE
+            } else {
+                SINGLE_MATCH
+            };
+            let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
             span_lint_and_then(cx,
-                               SINGLE_MATCH,
+                               lint,
                                expr.span,
                                "you seem to be trying to use match for destructuring a single pattern. \
                                Consider using `if let`", |db| {
                 db.span_suggestion(expr.span, "try this",
-                                   format!("if let {} = {} {}",
+                                   format!("if let {} = {} {}{}",
                                            snippet(cx, arms[0].pats[0].span, ".."),
                                            snippet(cx, ex.span, ".."),
-                                           expr_block(cx, &arms[0].body, None, "..")));
+                                           expr_block(cx, &arms[0].body, None, ".."),
+                                           els_str));
             });
         }
     }
