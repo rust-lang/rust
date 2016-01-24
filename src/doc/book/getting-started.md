@@ -511,15 +511,17 @@ programming languages. For complex projects composed of multiple crates, it’s
 much easier to let Cargo coordinate the build. Using Cargo, you can run `cargo
 build`, and it should work the right way.
 
-## Building for Release
+### Building for Release
 
-When your project is finally ready for release, you can use `cargo build
+When your project is ready for release, you can use `cargo build
 --release` to compile your project with optimizations. These optimizations make
 your Rust code run faster, but turning them on makes your program take longer
 to compile. This is why there are two different profiles, one for development,
 and one for building the final program you’ll give to a user.
 
-Running this command also causes Cargo to create a new file called
+### What Is That `Cargo.lock`?
+
+Running `cargo build` also causes Cargo to create a new file called
 *Cargo.lock*, which looks like this:
 
 ```toml
