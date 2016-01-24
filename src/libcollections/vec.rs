@@ -68,15 +68,13 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume, needs_drop};
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut, RangeArgument};
 use core::ops;
 use core::ptr;
 use core::slice;
 
 #[allow(deprecated)]
 use borrow::{Cow, IntoCow};
-
-use super::range::RangeArgument;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
