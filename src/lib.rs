@@ -173,6 +173,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         collapsible_if::COLLAPSIBLE_IF,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_NOT_EQ,
+        derive::EXPL_IMPL_CLONE_ON_COPY,
         entry::MAP_ENTRY,
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
