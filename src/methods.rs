@@ -14,7 +14,7 @@ use utils::{
 };
 use utils::{
     BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH,
-    STRING_PATH
+    STRING_PATH, VEC_PATH,
 };
 use utils::MethodArgs;
 use rustc::middle::cstore::CrateStore;
@@ -212,9 +212,20 @@ declare_lint!(pub CHARS_NEXT_CMP, Warn,
 declare_lint!(pub OR_FUN_CALL, Warn,
               "using any `*or` method when the `*or_else` would do");
 
+/// **What it does:** This lint `Warn`s on using `.extend(s)` on a `vec` to extend the vec by a slice.
+///
+/// **Why is this bad?** Since Rust 1.6, the `extend_from_slice(_)` method is stable and at least for now faster.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `my_vec.extend(&xs)`
+declare_lint!(pub EXTEND_FROM_SLICE, Warn,
+              "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice");
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(OPTION_UNWRAP_USED,
+        lint_array!(EXTEND_FROM_SLICE,
+                    OPTION_UNWRAP_USED,
                     RESULT_UNWRAP_USED,
                     STR_TO_STRING,
                     STRING_TO_STRING,
@@ -256,6 +267,8 @@ impl LateLintPass for MethodsPass {
                     lint_search_is_some(cx, expr, "position", arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
                     lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
+                } else if let Some(arglists) = method_chain_args(expr, &["extend"]) {
+                    lint_extend(cx, expr, arglists[0]);
                 }
 
                 lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
@@ -424,6 +437,35 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
                 check_general_case(cx, name, fun, &args[0], &args[1], or_has_args, expr.span);
             }
         }
+    }
+}
+
+fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
+    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
+    let arg_ty = cx.tcx.expr_ty(&args[1]);
+    
+    if !match_type(cx, obj_ty, &VEC_PATH) {
+        return; // for your Vecs only
+    }
+    
+    if derefs_to_slice(&arg_ty) {
+        span_lint(cx, EXTEND_FROM_SLICE, expr.span,
+                  &format!("use of `extend` to extend a Vec by a slice"))
+            .span_suggestion(expr.span, "try this",
+                             format!("{}.extend_from_slice({})",
+                                     snippet(cx, args[0].span, "_"),
+                                     snippet(cx, args[1].span, "_")));
+    }
+}
+
+fn derefs_to_slice(ty: &ty::Ty) -> bool {
+    match ty.sty {
+        ty::TySlice(_) | 
+        ty::TyStr => true,
+        ty::TyBox(ref inner) => derefs_to_slice(inner),
+        ty::TyArray(_, size) => size < 32,
+        ty::TyRef(_, ty::TypeAndMut { ty: ref t, .. }) => derefs_to_slice(t),
+        _ => false
     }
 }
 

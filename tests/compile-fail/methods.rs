@@ -304,3 +304,10 @@ fn starts_with() {
     //~| HELP like this
     //~| SUGGESTION !"".starts_with(' ')
 }
+
+fn use_extend_from_slice() {
+    let mut v : Vec<&'static str> = vec![];
+    v.extend(&["Hello", "World"]); //~ERROR use of `extend`
+    
+    
+}
