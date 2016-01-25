@@ -336,6 +336,15 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               expr_id: ast::NodeId)
                               -> Result<(Def, LastPrivate), MethodError<'tcx>>
 {
+    // First check if method_name is a variant of self_ty
+    if let &ty::TyS { sty: ty::TyEnum(adt_def, _), .. } = self_ty {
+        for variant in adt_def.variants.iter() {
+            if variant.name == method_name {
+                return Ok((Def::Variant(adt_def.did, variant.did), LastMod(AllPublic)))
+            }
+        }
+    }
+
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
     let def_id = pick.item.def_id();

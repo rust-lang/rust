@@ -640,8 +640,9 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     };
 
     // Items that were partially resolved before should have been resolved to
-    // associated constants (i.e. not methods).
-    if path_res.depth != 0 && !check_assoc_item_is_const(pcx, def, pat.span) {
+    // variants or associated constants (i.e. not methods).
+    if let Def::Variant(..) = def {
+    } else if path_res.depth != 0 && !check_assoc_item_is_const(pcx, def, pat.span) {
         fcx.write_error(pat.id);
         return;
     }
@@ -675,10 +676,9 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
     };
 
-    // If we didn't have a fully resolved path to start with, we had an
-    // associated const, and we should quit now, since the rest of this
-    // function uses checks specific to structs and enums.
-    if path_res.depth != 0 {
+    // If we have an associated const, and we should quit now, since
+    // the rest of this function uses checks specific to structs and enums.
+    if let Def::AssociatedConst(..) = def {
         if is_tuple_struct_pat {
             report_bad_struct_kind(false);
         } else {
