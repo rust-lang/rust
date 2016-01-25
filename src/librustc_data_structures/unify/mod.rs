@@ -27,7 +27,7 @@ mod tests;
 ///
 /// Clients are expected to provide implementations of this trait; you
 /// can see some examples in the `test` module.
-pub trait UnifyKey : Copy + Clone + Debug + PartialEq {
+pub trait UnifyKey : Sized + Copy + Clone + Debug + PartialEq {
     type Value: Clone + PartialEq + Debug;
 
     fn index(&self) -> u32;
