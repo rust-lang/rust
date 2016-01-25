@@ -414,7 +414,9 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// let c = RefCell::new(5);
     ///
-    /// let borrowed_five = c.borrow_mut();
+    /// *c.borrow_mut() = 7;
+    ///
+    /// assert_eq!(*c.borrow(), 7);
     /// ```
     ///
     /// An example of panic:
