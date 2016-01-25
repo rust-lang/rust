@@ -446,9 +446,22 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         // If we're verifying or linting, add them to the function pass
         // manager.
-        let addpass = |pass: &str| {
-            let pass = CString::new(pass).unwrap();
-            llvm::LLVMRustAddPass(fpm, pass.as_ptr())
+        let addpass = |pass_name: &str| {
+            let pass_name = CString::new(pass_name).unwrap();
+            let pass = llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr());
+            if pass.is_null() {
+                return false;
+            }
+            let pass_manager = match llvm::LLVMRustPassKind(pass) {
+                llvm::SupportedPassKind::Function => fpm,
+                llvm::SupportedPassKind::Module => mpm,
+                llvm::SupportedPassKind::Unsupported => {
+                    cgcx.handler.err("Encountered LLVM pass kind we can't handle");
+                    return true
+                },
+            };
+            llvm::LLVMRustAddPass(pass_manager, pass);
+            true
         };
 
         if !config.no_verify { assert!(addpass("verify")); }
