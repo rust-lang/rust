@@ -25,8 +25,8 @@ use ptr;
 use mem;
 
 #[doc(hidden)]
-trait Int: Zero + PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
-           Sub<Output=Self> + Copy {
+trait Int: Sized + Zero + PartialEq + PartialOrd + Div<Output=Self> +
+           Rem<Output=Self> + Sub<Output=Self> + Copy {
     fn from_u8(u: u8) -> Self;
     fn to_u8(&self) -> u8;
     fn to_u32(&self) -> u32;

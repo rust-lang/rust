@@ -2296,9 +2296,9 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
 trait FromStrRadixHelper: PartialOrd + Copy {
     fn min_value() -> Self;
     fn from_u32(u: u32) -> Self;
-    fn checked_mul(&self, other: u32) -> Option<Self>;
-    fn checked_sub(&self, other: u32) -> Option<Self>;
-    fn checked_add(&self, other: u32) -> Option<Self>;
+    fn checked_mul(&self, other: u32) -> Option<Self> where Self: Sized;
+    fn checked_sub(&self, other: u32) -> Option<Self> where Self: Sized;
+    fn checked_add(&self, other: u32) -> Option<Self> where Self: Sized;
 }
 
 macro_rules! doit {
