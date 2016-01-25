@@ -182,17 +182,17 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
                 b: &'v hir::Block, s: Span, fn_id: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
                 self.visit_early_late(subst::FnSpace, generics, |this| {
                     this.add_scope_and_walk_fn(fk, fd, b, s, fn_id)
                 })
             }
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, sig, _, _) => {
                 self.visit_early_late(subst::FnSpace, &sig.generics, |this| {
                     this.add_scope_and_walk_fn(fk, fd, b, s, fn_id)
                 })
             }
-            FnKind::Closure => {
+            FnKind::Closure(_) => {
                 self.add_scope_and_walk_fn(fk, fd, b, s, fn_id)
             }
         }
@@ -471,16 +471,16 @@ impl<'a> LifetimeContext<'a> {
                                  fn_id: ast::NodeId) {
 
         match fk {
-            FnKind::ItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
                 intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(generics);
             }
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, sig, _, _) => {
                 intravisit::walk_fn_decl(self, fd);
                 self.visit_generics(&sig.generics);
                 self.visit_explicit_self(&sig.explicit_self);
             }
-            FnKind::Closure => {
+            FnKind::Closure(_) => {
                 intravisit::walk_fn_decl(self, fd);
             }
         }
