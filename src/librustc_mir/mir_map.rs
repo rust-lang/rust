@@ -132,7 +132,7 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                 body: &'tcx hir::Block,
                 span: Span,
                 id: ast::NodeId) {
-        let implicit_arg_tys = if let intravisit::FnKind::Closure = fk {
+        let implicit_arg_tys = if let intravisit::FnKind::Closure(..) = fk {
             vec![closure_self_ty(&self.tcx, id, body.id)]
         } else {
             vec![]
