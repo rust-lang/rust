@@ -1512,7 +1512,7 @@ and [`rustc-serialize`](https://crates.io/crates/rustc-serialize) crates.
 
 We're not going to spend a lot of time on setting up a project with
 Cargo because it is already covered well in [the Cargo
-section](../book/hello-cargo.html) and [Cargo's documentation][14].
+section](getting-started.html#hello-cargo) and [Cargo's documentation][14].
 
 To get started from scratch, run `cargo new --bin city-pop` and make sure your
 `Cargo.toml` looks something like this:
