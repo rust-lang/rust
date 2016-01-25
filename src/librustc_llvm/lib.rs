@@ -461,6 +461,15 @@ pub enum ArchiveKind {
     K_COFF,
 }
 
+/// Represents the different LLVM passes Rust supports
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[repr(C)]
+pub enum SupportedPassKind {
+    Function,
+    Module,
+    Unsupported,
+}
+
 // Opaque pointer types
 #[allow(missing_copy_implementations)]
 pub enum Module_opaque {}
@@ -2008,7 +2017,10 @@ extern {
     pub fn LLVMIsAAllocaInst(value_ref: ValueRef) -> ValueRef;
     pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
 
-    pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: *const c_char) -> bool;
+    pub fn LLVMRustPassKind(Pass: PassRef) -> SupportedPassKind;
+    pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;
+    pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: PassRef);
+
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,

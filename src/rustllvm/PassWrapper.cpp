@@ -58,19 +58,43 @@ LLVMInitializePasses() {
   initializeTarget(Registry);
 }
 
-extern "C" bool
-LLVMRustAddPass(LLVMPassManagerRef PM, const char *PassName) {
-    PassManagerBase *pm = unwrap(PM);
 
+enum class SupportedPassKind {
+  Function,
+  Module,
+  Unsupported
+};
+
+extern "C" Pass*
+LLVMRustFindAndCreatePass(const char *PassName) {
     StringRef SR(PassName);
     PassRegistry *PR = PassRegistry::getPassRegistry();
 
     const PassInfo *PI = PR->getPassInfo(SR);
     if (PI) {
-        pm->add(PI->createPass());
-        return true;
+        return PI->createPass();
     }
-    return false;
+    return NULL;
+}
+
+extern "C" SupportedPassKind
+LLVMRustPassKind(Pass *pass) {
+    assert(pass);
+    PassKind passKind = pass->getPassKind();
+    if (passKind == PT_Module) {
+        return SupportedPassKind::Module;
+    } else if (passKind == PT_Function) {
+        return SupportedPassKind::Function;
+    } else {
+        return SupportedPassKind::Unsupported;
+    }
+}
+
+extern "C" void
+LLVMRustAddPass(LLVMPassManagerRef PM, Pass *pass) {
+    assert(pass);
+    PassManagerBase *pm = unwrap(PM);
+    pm->add(pass);
 }
 
 extern "C" LLVMTargetMachineRef
