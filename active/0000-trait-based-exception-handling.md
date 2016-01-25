@@ -313,6 +313,12 @@ Without any attempt at completeness, here are some things which should be true:
 (In the above, `foo()` is a function returning any type, and `try_foo()` is a
 function returning a `Result`.)
 
+## Feature gates
+
+The two major features here, the `?` syntax and the `try`/`catch`
+syntax, will be tracked by independent feature gates. Each of the
+features has a distinct motivation, and we should evaluate them
+independently.
 
 # Unresolved questions
 
