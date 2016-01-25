@@ -11,7 +11,7 @@
 use core::nonzero::NonZero;
 use std::u32;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NodeIndex {
     index: NonZero<u32>
 }

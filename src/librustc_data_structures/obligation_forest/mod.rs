@@ -23,6 +23,7 @@ mod node_index;
 #[cfg(test)]
 mod test;
 
+#[derive(Debug)]
 pub struct ObligationForest<O> {
     /// The list of obligations. In between calls to
     /// `process_obligations`, this list only contains nodes in the
@@ -30,35 +31,79 @@ pub struct ObligationForest<O> {
     /// incomplete children). During processing, some of those nodes
     /// may be changed to the error state, or we may find that they
     /// are completed (That is, `num_incomplete_children` drops to 0).
-    /// At the end of processing, those nodes will be removed by a
-    /// call to `compress`.
+    /// At the end of processing, those nodes will be removed (or
+    /// marked as removed if used in earlier snapshots) by a call to
+    /// `compress`.
     ///
     /// At all times we maintain the invariant that every node appears
     /// at a higher index than its parent. This is needed by the
     /// backtrace iterator (which uses `split_at`).
     nodes: Vec<Node<O>>,
-    snapshots: Vec<usize>
+    snapshots: Vec<Snapshot>,
 }
 
+// We could implement Copy here, but we only ever expect user code to consume the snapshot exactly
+// once.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Snapshot {
+    id: usize,
     len: usize,
 }
 
 pub use self::node_index::NodeIndex;
 
+/// We take advantage of the acyclic state transitions of a node (sans rollbacks)...
+///
+/// Pending -+-> Success --+
+///          |             |
+///          +-> Error <---+
+///
+/// ... by merely specifying in any one node the snapshot at which it had transitioned to one or
+/// the other, and the earliest snapshot in which it had already been reported.
+#[derive(Debug)]
 struct Node<O> {
-    state: NodeState<O>,
+    obligation: O,
+    state: NodeState,
     parent: Option<NodeIndex>,
-    root: NodeIndex, // points to the root, which may be the current node
+    root: NodeIndex, // points to the root, which may be the current node,
+    scratch: NodeScratch,
+}
+
+/// Miscellaneous extra space for scratchwork while using the Node.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct NodeScratch {
+    num_incomplete_children: Option<usize>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct NodeSuccess {
+    /// The number of incomplete children at the latest edit of the tree at `self.snapshot`.
+    num_incomplete_children: usize,
+    /// When this success was generated with some number of incomplete children.
+    snapshot: Snapshot,
+    /// When this success was reported (i.e. when its num_incomplete_children was noted to be 0).
+    reported: Option<Snapshot>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum NodeErrorOrigin {
+    Success(NodeSuccess),
+    Pending,
+}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct NodeError {
+    origin: NodeErrorOrigin,
+    /// The snapshot from which this error originated (and was reported; this is a valid assumption
+    /// due to the way the forest treats errors).
+    snapshot: Snapshot,
 }
 
 /// The state of one node in some tree within the forest. This
 /// represents the current state of processing for the obligation (of
 /// type `O`) associated with this node.
-#[derive(Debug)]
-enum NodeState<O> {
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+enum NodeState {
     /// Obligation not yet resolved to success or error.
-    Pending { obligation: O },
+    Pending,
 
     /// Obligation resolved to success; `num_incomplete_children`
     /// indicates the number of children still in an "incomplete"
@@ -67,12 +112,15 @@ enum NodeState<O> {
     /// there is pending work somewhere in the subtree of the child.)
     ///
     /// Once all children have completed, success nodes are removed
-    /// from the vector by the compression step.
-    Success { obligation: O, num_incomplete_children: usize },
+    /// from the vector by the compression step if they have no
+    /// underlying snapshots that are still alive. Else, they're set
+    /// to 'Popped'.
+    Success(NodeSuccess),
 
     /// This obligation was resolved to an error. Error nodes are
-    /// removed from the vector by the compression step.
-    Error,
+    /// removed from the vector by the compression step if they have
+    /// no underlying snapshots that are still alive.
+    Error(NodeError),
 }
 
 #[derive(Debug)]
@@ -99,11 +147,11 @@ pub struct Error<O,E> {
     pub backtrace: Vec<O>,
 }
 
-impl<O: Debug> ObligationForest<O> {
+impl<O: Debug + Clone> ObligationForest<O> {
     pub fn new() -> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
-            snapshots: vec![]
+            snapshots: vec![Snapshot::new(0, 0)]
         }
     }
 
@@ -113,55 +161,58 @@ impl<O: Debug> ObligationForest<O> {
         self.nodes.len()
     }
 
+    fn current_snapshot(&self) -> Snapshot {
+        self.snapshots.last().unwrap().clone()
+    }
+
+    /// Get the current snapshot, initiating a new snapshot on top of it.
     pub fn start_snapshot(&mut self) -> Snapshot {
-        self.snapshots.push(self.nodes.len());
-        Snapshot { len: self.snapshots.len() }
+        let current_snapshot = self.current_snapshot();
+        let next_snapshot = current_snapshot.next(self.nodes.len());
+        self.snapshots.push(next_snapshot.clone());
+        current_snapshot
     }
 
+    /// Commit to the given snapshot.
     pub fn commit_snapshot(&mut self, snapshot: Snapshot) {
-        assert_eq!(snapshot.len, self.snapshots.len());
-        let nodes_len = self.snapshots.pop().unwrap();
-        assert!(self.nodes.len() >= nodes_len);
+        self.snapshots.pop();
+        let prev_snapshot = self.current_snapshot();
+        assert_eq!(prev_snapshot, snapshot);
+        for node in &mut self.nodes {
+            node.state.commit(prev_snapshot.clone());
+        }
     }
 
+    /// Rollback to the given snapshot.
     pub fn rollback_snapshot(&mut self, snapshot: Snapshot) {
-        // Check that we are obeying stack discipline.
-        assert_eq!(snapshot.len, self.snapshots.len());
-        let nodes_len = self.snapshots.pop().unwrap();
-
-        // The only action permitted while in a snapshot is to push
-        // new root obligations. Because no processing will have been
-        // done, those roots should still be in the pending state.
-        debug_assert!(self.nodes[nodes_len..].iter().all(|n| match n.state {
-            NodeState::Pending { .. } => true,
-            _ => false,
-        }));
-
+        let nodes_len = self.snapshots.pop().unwrap().len;
+        let prev_snapshot = self.current_snapshot();
+        assert_eq!(prev_snapshot, snapshot);
+        assert!(!self.snapshots.is_empty(), "rolled back into non-existence");
         self.nodes.truncate(nodes_len);
+        for node in &mut self.nodes {
+            node.state.rollback(prev_snapshot.clone())
+        }
     }
 
     pub fn in_snapshot(&self) -> bool {
-        !self.snapshots.is_empty()
+        // If we have 1 snapshot, we're at the base.
+        self.snapshots.len() > 1
     }
 
     /// Adds a new tree to the forest.
-    ///
-    /// This CAN be done during a snapshot.
     pub fn push_root(&mut self, obligation: O) {
         let index = NodeIndex::new(self.nodes.len());
-        self.nodes.push(Node::new(index, None, obligation));
+        self.nodes.push(Node::new(obligation, NodeState::Pending, index, None));
     }
 
     /// Convert all remaining obligations to the given error.
-    ///
-    /// This cannot be done during a snapshot.
     pub fn to_errors<E:Clone>(&mut self, error: E) -> Vec<Error<O,E>> {
-        assert!(!self.in_snapshot());
+        let current_snapshot = self.current_snapshot();
         let mut errors = vec![];
         for index in 0..self.nodes.len() {
-            debug_assert!(!self.nodes[index].is_popped());
             self.inherit_error(index);
-            if let NodeState::Pending { .. } = self.nodes[index].state {
+            if self.nodes[index].state.is_pending(current_snapshot.clone()) {
                 let backtrace = self.backtrace(index);
                 errors.push(Error { error: error.clone(), backtrace: backtrace });
             }
@@ -173,23 +224,24 @@ impl<O: Debug> ObligationForest<O> {
 
     /// Returns the set of obligations that are in a pending state.
     pub fn pending_obligations(&self) -> Vec<O> where O: Clone {
+        let current_snapshot = self.current_snapshot();
         self.nodes.iter()
-                  .filter_map(|n| match n.state {
-                      NodeState::Pending { ref obligation } => Some(obligation),
-                      _ => None,
+                  .filter_map(|n| if n.state.is_pending(current_snapshot.clone()) {
+                      Some(&n.obligation)
+                  } else {
+                      None
                   })
                   .cloned()
                   .collect()
     }
 
     /// Process the obligations.
-    ///
-    /// This CANNOT be unrolled (presently, at least).
     pub fn process_obligations<E,F>(&mut self, mut action: F) -> Outcome<O,E>
         where E: Debug, F: FnMut(&mut O, Backtrace<O>) -> Result<Option<Vec<O>>, E>
     {
         debug!("process_obligations(len={})", self.nodes.len());
-        assert!(!self.in_snapshot()); // cannot unroll this action
+
+        let current_snapshot = self.current_snapshot();
 
         let mut errors = vec![];
         let mut stalled = true;
@@ -203,7 +255,9 @@ impl<O: Debug> ObligationForest<O> {
         // encountered an error.
 
         for index in 0..self.nodes.len() {
-            debug_assert!(!self.nodes[index].is_popped());
+            if !self.nodes[index].state.is_pending(current_snapshot.clone()) {
+                continue;
+            }
             self.inherit_error(index);
 
             debug!("process_obligations: node {} == {:?}",
@@ -212,13 +266,11 @@ impl<O: Debug> ObligationForest<O> {
             let result = {
                 let parent = self.nodes[index].parent;
                 let (prefix, suffix) = self.nodes.split_at_mut(index);
-                let backtrace = Backtrace::new(prefix, parent);
-                match suffix[0].state {
-                    NodeState::Error |
-                    NodeState::Success { .. } =>
-                        continue,
-                    NodeState::Pending { ref mut obligation } =>
-                        action(obligation, backtrace),
+                let backtrace = Backtrace::new(prefix, parent, current_snapshot.clone());
+                if suffix[0].state.is_pending(current_snapshot.clone()) {
+                    action(&mut suffix[0].obligation, backtrace)
+                } else {
+                    continue;
                 }
             };
 
@@ -261,6 +313,7 @@ impl<O: Debug> ObligationForest<O> {
     fn success(&mut self, index: usize, children: Vec<O>) {
         debug!("success(index={}, children={:?})", index, children);
 
+        let current_snapshot = self.current_snapshot();
         let num_incomplete_children = children.len();
 
         if num_incomplete_children == 0 {
@@ -272,37 +325,31 @@ impl<O: Debug> ObligationForest<O> {
             let node_index = NodeIndex::new(index);
             self.nodes.extend(
                 children.into_iter()
-                        .map(|o| Node::new(root_index, Some(node_index), o)));
+                        .map(|o| Node::new(o,
+                                           NodeState::Pending,
+                                           root_index,
+                                           Some(node_index))));
         }
-
-        // change state from `Pending` to `Success`, temporarily swapping in `Error`
-        let state = mem::replace(&mut self.nodes[index].state, NodeState::Error);
-        self.nodes[index].state = match state {
-            NodeState::Pending { obligation } =>
-                NodeState::Success { obligation: obligation,
-                                     num_incomplete_children: num_incomplete_children },
-            NodeState::Success { .. } |
-            NodeState::Error =>
-                unreachable!()
-        };
+        // change state from `Pending` to `Success`
+        self.nodes[index].state.succeed(num_incomplete_children, current_snapshot);
     }
 
-    /// Decrements the ref count on the parent of `child`; if the
-    /// parent's ref count then reaches zero, proceeds recursively.
+    /// Decrements the ref count on the parent of `child`; if the parent's ref count then reaches
+    /// zero, proceeds recursively. Only updates counts for parents that are above the topmost
+    /// snapshot length (the others have implicitly updated counts when reverse traversing the
+    /// nodes).
     fn update_parent(&mut self, child: usize) {
         debug!("update_parent(child={})", child);
+        let current_snapshot = self.current_snapshot();
         if let Some(parent) = self.nodes[child].parent {
             let parent = parent.get();
-            match self.nodes[parent].state {
-                NodeState::Success { ref mut num_incomplete_children, .. } => {
-                    *num_incomplete_children -= 1;
-                    if *num_incomplete_children > 0 {
-                        return;
-                    }
+            if parent >= current_snapshot.len {
+                if self.nodes[parent].state.decrement_incomplete_children(current_snapshot) ==
+                    Some(0)
+                {
+                    self.update_parent(parent);
                 }
-                _ => unreachable!(),
             }
-            self.update_parent(parent);
         }
     }
 
@@ -311,9 +358,10 @@ impl<O: Debug> ObligationForest<O> {
     /// skip the remaining obligations from a tree once some other
     /// node in the tree is found to be in error.
     fn inherit_error(&mut self, child: usize) {
+        let current_snapshot = self.current_snapshot();
         let root = self.nodes[child].root.get();
-        if let NodeState::Error = self.nodes[root].state {
-            self.nodes[child].state = NodeState::Error;
+        if self.nodes[root].state.is_error(current_snapshot.clone()) {
+            self.nodes[child].state.error(current_snapshot);
         }
     }
 
@@ -324,20 +372,13 @@ impl<O: Debug> ObligationForest<O> {
     /// remainder of the tree.
     fn backtrace(&mut self, mut p: usize) -> Vec<O> {
         let mut trace = vec![];
+        let current_snapshot = self.current_snapshot();
         loop {
-            let state = mem::replace(&mut self.nodes[p].state, NodeState::Error);
-            match state {
-                NodeState::Pending { obligation } |
-                NodeState::Success { obligation, .. } => {
-                    trace.push(obligation);
-                }
-                NodeState::Error => {
-                    // we should not encounter an error, because if
-                    // there was an error in the ancestors, it should
-                    // have been propagated down and we should never
-                    // have tried to process this obligation
-                    panic!("encountered error in node {:?} when collecting stack trace", p);
-                }
+            if self.nodes[p].state.is_error(current_snapshot.clone()) {
+                panic!("encountered error in node {:?} when collecting stack trace", p);
+            } else {
+                trace.push(self.nodes[p].obligation.clone());
+                self.nodes[p].state.error(current_snapshot.clone());
             }
 
             // loop to the parent
@@ -348,12 +389,16 @@ impl<O: Debug> ObligationForest<O> {
         }
     }
 
-    /// Compresses the vector, removing all popped nodes. This adjusts
-    /// the indices and hence invalidates any outstanding
-    /// indices. Cannot be used during a transaction.
+    /// Compresses the vector since the most recent snapshot, removing all popped nodes. This
+    /// adjusts the indices and hence invalidates any outstanding indices. Only 'compresses' nodes
+    /// above the most recent snapshot; always reports all successful nodes regardless of which
+    /// snapshot they're in (as long as they haven't yet been reported in the current or preceding
+    /// snapshots).
     fn compress(&mut self) -> Vec<O> {
-        assert!(!self.in_snapshot()); // didn't write code to unroll this action
-        let mut rewrites: Vec<_> = (0..self.nodes.len()).collect();
+        let current_snapshot = self.current_snapshot();
+        // FIXME profile the effect of putting this in scratch (or using the scratch that's already
+        // there) and make the appropriate updates.
+        let mut rewrites: Vec<_> = (current_snapshot.len..self.nodes.len()).collect();
 
         // Finish propagating error state. Note that in this case we
         // only have to check immediate parents, rather than all
@@ -361,69 +406,79 @@ impl<O: Debug> ObligationForest<O> {
         // are going to occur.
         let nodes_len = self.nodes.len();
         for i in 0..nodes_len {
-            if !self.nodes[i].is_popped() {
+            if !self.nodes[i].state.is_done(current_snapshot.clone()) {
                 self.inherit_error(i);
             }
         }
 
         // Now go through and move all nodes that are either
-        // successful or which have an error over into to the end of
-        // the list, preserving the relative order of the survivors
+        // successful or which have an error over to the end of the
+        // list, preserving the relative order of the survivors
         // (which is important for the `inherit_error` logic).
         let mut dead = 0;
-        for i in 0..nodes_len {
-            if self.nodes[i].is_popped() {
+        for i in current_snapshot.len..nodes_len {
+            if self.nodes[i].state.is_done(current_snapshot.clone()) {
                 dead += 1;
             } else if dead > 0 {
                 self.nodes.swap(i, i - dead);
-                rewrites[i] -= dead;
+                rewrites[i - current_snapshot.len] -= dead;
             }
         }
+
+        // Initialize scratch
+        for node in (&mut self.nodes).into_iter().take(nodes_len - dead) {
+            node.scratch.num_incomplete_children = match node.state {
+                NodeState::Success(NodeSuccess { num_incomplete_children, .. }) =>
+                    Some(num_incomplete_children),
+                _ => None,
+            };
+        }
+
+        // Initialize successful nodes return vec
+        let mut successful = Vec::new();
+        successful.reserve(nodes_len);
 
         // Pop off all the nodes we killed and extract the success
         // stories.
-        let successful =
+        successful.extend(
             (0 .. dead).map(|_| self.nodes.pop().unwrap())
                        .flat_map(|node| match node.state {
-                           NodeState::Error => None,
-                           NodeState::Pending { .. } => unreachable!(),
-                           NodeState::Success { obligation, num_incomplete_children } => {
-                               assert_eq!(num_incomplete_children, 0);
-                               Some(obligation)
-                           }
-                       })
-                       .collect();
+                           NodeState::Pending => unreachable!(),
+                           NodeState::Error(_) => None,
+                           NodeState::Success(_) => Some(node.obligation.clone()),
+                       }));
+        // Go through the still-alive successful and error nodes and extract the success stories,
+        // marking them reported as we go along. The ordering here depends on the prefix property
+        // of self.nodes.
+        for i in (0..self.nodes.len()).rev() {
+            if self.nodes[i].scratch.num_incomplete_children == Some(0) {
+                assert!(self.nodes[i].state.is_success(current_snapshot.clone()));
+                if let Some(parent) = self.nodes[i].parent {
+                    assert!(parent.get() < i);
+                    let _ = self.nodes[parent.get()].scratch.num_incomplete_children
+                        .as_mut().map(|x| *x -= 1);
+                }
+                if !self.nodes[i].state.is_reported(current_snapshot.clone()) {
+                    successful.push(self.nodes[i].obligation.clone());
+                    self.nodes[i].state.report(current_snapshot.clone());
+                }
+            }
+        }
 
         // Adjust the parent indices, since we compressed things.
-        for node in &mut self.nodes {
+        for node in (&mut self.nodes).into_iter().skip(current_snapshot.len) {
             if let Some(ref mut index) = node.parent {
-                let new_index = rewrites[index.get()];
-                debug_assert!(new_index < (nodes_len - dead));
-                *index = NodeIndex::new(new_index);
+                if index.get() >= current_snapshot.len {
+                    let new_index = rewrites[index.get() - current_snapshot.len];
+                    debug_assert!(new_index < (nodes_len - dead));
+                    *index = NodeIndex::new(new_index);
+                }
             }
-
-            node.root = NodeIndex::new(rewrites[node.root.get()]);
+            if node.root.get() >= current_snapshot.len {
+                node.root = NodeIndex::new(rewrites[node.root.get() - current_snapshot.len]);
+            }
         }
-
         successful
-    }
-}
-
-impl<O> Node<O> {
-    fn new(root: NodeIndex, parent: Option<NodeIndex>, obligation: O) -> Node<O> {
-        Node {
-            parent: parent,
-            state: NodeState::Pending { obligation: obligation },
-            root: root
-        }
-    }
-
-    fn is_popped(&self) -> bool {
-        match self.state {
-            NodeState::Pending { .. } => false,
-            NodeState::Success { num_incomplete_children, .. } => num_incomplete_children == 0,
-            NodeState::Error => true,
-        }
     }
 }
 
@@ -431,32 +486,265 @@ impl<O> Node<O> {
 pub struct Backtrace<'b, O: 'b> {
     nodes: &'b [Node<O>],
     pointer: Option<NodeIndex>,
+    snapshot: Snapshot,
 }
 
 impl<'b, O> Backtrace<'b, O> {
-    fn new(nodes: &'b [Node<O>], pointer: Option<NodeIndex>) -> Backtrace<'b, O> {
-        Backtrace { nodes: nodes, pointer: pointer }
+    fn new(nodes: &'b [Node<O>], pointer: Option<NodeIndex>, snapshot: Snapshot)
+        -> Backtrace<'b, O>
+    {
+        Backtrace { nodes: nodes, pointer: pointer, snapshot: snapshot }
     }
 }
 
-impl<'b, O> Iterator for Backtrace<'b, O> {
+impl<'b, O: Clone> Iterator for Backtrace<'b, O> {
     type Item = &'b O;
 
     fn next(&mut self) -> Option<&'b O> {
         debug!("Backtrace: self.pointer = {:?}", self.pointer);
         if let Some(p) = self.pointer {
             self.pointer = self.nodes[p.get()].parent;
-            match self.nodes[p.get()].state {
-                NodeState::Pending { ref obligation } |
-                NodeState::Success { ref obligation, .. } => {
-                    Some(obligation)
-                }
-                NodeState::Error => {
-                    panic!("Backtrace encountered an error.");
-                }
+            if self.nodes[p.get()].state.is_error(self.snapshot.clone()) {
+                panic!("Backtrace encountered an error.")
+            } else {
+                Some(&self.nodes[p.get()].obligation)
             }
         } else {
             None
         }
     }
 }
+impl<O> Node<O> {
+    fn new(obligation: O, state: NodeState, root: NodeIndex, parent: Option<NodeIndex>)
+        -> Node<O>
+    {
+        Node {
+            obligation: obligation,
+            state: state,
+            parent: parent,
+            root: root,
+            scratch: NodeScratch::default(),
+        }
+    }
+}
+impl NodeState {
+    fn into_shim<F: FnOnce(Self) -> Self>(&mut self, transformer: F) {
+        let new_self = transformer(mem::replace(self, unsafe { mem::uninitialized() } ));
+        mem::forget(mem::replace(self, new_self));
+    }
+    fn succeed(&mut self, new_num_incomplete_children: usize, at_snapshot: Snapshot) {
+        self.into_shim(|s| match s {
+            NodeState::Pending => NodeState::Success(NodeSuccess {
+                num_incomplete_children: new_num_incomplete_children,
+                snapshot: at_snapshot,
+                reported: None,
+            }),
+            NodeState::Error(_) |
+            NodeState::Success(_) => panic!("invalid transition (non-pending to success)"),
+        });
+    }
+    fn error(&mut self, at_snapshot: Snapshot) {
+        self.into_shim(|s| match s {
+            NodeState::Pending => NodeState::Error(NodeError {
+                origin: NodeErrorOrigin::Pending,
+                snapshot: at_snapshot,
+            }),
+            NodeState::Success(s) => if s.num_incomplete_children > 0 {
+                assert!(s.snapshot <= at_snapshot, "invalid success-to-error snapshot ordering");
+                assert!(s.reported.is_none(), "success should not have been reported if erroring");
+                NodeState::Error(NodeError {
+                    origin: NodeErrorOrigin::Success(s),
+                    snapshot: at_snapshot,
+                })
+            } else {
+                panic!("invalid transition (success with no children to error)")
+            },
+            NodeState::Error(_) => panic!("invalid transition (error to error)"),
+        });
+    }
+    fn rollback(&mut self, to_snapshot: Snapshot) {
+        self.into_shim(|s| match s {
+            NodeState::Pending => NodeState::Pending,
+            NodeState::Success(s) => {
+                if s.snapshot <= to_snapshot {
+                    NodeState::Success(NodeSuccess {
+                        num_incomplete_children: s.num_incomplete_children,
+                        snapshot: s.snapshot,
+                        reported: match s.reported {
+                            Some(reported_snapshot) => if reported_snapshot <= to_snapshot {
+                                Some(reported_snapshot)
+                            } else {
+                                None
+                            },
+                            None => None
+                        }
+                    })
+                } else {
+                    NodeState::Pending
+                }
+            },
+            NodeState::Error(NodeError { origin: NodeErrorOrigin::Pending, snapshot }) => {
+                if snapshot <= to_snapshot {
+                    NodeState::Error(NodeError {
+                        origin: NodeErrorOrigin::Pending,
+                        snapshot: snapshot
+                    })
+                } else {
+                    NodeState::Pending
+                }
+            },
+            NodeState::Error(NodeError { origin: NodeErrorOrigin::Success(s), snapshot }) => {
+                if snapshot <= to_snapshot {
+                    NodeState::Error(NodeError {
+                        origin: NodeErrorOrigin::Success(s),
+                        snapshot: snapshot
+                    })
+                } else {
+                    let mut succ_roll = NodeState::Success(s);
+                    succ_roll.rollback(to_snapshot);
+                    succ_roll
+                }
+            },
+        })
+    }
+    fn commit(&mut self, to_snapshot: Snapshot) {
+        self.into_shim(|s| match s {
+            NodeState::Pending => NodeState::Pending,
+            NodeState::Success(s) => {
+                NodeState::Success(NodeSuccess {
+                    num_incomplete_children: s.num_incomplete_children,
+                    snapshot: if to_snapshot < s.snapshot {
+                        to_snapshot.clone()
+                    } else {
+                        s.snapshot
+                    },
+                    reported: match s.reported {
+                        Some(reported_snapshot) => Some(if reported_snapshot <= to_snapshot {
+                            reported_snapshot
+                        } else {
+                            to_snapshot
+                        }),
+                        None => None
+                    },
+                })
+            },
+            NodeState::Error(NodeError { origin: NodeErrorOrigin::Pending, snapshot }) => {
+                NodeState::Error(NodeError {
+                    origin: NodeErrorOrigin::Pending,
+                    snapshot: if snapshot <= to_snapshot { snapshot } else { to_snapshot }
+                })
+            },
+            NodeState::Error(NodeError { origin: NodeErrorOrigin::Success(s), snapshot }) => {
+                let mut succ_roll = NodeState::Success(s);
+                succ_roll.rollback(to_snapshot.clone());
+                NodeState::Error(NodeError {
+                    origin: match succ_roll {
+                        NodeState::Pending => NodeErrorOrigin::Pending,
+                        NodeState::Success(s) => NodeErrorOrigin::Success(s),
+                        NodeState::Error(_) => unreachable!(),
+                    },
+                    snapshot: if snapshot <= to_snapshot { snapshot } else { to_snapshot }
+                })
+            },
+        })
+    }
+    fn report(&mut self, at_snapshot: Snapshot) {
+        self.into_shim(|s| match s {
+            NodeState::Pending |
+            NodeState::Error(_) => panic!("invalid transition (delayed reporting non-success)"),
+            NodeState::Success(s) => {
+                assert!(s.snapshot <= at_snapshot,
+                        "cannot possibly report before having succeeded");
+                NodeState::Success(NodeSuccess {
+                    num_incomplete_children: s.num_incomplete_children,
+                    snapshot: s.snapshot,
+                    reported: match s.reported {
+                        Some(_) => panic!("invalid transition (reporting already reported)"),
+                        None => Some(at_snapshot),
+                    },
+                })
+            },
+        })
+    }
+    fn decrement_incomplete_children(&mut self, at_snapshot: Snapshot) -> Option<usize> {
+        let mut result = None;
+        self.into_shim(|s| match s {
+            NodeState::Pending |
+            NodeState::Error(_) => panic!("cannot decrement children of pending or error nodes"),
+            NodeState::Success(s) => {
+                assert!(s.snapshot <= at_snapshot,
+                        "cannot possibly decrement outstanding children before having succeeded");
+                result = Some(s.num_incomplete_children - 1);
+                NodeState::Success(NodeSuccess {
+                    num_incomplete_children: s.num_incomplete_children - 1,
+                    snapshot: s.snapshot,
+                    reported: s.reported,
+                })
+            },
+        });
+        result
+    }
+    /// Earliest snapshot at which the state transitioned to success.
+    fn when_success(&self) -> Option<Snapshot> {
+        match self {
+            &NodeState::Pending => None,
+            &NodeState::Success(NodeSuccess { ref snapshot, .. }) => Some(snapshot.clone()),
+            &NodeState::Error(NodeError { origin: NodeErrorOrigin::Success(ref s) , .. }) =>
+                Some(s.snapshot.clone()),
+            &NodeState::Error(NodeError { origin: NodeErrorOrigin::Pending, .. }) => None,
+        }
+    }
+    /// Earliest snapshot at which the state transitioned to error.
+    fn when_error(&self) -> Option<Snapshot> {
+        match self {
+            &NodeState::Pending => None,
+            &NodeState::Success(_) => None,
+            &NodeState::Error(NodeError { ref snapshot, .. }) => Some(snapshot.clone()),
+        }
+    }
+    /// Earliest snapshot at which the state transitioned to reported (either successful or error).
+    fn when_reported(&self) -> Option<Snapshot> {
+        match self {
+            &NodeState::Pending => None,
+            &NodeState::Success(NodeSuccess { reported: Some(ref snapshot), .. }) =>
+                Some(snapshot.clone()),
+            &NodeState::Success(NodeSuccess { reported: None, .. }) => None,
+            &NodeState::Error(NodeError { ref snapshot, .. }) => Some(snapshot.clone()),
+        }
+    }
+    fn is_pending(&self, at_snapshot: Snapshot) -> bool {
+        self.when_success().map(|x| x > at_snapshot).unwrap_or(true) &&
+            self.when_error().map(|x| x > at_snapshot).unwrap_or(true)
+    }
+    fn is_success(&self, at_snapshot: Snapshot) -> bool {
+        self.when_success().map(|x| x <= at_snapshot).unwrap_or(false) &&
+            self.when_error().map(|x| x > at_snapshot).unwrap_or(true)
+    }
+    fn is_reported(&self, at_snapshot: Snapshot) -> bool {
+        self.when_reported().map(|x| x <= at_snapshot).unwrap_or(false)
+    }
+    fn is_childless_success(&self, at_snapshot: Snapshot) -> bool {
+        // Because a success without children can never be an error, we just check with a match.
+        match self {
+            &NodeState::Success(NodeSuccess { num_incomplete_children: 0, ref snapshot, .. }) =>
+                *snapshot <= at_snapshot,
+            _ => false,
+        }
+    }
+    fn is_error(&self, at_snapshot: Snapshot) -> bool {
+        self.when_error().map(|x| at_snapshot >= x).unwrap_or(false)
+    }
+    fn is_done(&self, at_snapshot: Snapshot) -> bool {
+        self.is_childless_success(at_snapshot.clone()) || self.is_error(at_snapshot)
+    }
+}
+impl Default for NodeScratch {
+    fn default() -> Self {
+        NodeScratch { num_incomplete_children: None }
+    }
+}
+impl Snapshot {
+    fn new(id: usize, len: usize) -> Self { Snapshot { id: id, len: len } }
+    fn next(&self, len: usize) -> Self { Snapshot { id: self.id + 1, len: len } }
+}
+
