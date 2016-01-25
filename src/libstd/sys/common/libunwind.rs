@@ -101,9 +101,10 @@ pub type _Unwind_Exception_Cleanup_Fn =
                       exception: *mut _Unwind_Exception);
 
 #[cfg_attr(any(all(target_os = "linux", not(target_env = "musl")),
-               target_os = "freebsd"),
+               target_os = "freebsd",
+               all(target_os = "linux", target_env = "musl", not(target_arch = "x86_64"))),
            link(name = "gcc_s"))]
-#[cfg_attr(all(target_os = "linux", target_env = "musl", not(test)),
+#[cfg_attr(all(target_os = "linux", target_env = "musl", target_arch = "x86_64", not(test)),
            link(name = "unwind", kind = "static"))]
 #[cfg_attr(any(target_os = "android", target_os = "openbsd"),
            link(name = "gcc"))]
