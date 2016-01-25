@@ -145,7 +145,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     unsafe {
         let pm = llvm::LLVMCreatePassManager();
         llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
-        llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
+        let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+        assert!(!pass.is_null());
+        llvm::LLVMRustAddPass(pm, pass);
 
         with_llvm_pmb(llmod, config, &mut |b| {
             llvm::LLVMPassManagerBuilderPopulateLTOPassManager(b, pm,
@@ -153,7 +155,9 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                 /* RunInliner = */ True);
         });
 
-        llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
+        let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+        assert!(!pass.is_null());
+        llvm::LLVMRustAddPass(pm, pass);
 
         time(sess.time_passes(), "LTO passes", ||
              llvm::LLVMRunPassManager(pm, llmod));
