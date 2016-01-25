@@ -253,13 +253,9 @@ impl<'a> FmtVisitor<'a> {
                 self.format_missing_with_indent(item.span.lo);
                 self.format_mod(module, item.vis, item.span, item.ident);
             }
-            ast::Item_::ItemMac(..) => {
+            ast::Item_::ItemMac(ref mac) => {
                 self.format_missing_with_indent(item.span.lo);
-                let snippet = self.snippet(item.span);
-                self.buffer.push_str(&snippet);
-                self.last_pos = item.span.hi;
-                // FIXME: we cannot format these yet, because of a bad span.
-                // See rust lang issue #28424.
+                self.visit_mac(mac);
             }
             ast::Item_::ItemForeignMod(ref foreign_mod) => {
                 self.format_missing_with_indent(item.span.lo);
