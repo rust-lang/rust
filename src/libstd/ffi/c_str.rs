@@ -449,16 +449,16 @@ impl CStr {
     /// use std::ffi::CStr;
     ///
     /// # fn main() {
-    /// let cstr = CStr::from_bytes(b"hello\0");
+    /// let cstr = CStr::from_bytes_with_nul(b"hello\0");
     /// assert!(cstr.is_some());
     /// # }
     /// ```
     #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "0")]
-    pub fn from_bytes<'a>(bytes: &'a [u8]) -> Option<&'a CStr> {
+    pub fn from_bytes_with_nul<'a>(bytes: &'a [u8]) -> Option<&'a CStr> {
         if bytes.is_empty() || memchr::memchr(0, &bytes) != Some(bytes.len() - 1) {
             None
         } else {
-            Some(unsafe { Self::from_bytes_unchecked(bytes) })
+            Some(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
         }
     }
 
@@ -477,13 +477,13 @@ impl CStr {
     /// # fn main() {
     /// unsafe {
     ///     let cstring = CString::new("hello").unwrap();
-    ///     let cstr = CStr::from_bytes_unchecked(cstring.to_bytes_with_nul());
+    ///     let cstr = CStr::from_bytes_with_nul_unchecked(cstring.to_bytes_with_nul());
     ///     assert_eq!(cstr, &*cstring);
     /// }
     /// # }
     /// ```
     #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "0")]
-    pub unsafe fn from_bytes_unchecked<'a>(bytes: &'a [u8]) -> &'a CStr {
+    pub unsafe fn from_bytes_with_nul_unchecked<'a>(bytes: &'a [u8]) -> &'a CStr {
         mem::transmute(bytes)
     }
 
