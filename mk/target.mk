@@ -33,12 +33,8 @@ RUST_LIB_FLAGS_ST2 += -D warnings
 # $(3) - crate
 define RUST_CRATE_LIB_FLAGS
 ifdef CFG_ENABLE_SONAME
-# We do not set the soname at stage 0 since the bootstrap compiler does not
-# necessarily support it.
-ifneq ($(1),0)
 RUST_LIB_FLAGS_ST$(1)_$(3)_T_$(2) += \
-	-C soname=$$(call CFG_LIB_NAME_$(2),$(3)-$(CFG_FILENAME_EXTRA))
-endif
+	-C link-args=-Wl,-soname,$$(call CFG_LIB_NAME_$(2),$(3)-$(CFG_FILENAME_EXTRA))
 endif
 endef
 

@@ -1044,11 +1044,6 @@ fn link_args(cmd: &mut Linker,
         cmd.build_dylib(out_filename);
     }
 
-    // Optionally set the soname flag.
-    if let Some(ref soname) = sess.opts.cg.soname {
-        cmd.soname(soname);
-    }
-
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths

@@ -54,7 +54,6 @@ pub trait Linker {
     fn hint_dynamic(&mut self);
     fn whole_archives(&mut self);
     fn no_whole_archives(&mut self);
-    fn soname(&mut self, soname: &str);
     fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
                       tmpdir: &Path);
 }
@@ -197,10 +196,6 @@ impl<'a> Linker for GnuLinker<'a> {
         self.cmd.arg("-Wl,-Bdynamic");
     }
 
-    fn soname(&mut self, soname: &str) {
-        self.cmd.arg(["-Wl,-soname,", soname].concat());
-    }
-
     fn export_symbols(&mut self, _: &Session, _: &CrateTranslation, _: &Path) {
         // noop, visibility in object files takes care of this
     }
@@ -312,10 +307,6 @@ impl<'a> Linker for MsvcLinker<'a> {
     // we do on Unix platforms.
     fn hint_static(&mut self) {}
     fn hint_dynamic(&mut self) {}
-
-    fn soname(&mut self, _: &str) {
-        // not supported?
-    }
 
     // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
     // export symbols from a dynamic library. When building a dynamic library,
