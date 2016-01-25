@@ -3166,11 +3166,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let tcx = fcx.tcx();
 
         // Find the relevant variant
-        let def = lookup_full_def(tcx, path.span, expr.id);
-        if def == Def::Err {
-            check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
-            return;
-        }
+        let path_res = *tcx.def_map.borrow().get(&expr.id).unwrap();
+        let def = match resolve_ty_and_def_ufcs(fcx, path_res, None, path, expr.span, expr.id) {
+            Some((_, _, def)) => def,
+            None => Def::Err,
+        };
         let (adt, variant) = match fcx.def_struct_variant(def, path.span) {
             Some((adt, variant)) => (adt, variant),
             None => {

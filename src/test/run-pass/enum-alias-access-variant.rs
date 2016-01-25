@@ -13,6 +13,7 @@
 enum Foo {
     Unit,
     Bar(i32),
+    Baz { i: i32 },
 }
 
 type Alias = Foo;
@@ -24,9 +25,12 @@ impl Default for Foo {
 }
 
 fn main() {
-    let t = Alias::Bar(0);
+    let _t = Alias::Bar(0);
+    let t = Alias::Baz { i: 0 };
+
     match t {
         Alias::Unit => {}
         Alias::Bar(_i) => {}
+        Alias::Baz { i: _i } => {}
     }
 }

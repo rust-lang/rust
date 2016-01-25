@@ -714,29 +714,6 @@ match Something::NotFoo {
 ```
 "##,
 
-E0422: r##"
-You are trying to use an identifier that is either undefined or not a
-struct. For instance:
-```
-fn main () {
-    let x = Foo { x: 1, y: 2 };
-}
-```
-
-In this case, `Foo` is undefined, so it inherently isn't anything, and
-definitely not a struct.
-
-```
-fn main () {
-    let foo = 1;
-    let x = foo { x: 1, y: 2 };
-}
-```
-
-In this case, `foo` is defined, but is not a struct, so Rust can't use
-it as one.
-"##,
-
 E0423: r##"
 A `struct` variant name was used like a function name. Example of
 erroneous code:

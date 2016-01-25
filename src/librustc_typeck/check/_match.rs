@@ -562,7 +562,12 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx hir::Pat,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
+    let path_res = *tcx.def_map.borrow().get(&pat.id).unwrap();
+    let def = match resolve_ty_and_def_ufcs(fcx, path_res, None, path, pat.span, pat.id) {
+        Some((_, _, def)) => def,
+        None => Def::Err,
+    };
+
     let variant = match fcx.def_struct_variant(def, path.span) {
         Some((_, variant)) => variant,
         None => {
