@@ -333,14 +333,17 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               method_name: ast::Name,
                               self_ty: ty::Ty<'tcx>,
-                              expr_id: ast::NodeId)
+                              expr_id: ast::NodeId,
+                              is_qpath: bool)
                               -> Result<(Def, LastPrivate), MethodError<'tcx>>
 {
-    // First check if method_name is a variant of self_ty
-    if let &ty::TyS { sty: ty::TyEnum(adt_def, _), .. } = self_ty {
-        for variant in adt_def.variants.iter() {
-            if variant.name == method_name {
-                return Ok((Def::Variant(adt_def.did, variant.did), LastMod(AllPublic)))
+    // If this is not a QPath, check if method_name is a variant of self_ty
+    if !is_qpath {
+        if let &ty::TyS { sty: ty::TyEnum(adt_def, _), .. } = self_ty {
+            for variant in adt_def.variants.iter() {
+                if variant.name == method_name {
+                    return Ok((Def::Variant(adt_def.did, variant.did), LastMod(AllPublic)))
+                }
             }
         }
     }

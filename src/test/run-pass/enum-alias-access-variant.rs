@@ -10,10 +10,15 @@
 
 // Checks that unit and tuple enum variants can be accessed through a type alias of the enum
 
+#![feature(associated_consts)]
 enum Foo {
     Unit,
     Bar(i32),
     Baz { i: i32 },
+}
+
+impl Foo {
+    const Unit: () = ();
 }
 
 type Alias = Foo;
@@ -26,7 +31,13 @@ impl Default for Foo {
 
 fn main() {
     let _t = Alias::Bar(0);
-    let t = Alias::Baz { i: 0 };
+    let _t = Alias::Baz { i: 0 };
+
+    let _t: () = <Foo>::Unit;
+    let _t: () = <Alias>::Unit;
+
+    let _t: Foo = Foo::Unit;
+    let t: Foo = Alias::Unit;
 
     match t {
         Alias::Unit => {}
