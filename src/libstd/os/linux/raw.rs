@@ -93,11 +93,20 @@ mod arch {
     use os::raw::{c_long, c_ulong};
     use os::unix::raw::{gid_t, uid_t};
 
+    #[cfg(target_env = "musl")]
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i64;
+    #[cfg(not(target_env = "musl"))]
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i32;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = i32;
+    #[cfg(target_env = "musl")]
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = u64;
+    #[cfg(not(target_env = "musl"))]
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = u32;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type nlink_t = u32;
+    #[cfg(target_env = "musl")]
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = i32;
+    #[cfg(not(target_env = "musl"))]
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = i64;
     #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i32;
 
     #[repr(C)]
