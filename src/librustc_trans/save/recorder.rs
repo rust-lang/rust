@@ -318,6 +318,7 @@ impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
                             span: Span,
                             sub_span: Option<Span>,
                             values: Vec<String>) {
+        filter!(self.span, sub_span, span);
         match sub_span {
             Some(sub_span) => self.record_with_span(kind, span, sub_span, values),
             None => {

@@ -858,10 +858,15 @@ impl CodeMap {
         let span_str = self.span_to_string(sp);
         let mut span_snip = self.span_to_snippet(sp)
             .unwrap_or("Snippet unavailable".to_owned());
-        if span_snip.len() > 50 {
-            span_snip.truncate(50);
+
+        // Truncate by code points - in worst case this will be more than 50 characters,
+        // but ensures at least 50 characters and respects byte boundaries.
+        let char_vec: Vec<(usize, char)> = span_snip.char_indices().collect();
+        if char_vec.len() > 50 {
+            span_snip.truncate(char_vec[49].0);
             span_snip.push_str("...");
         }
+
         output.push_str(&format!("{}{}\n{}`{}`\n", indent, span_str, indent, span_snip));
 
         if sp.expn_id == NO_EXPANSION || sp.expn_id == COMMAND_LINE_EXPN {
@@ -907,6 +912,22 @@ impl CodeMap {
             output.push_str(&(self.span_to_expanded_string_internal(span, &indent)));
         }
         output
+    }
+
+    /// Return the source span - this is either the supplied span, or the span for
+    /// the macro callsite that expanded to it.
+    pub fn source_callsite(&self, sp: Span) -> Span {
+        let mut span = sp;
+        while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
+            if let Some(callsite) = self.with_expn_info(span.expn_id,
+                                               |ei| ei.map(|ei| ei.call_site.clone())) {
+                span = callsite;
+            }
+            else {
+                break;
+            }
+        }
+        span
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
