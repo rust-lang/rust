@@ -16,6 +16,7 @@ use cell::Cell;
 use cell::RefCell;
 use intrinsics;
 use sync::StaticRwLock;
+use sync::atomic::{AtomicBool, Ordering};
 use sys::stdio::Stderr;
 use sys_common::backtrace;
 use sys_common::thread_info;
@@ -38,6 +39,7 @@ enum Handler {
 
 static HANDLER_LOCK: StaticRwLock = StaticRwLock::new();
 static mut HANDLER: Handler = Handler::Default;
+static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
 /// Registers a custom panic handler, replacing any that was previously
 /// registered.
@@ -173,8 +175,11 @@ fn default_handler(info: &PanicInfo) {
     let write = |err: &mut ::io::Write| {
         let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}",
                          name, msg, file, line);
+
         if log_backtrace {
             let _ = backtrace::write(err);
+        } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
+            let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` for a backtrace.");
         }
     };
 
