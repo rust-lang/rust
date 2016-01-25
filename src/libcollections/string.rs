@@ -59,7 +59,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Add};
+use core::ops::{self, Add, RangeArgument};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
@@ -68,7 +68,6 @@ use rustc_unicode::str as unicode_str;
 
 #[allow(deprecated)]
 use borrow::{Cow, IntoCow};
-use range::RangeArgument;
 use str::{self, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
