@@ -162,7 +162,10 @@ pub fn get_or_default_sysroot() -> PathBuf {
 
     match canonicalize(env::current_exe().ok()) {
         Some(mut p) => { p.pop(); p.pop(); p }
-        None => panic!("can't determine value for sysroot")
+        None => match option_env!("CFG_PREFIX") {
+            Some(dir) => PathBuf::from(dir),
+            None => panic!("can't determine value for sysroot")
+        }
     }
 }
 
