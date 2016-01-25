@@ -10,15 +10,10 @@
 
 #![feature(const_fn)]
 
-const unsafe fn g(x: usize) -> usize {
-    x
-}
-
 fn f(x: usize) -> usize {
     x
 }
 
 fn main() {
     let _ = [0; f(2)]; //~ ERROR: non-constant path in constant expression [E0307]
-    let _ = [0; g(2)]; //~ ERROR: non-constant path in constant expression [E0307]
 }

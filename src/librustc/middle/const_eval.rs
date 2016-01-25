@@ -28,7 +28,7 @@ use util::num::ToPrimitive;
 use util::nodemap::NodeMap;
 
 use graphviz::IntoCow;
-use syntax::{ast, abi};
+use syntax::ast;
 use rustc_front::hir::Expr;
 use rustc_front::hir;
 use rustc_front::intravisit::FnKind;
@@ -1090,19 +1090,16 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       hir::ExprCall(ref callee, ref args) => {
           let sub_ty_hint = ty_hint.erase_hint();
           let callee_val = try!(eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args));
-          let (decl, block, constness) = try!(get_fn_def(tcx, e, callee_val));
-          match (ty_hint, constness) {
-              (ExprTypeChecked, _) => {
-                  // no need to check for constness... either check_const
-                  // already forbids this or we const eval over whatever
-                  // we want
-              },
-              (_, hir::Constness::Const) => {
-                  // we don't know much about the function, so we force it to be a const fn
-                  // so compilation will fail later in case the const fn's body is not const
-              },
-              _ => signal!(e, NonConstPath),
-          }
+          let did = match callee_val {
+              Function(did) => did,
+              callee => signal!(e, CallOn(callee)),
+          };
+          let (decl, result) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
+              (fn_like.decl(), &fn_like.body().expr)
+          } else {
+              signal!(e, NonConstPath)
+          };
+          let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
           let mut call_args = NodeMap();
@@ -1117,7 +1114,6 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               let old = call_args.insert(arg.pat.id, arg_val);
               assert!(old.is_none());
           }
-          let result = block.expr.as_ref().unwrap();
           debug!("const call({:?})", call_args);
           try!(eval_const_expr_partial(tcx, &**result, ty_hint, Some(&call_args)))
       },
@@ -1388,47 +1384,4 @@ pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     };
     compare_const_vals(&a, &b)
-}
-
-
-// returns Err if callee is not `Function`
-// `e` is only used for error reporting/spans
-fn get_fn_def<'a>(tcx: &'a ty::ctxt,
-                  e: &hir::Expr,
-                  callee: ConstVal)
-                  -> Result<(&'a hir::FnDecl, &'a hir::Block, hir::Constness), ConstEvalErr> {
-    let did = match callee {
-        Function(did) => did,
-        callee => signal!(e, CallOn(callee)),
-    };
-    debug!("fn call: {:?}", tcx.map.get_if_local(did));
-    match tcx.map.get_if_local(did) {
-        None => signal!(e, UnimplementedConstVal("calling non-local const fn")), // non-local
-        Some(ast_map::NodeItem(it)) => match it.node {
-            hir::ItemFn(
-                ref decl,
-                hir::Unsafety::Normal,
-                constness,
-                abi::Abi::Rust,
-                _, // ducktype generics? types are funky in const_eval
-                ref block,
-            ) => Ok((&**decl, &**block, constness)),
-            _ => signal!(e, NonConstPath),
-        },
-        Some(ast_map::NodeImplItem(it)) => match it.node {
-            hir::ImplItemKind::Method(
-                hir::MethodSig {
-                    ref decl,
-                    unsafety: hir::Unsafety::Normal,
-                    constness,
-                    abi: abi::Abi::Rust,
-                    .. // ducktype generics? types are funky in const_eval
-                },
-                ref block,
-            ) => Ok((decl, block, constness)),
-            _ => signal!(e, NonConstPath),
-        },
-        Some(ast_map::NodeTraitItem(..)) => signal!(e, NonConstPath),
-        Some(_) => signal!(e, UnimplementedConstVal("calling struct, tuple or variant")),
-    }
 }

@@ -20,14 +20,20 @@ const fn sub(x: u32, y: u32) -> u32 {
     x - y
 }
 
+const unsafe fn div(x: u32, y: u32) -> u32 {
+    x / y
+}
+
 const SUM: u32 = add(44, 22);
 const DIFF: u32 = sub(44, 22);
+const DIV: u32 = unsafe{div(44, 22)};
 
 fn main() {
     assert_eq!(SUM, 66);
     assert!(SUM != 88);
 
     assert_eq!(DIFF, 22);
+    assert_eq!(DIV, 2);
 
     let _: [&'static str; sub(100, 99) as usize] = ["hi"];
 }
