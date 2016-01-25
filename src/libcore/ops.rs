@@ -1896,6 +1896,7 @@ pub trait BoxPlace<Data: ?Sized> : Place<Data> {
 #[unstable(feature = "collections_range",
        reason = "waiting for dust to settle on inclusive ranges",
        issue = "30877")]
+#[fundamental]
 pub trait RangeArgument<T> {
     /// Start index (inclusive)
     ///
