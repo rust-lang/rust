@@ -100,7 +100,7 @@ use marker::Sized;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Default: Sized {
+pub trait Default {
     /// Returns the "default value" for a type.
     ///
     /// Default values are often some kind of initial value, identity value, or anything else that
@@ -131,7 +131,7 @@ pub trait Default: Sized {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn default() -> Self;
+    fn default() -> Self where Self: Sized;
 }
 
 macro_rules! default_impl {

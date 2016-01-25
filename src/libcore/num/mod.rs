@@ -56,9 +56,9 @@ pub mod diy_float;
 #[unstable(feature = "zero_one",
            reason = "unsure of placement, wants to use associated constants",
            issue = "27739")]
-pub trait Zero: Sized {
+pub trait Zero {
     /// The "zero" (usually, additive identity) for this type.
-    fn zero() -> Self;
+    fn zero() -> Self where Self: Sized;
 }
 
 /// Types that have a "one" value.
@@ -68,9 +68,9 @@ pub trait Zero: Sized {
 #[unstable(feature = "zero_one",
            reason = "unsure of placement, wants to use associated constants",
            issue = "27739")]
-pub trait One: Sized {
+pub trait One {
     /// The "one" (usually, multiplicative identity) for this type.
-    fn one() -> Self;
+    fn one() -> Self where Self: Sized;
 }
 
 macro_rules! zero_one_impl {
