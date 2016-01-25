@@ -1340,17 +1340,19 @@ mod traits {
     /// // &s[3 .. 100];
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl ops::Index<ops::Range<usize>> for str {
+    impl<R: ops::RangeArgument<usize>> ops::Index<R> for str {
         type Output = str;
         #[inline]
-        fn index(&self, index: ops::Range<usize>) -> &str {
+        fn index(&self, index: R) -> &str {
+            let start = *index.start().unwrap_or(&0);
+            let end = *index.end().unwrap_or(&self.len());
             // is_char_boundary checks that the index is in [0, .len()]
-            if index.start <= index.end &&
-               self.is_char_boundary(index.start) &&
-               self.is_char_boundary(index.end) {
-                unsafe { self.slice_unchecked(index.start, index.end) }
+            if start <= end &&
+               self.is_char_boundary(start) &&
+               self.is_char_boundary(end) {
+                unsafe { self.slice_unchecked(start, end) }
             } else {
-                super::slice_error_fail(self, index.start, index.end)
+                super::slice_error_fail(self, start, end)
             }
         }
     }
@@ -1358,108 +1360,19 @@ mod traits {
     /// Returns a mutable slice of the given string from the byte range
     /// [`begin`..`end`).
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
-    impl ops::IndexMut<ops::Range<usize>> for str {
+    impl<R: ops::RangeArgument<usize>> ops::IndexMut<R> for str {
         #[inline]
-        fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
+        fn index_mut(&mut self, index: R) -> &mut str {
+            let start = *index.start().unwrap_or(&0);
+            let end = *index.end().unwrap_or(&self.len());
             // is_char_boundary checks that the index is in [0, .len()]
-            if index.start <= index.end &&
-               self.is_char_boundary(index.start) &&
-               self.is_char_boundary(index.end) {
-                unsafe { self.slice_mut_unchecked(index.start, index.end) }
+            if start <= end &&
+               self.is_char_boundary(start) &&
+               self.is_char_boundary(end) {
+                unsafe { self.slice_mut_unchecked(start, end) }
             } else {
-                super::slice_error_fail(self, index.start, index.end)
+                super::slice_error_fail(self, start, end)
             }
-        }
-    }
-
-    /// Returns a slice of the string from the beginning to byte
-    /// `end`.
-    ///
-    /// Equivalent to `self[0 .. end]`.
-    ///
-    /// Panics when `end` does not point to a valid character, or is
-    /// out of bounds.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl ops::Index<ops::RangeTo<usize>> for str {
-        type Output = str;
-
-        #[inline]
-        fn index(&self, index: ops::RangeTo<usize>) -> &str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.end) {
-                unsafe { self.slice_unchecked(0, index.end) }
-            } else {
-                super::slice_error_fail(self, 0, index.end)
-            }
-        }
-    }
-
-    /// Returns a mutable slice of the string from the beginning to byte
-    /// `end`.
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
-    impl ops::IndexMut<ops::RangeTo<usize>> for str {
-        #[inline]
-        fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.end) {
-                unsafe { self.slice_mut_unchecked(0, index.end) }
-            } else {
-                super::slice_error_fail(self, 0, index.end)
-            }
-        }
-    }
-
-    /// Returns a slice of the string from `begin` to its end.
-    ///
-    /// Equivalent to `self[begin .. self.len()]`.
-    ///
-    /// Panics when `begin` does not point to a valid character, or is
-    /// out of bounds.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl ops::Index<ops::RangeFrom<usize>> for str {
-        type Output = str;
-
-        #[inline]
-        fn index(&self, index: ops::RangeFrom<usize>) -> &str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.start) {
-                unsafe { self.slice_unchecked(index.start, self.len()) }
-            } else {
-                super::slice_error_fail(self, index.start, self.len())
-            }
-        }
-    }
-
-    /// Returns a slice of the string from `begin` to its end.
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
-    impl ops::IndexMut<ops::RangeFrom<usize>> for str {
-        #[inline]
-        fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if self.is_char_boundary(index.start) {
-                let len = self.len();
-                unsafe { self.slice_mut_unchecked(index.start, len) }
-            } else {
-                super::slice_error_fail(self, index.start, self.len())
-            }
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl ops::Index<ops::RangeFull> for str {
-        type Output = str;
-
-        #[inline]
-        fn index(&self, _index: ops::RangeFull) -> &str {
-            self
-        }
-    }
-
-    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
-    impl ops::IndexMut<ops::RangeFull> for str {
-        #[inline]
-        fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
-            self
         }
     }
 }
