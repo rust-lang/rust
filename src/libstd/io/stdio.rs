@@ -112,7 +112,7 @@ impl<W: io::Write> io::Write for Maybe<W> {
 impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
-            Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), buf.len()),
+            Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
             Maybe::Fake => Ok(0)
         }
     }
