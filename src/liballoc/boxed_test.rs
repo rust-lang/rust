@@ -15,7 +15,6 @@ use core::ops::Deref;
 use core::result::Result::{Ok, Err};
 use core::clone::Clone;
 
-use std::boxed;
 use std::boxed::Box;
 
 #[test]

@@ -274,6 +274,7 @@
 
 #![deny(missing_docs)]
 #![allow(unused_features)] // std may use features in a platform-specific way
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #[cfg(test)] extern crate test;
 #[cfg(test)] #[macro_use] extern crate log;

@@ -68,6 +68,7 @@ pub enum c_void {
 }
 
 #[cfg(test)]
+#[allow(unused_imports)]
 mod tests {
     use any::TypeId;
     use libc;
