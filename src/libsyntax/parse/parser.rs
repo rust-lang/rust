@@ -233,6 +233,21 @@ macro_rules! maybe_whole {
     )
 }
 
+/// Uses $parse_expr to parse an expression and returns the span of the interpolated
+/// token or the span of the parsed expression, if it was not interpolated
+macro_rules! interpolated_or_expr_span {
+    ($p:expr, $parse_expr:expr) => {
+        {
+            let is_interpolated = $p.token.is_interpolated();
+            let e = $parse_expr;
+            if is_interpolated {
+                ($p.last_span, e)
+            } else {
+                (e.span, e)
+            }
+        }
+    }
+}
 
 fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
                 -> Vec<Attribute> {
@@ -2323,14 +2338,8 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, P<Expr>> {
         let attrs = try!(self.parse_or_use_outer_attributes(already_parsed_attrs));
 
-        let is_interpolated = self.token.is_interpolated();
-        let b = try!(self.parse_bottom_expr());
-        let lo = if is_interpolated {
-            self.last_span.lo
-        } else {
-            b.span.lo
-        };
-        self.parse_dot_or_call_expr_with(b, lo, attrs)
+        let (span, b) = interpolated_or_expr_span!(self, try!(self.parse_bottom_expr()));
+        self.parse_dot_or_call_expr_with(b, span.lo, attrs)
     }
 
     pub fn parse_dot_or_call_expr_with(&mut self,
@@ -2368,7 +2377,8 @@ impl<'a> Parser<'a> {
     fn parse_dot_suffix(&mut self,
                         ident: Ident,
                         ident_span: Span,
-                        self_value: P<Expr>)
+                        self_value: P<Expr>,
+                        lo: BytePos)
                         -> PResult<'a, P<Expr>> {
         let (_, tys, bindings) = if self.eat(&token::ModSep) {
             try!(self.expect_lt());
@@ -2381,8 +2391,6 @@ impl<'a> Parser<'a> {
             let last_span = self.last_span;
             self.span_err(last_span, "type bindings are only permitted on trait paths");
         }
-
-        let lo = self_value.span.lo;
 
         Ok(match self.token {
             // expr.f() method call.
@@ -2428,7 +2436,7 @@ impl<'a> Parser<'a> {
                     hi = self.span.hi;
                     self.bump();
 
-                    e = try!(self.parse_dot_suffix(i, mk_sp(dot_pos, hi), e));
+                    e = try!(self.parse_dot_suffix(i, mk_sp(dot_pos, hi), e, lo));
                   }
                   token::Literal(token::Integer(n), suf) => {
                     let sp = self.span;
@@ -2481,7 +2489,7 @@ impl<'a> Parser<'a> {
                     let dot_pos = self.last_span.hi;
                     e = try!(self.parse_dot_suffix(special_idents::invalid,
                                                    mk_sp(dot_pos, dot_pos),
-                                                   e));
+                                                   e, lo));
                   }
                 }
                 continue;
@@ -2716,31 +2724,31 @@ impl<'a> Parser<'a> {
         let ex = match self.token {
             token::Not => {
                 self.bump();
-                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
-                let e = try!(self.parse_prefix_expr(None));
-                hi = if interpolated { prev_span.hi } else { e.span.hi };
+                let (span, e) = interpolated_or_expr_span!(self,
+                                                           try!(self.parse_prefix_expr(None)));
+                hi = span.hi;
                 self.mk_unary(UnNot, e)
             }
             token::BinOp(token::Minus) => {
                 self.bump();
-                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
-                let e = try!(self.parse_prefix_expr(None));
-                hi = if interpolated { prev_span.hi } else { e.span.hi };
+                let (span, e) = interpolated_or_expr_span!(self,
+                                                           try!(self.parse_prefix_expr(None)));
+                hi = span.hi;
                 self.mk_unary(UnNeg, e)
             }
             token::BinOp(token::Star) => {
                 self.bump();
-                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
-                let e = try!(self.parse_prefix_expr(None));
-                hi = if interpolated { prev_span.hi } else { e.span.hi };
+                let (span, e) = interpolated_or_expr_span!(self,
+                                                           try!(self.parse_prefix_expr(None)));
+                hi = span.hi;
                 self.mk_unary(UnDeref, e)
             }
             token::BinOp(token::And) | token::AndAnd => {
                 try!(self.expect_and());
                 let m = try!(self.parse_mutability());
-                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
-                let e = try!(self.parse_prefix_expr(None));
-                hi = if interpolated { prev_span.hi } else { e.span.hi };
+                let (span, e) = interpolated_or_expr_span!(self,
+                                                           try!(self.parse_prefix_expr(None)));
+                hi = span.hi;
                 ExprAddrOf(m, e)
             }
             token::Ident(..) if self.token.is_keyword(keywords::In) => {
@@ -2758,10 +2766,10 @@ impl<'a> Parser<'a> {
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
                 self.bump();
-                let (interpolated, prev_span) = (self.token.is_interpolated(), self.span);
-                let subexpression = try!(self.parse_prefix_expr(None));
-                hi = if interpolated { prev_span.hi } else { subexpression.span.hi };
-                ExprBox(subexpression)
+                let (span, e) = interpolated_or_expr_span!(self,
+                                                           try!(self.parse_prefix_expr(None)));
+                hi = span.hi;
+                ExprBox(e)
             }
             _ => return self.parse_dot_or_call_expr(Some(attrs))
         };
@@ -2825,7 +2833,7 @@ impl<'a> Parser<'a> {
             }
             // Special cases:
             if op == AssocOp::As {
-               let rhs = try!(self.parse_ty());
+                let rhs = try!(self.parse_ty());
                 lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprCast(lhs, rhs), None);
                 continue

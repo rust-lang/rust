@@ -11,7 +11,7 @@
 macro_rules! log {
     ( $ctx:expr, $( $args:expr),* ) => {
         if $ctx.trace {
-        //~^ attempted access of field `trace` on type `&T`, but no field with that name was found
+        //~^ ERROR attempted access of field `trace` on type `&T`, but no field with that name
             println!( $( $args, )* );
         }
     }
