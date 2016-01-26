@@ -3037,6 +3037,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           check_ribs: bool,
                           record_used: bool)
                           -> Option<LocalDef> {
+        if identifier.name == special_idents::invalid.name {
+            return Some(LocalDef::from_def(Def::Err));
+        }
+
         // First, check to see whether the name is a primitive type.
         if namespace == TypeNS {
             if let Some(&prim_ty) = self.primitive_type_table
@@ -4019,10 +4023,8 @@ pub fn create_resolver<'a, 'tcx>(session: &'a Session,
     resolver.callback = callback;
 
     build_reduced_graph::build_reduced_graph(&mut resolver, krate);
-    session.abort_if_errors();
 
     resolve_imports::resolve_imports(&mut resolver);
-    session.abort_if_errors();
 
     resolver
 }

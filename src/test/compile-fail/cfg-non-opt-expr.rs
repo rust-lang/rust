@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(stmt_expr_attributes)]
+
 fn main() {
     let _ = #[cfg(unset)] ();
     //~^ ERROR removing an expression is not supported in this position

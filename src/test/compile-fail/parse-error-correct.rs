@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_std]
+// Test that the parser is error correcting missing idents. Despite a parsing
+// error (or two), we still run type checking (and don't get extra errors there).
 
-#[macro_use(foo="bar")]  //~ ERROR bad macro import
-extern crate std;
+fn main() {
+    let y = 42;
+    let x = y.;  //~ ERROR unexpected token
+    let x = y.();  //~ ERROR unexpected token
+    let x = y.foo; //~ ERROR no field
+}

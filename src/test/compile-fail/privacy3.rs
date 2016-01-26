@@ -28,6 +28,7 @@ fn test1() {
     use bar::gpriv;
     //~^ ERROR unresolved import `bar::gpriv`. There is no `gpriv` in `bar`
     gpriv();
+    //~^ ERROR unresolved name `gpriv`
 }
 
 #[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }
