@@ -13,7 +13,7 @@
 
 fn main() {
     fn bar<T>(_: T) {}
-    [0][0u8]; //~ ERROR: the trait `core::ops::RangeArgument<usize>` is not implemented for the type `u8`
+    [0][0u8]; //~ ERROR: `core::ops::RangeArgument<usize>` is not implemented for the type `u8`
 
     [0][0]; // should infer to be a usize
 
