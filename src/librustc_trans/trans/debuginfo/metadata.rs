@@ -1335,36 +1335,36 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     ]
                 }
             }
-            adt::RawNullablePointer { nndiscr: non_null_variant_index, nnty, .. } => {
+            adt::RawForbiddenValue { payload_discr: payload_variant_index, payload_ty, .. } => {
                 // As far as debuginfo is concerned, the pointer this enum
                 // represents is still wrapped in a struct. This is to make the
                 // DWARF representation of enums uniform.
 
                 // First create a description of the artificial wrapper struct:
-                let non_null_variant = &adt.variants[non_null_variant_index.0 as usize];
-                let non_null_variant_name = non_null_variant.name.as_str();
+                let payload_variant = &adt.variants[payload_variant_index.0 as usize];
+                let payload_variant_name = payload_variant.name.as_str();
 
                 // The llvm type and metadata of the pointer
-                let non_null_llvm_type = type_of::type_of(cx, nnty);
-                let non_null_type_metadata = type_metadata(cx, nnty, self.span);
+                let payload_llvm_type = type_of::type_of(cx, payload_ty);
+                let payload_type_metadata = type_metadata(cx, payload_ty, self.span);
 
                 // The type of the artificial struct wrapping the pointer
                 let artificial_struct_llvm_type = Type::struct_(cx,
-                                                                &[non_null_llvm_type],
+                                                                &[payload_llvm_type],
                                                                 false);
 
                 // For the metadata of the wrapper struct, we need to create a
                 // MemberDescription of the struct's single field.
                 let sole_struct_member_description = MemberDescription {
-                    name: match non_null_variant.kind() {
+                    name: match payload_variant.kind() {
                         ty::VariantKind::Tuple => "__0".to_string(),
                         ty::VariantKind::Struct => {
-                            non_null_variant.fields[0].name.to_string()
+                            payload_variant.fields[0].name.to_string()
                         }
                         ty::VariantKind::Unit => unreachable!()
                     },
-                    llvm_type: non_null_llvm_type,
-                    type_metadata: non_null_type_metadata,
+                    llvm_type: payload_llvm_type,
+                    type_metadata: payload_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
                     flags: FLAGS_NONE
                 };
@@ -1374,13 +1374,13 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                                       .get_unique_type_id_of_enum_variant(
                                                           cx,
                                                           self.enum_type,
-                                                          &non_null_variant_name);
+                                                          &payload_variant_name);
 
                 // Now we can create the metadata of the artificial struct
                 let artificial_struct_metadata =
                     composite_type_metadata(cx,
                                             artificial_struct_llvm_type,
-                                            &non_null_variant_name,
+                                            &payload_variant_name,
                                             unique_type_id,
                                             &[sole_struct_member_description],
                                             self.containing_scope,
@@ -1389,11 +1389,11 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
                 // Encode the information about the null variant in the union
                 // member's name.
-                let null_variant_index = (1 - non_null_variant_index.0) as usize;
-                let null_variant_name = adt.variants[null_variant_index].name;
+                let unit_variant_index = (1 - payload_variant_index.0) as usize;
+                let unit_variant_name = adt.variants[unit_variant_index].name;
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 0,
-                                                null_variant_name);
+                                                unit_variant_name);
 
                 // Finally create the (singleton) list of descriptions of union
                 // members.
@@ -1647,7 +1647,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         adt::CEnum(inttype, _, _) => {
             return FinalMetadata(discriminant_type_metadata(inttype))
         },
-        adt::RawNullablePointer { .. }           |
+        adt::RawForbiddenValue { .. }           |
         adt::StructWrappedNullablePointer { .. } |
         adt::Univariant(..)                      => None,
         adt::General(inttype, _, _) => Some(discriminant_type_metadata(inttype)),

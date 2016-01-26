@@ -117,25 +117,40 @@ pub enum Repr<'tcx> {
     /// (The flag, if nonzero, represents the initialization value to use;
     ///  if zero, then use no flag at all.)
     General(IntType, Vec<Struct<'tcx>>, u8),
-    /// Two cases distinguished by a nullable pointer: the case with discriminant
-    /// `nndiscr` must have single field which is known to be nonnull due to its type.
-    /// The other case is known to be zero sized. Hence we represent the enum
-    /// as simply a nullable pointer: if not null it indicates the `nndiscr` variant,
-    /// otherwise it indicates the other case.
-    RawNullablePointer {
-        nndiscr: Disr,
-        nnty: Ty<'tcx>,
-        nullfields: Vec<Ty<'tcx>>
+    /// Two cases distinguised by a known-to-be-forbidden value.
+    ///
+    /// Example: `Option<&T>` (a `&T` cannot be null)
+    /// Example: `Option<char>` (a `char` is large enough to hold 2^32 - 1,
+    ///           but this value is forbidden by definition)
+    /// Example: `Result<&T, ()>` (a `&T` cannot be null)
+    ///
+    /// One of the cases (the "unit case") must be known to be
+    /// zero-sized (e.g. `None`).  The other case (the "payload case")
+    /// must be known to be a single field that cannot adopt a
+    /// specific value (in the above examples, 0 for `&T` or 2^32 - 1
+    /// for `char`).
+    ///
+    /// We may safely represent the enum by its payload case and
+    /// differentiate between cases by checking for the forbidden
+    /// value.
+    RawForbiddenValue {
+        /// Unit case (e.g. `None` or `Either((), ())`)
+        unit_fields: Vec<Ty<'tcx>>,
+
+        /// Case holding a payload: the constructor
+        payload_discr: Disr,
+
+        /// Case holding a payload: the type
+        payload_ty: Ty<'tcx>,
+
+        /// A value that the payload can never hold.
+        forbidden_value: ValueRef,
     },
     /// Two cases distinguished by a nullable pointer: the case with discriminant
     /// `nndiscr` is represented by the struct `nonnull`, where the `discrfield`th
     /// field is known to be nonnull due to its type; if that field is null, then
     /// it represents the other case, which is inhabited by at most one value
     /// (and all other fields are undefined/unused).
-    ///
-    /// For example, `std::option::Option` instantiated at a safe pointer type
-    /// is represented such that `None` is a null pointer and `Some` is the
-    /// identity function.
     StructWrappedNullablePointer {
         nonnull: Struct<'tcx>,
         nndiscr: Disr,
@@ -322,18 +337,26 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
 
             if !dtor && cases.len() == 2 && hint == attr::ReprAny {
-                // Nullable pointer optimization
-                let mut discr = 0;
-                while discr < 2 {
+                // Two cases, so it might be possible to turn this
+                // into a `RawForbiddenValue` or a
+                // `StructWrappedNullablePointer`, if all conditions
+                // are met.
+                for discr in 0 .. 2 {
                     if cases[1 - discr].is_zerolen(cx, t) {
+                        // One of the cases has zero length. We are on the right track.
                         let st = mk_struct(cx, &cases[discr].tys,
                                            false, t);
+
+                        // For the moment, we can only apply these
+                        // optimizations to safe pointers.
                         match cases[discr].find_ptr(cx) {
                             Some(ref df) if df.len() == 1 && st.fields.len() == 1 => {
-                                return RawNullablePointer {
-                                    nndiscr: Disr::from(discr),
-                                    nnty: st.fields[0],
-                                    nullfields: cases[1 - discr].tys.clone()
+                                let payload_ty = st.fields[0];
+                                return RawForbiddenValue {
+                                    payload_discr: Disr::from(discr),
+                                    payload_ty: payload_ty,
+                                    forbidden_value: C_null(type_of::sizing_type_of(cx, payload_ty)),
+                                    unit_fields: cases[1 - discr].tys.clone()
                                 };
                             }
                             Some(mut discrfield) => {
@@ -348,8 +371,13 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             }
                             None => {}
                         }
+                        // No need to continue the loop. If both cases
+                        // have zero length, we can apply neither
+                        // `RawForbiddenValue` nor
+                        // `StructWrappedNullablePointer`.
+                        break;
+
                     }
-                    discr += 1;
                 }
             }
 
@@ -529,6 +557,8 @@ impl<'tcx> Case<'tcx> {
         mk_struct(cx, &self.tys, false, scapegoat).size == 0
     }
 
+    /// Find a safe pointer that may be used to discriminate in a
+    /// RawForbiddenValue or StructWrappedNullablePointer.
     fn find_ptr<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> Option<DiscrField> {
         for (i, &ty) in self.tys.iter().enumerate() {
             if let Some(mut path) = find_discr_field_candidate(cx.tcx(), ty, vec![]) {
@@ -748,7 +778,7 @@ pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 r: &Repr<'tcx>, llty: &mut Type) {
     match *r {
-        CEnum(..) | General(..) | RawNullablePointer { .. } => { }
+        CEnum(..) | General(..) | RawForbiddenValue { .. } => { }
         Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } =>
             llty.set_struct_body(&struct_llfields(cx, st, false, false),
                                  st.packed)
@@ -765,8 +795,8 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
            r, name, sizing, dst, delay_drop_flag);
     match *r {
         CEnum(ity, _, _) => TypeContext::direct(ll_inttype(cx, ity)),
-        RawNullablePointer { nnty, .. } =>
-            TypeContext::direct(type_of::sizing_type_of(cx, nnty)),
+        RawForbiddenValue { payload_ty, .. } =>
+            TypeContext::direct(type_of::sizing_type_of(cx, payload_ty)),
         StructWrappedNullablePointer { nonnull: ref st, .. } => {
             match name {
                 None => {
@@ -880,9 +910,8 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 -> (_match::BranchKind, Option<ValueRef>) {
     match *r {
         CEnum(..) | General(..) |
-        RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None,
-                                                  range_assert)))
+        RawForbiddenValue { .. } | StructWrappedNullablePointer { .. } => {
+            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None, range_assert)))
         }
         Univariant(..) => {
             // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
@@ -896,7 +925,7 @@ pub fn is_discr_signed<'tcx>(r: &Repr<'tcx>) -> bool {
         CEnum(ity, _, _) => ity.is_signed(),
         General(ity, _, _) => ity.is_signed(),
         Univariant(..) => false,
-        RawNullablePointer { .. } => false,
+        RawForbiddenValue { payload_ty, .. } => payload_ty.is_signed(),
         StructWrappedNullablePointer { .. } => false,
     }
 }
@@ -917,10 +946,9 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                        range_assert)
         }
         Univariant(..) => C_u8(bcx.ccx(), 0),
-        RawNullablePointer { nndiscr, nnty, .. } =>  {
-            let cmp = if nndiscr == Disr(0) { IntEQ } else { IntNE };
-            let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
-            ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty), DebugLoc::None)
+        RawForbiddenValue { payload_discr, forbidden_value, .. } =>  {
+            let cmp = if payload_discr == Disr(0) { IntEQ } else { IntNE };
+            ICmp(bcx, cmp, Load(bcx, scrutinee), forbidden_value, DebugLoc::None)
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
             struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee)
@@ -981,7 +1009,7 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
         Univariant(..) => {
             bcx.ccx().sess().bug("no cases for univariants or structs")
         }
-        RawNullablePointer { .. } |
+        RawForbiddenValue { .. } |
         StructWrappedNullablePointer { .. } => {
             assert!(discr == Disr(0) || discr == Disr(1));
             C_bool(bcx.ccx(), discr != Disr(0))
@@ -1015,10 +1043,9 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                       StructGEP(bcx, val, st.fields.len() - 1));
             }
         }
-        RawNullablePointer { nndiscr, nnty, ..} => {
-            if discr != nndiscr {
-                let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
-                Store(bcx, C_null(llptrty), val);
+        RawForbiddenValue { payload_discr, forbidden_value, ..} => {
+            if discr != payload_discr {
+                Store(bcx, forbidden_value, val);
             }
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
@@ -1056,8 +1083,16 @@ pub fn num_args(r: &Repr, discr: Disr) -> usize {
         General(_, ref cases, dtor) => {
             cases[discr.0 as usize].fields.len() - 1 - (if dtor_active(dtor) { 1 } else { 0 })
         }
-        RawNullablePointer { nndiscr, ref nullfields, .. } => {
-            if discr == nndiscr { 1 } else { nullfields.len() }
+        RawForbiddenValue { payload_discr, ref unit_fields, .. } => {
+            if discr == payload_discr {
+                // By definition of `RawForbiddenValue`, the payload case
+                // has exactly one field.
+                1
+            } else {
+                // In the unit case, we may have any number of fields,
+                // including 0.
+                unit_fields.len()
+            }
         }
         StructWrappedNullablePointer { ref nonnull, nndiscr,
                                        ref nullfields, .. } => {
@@ -1083,7 +1118,7 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         General(_, ref cases, _) => {
             struct_field_ptr(bcx, &cases[discr.0 as usize], val, ix + 1, true)
         }
-        RawNullablePointer { nndiscr, ref nullfields, .. } |
+        RawForbiddenValue { payload_discr: nndiscr, unit_fields: ref nullfields, .. } |
         StructWrappedNullablePointer { nndiscr, ref nullfields, .. } if discr != nndiscr => {
             // The unit-like case might have a nonzero number of unit-like fields.
             // (e.d., Result of Either with (), as one side.)
@@ -1093,10 +1128,10 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             // the value that's "reasonable" in case of pointer comparison.
             PointerCast(bcx, val.value, ty.ptr_to())
         }
-        RawNullablePointer { nndiscr, nnty, .. } => {
-            assert_eq!(ix, 0);
-            assert_eq!(discr, nndiscr);
-            let ty = type_of::type_of(bcx.ccx(), nnty);
+        RawForbiddenValue { payload_discr, payload_ty, .. } => {
+            assert_eq!(ix, 0); // By definition, the payload of RawForbiddenValue has a single field.
+            assert_eq!(discr, payload_discr);
+            let ty = type_of::type_of(bcx.ccx(), payload_ty);
             PointerCast(bcx, val.value, ty.ptr_to())
         }
         StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
@@ -1345,12 +1380,12 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             let contents = build_const_struct(ccx, st, vals);
             C_struct(ccx, &contents[..], st.packed)
         }
-        RawNullablePointer { nndiscr, nnty, .. } => {
-            if discr == nndiscr {
-                assert_eq!(vals.len(), 1);
+        RawForbiddenValue { payload_discr, forbidden_value, .. } => {
+            if discr == payload_discr {
+                assert_eq!(vals.len(), 1); // By definition, the payload has only a single field.
                 vals[0]
             } else {
-                C_null(type_of::sizing_type_of(ccx, nnty))
+                forbidden_value
             }
         }
         StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
@@ -1457,7 +1492,7 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef) -> Disr {
             }
         }
         Univariant(..) => Disr(0),
-        RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
+        RawForbiddenValue { .. } | StructWrappedNullablePointer { .. } => {
             ccx.sess().bug("const discrim access of non c-like enum")
         }
     }
@@ -1469,14 +1504,19 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef) -> Disr {
 /// (Not to be confused with `common::const_get_elt`, which operates on
 /// raw LLVM-level structs and arrays.)
 pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
-                       _discr: Disr, ix: usize) -> ValueRef {
+                       discr: Disr, ix: usize) -> ValueRef {
     match *r {
         CEnum(..) => ccx.sess().bug("element access in C-like enum const"),
         Univariant(..) => const_struct_field(ccx, val, ix),
         General(..) => const_struct_field(ccx, val, ix + 1),
-        RawNullablePointer { .. } => {
-            assert_eq!(ix, 0);
-            val
+        RawForbiddenValue { payload_discr, .. } => {
+            if discr == payload_discr {
+                assert_eq!(ix, 0); // By definition, the payload only has a single field.
+                val
+            } else {
+                // All values are unit.
+                C_null(Type::nil(ccx))
+            }
         },
         StructWrappedNullablePointer{ .. } => const_struct_field(ccx, val, ix)
     }
