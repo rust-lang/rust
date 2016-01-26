@@ -1707,6 +1707,15 @@ fn needs_extend_all<T>(t: T) where for<I: IntoIterator<Item=u8>> T: Extend<u8, I
 
 Such a mechanism is out of scope for this RFC.
 
+### Refining bounds on associated types
+
+The design with `default` makes specialization of associated types an
+all-or-nothing affair, but it would occasionally be useful to say that
+all further specializations will at least guarantee some additional
+trait bound on the associated type. This is particularly relevant for
+the "efficient inheritance" use case. Such a mechanism can likely be
+added, if needed, later on.
+
 # Drawbacks
 
 Many of the more minor tradeoffs have been discussed in detail throughout. We'll
@@ -1841,14 +1850,7 @@ The downsides are:
 
 # Unresolved questions
 
-Finally, there are a few important questions not yet addressed by this RFC:
-
-- The design with `default` makes specialization of associated types an
-  all-or-nothing affair, but it would occasionally be useful to say that all
-  further specializations will at least guarantee some additional trait bound on
-  the associated type. This is particularly relevant for the "efficient
-  inheritance" use case. Such a mechanism can likely be added, if needed, later
-  on.
+All questions from the RFC discussion and prototype have been resolved.
 
 # Appendix
 
