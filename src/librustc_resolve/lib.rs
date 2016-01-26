@@ -1811,14 +1811,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        // Next, check the module's imports if necessary.
-
-        // If this is a search of all imports, we should be done with glob
-        // resolution at this point.
-        if name_search_type == PathSearch {
-            assert_eq!(module_.glob_count.get(), 0);
-        }
-
         // Check the list of resolved imports.
         let children = module_.import_resolutions.borrow();
         match children.get(&name) {
@@ -2935,9 +2927,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            Indeterminate => {
-                panic!("unexpected indeterminate result");
-            }
+            Indeterminate => return BareIdentifierPatternUnresolved,
             Failed(err) => {
                 match err {
                     Some((span, msg)) => {
@@ -3195,7 +3185,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
                 return None;
             }
-            Indeterminate => panic!("indeterminate unexpected"),
+            Indeterminate => return None,
             Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
                 last_private = resulting_last_private;
@@ -3258,9 +3248,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 return None;
             }
 
-            Indeterminate => {
-                panic!("indeterminate unexpected");
-            }
+            Indeterminate => return None,
 
             Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
@@ -3355,9 +3343,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            Indeterminate => {
-                panic!("unexpected indeterminate result");
-            }
+            Indeterminate => None,
             Failed(err) => {
                 debug!("(resolving item path by identifier in lexical scope) failed to resolve {}",
                        name);
