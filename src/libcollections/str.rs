@@ -1688,7 +1688,13 @@ impl str {
     /// Returns a string slice extracted from the starting index to
     /// the specified length.
     ///
-    /// Returns [`None`] if length is zero, or if string is empty.
+    /// `substr` is a safe implementation of the normal slicing method.
+    /// Instead of throwing, the method will simply return [`None`] if 
+    /// anything invalid occurs (i.e. start and/or end out of character 
+    /// boundaries).
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
+    ///
     /// # Example
     ///
     /// Basic usage

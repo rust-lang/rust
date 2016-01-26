@@ -1918,7 +1918,8 @@ impl StrExt for str {
         let start = *range.start().unwrap_or(&0);
         let end = *range.end().unwrap_or(&len);
         
-        if self.is_char_boundary(start) &&
+        if start <= end &&
+            self.is_char_boundary(start) &&
             self.is_char_boundary(end) { return Some(&self[start .. end]); }
         
         None
