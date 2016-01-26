@@ -308,9 +308,10 @@ fn starts_with() {
 fn use_extend_from_slice() {
     let mut v : Vec<&'static str> = vec![];
     v.extend(&["Hello", "World"]); //~ERROR use of `extend`
-    v.extend(vec!["Some", "more"]); //~ERROR use of `extend`
+    v.extend(&vec!["Some", "more"]); //~ERROR use of `extend`
     v.extend(vec!["And", "even", "more"].iter()); //~ERROR use of `extend`
     let o : Option<&'static str> = None;
     v.extend(o);
     v.extend(Some("Bye"));
+    v.extend(vec!["Not", "like", "this"]);
 }

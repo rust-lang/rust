@@ -442,12 +442,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
 
 fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
-    let arg_ty = cx.tcx.expr_ty(&args[1]);
-    
     if !match_type(cx, obj_ty, &VEC_PATH) {
-        return; // for your Vecs only
+        return;
     }
-    
+    let arg_ty = cx.tcx.expr_ty(&args[1]);
     if derefs_to_slice(cx, &args[1], &arg_ty) {
         span_lint(cx, EXTEND_FROM_SLICE, expr.span,
                   &format!("use of `extend` to extend a Vec by a slice"))
@@ -459,16 +457,24 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
 }
 
 fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> bool {
+    fn may_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> bool {
+        match ty.sty {
+            ty::TySlice(_) => true,            
+            ty::TyStruct(..) => match_type(cx, ty, &VEC_PATH),
+            ty::TyArray(_, size) => size < 32,
+            ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
+            ty::TyBox(ref inner) => may_slice(cx, expr, inner),
+            _ => false
+        }
+    }
     if let ExprMethodCall(name, _, ref args) = expr.node {
         return &name.node.as_str() == &"iter" && 
-               derefs_to_slice(cx, &args[0], &cx.tcx.expr_ty(&args[0]))
+               may_slice(cx, &args[0], &cx.tcx.expr_ty(&args[0]))
     }
     match ty.sty {
-        ty::TyStruct(..) => match_type(cx, ty, &VEC_PATH),
         ty::TySlice(_) => true,
-        ty::TyArray(_, size) => size < 32,
         ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
-        ty::TyBox(ref inner) => derefs_to_slice(cx, expr, inner),
+        ty::TyBox(ref inner) => may_slice(cx, expr, inner),
         _ => false
     }
 }
