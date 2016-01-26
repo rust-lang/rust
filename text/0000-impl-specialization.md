@@ -145,21 +145,22 @@ trait Add<Rhs=Self> {
 In this case, there's no natural way to provide a default implementation of
 `add_assign`, since we do not want to restrict the `Add` trait to `Clone` data.
 
-The specialization design in this RFC also allows for *partial* implementations,
-which can provide specialized defaults without actually providing a full trait
-implementation:
+The specialization design in this RFC also allows for *default impls*,
+which can provide specialized defaults without actually providing a
+full trait implementation:
 
 ```rust
-partial impl<T: Clone, Rhs> Add<Rhs> for T {
-    // the `default` qualifier allows further specialization
-    default fn add_assign(&mut self, rhs: R) {
+// the `default` qualifier here means (1) not all items are impled
+// and (2) those that are can be further specialized
+default impl<T: Clone, Rhs> Add<Rhs> for T {
+    fn add_assign(&mut self, rhs: R) {
         let tmp = self.clone() + rhs;
         *self = tmp;
     }
 }
 ```
 
-This partial impl does *not* mean that `Add` is implemented for all `Clone`
+This default impl does *not* mean that `Add` is implemented for all `Clone`
 data, but jut that when you do impl `Add` and `Self: Clone`, you can leave off
 `add_assign`:
 
@@ -184,19 +185,12 @@ methods. For example, consider the relationship between `size_hint` and
 `ExactSizeIterator`:
 
 ```rust
-partial impl<T> Iterator for T where T: ExactSizeIterator {
+default impl<T> Iterator for T where T: ExactSizeIterator {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.len(), Some(self.len()))
     }
 }
 ```
-
-As we'll see later, the design of this RFC makes it possible to "lock down" such
-method impls (by not using the `default` qualifier), preventing any further
-refinement (akin to Java's `final` keyword); that in turn makes it possible to
-statically enforce the contract that is supposed to connect the `len` and
-`size_hint` methods. (Of course, we can't make *that* particular change, since
-the relevant APIs are already stable.)
 
 ## Supporting efficient inheritance
 
@@ -1301,7 +1295,7 @@ impl<T: SometimesDep> Spec for T {}
 Using `Spec` on `i32` will not trigger the lint, because the specialization is
 justified without any lifetime constraints.
 
-## Partial impls
+## Default impls
 
 An interesting consequence of specialization is that impls need not (and in fact
 sometimes *cannot*) provide all of the items that a trait specifies. Of course,
@@ -1350,7 +1344,7 @@ in traits -- one in which the defaults can become ever more refined as more is
 known about the input types to the traits (as described in the Motivation
 section). But to fully realize this goal, we need one other ingredient: the
 ability for the *blanket* impl itself to leave off some items. We do this by
-using the `partial` keyword:
+using the `default` keyword at the `impl` level:
 
 ```rust
 trait Add<Rhs=Self> {
@@ -1359,7 +1353,7 @@ trait Add<Rhs=Self> {
     fn add_assign(&mut self, Rhs);
 }
 
-partial impl<T: Clone, Rhs> Add<Rhs> for T {
+default impl<T: Clone, Rhs> Add<Rhs> for T {
     fn add_assign(&mut self, rhs: R) {
         let tmp = self.clone() + rhs;
         *self = tmp;
@@ -1374,8 +1368,7 @@ A key point here is that, as the keyword suggests, a `partial` impl may be
 incomplete: from the above code, you *cannot* assume that `T: Add<T>` for any
 `T: Clone`, because no such complete impl has been provided.
 
-With partial impls, defaulted items in traits are just sugar for a partial
-blanket impl:
+Defaulted items in traits are just sugar for a default blanket impl:
 
 ```rust
 trait Iterator {
@@ -1397,30 +1390,32 @@ trait Iterator {
     // ...
 }
 
-partial impl<T> Iterator for T {
-    default fn size_hint(&self) -> (usize, Option<usize>) {
+default impl<T> Iterator for T {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
     // ...
 }
 ```
 
-Partial impls are somewhat akin to abstract base classes in object-oriented
+Default impls are somewhat akin to abstract base classes in object-oriented
 languages; they provide some, but not all, of the materials needed for a fully
 concrete implementation, and thus enable code reuse but cannot be used concretely.
 
-Note that partial impls still need to use `default` to allow for overriding --
-leaving off the qualifier will lock down the implementation in any
-more-specialized complete impls, which is actually a useful pattern (as
-explained in the Motivation.)
+Note that the semantics of `default impls` and defaulted items in
+traits is that both are implicitly marked `default` -- that is, both
+are considered specializable. This choice gives a coherent mental
+model: when you choose *not* to employ a default, and instead provide
+your own definition, you are in effect overriding/specializing that
+code. (Put differently, you can think of default impls as abstract base classes).
 
 There are a few important details to nail down with the design. This RFC
 proposes starting with the conservative approach of applying the general overlap
-rule to partial impls, same as with complete ones. That ensures that there is
+rule to default impls, same as with complete ones. That ensures that there is
 always a clear definition to use when providing subsequent complete impls.  It
 would be possible, though, to relax this constraint and allow *arbitrary*
-overlap between partial impls, requiring then whenever a complete impl overlaps
-with them, *for each item*, there is either a unique "most specific" partial
+overlap between default impls, requiring then whenever a complete impl overlaps
+with them, *for each item*, there is either a unique "most specific" default
 impl that applies, or else the complete impl provides its own definition for
 that item. Such a relaxed approach is much more flexible, probably easier to
 work with, and can enable more code reuse -- but it's also more complicated, and
