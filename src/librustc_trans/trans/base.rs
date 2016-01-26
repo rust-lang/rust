@@ -2110,6 +2110,10 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fn record_translation_item_as_generated<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       node_id: ast::NodeId,
                                                       param_substs: &'tcx Substs<'tcx>) {
+        if !collector::collecting_debug_information(ccx) {
+            return;
+        }
+
         let def_id = match ccx.tcx().node_id_to_type(node_id).sty {
             ty::TyClosure(def_id, _) => def_id,
             _ => ccx.external_srcs()
