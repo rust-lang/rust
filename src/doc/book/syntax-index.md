@@ -2,7 +2,7 @@
 
 ## Keywords
 
-* `as`: primitive casting.  See [Casting Between Types (`as`)].
+* `as`: primitive casting, or part of UFCS.  See [Casting Between Types (`as`)], [Universal Function Call Syntax (Angle-bracket Form)].
 * `break`: break out of loop.  See [Loops (Ending Iteration Early)].
 * `const`: constant items and constant raw pointers.  See [`const` and `static`], [Raw Pointers].
 * `continue`: continue to next loop iteration.  See [Loops (Ending Iteration Early)].
@@ -117,6 +117,9 @@
 * `super::path`: path relative to the parent of the current module.  See [Crates and Modules (Re-exporting with `pub use`)].
 * `type::ident`: associated constants, functions, and types.  See [Associated Types].
 * `<type>::…`: associated item for a type which cannot be directly named (*e.g.* `<&T>::…`, `<[T]>::…`, *etc.*).  See [Associated Types].
+* `Trait::method(…)`: disambiguating a method call by naming the trait which defines it. See [Universal Function Call Syntax].
+* `Type::method(…)`: disambiguating a method call by naming the type for which it's defined. See [Universal Function Call Syntax].
+* `<Type as Trait>::method(…)`: disambiguating a method call by naming the trait _and_ type. See [Universal Function Call Syntax (Angle-bracket Form)].
 
 <!-- Generics -->
 
@@ -234,6 +237,8 @@
 [Traits (`where` clause)]: traits.html#where-clause
 [Traits (Multiple Trait Bounds)]: traits.html#multiple-trait-bounds
 [Traits]: traits.html
+[Universal Function Call Syntax]: ufcs.html
+[Universal Function Call Syntax (Angle-bracket Form)]: ufcs.html#angle-bracket-form
 [Unsafe]: unsafe.html
 [Unsized Types (`?Sized`)]: unsized-types.html#sized
 [Variable Bindings]: variable-bindings.html
