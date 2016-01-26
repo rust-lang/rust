@@ -16,7 +16,7 @@ use std::mem::transmute;
 #[allow(dead_code)]
 pub const SEED: [u32; 3] = [0x243f_6a88, 0x85a3_08d3, 0x1319_8a2e];
 
-pub fn validate(text: String) {
+pub fn validate(text: &str) {
     let mut out = io::stdout();
     let x: f64 = text.parse().unwrap();
     let f64_bytes: u64 = unsafe { transmute(x) };
