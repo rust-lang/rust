@@ -270,3 +270,28 @@ fn test_cloned() {
     assert_eq!(opt_ref_ref.clone().cloned(), Some(&val));
     assert_eq!(opt_ref_ref.cloned().cloned(), Some(1));
 }
+
+#[test]
+fn test_from() {
+    assert_eq!(Some(3), Option::from(3));
+}
+
+#[test]
+fn test_into_optional_parameters() {
+    use core::convert::Into;
+    fn myfunc<T, U, V>(t: T, u: U, v: V) -> Option<u8>
+        where T: Into<Option<u8>>,
+              U: Into<Option<u8>>,
+              V: Into<Option<u8>> {
+        match (t.into() ,u.into(), v.into()) {
+            (Some(t), Some(u), Some(v)) => Some(t + u + v),
+            _ => None,
+        }
+    }
+
+    assert_eq!(None, myfunc(None, 2, 3));
+    assert_eq!(None, myfunc(1, None, 3));
+    assert_eq!(None, myfunc(1, 2, None));
+    assert_eq!(Some(6), myfunc(1, 2, 3));
+    assert_eq!(Some(6), myfunc(Some(1), Some(2), Some(3)));
+}

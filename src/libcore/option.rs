@@ -142,6 +142,7 @@
 use self::Option::*;
 
 use clone::Clone;
+use convert::From;
 use default::Default;
 use iter::ExactSizeIterator;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, IntoIterator};
@@ -708,6 +709,14 @@ fn expect_failed(msg: &str) -> ! {
 impl<T> Default for Option<T> {
     #[inline]
     fn default() -> Option<T> { None }
+}
+
+#[unstable(feature = "option_from", reason = "recently added", issue = "0")]
+impl<T> From<T> for Option<T> {
+    #[inline]
+    fn from(t: T) -> Option<T> {
+        Some(t)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
