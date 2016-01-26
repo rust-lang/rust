@@ -167,6 +167,10 @@ variable. If it isn't, run the installer again, select "Change" on the "Change,
 repair, or remove installation" page and ensure "Add to PATH" is installed on
 the local hard drive.
 
+Rust does not do its own linking, and so you’ll need to have a linker
+installed. Doing so will depend on your specific system, consult its
+documentation for more details.
+
 If not, there are a number of places where we can get help. The easiest is
 [the #rust IRC channel on irc.mozilla.org][irc], which we can access through
 [Mibbit][mibbit]. Click that link, and we'll be chatting with other Rustaceans
