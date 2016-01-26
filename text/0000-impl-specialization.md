@@ -1848,6 +1848,91 @@ The downsides are:
   "specialization hierarchy" to be flat, in particular ruling out multiple
   levels of increasingly-specialized blanket impls.
 
+## Alternative handling of lifetimes
+
+This RFC proposes a *laissez faire* approach to lifetimes: we let you
+write whatever impls you like, then warn you if some of them are being
+ignored because the specialization is based purely on lifetimes.
+
+The main alternative approach is to make a more "principled"
+distinction between two kinds of traits: those that can be used as
+constraints in specialization, and those whose impls can be lifetime
+dependent. Concretely:
+
+```rust
+#[lifetime_dependent]
+trait Foo {}
+
+// Only allowed to use 'static here because of the lifetime_dependent attribute
+impl Foo for &'static str {}
+
+trait Bar { fn bar(&self); }
+impl<T> Bar for T {
+    // Have to use `default` here to allow specialization
+    default fn bar(&self) {}
+}
+
+// CANNOT write the following impl, because `Foo` is lifetime_dependent
+// and Bar is not.
+//
+// NOTE: this is what I mean by *using* a trait in specialization;
+// we are trying to say a specialization applies when T: Foo holds
+impl<T: Foo> Bar for T {
+    fn bar(&self) { ... }
+}
+
+// CANNOT write the following impl, because `Bar` is not lifetime_dependent
+impl Bar for &'static str {
+    fn bar(&self) { ... }
+}
+```
+
+There are several downsides to this approach:
+
+* It forces trait authors to consider a rather subtle knob for every
+  trait they write, choosing between two forms of expressiveness and
+  dividing the world accordingly. The last thing the trait system
+  needs is another knob.
+
+* Worse still, changing the knob in either direction is a breaking change:
+
+    * If a trait gains a `lifetime_dependent` attribute, any impl of a
+      different trait that used it to specialize would become illegal.
+
+    * If a trait loses its `lifetime_dependent` attribute, any impl of
+      that trait that was lifetime dependent would become illegal.
+
+* It hobbles specialization for some existing traits in `std`.
+
+For the last point, consider `From` (which is tied to `Into`). In
+`std`, we have the following important "boxing" impl:
+
+```rust
+impl<'a, E: Error + 'a> From<E> for Box<Error + 'a>
+```
+
+This impl would necessitate `From` (and therefore, `Into`) being
+marked `lifetime_dependent`. But these traits are very likely to be
+used to describe specializations (e.g., an impl that applies when `T:
+Into<MyType>`).
+
+There does not seem to be any way to consider such impls as
+lifetime-independent, either, because of examples like the following:
+
+```rust
+// If we consider this innocent...
+trait Tie {}
+impl<'a, T: 'a> Tie for (T, &'a u8)
+
+// ... we get into trouble here
+trait Foo {}
+impl<'a, T> Foo for (T, &'a u8)
+impl<'a, T> Foo for (T, &'a u8) where (T, &'a u8): Tie
+```
+
+All told, the proposed *laissez faire* seems a much better bet in
+practice, but only experience with the feature can tell us for sure.
+
 # Unresolved questions
 
 All questions from the RFC discussion and prototype have been resolved.
