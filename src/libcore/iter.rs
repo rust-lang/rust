@@ -2740,7 +2740,13 @@ pub trait Extend<A> {
 /// It is important to note that both back and forth work on the same range,
 /// and do not cross: iteration is over when they meet in the middle.
 ///
+/// In a similar fashion to the [`Iterator`] protocol, once a
+/// `DoubleEndedIterator` returns `None` from a `next_back()`, calling it again
+/// may or may not ever return `Some` again. `next()` and `next_back()` are
+/// interchangable for this purpose.
+///
 /// [`Iterator`]: trait.Iterator.html
+///
 /// # Examples
 ///
 /// Basic usage:
