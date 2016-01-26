@@ -125,6 +125,10 @@ impl Abi {
     pub fn name(&self) -> &'static str {
         self.data().name
     }
+
+    pub fn is_intrinsic(self) -> bool {
+        self == Abi::RustIntrinsic || self == Abi::PlatformIntrinsic
+    }
 }
 
 impl fmt::Display for Abi {

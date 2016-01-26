@@ -778,7 +778,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
     }
 
     fn process_foreign_mod(&mut self, i: &hir::Item, fm: &hir::ForeignMod) {
-        if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic || fm.abi == abi::PlatformIntrinsic {
+        if fm.abi == abi::Rust || fm.abi.is_intrinsic() {
             return;
         }
 

@@ -678,7 +678,7 @@ impl LateLintPass for ImproperCTypes {
         }
 
         if let hir::ItemForeignMod(ref nmod) = it.node {
-            if nmod.abi != abi::RustIntrinsic && nmod.abi != abi::PlatformIntrinsic {
+            if !nmod.abi.is_intrinsic() {
                 for ni in &nmod.items {
                     match ni.node {
                         hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),

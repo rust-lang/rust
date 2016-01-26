@@ -626,7 +626,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // normal Rust function. This will be the type of the wrappee fn.
         match t.sty {
             ty::TyBareFn(_, ref f) => {
-                assert!(f.abi != Rust && f.abi != RustIntrinsic && f.abi != PlatformIntrinsic);
+                assert!(f.abi != Rust && !f.abi.is_intrinsic());
             }
             _ => {
                 ccx.sess().bug(&format!("build_rust_fn: extern fn {} has ty {:?}, \

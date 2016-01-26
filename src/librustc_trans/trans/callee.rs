@@ -35,7 +35,7 @@ use trans::build::*;
 use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
-use trans::common::{self, Block, Result, NodeIdAndSpan, ExprId, CrateContext,
+use trans::common::{self, Block, Result, ExprId, CrateContext,
                     ExprOrMethodCall, FunctionContext, MethodCallKey};
 use trans::consts;
 use trans::datum::*;
@@ -156,11 +156,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                     ty: expr_ty
                 }
             }
-            Def::Fn(did) if match expr_ty.sty {
-                ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic ||
-                                          f.abi == synabi::PlatformIntrinsic,
-                _ => false
-            } => {
+            Def::Fn(did) if expr_ty.is_fn() && expr_ty.fn_abi().is_intrinsic() => {
                 let substs = common::node_id_substs(bcx.ccx(),
                                                     ExprId(ref_expr.id),
                                                     bcx.fcx.param_substs);
@@ -622,20 +618,17 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             (d.llfn, Some(d.llself))
         }
         Intrinsic(node, substs) => {
-            assert!(abi == synabi::RustIntrinsic || abi == synabi::PlatformIntrinsic);
+            assert!(abi.is_intrinsic());
             assert!(dest.is_some());
-
-            let call_info = match debug_loc {
-                DebugLoc::At(id, span) => NodeIdAndSpan { id: id, span: span },
-                DebugLoc::None => {
-                    bcx.sess().bug("No call info for intrinsic call?")
-                }
+            let span = match debug_loc {
+                DebugLoc::At(_, span) => span,
+                DebugLoc::None => bcx.sess().bug("No call info for intrinsic call?")
             };
-
-            return intrinsic::trans_intrinsic_call(bcx, node, callee.ty,
-                                                   arg_cleanup_scope, args,
+            let name = bcx.tcx().map.expect_foreign_item(node).name.as_str();
+            return intrinsic::trans_intrinsic_call(bcx, &*name, callee.ty,
+                                                   Some(arg_cleanup_scope), args,
                                                    dest.unwrap(), substs,
-                                                   call_info);
+                                                   debug_loc, span);
         }
         NamedTupleConstructor(disr) => {
             assert!(dest.is_some());
@@ -652,7 +645,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     // Intrinsics should not become actual functions.
     // We trans them in place in `trans_intrinsic_call`
-    assert!(abi != synabi::RustIntrinsic && abi != synabi::PlatformIntrinsic);
+    assert!(!abi.is_intrinsic(), "intrinsics should not become actual functions");
 
     let is_rust_fn = abi == synabi::Rust || abi == synabi::RustCall;
 

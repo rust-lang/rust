@@ -50,8 +50,8 @@ use syntax::codemap::Span;
 
 use std::cmp::Ordering;
 
-pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
-    let name = match &*item.name.as_str() {
+pub fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+    let name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
         "powif32" => "llvm.powi.f32",
@@ -158,13 +158,14 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                            node: ast::NodeId,
+                                            intrinsic_name: &str,
                                             callee_ty: Ty<'tcx>,
-                                            cleanup_scope: cleanup::CustomScopeIndex,
+                                            cleanup_scope: Option<cleanup::CustomScopeIndex>,
                                             args: callee::CallArgs<'a, 'tcx>,
                                             dest: expr::Dest,
                                             substs: subst::Substs<'tcx>,
-                                            call_info: NodeIdAndSpan)
+                                            debugloc: DebugLoc,
+                                            span: Span)
                                             -> Result<'blk, 'tcx> {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -176,11 +177,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     let arg_tys = sig.inputs;
     let ret_ty = sig.output;
-    let foreign_item = tcx.map.expect_foreign_item(node);
-    let name = foreign_item.name.as_str();
 
     // For `transmute` we can just trans the input expr directly into dest
-    if name == "transmute" {
+    if intrinsic_name == "transmute" {
         let llret_ty = type_of::type_of(ccx, ret_ty.unwrap());
         match args {
             callee::ArgExprs(arg_exprs) => {
@@ -257,8 +256,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     dest
                 };
 
-                fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
-                fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+                if let Some(cleanup_scope) = cleanup_scope {
+                    fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+                    fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+                }
 
                 return match dest {
                     expr::SaveIn(d) => Result::new(bcx, d),
@@ -277,7 +278,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // (the first argument) and then trans the source value (the
     // second argument) directly into the resulting destination
     // address.
-    if name == "move_val_init" {
+    if intrinsic_name == "move_val_init" {
         if let callee::ArgExprs(ref exprs) = args {
             let (dest_expr, source_expr) = if exprs.len() != 2 {
                 ccx.sess().bug("expected two exprs as arguments for `move_val_init` intrinsic");
@@ -303,7 +304,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             bcx = expr::trans_into(bcx, source_expr, lldest);
 
             let llresult = C_nil(ccx);
-            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+            if let Some(cleanup_scope) = cleanup_scope {
+                fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+            }
 
             return Result::new(bcx, llresult);
         } else {
@@ -311,10 +314,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
-    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
 
     // For `try` we need some custom control flow
-    if &name[..] == "try" {
+    if intrinsic_name == "try" {
         if let callee::ArgExprs(ref exprs) = args {
             let (func, data) = if exprs.len() != 2 {
                 ccx.sess().bug("expected two exprs as arguments for \
@@ -336,10 +338,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             };
 
             // do the invoke
-            bcx = try_intrinsic(bcx, func.val, data.val, dest,
-                                call_debug_location);
+            bcx = try_intrinsic(bcx, func.val, data.val, dest, debugloc);
 
-            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+            if let Some(cleanup_scope) = cleanup_scope {
+                fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+            }
             return Result::new(bcx, dest);
         } else {
             ccx.sess().bug("expected two exprs as arguments for \
@@ -356,25 +359,37 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     // Push the arguments.
     let mut llargs = Vec::new();
+    let scope_id = if let Some(cleanup_scope) = cleanup_scope {
+        cleanup::CustomScope(cleanup_scope)
+    } else {
+        // FIXME: full-time hack
+        cleanup::AstScope(0)
+    };
     bcx = callee::trans_args(bcx,
                              args,
                              callee_ty,
                              &mut llargs,
-                             cleanup::CustomScope(cleanup_scope),
+                             scope_id,
                              false,
                              RustIntrinsic);
 
-    fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+    if cleanup_scope.is_some() {
+        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+    }
 
     // These are the only intrinsic functions that diverge.
-    if name == "abort" {
+    if intrinsic_name == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        Call(bcx, llfn, &[], None, call_debug_location);
-        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+        Call(bcx, llfn, &[], None, debugloc);
+        if let Some(cleanup_scope) = cleanup_scope {
+            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+        }
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
-    } else if &name[..] == "unreachable" {
-        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+    } else if intrinsic_name == "unreachable" {
+        if let Some(cleanup_scope) = cleanup_scope {
+            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+        }
         Unreachable(bcx);
         return Result::new(bcx, C_nil(ccx));
     }
@@ -401,14 +416,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let simple = get_simple_intrinsic(ccx, &*foreign_item);
-    let llval = match (simple, &*name) {
+    let simple = get_simple_intrinsic(ccx, intrinsic_name);
+    let llval = match (simple, intrinsic_name) {
         (Some(llfn), _) => {
-            Call(bcx, llfn, &llargs, None, call_debug_location)
+            Call(bcx, llfn, &llargs, None, debugloc)
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            Call(bcx, llfn, &[], None, call_debug_location)
+            Call(bcx, llfn, &[], None, debugloc)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -451,10 +466,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let scratch = rvalue_scratch_datum(bcx, tp_ty, "tmp");
                 Store(bcx, llargs[0], expr::get_dataptr(bcx, scratch.val));
                 Store(bcx, llargs[1], expr::get_meta(bcx, scratch.val));
-                fcx.schedule_lifetime_end(cleanup::CustomScope(cleanup_scope), scratch.val);
+                if let Some(cleanup_scope) = cleanup_scope {
+                    fcx.schedule_lifetime_end(cleanup::CustomScope(cleanup_scope), scratch.val);
+                }
+
                 scratch.val
             };
-            glue::drop_ty(bcx, ptr, tp_ty, call_debug_location);
+            glue::drop_ty(bcx, ptr, tp_ty, debugloc);
             C_nil(ccx)
         }
         (_, "type_name") => {
@@ -510,7 +528,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            llargs[1],
                            llargs[0],
                            llargs[2],
-                           call_debug_location)
+                           debugloc)
         }
         (_, "copy") => {
             copy_intrinsic(bcx,
@@ -520,7 +538,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            llargs[1],
                            llargs[0],
                            llargs[2],
-                           call_debug_location)
+                           debugloc)
         }
         (_, "write_bytes") => {
             memset_intrinsic(bcx,
@@ -529,7 +547,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              llargs[0],
                              llargs[1],
                              llargs[2],
-                             call_debug_location)
+                             debugloc)
         }
 
         (_, "volatile_copy_nonoverlapping_memory") => {
@@ -540,7 +558,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            llargs[0],
                            llargs[1],
                            llargs[2],
-                           call_debug_location)
+                           debugloc)
         }
         (_, "volatile_copy_memory") => {
             copy_intrinsic(bcx,
@@ -550,7 +568,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            llargs[0],
                            llargs[1],
                            llargs[2],
-                           call_debug_location)
+                           debugloc)
         }
         (_, "volatile_set_memory") => {
             memset_intrinsic(bcx,
@@ -559,7 +577,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              llargs[0],
                              llargs[1],
                              llargs[2],
-                             call_debug_location)
+                             debugloc)
         }
         (_, "volatile_load") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -588,50 +606,50 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let sty = &arg_tys[0].sty;
             match int_type_width_signed(sty, ccx) {
                 Some((width, signed)) =>
-                    match &*name {
+                    match intrinsic_name {
                         "ctlz" => count_zeros_intrinsic(bcx, &format!("llvm.ctlz.i{}", width),
-                                                        llargs[0], call_debug_location),
+                                                        llargs[0], debugloc),
                         "cttz" => count_zeros_intrinsic(bcx, &format!("llvm.cttz.i{}", width),
-                                                        llargs[0], call_debug_location),
+                                                        llargs[0], debugloc),
                         "ctpop" => Call(bcx, ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
-                                        &llargs, None, call_debug_location),
+                                        &llargs, None, debugloc),
                         "bswap" => {
                             if width == 8 {
                                 llargs[0] // byte swap a u8/i8 is just a no-op
                             } else {
                                 Call(bcx, ccx.get_intrinsic(&format!("llvm.bswap.i{}", width)),
-                                        &llargs, None, call_debug_location)
+                                        &llargs, None, debugloc)
                             }
                         }
                         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
                             let intrinsic = format!("llvm.{}{}.with.overflow.i{}",
                                                     if signed { 's' } else { 'u' },
-                                                    &name[..3], width);
+                                                    &intrinsic_name[..3], width);
                             with_overflow_intrinsic(bcx, &intrinsic, llargs[0], llargs[1], llresult,
-                                                    call_debug_location)
+                                                    debugloc)
                         },
-                        "overflowing_add" => Add(bcx, llargs[0], llargs[1], call_debug_location),
-                        "overflowing_sub" => Sub(bcx, llargs[0], llargs[1], call_debug_location),
-                        "overflowing_mul" => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+                        "overflowing_add" => Add(bcx, llargs[0], llargs[1], debugloc),
+                        "overflowing_sub" => Sub(bcx, llargs[0], llargs[1], debugloc),
+                        "overflowing_mul" => Mul(bcx, llargs[0], llargs[1], debugloc),
                         "unchecked_div" =>
                             if signed {
-                                SDiv(bcx, llargs[0], llargs[1], call_debug_location)
+                                SDiv(bcx, llargs[0], llargs[1], debugloc)
                             } else {
-                                UDiv(bcx, llargs[0], llargs[1], call_debug_location)
+                                UDiv(bcx, llargs[0], llargs[1], debugloc)
                             },
                         "unchecked_rem" =>
                             if signed {
-                                SRem(bcx, llargs[0], llargs[1], call_debug_location)
+                                SRem(bcx, llargs[0], llargs[1], debugloc)
                             } else {
-                                URem(bcx, llargs[0], llargs[1], call_debug_location)
+                                URem(bcx, llargs[0], llargs[1], debugloc)
                             },
                         _ => unreachable!(),
                     },
                 None => {
                     span_invalid_monomorphization_error(
-                        tcx.sess, call_info.span,
+                        tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
-                                  expected basic integer type, found `{}`", name, sty));
+                                  expected basic integer type, found `{}`", intrinsic_name, sty));
                         C_null(llret_ty)
                 }
             }
@@ -641,7 +659,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         (_, "return_address") => {
             if !fcx.caller_expects_out_pointer {
-                span_err!(tcx.sess, call_info.span, E0510,
+                span_err!(tcx.sess, span, E0510,
                           "invalid use of `return_address` intrinsic: function \
                            does not use out pointer");
                 C_null(Type::i8p(ccx))
@@ -667,8 +685,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                    expr_arguments,
                                    &llargs,
                                    ret_ty, llret_ty,
-                                   call_debug_location,
-                                   call_info)
+                                   debugloc,
+                                   span)
         }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
@@ -767,10 +785,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
 
         (_, _) => {
-            let intr = match Intrinsic::find(tcx, &name) {
+            let intr = match Intrinsic::find(tcx, intrinsic_name) {
                 Some(intr) => intr,
-                None => ccx.sess().span_bug(foreign_item.span,
-                                            &format!("unknown intrinsic '{}'", name)),
+                None => ccx.sess().span_bug(unimplemented!(),
+                                            &format!("unknown intrinsic '{}'", intrinsic_name)),
             };
             fn one<T>(x: Vec<T>) -> T {
                 assert_eq!(x.len(), 1);
@@ -905,7 +923,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  name,
                                                  Type::func(&inputs, &outputs),
                                                  tcx.mk_nil());
-                    Call(bcx, f, &llargs, None, call_debug_location)
+                    Call(bcx, f, &llargs, None, debugloc)
                 }
             };
 
@@ -933,13 +951,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // If we made a temporary stack slot, let's clean it up
     match dest {
         expr::Ignore => {
-            bcx = glue::drop_ty(bcx, llresult, ret_ty, call_debug_location);
+            bcx = glue::drop_ty(bcx, llresult, ret_ty, debugloc);
             call_lifetime_end(bcx, llresult);
         }
         expr::SaveIn(_) => {}
     }
 
-    fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+    if let Some(cleanup_scope) = cleanup_scope {
+        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+    }
 
     Result::new(bcx, llresult)
 }
@@ -1298,7 +1318,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
      ret_ty: Ty<'tcx>,
      llret_ty: Type,
      call_debug_location: DebugLoc,
-     call_info: NodeIdAndSpan) -> ValueRef
+     span: Span) -> ValueRef
 {
     // macros for error handling:
     macro_rules! emit_error {
@@ -1307,7 +1327,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         };
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
-                bcx.sess(), call_info.span,
+                bcx.sess(), span,
                 &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
                                  $msg),
                          name, $($fmt)*));
@@ -1376,7 +1396,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     if name.starts_with("simd_shuffle") {
         let n: usize = match name["simd_shuffle".len()..].parse() {
             Ok(n) => n,
-            Err(_) => tcx.sess.span_bug(call_info.span,
+            Err(_) => tcx.sess.span_bug(span,
                                         "bad `simd_shuffle` instruction only caught in trans?")
         };
 
@@ -1396,7 +1416,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
         let vector = match args {
             Some(args) => &args[2],
-            None => bcx.sess().span_bug(call_info.span,
+            None => bcx.sess().span_bug(span,
                                         "intrinsic call with unexpected argument shape"),
         };
         let vector = match consts::const_expr(
@@ -1407,7 +1427,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
             consts::TrueConst::Yes, // this should probably help simd error reporting
         ) {
             Ok((vector, _)) => vector,
-            Err(err) => bcx.sess().span_fatal(call_info.span, &err.description()),
+            Err(err) => bcx.sess().span_fatal(span, &err.description()),
         };
 
         let indices: Option<Vec<_>> = (0..n)
@@ -1550,7 +1570,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         simd_or: TyUint, TyInt => Or;
         simd_xor: TyUint, TyInt => Xor;
     }
-    bcx.sess().span_bug(call_info.span, "unknown SIMD intrinsic");
+    bcx.sess().span_bug(span, "unknown SIMD intrinsic");
 }
 
 // Returns the width of an int TypeVariant, and if it's signed or not
