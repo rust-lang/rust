@@ -81,13 +81,13 @@ $ RUST_BACKTRACE=1 rustc ...
 ## The Build System
 
 The build system for Rust is complex. It covers bootstrapping the compiler,
-running tests, building documentation and more. Unless you are familiar with
-Makefiles, I wouldn't suggest trying to understand everything going on in
-Rust's setup - there's a lot there, and you can get lost trying to understand
-it all.
+running tests, building documentation and more.
 
-If Makefiles are your thing, though, all the configuration lives in
-[the `mk` directory][mkdir] in the project root.
+If Makefiles are your thing, all the configuration lives in
+[the `mk` directory][mkdir] in the project root. Is can be hard to follow
+in places, as it uses some advanced Make features which make for some
+challenging reading. If you have questions on the build system internals, try
+asking in [`#rust-internals`][pound-rust-internals].
 
 [mkdir]: https://github.com/rust-lang/rust/tree/master/mk/
 
@@ -106,9 +106,12 @@ There are large number of options accepted by this script to alter the
 configuration used later in the build process. Some options to note:
 
 - `--enable-debug` - Build a debug version of the compiler (disables optimizations)
+- `--enable-optimize` - Enable optimizations (can be used with `--enable-debug`
+    to make a debug build with optimizations)
 - `--disable-valgrind-rpass` - Don't run tests with valgrind
-- `--enable-clang` - Prefer clang to gcc for building dependencies (ie LLVM)
+- `--enable-clang` - Prefer clang to gcc for building dependencies (e.g., LLVM)
 - `--enable-ccache` - Invoke clang/gcc with ccache to re-use object files between builds
+- `--enable-compiler-docs` - Build compiler documentation
 
 To see a full list of options, run `./configure --help`.
 
@@ -131,6 +134,7 @@ Some common make targets are:
   rpass test with the stage1 compiler (this will be quicker than running the
   command above as we only build the stage1 compiler, not the entire thing).
   You can also leave off the `-rpass` to run all stage1 test types.
+- `make check-stage1-coretest` - Run stage1 tests in `libcore`.
 
 ## Pull Requests
 
