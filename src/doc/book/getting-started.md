@@ -167,6 +167,10 @@ variable. If it isn't, run the installer again, select "Change" on the "Change,
 repair, or remove installation" page and ensure "Add to PATH" is installed on
 the local hard drive.
 
+Rust does not do its own linking, and so you’ll need to have a linker
+installed. Doing so will depend on your specific system, consult its
+documentation for more details.
+
 If not, there are a number of places where we can get help. The easiest is
 [the #rust IRC channel on irc.mozilla.org][irc], which we can access through
 [Mibbit][mibbit]. Click that link, and we'll be chatting with other Rustaceans
@@ -604,11 +608,11 @@ This chapter covered the basics that will serve you well through the rest of
 this book, and the rest of your time with Rust. Now that you’ve got the tools
 down, we'll cover more about the Rust language itself.
 
-You have two options: Dive into a project with ‘[Learn Rust][learnrust]’, or
+You have two options: Dive into a project with ‘[Tutorial: Guessing Game][guessinggame]’, or
 start from the bottom and work your way up with ‘[Syntax and
 Semantics][syntax]’. More experienced systems programmers will probably prefer
-‘Learn Rust’, while those from dynamic backgrounds may enjoy either. Different
+‘Tutorial: Guessing Game’, while those from dynamic backgrounds may enjoy either. Different
 people learn differently! Choose whatever’s right for you.
 
-[learnrust]: learn-rust.html
+[guessinggame]: guessing-game.html
 [syntax]: syntax-and-semantics.html
