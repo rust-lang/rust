@@ -491,6 +491,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                              where_budget,
                                                              context.config.where_density,
                                                              "{",
+                                                             true,
                                                              None));
 
         if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
@@ -737,6 +738,7 @@ fn format_tuple_struct(context: &RewriteContext,
                                           where_budget,
                                           Density::Compressed,
                                           ";",
+                                          false,
                                           None))
         }
         None => "".to_owned(),
@@ -818,6 +820,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                                                          where_budget,
                                                          context.config.where_density,
                                                          "=",
+                                                         false,
                                                          Some(span.hi)));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
@@ -1248,6 +1251,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                          where_budget,
                                                          where_density,
                                                          "{",
+                                                         has_body,
                                                          Some(span.hi)));
 
     if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
@@ -1487,6 +1491,7 @@ fn rewrite_where_clause(context: &RewriteContext,
                         width: usize,
                         density: Density,
                         terminator: &str,
+                        allow_trailing_comma: bool,
                         span_end: Option<BytePos>)
                         -> Option<String> {
     if where_clause.predicates.is_empty() {
@@ -1526,11 +1531,12 @@ fn rewrite_where_clause(context: &RewriteContext,
     // FIXME: we don't need to collect here if the where_layout isn't
     // HorizontalVertical.
     let tactic = definitive_tactic(&item_vec, context.config.where_layout, budget);
+    let use_trailing_comma = allow_trailing_comma && context.config.where_trailing_comma;
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::from_bool(context.config.where_trailing_comma),
+        trailing_separator: SeparatorTactic::from_bool(use_trailing_comma),
         indent: offset,
         width: budget,
         ends_with_newline: true,
@@ -1592,6 +1598,7 @@ fn format_generics(context: &RewriteContext,
                                                              budget,
                                                              Density::Tall,
                                                              terminator,
+                                                             true,
                                                              Some(span.hi)));
         result.push_str(&where_clause_str);
         if !force_same_line_brace &&
