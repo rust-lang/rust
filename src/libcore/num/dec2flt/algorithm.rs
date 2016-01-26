@@ -278,7 +278,7 @@ fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
     // The target ratio is one where u/v is in an in-range significand. Thus our termination
     // condition is log2(u / v) being the significand bits, plus/minus one.
     // FIXME Looking at the second bit could improve the estimate and avoid some more divisions.
-    let target_ratio = f64::sig_bits() as i16;
+    let target_ratio = T::sig_bits() as i16;
     let log2_u = u.bit_length() as i16;
     let log2_v = v.bit_length() as i16;
     let mut u_shift: i16 = 0;
