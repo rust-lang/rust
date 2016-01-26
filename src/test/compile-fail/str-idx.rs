@@ -10,5 +10,6 @@
 
 pub fn main() {
     let s: &str = "hello";
-    let c: u8 = s[4]; //~ ERROR the trait `core::ops::Index<_>` is not implemented
+    let c: u8 = s[4]; //~ ERROR the trait `core::ops::RangeArgument<usize>` is not implemented for the type `_`
+                      //~| ERROR mismatched types
 }
