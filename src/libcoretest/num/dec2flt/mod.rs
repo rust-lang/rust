@@ -136,6 +136,17 @@ fn massive_exponent() {
     assert_eq!(format!("1e{}000", max).parse(), Ok(f64::INFINITY));
 }
 
+#[test]
+fn borderline_overflow() {
+    let mut s = "0.".to_string();
+    for _ in 0..375 {
+        s.push('3');
+    }
+    // At the time of this writing, this returns Err(..), but this is a bug that should be fixed.
+    // It makes no sense to enshrine that in a test, the important part is that it doesn't panic.
+    let _ = s.parse::<f64>();
+}
+
 #[bench]
 fn bench_0(b: &mut test::Bencher) {
     b.iter(|| "0.0".parse::<f64>());
