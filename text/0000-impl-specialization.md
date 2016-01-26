@@ -995,6 +995,312 @@ sibling crates are unaware of each other, there's no way that they could each
 provide an impl overlapping with the other, yet be sure that one of those impls
 is more specific than the other in the overlapping region.
 
+### Interaction with lifetimes
+
+A hard constraint in the design of the trait system is that *dispatch cannot
+depend on lifetime information*. In particular, we both cannot, and allow
+specialization based on lifetimes:
+
+- We can't, because when the compiler goes to actually generate code ("trans"),
+  lifetime information has been erased -- so we'd have no idea what
+  specializations would soundly apply.
+
+- We shouldn't, because lifetime inference is subtle and would often lead to
+  counterintuitive results. For example, you could easily fail to get `'static`
+  even if it applies, because inference is choosing the smallest lifetime that
+  matches the other constraints.
+
+To be more concrete, here are some scenarios which should not be allowed:
+
+```rust
+// Not allowed: trans doesn't know if T: 'static:
+trait Bad1 {}
+impl<T> Bad1 for T {}
+impl<T: 'static> Bad1 for T {}
+
+// Not allowed: trans doesn't know if two refs have equal lifetimes:
+trait Bad2<U> {}
+impl<T, U> Bad2<U> for T {}
+impl<'a, T, U> Bad2<&'b U> for &'a T {}
+```
+
+But simply *naming* a lifetime that must exist, without *constraining* it, is fine:
+
+```rust
+// Allowed: specializes based on being *any* reference, regardless of lifetime
+trait Good {}
+impl<T> Good for T {}
+impl<'a, T> Good for &'a T {}
+```
+
+In addition, it's okay for lifetime constraints to show up as long as
+they aren't part of specialization:
+
+```rust
+// Allowed: *all* impls impose the 'static requirement; the dispatch is happening
+// purely based on `Clone`
+trait MustBeStatic {}
+impl<T: 'static> MustBeStatic for T {}
+impl<T: 'static + Clone> MustBeStatic for T {}
+```
+
+#### Going down the rabbit hole
+
+Unfortunately, we cannot easily rule out the undesirable lifetime-dependent
+specializations, because they can be "hidden" behind innocent-looking trait
+bounds that can even cross crates:
+
+```rust
+////////////////////////////////////////////////////////////////////////////////
+// Crate marker
+////////////////////////////////////////////////////////////////////////////////
+
+trait Marker {}
+impl Marker for u32 {}
+
+////////////////////////////////////////////////////////////////////////////////
+// Crate foo
+////////////////////////////////////////////////////////////////////////////////
+
+extern crate marker;
+
+trait Foo {
+    fn foo(&self);
+}
+
+impl<T> Foo for T {
+    default fn foo(&self) {
+        println!("Default impl");
+    }
+}
+
+impl<T: marker::Marker> Foo for T {
+    fn foo(&self) {
+        println!("Marker impl");
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Crate bar
+////////////////////////////////////////////////////////////////////////////////
+
+extern crate marker;
+
+pub struct Bar<T>(T);
+impl<T: 'static> marker::Marker for Bar<T> {}
+
+////////////////////////////////////////////////////////////////////////////////
+// Crate client
+////////////////////////////////////////////////////////////////////////////////
+
+extern crate foo;
+extern crate bar;
+
+fn main() {
+    // prints: Marker impl
+    0u32.foo();
+
+    // prints: ???
+    // the relevant specialization depends on the 'static lifetime
+    bar::Bar("Activate the marker!").foo();
+}
+```
+
+The problem here is that all of the crates in isolation look perfectly innocent.
+The code in `marker`, `bar` and `client` is accepted today. It's only when these
+crates are plugged together that a problem arises -- you end up with a
+specialization based on a `'static` lifetime. And the `client` crate may not
+even be aware of the existence of the `marker` crate.
+
+If we make this kind of situation a hard error, we could easily end up with a
+scenario in which plugging together otherwise-unrelated crates is *impossible*.
+
+#### Proposal: ask forgiveness, rather than permission
+
+So what do we do? There seem to be essentially two avenues:
+
+1. Be maximally permissive in the impls you can write, and then just ignore
+   lifetime information in dispatch. We can generate a warning when this is
+   happening, though in cases like the above, it may be talking about traits
+   that the client is not even aware of. The assumption here is that these
+   "missed specializations" will be extremely rare, so better not to impose a
+   burden on everyone to rule them out.
+
+2. Try, somehow, to prevent you from writing impls that appear to dispatch based
+   on lifetimes. The most likely way of doing that is to somehow flag a trait as
+   "lifetime-dependent". If a trait is lifetime-dependent, it can have
+   lifetime-sensitive impls (like ones that apply only to `'static` data), but
+   it cannot be used when writing specialized impls of another trait.
+
+The downside of (2) is that it's an additional knob that all trait authors have to
+think about. That approach is sketched in more detail in the Alternatives section.
+
+What this RFC proposes is to follow approach (1), at least during the initial
+experimentation phase. That's the easiest way to gain experience with
+specialization and see to what extent lifetime-dependent specializations
+accidentally arise in practice. If they are indeed rare, it seems much better to
+catch them via a lint then to force the entire world of traits to be explicitly
+split in half.
+
+To begin with, this lint should be an error by default; we want to get
+feedback as to how often this is happening before any
+stabilization.
+
+##### What this means for the programmer
+
+Ultimately, the goal of the "just ignore lifetimes for specialization" approach
+is to reduce the number of knobs in play. The programmer gets to use both
+lifetime bounds and specialization freely.
+
+The problem, of course, is that when using the two together you can get
+surprising dispatch results:
+
+```rust
+trait Foo {
+    fn foo(&self);
+}
+
+impl<T> Foo for T {
+    default fn foo(&self) {
+        println!("Default impl");
+    }
+}
+
+impl Foo for &'static str {
+    fn foo(&self) {
+        println!("Static string slice: {}", self);
+    }
+}
+
+fn main() {
+    // prints "Default impl", but generates a lint saying that
+    // a specialization was missed due to lifetime dependence.
+    "Hello, world!".foo();
+}
+```
+
+Specialization is refusing to consider the second impl because it imposes
+lifetime constraints not present in the more general impl. We don't know whether
+these constraints hold when we need to generate the code, and we don't want to
+depend on them because of the subtleties of region inference. But we alert the
+programmer that this is happening via a lint.
+
+Sidenote: for such simple intracrate cases, we could consider treating the impls
+themselves more aggressively, catching that the `&'static str` impl will never
+be used and refusing to compile it.
+
+In the more complicated multi-crate example we saw above, the line
+
+```rust
+bar::Bar("Activate the marker!").foo();
+```
+
+would likewise print `Default impl` and generate a warning. In this case, the
+warning may be hard for the `client` crate author to understand, since the trait
+relevant for specialization -- `marker::Marker` -- belongs to a crate that
+hasn't even been imported in `client`. Nevertheless, this approach seems
+friendlier than the alternative (discussed in Alternatives).
+
+#### An algorithm for ignoring lifetimes in dispatch
+
+Although approach (1) may seem simple, there are some subtleties in handling
+cases like the following:
+
+```rust
+trait Foo { ... }
+impl<T: 'static> Foo for T { ... }
+impl<T: 'static + Clone> Foo for T { ... }
+```
+
+In this "ignore lifetimes for specialization" approach, we still want the above
+specialization to work, because *all* impls in the specialization family impose
+the same lifetime constraints. The dispatch here purely comes down to `T: Clone`
+or not. That's in contrast to something like this:
+
+```rust
+trait Foo { ... }
+impl<T> Foo for T { ... }
+impl<T: 'static + Clone> Foo for T { ... }
+```
+
+where the difference between the impls includes a nontrivial lifetime constraint
+(the `'static` bound on `T`). The second impl should effectively be dead code:
+we should never dispatch to it in favor of the first impl, because that depends
+on lifetime information that we don't have available in trans (and don't want to
+rely on in general, due to the way region inference works). We would instead
+lint against it (probably error by default).
+
+So, how do we tell these two scenarios apart?
+
+- First, we evaluate the impls normally, winnowing to a list of
+applicable impls.
+
+- Then, we attempt to determine specialization. For any pair of applicable impls
+  `Parent` and `Child` (where `Child` specializes `Parent`), we do the
+  following:
+
+  - Introduce as assumptions all of the where clauses of `Parent`
+
+  - Attempt to prove that `Child` definitely applies, using these assumptions.
+  **Crucially**, we do this test in a special mode: lifetime bounds are only
+  considered to hold if they (1) follow from general well-formedness or (2) are
+  directly assumed from `Parent`. That is, a constraint in `Child` that `T:
+  'static` has to follow either from some basic type assumption (like the type
+  `&'static T`) or from a similar clause in `Parent`.
+
+  - If the `Child` impl cannot be shown to hold under these more stringent
+    conditions, then we have discovered a lifetime-sensitive specialization, and
+    can trigger the lint.
+
+  - Otherwise, the specialization is valid.
+
+Let's do this for the two examples above.
+
+**Example 1**
+
+```rust
+trait Foo { ... }
+impl<T: 'static> Foo for T { ... }
+impl<T: 'static + Clone> Foo for T { ... }
+```
+
+Here, if we think both impls apply, we'll start by assuming that `T: 'static`
+holds, and then we'll evaluate whether `T: 'static` and `T: Clone` hold. The
+first evaluation succeeds trivially from our assumption. The second depends on
+`T`, as you'd expect.
+
+**Example 2**
+
+```rust
+trait Foo { ... }
+impl<T> Foo for T { ... }
+impl<T: 'static + Clone> Foo for T { ... }
+```
+
+Here, if we think both impls apply, we start with no assumption, and then
+evaluate `T: 'static` and `T: Clone`. We'll fail to show the former, because
+it's a lifetime-dependent predicate, and we don't have any assumption that
+immediately yields it.
+
+This should scale to less obvious cases, e.g. using `T: Any` rather than `T:
+'static` -- because when trying to prove `T: Any`, we'll find we need to prove
+`T: 'static`, and then we'll end up using the same logic as above. It also works
+for cases like the following:
+
+```rust
+trait SometimesDep {}
+
+impl SometimesDep for i32 {}
+impl<T: 'static> SometimesDep for T {}
+
+trait Spec {}
+impl<T> Spec for T {}
+impl<T: SometimesDep> Spec for T {}
+```
+
+Using `Spec` on `i32` will not trigger the lint, because the specialization is
+justified without any lifetime constraints.
+
 ## Partial impls
 
 An interesting consequence of specialization is that impls need not (and in fact
@@ -1119,6 +1425,158 @@ impl that applies, or else the complete impl provides its own definition for
 that item. Such a relaxed approach is much more flexible, probably easier to
 work with, and can enable more code reuse -- but it's also more complicated, and
 backwards-compatible to add on top of the proposed conservative approach.
+
+## Limitations
+
+One frequent motivation for specialization is broader "expressiveness", in
+particular providing a larger set of trait implementations than is possible
+today.
+
+For example, the standard library currently includes an `AsRef` trait
+for "as-style" conversions:
+
+```rust
+pub trait AsRef<T> where T: ?Sized {
+    fn as_ref(&self) -> &T;
+}
+```
+
+Currently, there is also a blanket implementation as follows:
+
+```rust
+impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U> {
+    fn as_ref(&self) -> &U {
+        <T as AsRef<U>>::as_ref(*self)
+    }
+}
+```
+
+which allows these conversions to "lift" over references, which is in turn
+important for making a number of standard library APIs ergonomic.
+
+On the other hand, we'd also like to provide the following very simple
+blanket implementation:
+
+```rust
+impl<'a, T: ?Sized> AsRef<T> for T {
+    fn as_ref(&self) -> &T {
+        self
+    }
+}
+```
+
+The current coherence rules prevent having both impls, however,
+because they can in principle overlap:
+
+```rust
+AsRef<&'a T> for &'a T where T: AsRef<&'a T>
+```
+
+Another examples comes from the `Option` type, which currently provides two
+methods for unwrapping while providing a default value for the `None` case:
+
+```rust
+impl<T> Option<T> {
+    fn unwrap_or(self, def: T) -> T { ... }
+    fn unwrap_or_else<F>(self, f: F) -> T where F: FnOnce() -> T { .. }
+}
+```
+
+The `unwrap_or` method is more ergonomic but `unwrap_or_else` is more efficient
+in the case that the default is expensive to compute. The original
+[collections reform RFC](https://github.com/rust-lang/rfcs/pull/235) proposed a
+`ByNeed` trait that was rendered unworkable after unboxed closures landed:
+
+```rust
+trait ByNeed<T> {
+    fn compute(self) -> T;
+}
+
+impl<T> ByNeed<T> for T {
+    fn compute(self) -> T {
+        self
+    }
+}
+
+impl<F, T> ByNeed<T> for F where F: FnOnce() -> T {
+    fn compute(self) -> T {
+        self()
+    }
+}
+
+impl<T> Option<T> {
+    fn unwrap_or<U>(self, def: U) where U: ByNeed<T> { ... }
+    ...
+}
+```
+
+The trait represents any value that can produce a `T` on demand. But the above
+impls fail to compile in today's Rust, because they overlap: consider `ByNeed<F>
+for F` where `F: FnOnce() -> F`.
+
+There are also some trait hierarchies where a subtrait completely subsumes the
+functionality of a supertrait. For example, consider `PartialOrd` and `Ord`:
+
+```rust
+trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
+    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
+}
+
+trait Ord: Eq + PartialOrd<Self> {
+    fn cmp(&self, other: &Self) -> Ordering;
+}
+```
+
+In cases like this, it's somewhat annoying to have to provide an impl for *both*
+`Ord` and `PartialOrd`, since the latter can be trivially derived from the
+former. So you might want an impl like this:
+
+```rust
+impl<T> PartialOrd<T> for T where T: Ord {
+    fn partial_cmp(&self, other: &T) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+```
+
+But this blanket impl would conflict with a number of others that work to "lift"
+`PartialOrd` and `Ord` impls over various type constructors like references and
+tuples, e.g.:
+
+```rust
+impl<'a, A: ?Sized> Ord for &'a A where A: Ord {
+    fn cmp(&self, other: & &'a A) -> Ordering { Ord::cmp(*self, *other) }
+}
+
+impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b B> for &'a A where A: PartialOrd<B> {
+    fn partial_cmp(&self, other: &&'b B) -> Option<Ordering> {
+        PartialOrd::partial_cmp(*self, *other)
+    }
+```
+
+The case where they overlap boils down to:
+
+```rust
+PartialOrd<&'a T> for &'a T where &'a T: Ord
+PartialOrd<&'a T> for &'a T where T: PartialOrd
+```
+
+and there is no implication between either of the where clauses.
+
+There are many other examples along these lines.
+
+Unfortunately, *none* of these examples are permitted by the revised overlap
+rule in this RFC, because in none of these cases is one of the impls fully a
+"subset" of the other; the overlap is always partial.
+
+It's a shame to not be able to address these cases, but the benefit is a
+specialization rule that is very intuitive and accepts only very clear-cut
+cases. The Alternatives section sketches some different rules that are less
+intuitive but do manage to handle cases like those above.
+
+If we allowed "relaxed" partial impls as described above, one could at least use
+that mechanism to avoid having to give a definition directly in most cases. (So
+if you had `T: Ord` you could write `impl PartialOrd for T {}`.)
 
 ## Possible extensions
 
@@ -1302,6 +1760,45 @@ specializing the trait impls.
 
 ## Alternative specialization designs
 
+### The "lattice" rule
+
+The rule proposed in this RFC essentially says that overlapping impls
+must form *chains*, in which each one is strictly more specific than
+the last.
+
+This approach can be generalized to *lattices*, in which partial
+overlap between impls is allowed, so long as there is an additional
+impl that covers precisely the area of overlap (the intersection).
+Such a generalization can support all of the examples mentioned in the
+Limitations section. Moving to the lattice rule is backwards compatible.
+
+Unfortunately, the lattice rule (or really, any generalization beyond
+the proposed chain rule) runs into a nasty problem with our lifetime
+strategy. Consider the following:
+
+```rust
+trait Foo {}
+impl<T, U> Foo for (T, U) where T: 'static {}
+impl<T, U> Foo for (T, U) where U: 'static {}
+impl<T, U> Foo for (T, U) where T: 'static, U: 'static {}
+```
+
+The problem is, if we allow this situation to go through typeck, by
+the time we actually generate code in trans, *there is no possible
+impl to choose*. That is, we do not have enough information to
+specialize, but we also don't know which of the (overlapping)
+unspecialized impls actually applies. We can address this problem by
+making the "lifetime dependent specialization" lint issue a hard error
+for such intersection impls, but that means that certain compositions
+will simply not be allowed (and, as mentioned before, these
+compositions might involve traits, types, and impls that the
+programmer is not even aware of).
+
+The limitations that the lattice rule addresses are fairly secondary
+to the main goals of specialization (as laid out in the Motivation),
+and so, since the lattice rule can be added later, the RFC sticks with
+the simple chain rule for now.
+
 ### Explicit ordering
 
 Another, perhaps more palatable alternative would be to take the specialization
@@ -1350,15 +1847,6 @@ The downsides are:
 # Unresolved questions
 
 Finally, there are a few important questions not yet addressed by this RFC:
-
-- Presumably, we do not want to permit specialization based on *lifetime*
-  parameters, but the algorithm as written does not give them any special
-  treatment. That needs to be dealt with in the implementation, at least.
-
-- We've said nothing about the interaction with dropck, which relies on a
-  parametricity property for generics that don't have bounds. Specialization
-  could potentially be used to subvert that property. That needs to be addressed
-  before the RFC can be accepted.
 
 - The design with `default` makes specialization of associated types an
   all-or-nothing affair, but it would occasionally be useful to say that all
