@@ -108,7 +108,6 @@ pub mod middle {
     pub mod free_region;
     pub mod intrinsicck;
     pub mod infer;
-    pub mod implicator;
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
