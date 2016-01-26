@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,14 +10,18 @@
 
 mod _common;
 
-use std::mem::transmute;
+use std::char;
 use _common::validate;
 
 fn main() {
-    for bits in 0u32..(1 << 21) {
-        let single: f32 = unsafe { transmute(bits) };
-        validate(&format!("{:e}", single));
-        let double: f64 = unsafe { transmute(bits as u64) };
-        validate(&format!("{:e}", double));
+    for n in 0..10 {
+        let digit = char::from_digit(n, 10).unwrap();
+        let mut s = "0.".to_string();
+        for _ in 0..400 {
+            s.push(digit);
+            if s.parse::<f64>().is_ok() {
+                validate(&s);
+            }
+        }
     }
 }

@@ -20,7 +20,7 @@ fn main() {
     for a in &pow {
         for b in &pow {
             for c in &pow {
-                validate((a | b | c).to_string());
+                validate(&(a | b | c).to_string());
             }
         }
     }
