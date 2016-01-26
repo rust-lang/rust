@@ -351,10 +351,15 @@ fn make_dirp(d: Option<&OsString>) -> (*const u16, Vec<u16>) {
 impl Stdio {
     fn to_handle(&self, stdio_id: c::DWORD) -> io::Result<Handle> {
         match *self {
+            // If no stdio handle is available, then inherit means that it
+            // should still be unavailable so propagate the
+            // INVALID_HANDLE_VALUE.
             Stdio::Inherit => {
-                stdio::get(stdio_id).and_then(|io| {
-                    io.handle().duplicate(0, true, c::DUPLICATE_SAME_ACCESS)
-                })
+                match stdio::get(stdio_id) {
+                    Ok(io) => io.handle().duplicate(0, true,
+                                                    c::DUPLICATE_SAME_ACCESS),
+                    Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
+                }
             }
             Stdio::Raw(handle) => {
                 RawHandle::new(handle).duplicate(0, true, c::DUPLICATE_SAME_ACCESS)

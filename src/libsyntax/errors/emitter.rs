@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use codemap::{self, COMMAND_LINE_SP, COMMAND_LINE_EXPN, Pos, Span};
+use codemap::{self, COMMAND_LINE_SP, COMMAND_LINE_EXPN, DUMMY_SP, Pos, Span};
 use diagnostics;
 
 use errors::{Level, RenderSpan, DiagnosticBuilder};
@@ -109,8 +109,8 @@ impl Emitter for EmitterWriter {
             lvl: Level) {
         let error = match sp {
             Some(COMMAND_LINE_SP) => self.emit_(FileLine(COMMAND_LINE_SP), msg, code, lvl),
+            Some(DUMMY_SP) | None => print_diagnostic(&mut self.dst, "", lvl, msg, code),
             Some(sp) => self.emit_(FullSpan(sp), msg, code, lvl),
-            None => print_diagnostic(&mut self.dst, "", lvl, msg, code),
         };
 
         if let Err(e) = error {
