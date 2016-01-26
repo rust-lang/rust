@@ -129,7 +129,9 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 'tcx> {
+impl<'a, 'tcx> dot::Labeller<'a> for DataflowLabeller<'a, 'tcx> {
+    type Node = Node<'a>;
+    type Edge = Edge<'a>;
     fn graph_id(&'a self) -> dot::Id<'a> { self.inner.graph_id() }
     fn node_id(&'a self, n: &Node<'a>) -> dot::Id<'a> { self.inner.node_id(n) }
     fn node_label(&'a self, n: &Node<'a>) -> dot::LabelText<'a> {
@@ -143,7 +145,9 @@ impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 't
     fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> { self.inner.edge_label(e) }
 }
 
-impl<'a, 'tcx> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 'tcx> {
+impl<'a, 'tcx> dot::GraphWalk<'a> for DataflowLabeller<'a, 'tcx> {
+    type Node = Node<'a>;
+    type Edge = Edge<'a>;
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> { self.inner.nodes() }
     fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> { self.inner.edges() }
     fn source(&'a self, edge: &Edge<'a>) -> Node<'a> { self.inner.source(edge) }

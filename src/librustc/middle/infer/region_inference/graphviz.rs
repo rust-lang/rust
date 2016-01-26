@@ -173,7 +173,9 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
+impl<'a, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'tcx> {
+    type Node = Node;
+    type Edge = Edge;
     fn graph_id(&self) -> dot::Id {
         dot::Id::new(&*self.graph_name).unwrap()
     }
@@ -224,7 +226,9 @@ fn edge_to_nodes(e: &Edge) -> (Node, Node) {
     }
 }
 
-impl<'a, 'tcx> dot::GraphWalk<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
+impl<'a, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'tcx> {
+    type Node = Node;
+    type Edge = Edge;
     fn nodes(&self) -> dot::Nodes<Node> {
         let mut set = FnvHashSet();
         for node in self.node_ids.keys() {
