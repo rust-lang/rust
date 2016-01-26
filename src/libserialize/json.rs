@@ -2606,7 +2606,6 @@ impl FromStr for Json {
 mod tests {
     extern crate test;
     use self::Animal::*;
-    use self::DecodeEnum::*;
     use self::test::Bencher;
     use {Encodable, Decodable};
     use super::Json::*;

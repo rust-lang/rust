@@ -17,14 +17,6 @@ export CFG_COMPILER_HOST_TRIPLE
 export CFG_DEFAULT_LINKER
 export CFG_DEFAULT_AR
 
-# The standard libraries should be held up to a higher standard than any old
-# code, make sure that these common warnings are denied by default. These can
-# be overridden during development temporarily. For stage0, we allow warnings
-# which may be bugs in stage0 (should be fixed in stage1+)
-RUST_LIB_FLAGS_ST0 += -W warnings
-RUST_LIB_FLAGS_ST1 += -D warnings
-RUST_LIB_FLAGS_ST2 += -D warnings
-
 # Macro that generates the full list of dependencies for a crate at a particular
 # stage/target/host tuple.
 #

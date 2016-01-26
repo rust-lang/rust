@@ -16,6 +16,7 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
+#![cfg_attr(not(stage0), deny(warnings))]
 #![feature(allocator)]
 #![feature(libc)]
 #![feature(staged_api)]

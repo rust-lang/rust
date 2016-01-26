@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
-
 use prelude::v1::*;
 
 use alloc::boxed::FnBox;
@@ -174,6 +172,7 @@ impl Drop for Thread {
           not(target_os = "bitrig"),
           not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
           not(target_os = "openbsd")))]
+#[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     pub unsafe fn current() -> Option<usize> { None }
     pub unsafe fn init() -> Option<usize> { None }
@@ -185,15 +184,13 @@ pub mod guard {
           target_os = "bitrig",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),
           target_os = "openbsd"))]
-#[allow(unused_imports)]
+#[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     use prelude::v1::*;
 
-    use libc::{self, pthread_t};
+    use libc;
     use libc::mmap;
     use libc::{PROT_NONE, MAP_PRIVATE, MAP_ANON, MAP_FAILED, MAP_FIXED};
-    use mem;
-    use ptr;
     use sys::os;
 
     #[cfg(any(target_os = "macos",
@@ -206,10 +203,10 @@ pub mod guard {
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
-        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        let mut attr: libc::pthread_attr_t = ::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         if libc::pthread_getattr_np(libc::pthread_self(), &mut attr) == 0 {
-            let mut stackaddr = ptr::null_mut();
+            let mut stackaddr = ::ptr::null_mut();
             let mut stacksize = 0;
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
                                                    &mut stacksize), 0);
@@ -265,7 +262,7 @@ pub mod guard {
 
     #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]
     pub unsafe fn current() -> Option<usize> {
-        let mut current_stack: libc::stack_t = mem::zeroed();
+        let mut current_stack: libc::stack_t = ::mem::zeroed();
         assert_eq!(libc::pthread_stackseg_np(libc::pthread_self(),
                                              &mut current_stack), 0);
 
@@ -282,7 +279,7 @@ pub mod guard {
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
     pub unsafe fn current() -> Option<usize> {
         let mut ret = None;
-        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        let mut attr: libc::pthread_attr_t = ::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
         if libc::pthread_getattr_np(libc::pthread_self(), &mut attr) == 0 {
             let mut guardsize = 0;
@@ -290,7 +287,7 @@ pub mod guard {
             if guardsize == 0 {
                 panic!("there is no guard page");
             }
-            let mut stackaddr = ptr::null_mut();
+            let mut stackaddr = ::ptr::null_mut();
             let mut size = 0;
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
                                                    &mut size), 0);

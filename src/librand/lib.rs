@@ -23,6 +23,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
+#![cfg_attr(not(stage0), deny(warnings))]
 #![no_std]
 #![unstable(feature = "rand",
             reason = "use `rand` from crates.io",
@@ -35,7 +36,7 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 
-#![cfg_attr(test, feature(test, rand, rustc_private, iter_order_deprecated))]
+#![cfg_attr(test, feature(test, rand, rustc_private))]
 
 #![allow(deprecated)]
 

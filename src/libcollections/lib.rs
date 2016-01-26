@@ -28,6 +28,7 @@
 
 #![allow(trivial_casts)]
 #![cfg_attr(test, allow(deprecated))] // rand
+#![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(alloc)]
 #![feature(box_patterns)]
@@ -55,7 +56,7 @@
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag)]
-#![cfg_attr(test, feature(clone_from_slice, rand, test))]
+#![cfg_attr(test, feature(rand, test))]
 
 #![no_std]
 
