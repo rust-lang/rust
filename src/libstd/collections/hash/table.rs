@@ -11,13 +11,12 @@
 use alloc::heap::{allocate, deallocate, EMPTY};
 
 use cmp;
-use hash::{Hash, Hasher};
+use hash::{Hash, Hasher, BuildHasher};
 use marker;
 use mem::{align_of, size_of};
 use mem;
 use ops::{Deref, DerefMut};
 use ptr::{self, Unique};
-use collections::hash_state::HashState;
 
 use self::BucketState::*;
 
@@ -144,9 +143,9 @@ impl SafeHash {
 /// This function wraps up `hash_keyed` to be the only way outside this
 /// module to generate a SafeHash.
 pub fn make_hash<T: ?Sized, S>(hash_state: &S, t: &T) -> SafeHash
-    where T: Hash, S: HashState
+    where T: Hash, S: BuildHasher
 {
-    let mut state = hash_state.hasher();
+    let mut state = hash_state.build_hasher();
     t.hash(&mut state);
     // We need to avoid 0 in order to prevent collisions with
     // EMPTY_HASH. We can maintain our precious uniform distribution

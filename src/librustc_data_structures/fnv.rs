@@ -9,21 +9,20 @@
 // except according to those terms.
 
 use std::collections::{HashMap, HashSet};
-use std::collections::hash_state::DefaultState;
 use std::default::Default;
-use std::hash::{Hasher, Hash};
+use std::hash::{Hasher, Hash, BuildHasherDefault};
 
-pub type FnvHashMap<K, V> = HashMap<K, V, DefaultState<FnvHasher>>;
-pub type FnvHashSet<V> = HashSet<V, DefaultState<FnvHasher>>;
+pub type FnvHashMap<K, V> = HashMap<K, V, BuildHasherDefault<FnvHasher>>;
+pub type FnvHashSet<V> = HashSet<V, BuildHasherDefault<FnvHasher>>;
 
 #[allow(non_snake_case)]
 pub fn FnvHashMap<K: Hash + Eq, V>() -> FnvHashMap<K, V> {
-    Default::default()
+    HashMap::default()
 }
 
 #[allow(non_snake_case)]
 pub fn FnvHashSet<V: Hash + Eq>() -> FnvHashSet<V> {
-    Default::default()
+    HashSet::default()
 }
 
 /// A speedy hash algorithm for node ids and def ids. The hashmap in
