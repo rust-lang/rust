@@ -27,6 +27,7 @@ use core::str as core_str;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
+use core::ops::RangeArgument;
 use rustc_unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
@@ -1682,6 +1683,38 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
         core_str::StrExt::parse(self)
+    }
+    
+    /// Returns a string slice extracted from the starting index to
+    /// the specified length.
+    ///
+    /// `substr` is a safe implementation of the normal slicing method.
+    /// Instead of throwing, the method will simply return [`None`] if 
+    /// anything invalid occurs (i.e. start and/or end out of character 
+    /// boundaries).
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
+    ///
+    /// # Example
+    ///
+    /// Basic usage
+    ///
+    /// ```
+    /// #![feature(str_substr_method)]
+    ///
+    /// let string: String = String::from("Hello, world!");
+    ///
+    /// assert_eq!(Some("Hello"), string.substr(..5));
+    /// assert_eq!(Some("world!"), string.substr(7..));
+    /// assert_eq!(Some("ello"), string.substr(1..5));
+    /// ```
+    #[unstable(feature="str_substr", 
+               issue = "31140")]
+    #[inline]
+    pub fn substr<R>(&self, range: R) -> Option<&str> 
+        where R: RangeArgument<usize>
+    {
+        core_str::StrExt::substr(self, range)
     }
 
     /// Replaces all matches of a pattern with another string.

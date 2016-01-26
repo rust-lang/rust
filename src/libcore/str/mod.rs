@@ -27,7 +27,7 @@ use iter::ExactSizeIterator;
 use iter::{Map, Cloned, Iterator, DoubleEndedIterator};
 use marker::Sized;
 use mem;
-use ops::{Fn, FnMut, FnOnce};
+use ops::{Fn, FnMut, FnOnce, RangeArgument};
 use option::Option::{self, None, Some};
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
@@ -1589,6 +1589,10 @@ pub trait StrExt {
     fn is_empty(&self) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
+    #[unstable(feature="str_substr", 
+               issue = "31140")]
+    fn substr<R>(&self, range: R) -> Option<&str>
+        where R: RangeArgument<usize>;
 }
 
 #[inline(never)]
@@ -1905,6 +1909,21 @@ impl StrExt for str {
 
     #[inline]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
+    
+    #[inline]
+    fn substr<R>(&self, range: R) -> Option<&str> 
+        where R: RangeArgument<usize>
+    {
+        let len = self.len();
+        let start = *range.start().unwrap_or(&0);
+        let end = *range.end().unwrap_or(&len);
+        
+        if start <= end &&
+            self.is_char_boundary(start) &&
+            self.is_char_boundary(end) { return Some(&self[start .. end]); }
+        
+        None
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
