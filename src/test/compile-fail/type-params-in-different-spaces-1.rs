@@ -10,7 +10,7 @@
 
 use std::ops::Add;
 
-trait BrokenAdd: Copy + Add<Output=Self> {
+trait BrokenAdd: Sized + Copy + Add<Output=Self> {
     fn broken_add<T>(&self, rhs: T) -> Self {
         *self + rhs //~  ERROR mismatched types
                     //~| expected `Self`
