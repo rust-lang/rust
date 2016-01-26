@@ -10,7 +10,7 @@
 
 // ignore-cross-compile
 
-// error-pattern:`let` is not an expression, so it cannot be used in this way
+// error-pattern:expected expression, found statement (`let`)
 
 #![feature(quote, rustc_private)]
 
