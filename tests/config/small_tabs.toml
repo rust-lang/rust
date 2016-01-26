@@ -12,6 +12,7 @@ where_density = "Tall"
 where_indent = "Tabbed"
 where_layout = "Vertical"
 where_pred_indent = "Visual"
+where_trailing_comma = false
 generics_indent = "Visual"
 struct_trailing_comma = "Vertical"
 struct_lit_trailing_comma = "Vertical"
