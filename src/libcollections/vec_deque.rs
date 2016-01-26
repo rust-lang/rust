@@ -1994,9 +1994,9 @@ impl<A: Ord> Ord for VecDeque<A> {
 impl<A: Hash> Hash for VecDeque<A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);
-        for elt in self {
-            elt.hash(state);
-        }
+        let (a, b) = self.as_slices();
+        Hash::hash_slice(a, state);
+        Hash::hash_slice(b, state);
     }
 }
 
