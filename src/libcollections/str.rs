@@ -1515,6 +1515,13 @@ impl str {
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
     /// Core Property `White_Space`.
     ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Left' in this context means the first
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _right_ side, not the left.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1533,6 +1540,13 @@ impl str {
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
     /// Core Property `White_Space`.
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Right' in this context means the last
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _left_ side, not the right.
     ///
     /// # Examples
     ///
@@ -1588,6 +1602,13 @@ impl str {
     ///
     /// [`char`]: primitive.char.html
     ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Left' in this context means the first
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _right_ side, not the left.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1611,6 +1632,13 @@ impl str {
     /// determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Right' in this context means the last
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _left_ side, not the right.
     ///
     /// # Examples
     ///
