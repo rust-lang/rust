@@ -1530,7 +1530,7 @@ fn rewrite_where_clause(context: &RewriteContext,
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::Never,
+        trailing_separator: SeparatorTactic::from_bool(context.config.where_trailing_comma),
         indent: offset,
         width: budget,
         ends_with_newline: true,

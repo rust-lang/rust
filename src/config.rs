@@ -316,6 +316,7 @@ create_config! {
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: BlockIndentStyle, BlockIndentStyle::Visual,
         "Indentation style of a where predicate";
+    where_trailing_comma: bool, false, "Put a trailing comma on where clauses";
     generics_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indentation of generics";
     struct_trailing_comma: SeparatorTactic, SeparatorTactic::Vertical,
         "If there is a trailing comma on structs";
