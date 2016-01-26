@@ -350,14 +350,14 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
     let recursion_depth_reset;
 
     match starting_point {
-        TransItem::DropGlue(_) |
+        TransItem::DropGlue(t) => {
+            find_drop_glue_neighbors(ccx, t, &mut neighbors);
+            recursion_depth_reset = None;
+        }
         TransItem::Static(_) => {
             recursion_depth_reset = None;
         }
-        TransItem::Fn {
-            def_id,
-            substs: ref param_substs
-        } => {
+        TransItem::Fn { def_id, substs: ref param_substs } => {
             // Keep track of the monomorphization recursion depth
             recursion_depth_reset = Some(check_recursion_limit(ccx,
                                                                def_id,
@@ -531,11 +531,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                       self.param_substs,
                                                       &ty);
             let ty = self.ccx.tcx().erase_regions(&ty);
-
-            create_drop_glue_trans_items(self.ccx,
-                                         ty,
-                                         self.param_substs,
-                                         &mut self.output);
+            let ty = glue::get_drop_glue_type(self.ccx, ty);
+            self.output.push(TransItem::DropGlue(ty));
         }
 
         self.super_lvalue(lvalue, context);
@@ -636,145 +633,124 @@ fn can_have_local_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     def_id.is_local() || ccx.sess().cstore.is_item_mir_available(def_id)
 }
 
-fn create_drop_glue_trans_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                          mono_ty: ty::Ty<'tcx>,
-                                          param_substs: &'tcx Substs<'tcx>,
-                                          output: &mut Vec<TransItem<'tcx>>)
+fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                      ty: ty::Ty<'tcx>,
+                                      output: &mut Vec<TransItem<'tcx>>)
 {
-    visit_types_of_owned_components(ccx,
-                                    mono_ty,
-                                    &mut FnvHashSet(),
-                                    &mut |ty| {
-        debug!("create_drop_glue_trans_items: {}", type_to_string(ccx, ty));
-        // Add a translation item for the drop glue, if even this type does not
-        // need to be dropped (in which case it has been mapped to i8)
-        output.push(TransItem::DropGlue(ty));
+    debug!("find_drop_glue_neighbors: {}", type_to_string(ccx, ty));
 
-        if glue::type_needs_drop(ccx.tcx(), ty) {
+    // Make sure the exchange_free_fn() lang-item gets translated if
+    // there is a boxed value.
+    if let ty::TyBox(_) = ty.sty {
+        let exchange_free_fn_def_id = ccx.tcx()
+                                         .lang_items
+                                         .require(ExchangeFreeFnLangItem)
+                                         .expect("Could not find ExchangeFreeFnLangItem");
 
-            // Make sure the exchange_free_fn() lang-item gets translated if
-            // there is a boxed value.
-            if let ty::TyBox(_) = ty.sty {
+        assert!(can_have_local_instance(ccx, exchange_free_fn_def_id));
+        let exchange_free_fn_trans_item =
+            create_fn_trans_item(ccx,
+                                 exchange_free_fn_def_id,
+                                 &Substs::trans_empty(),
+                                 &Substs::trans_empty());
 
-                let exchange_free_fn_def_id = ccx.tcx()
-                                                 .lang_items
-                                                 .require(ExchangeFreeFnLangItem)
-                                                 .expect("Could not find ExchangeFreeFnLangItem");
+        output.push(exchange_free_fn_trans_item);
+    }
 
-                assert!(can_have_local_instance(ccx, exchange_free_fn_def_id));
-                let exchange_free_fn_trans_item =
-                    create_fn_trans_item(ccx,
-                                         exchange_free_fn_def_id,
-                                         &Substs::trans_empty(),
-                                         param_substs);
+    // If the type implements Drop, also add a translation item for the
+    // monomorphized Drop::drop() implementation.
+    let destructor_did = match ty.sty {
+        ty::TyStruct(def, _) |
+        ty::TyEnum(def, _)   => def.destructor(),
+        _ => None
+    };
 
-                output.push(exchange_free_fn_trans_item);
-            }
+    if let Some(destructor_did) = destructor_did {
+        use rustc::middle::ty::ToPolyTraitRef;
 
-            // If the type implements Drop, also add a translation item for the
-            // monomorphized Drop::drop() implementation.
-            let destructor_did = match ty.sty {
-                ty::TyStruct(def, _) |
-                ty::TyEnum(def, _)   => def.destructor(),
-                _ => None
-            };
+        let drop_trait_def_id = ccx.tcx()
+                                   .lang_items
+                                   .drop_trait()
+                                   .unwrap();
 
-            if let Some(destructor_did) = destructor_did {
-                use rustc::middle::ty::ToPolyTraitRef;
+        let self_type_substs = ccx.tcx().mk_substs(
+            Substs::trans_empty().with_self_ty(ty));
 
-                let drop_trait_def_id = ccx.tcx()
-                                           .lang_items
-                                           .drop_trait()
-                                           .unwrap();
+        let trait_ref = ty::TraitRef {
+            def_id: drop_trait_def_id,
+            substs: self_type_substs,
+        }.to_poly_trait_ref();
 
-                let self_type_substs = ccx.tcx().mk_substs(
-                    Substs::trans_empty().with_self_ty(ty));
+        let substs = match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
+            traits::VtableImpl(data) => data.substs,
+            _ => unreachable!()
+        };
 
-                let trait_ref = ty::TraitRef {
-                    def_id: drop_trait_def_id,
-                    substs: self_type_substs,
-                }.to_poly_trait_ref();
-
-                let substs = match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
-                    traits::VtableImpl(data) => data.substs,
-                    _ => unreachable!()
-                };
-
-                if can_have_local_instance(ccx, destructor_did) {
-                    let trans_item = create_fn_trans_item(ccx,
-                                                          destructor_did,
-                                                          ccx.tcx().mk_substs(substs),
-                                                          param_substs);
-                    output.push(trans_item);
-                }
-            }
-
-            true
-        } else {
-            false
+        if can_have_local_instance(ccx, destructor_did) {
+            let trans_item = create_fn_trans_item(ccx,
+                                                  destructor_did,
+                                                  ccx.tcx().mk_substs(substs),
+                                                  &Substs::trans_empty());
+            output.push(trans_item);
         }
-    });
+    }
 
-    fn visit_types_of_owned_components<'a, 'tcx, F>(ccx: &CrateContext<'a, 'tcx>,
-                                                    ty: ty::Ty<'tcx>,
-                                                    visited: &mut FnvHashSet<ty::Ty<'tcx>>,
-                                                    mut f: &mut F)
-        where F: FnMut(ty::Ty<'tcx>) -> bool
-    {
-        let ty = glue::get_drop_glue_type(ccx, ty);
-
-        if !visited.insert(ty) {
-            return;
+    // Finally add the types of nested values
+    match ty.sty {
+        ty::TyBool       |
+        ty::TyChar       |
+        ty::TyInt(_)     |
+        ty::TyUint(_)    |
+        ty::TyStr        |
+        ty::TyFloat(_)   |
+        ty::TyRawPtr(_)  |
+        ty::TyRef(..)    |
+        ty::TyBareFn(..) |
+        ty::TySlice(_)   |
+        ty::TyTrait(_)   => {
+            /* nothing to do */
         }
+        ty::TyStruct(ref adt_def, substs) |
+        ty::TyEnum(ref adt_def, substs) => {
+            for field in adt_def.all_fields() {
+                let field_type = monomorphize::apply_param_substs(ccx.tcx(),
+                                                                  substs,
+                                                                  &field.unsubst_ty());
+                let field_type = glue::get_drop_glue_type(ccx, field_type);
 
-        if !f(ty) {
-            // Don't recurse further
-            return;
+                if glue::type_needs_drop(ccx.tcx(), field_type) {
+                    output.push(TransItem::DropGlue(field_type));
+                }
+            }
         }
-
-        match ty.sty {
-            ty::TyBool       |
-            ty::TyChar       |
-            ty::TyInt(_)     |
-            ty::TyUint(_)    |
-            ty::TyStr        |
-            ty::TyFloat(_)   |
-            ty::TyRawPtr(_)  |
-            ty::TyRef(..)    |
-            ty::TyBareFn(..) |
-            ty::TySlice(_)   |
-            ty::TyTrait(_)   => {
-                /* nothing to do */
-            }
-            ty::TyStruct(ref adt_def, substs) |
-            ty::TyEnum(ref adt_def, substs) => {
-                for field in adt_def.all_fields() {
-                    let field_type = monomorphize::apply_param_substs(ccx.tcx(),
-                                                                      substs,
-                                                                      &field.unsubst_ty());
-                    visit_types_of_owned_components(ccx, field_type, visited, f);
+        ty::TyClosure(_, ref substs) => {
+            for upvar_ty in &substs.upvar_tys {
+                let upvar_ty = glue::get_drop_glue_type(ccx, upvar_ty);
+                if glue::type_needs_drop(ccx.tcx(), upvar_ty) {
+                    output.push(TransItem::DropGlue(upvar_ty));
                 }
             }
-            ty::TyClosure(_, ref substs) => {
-                for upvar_ty in &substs.upvar_tys {
-                    visit_types_of_owned_components(ccx, upvar_ty, visited, f);
+        }
+        ty::TyBox(inner_type)      |
+        ty::TyArray(inner_type, _) => {
+            let inner_type = glue::get_drop_glue_type(ccx, inner_type);
+            if glue::type_needs_drop(ccx.tcx(), inner_type) {
+                output.push(TransItem::DropGlue(inner_type));
+            }
+        }
+        ty::TyTuple(ref args) => {
+            for arg in args {
+                let arg = glue::get_drop_glue_type(ccx, arg);
+                if glue::type_needs_drop(ccx.tcx(), arg) {
+                    output.push(TransItem::DropGlue(arg));
                 }
             }
-            ty::TyBox(inner_type)      |
-            ty::TyArray(inner_type, _) => {
-                visit_types_of_owned_components(ccx, inner_type, visited, f);
-            }
-            ty::TyTuple(ref args) => {
-                for arg in args {
-                    visit_types_of_owned_components(ccx, arg, visited, f);
-                }
-            }
-            ty::TyProjection(_) |
-            ty::TyParam(_)      |
-            ty::TyInfer(_)      |
-            ty::TyError         => {
-                ccx.sess().bug("encountered unexpected type");
-            }
+        }
+        ty::TyProjection(_) |
+        ty::TyParam(_)      |
+        ty::TyInfer(_)      |
+        ty::TyError         => {
+            ccx.sess().bug("encountered unexpected type");
         }
     }
 }
@@ -1086,10 +1062,8 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                                                 self.ccx.tcx().map.local_def_id(item.id),
                                                 None));
 
-                        create_drop_glue_trans_items(self.ccx,
-                                                     ty,
-                                                     self.trans_empty_substs,
-                                                     self.output);
+                        let ty = glue::get_drop_glue_type(self.ccx, ty);
+                        self.output.push(TransItem::DropGlue(ty));
                     }
                 }
             }
