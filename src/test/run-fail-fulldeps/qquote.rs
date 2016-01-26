@@ -10,7 +10,7 @@
 
 // ignore-cross-compile
 
-// error-pattern:expected identifier, found keyword `let`
+// error-pattern:expected expression, found statement (`let`)
 
 #![feature(quote, rustc_private)]
 
