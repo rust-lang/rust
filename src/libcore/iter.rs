@@ -3276,6 +3276,49 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
 ///
 /// [`map()`]: trait.Iterator.html#method.map
 /// [`Iterator`]: trait.Iterator.html
+///
+/// # Notes about side effects
+///
+/// The [`map()`] iterator implements [`DoubleEndedIterator`], meaning that
+/// you can also [`map()`] backwards:
+///
+/// ```rust
+/// let v: Vec<i32> = vec![1, 2, 3].into_iter().rev().map(|x| x + 1).collect();
+///
+/// assert_eq!(v, [4, 3, 2]);
+/// ```
+///
+/// [`DoubleEndedIterator`]: trait.DoubleEndedIterator.html
+///
+/// But if your closure has state, iterating backwards may act in a way you do
+/// not expect. Let's go through an example. First, in the forward direction:
+///
+/// ```rust
+/// let mut c = 0;
+///
+/// for pair in vec!['a', 'b', 'c'].into_iter()
+///                                .map(|letter| { c += 1; (letter, c) }) {
+///     println!("{:?}", pair);
+/// }
+/// ```
+///
+/// This will print "('a', 1), ('b', 2), ('c', 3)".
+///
+/// Now consider this twist where we add a call to `rev`. This version will
+/// print `('c', 1), ('b', 2), ('a', 3)`. Note that the letters are reversed,
+/// but the values of the counter still go in order. This is because `map()` is
+/// still being called lazilly on each item, but we are popping items off the
+/// back of the vector now, instead of shifting them from the front.
+///
+/// ```rust
+/// let mut c = 0;
+///
+/// for pair in vec!['a', 'b', 'c'].into_iter()
+///                                .map(|letter| { c += 1; (letter, c) })
+///                                .rev() {
+///     println!("{:?}", pair);
+/// }
+/// ```
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
