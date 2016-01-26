@@ -69,8 +69,8 @@ pub fn compile_input(sess: Session,
         let state = $make_state;
         (control.$point.callback)(state);
 
-        $tsess.abort_if_errors();
         if control.$point.stop == Compilation::Stop {
+            $tsess.abort_if_errors();
             return;
         }
     })}
@@ -470,7 +470,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     let mut feature_gated_cfgs = vec![];
     krate = time(time_passes, "configuration 1", || {
-        syntax::config::strip_unconfigured_items(sess.diagnostic(), krate, &mut feature_gated_cfgs)
+        sess.abort_if_new_errors(|| {
+            syntax::config::strip_unconfigured_items(sess.diagnostic(),
+                                                     krate,
+                                                     &mut feature_gated_cfgs)
+        })
     });
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
@@ -481,13 +485,15 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     });
 
     time(time_passes, "gated macro checking", || {
-        let features = syntax::feature_gate::check_crate_macros(sess.codemap(),
-                                                                &sess.parse_sess.span_diagnostic,
-                                                                &krate);
+        sess.abort_if_new_errors(|| {
+            let features =
+              syntax::feature_gate::check_crate_macros(sess.codemap(),
+                                                       &sess.parse_sess.span_diagnostic,
+                                                       &krate);
 
-        // these need to be set "early" so that expansion sees `quote` if enabled.
-        *sess.features.borrow_mut() = features;
-        sess.abort_if_errors();
+            // these need to be set "early" so that expansion sees `quote` if enabled.
+            *sess.features.borrow_mut() = features;
+        });
     });
 
 
@@ -525,7 +531,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
                    llvm_passes, attributes, .. } = registry;
 
-    {
+    sess.abort_if_new_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
         for pass in early_lint_passes {
             ls.register_early_pass(Some(sess), true, pass);
@@ -540,17 +546,14 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
-    }
+    });
 
     // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
         super::describe_lints(&*sess.lint_store.borrow(), true);
         return None;
     }
-    sess.lint_store.borrow_mut().process_command_line(sess);
-
-    // Abort if there are errors from lint processing or a plugin registrar.
-    sess.abort_if_errors();
+    sess.abort_if_new_errors(|| sess.lint_store.borrow_mut().process_command_line(sess));
 
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
@@ -594,29 +597,36 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // much as possible (e.g. help the programmer avoid platform
     // specific differences)
     time(time_passes, "complete gated feature checking 1", || {
-        let features = syntax::feature_gate::check_crate(sess.codemap(),
-                                                         &sess.parse_sess.span_diagnostic,
-                                                         &krate,
-                                                         &attributes,
-                                                         sess.opts.unstable_features);
-        *sess.features.borrow_mut() = features;
-        sess.abort_if_errors();
+        sess.abort_if_new_errors(|| {
+            let features = syntax::feature_gate::check_crate(sess.codemap(),
+                                                             &sess.parse_sess.span_diagnostic,
+                                                             &krate,
+                                                             &attributes,
+                                                             sess.opts.unstable_features);
+            *sess.features.borrow_mut() = features;
+        });
     });
 
     // JBC: make CFG processing part of expansion to avoid this problem:
 
     // strip again, in case expansion added anything with a #[cfg].
-    krate = time(time_passes, "configuration 2", || {
-        syntax::config::strip_unconfigured_items(sess.diagnostic(), krate, &mut feature_gated_cfgs)
-    });
+    krate = sess.abort_if_new_errors(|| {
+        let krate = time(time_passes, "configuration 2", || {
+            syntax::config::strip_unconfigured_items(sess.diagnostic(),
+                                                     krate,
+                                                     &mut feature_gated_cfgs)
+        });
 
-    time(time_passes, "gated configuration checking", || {
-        let features = sess.features.borrow();
-        feature_gated_cfgs.sort();
-        feature_gated_cfgs.dedup();
-        for cfg in &feature_gated_cfgs {
-            cfg.check_and_emit(sess.diagnostic(), &features, sess.codemap());
-        }
+        time(time_passes, "gated configuration checking", || {
+            let features = sess.features.borrow();
+            feature_gated_cfgs.sort();
+            feature_gated_cfgs.dedup();
+            for cfg in &feature_gated_cfgs {
+                cfg.check_and_emit(sess.diagnostic(), &features, sess.codemap());
+            }
+        });
+
+        krate
     });
 
     krate = time(time_passes, "maybe building test harness", || {
@@ -639,13 +649,14 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // later, to make sure we've got everything (e.g. configuration
     // can insert new attributes via `cfg_attr`)
     time(time_passes, "complete gated feature checking 2", || {
-        let features = syntax::feature_gate::check_crate(sess.codemap(),
-                                                         &sess.parse_sess.span_diagnostic,
-                                                         &krate,
-                                                         &attributes,
-                                                         sess.opts.unstable_features);
-        *sess.features.borrow_mut() = features;
-        sess.abort_if_errors();
+        sess.abort_if_new_errors(|| {
+            let features = syntax::feature_gate::check_crate(sess.codemap(),
+                                                             &sess.parse_sess.span_diagnostic,
+                                                             &krate,
+                                                             &attributes,
+                                                             sess.opts.unstable_features);
+            *sess.features.borrow_mut() = features;
+        });
     });
 
     time(time_passes,
@@ -711,9 +722,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
          "external crate/lib resolution",
          || LocalCrateReader::new(sess, cstore, &hir_map).read_crates(krate));
 
-    let lang_items = time(time_passes,
-                          "language item collection",
-                          || middle::lang_items::collect_language_items(&sess, &hir_map));
+    let lang_items = time(time_passes, "language item collection", || {
+        sess.abort_if_new_errors(|| {
+            middle::lang_items::collect_language_items(&sess, &hir_map)
+        })
+    });
 
     let resolve::CrateMap {
         def_map,

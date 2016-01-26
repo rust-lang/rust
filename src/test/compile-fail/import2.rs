@@ -16,4 +16,5 @@ mod baz {}
 mod zed {
     pub fn bar() { println!("bar3"); }
 }
-fn main(args: Vec<String>) { bar(); }
+fn main() { bar(); }
+//~^ ERROR unresolved name `bar`

@@ -20,5 +20,5 @@ mod foo {
 }
 
 fn main() {
-    let _ = foo::X;
+    let _ = foo::X; //~ ERROR unresolved name `foo::X`
 }

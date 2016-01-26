@@ -18,8 +18,9 @@ use syntax::visit::{self, Visitor, FnKind};
 use syntax::codemap::Span;
 
 pub fn check_crate(sess: &Session, krate: &ast::Crate) {
-    visit::walk_crate(&mut CheckConstFn{ sess: sess }, krate);
-    sess.abort_if_errors();
+    sess.abort_if_new_errors(|| {
+        visit::walk_crate(&mut CheckConstFn{ sess: sess }, krate);
+    });
 }
 
 struct CheckConstFn<'a> {

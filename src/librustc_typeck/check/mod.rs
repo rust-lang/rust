@@ -121,7 +121,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Spanned};
 use syntax::errors::DiagnosticBuilder;
-use syntax::parse::token::{self, InternedString};
+use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -2839,8 +2839,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 method_ty
             }
             Err(error) => {
-                method::report_error(fcx, method_name.span, expr_t,
-                                     method_name.node, Some(rcvr), error);
+                if method_name.node != special_idents::invalid.name {
+                    method::report_error(fcx, method_name.span, expr_t,
+                                         method_name.node, Some(rcvr), error);
+                }
                 fcx.write_error(expr.id);
                 fcx.tcx().types.err
             }
@@ -2936,6 +2938,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 return;
             }
             None => {}
+        }
+
+        if field.node == special_idents::invalid.name {
+            fcx.write_error(expr.id);
+            return;
         }
 
         if method::exists(fcx, field.span, field.node, expr_t, expr.id) {
@@ -3788,8 +3795,9 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                 Some((Some(ty), slice::ref_slice(item_segment), def))
             }
             Err(error) => {
-                method::report_error(fcx, span, ty,
-                                     item_name, None, error);
+                if item_name != special_idents::invalid.name {
+                    method::report_error(fcx, span, ty, item_name, None, error);
+                }
                 fcx.write_error(node_id);
                 None
             }
@@ -4221,7 +4229,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             }
             // Check for unrepresentable discriminant values
             match hint {
-                attr::ReprAny | attr::ReprExtern => (),
+                attr::ReprAny | attr::ReprExtern => {
+                    disr_vals.push(current_disr_val);
+                }
                 attr::ReprInt(sp, ity) => {
                     if !disr_in_range(ccx, ity, current_disr_val) {
                         let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0082,
@@ -4231,14 +4241,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         err.emit();
                     }
                 }
-                attr::ReprSimd => {
-                    ccx.tcx.sess.bug("range_to_inttype: found ReprSimd on an enum");
-                }
-                attr::ReprPacked => {
-                    ccx.tcx.sess.bug("range_to_inttype: found ReprPacked on an enum");
-                }
+                // Error reported elsewhere.
+                attr::ReprSimd | attr::ReprPacked => {}
             }
-            disr_vals.push(current_disr_val);
         }
     }
 

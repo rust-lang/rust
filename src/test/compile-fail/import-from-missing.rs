@@ -16,3 +16,4 @@ mod spam {
 }
 
 fn main() { ham(); eggs(); }
+//~^ ERROR unresolved name `eggs`

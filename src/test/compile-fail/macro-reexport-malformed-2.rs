@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![no_std]
 #![feature(macro_reexport)]
 
 #[macro_reexport="foo"]  //~ ERROR bad macro reexport
 extern crate std;
-
-fn main() { }
