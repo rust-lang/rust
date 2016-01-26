@@ -11,7 +11,8 @@
 use std::cmp::PartialEq;
 use std::ops::{Add, Sub, Mul};
 
-pub trait MyNum : Sized + Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + PartialEq + Clone {
+pub trait MyNum : Sized + Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self>
+                + PartialEq + Clone {
 }
 
 #[derive(Clone, Debug)]
