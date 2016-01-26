@@ -1005,7 +1005,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             },
             "path" | "ty" => {
                 match *tok {
-                    OpenDelim(token::DelimToken::Brace) |
+                    OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
                     Ident(i, _) if (i.name.as_str() == "as" ||
                                     i.name.as_str() == "where") => Ok(true),
