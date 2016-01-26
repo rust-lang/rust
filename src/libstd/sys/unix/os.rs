@@ -269,12 +269,14 @@ pub fn current_exe() -> io::Result<PathBuf> {
             Err(io::Error::last_os_error())
         } else {
             let filename = CStr::from_ptr(path).to_bytes();
+            let path = PathBuf::from(<OsStr as OsStrExt>::from_bytes(filename));
+
+            // Prepend a current working directory to the path if
+            // it doesn't contain an absolute pathname.
             if filename[0] == b'/' {
-                Ok(PathBuf::from(<OsStr as OsStrExt>::from_bytes(filename)))
+                Ok(path)
             } else {
-                // Prepend current working directory to the path if
-                // it doesn't contain an absolute pathname.
-                return getcwd().map(|cwd| cwd.join(<OsStr as OsStrExt>::from_bytes(filename)))
+                getcwd().map(|cwd| cwd.join(path))
             }
         }
     }

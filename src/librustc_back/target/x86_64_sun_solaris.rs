@@ -13,8 +13,6 @@ use target::Target;
 pub fn target() -> Target {
     let mut base = super::sunos_base::opts();
     base.pre_link_args.push("-m64".to_string());
-    base.pre_link_args.push("-lsocket".to_string());
-    base.pre_link_args.push("-lposix4".to_string());
 
     Target {
         llvm_target: "x86_64-pc-solaris2.11".to_string(),
