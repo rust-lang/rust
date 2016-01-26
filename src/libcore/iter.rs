@@ -4252,13 +4252,15 @@ impl<A: Step> RangeFrom<A> {
     ///
     /// # Examples
     ///
-    /// ```ignore
-    /// for i in (0u8..).step_by(2) {
+    /// ```
+    /// # #![feature(step_by)]
+    ///
+    /// for i in (0u8..).step_by(2).take(10) {
     ///     println!("{}", i);
     /// }
     /// ```
     ///
-    /// This prints all even `u8` values.
+    /// This prints the first ten even natural integers (0 to 18).
     #[unstable(feature = "step_by", reason = "recent addition",
                issue = "27741")]
     pub fn step_by(self, by: A) -> StepBy<A, Self> {
