@@ -80,14 +80,16 @@ $ RUST_BACKTRACE=1 rustc ...
 
 ## The Build System
 
-The build system for Rust is complex. It covers bootstrapping the compiler,
-running tests, building documentation and more.
+Rust's build system allows you to bootstrap the compiler, run tests &
+benchmarks, generate documentation, install a fresh build of Rust, and more.
+It's your best friend when working on Rust, allowing you to compile & test
+your contributions before submission.
 
-If Makefiles are your thing, all the configuration lives in
-[the `mk` directory][mkdir] in the project root. Is can be hard to follow
-in places, as it uses some advanced Make features which make for some
-challenging reading. If you have questions on the build system internals, try
-asking in [`#rust-internals`][pound-rust-internals].
+All the configuration for the build system lives in [the `mk` directory][mkdir]
+in the project root. It can be hard to follow in places, as it uses some
+advanced Make features which make for some challenging reading. If you have
+questions on the build system internals, try asking in
+[`#rust-internals`][pound-rust-internals].
 
 [mkdir]: https://github.com/rust-lang/rust/tree/master/mk/
 
