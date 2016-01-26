@@ -239,12 +239,13 @@ macro_rules! interpolated_or_expr_span {
     ($p:expr, $parse_expr:expr) => {
         {
             let is_interpolated = $p.token.is_interpolated();
-            let e = $parse_expr;
-            if is_interpolated {
-                ($p.last_span, e)
-            } else {
-                (e.span, e)
-            }
+            $parse_expr.map(|e| {
+                if is_interpolated {
+                    ($p.last_span, e)
+                } else {
+                    (e.span, e)
+                }
+            })
         }
     }
 }
@@ -2338,7 +2339,7 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, P<Expr>> {
         let attrs = try!(self.parse_or_use_outer_attributes(already_parsed_attrs));
 
-        let (span, b) = interpolated_or_expr_span!(self, try!(self.parse_bottom_expr()));
+        let (span, b) = try!(interpolated_or_expr_span!(self, self.parse_bottom_expr()));
         self.parse_dot_or_call_expr_with(b, span.lo, attrs)
     }
 
@@ -2724,30 +2725,30 @@ impl<'a> Parser<'a> {
         let ex = match self.token {
             token::Not => {
                 self.bump();
-                let (span, e) = interpolated_or_expr_span!(self,
-                                                           try!(self.parse_prefix_expr(None)));
+                let (span, e) = try!(interpolated_or_expr_span!(self,
+                                                           self.parse_prefix_expr(None)));
                 hi = span.hi;
                 self.mk_unary(UnNot, e)
             }
             token::BinOp(token::Minus) => {
                 self.bump();
-                let (span, e) = interpolated_or_expr_span!(self,
-                                                           try!(self.parse_prefix_expr(None)));
+                let (span, e) = try!(interpolated_or_expr_span!(self,
+                                                           self.parse_prefix_expr(None)));
                 hi = span.hi;
                 self.mk_unary(UnNeg, e)
             }
             token::BinOp(token::Star) => {
                 self.bump();
-                let (span, e) = interpolated_or_expr_span!(self,
-                                                           try!(self.parse_prefix_expr(None)));
+                let (span, e) = try!(interpolated_or_expr_span!(self,
+                                                           self.parse_prefix_expr(None)));
                 hi = span.hi;
                 self.mk_unary(UnDeref, e)
             }
             token::BinOp(token::And) | token::AndAnd => {
                 try!(self.expect_and());
                 let m = try!(self.parse_mutability());
-                let (span, e) = interpolated_or_expr_span!(self,
-                                                           try!(self.parse_prefix_expr(None)));
+                let (span, e) = try!(interpolated_or_expr_span!(self,
+                                                           self.parse_prefix_expr(None)));
                 hi = span.hi;
                 ExprAddrOf(m, e)
             }
@@ -2766,8 +2767,8 @@ impl<'a> Parser<'a> {
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
                 self.bump();
-                let (span, e) = interpolated_or_expr_span!(self,
-                                                           try!(self.parse_prefix_expr(None)));
+                let (span, e) = try!(interpolated_or_expr_span!(self,
+                                                           self.parse_prefix_expr(None)));
                 hi = span.hi;
                 ExprBox(e)
             }
