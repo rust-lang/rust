@@ -735,7 +735,7 @@ impl<'a> LintContext for EarlyContext<'a> {
     }
 
     fn enter_attrs(&mut self, attrs: &[ast::Attribute]) {
-        debug!("early context: exit_attrs({:?})", attrs);
+        debug!("early context: enter_attrs({:?})", attrs);
         run_lints!(self, enter_lint_attrs, early_passes, attrs);
     }
 
@@ -934,8 +934,10 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
-        run_lints!(self, check_expr, early_passes, e);
-        ast_visit::walk_expr(self, e);
+        self.with_lint_attrs(e.attrs.as_attr_slice(), |cx| {
+            run_lints!(cx, check_expr, early_passes, e);
+            ast_visit::walk_expr(cx, e);
+        })
     }
 
     fn visit_stmt(&mut self, s: &ast::Stmt) {
@@ -990,8 +992,10 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     }
 
     fn visit_local(&mut self, l: &ast::Local) {
-        run_lints!(self, check_local, early_passes, l);
-        ast_visit::walk_local(self, l);
+        self.with_lint_attrs(l.attrs.as_attr_slice(), |cx| {
+            run_lints!(cx, check_local, early_passes, l);
+            ast_visit::walk_local(cx, l);
+        })
     }
 
     fn visit_block(&mut self, b: &ast::Block) {
