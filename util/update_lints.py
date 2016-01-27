@@ -9,7 +9,7 @@ import sys
 
 declare_lint_re = re.compile(r'''
     declare_lint! \s* [{(] \s*
-    pub \s+ (?P<name>[A-Z_]+) \s*,\s*
+    pub \s+ (?P<name>[A-Z_][A-Z_0-9]*) \s*,\s*
     (?P<level>Forbid|Deny|Warn|Allow) \s*,\s*
     " (?P<desc>(?:[^"\\]+|\\.)*) " \s* [})]
 ''', re.X | re.S)
