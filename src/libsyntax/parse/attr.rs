@@ -22,26 +22,25 @@ impl<'a> Parser<'a> {
     pub fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         loop {
-            debug!("parse_outer_attributes: self.token={:?}",
-                   self.token);
+            debug!("parse_outer_attributes: self.token={:?}", self.token);
             match self.token {
-              token::Pound => {
-                attrs.push(try!(self.parse_attribute(false)));
-              }
-              token::DocComment(s) => {
-                let attr = ::attr::mk_sugared_doc_attr(
+                token::Pound => {
+                    attrs.push(try!(self.parse_attribute(false)));
+                }
+                token::DocComment(s) => {
+                    let attr = ::attr::mk_sugared_doc_attr(
                     attr::mk_attr_id(),
                     self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)),
                     self.span.lo,
                     self.span.hi
                 );
-                if attr.node.style != ast::AttrStyle::Outer {
-                  return Err(self.fatal("expected outer comment"));
+                    if attr.node.style != ast::AttrStyle::Outer {
+                        return Err(self.fatal("expected outer comment"));
+                    }
+                    attrs.push(attr);
+                    self.bump();
                 }
-                attrs.push(attr);
-                self.bump();
-              }
-              _ => break
+                _ => break,
             }
         }
         return Ok(attrs);
@@ -53,24 +52,27 @@ impl<'a> Parser<'a> {
     /// attribute
     pub fn parse_attribute(&mut self, permit_inner: bool) -> PResult<'a, ast::Attribute> {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
-               permit_inner, self.token);
+               permit_inner,
+               self.token);
         let (span, value, mut style) = match self.token {
             token::Pound => {
                 let lo = self.span.lo;
                 self.bump();
 
-                if permit_inner { self.expected_tokens.push(TokenType::Token(token::Not)); }
+                if permit_inner {
+                    self.expected_tokens.push(TokenType::Token(token::Not));
+                }
                 let style = if self.token == token::Not {
                     self.bump();
                     if !permit_inner {
                         let span = self.span;
-                        self.diagnostic().struct_span_err(span,
-                                                          "an inner attribute is not permitted in \
-                                                           this context")
-                                         .fileline_help(span,
-                                                        "place inner attribute at the top of \
-                                                         the module or block")
-                                         .emit()
+                        self.diagnostic()
+                            .struct_span_err(span,
+                                             "an inner attribute is not permitted in this context")
+                            .fileline_help(span,
+                                           "place inner attribute at the top of the module or \
+                                            block")
+                            .emit()
                     }
                     ast::AttrStyle::Inner
                 } else {
@@ -92,8 +94,9 @@ impl<'a> Parser<'a> {
 
         if permit_inner && self.token == token::Semi {
             self.bump();
-            self.span_warn(span, "this inner attribute syntax is deprecated. \
-                           The new syntax is `#![foo]`, with a bang and no semicolon");
+            self.span_warn(span,
+                           "this inner attribute syntax is deprecated. The new syntax is \
+                            `#![foo]`, with a bang and no semicolon");
             style = ast::AttrStyle::Inner;
         }
 
@@ -103,8 +106,8 @@ impl<'a> Parser<'a> {
                 id: attr::mk_attr_id(),
                 style: style,
                 value: value,
-                is_sugared_doc: false
-            }
+                is_sugared_doc: false,
+            },
         })
     }
 
@@ -139,7 +142,7 @@ impl<'a> Parser<'a> {
                         break;
                     }
                 }
-                _ => break
+                _ => break,
             }
         }
         Ok(attrs)
@@ -150,10 +153,8 @@ impl<'a> Parser<'a> {
     /// | IDENT meta_seq
     pub fn parse_meta_item(&mut self) -> PResult<'a, P<ast::MetaItem>> {
         let nt_meta = match self.token {
-            token::Interpolated(token::NtMeta(ref e)) => {
-                Some(e.clone())
-            }
-            _ => None
+            token::Interpolated(token::NtMeta(ref e)) => Some(e.clone()),
+            _ => None,
         };
 
         match nt_meta {
@@ -176,9 +177,8 @@ impl<'a> Parser<'a> {
                 match lit.node {
                     ast::LitStr(..) => {}
                     _ => {
-                        self.span_err(
-                            lit.span,
-                            "non-string literals are not allowed in meta-items");
+                        self.span_err(lit.span,
+                                      "non-string literals are not allowed in meta-items");
                     }
                 }
                 let hi = self.span.hi;

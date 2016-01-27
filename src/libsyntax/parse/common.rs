@@ -16,7 +16,7 @@ use parse::token;
 /// and whether a trailing separator is allowed.
 pub struct SeqSep {
     pub sep: Option<token::Token>,
-    pub trailing_sep_allowed: bool
+    pub trailing_sep_allowed: bool,
 }
 
 pub fn seq_sep_trailing_allowed(t: token::Token) -> SeqSep {
