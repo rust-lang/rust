@@ -96,7 +96,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if let hir_map::NodeForeignItem(_) = map_node {
         let abi = ccx.tcx().map.get_foreign_abi(fn_node_id);
-        if abi != abi::RustIntrinsic && abi != abi::PlatformIntrinsic {
+        if !abi.is_intrinsic() {
             // Foreign externs don't have to be monomorphized.
             return (get_item_val(ccx, fn_node_id), mono_ty, true);
         }

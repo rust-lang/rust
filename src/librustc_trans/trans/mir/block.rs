@@ -16,8 +16,11 @@ use trans::adt;
 use trans::attributes;
 use trans::base;
 use trans::build;
+use trans::callee;
 use trans::common::{self, Block};
 use trans::debuginfo::DebugLoc;
+use trans::expr;
+use trans::intrinsic;
 use trans::foreign;
 use trans::type_of;
 use trans::type_::Type;
@@ -93,6 +96,57 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
             }
 
+            mir::Terminator::Call { ref args, ref kind, func: mir::Operand::Constant(mir::Constant {
+                literal: mir::Literal::Item {
+                    kind: mir::ItemKind::Intrinsic, ref def_id, substs
+                }, ref span, ref ty})
+            } => {
+                // FIXME: This is, oh, so terrible. For starters this probably shouldn’t have to:
+                // 1. Pull down the string-name of the intrinsic;
+                // 2. Pull down its type;
+                // 3. Provide old-trans CleanupScope thingy (which we set to none);
+                // 4. Invent this Args thing; or
+                // 5. Pass in the Span.
+                //
+                // To fix this one it is necessary to pretty much completely rewrite the intrinsic
+                // translation to be which-trans-agnostic.
+                let name = bcx.tcx().item_name(*def_id).as_str();
+                let mut llargs = Vec::with_capacity(args.len());
+                let dest = if let Some(d) = kind.destination() {
+                    let lvalue = self.trans_lvalue(bcx, d);
+                    expr::Dest::SaveIn(lvalue.llval)
+                } else {
+                    expr::Dest::Ignore
+                };
+                for arg in args {
+                    let operand = self.trans_operand(bcx, arg);
+                    match operand.val {
+                        Ref(llval) | Immediate(llval) => llargs.push(llval),
+                        FatPtr(b, e) => {
+                            llargs.push(b);
+                            llargs.push(e);
+                        }
+                    }
+                }
+
+                let bcx = intrinsic::trans_intrinsic_call(bcx,
+                                                &*name,
+                                                ty,
+                                                None,
+                                                callee::CallArgs::ArgVals(&*llargs),
+                                                dest,
+                                                substs.clone(),
+                                                DebugLoc::None,
+                                                *span).bcx;
+                let target = match *kind {
+                    mir::CallKind::Diverging  |
+                    mir::CallKind::DivergingCleanup(_) => self.unreachable_block(),
+                    mir::CallKind::Converging { target, .. } => self.bcx(target),
+                    mir::CallKind::ConvergingCleanup { ref targets, .. } => self.bcx(targets.0)
+                };
+                build::Br(bcx, target.llbb, DebugLoc::None);
+            }
+
             mir::Terminator::Call { ref func, ref args, ref kind } => {
                 // Create the callee. This will always be a fn ptr and hence a kind of scalar.
                 let callee = self.trans_operand(bcx, func);
@@ -106,8 +160,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Foreign-ABI functions are translated differently
                 let is_foreign = if let ty::TyBareFn(_, ref f) = callee.ty.sty {
-                    // We do not translate intrinsics here (they shouldn’t be functions)
-                    assert!(f.abi != Abi::RustIntrinsic && f.abi != Abi::PlatformIntrinsic);
                     f.abi != Abi::Rust && f.abi != Abi::RustCall
                 } else {
                     false

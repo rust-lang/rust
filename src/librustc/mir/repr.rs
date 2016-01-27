@@ -909,8 +909,14 @@ impl<'tcx> Debug for TypedConstVal<'tcx> {
 pub enum ItemKind {
     Constant,
     /// This is any sort of callable (usually those that have a type of `fn(…) -> …`). This
-    /// includes functions, constructors, but not methods which have their own ItemKind.
+    /// includes functions, constructors, but not methods or intrinsics which have their own
+    /// ItemKind.
     Function,
+    /// An intrinsic.
+    Intrinsic,
+    // Translation of this kind of items differ considerably from Function to warrant their own
+    // kind.
+    /// A method.
     Method,
 }
 

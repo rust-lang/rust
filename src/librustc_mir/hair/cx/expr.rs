@@ -569,11 +569,16 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
     let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(expr.id).substs);
     // Otherwise there may be def_map borrow conflicts
     let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
+    let ty = cx.tcx.node_id_to_type(expr.id);
     let (def_id, kind) = match def {
-        // A regular function.
-        Def::Fn(def_id) => (def_id, ItemKind::Function),
+        // A function or intrinsic.
+        Def::Fn(def_id) => match ty.sty {
+            ty::TyBareFn(_, f) if f.abi.is_intrinsic() => (def_id, ItemKind::Intrinsic),
+            ty::TyBareFn(..) => (def_id, ItemKind::Function),
+            ref sty => panic!("unexpected sty: {:?}", sty)
+        },
         Def::Method(def_id) => (def_id, ItemKind::Method),
-        Def::Struct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
+        Def::Struct(def_id) => match ty.sty {
             // A tuple-struct constructor. Should only be reached if not called in the same
             // expression.
             ty::TyBareFn(..) => (def_id, ItemKind::Function),
@@ -588,7 +593,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
             },
             ref sty => panic!("unexpected sty: {:?}", sty)
         },
-        Def::Variant(enum_id, variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
+        Def::Variant(enum_id, variant_id) => match ty.sty {
             // A variant constructor. Should only be reached if not called in the same
             // expression.
             ty::TyBareFn(..) => (variant_id, ItemKind::Function),
