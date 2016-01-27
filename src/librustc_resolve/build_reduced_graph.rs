@@ -142,29 +142,17 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     }
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
-        // Check each statement.
-        for statement in &block.stmts {
-            match statement.node {
-                StmtDecl(ref declaration, _) => {
-                    match declaration.node {
-                        DeclItem(_) => {
-                            return true;
-                        }
-                        _ => {
-                            // Keep searching.
-                        }
-                    }
-                }
-                _ => {
-                    // Keep searching.
+        fn is_item(statement: &hir::Stmt) -> bool {
+            if let StmtDecl(ref declaration, _) = statement.node {
+                if let DeclItem(_) = declaration.node {
+                    return true;
                 }
             }
+            false
         }
 
-        // If we found no items, we don't need to create
-        // an anonymous module.
-
-        return false;
+        // If any statements are items, we need to create an anonymous module
+        block.stmts.iter().any(is_item)
     }
 
     /// Constructs the reduced graph for one item.
