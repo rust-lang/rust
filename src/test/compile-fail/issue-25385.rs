@@ -17,6 +17,7 @@ macro_rules! foo {
 fn main() {
     let a = 1i32;
     foo!(a);
+    //~^ NOTE in this expansion of foo!
 
     foo!(1i32.foo());
     //~^ ERROR no method named `foo` found for type `i32` in the current scope

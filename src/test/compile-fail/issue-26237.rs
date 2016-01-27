@@ -19,4 +19,5 @@ fn main() {
     let mut value_a = 0;
     let mut value_b = 0;
     macro_panic!(value_a, value_b);
+    //~^ in this expansion of macro_panic!
 }
