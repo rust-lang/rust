@@ -567,10 +567,11 @@ to it as "sayings". Similarly, the first `use` statement pulls in the
 `ja_greetings` as opposed to simply `greetings`. This can help to avoid
 ambiguity when importing similarly-named items from different places.
 
-The second `use` statement uses a star glob to bring in _all_ symbols from the
-`sayings::japanese::farewells` module. As you can see we can later refer to
+The second `use` statement uses a star glob to bring in all public symbols from
+the `sayings::japanese::farewells` module. As you can see we can later refer to
 the Japanese `goodbye` function with no module qualifiers. This kind of glob
-should be used sparingly.
+should be used sparingly. It’s worth noting that it only imports the public
+symbols, even if the code doing the globbing is in the same module.
 
 The third `use` statement bears more explanation. It's using "brace expansion"
 globbing to compress three `use` statements into one (this sort of syntax

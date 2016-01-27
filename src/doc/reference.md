@@ -2095,7 +2095,7 @@ along with their default settings.  [Compiler
 plugins](book/compiler-plugins.html#lint-plugins) can provide additional lint checks.
 
 ```{.ignore}
-mod m1 {
+pub mod m1 {
     // Missing documentation is ignored here
     #[allow(missing_docs)]
     pub fn undocumented_one() -> i32 { 1 }
@@ -2115,9 +2115,9 @@ check on and off:
 
 ```{.ignore}
 #[warn(missing_docs)]
-mod m2{
+pub mod m2{
     #[allow(missing_docs)]
-    mod nested {
+    pub mod nested {
         // Missing documentation is ignored here
         pub fn undocumented_one() -> i32 { 1 }
 
@@ -2137,7 +2137,7 @@ that lint check:
 
 ```{.ignore}
 #[forbid(missing_docs)]
-mod m3 {
+pub mod m3 {
     // Attempting to toggle warning signals an error here
     #[allow(missing_docs)]
     /// Returns 2.
