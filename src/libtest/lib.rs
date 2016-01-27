@@ -939,18 +939,12 @@ fn get_concurrency() -> usize {
     fn num_cpus() -> usize {
         let mut cpus: libc::c_uint = 0;
         let mut cpus_size = std::mem::size_of_val(&cpus);
-        let mut mib = [libc::CTL_HW, libc::HW_AVAILCPU, 0, 0];
 
         unsafe {
-            libc::sysctl(mib.as_mut_ptr(),
-                         2,
-                         &mut cpus as *mut _ as *mut _,
-                         &mut cpus_size as *mut _ as *mut _,
-                         0 as *mut _,
-                         0);
+            cpus = libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as libc::c_uint;
         }
         if cpus < 1 {
-            mib[1] = libc::HW_NCPU;
+            let mut mib = [libc::CTL_HW, libc::HW_NCPU, 0, 0];
             unsafe {
                 libc::sysctl(mib.as_mut_ptr(),
                              2,

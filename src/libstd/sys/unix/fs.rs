@@ -224,7 +224,7 @@ impl DirEntry {
     fn name_bytes(&self) -> &[u8] {
         unsafe {
             ::slice::from_raw_parts(self.entry.d_name.as_ptr() as *const u8,
-                                    self.entry.d_namelen as usize)
+                                    self.entry.d_namlen as usize)
         }
     }
     #[cfg(any(target_os = "android",
