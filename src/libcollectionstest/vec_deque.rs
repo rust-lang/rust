@@ -606,6 +606,25 @@ fn test_hash() {
 }
 
 #[test]
+fn test_hash_after_rotation() {
+    // test that two deques hash equal even if elements are laid out differently
+    let len = 28;
+    let mut ring: VecDeque<i32> = (0..len as i32).collect();
+    let orig = ring.clone();
+    for _ in 0..ring.capacity() {
+        // shift values 1 step to the right by pop, sub one, push
+        ring.pop_front();
+        for elt in &mut ring {
+            *elt -= 1;
+        }
+        ring.push_back(len - 1);
+        assert_eq!(::hash(&orig), ::hash(&ring));
+        assert_eq!(orig, ring);
+        assert_eq!(ring, orig);
+    }
+}
+
+#[test]
 fn test_ord() {
     let x = VecDeque::new();
     let mut y = VecDeque::new();
