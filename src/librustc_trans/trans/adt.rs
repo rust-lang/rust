@@ -349,25 +349,28 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
                         // For the moment, we can only apply these
                         // optimizations to safe pointers.
-                        match cases[discr].find_ptr(cx) {
-                            Some(ref df) if df.len() == 1 && st.fields.len() == 1 => {
+                        match cases[discr].find_forbidden_value(cx) {
+                            Some((ref df, forbidden_value))
+                                if df.len() == 1 && st.fields.len() == 1 => {
                                 let payload_ty = st.fields[0];
                                 return RawForbiddenValue {
                                     payload_discr: Disr::from(discr),
                                     payload_ty: payload_ty,
-                                    forbidden_value: C_null(type_of::sizing_type_of(cx, payload_ty)),
+                                    forbidden_value: forbidden_value,
                                     unit_fields: cases[1 - discr].tys.clone()
                                 };
                             }
-                            Some(mut discrfield) => {
-                                discrfield.push(0);
-                                discrfield.reverse();
-                                return StructWrappedNullablePointer {
-                                    nndiscr: Disr::from(discr),
-                                    nonnull: st,
-                                    discrfield: discrfield,
-                                    nullfields: cases[1 - discr].tys.clone()
-                                };
+                            Some((mut discrfield, forbidden)) => {
+                                if is_null(forbidden) {
+                                    discrfield.push(0);
+                                    discrfield.reverse();
+                                    return StructWrappedNullablePointer {
+                                        nndiscr: Disr::from(discr),
+                                        nonnull: st,
+                                        discrfield: discrfield,
+                                        nullfields: cases[1 - discr].tys.clone()
+                                    };
+                                }
                             }
                             None => {}
                         }
@@ -466,23 +469,34 @@ struct Case<'tcx> {
 /// This represents the (GEP) indices to follow to get to the discriminant field
 pub type DiscrField = Vec<usize>;
 
-fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn find_discr_field_candidate<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     ty: Ty<'tcx>,
-                                    mut path: DiscrField) -> Option<DiscrField> {
+                                    mut path: DiscrField) -> Option<(DiscrField, ValueRef)> {
+    let ref tcx = cx.tcx();
     match ty.sty {
-        // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait
-        ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) if !type_is_sized(tcx, ty) => {
-            path.push(FAT_PTR_ADDR);
-            Some(path)
-        },
+        // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait: null is forbidden
+        ty::TyRef(_, ty::TypeAndMut { ty: ty2, .. }) | ty::TyBox(ty2)
+            if !type_is_sized(tcx, ty2) => {
+                path.push(FAT_PTR_ADDR);
+                Some((path, C_null(type_of::sizing_type_of(cx, ty))))
+            },
 
-        // Regular thin pointer: &T/&mut T/Box<T>
-        ty::TyRef(..) | ty::TyBox(..) => Some(path),
+        // Regular thin pointer: &T/&mut T/Box<T>: null is forbidden
+        ty::TyRef(..) | ty::TyBox(..) => Some((path, C_null(type_of::sizing_type_of(cx, ty)))),
 
-        // Functions are just pointers
-        ty::TyBareFn(..) => Some(path),
+        // Functions are just pointers: null is forbidden
+        ty::TyBareFn(..) => Some((path, C_null(type_of::sizing_type_of(cx, ty)))),
+
+        // Is this a char or a bool? If so, std::uXX:MAX is forbidden.
+        ty::TyChar => Some((path,
+                            C_integral(type_of::sizing_type_of(cx, ty),
+                                       std::u32::MAX as u64, false))),
+        ty::TyBool => Some((path,
+                            C_integral(type_of::sizing_type_of(cx, ty),
+                                       std::u8::MAX as u64, false))),
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
+        // If so, null is forbidden.
         ty::TyStruct(def, substs) if Some(def.did) == tcx.lang_items.non_zero() => {
             let nonzero_fields = &def.struct_variant().fields;
             assert_eq!(nonzero_fields.len(), 1);
@@ -490,36 +504,38 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             match field_ty.sty {
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if !type_is_sized(tcx, ty) => {
                     path.extend_from_slice(&[0, FAT_PTR_ADDR]);
-                    Some(path)
+                    Some((path, C_null(Type::i8p(cx))))
                 },
                 ty::TyRawPtr(..) | ty::TyInt(..) | ty::TyUint(..) => {
                     path.push(0);
-                    Some(path)
+                    Some((path, C_null(type_of::sizing_type_of(cx, field_ty))))
                 },
                 _ => None
             }
         },
 
-        // Perhaps one of the fields of this struct is non-zero
+        // Perhaps one of the fields of this struct has a forbidden value.
         // let's recurse and find out
         ty::TyStruct(def, substs) => {
             for (j, field) in def.struct_variant().fields.iter().enumerate() {
                 let field_ty = monomorphize::field_ty(tcx, substs, field);
-                if let Some(mut fpath) = find_discr_field_candidate(tcx, field_ty, path.clone()) {
+                if let Some((mut fpath, forbidden)) =
+                    find_discr_field_candidate(cx, field_ty, path.clone()) {
                     fpath.push(j);
-                    return Some(fpath);
+                    return Some((fpath, forbidden));
                 }
             }
             None
         },
 
-        // Perhaps one of the upvars of this struct is non-zero
+        // Perhaps one of the upvars of this struct has a forbidden value.
         // Let's recurse and find out!
         ty::TyClosure(_, ref substs) => {
             for (j, &ty) in substs.upvar_tys.iter().enumerate() {
-                if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
+                if let Some((mut fpath, forbidden)) =
+                    find_discr_field_candidate(cx, ty, path.clone()) {
                     fpath.push(j);
-                    return Some(fpath);
+                    return Some((fpath, forbidden));
                 }
             }
             None
@@ -528,26 +544,27 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // Can we use one of the fields in this tuple?
         ty::TyTuple(ref tys) => {
             for (j, &ty) in tys.iter().enumerate() {
-                if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
+                if let Some((mut fpath, forbidden)) =
+                    find_discr_field_candidate(cx, ty, path.clone()) {
                     fpath.push(j);
-                    return Some(fpath);
+                    return Some((fpath, forbidden));
                 }
             }
             None
         },
 
-        // Is this a fixed-size array of something non-zero
+        // Is this a fixed-size array of something with a forbidden value
         // with at least one element?
         ty::TyArray(ety, d) if d > 0 => {
-            if let Some(mut vpath) = find_discr_field_candidate(tcx, ety, path) {
+            if let Some((mut vpath, forbidden)) = find_discr_field_candidate(cx, ety, path) {
                 vpath.push(0);
-                Some(vpath)
+                Some((vpath, forbidden))
             } else {
                 None
             }
         },
 
-        // Anything else is not a pointer
+        // Anything else doesn't have a known-to-be-safe forbidden value.
         _ => None
     }
 }
@@ -557,13 +574,22 @@ impl<'tcx> Case<'tcx> {
         mk_struct(cx, &self.tys, false, scapegoat).size == 0
     }
 
-    /// Find a safe pointer that may be used to discriminate in a
+    /// Find a forbidden value that may be used to discriminate in a
     /// RawForbiddenValue or StructWrappedNullablePointer.
-    fn find_ptr<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> Option<DiscrField> {
+    ///
+    /// Example: In `Option<&T>`, since `&T` has a forbidden value 0,
+    /// this method will return the path to `&T`, with a value of 0.
+    ///
+    /// Example: In `Option<(u64, char)>`, since `char` has a
+    /// forbidden value 2^32 - 1, this method will return the path to
+    /// the `char` field in the tuple, with a value of 2^32 - 1.
+    fn find_forbidden_value<'a>(&self, cx: &CrateContext<'a, 'tcx>) ->
+        Option<(DiscrField, ValueRef)> {
         for (i, &ty) in self.tys.iter().enumerate() {
-            if let Some(mut path) = find_discr_field_candidate(cx.tcx(), ty, vec![]) {
+            if let Some((mut path, forbidden)) =
+                find_discr_field_candidate(cx, ty, vec![]) {
                 path.push(i);
-                return Some(path);
+                return Some((path, forbidden));
             }
         }
         None
@@ -1129,7 +1155,8 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             PointerCast(bcx, val.value, ty.ptr_to())
         }
         RawForbiddenValue { payload_discr, payload_ty, .. } => {
-            assert_eq!(ix, 0); // By definition, the payload of RawForbiddenValue has a single field.
+            // By definition, the payload of RawForbiddenValue has a single field.
+            assert_eq!(ix, 0);
             assert_eq!(discr, payload_discr);
             let ty = type_of::type_of(bcx.ccx(), payload_ty);
             PointerCast(bcx, val.value, ty.ptr_to())
