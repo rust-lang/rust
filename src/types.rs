@@ -517,3 +517,43 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
         self.nest -= sub_nest;
     }
 }
+
+/// **What it does:** This lint points out expressions where a character literal is casted to u8 and suggests using a byte literal instead.
+///
+/// **Why is this bad?** In general, casting values to smaller types is error-prone and should be avoided where possible. In the particular case of converting a character literal to u8, it is easy to avoid by just using a byte literal instead. As an added bonus, `b'a'` is even slightly shorter than `'a' as u8`.
+///
+/// **Known problems:** None
+///
+/// **Example:** `'x' as u8`
+declare_lint!(pub CHAR_LIT_AS_U8, Warn,
+              "Casting a character literal to u8");
+
+pub struct CharLitAsU8;
+
+impl LintPass for CharLitAsU8 {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(CHAR_LIT_AS_U8)
+    }
+}
+
+impl LateLintPass for CharLitAsU8 {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        use syntax::ast::{Lit_, UintTy};
+
+        if let ExprCast(ref e, _) = expr.node {
+            if let ExprLit(ref l) = e.node {
+                if let Lit_::LitChar(_) = l.node {
+                    if ty::TyUint(UintTy::TyU8) == cx.tcx.expr_ty(expr).sty && !in_macro(cx, expr.span) {
+                        let msg = "casting character literal to u8. `char`s \
+                                   are 4 bytes wide in rust, so casting to u8 \
+                                   truncates them";
+                        let help = format!("Consider using a byte literal \
+                                            instead:\nb{}",
+                                          snippet(cx, e.span, "'x'"));
+                        span_help_and_lint(cx, CHAR_LIT_AS_U8, expr.span, msg, &help);
+                    }
+                }
+            }
+        }
+    }
+}
