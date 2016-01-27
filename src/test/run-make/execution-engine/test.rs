@@ -32,7 +32,7 @@ use rustc::middle::cstore::{CrateStore, LinkagePreference};
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;
-use rustc_driver::driver;
+use rustc_driver::{driver, abort_on_err};
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_resolve::MakeGlobMap;
 use rustc_metadata::cstore::CStore;
@@ -234,7 +234,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::make_map(&sess, &mut hir_forest);
 
-        driver::phase_3_run_analysis_passes(
+        abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, &cstore, ast_map, &arenas, &id,
             MakeGlobMap::No, |tcx, mir_map, analysis| {
 
@@ -254,7 +254,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
             let modp = llmod as usize;
 
             (modp, deps)
-        })
+        }), &sess)
     }).unwrap();
 
     match handle.join() {

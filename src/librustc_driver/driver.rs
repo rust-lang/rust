@@ -35,7 +35,7 @@ use rustc_plugin as plugin;
 use rustc_front::hir;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_passes::{no_asm, loops, consts, const_fn, rvalues, static_recursion};
-use super::Compilation;
+use super::{Compilation, CompileResult, compile_result_from_err_count};
 
 use serialize::json;
 
@@ -57,45 +57,50 @@ use syntax::visit;
 use syntax;
 use syntax_ext;
 
-pub fn compile_input(sess: Session,
+macro_rules! throw_if_errors {
+    ($tsess: expr) => {{
+        let err_count = $tsess.err_count();
+        if err_count > 0 {
+            return Err(err_count);
+        }
+    }}
+}
+
+pub fn compile_input(sess: &Session,
                      cstore: &CStore,
                      cfg: ast::CrateConfig,
                      input: &Input,
                      outdir: &Option<PathBuf>,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
-                     control: CompileController) {
+                     control: CompileController) -> CompileResult {
     macro_rules! controller_entry_point{($point: ident, $tsess: expr, $make_state: expr) => ({
         let state = $make_state;
         (control.$point.callback)(state);
 
         if control.$point.stop == Compilation::Stop {
-            $tsess.abort_if_errors();
-            return;
+            return compile_result_from_err_count($tsess.err_count());
         }
     })}
 
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let result = {
+    let (outputs, trans) = {
         let (outputs, expanded_crate, id) = {
-            let krate = phase_1_parse_input(&sess, cfg, input);
+            let krate = phase_1_parse_input(sess, cfg, input);
 
             controller_entry_point!(after_parse,
                                     sess,
-                                    CompileState::state_after_parse(input, &sess, outdir, &krate));
+                                    CompileState::state_after_parse(input, sess, outdir, &krate));
 
-            let outputs = build_output_filenames(input, outdir, output, &krate.attrs, &sess);
-            let id = link::find_crate_name(Some(&sess), &krate.attrs, input);
-            let expanded_crate = match phase_2_configure_and_expand(&sess,
-                                                                    &cstore,
-                                                                    krate,
-                                                                    &id[..],
-                                                                    addl_plugins) {
-                None => return,
-                Some(k) => k,
-            };
+            let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
+            let id = link::find_crate_name(Some(sess), &krate.attrs, input);
+            let expanded_crate = try!(phase_2_configure_and_expand(sess,
+                                                                   &cstore,
+                                                                   krate,
+                                                                   &id[..],
+                                                                   addl_plugins));
 
             (outputs, expanded_crate, id)
         };
@@ -103,14 +108,14 @@ pub fn compile_input(sess: Session,
         controller_entry_point!(after_expand,
                                 sess,
                                 CompileState::state_after_expand(input,
-                                                                 &sess,
+                                                                 sess,
                                                                  outdir,
                                                                  &expanded_crate,
                                                                  &id[..]));
 
-        let expanded_crate = assign_node_ids(&sess, expanded_crate);
+        let expanded_crate = assign_node_ids(sess, expanded_crate);
         // Lower ast -> hir.
-        let lcx = LoweringContext::new(&sess, Some(&expanded_crate));
+        let lcx = LoweringContext::new(sess, Some(&expanded_crate));
         let mut hir_forest = time(sess.time_passes(),
                                   "lowering ast -> hir",
                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate)));
@@ -122,14 +127,14 @@ pub fn compile_input(sess: Session,
         }
 
         let arenas = ty::CtxtArenas::new();
-        let hir_map = make_map(&sess, &mut hir_forest);
+        let hir_map = make_map(sess, &mut hir_forest);
 
-        write_out_deps(&sess, &outputs, &id);
+        write_out_deps(sess, &outputs, &id);
 
         controller_entry_point!(after_write_deps,
                                 sess,
                                 CompileState::state_after_write_deps(input,
-                                                                     &sess,
+                                                                     sess,
                                                                      outdir,
                                                                      &hir_map,
                                                                      &expanded_crate,
@@ -138,12 +143,12 @@ pub fn compile_input(sess: Session,
                                                                      &lcx));
 
         time(sess.time_passes(), "attribute checking", || {
-            front::check_attr::check_crate(&sess, &expanded_crate);
+            front::check_attr::check_crate(sess, &expanded_crate);
         });
 
         time(sess.time_passes(),
              "early lint checks",
-             || lint::check_ast_crate(&sess, &expanded_crate));
+             || lint::check_ast_crate(sess, &expanded_crate));
 
         let opt_crate = if sess.opts.debugging_opts.keep_ast ||
                            sess.opts.debugging_opts.save_analysis {
@@ -153,67 +158,62 @@ pub fn compile_input(sess: Session,
             None
         };
 
-        phase_3_run_analysis_passes(&sess,
-                                    &cstore,
-                                    hir_map,
-                                    &arenas,
-                                    &id,
-                                    control.make_glob_map,
-                                    |tcx, mir_map, analysis| {
+        try!(try!(phase_3_run_analysis_passes(sess,
+                                         &cstore,
+                                         hir_map,
+                                         &arenas,
+                                         &id,
+                                         control.make_glob_map,
+                                         |tcx, mir_map, analysis| {
+            {
+                let state =
+                    CompileState::state_after_analysis(input,
+                                                       &tcx.sess,
+                                                       outdir,
+                                                       opt_crate,
+                                                       tcx.map.krate(),
+                                                       &analysis,
+                                                       &mir_map,
+                                                       tcx,
+                                                       &lcx,
+                                                       &id);
+                (control.after_analysis.callback)(state);
 
-                                        {
-                                            let state =
-                                                CompileState::state_after_analysis(input,
-                                                                                   &tcx.sess,
-                                                                                   outdir,
-                                                                                   opt_crate,
-                                                                                   tcx.map.krate(),
-                                                                                   &analysis,
-                                                                                   &mir_map,
-                                                                                   tcx,
-                                                                                   &lcx,
-                                                                                   &id);
-                                            (control.after_analysis.callback)(state);
+                throw_if_errors!(tcx.sess);
+                if control.after_analysis.stop == Compilation::Stop {
+                    return Err(0usize);
+                }
+            }
 
-                                            tcx.sess.abort_if_errors();
-                                            if control.after_analysis.stop == Compilation::Stop {
-                                                return Err(());
-                                            }
-                                        }
+            if log_enabled!(::log::INFO) {
+                println!("Pre-trans");
+                tcx.print_debug_stats();
+            }
+            let trans = phase_4_translate_to_llvm(tcx,
+                                                  mir_map,
+                                                  analysis);
 
-                                        if log_enabled!(::log::INFO) {
-                                            println!("Pre-trans");
-                                            tcx.print_debug_stats();
-                                        }
-                                        let trans = phase_4_translate_to_llvm(tcx,
-                                                                              mir_map,
-                                                                              analysis);
+            if log_enabled!(::log::INFO) {
+                println!("Post-trans");
+                tcx.print_debug_stats();
+            }
 
-                                        if log_enabled!(::log::INFO) {
-                                            println!("Post-trans");
-                                            tcx.print_debug_stats();
-                                        }
+            // Discard interned strings as they are no longer required.
+            token::get_ident_interner().clear();
 
-                                        // Discard interned strings as they are no longer required.
-                                        token::get_ident_interner().clear();
-
-                                        Ok((outputs, trans))
-                                    })
+            Ok((outputs, trans))
+        })))
     };
 
-    let (outputs, trans) = if let Ok(out) = result {
-        out
-    } else {
-        return;
-    };
-
-    phase_5_run_llvm_passes(&sess, &trans, &outputs);
+    try!(phase_5_run_llvm_passes(sess, &trans, &outputs));
 
     controller_entry_point!(after_llvm,
                             sess,
-                            CompileState::state_after_llvm(input, &sess, outdir, &trans));
+                            CompileState::state_after_llvm(input, sess, outdir, &trans));
 
-    phase_6_link_output(&sess, &trans, &outputs);
+    phase_6_link_output(sess, &trans, &outputs);
+
+    Ok(())
 }
 
 /// The name used for source code that doesn't originate in a file
@@ -457,7 +457,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                     mut krate: ast::Crate,
                                     crate_name: &str,
                                     addl_plugins: Option<Vec<String>>)
-                                    -> Option<ast::Crate> {
+                                    -> Result<ast::Crate, usize> {
     let time_passes = sess.time_passes();
 
     // strip before anything else because crate metadata may use #[cfg_attr]
@@ -469,13 +469,13 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // baz! should not use this definition unless foo is enabled.
 
     let mut feature_gated_cfgs = vec![];
-    krate = time(time_passes, "configuration 1", || {
-        sess.abort_if_new_errors(|| {
+    krate = try!(time(time_passes, "configuration 1", || {
+        sess.track_errors(|| {
             syntax::config::strip_unconfigured_items(sess.diagnostic(),
                                                      krate,
                                                      &mut feature_gated_cfgs)
         })
-    });
+    }));
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
     *sess.crate_metadata.borrow_mut() = collect_crate_metadata(sess, &krate.attrs);
@@ -484,8 +484,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         middle::recursion_limit::update_recursion_limit(sess, &krate);
     });
 
-    time(time_passes, "gated macro checking", || {
-        sess.abort_if_new_errors(|| {
+    try!(time(time_passes, "gated macro checking", || {
+        sess.track_errors(|| {
             let features =
               syntax::feature_gate::check_crate_macros(sess.codemap(),
                                                        &sess.parse_sess.span_diagnostic,
@@ -493,8 +493,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
             // these need to be set "early" so that expansion sees `quote` if enabled.
             *sess.features.borrow_mut() = features;
-        });
-    });
+        })
+    }));
 
 
     krate = time(time_passes, "crate injection", || {
@@ -531,7 +531,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
                    llvm_passes, attributes, .. } = registry;
 
-    sess.abort_if_new_errors(|| {
+    try!(sess.track_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
         for pass in early_lint_passes {
             ls.register_early_pass(Some(sess), true, pass);
@@ -546,14 +546,14 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
-    });
+    }));
 
     // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
         super::describe_lints(&*sess.lint_store.borrow(), true);
-        return None;
+        return Err(0);
     }
-    sess.abort_if_new_errors(|| sess.lint_store.borrow_mut().process_command_line(sess));
+    try!(sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess)));
 
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
@@ -596,21 +596,21 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // of macro expansion.  This runs before #[cfg] to try to catch as
     // much as possible (e.g. help the programmer avoid platform
     // specific differences)
-    time(time_passes, "complete gated feature checking 1", || {
-        sess.abort_if_new_errors(|| {
+    try!(time(time_passes, "complete gated feature checking 1", || {
+        sess.track_errors(|| {
             let features = syntax::feature_gate::check_crate(sess.codemap(),
                                                              &sess.parse_sess.span_diagnostic,
                                                              &krate,
                                                              &attributes,
                                                              sess.opts.unstable_features);
             *sess.features.borrow_mut() = features;
-        });
-    });
+        })
+    }));
 
     // JBC: make CFG processing part of expansion to avoid this problem:
 
     // strip again, in case expansion added anything with a #[cfg].
-    krate = sess.abort_if_new_errors(|| {
+    krate = try!(sess.track_errors(|| {
         let krate = time(time_passes, "configuration 2", || {
             syntax::config::strip_unconfigured_items(sess.diagnostic(),
                                                      krate,
@@ -627,7 +627,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         });
 
         krate
-    });
+    }));
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess, &sess.opts.cfg, krate, sess.diagnostic())
@@ -648,16 +648,16 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // One final feature gating of the true AST that gets compiled
     // later, to make sure we've got everything (e.g. configuration
     // can insert new attributes via `cfg_attr`)
-    time(time_passes, "complete gated feature checking 2", || {
-        sess.abort_if_new_errors(|| {
+    try!(time(time_passes, "complete gated feature checking 2", || {
+        sess.track_errors(|| {
             let features = syntax::feature_gate::check_crate(sess.codemap(),
                                                              &sess.parse_sess.span_diagnostic,
                                                              &krate,
                                                              &attributes,
                                                              sess.opts.unstable_features);
             *sess.features.borrow_mut() = features;
-        });
-    });
+        })
+    }));
 
     time(time_passes,
          "const fn bodies and arguments",
@@ -667,7 +667,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         println!("Post-expansion node count: {}", count_nodes(&krate));
     }
 
-    Some(krate)
+    Ok(krate)
 }
 
 pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
@@ -712,7 +712,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                name: &str,
                                                make_glob_map: resolve::MakeGlobMap,
                                                f: F)
-                                               -> R
+                                               -> Result<R, usize>
     where F: for<'a> FnOnce(&'a ty::ctxt<'tcx>, MirMap<'tcx>, ty::CrateAnalysis) -> R
 {
     let time_passes = sess.time_passes();
@@ -722,11 +722,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
          "external crate/lib resolution",
          || LocalCrateReader::new(sess, cstore, &hir_map).read_crates(krate));
 
-    let lang_items = time(time_passes, "language item collection", || {
-        sess.abort_if_new_errors(|| {
+    let lang_items = try!(time(time_passes, "language item collection", || {
+        sess.track_errors(|| {
             middle::lang_items::collect_language_items(&sess, &hir_map)
         })
-    });
+    }));
 
     let resolve::CrateMap {
         def_map,
@@ -773,98 +773,98 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                lang_items,
                                stability::Index::new(krate),
                                |tcx| {
-                                   // passes are timed inside typeck
-                                   typeck::check_crate(tcx, trait_map);
+        // passes are timed inside typeck
+        typeck::check_crate(tcx, trait_map);
 
-                                   time(time_passes,
-                                        "const checking",
-                                        || consts::check_crate(tcx));
+        time(time_passes,
+             "const checking",
+             || consts::check_crate(tcx));
 
-                                   let access_levels =
-                                       time(time_passes, "privacy checking", || {
-                                           rustc_privacy::check_crate(tcx,
-                                                                      &export_map,
-                                                                      external_exports)
-                                       });
+        let access_levels =
+            time(time_passes, "privacy checking", || {
+                rustc_privacy::check_crate(tcx,
+                                           &export_map,
+                                           external_exports)
+            });
 
-                                   // Do not move this check past lint
-                                   time(time_passes, "stability index", || {
-                                       tcx.stability.borrow_mut().build(tcx, krate, &access_levels)
-                                   });
+        // Do not move this check past lint
+        time(time_passes, "stability index", || {
+            tcx.stability.borrow_mut().build(tcx, krate, &access_levels)
+        });
 
-                                   time(time_passes,
-                                        "intrinsic checking",
-                                        || middle::intrinsicck::check_crate(tcx));
+        time(time_passes,
+             "intrinsic checking",
+             || middle::intrinsicck::check_crate(tcx));
 
-                                   time(time_passes,
-                                        "effect checking",
-                                        || middle::effect::check_crate(tcx));
+        time(time_passes,
+             "effect checking",
+             || middle::effect::check_crate(tcx));
 
-                                   time(time_passes,
-                                        "match checking",
-                                        || middle::check_match::check_crate(tcx));
+        time(time_passes,
+             "match checking",
+             || middle::check_match::check_crate(tcx));
 
-                                   let mir_map =
-                                       time(time_passes,
-                                            "MIR dump",
-                                            || mir::mir_map::build_mir_for_crate(tcx));
+        let mir_map =
+            time(time_passes,
+                 "MIR dump",
+                 || mir::mir_map::build_mir_for_crate(tcx));
 
-                                   time(time_passes,
-                                        "liveness checking",
-                                        || middle::liveness::check_crate(tcx));
+        time(time_passes,
+             "liveness checking",
+             || middle::liveness::check_crate(tcx));
 
-                                   time(time_passes,
-                                        "borrow checking",
-                                        || borrowck::check_crate(tcx));
+        time(time_passes,
+             "borrow checking",
+             || borrowck::check_crate(tcx));
 
-                                   time(time_passes,
-                                        "rvalue checking",
-                                        || rvalues::check_crate(tcx));
+        time(time_passes,
+             "rvalue checking",
+             || rvalues::check_crate(tcx));
 
-                                   // Avoid overwhelming user with errors if type checking failed.
-                                   // I'm not sure how helpful this is, to be honest, but it avoids
-                                   // a
-                                   // lot of annoying errors in the compile-fail tests (basically,
-                                   // lint warnings and so on -- kindck used to do this abort, but
-                                   // kindck is gone now). -nmatsakis
-                                   tcx.sess.abort_if_errors();
+        // Avoid overwhelming user with errors if type checking failed.
+        // I'm not sure how helpful this is, to be honest, but it avoids
+        // a
+        // lot of annoying errors in the compile-fail tests (basically,
+        // lint warnings and so on -- kindck used to do this abort, but
+        // kindck is gone now). -nmatsakis
+        throw_if_errors!(tcx.sess);
 
-                                   let reachable_map =
-                                       time(time_passes,
-                                            "reachability checking",
-                                            || reachable::find_reachable(tcx, &access_levels));
+        let reachable_map =
+            time(time_passes,
+                 "reachability checking",
+                 || reachable::find_reachable(tcx, &access_levels));
 
-                                   time(time_passes, "death checking", || {
-                                       middle::dead::check_crate(tcx, &access_levels);
-                                   });
+        time(time_passes, "death checking", || {
+            middle::dead::check_crate(tcx, &access_levels);
+        });
 
-                                   let ref lib_features_used =
-                                       time(time_passes,
-                                            "stability checking",
-                                            || stability::check_unstable_api_usage(tcx));
+        let ref lib_features_used =
+            time(time_passes,
+                 "stability checking",
+                 || stability::check_unstable_api_usage(tcx));
 
-                                   time(time_passes, "unused lib feature checking", || {
-                                       stability::check_unused_or_stable_features(&tcx.sess,
-                                                                                  lib_features_used)
-                                   });
+        time(time_passes, "unused lib feature checking", || {
+            stability::check_unused_or_stable_features(&tcx.sess,
+                                                       lib_features_used)
+        });
 
-                                   time(time_passes,
-                                        "lint checking",
-                                        || lint::check_crate(tcx, &access_levels));
+        time(time_passes,
+             "lint checking",
+             || lint::check_crate(tcx, &access_levels));
 
-                                   // The above three passes generate errors w/o aborting
-                                   tcx.sess.abort_if_errors();
+        // The above three passes generate errors w/o aborting
+        throw_if_errors!(tcx.sess);
 
-                                   f(tcx,
-                                     mir_map,
-                                     ty::CrateAnalysis {
-                                         export_map: export_map,
-                                         access_levels: access_levels,
-                                         reachable: reachable_map,
-                                         name: name,
-                                         glob_map: glob_map,
-                                     })
-                               })
+        Ok(f(tcx,
+          mir_map,
+          ty::CrateAnalysis {
+              export_map: export_map,
+              access_levels: access_levels,
+              reachable: reachable_map,
+              name: name,
+              glob_map: glob_map,
+          }))
+    })
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -893,7 +893,7 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: &trans::CrateTranslation,
-                               outputs: &OutputFilenames) {
+                               outputs: &OutputFilenames) -> CompileResult {
     if sess.opts.cg.no_integrated_as {
         let mut map = HashMap::new();
         map.insert(OutputType::Assembly, None);
@@ -913,7 +913,8 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
              || write::run_passes(sess, trans, &sess.opts.output_types, outputs));
     }
 
-    sess.abort_if_errors();
+    throw_if_errors!(sess);
+    Ok(())
 }
 
 /// Run the linker on any artifacts that resulted from the LLVM run.

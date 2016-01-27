@@ -65,7 +65,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let cfg = build_configuration(&sess);
     let control = CompileController::basic();
 
-    compile_input(sess, &cstore,
+    compile_input(&sess, &cstore,
             cfg,
             &Input::Str(code),
             &None,
