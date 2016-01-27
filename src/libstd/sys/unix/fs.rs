@@ -26,6 +26,8 @@ use sys_common::{AsInner, FromInner};
 use vec::Vec;
 #[cfg(target_os = "sunos")]
 use core_collections::borrow::ToOwned;
+#[cfg(target_os = "sunos")]
+use boxed::Box;
 
 pub struct File(FileDesc);
 
@@ -52,7 +54,7 @@ pub struct DirEntry {
     // store the name, b) its lifetime between readdir calls
     // is not guaranteed.
     #[cfg(target_os = "sunos")]
-    name: Arc<Vec<u8>>
+    name: Box<[u8]>
 }
 
 #[derive(Clone)]
@@ -143,6 +145,10 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         unsafe {
             loop {
+                // Although readdir_r(3) would be a correct function to use here because
+                // of the thread safety, on Illumos the readdir(3C) function is safe to use
+                // in threaded applications and it is generally preferred over the
+                // readdir_r(3C) function.
                 let entry_ptr = libc::readdir(self.dirp.0);
                 if entry_ptr.is_null() {
                     return None
@@ -153,8 +159,8 @@ impl Iterator for ReadDir {
 
                 let ret = DirEntry {
                     entry: *entry_ptr,
-                    name: Arc::new(::slice::from_raw_parts(name as *const u8,
-                                                           namelen as usize).to_owned()),
+                    name: ::slice::from_raw_parts(name as *const u8,
+                                                  namelen as usize).to_owned().into_boxed_slice(),
                     root: self.root.clone()
                 };
                 if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
