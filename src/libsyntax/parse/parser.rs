@@ -233,23 +233,6 @@ macro_rules! maybe_whole {
     )
 }
 
-/// Uses $parse_expr to parse an expression and returns the span of the interpolated
-/// token or the span of the parsed expression, if it was not interpolated
-macro_rules! interpolated_or_expr_span {
-    ($p:expr, $parse_expr:expr) => {
-        {
-            let is_interpolated = $p.token.is_interpolated();
-            $parse_expr.map(|e| {
-                if is_interpolated {
-                    ($p.last_span, e)
-                } else {
-                    (e.span, e)
-                }
-            })
-        }
-    }
-}
-
 fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
                 -> Vec<Attribute> {
     if let Some(ref attrs) = rhs {
@@ -556,6 +539,18 @@ impl<'a> Parser<'a> {
 
     pub fn commit_stmt_expecting(&mut self, edible: token::Token) -> PResult<'a, ()> {
         self.commit_stmt(&[edible], &[])
+    }
+
+    /// returns the span of expr, if it was not interpolated or the span of the interpolated token
+    fn interpolated_or_expr_span(&self, expr: PResult<'a, P<Expr>>) -> PResult<'a, (Span, P<Expr>)> {
+        let is_interpolated = self.token.is_interpolated();
+        expr.map(|e| {
+            if is_interpolated {
+                (self.last_span, e)
+            } else {
+                (e.span, e)
+            }
+        })
     }
 
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
@@ -2339,7 +2334,8 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, P<Expr>> {
         let attrs = try!(self.parse_or_use_outer_attributes(already_parsed_attrs));
 
-        let (span, b) = try!(interpolated_or_expr_span!(self, self.parse_bottom_expr()));
+        let b = self.parse_bottom_expr();
+        let (span, b) = try!(self.interpolated_or_expr_span(b));
         self.parse_dot_or_call_expr_with(b, span.lo, attrs)
     }
 
@@ -2725,30 +2721,30 @@ impl<'a> Parser<'a> {
         let ex = match self.token {
             token::Not => {
                 self.bump();
-                let (span, e) = try!(interpolated_or_expr_span!(self,
-                                                           self.parse_prefix_expr(None)));
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
                 self.mk_unary(UnNot, e)
             }
             token::BinOp(token::Minus) => {
                 self.bump();
-                let (span, e) = try!(interpolated_or_expr_span!(self,
-                                                           self.parse_prefix_expr(None)));
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
                 self.mk_unary(UnNeg, e)
             }
             token::BinOp(token::Star) => {
                 self.bump();
-                let (span, e) = try!(interpolated_or_expr_span!(self,
-                                                           self.parse_prefix_expr(None)));
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
                 self.mk_unary(UnDeref, e)
             }
             token::BinOp(token::And) | token::AndAnd => {
                 try!(self.expect_and());
                 let m = try!(self.parse_mutability());
-                let (span, e) = try!(interpolated_or_expr_span!(self,
-                                                           self.parse_prefix_expr(None)));
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
                 ExprAddrOf(m, e)
             }
@@ -2767,8 +2763,8 @@ impl<'a> Parser<'a> {
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
                 self.bump();
-                let (span, e) = try!(interpolated_or_expr_span!(self,
-                                                           self.parse_prefix_expr(None)));
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
                 ExprBox(e)
             }
