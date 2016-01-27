@@ -446,36 +446,44 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
         return;
     }
     let arg_ty = cx.tcx.expr_ty(&args[1]);
-    if derefs_to_slice(cx, &args[1], &arg_ty) {
+    if let Some((span, r)) = derefs_to_slice(cx, &args[1], &arg_ty) {
         span_lint(cx, EXTEND_FROM_SLICE, expr.span,
                   &format!("use of `extend` to extend a Vec by a slice"))
             .span_suggestion(expr.span, "try this",
-                             format!("{}.extend_from_slice({})",
+                             format!("{}.extend_from_slice({}{})",
                                      snippet(cx, args[0].span, "_"),
-                                     snippet(cx, args[1].span, "_")));
+                                     r, snippet(cx, span, "_")));
     }
 }
 
-fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> bool {
-    fn may_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> bool {
+fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) 
+   -> Option<(Span, &'static str)> {
+    fn may_slice(cx: &LateContext, ty: &ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,            
             ty::TyStruct(..) => match_type(cx, ty, &VEC_PATH),
             ty::TyArray(_, size) => size < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
-            ty::TyBox(ref inner) => may_slice(cx, expr, inner),
+            ty::TyBox(ref inner) => may_slice(cx, inner),
             _ => false
         }
     }
     if let ExprMethodCall(name, _, ref args) = expr.node {
-        return &name.node.as_str() == &"iter" && 
-               may_slice(cx, &args[0], &cx.tcx.expr_ty(&args[0]))
-    }
-    match ty.sty {
-        ty::TySlice(_) => true,
-        ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
-        ty::TyBox(ref inner) => may_slice(cx, expr, inner),
-        _ => false
+        if &name.node.as_str() == &"iter" && 
+               may_slice(cx, &cx.tcx.expr_ty(&args[0])) {
+            Some((args[0].span, "&"))
+        } else {
+            None
+        }
+    } else {
+        match ty.sty {
+            ty::TySlice(_) => Some((expr.span, "")),
+            ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
+            ty::TyBox(ref inner) => if may_slice(cx, inner) { 
+                Some((expr.span, ""))
+            } else { None },
+            _ => None
+        }
     }
 }
 

@@ -314,4 +314,5 @@ fn use_extend_from_slice() {
     v.extend(o);
     v.extend(Some("Bye"));
     v.extend(vec!["Not", "like", "this"]);
+    v.extend(["Nor", "this"].iter());
 }
