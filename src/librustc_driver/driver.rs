@@ -12,7 +12,7 @@ use rustc::front;
 use rustc::front::map as hir_map;
 use rustc_mir as mir;
 use rustc_mir::mir_map::MirMap;
-use rustc::session::Session;
+use rustc::session::{Session, CompileResult, compile_result_from_err_count};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
@@ -35,7 +35,7 @@ use rustc_plugin as plugin;
 use rustc_front::hir;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_passes::{no_asm, loops, consts, const_fn, rvalues, static_recursion};
-use super::{Compilation, CompileResult, compile_result_from_err_count};
+use super::Compilation;
 
 use serialize::json;
 
@@ -659,9 +659,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         })
     }));
 
-    time(time_passes,
-         "const fn bodies and arguments",
-         || const_fn::check_crate(sess, &krate));
+    try!(time(time_passes,
+              "const fn bodies and arguments",
+              || const_fn::check_crate(sess, &krate)));
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
@@ -739,9 +739,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "resolution",
              || resolve::resolve_crate(sess, &hir_map, make_glob_map));
 
-    let named_region_map = time(time_passes,
-                                "lifetime resolution",
-                                || middle::resolve_lifetime::krate(sess, krate, &def_map.borrow()));
+    let named_region_map = try!(time(time_passes,
+                                     "lifetime resolution",
+                                     || middle::resolve_lifetime::krate(sess,
+                                                                        krate,
+                                                                        &def_map.borrow())));
 
     time(time_passes,
          "looking for entry point",
@@ -759,9 +761,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
          "loop checking",
          || loops::check_crate(sess, krate));
 
-    time(time_passes,
-         "static item recursion checking",
-         || static_recursion::check_crate(sess, krate, &def_map.borrow(), &hir_map));
+    try!(time(time_passes,
+              "static item recursion checking",
+              || static_recursion::check_crate(sess, krate, &def_map.borrow(), &hir_map)));
 
     ty::ctxt::create_and_enter(sess,
                                arenas,
@@ -774,7 +776,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                stability::Index::new(krate),
                                |tcx| {
         // passes are timed inside typeck
-        typeck::check_crate(tcx, trait_map);
+        try!(typeck::check_crate(tcx, trait_map));
 
         time(time_passes,
              "const checking",

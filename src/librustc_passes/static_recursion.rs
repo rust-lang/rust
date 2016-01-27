@@ -12,7 +12,7 @@
 // recursively.
 
 use rustc::front::map as ast_map;
-use rustc::session::Session;
+use rustc::session::{Session, CompileResult};
 use rustc::middle::def::{Def, DefMap};
 use rustc::util::nodemap::NodeMap;
 
@@ -92,16 +92,16 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
 pub fn check_crate<'ast>(sess: &Session,
                          krate: &'ast hir::Crate,
                          def_map: &DefMap,
-                         ast_map: &ast_map::Map<'ast>) {
+                         ast_map: &ast_map::Map<'ast>) -> CompileResult {
     let mut visitor = CheckCrateVisitor {
         sess: sess,
         def_map: def_map,
         ast_map: ast_map,
         discriminant_map: RefCell::new(NodeMap()),
     };
-    sess.abort_if_new_errors(|| {
+    sess.track_errors(|| {
         krate.visit_all_items(&mut visitor);
-    });
+    })
 }
 
 struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
