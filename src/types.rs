@@ -544,7 +544,9 @@ impl LateLintPass for CharLitAsU8 {
             if let ExprLit(ref l) = e.node {
                 if let Lit_::LitChar(_) = l.node {
                     if ty::TyUint(UintTy::TyU8) == cx.tcx.expr_ty(expr).sty && !in_macro(cx, expr.span) {
-                        let msg = "casting character literal to u8.";
+                        let msg = "casting character literal to u8. `char`s \
+                                   are 4 bytes wide in rust, so casting to u8 \
+                                   truncates them";
                         let help = format!("Consider using a byte literal \
                                             instead:\nb{}",
                                           snippet(cx, e.span, "'x'"));
