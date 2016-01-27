@@ -17,6 +17,10 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         has_rpath: true,
+        pre_link_args: vec![
+            // Always enable NX protection when it is available
+            "-Wl,-z,noexecstack".to_string(),
+        ],
         archive_format: "gnu".to_string(),
         exe_allocation_crate: super::maybe_jemalloc(),
 
