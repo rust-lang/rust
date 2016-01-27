@@ -134,7 +134,7 @@ pub fn run(args: Vec<String>) -> isize {
                         let mut emitter =
                             errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
                         emitter.emit(None, &abort_msg(err_count), None, errors::Level::Fatal);
-                        panic!(errors::FatalError);
+                        exit_on_err();
                     }
                 }
             }
@@ -450,6 +450,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.out_dir)
                 });
             };
+            control.after_analysis.run_callback_on_error = true;
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
@@ -935,13 +936,17 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                 println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
             }
 
-            // Panic so the process returns a failure code, but don't pollute the
-            // output with some unnecessary panic messages, we've already
-            // printed everything that we needed to.
-            io::set_panic(box io::sink());
-            panic!();
+            exit_on_err();
         }
     }
+}
+
+fn exit_on_err() -> ! {
+    // Panic so the process returns a failure code, but don't pollute the
+    // output with some unnecessary panic messages, we've already
+    // printed everything that we needed to.
+    io::set_panic(box io::sink());
+    panic!();
 }
 
 pub fn diagnostics_registry() -> diagnostics::registry::Registry {
