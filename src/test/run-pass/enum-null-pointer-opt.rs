@@ -38,6 +38,14 @@ fn main() {
     assert_eq!(size_of::<&Trait>(), size_of::<Option<&Trait>>());
     assert_eq!(size_of::<&mut Trait>(), size_of::<Option<&mut Trait>>());
 
+    // Chars
+    assert_eq!(size_of::<char>(), size_of::<Option<char>>());
+    assert_eq!(size_of::<char>(), size_of::<Result<char, ()>>());
+
+    // Bools
+    assert_eq!(size_of::<bool>(), size_of::<Option<bool>>());
+    assert_eq!(size_of::<bool>(), size_of::<Result<bool, ()>>());
+
     // Pointers - Box<T>
     assert_eq!(size_of::<Box<isize>>(), size_of::<Option<Box<isize>>>());
 
@@ -45,14 +53,18 @@ fn main() {
     assert!(size_of::<Option<*const isize>>() != size_of::<*const isize>());
     assert!(Some(0 as *const isize).is_some()); // Can't collapse None to null
 
-    struct Foo {
-        _a: Box<isize>
+    // The optimization can't apply to raw u32
+    assert!(size_of::<Option<u32>>() != size_of::<u32>());
+
+    struct Foo<T> {
+        _a: T
     }
-    struct Bar(Box<isize>);
+    struct Bar<T>(T);
 
     // Should apply through structs
-    assert_eq!(size_of::<Foo>(), size_of::<Option<Foo>>());
-    assert_eq!(size_of::<Bar>(), size_of::<Option<Bar>>());
+    assert_eq!(size_of::<Foo<Box<isize>>>(), size_of::<Option<Foo<Box<isize>>>>());
+    assert_eq!(size_of::<Bar<Box<isize>>>(), size_of::<Option<Bar<Box<isize>>>>());
+
     // and tuples
     assert_eq!(size_of::<(u8, Box<isize>)>(), size_of::<Option<(u8, Box<isize>)>>());
     // and fixed-size arrays
