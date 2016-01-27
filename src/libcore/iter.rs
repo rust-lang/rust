@@ -2779,30 +2779,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// contain more details.
     ///
     /// [trait-level]: trait.DoubleEndedIterator.html
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let numbers = vec![1, 2, 3];
-    ///
-    /// let mut iter = numbers.iter();
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(&1), n);
-    ///
-    /// let n = iter.next_back();
-    /// assert_eq!(Some(&3), n);
-    ///
-    /// let n = iter.next_back();
-    /// assert_eq!(Some(&2), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(None, n);
-    ///
-    /// let n = iter.next_back();
-    /// assert_eq!(None, n);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
