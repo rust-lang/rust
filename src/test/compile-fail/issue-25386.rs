@@ -35,4 +35,6 @@ macro_rules! check_ptr_exist {
 fn main() {
     let item = stuff::Item::new();
     println!("{}", check_ptr_exist!(item, name));
+    //~^ NOTE in this expansion of check_ptr_exist!
+    //~^^ NOTE in this expansion of check_ptr_exist!
 }

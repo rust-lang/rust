@@ -26,9 +26,8 @@ impl HasInfo {
 
     fn get_other(&mut self) -> usize {
         self.get_size(width!(self))
+        //~^ NOTE in this expansion of width!
     }
 }
 
-fn main() {
-    println!("hello?");
-}
+fn main() {}
