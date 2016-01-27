@@ -2782,8 +2782,6 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let numbers = vec![1, 2, 3];
     ///
