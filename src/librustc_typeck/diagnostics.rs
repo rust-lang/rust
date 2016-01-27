@@ -1062,13 +1062,6 @@ Note also that without a representation manually defined, the compiler will
 optimize by using the smallest integer type possible.
 "##,
 
-E0083: r##"
-At present, it's not possible to define a custom representation for an enum with
-a single variant. As a workaround you can add a `Dummy` variant.
-
-See: https://github.com/rust-lang/rust/issues/10292
-"##,
-
 E0084: r##"
 It is impossible to define an integer type to be used to represent zero-variant
 enum values because there are no zero-variant enum values. There is no way to
