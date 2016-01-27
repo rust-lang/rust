@@ -254,6 +254,7 @@ pub struct Parser<'a> {
     pub cfg: CrateConfig,
     /// the previous token or None (only stashed sometimes).
     pub last_token: Option<Box<token::Token>>,
+    last_token_interpolated: bool,
     pub buffer: [TokenAndSpan; 4],
     pub buffer_start: isize,
     pub buffer_end: isize,
@@ -361,6 +362,7 @@ impl<'a> Parser<'a> {
             span: span,
             last_span: span,
             last_token: None,
+            last_token_interpolated: false,
             buffer: [
                 placeholder.clone(),
                 placeholder.clone(),
@@ -542,10 +544,11 @@ impl<'a> Parser<'a> {
     }
 
     /// returns the span of expr, if it was not interpolated or the span of the interpolated token
-    fn interpolated_or_expr_span(&self, expr: PResult<'a, P<Expr>>) -> PResult<'a, (Span, P<Expr>)> {
-        let is_interpolated = self.token.is_interpolated();
+    fn interpolated_or_expr_span(&self,
+                                 expr: PResult<'a, P<Expr>>)
+                                 -> PResult<'a, (Span, P<Expr>)> {
         expr.map(|e| {
-            if is_interpolated {
+            if self.last_token_interpolated {
                 (self.last_span, e)
             } else {
                 (e.span, e)
@@ -939,12 +942,12 @@ impl<'a> Parser<'a> {
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         self.last_token = if self.token.is_ident() ||
                           self.token.is_path() ||
-                          self.token.is_interpolated() ||
                           self.token == token::Comma {
             Some(Box::new(self.token.clone()))
         } else {
             None
         };
+        self.last_token_interpolated = self.token.is_interpolated();
         let next = if self.buffer_start == self.buffer_end {
             self.reader.real_token()
         } else {
@@ -2810,9 +2813,10 @@ impl<'a> Parser<'a> {
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
 
-            let lhs_span = match self.last_token {
-                Some(ref lt) if lt.is_interpolated() => self.last_span,
-                _ => lhs.span
+            let lhs_span = if self.last_token_interpolated {
+                self.last_span
+            } else {
+                lhs.span
             };
 
             let cur_op_span = self.span;
