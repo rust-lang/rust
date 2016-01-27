@@ -233,7 +233,6 @@ macro_rules! maybe_whole {
     )
 }
 
-
 fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
                 -> Vec<Attribute> {
     if let Some(ref attrs) = rhs {
@@ -255,6 +254,7 @@ pub struct Parser<'a> {
     pub cfg: CrateConfig,
     /// the previous token or None (only stashed sometimes).
     pub last_token: Option<Box<token::Token>>,
+    last_token_interpolated: bool,
     pub buffer: [TokenAndSpan; 4],
     pub buffer_start: isize,
     pub buffer_end: isize,
@@ -362,6 +362,7 @@ impl<'a> Parser<'a> {
             span: span,
             last_span: span,
             last_token: None,
+            last_token_interpolated: false,
             buffer: [
                 placeholder.clone(),
                 placeholder.clone(),
@@ -540,6 +541,19 @@ impl<'a> Parser<'a> {
 
     pub fn commit_stmt_expecting(&mut self, edible: token::Token) -> PResult<'a, ()> {
         self.commit_stmt(&[edible], &[])
+    }
+
+    /// returns the span of expr, if it was not interpolated or the span of the interpolated token
+    fn interpolated_or_expr_span(&self,
+                                 expr: PResult<'a, P<Expr>>)
+                                 -> PResult<'a, (Span, P<Expr>)> {
+        expr.map(|e| {
+            if self.last_token_interpolated {
+                (self.last_span, e)
+            } else {
+                (e.span, e)
+            }
+        })
     }
 
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
@@ -933,6 +947,7 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+        self.last_token_interpolated = self.token.is_interpolated();
         let next = if self.buffer_start == self.buffer_end {
             self.reader.real_token()
         } else {
@@ -2328,18 +2343,20 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, P<Expr>> {
         let attrs = try!(self.parse_or_use_outer_attributes(already_parsed_attrs));
 
-        let b = try!(self.parse_bottom_expr());
-        self.parse_dot_or_call_expr_with(b, attrs)
+        let b = self.parse_bottom_expr();
+        let (span, b) = try!(self.interpolated_or_expr_span(b));
+        self.parse_dot_or_call_expr_with(b, span.lo, attrs)
     }
 
     pub fn parse_dot_or_call_expr_with(&mut self,
                                        e0: P<Expr>,
+                                       lo: BytePos,
                                        attrs: ThinAttributes)
                                        -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
         // structure
-        self.parse_dot_or_call_expr_with_(e0)
+        self.parse_dot_or_call_expr_with_(e0, lo)
         .map(|expr|
             expr.map(|mut expr| {
                 expr.attrs.update(|a| a.prepend(attrs));
@@ -2366,7 +2383,8 @@ impl<'a> Parser<'a> {
     fn parse_dot_suffix(&mut self,
                         ident: Ident,
                         ident_span: Span,
-                        self_value: P<Expr>)
+                        self_value: P<Expr>,
+                        lo: BytePos)
                         -> PResult<'a, P<Expr>> {
         let (_, tys, bindings) = if self.eat(&token::ModSep) {
             try!(self.expect_lt());
@@ -2379,8 +2397,6 @@ impl<'a> Parser<'a> {
             let last_span = self.last_span;
             self.span_err(last_span, "type bindings are only permitted on trait paths");
         }
-
-        let lo = self_value.span.lo;
 
         Ok(match self.token {
             // expr.f() method call.
@@ -2414,9 +2430,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>) -> PResult<'a, P<Expr>> {
+    fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>, lo: BytePos) -> PResult<'a, P<Expr>> {
         let mut e = e0;
-        let lo = e.span.lo;
         let mut hi;
         loop {
             // expr.f
@@ -2427,7 +2442,7 @@ impl<'a> Parser<'a> {
                     hi = self.span.hi;
                     self.bump();
 
-                    e = try!(self.parse_dot_suffix(i, mk_sp(dot_pos, hi), e));
+                    e = try!(self.parse_dot_suffix(i, mk_sp(dot_pos, hi), e, lo));
                   }
                   token::Literal(token::Integer(n), suf) => {
                     let sp = self.span;
@@ -2480,7 +2495,7 @@ impl<'a> Parser<'a> {
                     let dot_pos = self.last_span.hi;
                     e = try!(self.parse_dot_suffix(special_idents::invalid,
                                                    mk_sp(dot_pos, dot_pos),
-                                                   e));
+                                                   e, lo));
                   }
                 }
                 continue;
@@ -2715,27 +2730,31 @@ impl<'a> Parser<'a> {
         let ex = match self.token {
             token::Not => {
                 self.bump();
-                let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
+                hi = span.hi;
                 self.mk_unary(UnNot, e)
             }
             token::BinOp(token::Minus) => {
                 self.bump();
-                let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
+                hi = span.hi;
                 self.mk_unary(UnNeg, e)
             }
             token::BinOp(token::Star) => {
                 self.bump();
-                let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
+                hi = span.hi;
                 self.mk_unary(UnDeref, e)
             }
             token::BinOp(token::And) | token::AndAnd => {
                 try!(self.expect_and());
                 let m = try!(self.parse_mutability());
-                let e = try!(self.parse_prefix_expr(None));
-                hi = e.span.hi;
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
+                hi = span.hi;
                 ExprAddrOf(m, e)
             }
             token::Ident(..) if self.token.is_keyword(keywords::In) => {
@@ -2753,9 +2772,10 @@ impl<'a> Parser<'a> {
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
                 self.bump();
-                let subexpression = try!(self.parse_prefix_expr(None));
-                hi = subexpression.span.hi;
-                ExprBox(subexpression)
+                let e = self.parse_prefix_expr(None);
+                let (span, e) = try!(self.interpolated_or_expr_span(e));
+                hi = span.hi;
+                ExprBox(e)
             }
             _ => return self.parse_dot_or_call_expr(Some(attrs))
         };
@@ -2790,12 +2810,21 @@ impl<'a> Parser<'a> {
                 try!(self.parse_prefix_expr(attrs))
             }
         };
+
+
         if self.expr_is_complete(&*lhs) {
             // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
             return Ok(lhs);
         }
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
+
+            let lhs_span = if self.last_token_interpolated {
+                self.last_span
+            } else {
+                lhs.span
+            };
+
             let cur_op_span = self.span;
             let restrictions = if op.is_assign_like() {
                 self.restrictions & Restrictions::RESTRICTION_NO_STRUCT_LITERAL
@@ -2812,12 +2841,12 @@ impl<'a> Parser<'a> {
             // Special cases:
             if op == AssocOp::As {
                 let rhs = try!(self.parse_ty());
-                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprCast(lhs, rhs), None);
                 continue
             } else if op == AssocOp::Colon {
                 let rhs = try!(self.parse_ty());
-                lhs = self.mk_expr(lhs.span.lo, rhs.span.hi,
+                lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprType(lhs, rhs), None);
                 continue
             } else if op == AssocOp::DotDot {
@@ -2839,7 +2868,7 @@ impl<'a> Parser<'a> {
                     } else {
                         None
                     };
-                    let (lhs_span, rhs_span) = (lhs.span, if let Some(ref x) = rhs {
+                    let (lhs_span, rhs_span) = (lhs_span, if let Some(ref x) = rhs {
                         x.span
                     } else {
                         cur_op_span
@@ -2879,14 +2908,14 @@ impl<'a> Parser<'a> {
                 AssocOp::Equal | AssocOp::Less | AssocOp::LessEqual | AssocOp::NotEqual |
                 AssocOp::Greater | AssocOp::GreaterEqual => {
                     let ast_op = op.to_ast_binop().unwrap();
-                    let (lhs_span, rhs_span) = (lhs.span, rhs.span);
+                    let (lhs_span, rhs_span) = (lhs_span, rhs.span);
                     let binary = self.mk_binary(codemap::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, binary, None)
                 }
                 AssocOp::Assign =>
-                    self.mk_expr(lhs.span.lo, rhs.span.hi, ExprAssign(lhs, rhs), None),
+                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprAssign(lhs, rhs), None),
                 AssocOp::Inplace =>
-                    self.mk_expr(lhs.span.lo, rhs.span.hi, ExprInPlace(lhs, rhs), None),
+                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprInPlace(lhs, rhs), None),
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
                         token::Plus =>    BiAdd,
@@ -2900,7 +2929,7 @@ impl<'a> Parser<'a> {
                         token::Shl =>     BiShl,
                         token::Shr =>     BiShr
                     };
-                    let (lhs_span, rhs_span) = (lhs.span, rhs.span);
+                    let (lhs_span, rhs_span) = (lhs_span, rhs.span);
                     let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, aopexpr, None)
                 }
@@ -3834,7 +3863,8 @@ impl<'a> Parser<'a> {
                             let e = self.mk_mac_expr(span.lo, span.hi,
                                                      mac.and_then(|m| m.node),
                                                      None);
-                            let e = try!(self.parse_dot_or_call_expr_with(e, attrs));
+                            let lo = e.span.lo;
+                            let e = try!(self.parse_dot_or_call_expr_with(e, lo, attrs));
                             let e = try!(self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e)));
                             try!(self.handle_expression_like_statement(
                                 e,
