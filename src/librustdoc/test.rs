@@ -250,7 +250,12 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     if no_run {
         control.after_analysis.stop = Compilation::Stop;
     }
-    driver::compile_input(sess, &cstore, cfg, &input, &out, &None, None, control);
+    let result = driver::compile_input(&sess, &cstore, cfg, &input,
+                                       &out, &None, None, control);
+    match result {
+        Err(count) if count > 0 => sess.fatal("aborting due to previous error(s)"),
+        _ => {}
+    }
 
     if no_run { return }
 
