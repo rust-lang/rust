@@ -368,31 +368,46 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir::MatchSource) {
     match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
-            let witness = match &pats[..] {
-                [ref witness] => &**witness,
-                [] => DUMMY_WILD_PAT,
-                _ => unreachable!()
+            let witnesses = if pats.is_empty() {
+                vec![DUMMY_WILD_PAT]
+            } else {
+                pats.iter().map(|w| &**w ).collect()
             };
             match source {
                 hir::MatchSource::ForLoopDesugar => {
-                    // `witness` has the form `Some(<head>)`, peel off the `Some`
-                    let witness = match witness.node {
+                    // `witnesses[0]` has the form `Some(<head>)`, peel off the `Some`
+                    let witness = match witnesses[0].node {
                         hir::PatEnum(_, Some(ref pats)) => match &pats[..] {
                             [ref pat] => &**pat,
                             _ => unreachable!(),
                         },
                         _ => unreachable!(),
                     };
-
                     span_err!(cx.tcx.sess, sp, E0297,
                         "refutable pattern in `for` loop binding: \
                                 `{}` not covered",
                                 pat_to_string(witness));
                 },
                 _ => {
+                    let pattern_strings: Vec<_> = witnesses.iter().map(|w| {
+                        pat_to_string(w)
+                    }).collect();
+                    const LIMIT: usize = 3;
+                    let joined_patterns = match pattern_strings.len() {
+                        0 => unreachable!(),
+                        1 => format!("`{}`", pattern_strings[0]),
+                        2...LIMIT => {
+                            let (tail, head) = pattern_strings.split_last().unwrap();
+                            format!("`{}`", head.join("`, `") + "` and `" + tail)
+                        },
+                        _ => {
+                            let (head, tail) = pattern_strings.split_at(LIMIT);
+                            format!("`{}` and {} more", head.join("`, `"), tail.len())
+                        }
+                    };
                     span_err!(cx.tcx.sess, sp, E0004,
-                        "non-exhaustive patterns: `{}` not covered",
-                        pat_to_string(witness)
+                        "non-exhaustive patterns: {} not covered",
+                        joined_patterns
                     );
                 },
             }
@@ -594,14 +609,15 @@ impl<'tcx, 'container> ty::AdtDefData<'tcx, 'container> {
     }
 }
 
-fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
-                       left_ty: Ty, max_slice_length: usize) -> Option<Constructor> {
+fn missing_constructors(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
+                       left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
     let used_constructors: Vec<Constructor> = rows.iter()
         .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length))
         .collect();
     all_constructors(cx, left_ty, max_slice_length)
         .into_iter()
-        .find(|c| !used_constructors.contains(c))
+        .filter(|c| !used_constructors.contains(c))
+        .collect()
 }
 
 /// This determines the set of all possible constructors of a pattern matching
@@ -680,46 +696,44 @@ fn is_useful(cx: &MatchCheckCtxt,
 
     let constructors = pat_constructors(cx, v[0], left_ty, max_slice_length);
     if constructors.is_empty() {
-        match missing_constructor(cx, matrix, left_ty, max_slice_length) {
-            None => {
-                all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
-                    match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
-                        UsefulWithWitness(pats) => UsefulWithWitness({
-                            let arity = constructor_arity(cx, &c, left_ty);
-                            let mut result = {
-                                let pat_slice = &pats[..];
-                                let subpats: Vec<_> = (0..arity).map(|i| {
-                                    pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
-                                }).collect();
-                                vec![construct_witness(cx, &c, subpats, left_ty)]
-                            };
-                            result.extend(pats.into_iter().skip(arity));
-                            result
-                        }),
-                        result => result
-                    }
-                }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
-            },
-
-            Some(constructor) => {
-                let matrix = rows.iter().filter_map(|r| {
-                    if pat_is_binding_or_wild(&cx.tcx.def_map.borrow(), raw_pat(r[0])) {
-                        Some(r[1..].to_vec())
-                    } else {
-                        None
-                    }
-                }).collect();
-                match is_useful(cx, &matrix, &v[1..], witness) {
-                    UsefulWithWitness(pats) => {
-                        let arity = constructor_arity(cx, &constructor, left_ty);
-                        let wild_pats = vec![DUMMY_WILD_PAT; arity];
-                        let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
-                        let mut new_pats = vec![enum_pat];
-                        new_pats.extend(pats);
-                        UsefulWithWitness(new_pats)
-                    },
+        let constructors = missing_constructors(cx, matrix, left_ty, max_slice_length);
+        if constructors.is_empty() {
+            all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
+                match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
+                    UsefulWithWitness(pats) => UsefulWithWitness({
+                        let arity = constructor_arity(cx, &c, left_ty);
+                        let mut result = {
+                            let pat_slice = &pats[..];
+                            let subpats: Vec<_> = (0..arity).map(|i| {
+                                pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
+                            }).collect();
+                            vec![construct_witness(cx, &c, subpats, left_ty)]
+                        };
+                        result.extend(pats.into_iter().skip(arity));
+                        result
+                    }),
                     result => result
                 }
+            }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
+        } else {
+            let matrix = rows.iter().filter_map(|r| {
+                if pat_is_binding_or_wild(&cx.tcx.def_map.borrow(), raw_pat(r[0])) {
+                    Some(r[1..].to_vec())
+                } else {
+                    None
+                }
+            }).collect();
+            match is_useful(cx, &matrix, &v[1..], witness) {
+                UsefulWithWitness(pats) => {
+                    let mut new_pats: Vec<_> = constructors.into_iter().map(|constructor| {
+                        let arity = constructor_arity(cx, &constructor, left_ty);
+                        let wild_pats = vec![DUMMY_WILD_PAT; arity];
+                        construct_witness(cx, &constructor, wild_pats, left_ty)
+                    }).collect();
+                    new_pats.extend(pats);
+                    UsefulWithWitness(new_pats)
+                },
+                result => result
             }
         }
     } else {
