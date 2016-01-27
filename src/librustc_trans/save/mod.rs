@@ -30,11 +30,10 @@ use syntax::print::pprust::ty_to_string;
 
 use self::span_utils::SpanUtils;
 
+pub mod dump_csv;
 #[macro_use]
 pub mod span_utils;
 pub mod recorder;
-
-mod dump_csv;
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: &'l ty::ctxt<'tcx>,
@@ -764,7 +763,7 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
     out_name.push_str(&tcx.sess.opts.cg.extra_filename);
     out_name.push_str(".csv");
     root_path.push(&out_name);
-    let output_file = match File::create(&root_path) {
+    let mut output_file = match File::create(&root_path) {
         Ok(f) => box f,
         Err(e) => {
             let disp = root_path.display();
@@ -773,7 +772,7 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l ty::ctxt<'tcx>,
     };
     root_path.pop();
 
-    let mut visitor = dump_csv::DumpCsvVisitor::new(tcx, lcx, analysis, output_file);
+    let mut visitor = dump_csv::DumpCsvVisitor::new(tcx, lcx, analysis, &mut output_file);
 
     visitor.dump_crate_info(cratename, krate);
     visit::walk_crate(&mut visitor, krate);
