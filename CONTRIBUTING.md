@@ -6,6 +6,7 @@ links to the major sections:
 
 * [Feature Requests](#feature-requests)
 * [Bug Reports](#bug-reports)
+* [The Build System](#the-build-system)
 * [Pull Requests](#pull-requests)
 * [Writing Documentation](#writing-documentation)
 * [Issue Triage](#issue-triage)
@@ -76,6 +77,66 @@ to do this is to invoke `rustc` like this:
 ```bash
 $ RUST_BACKTRACE=1 rustc ...
 ```
+
+## The Build System
+
+Rust's build system allows you to bootstrap the compiler, run tests &
+benchmarks, generate documentation, install a fresh build of Rust, and more.
+It's your best friend when working on Rust, allowing you to compile & test
+your contributions before submission.
+
+All the configuration for the build system lives in [the `mk` directory][mkdir]
+in the project root. It can be hard to follow in places, as it uses some
+advanced Make features which make for some challenging reading. If you have
+questions on the build system internals, try asking in
+[`#rust-internals`][pound-rust-internals].
+
+[mkdir]: https://github.com/rust-lang/rust/tree/master/mk/
+
+### Configuration
+
+Before you can start building the compiler you need to configure the build for
+your system. In most cases, that will just mean using the defaults provided
+for Rust. Configuring involves invoking the `configure` script in the project
+root.
+
+```
+./configure
+```
+
+There are large number of options accepted by this script to alter the
+configuration used later in the build process. Some options to note:
+
+- `--enable-debug` - Build a debug version of the compiler (disables optimizations)
+- `--enable-optimize` - Enable optimizations (can be used with `--enable-debug`
+    to make a debug build with optimizations)
+- `--disable-valgrind-rpass` - Don't run tests with valgrind
+- `--enable-clang` - Prefer clang to gcc for building dependencies (e.g., LLVM)
+- `--enable-ccache` - Invoke clang/gcc with ccache to re-use object files between builds
+- `--enable-compiler-docs` - Build compiler documentation
+
+To see a full list of options, run `./configure --help`.
+
+### Useful Targets
+
+Some common make targets are:
+
+- `make rustc-stage1` - build up to (and including) the first stage. For most
+  cases we don't need to build the stage2 compiler, so we can save time by not
+  building it. The stage1 compiler is a fully functioning compiler and
+  (probably) will be enough to determine if your change works as expected.
+- `make check` - build the full compiler & run all tests (takes a while). This
+  is what gets run by the continuous integration system against your pull
+  request. You should run this before submitting to make sure your tests pass
+  & everything builds in the correct manner.
+- `make check-stage1-std NO_REBUILD=1` - test the standard library without
+  rebuilding the entire compiler
+- `make check TESTNAME=<path-to-test-file>.rs` - Run a single test file
+- `make check-stage1-rpass TESTNAME=<path-to-test-file>.rs` - Run a single
+  rpass test with the stage1 compiler (this will be quicker than running the
+  command above as we only build the stage1 compiler, not the entire thing).
+  You can also leave off the `-rpass` to run all stage1 test types.
+- `make check-stage1-coretest` - Run stage1 tests in `libcore`.
 
 ## Pull Requests
 
