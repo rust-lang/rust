@@ -239,6 +239,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::USELESS_TRANSMUTE,
         types::BOX_VEC,
+        types::CHAR_LIT_AS_U8,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
         types::TYPE_COMPLEXITY,
