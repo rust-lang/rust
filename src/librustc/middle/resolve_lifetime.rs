@@ -93,9 +93,12 @@ type Scope<'a> = &'a ScopeChain<'a>;
 
 static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
-pub fn krate(sess: &Session, krate: &hir::Crate, def_map: &DefMap) -> NamedRegionMap {
+pub fn krate(sess: &Session,
+             krate: &hir::Crate,
+             def_map: &DefMap)
+             -> Result<NamedRegionMap, usize> {
     let mut named_region_map = NodeMap();
-    sess.abort_if_new_errors(|| {
+    try!(sess.track_errors(|| {
         krate.visit_all_items(&mut LifetimeContext {
             sess: sess,
             named_region_map: &mut named_region_map,
@@ -104,8 +107,8 @@ pub fn krate(sess: &Session, krate: &hir::Crate, def_map: &DefMap) -> NamedRegio
             trait_ref_hack: false,
             labels_in_fn: vec![],
         });
-    });
-    named_region_map
+    }));
+    Ok(named_region_map)
 }
 
 impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {

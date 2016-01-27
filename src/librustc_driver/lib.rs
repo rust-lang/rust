@@ -63,7 +63,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::save;
-use rustc::session::{config, Session, build_session};
+use rustc::session::{config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
@@ -104,18 +104,6 @@ pub mod target_features;
 
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
-
-// Err(0) means compilation was stopped, but no errors were found.
-// This would be better as a dedicated enum, but using try! is so convenient.
-pub type CompileResult = Result<(), usize>;
-
-pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
-    if err_count == 0 {
-        Ok(())
-    } else {
-        Err(err_count)
-    }
-}
 
 #[inline]
 fn abort_msg(err_count: usize) -> String {
