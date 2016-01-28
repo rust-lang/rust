@@ -300,15 +300,18 @@ impl CharExt for char {
     #[inline]
     fn escape_unicode(self) -> EscapeUnicode {
         let c = self as u32;
+
         // or-ing 1 ensures that for c==0 the code computes that one
         // digit should be printed and (which is the same) avoids the
         // (31 - 32) underflow
         let msb = 31 - (c | 1).leading_zeros();
-        let msdigit = msb / 4;
+
+        // the index of the most significant hex digit
+        let ms_hex_digit = msb / 4;
         EscapeUnicode {
             c: self,
             state: EscapeUnicodeState::Backslash,
-            offset: msdigit as usize,
+            hex_digit_idx: ms_hex_digit as usize,
         }
     }
 
@@ -431,7 +434,11 @@ pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
 pub struct EscapeUnicode {
     c: char,
     state: EscapeUnicodeState,
-    offset: usize,
+
+    // The index of the next hex digit to be printed (0 if none),
+    // i.e. the number of remaining hex digits to be printed;
+    // increasing from the least significant digit: 0x543210
+    hex_digit_idx: usize,
 }
 
 #[derive(Clone)]
@@ -463,11 +470,11 @@ impl Iterator for EscapeUnicode {
                 Some('{')
             }
             EscapeUnicodeState::Value => {
-                let c = from_digit(((self.c as u32) >> (self.offset * 4)) & 0xf, 16).unwrap();
-                if self.offset == 0 {
+                let c = from_digit(((self.c as u32) >> (self.hex_digit_idx * 4)) & 0xf, 16).unwrap();
+                if self.hex_digit_idx == 0 {
                     self.state = EscapeUnicodeState::RightBrace;
                 } else {
-                    self.offset -= 1;
+                    self.hex_digit_idx -= 1;
                 }
                 Some(c)
             }
@@ -488,7 +495,7 @@ impl Iterator for EscapeUnicode {
             EscapeUnicodeState::RightBrace => 1,
             EscapeUnicodeState::Done => 0,
         };
-        let n = n + self.offset;
+        let n = n + self.hex_digit_idx;
         (n, Some(n))
     }
 }
