@@ -389,7 +389,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             return (Success((module, name_binding)), false);
         }
 
-        if let TypeNS = ns {
+        if ns == TypeNS {
             if let Some(extern_crate) = module.external_module_children.borrow().get(&name) {
                 // track the extern crate as used.
                 if let Some(DefId{ krate: kid, .. }) = extern_crate.def_id() {
@@ -882,7 +882,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                      import_span: Span,
                                                      (name, ns): (Name, Namespace)) {
         // First, check for conflicts between imports and `extern crate`s.
-        if let TypeNS = ns {
+        if ns == TypeNS {
             if module.external_module_children.borrow().contains_key(&name) {
                 match import.target {
                     Some(ref target) if target.shadowable != Shadowable::Always => {
@@ -905,7 +905,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             Some(name_binding) => name_binding,
         };
 
-        if let ValueNS = ns {
+        if ns == ValueNS {
             match import.target {
                 Some(ref target) if target.shadowable != Shadowable::Always => {
                     let mut err = struct_span_err!(self.resolver.session,

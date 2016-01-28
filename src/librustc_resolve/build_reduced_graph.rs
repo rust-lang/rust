@@ -360,21 +360,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             // These items live in both the type and value namespaces.
             ItemStruct(ref struct_def, _) => {
-                // Adding to both Type and Value namespaces or just Type?
-                let ctor_id = if struct_def.is_struct() {
-                    None
-                } else {
-                    Some(struct_def.id())
-                };
-
                 // Define a name in the type namespace.
                 let def = Def::Struct(self.ast_map.local_def_id(item.id));
                 self.define(parent, name, TypeNS, (def, sp, modifiers));
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
-                if let Some(cid) = ctor_id {
-                    let def = Def::Struct(self.ast_map.local_def_id(cid));
+                if !struct_def.is_struct() {
+                    let def = Def::Struct(self.ast_map.local_def_id(struct_def.id()));
                     self.define(parent, name, ValueNS, (def, sp, modifiers));
                 }
 
@@ -516,19 +509,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         if is_exported {
             self.external_exports.insert(def.def_id());
         }
-        let is_struct_ctor = if let Def::Struct(def_id) = def {
-            self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_some()
-        } else {
-            false
-        };
 
-        // Define a module if necessary.
         match def {
-            Def::Mod(_) |
-            Def::ForeignMod(_) |
-            Def::Trait(..) |
-            Def::Enum(..) |
-            Def::TyAlias(..) if !is_struct_ctor => {
+            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) | Def::TyAlias(..) => {
                 debug!("(building reduced graph for external crate) building module {} {}",
                        final_ident,
                        is_public);
@@ -536,11 +519,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module = self.new_module(parent_link, Some(def), true, is_public);
                 self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
             }
-            _ => {}
-        }
-
-        match def {
-            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) | Def::TyAlias(..) => {}
             Def::Variant(_, variant_id) => {
                 debug!("(building reduced graph for external crate) building variant {}",
                        final_ident);
@@ -585,16 +563,18 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         self.external_exports.insert(trait_item_def.def_id());
                     }
                 }
+
+                let parent_link = ModuleParentLink(new_parent, name);
+                let module = self.new_module(parent_link, Some(def), true, is_public);
+                self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
             }
             Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
                 self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
             }
-            Def::Struct(..) if is_struct_ctor => {
-                // Do nothing
-            }
-            Def::Struct(def_id) => {
+            Def::Struct(def_id)
+                if self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_none() => {
                 debug!("(building reduced graph for external crate) building type and value for \
                         {}",
                        final_ident);
@@ -608,6 +588,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let fields = self.session.cstore.struct_field_names(def_id);
                 self.structs.insert(def_id, fields);
             }
+            Def::Struct(..) => {}
             Def::Local(..) |
             Def::PrimTy(..) |
             Def::TyParam(..) |
