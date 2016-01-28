@@ -15,7 +15,7 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
-use iter::Iterator;
+use iter::{Iterator, ExactSizeIterator};
 use mem::transmute;
 use option::Option::{None, Some};
 use option::Option;
@@ -299,7 +299,17 @@ impl CharExt for char {
 
     #[inline]
     fn escape_unicode(self) -> EscapeUnicode {
-        EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
+        let c = self as u32;
+        // or-ing 1 ensures that for c==0 the code computes that one
+        // digit should be printed and (which is the same) avoids the
+        // (31 - 32) underflow
+        let msb = 31 - (c | 1).leading_zeros();
+        let msdigit = msb / 4;
+        EscapeUnicode {
+            c: self,
+            state: EscapeUnicodeState::Backslash,
+            offset: msdigit as usize,
+        }
     }
 
     #[inline]
@@ -420,17 +430,18 @@ pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
     c: char,
-    state: EscapeUnicodeState
+    state: EscapeUnicodeState,
+    offset: usize,
 }
 
 #[derive(Clone)]
 enum EscapeUnicodeState {
-    Backslash,
-    Type,
-    LeftBrace,
-    Value(usize),
-    RightBrace,
     Done,
+    RightBrace,
+    Value,
+    LeftBrace,
+    Type,
+    Backslash,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -438,54 +449,110 @@ impl Iterator for EscapeUnicode {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
+        let state = self.state_len();
+        let offset = self.offset;
+
+        self.step(state, offset)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.len();
+        (n, Some(n))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<char> {
+        let remaining = self.len().saturating_sub(n);
+
+        // offset = (number of hex digits still to be emitted) - 1
+        // It can be computed from the remaining number of items by keeping
+        // into account that:
+        // - offset can never increase
+        // - the last 2 items (last hex digit, '}') are not counted in offset
+        let offset = ::cmp::min(self.offset, remaining.saturating_sub(2));
+
+        // state = number of items to be emitted for the state (as per state_len())
+        // It can be computed because (remaining number of items) = state + offset
+        let state = remaining - offset;
+
+        self.step(state, offset)
+    }
+
+    fn last(self) -> Option<char> {
         match self.state {
-            EscapeUnicodeState::Backslash => {
-                self.state = EscapeUnicodeState::Type;
-                Some('\\')
-            }
-            EscapeUnicodeState::Type => {
-                self.state = EscapeUnicodeState::LeftBrace;
-                Some('u')
-            }
-            EscapeUnicodeState::LeftBrace => {
-                let mut n = 0;
-                while (self.c as u32) >> (4 * (n + 1)) != 0 {
-                    n += 1;
-                }
-                self.state = EscapeUnicodeState::Value(n);
-                Some('{')
-            }
-            EscapeUnicodeState::Value(offset) => {
-                let c = from_digit(((self.c as u32) >> (offset * 4)) & 0xf, 16).unwrap();
-                if offset == 0 {
-                    self.state = EscapeUnicodeState::RightBrace;
-                } else {
-                    self.state = EscapeUnicodeState::Value(offset - 1);
-                }
-                Some(c)
-            }
-            EscapeUnicodeState::RightBrace => {
-                self.state = EscapeUnicodeState::Done;
-                Some('}')
-            }
             EscapeUnicodeState::Done => None,
+
+            EscapeUnicodeState::RightBrace |
+            EscapeUnicodeState::Value |
+            EscapeUnicodeState::LeftBrace |
+            EscapeUnicodeState::Type |
+            EscapeUnicodeState::Backslash => Some('}'),
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.7.0")]
+impl ExactSizeIterator for EscapeUnicode {
+    #[inline]
+    fn len(&self) -> usize {
+        self.offset + self.state_len()
+    }
+}
+
+impl EscapeUnicode {
+    #[inline]
+    fn state_len(&self) -> usize {
+        // The match is a single memory access with no branching
+        match self.state {
+            EscapeUnicodeState::Done => 0,
+            EscapeUnicodeState::RightBrace => 1,
+            EscapeUnicodeState::Value => 2,
+            EscapeUnicodeState::LeftBrace => 3,
+            EscapeUnicodeState::Type => 4,
+            EscapeUnicodeState::Backslash => 5,
         }
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let mut n = 0;
-        while (self.c as usize) >> (4 * (n + 1)) != 0 {
-            n += 1;
+    #[inline]
+    fn step(&mut self, state: usize, offset: usize) -> Option<char> {
+        self.offset = offset;
+
+        match state {
+            5 => {
+                self.state = EscapeUnicodeState::Type;
+                Some('\\')
+            }
+            4 => {
+                self.state = EscapeUnicodeState::LeftBrace;
+                Some('u')
+            }
+            3 => {
+                self.state = EscapeUnicodeState::LeftBrace;
+                Some('{')
+            }
+            2 => {
+                self.state = if offset == 0 {
+                    EscapeUnicodeState::RightBrace
+                } else {
+                    self.offset -= 1;
+                    EscapeUnicodeState::Value
+                };
+                from_digit(((self.c as u32) >> (offset * 4)) & 0xf, 16)
+            }
+            1 => {
+                self.state = EscapeUnicodeState::Done;
+                Some('}')
+            }
+            _ => {
+                self.state = EscapeUnicodeState::Done;
+                None
+            }
         }
-        let n = match self.state {
-            EscapeUnicodeState::Backslash => n + 5,
-            EscapeUnicodeState::Type => n + 4,
-            EscapeUnicodeState::LeftBrace => n + 3,
-            EscapeUnicodeState::Value(offset) => offset + 2,
-            EscapeUnicodeState::RightBrace => 1,
-            EscapeUnicodeState::Done => 0,
-        };
-        (n, Some(n))
     }
 }
 
@@ -504,9 +571,9 @@ pub struct EscapeDefault {
 
 #[derive(Clone)]
 enum EscapeDefaultState {
-    Backslash(char),
+    Done(char),
     Char(char),
-    Done,
+    Backslash(char),
     Unicode(EscapeUnicode),
 }
 
@@ -515,71 +582,72 @@ impl Iterator for EscapeDefault {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            }
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
-                Some(c)
-            }
-            EscapeDefaultState::Done => None,
-            EscapeDefaultState::Unicode(ref mut iter) => iter.next(),
+        if let EscapeDefaultState::Unicode(ref mut iter) = self.state {
+            iter.next()
+        } else {
+            self.step(0)
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.state {
-            EscapeDefaultState::Char(_) => (1, Some(1)),
-            EscapeDefaultState::Backslash(_) => (2, Some(2)),
-            EscapeDefaultState::Unicode(ref iter) => iter.size_hint(),
-            EscapeDefaultState::Done => (0, Some(0)),
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
+    #[inline]
     fn count(self) -> usize {
-        match self.state {
-            EscapeDefaultState::Char(_) => 1,
-            EscapeDefaultState::Unicode(iter) => iter.count(),
-            EscapeDefaultState::Done => 0,
-            EscapeDefaultState::Backslash(_) => 2,
-        }
+        self.len()
     }
 
     fn nth(&mut self, n: usize) -> Option<char> {
-        match self.state {
-            EscapeDefaultState::Backslash(c) if n == 0 => {
-                self.state = EscapeDefaultState::Char(c);
-                Some('\\')
-            },
-            EscapeDefaultState::Backslash(c) if n == 1 => {
-                self.state = EscapeDefaultState::Done;
-                Some(c)
-            },
-            EscapeDefaultState::Backslash(_) => {
-                self.state = EscapeDefaultState::Done;
-                None
-            },
-            EscapeDefaultState::Char(c) => {
-                self.state = EscapeDefaultState::Done;
-
-                if n == 0 {
-                    Some(c)
-                } else {
-                    None
-                }
-            },
-            EscapeDefaultState::Done => return None,
-            EscapeDefaultState::Unicode(ref mut i) => return i.nth(n),
-        }
+        self.step(n)
     }
 
     fn last(self) -> Option<char> {
         match self.state {
             EscapeDefaultState::Unicode(iter) => iter.last(),
-            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Done(_) => None,
             EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.7.0")]
+impl ExactSizeIterator for EscapeDefault {
+    fn len(&self) -> usize {
+        match self.state {
+            EscapeDefaultState::Done(_) => 0,
+            EscapeDefaultState::Char(_) => 1,
+            EscapeDefaultState::Backslash(_) => 2,
+            EscapeDefaultState::Unicode(ref iter) => iter.len(),
+        }
+    }
+}
+
+impl EscapeDefault {
+    #[inline]
+    fn step(&mut self, n: usize) -> Option<char> {
+        let (remaining, c) = match self.state {
+            EscapeDefaultState::Done(c) => (0usize, c),
+            EscapeDefaultState::Char(c) => (1, c),
+            EscapeDefaultState::Backslash(c) => (2, c),
+            EscapeDefaultState::Unicode(ref mut iter) => return iter.nth(n),
+        };
+
+        match remaining.saturating_sub(n) {
+            2 => {
+                self.state = EscapeDefaultState::Char(c);
+                Some('\\')
+            }
+            1 => {
+                self.state = EscapeDefaultState::Done(c);
+                Some(c)
+            }
+            _ => {
+                self.state = EscapeDefaultState::Done(c);
+                None
+            }
         }
     }
 }
