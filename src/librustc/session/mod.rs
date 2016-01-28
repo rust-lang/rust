@@ -179,9 +179,9 @@ impl Session {
     pub fn track_errors<F, T>(&self, f: F) -> Result<T, usize>
         where F: FnOnce() -> T
     {
-        let mut count = self.err_count();
+        let count = self.err_count();
         let result = f();
-        count -= self.err_count();
+        let count = self.err_count() - count;
         if count == 0 {
             Ok(result)
         } else {
