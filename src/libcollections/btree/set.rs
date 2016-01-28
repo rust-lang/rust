@@ -12,6 +12,7 @@
 // to TreeMap
 
 use core::cmp::Ordering::{self, Less, Greater, Equal};
+use core::cmp::{min, max};
 use core::fmt::Debug;
 use core::fmt;
 use core::iter::{Peekable, FromIterator};
@@ -703,7 +704,9 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {
+    fn len(&self) -> usize { self.iter.len() }
+}
 
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -724,7 +727,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {
+    fn len(&self) -> usize { self.iter.len() }
+}
 
 
 impl<'a, T> Clone for Range<'a, T> {
@@ -780,6 +785,12 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let a_len = self.a.len();
+        let b_len = self.b.len();
+        (a_len.saturating_sub(b_len), Some(a_len))
+    }
 }
 
 impl<'a, T> Clone for SymmetricDifference<'a, T> {
@@ -805,6 +816,10 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
                 Greater => return self.b.next(),
             }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.a.len() + self.b.len()))
     }
 }
 
@@ -842,6 +857,10 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(min(self.a.len(), self.b.len())))
+    }
 }
 
 impl<'a, T> Clone for Union<'a, T> {
@@ -867,5 +886,11 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
                 Greater => return self.b.next(),
             }
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let a_len = self.a.len();
+        let b_len = self.b.len();
+        (max(a_len, b_len), Some(a_len + b_len))
     }
 }
