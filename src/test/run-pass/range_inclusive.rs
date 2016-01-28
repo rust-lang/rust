@@ -55,6 +55,24 @@ pub fn main() {
         let _ = x...&y;
     }
 
+    // test collection indexing
+    let vec = (0...10).collect::<Vec<_>>();
+    let slice: &[_] = &*vec;
+    let string = String::from("hello world");
+    let stir = "hello world";
+
+    assert_eq!(&vec[3...6], &[3, 4, 5, 6]);
+    assert_eq!(&vec[ ...6], &[0, 1, 2, 3, 4, 5, 6]);
+
+    assert_eq!(&slice[3...6], &[3, 4, 5, 6]);
+    assert_eq!(&slice[ ...6], &[0, 1, 2, 3, 4, 5, 6]);
+
+    assert_eq!(&string[3...6], "lo w");
+    assert_eq!(&string[ ...6], "hello w");
+
+    assert_eq!(&stir[3...6], "lo w");
+    assert_eq!(&stir[ ...6], "hello w");
+
     // test the size hints and emptying
     let mut long = 0...255u8;
     let mut short = 42...42;
