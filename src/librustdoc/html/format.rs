@@ -460,7 +460,7 @@ impl fmt::Display for clean::Type {
                     [] => primitive_link(f, clean::PrimitiveTuple, "()"),
                     [ref one] => {
                         try!(primitive_link(f, clean::PrimitiveTuple, "("));
-                        try!(write!(f, "{}", one));
+                        try!(write!(f, "{},", one));
                         primitive_link(f, clean::PrimitiveTuple, ")")
                     }
                     many => {
