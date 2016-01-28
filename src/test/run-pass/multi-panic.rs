@@ -17,7 +17,10 @@ fn main() {
 
         panic!();
     } else {
-        let test = std::process::Command::new(&args[0]).arg("run_test").output().unwrap();
+        let test = std::process::Command::new(&args[0]).arg("run_test")
+                                                       .env_remove("RUST_BACKTRACE")
+                                                       .output()
+                                                       .unwrap();
         assert!(!test.status.success());
         let err = String::from_utf8_lossy(&test.stderr);
         let mut it = err.lines();
