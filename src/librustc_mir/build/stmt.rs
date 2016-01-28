@@ -72,7 +72,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         let expr = this.hir.mirror(expr);
                         let temp = this.temp(expr.ty.clone());
                         unpack!(block = this.into(&temp, block, expr));
-                        this.cfg.push_drop(block, span, DropKind::Deep, &temp);
+                        this.cfg.push_drop(block, span, &temp);
                         block.unit()
                     }));
                 }

@@ -69,7 +69,7 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
                 self.erase_regions_lvalue(lvalue);
                 self.erase_regions_rvalue(rvalue);
             }
-            StatementKind::Drop(_, ref mut lvalue) => {
+            StatementKind::Drop(ref mut lvalue) => {
                 self.erase_regions_lvalue(lvalue);
             }
         }

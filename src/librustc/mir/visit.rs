@@ -124,7 +124,7 @@ macro_rules! make_mir_visitor {
                                           ref $($mutability)* rvalue) => {
                         self.visit_assign(block, lvalue, rvalue);
                     }
-                    StatementKind::Drop(_, ref $($mutability)* lvalue) => {
+                    StatementKind::Drop(ref $($mutability)* lvalue) => {
                         self.visit_lvalue(lvalue, LvalueContext::Drop);
                     }
                 }

@@ -89,7 +89,7 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::lang_items;
-use rustc::middle::subst::Substs;
+use rustc::middle::subst::{Substs, VecPerParamSpace};
 use rustc::middle::ty::{self, Ty};
 use rustc::mir::repr::*;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -97,7 +97,8 @@ use syntax::parse::token::intern_and_get_ident;
 
 pub struct Scope<'tcx> {
     extent: CodeExtent,
-    drops: Vec<(DropKind, Span, Lvalue<'tcx>)>,
+    drops: Vec<(Span, Lvalue<'tcx>)>,
+    frees: Vec<(Span, Lvalue<'tcx>, Ty<'tcx>)>,
     cached_block: Option<BasicBlock>,
 }
 
@@ -164,6 +165,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.scopes.push(Scope {
             extent: extent.clone(),
             drops: vec![],
+            frees: vec![],
             cached_block: None,
         });
     }
@@ -180,8 +182,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // add in any drops needed on the fallthrough path (any other
         // exiting paths, such as those that arise from `break`, will
         // have drops already)
-        for (kind, span, lvalue) in scope.drops {
-            self.cfg.push_drop(block, span, kind, &lvalue);
+        for (span, lvalue) in scope.drops {
+            self.cfg.push_drop(block, span, &lvalue);
         }
     }
 
@@ -225,8 +227,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         });
 
         for scope in scopes.iter_mut().rev().take(scope_count) {
-            for &(kind, drop_span, ref lvalue) in &scope.drops {
-                cfg.push_drop(block, drop_span, kind, lvalue);
+            for &(drop_span, ref lvalue) in &scope.drops {
+                cfg.push_drop(block, drop_span, lvalue);
             }
         }
         cfg.terminate(block, Terminator::Goto { target: target });
@@ -242,23 +244,55 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             return None;
         }
 
+        let tcx = self.hir.tcx();
+        let unit_tmp = self.get_unit_temp();
         let mut terminator = Terminator::Resume;
         // Given an array of scopes, we generate these from the outermost scope to the innermost
         // one. Thus for array [S0, S1, S2] with corresponding cleanup blocks [B0, B1, B2], we will
         // generate B0 <- B1 <- B2 in left-to-right order. The outermost scope (B0) will always
         // terminate with a Resume terminator.
-        for scope in self.scopes.iter_mut().filter(|s| !s.drops.is_empty()) {
+        for scope in self.scopes.iter_mut().filter(|s| !s.drops.is_empty() || !s.frees.is_empty()) {
             if let Some(b) = scope.cached_block {
                 terminator = Terminator::Goto { target: b };
                 continue;
             } else {
-                let new_block = self.cfg.start_new_block();
-                self.cfg.block_data_mut(new_block).is_cleanup = true;
+                let mut new_block = self.cfg.start_new_cleanup_block();
                 self.cfg.terminate(new_block, terminator);
                 terminator = Terminator::Goto { target: new_block };
-                for &(kind, span, ref lvalue) in scope.drops.iter().rev() {
-                    self.cfg.push_drop(new_block, span, kind, lvalue);
+
+                for &(span, ref lvalue) in scope.drops.iter().rev() {
+                    self.cfg.push_drop(new_block, span, lvalue);
                 }
+
+                for &(_, ref lvalue, ref item_ty) in scope.frees.iter().rev() {
+                    let item = lang_items::SpannedLangItems::box_free_fn(&tcx.lang_items)
+                        .expect("box_free language item required");
+                    let substs = tcx.mk_substs(Substs::new(
+                        VecPerParamSpace::new(vec![], vec![], vec![item_ty]),
+                        VecPerParamSpace::new(vec![], vec![], vec![])
+                    ));
+                    let func = Constant {
+                        span: item.1,
+                        ty: tcx.lookup_item_type(item.0).ty.subst(substs),
+                        literal: Literal::Item {
+                            def_id: item.0,
+                            kind: ItemKind::Function,
+                            substs: substs
+                        }
+                    };
+                    let old_block = new_block;
+                    new_block = self.cfg.start_new_cleanup_block();
+                    self.cfg.terminate(new_block, Terminator::Call {
+                        func: Operand::Constant(func),
+                        args: vec![Operand::Consume(lvalue.clone())],
+                        kind: CallKind::Converging {
+                            target: old_block,
+                            destination: unit_tmp.clone()
+                        }
+                    });
+                    terminator = Terminator::Goto { target: new_block };
+                }
+
                 scope.cached_block = Some(new_block);
             }
         }
@@ -272,7 +306,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn schedule_drop(&mut self,
                          span: Span,
                          extent: CodeExtent,
-                         kind: DropKind,
                          lvalue: &Lvalue<'tcx>,
                          lvalue_ty: Ty<'tcx>) {
         if self.hir.needs_drop(lvalue_ty) {
@@ -282,13 +315,34 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // incorrect (i.e. they still are pointing at old cached_block).
                 scope.cached_block = None;
                 if scope.extent == extent {
-                    scope.drops.push((kind, span, lvalue.clone()));
+                    scope.drops.push((span, lvalue.clone()));
                     return;
                 }
             }
             self.hir.span_bug(span,
                               &format!("extent {:?} not in scope to drop {:?}", extent, lvalue));
         }
+    }
+
+    /// Schedule dropping of a not yet fully initialised box. This cleanup will (and should) only
+    /// be translated into unwind branch. The extent should be for the `EXPR` inside `box EXPR`.
+    pub fn schedule_box_free(&mut self,
+                             span: Span,
+                             extent: CodeExtent,
+                             lvalue: &Lvalue<'tcx>,
+                             item_ty: Ty<'tcx>) {
+        for scope in self.scopes.iter_mut().rev() {
+            // We must invalidate all the cached_blocks leading up to the scope we’re looking
+            // for, because otherwise some/most of the blocks in the chain might become
+            // incorrect (i.e. they still are pointing at old cached_block).
+            scope.cached_block = None;
+            if scope.extent == extent {
+                scope.frees.push((span, lvalue.clone(), item_ty));
+                return;
+            }
+        }
+        self.hir.span_bug(span,
+                          &format!("extent {:?} not in scope to drop {:?}", extent, lvalue));
     }
 
     pub fn extent_of_innermost_scope(&self) -> CodeExtent {
@@ -298,6 +352,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn extent_of_outermost_scope(&self) -> CodeExtent {
         self.scopes.first().map(|scope| scope.extent).unwrap()
     }
+
 
     pub fn panic_bounds_check(&mut self,
                              block: BasicBlock,
@@ -405,4 +460,5 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             literal: self.hir.usize_literal(span_lines.line)
         })
     }
+
 }
