@@ -377,6 +377,33 @@ fn main() {
 }
 ```
 
+Moving out of a member of a mutably borrowed struct is fine if you put something
+back. `mem::replace` can be used for that:
+
+```
+struct TheDarkKnight;
+
+impl TheDarkKnight {
+    fn nothing_is_true(self) {}
+}
+
+struct Batcave {
+    knight: TheDarkKnight
+}
+
+fn main() {
+    use std::mem;
+
+    let mut cave = Batcave {
+        knight: TheDarkKnight
+    };
+    let borrowed = &mut cave;
+
+    borrowed.knight.nothing_is_true(); // E0507
+    mem::replace(&mut borrowed.knight, TheDarkKnight).nothing_is_true(); // ok!
+}
+```
+
 You can find more information about borrowing in the rust-book:
 http://doc.rust-lang.org/stable/book/references-and-borrowing.html
 "##,
