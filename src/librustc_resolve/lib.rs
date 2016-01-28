@@ -3654,35 +3654,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
     }
-
-    //
-    // Diagnostics
-    //
-    // Diagnostics are not particularly efficient, because they're rarely
-    // hit.
-    //
-
-    #[allow(dead_code)]   // useful for debugging
-    fn dump_module(&mut self, module_: Module<'a>) {
-        debug!("Dump of module `{}`:", module_to_string(&*module_));
-
-        debug!("Children:");
-        build_reduced_graph::populate_module_if_necessary(self, &module_);
-        for (&(name, ns), _) in module_.children.borrow().iter() {
-            if ns == TypeNS || module_.get_child(name, TypeNS).is_none() {
-                debug!("* {}", name);
-            }
-        }
-
-        debug!("Import resolutions:");
-        let import_resolutions = module_.import_resolutions.borrow();
-        for (&(name, ns), import_resolution) in import_resolutions.iter() {
-            let ns_str = match ns { ValueNS => "value", TypeNS => "type" };
-            // FIXME #4954
-            let repr = match import_resolution.target { None => "", Some(_) => "?" };
-            debug!("* {} {}: {}", ns_str, name, repr);
-        }
-    }
 }
 
 
