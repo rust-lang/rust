@@ -1915,6 +1915,16 @@ impl<'tcx> ctxt<'tcx> {
         })
     }
 
+    pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+        self.expr_ty_opt(expr).map(|t| t.adjust(self,
+                                                expr.span,
+                                                expr.id,
+                                                self.tables.borrow().adjustments.get(&expr.id),
+                                                |method_call| {
+            self.tables.borrow().method_map.get(&method_call).map(|method| method.ty)
+        }))
+    }
+
     pub fn expr_span(&self, id: NodeId) -> Span {
         match self.map.find(id) {
             Some(ast_map::NodeExpr(e)) => {
