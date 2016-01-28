@@ -6,6 +6,7 @@
 
 // this only exists to allow the "dogfood" integration test to work
 #[allow(dead_code)]
+#[allow(print_stdout)]
 fn main() {
     println!("What are you doing? Don't run clippy as an executable");
 }
@@ -77,6 +78,7 @@ pub mod misc_early;
 pub mod array_indexing;
 pub mod panic;
 pub mod derive;
+pub mod print;
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -141,6 +143,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
+    reg.register_late_lint_pass(box print::PrintLint);
 
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -149,6 +152,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::WRONG_PUB_SELF_CONVENTION,
         mut_mut::MUT_MUT,
         mutex_atomic::MUTEX_INTEGER,
+        print::PRINT_STDOUT,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,

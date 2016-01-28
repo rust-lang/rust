@@ -29,6 +29,7 @@ pub const DEFAULT_TRAIT_PATH: [&'static str; 3] = ["core", "default", "Default"]
 pub const HASHMAP_ENTRY_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const HASH_PATH: [&'static str; 2] = ["hash", "Hash"];
+pub const IO_PRINT_PATH: [&'static str; 3] = ["std", "io", "_print"];
 pub const LL_PATH: [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 pub const MUTEX_PATH: [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
@@ -643,5 +644,31 @@ fn is_cast_ty_equal(left: &Ty, right: &Ty) -> bool {
         }
         (&TyInfer, &TyInfer) => true,
         _ => false,
+    }
+}
+
+/// Return the pre-expansion span is this comes from a expansion of the macro `name`.
+pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> {
+    loop {
+        let span_name_span = cx.tcx.sess.codemap().with_expn_info(span.expn_id, |expn| {
+            expn.map(|ei| {
+                (ei.callee.name(), ei.call_site)
+            })
+        });
+
+        return match span_name_span {
+            Some((mac_name, new_span)) => {
+                if mac_name.as_str() == name {
+                    Some(new_span)
+                }
+                else {
+                    span = new_span;
+                    continue;
+                }
+            }
+            None => {
+                None
+            }
+        };
     }
 }
