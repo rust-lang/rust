@@ -334,7 +334,8 @@ create_config! {
     chain_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indentation of chain";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     single_line_if_else: bool, false, "Put else on same line as closing brace for if statements";
-    format_strings: bool, true, "Format string literals, or leave as is";
+    format_strings: bool, true, "Format string literals where necessary";
+    force_format_strings: bool, false, "Always format string literals";
     chains_overflow_last: bool, true, "Allow last call in method chain to break the line";
     take_source_hints: bool, true, "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, "Use tab characters for indentation, spaces for alignment";
