@@ -60,6 +60,18 @@ use vec::Vec;
 /// }
 /// # }
 /// ```
+///
+/// # Safety
+///
+/// `CString` is intended for working with traditional C-style strings
+/// (a sequence of non-null bytes terminated by a single null byte); the
+/// primary use case for these kinds of strings is interoperating with C-like
+/// code. Often you will need to transfer ownership to/from that external
+/// code. It is strongly recommended that you thoroughly read through the
+/// documentation of `CString` before use, as improper ownership management
+/// of `CString` instances can lead to invalid memory accesses, memory leaks,
+/// and other memory errors.
+
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
@@ -207,11 +219,11 @@ impl CString {
         CString { inner: v.into_boxed_slice() }
     }
 
-    /// Retakes ownership of a CString that was transferred to C.
+    /// Retakes ownership of a `CString` that was transferred to C.
     ///
-    /// The only appropriate argument is a pointer obtained by calling
-    /// `into_raw`. The length of the string will be recalculated
-    /// using the pointer.
+    /// This should only ever be called with a pointer that was earlier
+    /// obtained by calling `into_raw` on a `CString`. Additionally, the length
+    /// of the string will be recalculated from the pointer.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
