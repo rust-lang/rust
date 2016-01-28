@@ -454,11 +454,19 @@ impl<'a> FmtVisitor<'a> {
 
         if is_internal {
             self.buffer.push_str(" {");
-            self.last_pos = ::utils::span_after(s, "{", self.codemap);
-            self.block_indent = self.block_indent.block_indent(self.config);
-            self.walk_mod_items(m);
-            self.format_missing_with_indent(m.inner.hi - BytePos(1));
-            self.close_block();
+            // Hackery to account for the closing }.
+            let mod_lo = ::utils::span_after(s, "{", self.codemap);
+            let body_snippet = self.snippet(codemap::mk_sp(mod_lo, m.inner.hi - BytePos(1)));
+            let body_snippet = body_snippet.trim();
+            if body_snippet.is_empty() {
+                self.buffer.push_str("}");
+            } else {
+                self.last_pos = mod_lo;
+                self.block_indent = self.block_indent.block_indent(self.config);
+                self.walk_mod_items(m);
+                self.format_missing_with_indent(m.inner.hi - BytePos(1));
+                self.close_block();
+            }
             self.last_pos = m.inner.hi;
         } else {
             self.buffer.push_str(";");
