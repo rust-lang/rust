@@ -641,7 +641,7 @@ impl String {
         Cow::Owned(res)
     }
 
-    /// Decode a UTF-16 encoded vector `v` into a `String`, returning `None`
+    /// Decode a UTF-16 encoded vector `v` into a `String`, returning `Err`
     /// if `v` contains any invalid data.
     ///
     /// # Examples
