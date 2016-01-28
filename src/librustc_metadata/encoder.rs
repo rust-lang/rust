@@ -1649,7 +1649,7 @@ fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
 fn encode_lang_items(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     rbml_w.start_tag(tag_lang_items);
 
-    for (i, &opt_def_id) in ecx.tcx.lang_items.items() {
+    for (i, &opt_def_id) in ecx.tcx.lang_items.items().iter().enumerate() {
         if let Some(def_id) = opt_def_id {
             if def_id.is_local() {
                 rbml_w.start_tag(tag_lang_items_item);

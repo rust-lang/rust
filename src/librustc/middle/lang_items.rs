@@ -36,9 +36,6 @@ use syntax::parse::token::InternedString;
 use rustc_front::intravisit::Visitor;
 use rustc_front::hir;
 
-use std::iter::Enumerate;
-use std::slice;
-
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! lets_do_this {
@@ -69,8 +66,8 @@ impl LanguageItems {
         }
     }
 
-    pub fn items<'a>(&'a self) -> Enumerate<slice::Iter<'a, Option<DefId>>> {
-        self.items.iter().enumerate()
+    pub fn items(&self) -> &[Option<DefId>] {
+        &*self.items
     }
 
     pub fn item_name(index: usize) -> &'static str {
@@ -334,6 +331,7 @@ lets_do_this! {
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
+    BoxFreeFnLangItem,               "box_free",                box_free_fn;
     StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
 
     StartFnLangItem,                 "start",                   start_fn;

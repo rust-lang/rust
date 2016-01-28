@@ -41,7 +41,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.hir.span_bug(expr.span, "no temp_lifetime for expr");
             }
         };
-        this.schedule_drop(expr.span, temp_lifetime, DropKind::Deep, &temp, expr_ty);
+        this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
 
         // Careful here not to cause an infinite cycle. If we always
         // called `into`, then for lvalues like `x.f`, it would

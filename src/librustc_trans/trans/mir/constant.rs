@@ -82,13 +82,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           constant: &mir::Constant<'tcx>)
                           -> OperandRef<'tcx>
     {
-        let ty = bcx.monomorphize(&constant.ty);
         match constant.literal {
             mir::Literal::Item { def_id, kind, substs } => {
                 let substs = bcx.tcx().mk_substs(bcx.monomorphize(&substs));
-                self.trans_item_ref(bcx, ty, kind, substs, def_id)
+                self.trans_item_ref(bcx, constant.ty, kind, substs, def_id)
             }
             mir::Literal::Value { ref value } => {
+                let ty = bcx.monomorphize(&constant.ty);
                 self.trans_constval(bcx, value, ty)
             }
         }

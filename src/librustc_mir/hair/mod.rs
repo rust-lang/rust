@@ -123,6 +123,7 @@ pub enum ExprKind<'tcx> {
     },
     Box {
         value: ExprRef<'tcx>,
+        value_extents: CodeExtent,
     },
     Call {
         ty: ty::Ty<'tcx>,
