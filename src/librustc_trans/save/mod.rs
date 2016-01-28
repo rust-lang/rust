@@ -463,11 +463,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
+        let hir_node = lowering::lower_expr(self.lcx, expr);
+        let ty = self.tcx.expr_ty_adjusted_opt(&hir_node);
+        if ty.is_none() || ty.unwrap().sty == ty::TyError {
+            return None;
+        }
         match expr.node {
             ast::ExprField(ref sub_ex, ident) => {
                 let hir_node = lowering::lower_expr(self.lcx, sub_ex);
-                let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
-                match *ty {
+                match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
                         let f = def.struct_variant().field_named(ident.node.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
@@ -487,8 +491,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             ast::ExprStruct(ref path, _, _) => {
                 let hir_node = lowering::lower_expr(self.lcx, expr);
-                let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
-                match *ty {
+                match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
