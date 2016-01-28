@@ -536,12 +536,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                                                    Plus
                                                })
                                     .and_then(|ty| l64.checked_add(r64).map(|v| ConstantInt(v, ty)))
+                            } else if ln {
+                                add_neg_int(r64, rty, l64, lty)
                             } else {
-                                if ln {
-                                    add_neg_int(r64, rty, l64, lty)
-                                } else {
-                                    add_neg_int(l64, lty, r64, rty)
-                                }
+                                add_neg_int(l64, lty, r64, rty)
                             }
                         }
                         // TODO: float (would need bignum library?)

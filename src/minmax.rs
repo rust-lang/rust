@@ -59,12 +59,10 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
 
             if match_def_path(cx, def_id, &["core", "cmp", "min"]) {
                 fetch_const(args, Min)
+            } else if match_def_path(cx, def_id, &["core", "cmp", "max"]) {
+                fetch_const(args, Max)
             } else {
-                if match_def_path(cx, def_id, &["core", "cmp", "max"]) {
-                    fetch_const(args, Max)
-                } else {
-                    None
-                }
+                None
             }
         } else {
             None
