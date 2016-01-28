@@ -3579,27 +3579,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // Look for trait children.
             build_reduced_graph::populate_module_if_necessary(self, &search_module);
 
-            {
-                for (_, name_binding) in search_module.children.borrow().iter() {
-                    let def = match name_binding.def() {
-                        Some(def) => def,
-                        None => continue,
-                    };
-                    let trait_def_id = match def {
-                        Def::Trait(trait_def_id) => trait_def_id,
-                        _ => continue,
-                    };
-                    if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        add_trait_info(&mut found_traits, trait_def_id, name);
-                    }
+            for (&(_, ns), name_binding) in search_module.children.borrow().iter() {
+                if ns != TypeNS { continue }
+                let trait_def_id = match name_binding.def() {
+                    Some(Def::Trait(trait_def_id)) => trait_def_id,
+                    Some(..) | None => continue,
+                };
+                if self.trait_item_map.contains_key(&(name, trait_def_id)) {
+                    add_trait_info(&mut found_traits, trait_def_id, name);
                 }
             }
 
             // Look for imports.
             for (&(_, ns), import) in search_module.import_resolutions.borrow().iter() {
-                let target = match (ns, &import.target) {
-                    (TypeNS, &Some(ref target)) => target.clone(),
-                    _ => continue,
+                if ns != TypeNS { continue }
+                let target = match import.target {
+                    Some(ref target) => target,
+                    None => continue,
                 };
                 let did = match target.binding.def() {
                     Some(Def::Trait(trait_def_id)) => trait_def_id,
