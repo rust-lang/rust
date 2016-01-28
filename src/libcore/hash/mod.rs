@@ -194,8 +194,8 @@ pub trait Hasher {
 /// A `BuildHasher` is typically used as a factory for instances of `Hasher`
 /// which a `HashMap` can then use to hash keys independently.
 ///
-/// Note that for each instance of `BuildHasher` the create hashers should be
-/// identical. That is if the same stream of bytes is fed into each hasher the
+/// Note that for each instance of `BuildHasher`, the created hashers should be
+/// identical. That is, if the same stream of bytes is fed into each hasher, the
 /// same output will also be generated.
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub trait BuildHasher {
