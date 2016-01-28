@@ -10,7 +10,7 @@
 
 // Test inclusive range syntax.
 
-#![feature(inclusive_range_syntax, inclusive_range)]
+#![feature(inclusive_range_syntax, inclusive_range, step_by)]
 
 use std::ops::{RangeInclusive, RangeToInclusive};
 
@@ -35,14 +35,12 @@ pub fn main() {
     }
     assert_eq!(count, 55);
 
-    /* FIXME
     let mut count = 0;
     for i in (0_usize...10).step_by(2) {
         assert!(i >= 0 && i <= 10 && i % 2 == 0);
         count += i;
     }
     assert_eq!(count, 30);
-    */
 
     let _ = 0_usize...4+4-3;
     let _ = 0...foo();
