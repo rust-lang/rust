@@ -94,7 +94,6 @@ pub mod middle {
     pub mod astconv_util;
     pub mod expr_use_visitor; // STAGE0: increase glitch immunity
     pub mod cfg;
-    pub mod check_match;
     pub mod const_eval;
     pub mod const_qualif;
     pub mod cstore;

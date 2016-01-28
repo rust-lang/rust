@@ -39,6 +39,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
+extern crate rustc_const_eval;
 extern crate rustc_passes;
 extern crate rustc_front;
 extern crate rustc_lint;
