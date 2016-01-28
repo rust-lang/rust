@@ -642,7 +642,7 @@ pub mod consts {
     /// - bitrig
     /// - netbsd
     /// - openbsd
-    /// - sunos
+    /// - solaris
     /// - android
     /// - windows
     #[stable(feature = "env", since = "1.0.0")]
@@ -803,10 +803,10 @@ mod os {
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-#[cfg(target_os = "sunos")]
+#[cfg(target_os = "solaris")]
 mod os {
     pub const FAMILY: &'static str = "unix";
-    pub const OS: &'static str = "sunos";
+    pub const OS: &'static str = "solaris";
     pub const DLL_PREFIX: &'static str = "lib";
     pub const DLL_SUFFIX: &'static str = ".so";
     pub const DLL_EXTENSION: &'static str = "so";

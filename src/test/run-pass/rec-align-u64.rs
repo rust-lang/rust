@@ -42,7 +42,7 @@ struct Outer {
           target_os = "dragonfly",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "sunos"))]
+          target_os = "solaris"))]
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {

@@ -11,15 +11,15 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut base = super::sunos_base::opts();
+    let mut base = super::solaris_base::opts();
     base.pre_link_args.push("-m64".to_string());
 
     Target {
-        llvm_target: "x86_64-pc-solaris2.11".to_string(),
+        llvm_target: "x86_64-pc-solaris".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
         arch: "x86_64".to_string(),
-        target_os: "sunos".to_string(),
+        target_os: "solaris".to_string(),
         target_env: "".to_string(),
         target_vendor: "sun".to_string(),
         options: base,

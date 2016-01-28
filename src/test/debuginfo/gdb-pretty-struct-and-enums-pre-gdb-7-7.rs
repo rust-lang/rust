@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-bitrig
-// ignore-sunos
+// ignore-solaris
 // ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new
 // ignore-tidy-linelength

@@ -25,7 +25,7 @@ use ops::Neg;
 #[cfg(target_os = "nacl")]      pub use os::nacl as platform;
 #[cfg(target_os = "netbsd")]    pub use os::netbsd as platform;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
-#[cfg(target_os = "sunos")]     pub use os::sunos as platform;
+#[cfg(target_os = "solaris")]   pub use os::solaris as platform;
 
 pub mod backtrace;
 pub mod condvar;

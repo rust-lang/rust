@@ -17,7 +17,7 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         has_rpath: true,
-        is_like_sunos: true,
+        is_like_solaris: true,
         archive_format: "gnu".to_string(),
         exe_allocation_crate: super::maybe_jemalloc(),
 
