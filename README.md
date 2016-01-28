@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 100 lints included in this crate:
+There are 101 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -73,6 +73,7 @@ name                                                                            
 [out_of_bounds_indexing](https://github.com/Manishearth/rust-clippy/wiki#out_of_bounds_indexing)               | deny    | out of bound constant indexing
 [panic_params](https://github.com/Manishearth/rust-clippy/wiki#panic_params)                                   | warn    | missing parameters in `panic!`
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                       | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
+[print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                   | allow   | printing on stdout
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                             | warn    | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                       | warn    | using Range::step_by(0), which produces an infinite iterator
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                       | warn    | zipping iterator with a range when enumerate() would do
