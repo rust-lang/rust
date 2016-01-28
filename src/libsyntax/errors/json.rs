@@ -20,9 +20,9 @@
 // FIXME spec the JSON output properly.
 
 
-use codemap::{Span, CodeMap};
+use codemap::{MultiSpan, CodeMap};
 use diagnostics::registry::Registry;
-use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan};
+use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion};
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
@@ -52,15 +52,15 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit(&mut self, span: Option<Span>, msg: &str, code: Option<&str>, level: Level) {
+    fn emit(&mut self, span: Option<&MultiSpan>, msg: &str, code: Option<&str>, level: Level) {
         let data = Diagnostic::new(span, msg, code, level, self);
         if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
             panic!("failed to print diagnostics: {:?}", e);
         }
     }
 
-    fn custom_emit(&mut self, sp: RenderSpan, msg: &str, level: Level) {
-        let data = Diagnostic::from_render_span(&sp, msg, level, self);
+    fn custom_emit(&mut self, sp: &RenderSpan, msg: &str, level: Level) {
+        let data = Diagnostic::from_render_span(sp, msg, level, self);
         if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
             panic!("failed to print diagnostics: {:?}", e);
         }
@@ -83,7 +83,7 @@ struct Diagnostic<'a> {
     code: Option<DiagnosticCode>,
     /// "error: internal compiler error", "error", "warning", "note", "help".
     level: &'static str,
-    span: Option<DiagnosticSpan>,
+    spans: Vec<DiagnosticSpan>,
     /// Assocaited diagnostic messages.
     children: Vec<Diagnostic<'a>>,
 }
@@ -110,7 +110,7 @@ struct DiagnosticCode {
 }
 
 impl<'a> Diagnostic<'a> {
-    fn new(span: Option<Span>,
+    fn new(msp: Option<&MultiSpan>,
            msg: &'a str,
            code: Option<&str>,
            level: Level,
@@ -120,7 +120,7 @@ impl<'a> Diagnostic<'a> {
             message: msg,
             code: DiagnosticCode::map_opt_string(code.map(|c| c.to_owned()), je),
             level: level.to_str(),
-            span: span.map(|sp| DiagnosticSpan::from_span(sp, je)),
+            spans: msp.map_or(vec![], |msp| DiagnosticSpan::from_multispan(msp, je)),
             children: vec![],
         }
     }
@@ -134,7 +134,7 @@ impl<'a> Diagnostic<'a> {
             message: msg,
             code: None,
             level: level.to_str(),
-            span: Some(DiagnosticSpan::from_render_span(span, je)),
+            spans: DiagnosticSpan::from_render_span(span, je),
             children: vec![],
         }
     }
@@ -146,7 +146,7 @@ impl<'a> Diagnostic<'a> {
             message: &db.message,
             code: DiagnosticCode::map_opt_string(db.code.clone(), je),
             level: db.level.to_str(),
-            span: db.span.map(|sp| DiagnosticSpan::from_span(sp, je)),
+            spans: db.span.as_ref().map_or(vec![], |sp| DiagnosticSpan::from_multispan(sp, je)),
             children: db.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
             }).collect(),
@@ -158,59 +158,67 @@ impl<'a> Diagnostic<'a> {
             message: &db.message,
             code: None,
             level: db.level.to_str(),
-            span: db.render_span.as_ref()
-                    .map(|sp| DiagnosticSpan::from_render_span(sp, je))
-                    .or_else(|| db.span.map(|sp| DiagnosticSpan::from_span(sp, je))),
+            spans: db.render_span.as_ref()
+                     .map(|sp| DiagnosticSpan::from_render_span(sp, je))
+                     .or_else(|| db.span.as_ref().map(|s| DiagnosticSpan::from_multispan(s, je)))
+                     .unwrap_or(vec![]),
             children: vec![],
         }
     }
 }
 
 impl DiagnosticSpan {
-    fn from_span(span: Span, je: &JsonEmitter) -> DiagnosticSpan {
-        let start = je.cm.lookup_char_pos(span.lo);
-        let end = je.cm.lookup_char_pos(span.hi);
-        DiagnosticSpan {
-            file_name: start.file.name.clone(),
-            byte_start: span.lo.0,
-            byte_end: span.hi.0,
-            line_start: start.line,
-            line_end: end.line,
-            column_start: start.col.0 + 1,
-            column_end: end.col.0 + 1,
-        }
+    fn from_multispan(msp: &MultiSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
+        msp.spans.iter().map(|span| {
+            let start = je.cm.lookup_char_pos(span.lo);
+            let end = je.cm.lookup_char_pos(span.hi);
+            DiagnosticSpan {
+                file_name: start.file.name.clone(),
+                byte_start: span.lo.0,
+                byte_end: span.hi.0,
+                line_start: start.line,
+                line_end: end.line,
+                column_start: start.col.0 + 1,
+                column_end: end.col.0 + 1,
+            }
+        }).collect()
     }
 
-    fn from_render_span(span: &RenderSpan, je: &JsonEmitter) -> DiagnosticSpan {
-        match *span {
+    fn from_render_span(rsp: &RenderSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
+        match *rsp {
             // FIXME(#30701) handle Suggestion properly
-            RenderSpan::FullSpan(sp) | RenderSpan::Suggestion(sp, _) => {
-                DiagnosticSpan::from_span(sp, je)
+            RenderSpan::FullSpan(ref msp) |
+            RenderSpan::Suggestion(CodeSuggestion { ref msp, .. }) => {
+                DiagnosticSpan::from_multispan(msp, je)
             }
-            RenderSpan::EndSpan(span) => {
-                let end = je.cm.lookup_char_pos(span.hi);
-                DiagnosticSpan {
-                    file_name: end.file.name.clone(),
-                    byte_start: span.lo.0,
-                    byte_end: span.hi.0,
-                    line_start: 0,
-                    line_end: end.line,
-                    column_start: 0,
-                    column_end: end.col.0 + 1,
-                }
+            RenderSpan::EndSpan(ref msp) => {
+                msp.spans.iter().map(|span| {
+                    let end = je.cm.lookup_char_pos(span.hi);
+                    DiagnosticSpan {
+                        file_name: end.file.name.clone(),
+                        byte_start: span.lo.0,
+                        byte_end: span.hi.0,
+                        line_start: 0,
+                        line_end: end.line,
+                        column_start: 0,
+                        column_end: end.col.0 + 1,
+                    }
+                }).collect()
             }
-            RenderSpan::FileLine(span) => {
-                let start = je.cm.lookup_char_pos(span.lo);
-                let end = je.cm.lookup_char_pos(span.hi);
-                DiagnosticSpan {
-                    file_name: start.file.name.clone(),
-                    byte_start: span.lo.0,
-                    byte_end: span.hi.0,
-                    line_start: start.line,
-                    line_end: end.line,
-                    column_start: 0,
-                    column_end: 0,
-                }
+            RenderSpan::FileLine(ref msp) => {
+                msp.spans.iter().map(|span| {
+                    let start = je.cm.lookup_char_pos(span.lo);
+                    let end = je.cm.lookup_char_pos(span.hi);
+                    DiagnosticSpan {
+                        file_name: start.file.name.clone(),
+                        byte_start: span.lo.0,
+                        byte_end: span.hi.0,
+                        line_start: start.line,
+                        line_end: end.line,
+                        column_start: 0,
+                        column_end: 0,
+                    }
+                }).collect()
             }
         }
     }
