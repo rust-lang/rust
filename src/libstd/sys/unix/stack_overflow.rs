@@ -140,46 +140,39 @@ mod imp {
               target_os = "bitrig",
               target_os = "netbsd",
               target_os = "openbsd"))]
-    unsafe fn get_stack() -> *mut libc::c_void {
-        let stack = mmap(ptr::null_mut(),
-                         SIGSTKSZ,
-                         PROT_READ | PROT_WRITE,
-                         MAP_PRIVATE | MAP_ANON,
-                         -1,
-                         0);
-        if stack == MAP_FAILED {
+    unsafe fn get_stack() -> libc::stack_t {
+        let stackp = mmap(ptr::null_mut(),
+                          SIGSTKSZ,
+                          PROT_READ | PROT_WRITE,
+                          MAP_PRIVATE | MAP_ANON,
+                          -1,
+                          0);
+        if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack");
         }
-        stack
+        libc::stack_t { ss_sp: stackp, ss_flags: 0, ss_size: SIGSTKSZ }
     }
 
     #[cfg(any(target_os = "dragonfly",
               target_os = "freebsd"))]
-    unsafe fn get_stack() -> *mut i8 {
-        let stack = mmap(ptr::null_mut(),
-                         SIGSTKSZ,
-                         PROT_READ | PROT_WRITE,
-                         MAP_PRIVATE | MAP_ANON,
-                         -1,
-                         0);
-        if stack == MAP_FAILED {
+    unsafe fn get_stack() -> libc::stack_t {
+        let stackp = mmap(ptr::null_mut(),
+                          SIGSTKSZ,
+                          PROT_READ | PROT_WRITE,
+                          MAP_PRIVATE | MAP_ANON,
+                          -1,
+                          0);
+        if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack");
         }
-        stack as *mut i8
+        libc::stack_t { ss_sp: stackp as *mut i8, ss_flags: 0, ss_size: SIGSTKSZ }
     }
 
 
     pub unsafe fn make_handler() -> Handler {
-        let alt_stack = get_stack();
-        let mut stack: libc::stack_t = mem::zeroed();
-
-        stack.ss_sp = alt_stack;
-        stack.ss_flags = 0;
-        stack.ss_size = SIGSTKSZ;
-
+        let stack = get_stack();
         sigaltstack(&stack, ptr::null_mut());
-
-        Handler { _data: alt_stack as *mut libc::c_void }
+        Handler { _data: stack.ss_sp as *mut libc::c_void }
     }
 
     pub unsafe fn drop_handler(handler: &mut Handler) {
