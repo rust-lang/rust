@@ -1066,11 +1066,11 @@ impl f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 
-    // Illumos requires a wrapper around log, log2, and log10 functions
+    // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
     // because of their non-standard behavior (e.g. log(-n) returns -Inf instead
     // of expected NaN).
     fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
-        if !cfg!(target_os = "sunos") {
+        if !cfg!(target_os = "solaris") {
             log_fn(self)
         } else {
             if self.is_finite() {

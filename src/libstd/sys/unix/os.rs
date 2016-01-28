@@ -45,7 +45,7 @@ pub fn errno() -> i32 {
                        target_os = "android",
                        target_env = "newlib"),
                    link_name = "__errno")]
-        #[cfg_attr(target_os = "sunos", link_name = "___errno")]
+        #[cfg_attr(target_os = "solaris", link_name = "___errno")]
         #[cfg_attr(target_os = "dragonfly", link_name = "__dfly_error")]
         #[cfg_attr(any(target_os = "macos",
                        target_os = "ios",
@@ -258,7 +258,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "sunos"))]
+#[cfg(any(target_os = "solaris"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     extern {
         fn getexecname() -> *const c_char;
@@ -384,7 +384,7 @@ pub fn args() -> Args {
           target_os = "bitrig",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "sunos",
+          target_os = "solaris",
           target_os = "nacl"))]
 pub fn args() -> Args {
     use sys_common;
@@ -507,7 +507,7 @@ pub fn home_dir() -> Option<PathBuf> {
         fallback()
     }).map(PathBuf::from);
 
-    #[cfg(not(target_os = "sunos"))]
+    #[cfg(not(target_os = "solaris"))]
     unsafe fn getpwduid_r(me: libc::uid_t, passwd: &mut libc::passwd,
                           buf: &mut Vec<c_char>) -> Option<()> {
         let mut result = ptr::null_mut();
@@ -519,7 +519,7 @@ pub fn home_dir() -> Option<PathBuf> {
         }
     }
 
-    #[cfg(target_os = "sunos")]
+    #[cfg(target_os = "solaris")]
     unsafe fn getpwduid_r(me: libc::uid_t, passwd: &mut libc::passwd,
                           buf: &mut Vec<c_char>) -> Option<()> {
         // getpwuid_r semantics is different on Illumos/Solaris:

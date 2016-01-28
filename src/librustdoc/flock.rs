@@ -111,7 +111,7 @@ mod imp {
         pub const F_SETLKW: libc::c_int = 9;
     }
 
-    #[cfg(target_os = "sunos")]
+    #[cfg(target_os = "solaris")]
     mod os {
         use libc;
 
@@ -122,8 +122,6 @@ mod imp {
             pub l_len: libc::off_t,
             pub l_sysid: libc::c_int,
             pub l_pid: libc::pid_t,
-
-            // __unused1: [libc::c_long; 4]
         }
 
         pub const F_WRLCK: libc::c_short = 2;

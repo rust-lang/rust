@@ -131,7 +131,7 @@ impl<'a> Linker for GnuLinker<'a> {
         // insert it here.
         if self.sess.target.target.options.is_like_osx {
             self.cmd.arg("-Wl,-dead_strip");
-        } else if self.sess.target.target.options.is_like_sunos {
+        } else if self.sess.target.target.options.is_like_solaris {
             self.cmd.arg("-Wl,-z");
             self.cmd.arg("-Wl,ignore");
 

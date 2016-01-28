@@ -12,7 +12,7 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use cmp;
-#[cfg(not(any(target_env = "newlib", target_os = "sunos")))]
+#[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
 use ffi::CString;
 use io;
 use libc;
@@ -122,7 +122,7 @@ impl Thread {
                                      carg.as_ptr() as *mut libc::c_void);
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "sunos"))]
+    #[cfg(any(target_env = "newlib", target_os = "solaris"))]
     pub fn set_name(_name: &str) {
         // Newlib and Illumos has no way to set a thread name.
     }
@@ -171,7 +171,7 @@ impl Drop for Thread {
           not(target_os = "bitrig"),
           not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
           not(target_os = "openbsd"),
-          not(target_os = "sunos")))]
+          not(target_os = "solaris")))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     pub unsafe fn current() -> Option<usize> { None }
@@ -184,7 +184,7 @@ pub mod guard {
           target_os = "bitrig",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),
           target_os = "openbsd",
-          target_os = "sunos"))]
+          target_os = "solaris"))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     use prelude::v1::*;
@@ -197,7 +197,7 @@ pub mod guard {
     #[cfg(any(target_os = "macos",
               target_os = "bitrig",
               target_os = "openbsd",
-              target_os = "sunos"))]
+              target_os = "solaris"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         current().map(|s| s as *mut libc::c_void)
     }
@@ -256,7 +256,7 @@ pub mod guard {
         Some(stackaddr as usize + offset * psize)
     }
 
-    #[cfg(target_os = "sunos")]
+    #[cfg(target_os = "solaris")]
     pub unsafe fn current() -> Option<usize> {
         let mut current_stack: libc::stack_t = mem::zeroed();
         assert_eq!(libc::stack_getbounds(&mut current_stack), 0);

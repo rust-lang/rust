@@ -24,9 +24,9 @@ use sys::platform::raw;
 use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 use vec::Vec;
-#[cfg(target_os = "sunos")]
+#[cfg(target_os = "solaris")]
 use core_collections::borrow::ToOwned;
-#[cfg(target_os = "sunos")]
+#[cfg(target_os = "solaris")]
 use boxed::Box;
 
 pub struct File(FileDesc);
@@ -53,7 +53,7 @@ pub struct DirEntry {
     // on Solaris because a) it uses a zero-length array to
     // store the name, b) its lifetime between readdir calls
     // is not guaranteed.
-    #[cfg(target_os = "sunos")]
+    #[cfg(target_os = "solaris")]
     name: Box<[u8]>
 }
 
@@ -141,7 +141,7 @@ impl FromInner<raw::mode_t> for FilePermissions {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
-    #[cfg(target_os = "sunos")]
+    #[cfg(target_os = "solaris")]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         unsafe {
             loop {
@@ -170,7 +170,7 @@ impl Iterator for ReadDir {
         }
     }
 
-    #[cfg(not(target_os = "sunos"))]
+    #[cfg(not(target_os = "solaris"))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         unsafe {
             let mut ret = DirEntry {
@@ -213,12 +213,12 @@ impl DirEntry {
         lstat(&self.path())
     }
 
-    #[cfg(target_os = "sunos")]
+    #[cfg(target_os = "solaris")]
     pub fn file_type(&self) -> io::Result<FileType> {
         stat(&self.path()).map(|m| m.file_type())
     }
 
-    #[cfg(not(target_os = "sunos"))]
+    #[cfg(not(target_os = "solaris"))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
             libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
@@ -235,7 +235,7 @@ impl DirEntry {
     #[cfg(any(target_os = "macos",
               target_os = "ios",
               target_os = "linux",
-              target_os = "sunos"))]
+              target_os = "solaris"))]
     pub fn ino(&self) -> raw::ino_t {
         self.entry.d_ino
     }
@@ -280,7 +280,7 @@ impl DirEntry {
             CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()
         }
     }
-    #[cfg(target_os = "sunos")]
+    #[cfg(target_os = "solaris")]
     fn name_bytes(&self) -> &[u8] {
         &*self.name
     }
