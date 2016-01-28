@@ -59,7 +59,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Add};
+use core::ops::{self, Add, Index, IndexMut};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
@@ -1606,6 +1606,24 @@ impl ops::Index<ops::RangeFull> for String {
         unsafe { str::from_utf8_unchecked(&self.vec) }
     }
 }
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl ops::Index<ops::RangeInclusive<usize>> for String {
+    type Output = str;
+
+    #[inline]
+    fn index(&self, index: ops::RangeInclusive<usize>) -> &str {
+        Index::index(&**self, index)
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl ops::Index<ops::RangeToInclusive<usize>> for String {
+    type Output = str;
+
+    #[inline]
+    fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
+        Index::index(&**self, index)
+    }
+}
 
 #[stable(feature = "derefmut_for_string", since = "1.2.0")]
 impl ops::IndexMut<ops::Range<usize>> for String {
@@ -1633,6 +1651,20 @@ impl ops::IndexMut<ops::RangeFull> for String {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
         unsafe { mem::transmute(&mut *self.vec) }
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl ops::IndexMut<ops::RangeInclusive<usize>> for String {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
+        IndexMut::index_mut(&mut **self, index)
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl ops::IndexMut<ops::RangeToInclusive<usize>> for String {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 
