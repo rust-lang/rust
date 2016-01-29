@@ -168,20 +168,24 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
     };
 
     // Output error metadata to `tmp/extended-errors/<target arch>/<crate name>.json`
-    let target_triple = env::var("CFG_COMPILER_HOST_TRIPLE")
-        .ok().expect("unable to determine target arch from $CFG_COMPILER_HOST_TRIPLE");
-
-    with_registered_diagnostics(|diagnostics| {
-        if let Err(e) = output_metadata(ecx,
-                                        &target_triple,
-                                        &crate_name.name.as_str(),
-                                        &diagnostics) {
-            ecx.span_bug(span, &format!(
-                "error writing metadata for triple `{}` and crate `{}`, error: {}, cause: {:?}",
-                target_triple, crate_name, e.description(), e.cause()
-            ));
-        }
-    });
+    if let Ok(target_triple) = env::var("CFG_COMPILER_HOST_TRIPLE") {
+        with_registered_diagnostics(|diagnostics| {
+            if let Err(e) = output_metadata(ecx,
+                                            &target_triple,
+                                            &crate_name.name.as_str(),
+                                            &diagnostics) {
+                ecx.span_bug(span, &format!(
+                    "error writing metadata for triple `{}` and crate `{}`, error: {}, \
+                     cause: {:?}",
+                    target_triple, crate_name, e.description(), e.cause()
+                ));
+            }
+        });
+    } else {
+        ecx.span_err(span, &format!(
+            "failed to write metadata for crate `{}` because $CFG_COMPILER_HOST_TRIPLE is not set",
+            crate_name));
+    }
 
     // Construct the output expression.
     let (count, expr) =
