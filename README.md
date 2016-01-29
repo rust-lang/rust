@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 101 lints included in this crate:
+There are 102 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -105,6 +105,7 @@ name                                                                            
 [unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                           | warn    | unused lifetimes in function definitions
 [used_underscore_binding](https://github.com/Manishearth/rust-clippy/wiki#used_underscore_binding)             | warn    | using a binding which is prefixed with an underscore
 [useless_transmute](https://github.com/Manishearth/rust-clippy/wiki#useless_transmute)                         | warn    | transmutes that have the same to and from types
+[useless_vec](https://github.com/Manishearth/rust-clippy/wiki#useless_vec)                                     | warn    | useless `vec!`
 [while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                               | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
 [while_let_on_iterator](https://github.com/Manishearth/rust-clippy/wiki#while_let_on_iterator)                 | warn    | using a while-let loop instead of a for loop on an iterator
 [wrong_pub_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_pub_self_convention)         | allow   | defining a public method named with an established prefix (like "into_") that takes `self` with the wrong convention

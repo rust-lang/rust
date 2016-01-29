@@ -20,6 +20,7 @@ pub type MethodArgs = HirVec<P<Expr>>;
 
 // module DefPaths for certain structs/enums we check for
 pub const BEGIN_UNWIND: [&'static str; 3] = ["std", "rt", "begin_unwind"];
+pub const BOX_NEW_PATH: [&'static str; 4] = ["std", "boxed", "Box", "new"];
 pub const BTREEMAP_ENTRY_PATH: [&'static str; 4] = ["collections", "btree", "map", "Entry"];
 pub const BTREEMAP_PATH: [&'static str; 4] = ["collections", "btree", "map", "BTreeMap"];
 pub const CLONE_PATH: [&'static str; 3] = ["clone", "Clone", "clone"];
@@ -36,6 +37,7 @@ pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
 pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
+pub const VEC_FROM_ELEM_PATH: [&'static str; 3] = ["std", "vec", "from_elem"];
 pub const VEC_PATH: [&'static str; 3] = ["collections", "vec", "Vec"];
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
@@ -487,7 +489,7 @@ pub fn span_note_and_lint<'a, T: LintContext>(cx: &'a T, lint: &'static Lint, sp
 
 pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint, sp: Span, msg: &str, f: F)
                                                  -> DiagnosticWrapper<'a>
-    where F: Fn(&mut DiagnosticWrapper)
+    where F: FnOnce(&mut DiagnosticWrapper)
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     if cx.current_level(lint) != Level::Allow {

@@ -79,6 +79,7 @@ pub mod array_indexing;
 pub mod panic;
 pub mod derive;
 pub mod print;
+pub mod vec;
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -144,6 +145,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
     reg.register_late_lint_pass(box print::PrintLint);
+    reg.register_late_lint_pass(box vec::UselessVec);
 
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -250,6 +252,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
+        vec::USELESS_VEC,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
 }
