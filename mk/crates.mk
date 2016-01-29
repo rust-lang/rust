@@ -99,11 +99,11 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
 	             rustc_trans rustc_privacy rustc_lint rustc_front rustc_plugin \
                      rustc_metadata syntax_ext rustc_passes rustc_const_eval
 DEPS_rustc_front := std syntax log serialize
-DEPS_rustc_lint := rustc log syntax
+DEPS_rustc_lint := rustc log syntax rustc_const_eval
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_rustc_metadata := rustc rustc_front syntax rbml
-DEPS_rustc_passes := syntax rustc core rustc_front
-DEPS_rustc_mir := rustc rustc_front syntax
+DEPS_rustc_passes := syntax rustc core rustc_front rustc_const_eval
+DEPS_rustc_mir := rustc rustc_front syntax rustc_const_eval
 DEPS_rustc_resolve := arena rustc rustc_front log syntax
 DEPS_rustc_platform_intrinsics := rustc rustc_llvm
 DEPS_rustc_plugin := rustc rustc_metadata syntax
@@ -111,11 +111,11 @@ DEPS_rustc_privacy := rustc rustc_front log syntax
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back rustc_mir \
                     log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics \
 					rustc_const_eval
-DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics
-DEPS_rustc_const_eval := rustc rustc_front rustc_back syntax
+DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics rustc_const_eval
+DEPS_rustc_const_eval := rustc rustc_front rustc_back syntax graphviz log
 
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
-                test rustc_lint rustc_front
+                test rustc_lint rustc_front rustc_const_eval
 
 
 TOOL_DEPS_compiletest := test getopts

@@ -33,9 +33,11 @@ extern crate rustc;
 extern crate rustc_front;
 extern crate rustc_back;
 
+extern crate graphviz;
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;
 
 pub mod diagnostics;
 
 pub mod matches;
+pub mod eval;

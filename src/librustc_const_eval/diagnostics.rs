@@ -403,6 +403,16 @@ The `op_string_ref` binding has type `&Option<&String>` in both cases.
 See also https://github.com/rust-lang/rust/issues/14587
 "##,
 
+E0306: r##"
+In an array literal `[x; N]`, `N` is the number of elements in the array. This
+number cannot be negative.
+"##,
+
+E0307: r##"
+The length of an array is part of its type. For this reason, this length must be
+a compile-time constant.
+"##,
+
 }
 
 register_diagnostics! {

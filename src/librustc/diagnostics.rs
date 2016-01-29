@@ -1139,16 +1139,6 @@ that the value provided is a positive integer between quotes, like so:
 ```
 "##,
 
-E0306: r##"
-In an array literal `[x; N]`, `N` is the number of elements in the array. This
-number cannot be negative.
-"##,
-
-E0307: r##"
-The length of an array is part of its type. For this reason, this length must be
-a compile-time constant.
-"##,
-
 E0308: r##"
 This error occurs when the compiler was unable to infer the concrete type of a
 variable. It can occur for several cases, the most common of which is a

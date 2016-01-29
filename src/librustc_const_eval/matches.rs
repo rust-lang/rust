@@ -13,10 +13,10 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc::dep_graph::DepNode;
-use rustc::middle::const_eval::{compare_const_vals, ConstVal};
-use rustc::middle::const_eval::{eval_const_expr, eval_const_expr_partial};
-use rustc::middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
-use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use eval::{compare_const_vals, ConstVal};
+use eval::{eval_const_expr, eval_const_expr_partial};
+use eval::{const_expr_to_pat, lookup_const_by_id};
+use eval::EvalHint::ExprTypeChecked;
 use rustc::middle::def::*;
 use rustc::middle::def_id::{DefId};
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};

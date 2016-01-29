@@ -26,9 +26,10 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::middle::ty::cast::{CastKind};
-use rustc::middle::const_eval::{self, ConstEvalErr};
-use rustc::middle::const_eval::ErrKind::IndexOpFeatureGated;
-use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::eval::{ConstEvalErr, eval_const_expr_partial, lookup_const_fn_by_id};
+use rustc_const_eval::eval::{compare_lit_exprs, lookup_const_by_id};
+use rustc_const_eval::eval::ErrKind::IndexOpFeatureGated;
+use rustc_const_eval::eval::EvalHint::ExprTypeChecked;
 use rustc::middle::def::Def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
@@ -166,7 +167,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                             def_id: DefId,
                             ret_ty: Ty<'tcx>)
                             -> bool {
-        if let Some(fn_like) = const_eval::lookup_const_fn_by_id(self.tcx, def_id) {
+        if let Some(fn_like) = lookup_const_fn_by_id(self.tcx, def_id) {
             if
                 // we are in a static/const initializer
                 self.mode != Mode::Var &&
@@ -329,7 +330,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 self.global_expr(Mode::Const, &**start);
                 self.global_expr(Mode::Const, &**end);
 
-                match const_eval::compare_lit_exprs(self.tcx, start, end) {
+                match compare_lit_exprs(self.tcx, start, end) {
                     Some(Ordering::Less) |
                     Some(Ordering::Equal) => {}
                     Some(Ordering::Greater) => {
@@ -425,8 +426,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 match node_ty.sty {
                     ty::TyUint(_) | ty::TyInt(_) if div_or_rem => {
                         if !self.qualif.intersects(ConstQualif::NOT_CONST) {
-                            match const_eval::eval_const_expr_partial(
-                                    self.tcx, ex, ExprTypeChecked, None) {
+                            match eval_const_expr_partial(self.tcx, ex, ExprTypeChecked, None) {
                                 Ok(_) => {}
                                 Err(ConstEvalErr { kind: IndexOpFeatureGated, ..}) => {},
                                 Err(msg) => {
@@ -604,9 +604,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
                 Some(Def::Const(did)) |
                 Some(Def::AssociatedConst(did)) => {
-                    if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did,
-                                                                       Some(e.id),
-                                                                       None) {
+                    if let Some(expr) = lookup_const_by_id(v.tcx, did, Some(e.id), None) {
                         let inner = v.global_expr(Mode::Const, expr);
                         v.add_qualif(inner);
                     }

@@ -190,7 +190,7 @@ use self::FailureHandler::*;
 
 use llvm::{ValueRef, BasicBlockRef};
 use rustc_const_eval::matches::{self, Constructor};
-use middle::const_eval;
+use rustc_const_eval::eval as const_eval;
 use middle::def::{Def, DefMap};
 use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
