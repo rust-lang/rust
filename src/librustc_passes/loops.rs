@@ -11,9 +11,11 @@ use self::Context::*;
 
 use rustc::session::Session;
 
-use syntax::codemap::Span;
+use rustc::dep_graph::DepNode;
+use rustc::front::map::Map;
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
+use syntax::codemap::Span;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Context {
@@ -26,7 +28,9 @@ struct CheckLoopVisitor<'a> {
     cx: Context
 }
 
-pub fn check_crate(sess: &Session, krate: &hir::Crate) {
+pub fn check_crate(sess: &Session, map: &Map) {
+    let _task = map.dep_graph.in_task(DepNode::CheckLoops);
+    let krate = map.krate();
     krate.visit_all_items(&mut CheckLoopVisitor { sess: sess, cx: Normal });
 }
 

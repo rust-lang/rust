@@ -109,6 +109,7 @@ use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
+use dep_graph::DepNode;
 use middle::def::*;
 use middle::pat_util;
 use middle::ty;
@@ -192,6 +193,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
+    let _task = tcx.dep_graph.in_task(DepNode::Liveness);
     tcx.map.krate().visit_all_items(&mut IrMaps::new(tcx));
     tcx.sess.abort_if_errors();
 }
