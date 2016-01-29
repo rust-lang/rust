@@ -116,6 +116,13 @@ impl DepGraph {
         }
     }
 
+    /// True if we are actually building a dep-graph. If this returns false,
+    /// then the other methods on this `DepGraph` will have no net effect.
+    #[inline]
+    pub fn enabled(&self) -> bool {
+        self.data.enabled()
+    }
+
     pub fn query(&self) -> DepGraphQuery {
         self.data.query()
     }
