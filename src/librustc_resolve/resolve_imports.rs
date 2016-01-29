@@ -16,7 +16,6 @@ use Namespace::{self, TypeNS, ValueNS};
 use {NameBindings, NameBinding};
 use NamespaceResult::{BoundResult, UnboundResult, UnknownResult};
 use NamespaceResult;
-use NameSearchType;
 use ResolveResult;
 use Resolver;
 use UseLexicalScopeFlag;
@@ -321,8 +320,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             match self.resolver.resolve_module_path(module_,
                                                     &module_path[..],
                                                     UseLexicalScopeFlag::DontUseLexicalScope,
-                                                    import_directive.span,
-                                                    NameSearchType::ImportSearch) {
+                                                    import_directive.span) {
                 ResolveResult::Failed(err) => {
                     resolution_result = ResolveResult::Failed(err);
                     None
