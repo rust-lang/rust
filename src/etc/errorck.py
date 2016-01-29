@@ -21,7 +21,30 @@ if len(sys.argv) < 2:
 
 src_dir = sys.argv[1]
 errcode_map = {}
+errcode_checked = []
+errcode_not_found = []
 error_re = re.compile("(E\d\d\d\d)")
+
+def check_unused_error_codes(error_codes, check_error_codes, filenames, dirnames, dirpath):
+    for filename in filenames:
+        if filename == "diagnostics.rs" or not filename.endswith(".rs"):
+            continue
+        path = os.path.join(dirpath, filename)
+
+        with open(path, 'r') as f:
+            for line in f:
+                match = error_re.search(line)
+                if match:
+                    errcode = match.group(1)
+                    if errcode in error_codes:
+                        error_codes.remove(errcode)
+                    if errcode not in check_error_codes:
+                        check_error_codes.append(errcode)
+    for dirname in dirnames:
+        path = os.path.join(dirpath, dirname)
+        for (dirpath, dnames, fnames) in os.walk(path):
+            check_unused_error_codes(error_codes, check_error_codes, fnames, dnames, dirpath)
+
 
 # In the register_long_diagnostics! macro, entries look like this:
 #
@@ -35,19 +58,23 @@ error_re = re.compile("(E\d\d\d\d)")
 long_diag_begin = "r##\""
 long_diag_end = "\"##"
 
+errors = False
+all_errors = []
+
 for (dirpath, dirnames, filenames) in os.walk(src_dir):
     if "src/test" in dirpath or "src/llvm" in dirpath:
         # Short circuit for fast
         continue
 
+    errcode_to_check = []
     for filename in filenames:
         if filename != "diagnostics.rs":
             continue
-
         path = os.path.join(dirpath, filename)
 
         with open(path, 'r') as f:
             inside_long_diag = False
+            errcode_to_check = []
             for line_num, line in enumerate(f, start=1):
                 if inside_long_diag:
                     # Skip duplicate error code checking for this line
@@ -65,16 +92,36 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                         errcode_map[errcode] = existing + new_record
                     else:
                         errcode_map[errcode] = new_record
+                        # we don't check if this is a long error explanation
+                        if (long_diag_begin not in line and not line.strip().startswith("//")
+                            and errcode not in errcode_to_check and errcode not in errcode_checked
+                            and errcode not in errcode_not_found):
+                            errcode_to_check.append(errcode)
 
                 if long_diag_begin in line:
                     inside_long_diag = True
+        break
+    check_unused_error_codes(errcode_to_check, errcode_checked, filenames, dirnames, dirpath)
+    if len(errcode_to_check) > 0:
+        for errcode in errcode_to_check:
+            if errcode in errcode_checked:
+                continue
+            errcode_not_found.append(errcode)
 
-errors = False
-all_errors = []
+if len(errcode_not_found) > 0:
+    errcode_not_found.sort()
+    for errcode in errcode_not_found:
+        if errcode in errcode_checked:
+            continue
+        all_errors.append(errcode)
+        print("error: unused error code: " + errcode)
+        errors = True
+
 
 for errcode, entries in errcode_map.items():
     all_errors.append(entries[0][0])
     if len(entries) > 1:
+        entries.sort()
         print("error: duplicate error code " + errcode)
         for entry in entries:
             print("{1}: {2}\n{3}".format(*entry))
