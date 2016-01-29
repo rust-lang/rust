@@ -2641,36 +2641,6 @@ impl<'a> Parser<'a> {
         // yet.
         maybe_whole!(deref self, NtTT);
 
-        // this is the fall-through for the 'match' below.
-        // invariants: the current token is not a left-delimiter,
-        // not an EOF, and not the desired right-delimiter (if
-        // it were, parse_seq_to_before_end would have prevented
-        // reaching this point.
-        fn parse_non_delim_tt_tok<'b>(p: &mut Parser<'b>) -> PResult<'b,  TokenTree> {
-            maybe_whole!(deref p, NtTT);
-            match p.token {
-                token::CloseDelim(_) => {
-                    let token_str = p.this_token_to_string();
-                    let mut err = p.fatal(
-                        &format!("incorrect close delimiter: `{}`", token_str));
-                    // This is a conservative error: only report the last unclosed delimiter. The
-                    // previous unclosed delimiters could actually be closed! The parser just hasn't
-                    // gotten to them yet.
-                    if let Some(&sp) = p.open_braces.last() {
-                        err.span_note(sp, "unclosed delimiter");
-                    };
-                    Err(err)
-                },
-                /* we ought to allow different depths of unquotation */
-                token::Dollar | token::SubstNt(..) if p.quote_depth > 0 => {
-                    p.parse_unquoted()
-                }
-                _ => {
-                    Ok(TokenTree::Token(p.span, p.bump_and_get()))
-                }
-            }
-        }
-
         match self.token {
             token::Eof => {
                 let open_braces = self.open_braces.clone();
@@ -2712,7 +2682,34 @@ impl<'a> Parser<'a> {
                     close_span: close_span,
                 })))
             },
-            _ => parse_non_delim_tt_tok(self),
+            _ => {
+                // invariants: the current token is not a left-delimiter,
+                // not an EOF, and not the desired right-delimiter (if
+                // it were, parse_seq_to_before_end would have prevented
+                // reaching this point.
+                maybe_whole!(deref self, NtTT);
+                match self.token {
+                    token::CloseDelim(_) => {
+                        let token_str = self.this_token_to_string();
+                        let mut err = self.fatal(
+                            &format!("incorrect close delimiter: `{}`", token_str));
+                        // This is a conservative error: only report the last unclosed delimiter.
+                        // The previous unclosed delimiters could actually be closed! The parser
+                        // just hasn't gotten to them yet.
+                        if let Some(&sp) = self.open_braces.last() {
+                            err.span_note(sp, "unclosed delimiter");
+                        };
+                        Err(err)
+                    },
+                    /* we ought to allow different depths of unquotation */
+                    token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => {
+                        self.parse_unquoted()
+                    }
+                    _ => {
+                        Ok(TokenTree::Token(self.span, self.bump_and_get()))
+                    }
+                }
+            }
         }
     }
 
