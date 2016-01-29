@@ -170,8 +170,6 @@ pub enum ResolutionError<'a> {
     NotAnAssociatedConst(&'a str),
     /// error E0421: unresolved associated const
     UnresolvedAssociatedConst(&'a str),
-    /// error E0422: does not name a struct
-    DoesNotNameAStruct(&'a str),
     /// error E0423: is a struct variant name, but this expression uses it like a function name
     StructVariantUsedAsFunction(&'a str),
     /// error E0424: `self` is not available in a static method
@@ -410,13 +408,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              span,
                              E0421,
                              "unresolved associated const `{}`",
-                             name)
-        }
-        ResolutionError::DoesNotNameAStruct(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0422,
-                             "`{}` does not name a structure",
                              name)
         }
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
@@ -2819,18 +2810,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
 
                 PatStruct(ref path, _, _) => {
-                    match self.resolve_path(pat_id, path, 0, TypeNS, false) {
-                        Some(definition) => {
+                    match self.resolve_possibly_assoc_item(pat_id, None, path, TypeNS, false) {
+                        ResolveAttempt(Some(definition)) => {
                             self.record_def(pattern.id, definition);
                         }
-                        result => {
-                            debug!("(resolving pattern) didn't find struct def: {:?}", result);
-                            resolve_error(
-                                self,
-                                path.span,
-                                ResolutionError::DoesNotNameAStruct(
-                                    &*path_names_to_string(path, 0))
-                            );
+                        _ => {
+                            self.resolve_path(pat_id, path, 0, TypeNS, false);
                             self.record_def(pattern.id, err_path_resolution());
                         }
                     }
@@ -3611,16 +3596,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // Resolve the path to the structure it goes to. We don't
                 // check to ensure that the path is actually a structure; that
                 // is checked later during typeck.
-                match self.resolve_path(expr.id, path, 0, TypeNS, false) {
-                    Some(definition) => self.record_def(expr.id, definition),
-                    None => {
-                        debug!("(resolving expression) didn't find struct def",);
-
-                        resolve_error(self,
-                                      path.span,
-                                      ResolutionError::DoesNotNameAStruct(
-                                                                &*path_names_to_string(path, 0))
-                                     );
+                match self.resolve_possibly_assoc_item(expr.id, None, path, TypeNS, false) {
+                    ResolveAttempt(Some(definition)) => self.record_def(expr.id, definition),
+                    _ => {
+                        self.resolve_path(expr.id, path, 0, TypeNS, false);
                         self.record_def(expr.id, err_path_resolution());
                     }
                 }

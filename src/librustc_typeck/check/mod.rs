@@ -3173,11 +3173,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let tcx = fcx.tcx();
 
         // Find the relevant variant
-        let def = lookup_full_def(tcx, path.span, expr.id);
-        if def == Def::Err {
-            check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
-            return;
-        }
+        let path_res = *tcx.def_map.borrow().get(&expr.id).unwrap();
+        let def = match resolve_ty_and_def_ufcs(fcx, path_res, None, path, expr.span, expr.id) {
+            Some((_, _, def)) => def,
+            None => Def::Err,
+        };
         let (adt, variant) = match fcx.def_struct_variant(def, path.span) {
             Some((adt, variant)) => (adt, variant),
             None => {
@@ -3783,7 +3783,7 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                                                      &ty_segments[base_ty_end..]);
         let item_segment = path.segments.last().unwrap();
         let item_name = item_segment.identifier.name;
-        match method::resolve_ufcs(fcx, span, item_name, ty, node_id) {
+        match method::resolve_ufcs(fcx, span, item_name, ty, node_id, opt_self_ty.is_some()) {
             Ok((def, lp)) => {
                 // Write back the new resolution.
                 fcx.ccx.tcx.def_map.borrow_mut()
