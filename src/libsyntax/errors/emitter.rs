@@ -1026,7 +1026,7 @@ mod test {
                        \x20              ^  ^\n";
 
         let expect0_end = "dummy.txt: 5 ccccc\n\
-                        \x20            ...\n\
+                           dummy.txt: 6 xxxxx\n\
                            dummy.txt: 7 yyyyy\n\
                         \x20                ^\n\
                         \x20            ...\n\
