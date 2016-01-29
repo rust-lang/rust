@@ -25,7 +25,7 @@ use std::{iter, u32};
 use std::ops::{Index, IndexMut};
 
 /// Lowered representation of a single function.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -146,7 +146,7 @@ pub enum BorrowKind {
 
 // A "variable" is a binding declared by the user as part of the fn
 // decl, a let, etc.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct VarDecl<'tcx> {
     pub mutability: Mutability,
     pub name: Name,
@@ -155,7 +155,7 @@ pub struct VarDecl<'tcx> {
 
 // A "temp" is a temporary that we place on the stack. They are
 // anonymous, always mutable, and have only a type.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct TempDecl<'tcx> {
     pub ty: Ty<'tcx>,
 }
@@ -171,7 +171,7 @@ pub struct TempDecl<'tcx> {
 //
 // there is only one argument, of type `(i32, u32)`, but two bindings
 // (`x` and `y`).
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct ArgDecl<'tcx> {
     pub ty: Ty<'tcx>,
 }
@@ -207,14 +207,14 @@ impl Debug for BasicBlock {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlock and Terminator
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
     pub statements: Vec<Statement<'tcx>>,
     pub terminator: Option<Terminator<'tcx>>,
     pub is_cleanup: bool,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum Terminator<'tcx> {
     /// block should have one successor in the graph; we jump there
     Goto {
@@ -481,13 +481,13 @@ impl<'tcx> Terminator<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Statement<'tcx> {
     pub span: Span,
     pub kind: StatementKind<'tcx>,
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     Assign(Lvalue<'tcx>, Rvalue<'tcx>),
     Drop(DropKind, Lvalue<'tcx>),
@@ -721,7 +721,7 @@ pub enum Rvalue<'tcx> {
     InlineAsm(InlineAsm),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CastKind {
     Misc,
 

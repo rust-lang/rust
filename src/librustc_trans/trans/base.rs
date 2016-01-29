@@ -41,8 +41,10 @@ use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_name;
-use middle::subst::Substs;
+use middle::subst::{self, Substs};
+use middle::traits;
 use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::util::common::time;
@@ -59,10 +61,11 @@ use trans::callee;
 use trans::cleanup::{self, CleanupMethods, DropHint};
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
+use trans::collector::{self, TransItem, TransItemState, TransItemCollectionMode};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, DropFlagHintsMap, Field, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan, VariantInfo};
-use trans::common::{node_id_type, return_type_is_void};
+use trans::common::{node_id_type, return_type_is_void, fulfill_obligation};
 use trans::common::{type_is_immediate, type_is_zero_size, val_ty};
 use trans::common;
 use trans::consts;
@@ -98,7 +101,7 @@ use std::collections::{HashMap, HashSet};
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::InternedString;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -733,6 +736,29 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => bcx.sess().bug(&format!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
                                      src_ty,
                                      dst_ty)),
+    }
+}
+
+pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
+                                             source_ty: Ty<'tcx>,
+                                             target_ty: Ty<'tcx>)
+                                             -> CustomCoerceUnsized {
+    let trait_substs = Substs::erased(subst::VecPerParamSpace::new(vec![target_ty],
+                                                                   vec![source_ty],
+                                                                   Vec::new()));
+    let trait_ref = ty::Binder(ty::TraitRef {
+        def_id: ccx.tcx().lang_items.coerce_unsized_trait().unwrap(),
+        substs: ccx.tcx().mk_substs(trait_substs)
+    });
+
+    match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
+        traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
+            ccx.tcx().custom_coerce_unsized_kind(impl_def_id)
+        }
+        vtable => {
+            ccx.sess().bug(&format!("invalid CoerceUnsized vtable: {:?}",
+                                    vtable));
+        }
     }
 }
 
@@ -1965,6 +1991,8 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    closure_env: closure::ClosureEnv<'b>) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
+    record_translation_item_as_generated(ccx, fn_ast_id, param_substs);
+
     let _icx = push_ctxt("trans_closure");
     attributes::emit_uwtable(llfndecl, true);
 
@@ -2078,6 +2106,28 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Insert the mandatory first few basic blocks before lltop.
     finish_fn(&fcx, bcx, output_type, ret_debug_loc);
+
+    fn record_translation_item_as_generated<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                      node_id: ast::NodeId,
+                                                      param_substs: &'tcx Substs<'tcx>) {
+        if !collector::collecting_debug_information(ccx) {
+            return;
+        }
+
+        let def_id = match ccx.tcx().node_id_to_type(node_id).sty {
+            ty::TyClosure(def_id, _) => def_id,
+            _ => ccx.external_srcs()
+                    .borrow()
+                    .get(&node_id)
+                    .map(|did| *did)
+                    .unwrap_or_else(|| ccx.tcx().map.local_def_id(node_id)),
+        };
+
+        ccx.record_translation_item_as_generated(TransItem::Fn{
+            def_id: def_id,
+            substs: ccx.tcx().mk_substs(ccx.tcx().erase_regions(param_substs)),
+        });
+    }
 }
 
 /// Creates an LLVM function corresponding to a source language function.
@@ -3161,6 +3211,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // First, verify intrinsics.
         intrinsic::check_intrinsics(&ccx);
 
+        collect_translation_items(&ccx);
+
         // Next, translate all items. See `TransModVisitor` for
         // details on why we walk in this particular way.
         {
@@ -3168,6 +3220,8 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
             intravisit::walk_mod(&mut TransItemsWithinModVisitor { ccx: &ccx }, &krate.module);
             krate.visit_all_items(&mut TransModVisitor { ccx: &ccx });
         }
+
+        collector::print_collection_results(&ccx);
     }
 
     for ccx in shared_ccx.iter() {
@@ -3336,6 +3390,51 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
 
                 intravisit::walk_item(self, i);
             }
+        }
+    }
+}
+
+fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
+    let time_passes = ccx.sess().time_passes();
+
+    let collection_mode = match ccx.sess().opts.debugging_opts.print_trans_items {
+        Some(ref s) => {
+            let mode_string = s.to_lowercase();
+            let mode_string = mode_string.trim();
+            if mode_string == "eager" {
+                TransItemCollectionMode::Eager
+            } else {
+                if mode_string != "lazy" {
+                    let message = format!("Unknown codegen-item collection mode '{}'. \
+                                           Falling back to 'lazy' mode.",
+                                           mode_string);
+                    ccx.sess().warn(&message);
+                }
+
+                TransItemCollectionMode::Lazy
+            }
+        }
+        None => TransItemCollectionMode::Lazy
+    };
+
+    let items = time(time_passes, "translation item collection", || {
+        collector::collect_crate_translation_items(&ccx, collection_mode)
+    });
+
+    if ccx.sess().opts.debugging_opts.print_trans_items.is_some() {
+        let mut item_keys: Vec<_> = items.iter()
+                                         .map(|i| i.to_string(ccx))
+                                         .collect();
+        item_keys.sort();
+
+        for item in item_keys {
+            println!("TRANS_ITEM {}", item);
+        }
+
+        let mut ccx_map = ccx.translation_items().borrow_mut();
+
+        for cgi in items {
+            ccx_map.insert(cgi, TransItemState::PredictedButNotGenerated);
         }
     }
 }

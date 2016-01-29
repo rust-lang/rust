@@ -10,6 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
+use rustc::dep_graph::{DepNode, DepTrackingMap, DepTrackingMapConfig};
 use middle::cstore::LinkMeta;
 use middle::def::ExportMap;
 use middle::def_id::DefId;
@@ -23,6 +24,7 @@ use trans::debuginfo;
 use trans::declare;
 use trans::glue::DropGlueKind;
 use trans::monomorphize::MonoId;
+use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
@@ -33,6 +35,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
+use std::marker::PhantomData;
 use std::ptr;
 use std::rc::Rc;
 use syntax::ast;
@@ -75,6 +78,8 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 
     available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
     use_dll_storage_attrs: bool,
+
+    translation_items: RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -161,8 +166,23 @@ pub struct LocalCrateContext<'tcx> {
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
 
-    trait_cache: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
-                                    traits::Vtable<'tcx, ()>>>,
+    trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
+}
+
+// Implement DepTrackingMapConfig for `trait_cache`
+pub struct TraitSelectionCache<'tcx> {
+    data: PhantomData<&'tcx ()>
+}
+
+impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
+    type Key = ty::PolyTraitRef<'tcx>;
+    type Value = traits::Vtable<'tcx, ()>;
+    fn to_dep_node(key: &ty::PolyTraitRef<'tcx>) -> DepNode {
+        ty::tls::with(|tcx| {
+            let lifted_key = tcx.lift(key).unwrap();
+            lifted_key.to_poly_trait_predicate().dep_node()
+        })
+    }
 }
 
 pub struct CrateContext<'a, 'tcx: 'a> {
@@ -227,7 +247,6 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
         Some((ccx, index == self.origin))
     }
 }
-
 
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
@@ -337,6 +356,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             check_drop_flag_for_sanity: check_drop_flag_for_sanity,
             available_drop_glues: RefCell::new(FnvHashMap()),
             use_dll_storage_attrs: use_dll_storage_attrs,
+            translation_items: RefCell::new(FnvHashMap()),
         };
 
         for i in 0..local_count {
@@ -478,7 +498,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
-                trait_cache: RefCell::new(FnvHashMap()),
+                trait_cache: RefCell::new(DepTrackingMap::new(shared.tcx
+                                                                    .dep_graph
+                                                                    .clone())),
             };
 
             local_ccx.int_type = Type::int(&local_ccx.dummy_ccx(shared));
@@ -752,8 +774,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
     }
 
-    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
-                                                     traits::Vtable<'tcx, ()>>> {
+    pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
         &self.local.trait_cache
     }
 
@@ -810,6 +831,24 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn mir_map(&self) -> &'b MirMap<'tcx> {
         self.shared.mir_map
+    }
+
+    pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
+        &self.shared.translation_items
+    }
+
+    pub fn record_translation_item_as_generated(&self, cgi: TransItem<'tcx>) {
+        if self.sess().opts.debugging_opts.print_trans_items.is_none() {
+            return;
+        }
+
+        let mut codegen_items = self.translation_items().borrow_mut();
+
+        if codegen_items.contains_key(&cgi) {
+            codegen_items.insert(cgi, TransItemState::PredictedAndGenerated);
+        } else {
+            codegen_items.insert(cgi, TransItemState::NotPredictedButGenerated);
+        }
     }
 }
 

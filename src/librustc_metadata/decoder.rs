@@ -830,6 +830,14 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd,
     }
 }
 
+pub fn is_item_mir_available<'tcx>(cdata: Cmd, id: DefIndex) -> bool {
+    if let Some(item_doc) = cdata.get_item(id) {
+        return reader::maybe_get_doc(item_doc, tag_mir as usize).is_some();
+    }
+
+    false
+}
+
 pub fn maybe_get_item_mir<'tcx>(cdata: Cmd,
                                 tcx: &ty::ctxt<'tcx>,
                                 id: DefIndex)
@@ -848,6 +856,8 @@ pub fn maybe_get_item_mir<'tcx>(cdata: Cmd,
                 Decodable::decode(opaque_decoder)
             })
         }).unwrap();
+
+        assert!(decoder.position() == mir_doc.end);
 
         let mut def_id_and_span_translator = MirDefIdAndSpanTranslator {
             crate_metadata: cdata,

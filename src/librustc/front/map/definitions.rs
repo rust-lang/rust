@@ -196,33 +196,33 @@ impl DefPathData {
 
             PositionalField |
             Field(hir::StructFieldKind::UnnamedField(_)) => {
-                InternedString::new("<field>")
+                InternedString::new("{{field}}")
             }
 
             // note that this does not show up in user printouts
             CrateRoot => {
-                InternedString::new("<root>")
+                InternedString::new("{{root}}")
             }
 
             // note that this does not show up in user printouts
             InlinedRoot(_) => {
-                InternedString::new("<inlined-root>")
+                InternedString::new("{{inlined-root}}")
             }
 
             Misc => {
-                InternedString::new("?")
+                InternedString::new("{{?}}")
             }
 
             ClosureExpr => {
-                InternedString::new("<closure>")
+                InternedString::new("{{closure}}")
             }
 
             StructCtor => {
-                InternedString::new("<constructor>")
+                InternedString::new("{{constructor}}")
             }
 
             Initializer => {
-                InternedString::new("<initializer>")
+                InternedString::new("{{initializer}}")
             }
         }
     }

@@ -10,7 +10,7 @@
 
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
-use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc};
+use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use errors;
 use header::TestProps;
 use header;
@@ -18,6 +18,7 @@ use procsrv;
 use util::logv;
 
 use std::env;
+use std::collections::HashSet;
 use std::fmt;
 use std::fs::{self, File};
 use std::io::BufReader;
@@ -56,6 +57,7 @@ pub fn run(config: Config, testfile: &Path) {
         DebugInfoLldb => run_debuginfo_lldb_test(&config, &props, &testfile),
         Codegen => run_codegen_test(&config, &props, &testfile),
         Rustdoc => run_rustdoc_test(&config, &props, &testfile),
+        CodegenUnits => run_codegen_units_test(&config, &props, &testfile),
     }
 }
 
@@ -1745,5 +1747,46 @@ fn run_rustdoc_test(config: &Config, props: &TestProps, testfile: &Path) {
                                   .arg(testfile));
     if !res.status.success() {
         fatal_proc_rec("htmldocck failed!", &res);
+    }
+}
+
+fn run_codegen_units_test(config: &Config, props: &TestProps, testfile: &Path) {
+    let proc_res = compile_test(config, props, testfile);
+
+    if !proc_res.status.success() {
+        fatal_proc_rec("compilation failed!", &proc_res);
+    }
+
+    check_no_compiler_crash(&proc_res);
+
+    let prefix = "TRANS_ITEM ";
+
+    let actual: HashSet<String> = proc_res
+        .stdout
+        .lines()
+        .filter(|line| line.starts_with(prefix))
+        .map(|s| (&s[prefix.len()..]).to_string())
+        .collect();
+
+    let expected: HashSet<String> = errors::load_errors(testfile)
+        .iter()
+        .map(|e| e.msg.trim().to_string())
+        .collect();
+
+    if actual != expected {
+        let mut missing: Vec<_> = expected.difference(&actual).collect();
+        missing.sort();
+
+        let mut too_much: Vec<_> = actual.difference(&expected).collect();
+        too_much.sort();
+
+        println!("Expected and actual sets of codegen-items differ.\n\
+                  These items should have been contained but were not:\n\n\
+                  {}\n\n\
+                  These items were contained but should not have been:\n\n\
+                  {}\n\n",
+            missing.iter().fold("".to_string(), |s1, s2| s1 + "\n" + s2),
+            too_much.iter().fold("".to_string(), |s1, s2| s1 + "\n" + s2));
+        panic!();
     }
 }
