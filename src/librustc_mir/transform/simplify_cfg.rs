@@ -29,7 +29,7 @@ impl SimplifyCfg {
 
         let mut worklist = vec![START_BLOCK];
         while let Some(bb) = worklist.pop() {
-            for succ in mir.basic_block_data(bb).terminator().successors() {
+            for succ in mir.basic_block_data(bb).terminator().successors().iter() {
                 if !seen[succ.index()] {
                     seen[succ.index()] = true;
                     worklist.push(*succ);

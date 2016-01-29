@@ -86,4 +86,3 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).terminator = Some(terminator);
     }
 }
-
