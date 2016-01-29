@@ -8,21 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use graphviz::IntoCow;
 use middle::const_eval::ConstVal;
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
-use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_front::hir::InlineAsm;
-use syntax::ast::{self, Name};
-use syntax::codemap::Span;
-use graphviz::IntoCow;
 use std::ascii;
-use std::borrow::Cow;
+use std::borrow::{Cow};
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
+use syntax::ast::{self, Name};
+use syntax::codemap::Span;
 
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -335,29 +334,31 @@ impl<'tcx> CallKind<'tcx> {
 }
 
 impl<'tcx> Terminator<'tcx> {
-    pub fn successors(&self) -> &[BasicBlock] {
+    pub fn successors(&self) -> Cow<[BasicBlock]> {
         use self::Terminator::*;
         match *self {
-            Goto { target: ref b } => slice::ref_slice(b),
-            If { targets: ref b, .. } => b.as_slice(),
-            Switch { targets: ref b, .. } => b,
-            SwitchInt { targets: ref b, .. } => b,
-            Resume => &[],
-            Return => &[],
-            Call { ref kind, .. } => kind.successors(),
+            Goto { target: ref b } => slice::ref_slice(b).into_cow(),
+            If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
+            Switch { targets: ref b, .. } => b[..].into_cow(),
+            SwitchInt { targets: ref b, .. } => b[..].into_cow(),
+            Resume => (&[]).into_cow(),
+            Return => (&[]).into_cow(),
+            Call { ref kind, .. } => kind.successors()[..].into_cow(),
         }
     }
 
-    pub fn successors_mut(&mut self) -> &mut [BasicBlock] {
+    // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [BasicBlock]` and
+    // `Vec<&mut BasicBlock>` would look like in the first place.
+    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
         use self::Terminator::*;
         match *self {
-            Goto { target: ref mut b } => slice::mut_ref_slice(b),
-            If { targets: ref mut b, .. } => b.as_mut_slice(),
-            Switch { targets: ref mut b, .. } => b,
-            SwitchInt { targets: ref mut b, .. } => b,
-            Resume => &mut [],
-            Return => &mut [],
-            Call { ref mut kind, .. } => kind.successors_mut(),
+            Goto { target: ref mut b } => vec![b],
+            If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
+            Switch { targets: ref mut b, .. } => b.iter_mut().collect(),
+            SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
+            Resume => Vec::new(),
+            Return => Vec::new(),
+            Call { ref mut kind, .. } => kind.successors_mut().iter_mut().collect(),
         }
     }
 }
@@ -445,12 +446,12 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Return | Resume => vec![],
-            Goto { .. } => vec!["".into_cow()],
-            If { .. } => vec!["true".into_cow(), "false".into_cow()],
+            Goto { .. } => vec!["".into()],
+            If { .. } => vec!["true".into(), "false".into()],
             Switch { ref adt_def, .. } => {
                 adt_def.variants
                        .iter()
-                       .map(|variant| variant.name.to_string().into_cow())
+                       .map(|variant| variant.name.to_string().into())
                        .collect()
             }
             SwitchInt { ref values, .. } => {
@@ -458,9 +459,9 @@ impl<'tcx> Terminator<'tcx> {
                       .map(|const_val| {
                           let mut buf = String::new();
                           fmt_const_val(&mut buf, const_val).unwrap();
-                          buf.into_cow()
+                          buf.into()
                       })
-                      .chain(iter::once(String::from("otherwise").into_cow()))
+                      .chain(iter::once(String::from("otherwise").into()))
                       .collect()
             }
             Call { ref kind, .. } => match *kind {
