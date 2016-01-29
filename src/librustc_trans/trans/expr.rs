@@ -151,6 +151,20 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     },
                 }
             }
+
+            // If we see a const here, that's because it evaluates to a type with zero size. We
+            // should be able to just discard it.
+            // FIXME: Check the type of the expression and see if it's a zero-size type instead of
+            // this hack.
+            if let hir::ExprPath(..) = expr.node {
+                match bcx.def(expr.id) {
+                    Def::Const(_) | Def::AssociatedConst(_) => {
+                        return bcx;
+                    }
+                    _ => {}
+                }
+            }
+
             // Even if we don't have a value to emit, and the expression
             // doesn't have any side-effects, we still have to translate the
             // body of any closures.
