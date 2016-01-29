@@ -123,7 +123,7 @@ impl Sub for CharPos {
 /// able to use many of the functions on spans in codemap and you cannot assume
 /// that the length of the span = hi - lo; there may be space in the BytePos
 /// range between files.
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Span {
     pub lo: BytePos,
     pub hi: BytePos,
@@ -151,11 +151,19 @@ pub const COMMAND_LINE_SP: Span = Span { lo: BytePos(0),
 impl Span {
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
-        if self == DUMMY_SP { other } else { self }
+        if self.source_equal(&DUMMY_SP) { other } else { self }
     }
 
     pub fn contains(self, other: Span) -> bool {
         self.lo <= other.lo && other.hi <= self.hi
+    }
+
+    /// Return true if the spans are equal with regards to the source text.
+    ///
+    /// Use this instead of `==` when either span could be generated code,
+    /// and you only care that they point to the same bytes of source text.
+    pub fn source_equal(&self, other: &Span) -> bool {
+        self.lo == other.lo && self.hi == other.hi
     }
 
     /// Returns `Some(span)`, a union of `self` and `other`, on overlap.
@@ -191,15 +199,6 @@ pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
 }
-
-impl PartialEq for Span {
-    fn eq(&self, other: &Span) -> bool {
-        return (*self).lo == (*other).lo && (*self).hi == (*other).hi;
-    }
-    fn ne(&self, other: &Span) -> bool { !(*self).eq(other) }
-}
-
-impl Eq for Span {}
 
 impl Encodable for Span {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
@@ -940,7 +939,7 @@ impl CodeMap {
     }
 
     pub fn span_to_string(&self, sp: Span) -> String {
-        if self.files.borrow().is_empty() && sp == DUMMY_SP {
+        if self.files.borrow().is_empty() && sp.source_equal(&DUMMY_SP) {
             return "no-location".to_string();
         }
 
@@ -1307,7 +1306,7 @@ impl CodeMap {
                 expninfo.map_or(/* hit the top level */ true, |info| {
 
                     let span_comes_from_this_expansion =
-                        info.callee.span.map_or(span == info.call_site, |mac_span| {
+                        info.callee.span.map_or(span.source_equal(&info.call_site), |mac_span| {
                             mac_span.contains(span)
                         });
 
