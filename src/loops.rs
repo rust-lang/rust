@@ -11,7 +11,7 @@ use std::collections::{HashSet, HashMap};
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro, expr_block,
             span_help_and_lint, is_integer_literal, get_enclosing_block};
-use utils::{HASHMAP_PATH, VEC_PATH, LL_PATH};
+use utils::{HASHMAP_PATH, VEC_PATH, LL_PATH, OPTION_PATH};
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index. It is `Warn` by default.
 ///
@@ -47,6 +47,16 @@ declare_lint!{ pub EXPLICIT_ITER_LOOP, Warn,
 /// **Example:** `for x in y.next() { .. }`
 declare_lint!{ pub ITER_NEXT_LOOP, Warn,
                "for-looping over `_.next()` which is probably not intended" }
+
+/// **What it does:** This lint checks for `for` loops over Option values. It is `Warn` by default.
+///
+/// **Why is this bad?** Readability. This is more clearly expressed as an `if let`.
+///
+/// **Known problems:** None
+///
+/// **Example:** `for x in option { .. }`. This should be `if let Some(x) = option { .. }`.
+declare_lint!{ pub FOR_LOOP_OVER_OPTION, Warn,
+               "for-looping over an Option, which is more clear as an `if let`" }
 
 /// **What it does:** This lint detects `loop + match` combinations that are easier written as a `while let` loop. It is `Warn` by default.
 ///
@@ -248,7 +258,7 @@ impl LateLintPass for LoopsPass {
 fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
     check_for_loop_range(cx, pat, arg, body, expr);
     check_for_loop_reverse_range(cx, arg, expr);
-    check_for_loop_explicit_iter(cx, arg, expr);
+    check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
 }
 
@@ -373,7 +383,8 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     }
 }
 
-fn check_for_loop_explicit_iter(cx: &LateContext, arg: &Expr, expr: &Expr) {
+fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
+    let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
     if let ExprMethodCall(ref method, _, ref args) = arg.node {
         // just the receiver, no arguments
         if args.len() == 1 {
@@ -401,10 +412,29 @@ fn check_for_loop_explicit_iter(cx: &LateContext, arg: &Expr, expr: &Expr) {
                           expr.span,
                           "you are iterating over `Iterator::next()` which is an Option; this will compile but is \
                            probably not what you want");
+                next_loop_linted = true;
             }
         }
     }
+    if !next_loop_linted {
+        check_option_looping(cx, pat, arg);
+    }
+}
 
+/// Check for `for` loops over `Option`s
+fn check_option_looping(cx: &LateContext, pat: &Pat, arg: &Expr) {
+    let ty = cx.tcx.expr_ty(arg);
+    if match_type(cx, ty, &OPTION_PATH) {
+        span_help_and_lint(
+            cx,
+            FOR_LOOP_OVER_OPTION,
+            arg.span,
+            &format!("for loop over `{0}`, which is an Option. This is more readably written as \
+                      an `if let` statement.", snippet(cx, arg.span, "_")),
+            &format!("consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
+                     snippet(cx, pat.span, "_"), snippet(cx, arg.span, "_"))
+        );
+    }
 }
 
 fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, expr: &Expr) {

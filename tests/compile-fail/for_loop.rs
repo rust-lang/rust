@@ -3,6 +3,39 @@
 
 use std::collections::*;
 
+#[deny(clippy)]
+fn for_loop_over_option() {
+    let option = Some(1);
+    let v = vec![0,1,2];
+
+    // check FOR_LOOP_OVER_OPTION lint
+    for x in option {
+        //~^ ERROR for loop over `option`, which is an Option.
+        //~| HELP consider replacing `for x in option` with `if let Some(x) = option`
+        println!("{}", x);
+    }
+
+    // make sure LOOP_OVER_NEXT lint takes precedence
+    for x in v.iter().next() {
+        //~^ ERROR you are iterating over `Iterator::next()` which is an Option
+        // TODO: make sure we don't lint twice
+        println!("{}", x);
+    }
+
+    // check for false positives
+
+    // for loop false positive
+    for x in v {
+        println!("{}", x);
+    }
+
+    // while let false positive
+    while let Some(x) = option {
+        println!("{}", x);
+        break;
+    }
+}
+
 struct Unrelated(Vec<u8>);
 impl Unrelated {
     fn next(&self) -> std::slice::Iter<u8> {
@@ -209,4 +242,6 @@ fn main() {
     let mut index = 0;
     for _v in &vec { index += 1 }
     println!("index: {}", index);
+
+    for_loop_over_option();
 }
