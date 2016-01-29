@@ -445,6 +445,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::maybe_get_item_mir(&*cdata, tcx, def.index)
     }
 
+    fn is_item_mir_available(&self, def: DefId) -> bool {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::is_item_mir_available(&*cdata, def.index)
+    }
+
     fn crates(&self) -> Vec<ast::CrateNum>
     {
         let mut result = vec![];

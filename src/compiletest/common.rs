@@ -25,6 +25,7 @@ pub enum Mode {
     DebugInfoLldb,
     Codegen,
     Rustdoc,
+    CodegenUnits
 }
 
 impl FromStr for Mode {
@@ -41,6 +42,7 @@ impl FromStr for Mode {
           "debuginfo-gdb" => Ok(DebugInfoGdb),
           "codegen" => Ok(Codegen),
           "rustdoc" => Ok(Rustdoc),
+          "codegen-units" => Ok(CodegenUnits),
           _ => Err(()),
         }
     }
@@ -59,6 +61,7 @@ impl fmt::Display for Mode {
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
             Rustdoc => "rustdoc",
+            CodegenUnits => "codegen-units",
         }, f)
     }
 }
