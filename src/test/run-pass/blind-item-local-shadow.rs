@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo { struct bar; }
+mod bar {
+    pub fn foo() -> bool { true }
+}
 
 fn main() {
-    let bar = 5;
-    //~^ ERROR declaration of `bar` shadows an enum variant or unit-like struct in scope
-    use foo::bar;
+    let foo = || false;
+    use bar::foo;
+    assert_eq!(foo(), false);
 }

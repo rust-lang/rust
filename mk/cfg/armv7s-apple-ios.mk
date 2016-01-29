@@ -14,8 +14,8 @@ CFG_LIB_GLOB_armv7s-apple-ios = lib$(1)-*.a
 CFG_INSTALL_ONLY_RLIB_armv7s-apple-ios = 1
 CFG_STATIC_LIB_NAME_armv7s-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_armv7s-apple-ios = lib$(1)-*.a.dSYM
-CFG_JEMALLOC_CFLAGS_armv7s-apple-ios := -arch armv7s -mfpu=vfp4 $(CFG_IOS_SDK_FLAGS_armv7s-apple-ios)
-CFG_GCCISH_CFLAGS_armv7s-apple-ios := -Wall -Werror -g -fPIC $(CFG_IOS_SDK_FLAGS_armv7s-apple-ios) -mfpu=vfp4 -arch armv7s
+CFG_JEMALLOC_CFLAGS_armv7s-apple-ios := -arch armv7s $(CFG_IOS_SDK_FLAGS_armv7s-apple-ios)
+CFG_GCCISH_CFLAGS_armv7s-apple-ios := -Wall -Werror -g -fPIC $(CFG_IOS_SDK_FLAGS_armv7s-apple-ios) -arch armv7s
 CFG_GCCISH_CXXFLAGS_armv7s-apple-ios := -fno-rtti $(CFG_IOS_SDK_FLAGS_armv7s-apple-ios) -I$(CFG_IOS_SDK_armv7s-apple-ios)/usr/include/c++/4.2.1
 CFG_GCCISH_LINK_FLAGS_armv7s-apple-ios := -lpthread -syslibroot $(CFG_IOS_SDK_armv7s-apple-ios) -Wl,-no_compact_unwind
 CFG_GCCISH_DEF_FLAG_armv7s-apple-ios := -Wl,-exported_symbols_list,

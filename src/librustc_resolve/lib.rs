@@ -44,7 +44,6 @@ use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
 use self::AssocItemResolveResult::*;
-use self::NameSearchType::*;
 use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
 use self::FallbackChecks::*;
@@ -784,16 +783,6 @@ enum AssocItemResolveResult {
     ResolveAttempt(Option<PathResolution>),
 }
 
-#[derive(Copy, Clone, PartialEq)]
-enum NameSearchType {
-    /// We're doing a name search in order to resolve a `use` directive.
-    ImportSearch,
-
-    /// We're doing a name search in order to resolve a path type, a path
-    /// expression, or a path pattern.
-    PathSearch,
-}
-
 #[derive(Copy, Clone)]
 enum BareIdentifierPatternResolution {
     FoundStructOrEnumVariant(Def, LastPrivate),
@@ -1370,7 +1359,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      module_path: &[Name],
                                      index: usize,
                                      span: Span,
-                                     name_search_type: NameSearchType,
                                      lp: LastPrivate)
                                      -> ResolveResult<(Module<'a>, LastPrivate)> {
         fn search_parent_externals<'a>(needle: Name, module: Module<'a>)
@@ -1396,11 +1384,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index];
-            match self.resolve_name_in_module(search_module,
-                                              name,
-                                              TypeNS,
-                                              name_search_type,
-                                              false) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false) {
                 Failed(None) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
@@ -1477,8 +1461,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                            module_: Module<'a>,
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
-                           span: Span,
-                           name_search_type: NameSearchType)
+                           span: Span)
                            -> ResolveResult<(Module<'a>, LastPrivate)> {
         let module_path_len = module_path.len();
         assert!(module_path_len > 0);
@@ -1559,7 +1542,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            module_path,
                                            start_index,
                                            span,
-                                           name_search_type,
                                            last_private)
     }
 
@@ -1658,11 +1640,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module,
-                                              name,
-                                              namespace,
-                                              PathSearch,
-                                              true) {
+            match self.resolve_name_in_module(search_module, name, namespace, true) {
                 Failed(Some((span, msg))) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
                 }
@@ -1787,7 +1765,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               module_: Module<'a>,
                               name: Name,
                               namespace: Namespace,
-                              name_search_type: NameSearchType,
                               allow_private_imports: bool)
                               -> ResolveResult<(Target<'a>, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
@@ -1809,14 +1786,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(_) | None => {
                 // Continue.
             }
-        }
-
-        // Next, check the module's imports if necessary.
-
-        // If this is a search of all imports, we should be done with glob
-        // resolution at this point.
-        if name_search_type == PathSearch {
-            assert_eq!(module_.glob_count.get(), 0);
         }
 
         // Check the list of resolved imports.
@@ -2516,29 +2485,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.value_ribs.push(Rib::new(NormalRibKind));
         }
 
-        // Check for imports appearing after non-item statements.
-        let mut found_non_item = false;
-        for statement in &block.stmts {
-            if let hir::StmtDecl(ref declaration, _) = statement.node {
-                if let hir::DeclItem(i) = declaration.node {
-                    let i = self.ast_map.expect_item(i.id);
-                    match i.node {
-                        ItemExternCrate(_) | ItemUse(_) if found_non_item => {
-                            span_err!(self.session,
-                                      i.span,
-                                      E0154,
-                                      "imports are not allowed after non-item statements");
-                        }
-                        _ => {}
-                    }
-                } else {
-                    found_non_item = true
-                }
-            } else {
-                found_non_item = true;
-            }
-        }
-
         // Descend into the block.
         intravisit::walk_block(self, block);
 
@@ -2935,9 +2881,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            Indeterminate => {
-                panic!("unexpected indeterminate result");
-            }
+            Indeterminate => return BareIdentifierPatternUnresolved,
             Failed(err) => {
                 match err {
                     Some((span, msg)) => {
@@ -3177,11 +3121,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let containing_module;
         let last_private;
         let current_module = self.current_module;
-        match self.resolve_module_path(current_module,
-                                       &module_path[..],
-                                       UseLexicalScope,
-                                       span,
-                                       PathSearch) {
+        match self.resolve_module_path(current_module, &module_path, UseLexicalScope, span) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -3195,7 +3135,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
                 return None;
             }
-            Indeterminate => panic!("indeterminate unexpected"),
+            Indeterminate => return None,
             Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
                 last_private = resulting_last_private;
@@ -3203,11 +3143,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        let def = match self.resolve_name_in_module(containing_module,
-                                                    name,
-                                                    namespace,
-                                                    NameSearchType::PathSearch,
-                                                    false) {
+        let def = match self.resolve_name_in_module(containing_module, name, namespace, false) {
             Success((Target { binding, .. }, _)) => {
                 let (def, lp) = binding.def_and_lp();
                 (def, last_private.or(lp))
@@ -3242,7 +3178,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                  &module_path[..],
                                                  0,
                                                  span,
-                                                 PathSearch,
                                                  LastMod(AllPublic)) {
             Failed(err) => {
                 let (span, msg) = match err {
@@ -3258,9 +3193,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 return None;
             }
 
-            Indeterminate => {
-                panic!("indeterminate unexpected");
-            }
+            Indeterminate => return None,
 
             Success((resulting_module, resulting_last_private)) => {
                 containing_module = resulting_module;
@@ -3269,11 +3202,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        match self.resolve_name_in_module(containing_module,
-                                          name,
-                                          namespace,
-                                          NameSearchType::PathSearch,
-                                          false) {
+        match self.resolve_name_in_module(containing_module, name, namespace, false) {
             Success((Target { binding, .. }, _)) => {
                 let (def, lp) = binding.def_and_lp();
                 Some((def, last_private.or(lp)))
@@ -3315,7 +3244,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Success((target, _)) = self.resolve_name_in_module(module,
                                                                           ident.unhygienic_name,
                                                                           namespace,
-                                                                          PathSearch,
                                                                           true) {
                     if let Some(def) = target.binding.def() {
                         return Some(LocalDef::from_def(def));
@@ -3355,9 +3283,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            Indeterminate => {
-                panic!("unexpected indeterminate result");
-            }
+            Indeterminate => None,
             Failed(err) => {
                 debug!("(resolving item path by identifier in lexical scope) failed to resolve {}",
                        name);
@@ -3413,11 +3339,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             } else {
-                match this.resolve_module_path(root,
-                                               &name_path[..],
-                                               UseLexicalScope,
-                                               span,
-                                               PathSearch) {
+                match this.resolve_module_path(root, &name_path, UseLexicalScope, span) {
                     Success((module, _)) => Some(module),
                     _ => None,
                 }
@@ -3663,10 +3585,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     let current_module = self.current_module;
 
                                     match self.resolve_module_path(current_module,
-                                                   &name_path[..],
-                                                   UseLexicalScope,
-                                                   expr.span,
-                                                   PathSearch) {
+                                                                   &name_path[..],
+                                                                   UseLexicalScope,
+                                                                   expr.span) {
                                         Success(_) => {
                                             context = UnresolvedNameContext::PathIsMod(expr.id);
                                         },

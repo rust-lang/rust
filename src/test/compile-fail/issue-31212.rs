@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod bar {
-    pub fn foo() -> bool { true }
+// This checks that a path that cannot be resolved because of an indeterminate import
+// does not trigger an ICE.
+
+mod foo {
+    pub use self::*; //~ ERROR unresolved
 }
 
 fn main() {
-    let foo = || false;
-    use bar::foo;
-    //~^ ERROR imports are not allowed after non-item statements
-    assert_eq!(foo(), false);
+    foo::f(); //~ ERROR unresolved
 }
