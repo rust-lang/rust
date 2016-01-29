@@ -557,3 +557,55 @@ impl LateLintPass for CharLitAsU8 {
         }
     }
 }
+
+/// **What it does:** This lint checks for expressions where an unsigned integer is tested to be non-positive and suggests testing for equality with zero instead.
+///
+/// **Why is this bad?** `x <= 0` may mislead the reader into thinking `x` can be negative. `x == 0` makes explicit that zero is the only possibility.
+///
+/// **Known problems:** None
+///
+/// **Example:** `vec.len() <= 0`
+declare_lint!(pub ABSURD_UNSIGNED_COMPARISONS, Warn,
+              "testing whether an unsigned integer is non-positive");
+
+pub struct AbsurdUnsignedComparisons;
+
+impl LintPass for AbsurdUnsignedComparisons {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ABSURD_UNSIGNED_COMPARISONS)
+    }
+}
+
+fn is_zero_lit(expr: &Expr) -> bool {
+    use syntax::ast::Lit_;
+
+    if let ExprLit(ref l) = expr.node {
+        if let Lit_::LitInt(val, _) = l.node {
+            return val == 0;
+        }
+    }
+    false
+}
+
+impl LateLintPass for AbsurdUnsignedComparisons {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
+            let op = cmp.node;
+
+            let comparee = match op {
+                BiLe if is_zero_lit(rhs) => lhs, // x <= 0
+                BiGe if is_zero_lit(lhs) => rhs, // 0 >= x
+                _ => return,
+            };
+
+            if let ty::TyUint(_) = cx.tcx.expr_ty(comparee).sty {
+                if !in_macro(cx, expr.span) {
+                    let msg = "testing whether an unsigned integer is non-positive";
+                    let help = format!("consider using {} == 0 instead",
+                                       snippet(cx, comparee.span, "x"));
+                    span_help_and_lint(cx, ABSURD_UNSIGNED_COMPARISONS, expr.span, msg, &help);
+                }
+            }
+        }
+    }
+}
