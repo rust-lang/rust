@@ -265,6 +265,8 @@ fn map<F, T, A>(option: Option<T>, f: F) -> Option<A> where F: FnOnce(T) -> A {
 ```
 
 Indeed, `map` is [defined as a method][2] on `Option<T>` in the standard library.
+As a method, it has a slighly different signature: methods take `self`, `&self`,
+or `&mut self` as their first argument.
 
 Armed with our new combinator, we can rewrite our `extension_explicit` method
 to get rid of the case analysis:
@@ -293,6 +295,9 @@ fn unwrap_or<T>(option: Option<T>, default: T) -> T {
     }
 }
 ```
+
+Like with `map` above, the standard library implementation is a method instead
+of a free function.
 
 The trick here is that the default value must have the same type as the value
 that might be inside the `Option<T>`. Using it is dead simple in our case:
