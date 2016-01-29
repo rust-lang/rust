@@ -223,6 +223,8 @@ pub const tag_polarity: usize = 0x9d;
 pub const tag_macro_defs: usize = 0x10e; // top-level only
 pub const tag_macro_def: usize = 0x9e;
 pub const tag_macro_def_body: usize = 0x9f;
+pub const tag_macro_def_span_lo: usize = 0xa8;
+pub const tag_macro_def_span_hi: usize = 0xa9;
 
 pub const tag_paren_sugar: usize = 0xa0;
 

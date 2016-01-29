@@ -96,6 +96,8 @@ pub enum Row {
     VarRef,
     TypeRef,
     FnRef,
+    Macro,
+    MacroUse,
 }
 
 impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
@@ -219,6 +221,14 @@ impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
                       vec!("refid", "refidcrate", "qualname", "scopeid"),
                       true,
                       true),
+            Macro => ("macro",
+                         vec!("name", "qualname"),
+                         true,
+                         true),
+            MacroUse => ("macro_use",
+                         vec!("callee_name", "qualname", "scopeid"),
+                         true,
+                         true),
         }
     }
 
@@ -685,5 +695,20 @@ impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
                               span,
                               sub_span,
                               svec!(id.index.as_usize(), id.krate, "", scope_id));
+    }
+
+    pub fn macro_str(&mut self, span: Span, sub_span: Span, name: String, qualname: String) {
+        self.record_with_span(Macro, span, sub_span, svec!(name, qualname));
+    }
+
+    pub fn macro_use_str(&mut self,
+                         span: Span,
+                         sub_span: Span,
+                         name: String,
+                         qualname: String,
+                         scope_id: NodeId) {
+        let scope_id = self.normalize_node_id(scope_id);
+        self.record_with_span(MacroUse, span, sub_span,
+                              svec!(name, qualname, scope_id));
     }
 }

@@ -378,6 +378,25 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
+    // Given a macro_rules definition span, return the span of the macro's name.
+    pub fn span_for_macro_name(&self, span: Span) -> Option<Span> {
+        let mut toks = self.retokenise_span(span);
+        loop {
+            let ts = toks.real_token();
+            if ts.tok == token::Eof {
+                return None;
+            }
+            if ts.tok == token::Not {
+                let ts = toks.real_token();
+                if ts.tok.is_ident() {
+                    return self.make_sub_span(span, Some(ts.sp));
+                } else {
+                    return None;
+                }
+            }
+        }
+    }
+
     /// Return true if the span is generated code, and
     /// it is not a subspan of the root callsite.
     ///
@@ -395,10 +414,16 @@ impl<'a> SpanUtils<'a> {
         if sub_span.is_none() {
             return true;
         }
-        // A generated span is deemed invalid if it is not a sub-span of the root
+
+        //If the span comes from a fake filemap, filter it.
+        if !self.sess.codemap().lookup_char_pos(parent.lo).file.is_real_file() {
+            return true;
+        }
+
+        // Otherwise, a generated span is deemed invalid if it is not a sub-span of the root
         // callsite. This filters out macro internal variables and most malformed spans.
         let span = self.sess.codemap().source_callsite(parent);
-        !(parent.lo >= span.lo && parent.hi <= span.hi)
+        !(span.contains(parent))
     }
 }
 
