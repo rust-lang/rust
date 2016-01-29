@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # Generate a Markdown table of all lints, and put it in README.md.
 # With -n option, only print the new table to stdout.
-# With -c option, print a warning and set exit status to 1 if a file would be changed.
+# With -c option, print a warning and set exit status to 1 if a file would be
+# changed.
 
 import os
 import re
@@ -17,6 +18,7 @@ declare_lint_re = re.compile(r'''
 nl_escape_re = re.compile(r'\\\n\s*')
 
 wiki_link = 'https://github.com/Manishearth/rust-clippy/wiki'
+
 
 def collect(lints, fn):
     """Collect all lints from a file.
