@@ -120,8 +120,6 @@ enum SuggestionType {
 }
 
 pub enum ResolutionError<'a> {
-    /// error E0260: name conflicts with an extern crate
-    NameConflictsWithExternCrate(Name),
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
     /// error E0402: cannot use an outer type parameter in this context
@@ -228,14 +226,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
     }
 
     match resolution_error {
-        ResolutionError::NameConflictsWithExternCrate(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0260,
-                             "the name `{}` conflicts with an external crate \
-                             that has been imported into this module",
-                             name)
-        }
         ResolutionError::TypeParametersFromOuterFunction => {
             struct_span_err!(resolver.session,
                              span,
@@ -801,13 +791,10 @@ pub struct ModuleS<'a> {
     parent_link: ParentLink<'a>,
     def: Cell<Option<Def>>,
     is_public: bool,
+    is_extern_crate: bool,
 
     children: RefCell<HashMap<(Name, Namespace), NameBinding<'a>>>,
     imports: RefCell<Vec<ImportDirective>>,
-
-    // The external module children of this node that were declared with
-    // `extern crate`.
-    external_module_children: RefCell<HashMap<Name, Module<'a>>>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -854,9 +841,9 @@ impl<'a> ModuleS<'a> {
             parent_link: parent_link,
             def: Cell::new(def),
             is_public: is_public,
+            is_extern_crate: false,
             children: RefCell::new(HashMap::new()),
             imports: RefCell::new(Vec::new()),
-            external_module_children: RefCell::new(HashMap::new()),
             anonymous_children: RefCell::new(NodeMap()),
             import_resolutions: RefCell::new(HashMap::new()),
             glob_count: Cell::new(0),
@@ -871,10 +858,21 @@ impl<'a> ModuleS<'a> {
         self.children.borrow().get(&(name, ns)).cloned()
     }
 
-    fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>) -> bool {
+    // If the name is not yet defined, define the name and return None.
+    // Otherwise, return the existing definition.
+    fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
+                        -> Option<NameBinding<'a>> {
         match self.children.borrow_mut().entry((name, ns)) {
-            hash_map::Entry::Vacant(entry) => { entry.insert(binding); true }
-            hash_map::Entry::Occupied(_) => false,
+            hash_map::Entry::Vacant(entry) => { entry.insert(binding); None }
+            hash_map::Entry::Occupied(entry) => { Some(entry.get().clone()) },
+        }
+    }
+
+    fn for_each_local_child<F: FnMut(Name, Namespace, &NameBinding<'a>)>(&self, mut f: F) {
+        for (&(name, ns), name_binding) in self.children.borrow().iter() {
+            if !name_binding.is_extern_crate() {
+                f(name, ns, name_binding)
+            }
         }
     }
 
@@ -1004,6 +1002,10 @@ impl<'a> NameBinding<'a> {
     fn def_and_lp(&self) -> (Def, LastPrivate) {
         let def = self.def().unwrap();
         (def, LastMod(if self.is_public() { AllPublic } else { DependsOn(def.def_id()) }))
+    }
+
+    fn is_extern_crate(&self) -> bool {
+        self.module().map(|module| module.is_extern_crate).unwrap_or(false)
     }
 }
 
@@ -1184,6 +1186,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.arenas.modules.alloc(ModuleS::new(parent_link, def, external, is_public))
     }
 
+    fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def) -> Module<'a> {
+        let mut module = ModuleS::new(parent_link, Some(def), false, true);
+        module.is_extern_crate = true;
+        self.arenas.modules.alloc(module)
+    }
+
     fn get_ribs<'b>(&'b mut self, ns: Namespace) -> &'b mut Vec<Rib<'a>> {
         match ns { ValueNS => &mut self.value_ribs, TypeNS => &mut self.type_ribs }
     }
@@ -1211,32 +1219,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    /// Check that an external crate doesn't collide with items or other external crates.
-    fn check_for_conflicts_for_external_crate(&self, module: Module<'a>, name: Name, span: Span) {
-        if module.external_module_children.borrow().contains_key(&name) {
-            span_err!(self.session,
-                      span,
-                      E0259,
-                      "an external crate named `{}` has already been imported into this module",
-                      name);
-        }
-        if let Some(name_binding) = module.get_child(name, TypeNS) {
-            resolve_error(self,
-                          name_binding.span.unwrap_or(codemap::DUMMY_SP),
-                          ResolutionError::NameConflictsWithExternCrate(name));
-        }
-    }
-
-    /// Checks that the names of items don't collide with external crates.
-    fn check_for_conflicts_between_external_crates_and_items(&self,
-                                                             module: Module<'a>,
-                                                             name: Name,
-                                                             span: Span) {
-        if module.external_module_children.borrow().contains_key(&name) {
-            resolve_error(self, span, ResolutionError::NameConflictsWithExternCrate(name));
-        }
-    }
-
     /// Resolves the given module path from the given root `module_`.
     fn resolve_module_path_from_root(&mut self,
                                      module_: Module<'a>,
@@ -1245,11 +1227,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      span: Span,
                                      lp: LastPrivate)
                                      -> ResolveResult<(Module<'a>, LastPrivate)> {
-        fn search_parent_externals<'a>(needle: Name, module: Module<'a>)
-                                       -> Option<Module<'a>> {
-            match module.external_module_children.borrow().get(&needle) {
-                Some(_) => Some(module),
-                None => match module.parent_link {
+        fn search_parent_externals<'a>(needle: Name, module: Module<'a>) -> Option<Module<'a>> {
+            match module.get_child(needle, TypeNS) {
+                Some(ref binding) if binding.is_extern_crate() => Some(module),
+                _ => match module.parent_link {
                     ModuleParentLink(ref parent, _) => {
                         search_parent_externals(needle, parent)
                     }
@@ -1480,17 +1461,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        // Search for external modules.
-        if namespace == TypeNS {
-            let children = module_.external_module_children.borrow();
-            if let Some(module) = children.get(&name) {
-                let name_binding = NameBinding::create_from_module(module, None);
-                debug!("lower name bindings succeeded");
-                return Success((Target::new(module_, name_binding, Shadowable::Never),
-                                false));
-            }
-        }
-
         // Finally, proceed up the scope chain looking for parent modules.
         let mut search_module = module_;
         loop {
@@ -1684,16 +1654,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Some(..) | None => {} // Continue.
         }
 
-        // Finally, search through external children.
-        if namespace == TypeNS {
-            let children = module_.external_module_children.borrow();
-            if let Some(module) = children.get(&name) {
-                let name_binding = NameBinding::create_from_module(module, None);
-                return Success((Target::new(module_, name_binding, Shadowable::Never),
-                                false));
-            }
-        }
-
         // We're out of luck.
         debug!("(resolving name in module) failed to resolve `{}`", name);
         return Failed(None);
@@ -1712,7 +1672,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Descend into children and anonymous children.
         build_reduced_graph::populate_module_if_necessary(self, &module_);
 
-        for (_, child_node) in module_.children.borrow().iter() {
+        module_.for_each_local_child(|_, _, child_node| {
             match child_node.module() {
                 None => {
                     // Continue.
@@ -1721,7 +1681,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.report_unresolved_imports(child_module);
                 }
             }
-        }
+        });
 
         for (_, module_) in module_.anonymous_children.borrow().iter() {
             self.report_unresolved_imports(module_);
