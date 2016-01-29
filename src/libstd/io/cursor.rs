@@ -148,44 +148,22 @@ impl<T> Cursor<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut T { &mut self.inner }
 
-    /// Returns the current position of this cursor.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::io::Cursor;
-    /// use std::io::prelude::*;
-    /// use std::io::SeekFrom;
-    ///
-    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
-    ///
-    /// assert_eq!(buff.position(), 0);
-    ///
-    /// buff.seek(SeekFrom::Current(2)).unwrap();
-    /// assert_eq!(buff.position(), 2);
-    ///
-    /// buff.seek(SeekFrom::Current(-1)).unwrap();
-    /// assert_eq!(buff.position(), 1);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn position(&self) -> u64 { self.pos }
-
     /// Sets the position of this cursor.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::io::Cursor;
+    /// use std::io::{Cursor, Seek};
     ///
     /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
     ///
-    /// assert_eq!(buff.position(), 0);
+    /// assert_eq!(buff.position().unwrap(), 0);
     ///
     /// buff.set_position(2);
-    /// assert_eq!(buff.position(), 2);
+    /// assert_eq!(buff.position().unwrap(), 2);
     ///
     /// buff.set_position(4);
-    /// assert_eq!(buff.position(), 4);
+    /// assert_eq!(buff.position().unwrap(), 4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_position(&mut self, pos: u64) { self.pos = pos; }
@@ -207,6 +185,30 @@ impl<T> io::Seek for Cursor<T> where T: AsRef<[u8]> {
             self.pos = pos as u64;
             Ok(self.pos)
         }
+    }
+
+    /// Returns the current position of this cursor.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::Cursor;
+    /// use std::io::prelude::*;
+    /// use std::io::SeekFrom;
+    /// use std::io::Seek;
+    ///
+    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    ///
+    /// assert_eq!(buff.position().unwrap(), 0);
+    ///
+    /// buff.seek(SeekFrom::Current(2)).unwrap();
+    /// assert_eq!(buff.position().unwrap(), 2);
+    ///
+    /// buff.seek(SeekFrom::Current(-1)).unwrap();
+    /// assert_eq!(buff.position().unwrap(), 1);
+    /// ```
+    fn position(&mut self) -> io::Result<u64> {
+        Ok(self.pos)
     }
 }
 
@@ -244,7 +246,7 @@ impl Write for Cursor<Vec<u8>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         // Make sure the internal buffer is as least as big as where we
         // currently are
-        let pos = self.position();
+        let pos = self.position().unwrap();
         let amt = pos.saturating_sub(self.inner.len() as u64);
         // use `resize` so that the zero filling is as efficient as possible
         let len = self.inner.len();
@@ -307,14 +309,14 @@ mod tests {
     #[test]
     fn test_box_slice_writer() {
         let mut writer = Cursor::new(vec![0u8; 9].into_boxed_slice());
-        assert_eq!(writer.position(), 0);
+        assert_eq!(writer.position().unwrap(), 0);
         assert_eq!(writer.write(&[0]).unwrap(), 1);
-        assert_eq!(writer.position(), 1);
+        assert_eq!(writer.position().unwrap(), 1);
         assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
         assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
-        assert_eq!(writer.position(), 8);
+        assert_eq!(writer.position().unwrap(), 8);
         assert_eq!(writer.write(&[]).unwrap(), 0);
-        assert_eq!(writer.position(), 8);
+        assert_eq!(writer.position().unwrap(), 8);
 
         assert_eq!(writer.write(&[8, 9]).unwrap(), 1);
         assert_eq!(writer.write(&[10]).unwrap(), 0);
@@ -327,14 +329,14 @@ mod tests {
         let mut buf = [0 as u8; 9];
         {
             let mut writer = Cursor::new(&mut buf[..]);
-            assert_eq!(writer.position(), 0);
+            assert_eq!(writer.position().unwrap(), 0);
             assert_eq!(writer.write(&[0]).unwrap(), 1);
-            assert_eq!(writer.position(), 1);
+            assert_eq!(writer.position().unwrap(), 1);
             assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
             assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
-            assert_eq!(writer.position(), 8);
+            assert_eq!(writer.position().unwrap(), 8);
             assert_eq!(writer.write(&[]).unwrap(), 0);
-            assert_eq!(writer.position(), 8);
+            assert_eq!(writer.position().unwrap(), 8);
 
             assert_eq!(writer.write(&[8, 9]).unwrap(), 1);
             assert_eq!(writer.write(&[10]).unwrap(), 0);
@@ -348,24 +350,24 @@ mod tests {
         let mut buf = [0 as u8; 8];
         {
             let mut writer = Cursor::new(&mut buf[..]);
-            assert_eq!(writer.position(), 0);
+            assert_eq!(writer.position().unwrap(), 0);
             assert_eq!(writer.write(&[1]).unwrap(), 1);
-            assert_eq!(writer.position(), 1);
+            assert_eq!(writer.position().unwrap(), 1);
 
             assert_eq!(writer.seek(SeekFrom::Start(2)).unwrap(), 2);
-            assert_eq!(writer.position(), 2);
+            assert_eq!(writer.position().unwrap(), 2);
             assert_eq!(writer.write(&[2]).unwrap(), 1);
-            assert_eq!(writer.position(), 3);
+            assert_eq!(writer.position().unwrap(), 3);
 
             assert_eq!(writer.seek(SeekFrom::Current(-2)).unwrap(), 1);
-            assert_eq!(writer.position(), 1);
+            assert_eq!(writer.position().unwrap(), 1);
             assert_eq!(writer.write(&[3]).unwrap(), 1);
-            assert_eq!(writer.position(), 2);
+            assert_eq!(writer.position().unwrap(), 2);
 
             assert_eq!(writer.seek(SeekFrom::End(-1)).unwrap(), 7);
-            assert_eq!(writer.position(), 7);
+            assert_eq!(writer.position().unwrap(), 7);
             assert_eq!(writer.write(&[4]).unwrap(), 1);
-            assert_eq!(writer.position(), 8);
+            assert_eq!(writer.position().unwrap(), 8);
 
         }
         let b: &[_] = &[1, 3, 2, 0, 0, 0, 0, 4];
@@ -386,15 +388,15 @@ mod tests {
         let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         let mut buf = [];
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
-        assert_eq!(reader.position(), 0);
+        assert_eq!(reader.position().unwrap(), 0);
         let mut buf = [0];
         assert_eq!(reader.read(&mut buf).unwrap(), 1);
-        assert_eq!(reader.position(), 1);
+        assert_eq!(reader.position().unwrap(), 1);
         let b: &[_] = &[0];
         assert_eq!(buf, b);
         let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf).unwrap(), 4);
-        assert_eq!(reader.position(), 5);
+        assert_eq!(reader.position().unwrap(), 5);
         let b: &[_] = &[1, 2, 3, 4];
         assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf).unwrap(), 3);
@@ -408,15 +410,15 @@ mod tests {
         let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7).into_boxed_slice());
         let mut buf = [];
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
-        assert_eq!(reader.position(), 0);
+        assert_eq!(reader.position().unwrap(), 0);
         let mut buf = [0];
         assert_eq!(reader.read(&mut buf).unwrap(), 1);
-        assert_eq!(reader.position(), 1);
+        assert_eq!(reader.position().unwrap(), 1);
         let b: &[_] = &[0];
         assert_eq!(buf, b);
         let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf).unwrap(), 4);
-        assert_eq!(reader.position(), 5);
+        assert_eq!(reader.position().unwrap(), 5);
         let b: &[_] = &[1, 2, 3, 4];
         assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf).unwrap(), 3);
@@ -461,15 +463,15 @@ mod tests {
         let mut reader = Cursor::new(&in_buf[..]);
         let mut buf = [];
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
-        assert_eq!(reader.position(), 0);
+        assert_eq!(reader.position().unwrap(), 0);
         let mut buf = [0];
         assert_eq!(reader.read(&mut buf).unwrap(), 1);
-        assert_eq!(reader.position(), 1);
+        assert_eq!(reader.position().unwrap(), 1);
         let b: &[_] = &[0];
         assert_eq!(buf, b);
         let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf).unwrap(), 4);
-        assert_eq!(reader.position(), 5);
+        assert_eq!(reader.position().unwrap(), 5);
         let b: &[_] = &[1, 2, 3, 4];
         assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf).unwrap(), 3);
@@ -537,17 +539,17 @@ mod tests {
     #[test]
     fn test_seekable_mem_writer() {
         let mut writer = Cursor::new(Vec::<u8>::new());
-        assert_eq!(writer.position(), 0);
+        assert_eq!(writer.position().unwrap(), 0);
         assert_eq!(writer.write(&[0]).unwrap(), 1);
-        assert_eq!(writer.position(), 1);
+        assert_eq!(writer.position().unwrap(), 1);
         assert_eq!(writer.write(&[1, 2, 3]).unwrap(), 3);
         assert_eq!(writer.write(&[4, 5, 6, 7]).unwrap(), 4);
-        assert_eq!(writer.position(), 8);
+        assert_eq!(writer.position().unwrap(), 8);
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(&writer.get_ref()[..], b);
 
         assert_eq!(writer.seek(SeekFrom::Start(0)).unwrap(), 0);
-        assert_eq!(writer.position(), 0);
+        assert_eq!(writer.position().unwrap(), 0);
         assert_eq!(writer.write(&[3, 4]).unwrap(), 2);
         let b: &[_] = &[3, 4, 2, 3, 4, 5, 6, 7];
         assert_eq!(&writer.get_ref()[..], b);

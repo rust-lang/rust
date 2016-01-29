@@ -11,7 +11,7 @@
 use Error as DecodeError;
 use writer::EncodeResult;
 use leb128::{read_signed_leb128, read_unsigned_leb128, write_signed_leb128, write_unsigned_leb128};
-use std::io::{self, Write};
+use std::io::{self, Write, Seek};
 use serialize;
 
 // -----------------------------------------------------------------------------
@@ -31,7 +31,7 @@ impl<'a> Encoder<'a> {
 
 macro_rules! write_uleb128 {
     ($enc:expr, $value:expr) => {{
-        let pos = $enc.cursor.position() as usize;
+        let pos = $enc.cursor.position().unwrap() as usize;
         let bytes_written = write_unsigned_leb128($enc.cursor.get_mut(), pos, $value as u64);
         $enc.cursor.set_position((pos + bytes_written) as u64);
         Ok(())
@@ -40,7 +40,7 @@ macro_rules! write_uleb128 {
 
 macro_rules! write_sleb128 {
     ($enc:expr, $value:expr) => {{
-        let pos = $enc.cursor.position() as usize;
+        let pos = $enc.cursor.position().unwrap() as usize;
         let bytes_written = write_signed_leb128($enc.cursor.get_mut(), pos, $value as i64);
         $enc.cursor.set_position((pos + bytes_written) as u64);
         Ok(())
@@ -252,8 +252,8 @@ impl<'a> serialize::Encoder for Encoder<'a> {
 }
 
 impl<'a> Encoder<'a> {
-    pub fn position(&self) -> usize {
-        self.cursor.position() as usize
+    pub fn position(&mut self) -> usize {
+        self.cursor.position().unwrap() as usize
     }
 
     pub fn from_rbml<'b: 'c, 'c>(rbml: &'c mut ::writer::Encoder<'b>) -> Encoder<'c> {

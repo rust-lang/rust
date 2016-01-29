@@ -1694,6 +1694,22 @@ mod tests {
     }
 
     #[test]
+    fn file_test_io_seek_and_position() {
+        let initial_msg = [0u8; 100];
+        let seek_idx = 10;
+        let tmpdir = tmpdir();
+        let filename = &tmpdir.join("file_rt_io_file_test_seek_and_position.txt");
+        let mut position = 0;
+        {
+            let mut rw_stream = check!(File::create(filename));
+            check!(rw_stream.write(&initial_msg));
+            check!(rw_stream.seek(SeekFrom::Start(seek_idx)));
+            position = rw_stream.position().unwrap();
+        }
+        assert!(position == seek_idx);
+    }
+
+    #[test]
     fn file_test_stat_is_correct_on_is_file() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_file.txt");
