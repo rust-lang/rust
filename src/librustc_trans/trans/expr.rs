@@ -160,7 +160,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match expr.node {
                 hir::ExprPath(..) => {
                     match bcx.def(expr.id) {
-                        Def::Const(did) => {
+                        Def::Const(did) | Def::AssociatedConst(did) => {
                             let empty_substs = bcx.tcx().mk_substs(Substs::trans_empty());
                             let const_expr = consts::get_const_expr(bcx.ccx(), did, expr,
                                                                     empty_substs);
@@ -896,7 +896,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let lval = Lvalue::new("expr::trans_def");
             DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr(lval)))
         }
-        Def::Const(_) => {
+        Def::Const(_) | Def::AssociatedConst(_) => {
             bcx.sess().span_bug(ref_expr.span,
                 "constant expression should not reach expr::trans_def")
         }
