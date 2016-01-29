@@ -1,5 +1,5 @@
 # powerpc64-unknown-linux-gnu configuration
-CROSS_PREFIX_powerpc64-unknown-linux-gnu=powerpc64-linux-gnu-
+CROSS_PREFIX_powerpc64-unknown-linux-gnu=powerpc-linux-gnu-
 CC_powerpc64-unknown-linux-gnu=$(CC)
 CXX_powerpc64-unknown-linux-gnu=$(CXX)
 CPP_powerpc64-unknown-linux-gnu=$(CPP)
