@@ -21,7 +21,7 @@ Rustc consists of a number of crates, including `libsyntax`,
 (the names and divisions are not set in stone and may change;
 in general, a finer-grained division of crates is preferable):
 
-- `libsyntax` contains those things concerned purely with syntax –
+- [`libsyntax`][libsyntax] contains those things concerned purely with syntax –
   that is, the AST, parser, pretty-printer, lexer, macro expander, and
   utilities for traversing ASTs – are in a separate crate called
   "syntax", whose files are in `./../libsyntax`, where `.` is the
@@ -32,32 +32,92 @@ in general, a finer-grained division of crates is preferable):
   passes, such as the type checker, borrow checker, and so forth.
   It is the heart of the compiler.
 
-- `librustc_back` contains some very low-level details that are
+- [`librustc_back`][back] contains some very low-level details that are
   specific to different LLVM targets and so forth.
 
-- `librustc_trans` contains the code to convert from Rust IR into LLVM
+- [`librustc_trans`][trans] contains the code to convert from Rust IR into LLVM
   IR, and then from LLVM IR into machine code, as well as the main
   driver that orchestrates all the other passes and various other bits
   of miscellany. In general it contains code that runs towards the
   end of the compilation process.
 
-- `librustc_driver` invokes the compiler from `libsyntax`, then the
-  analysis phases from `librustc`, and finally the lowering and
-  codegen passes from `librustc_trans`.
+- [`librustc_driver`][driver] invokes the compiler from
+  [`libsyntax`][libsyntax], then the analysis phases from `librustc`, and
+  finally the lowering and codegen passes from [`librustc_trans`][trans].
 
 Roughly speaking the "order" of the three crates is as follows:
 
-    libsyntax -> librustc -> librustc_trans
-    |                                     |
-    +-----------------+-------------------+
-                      |
               librustc_driver
+                      |
+    +-----------------+-------------------+
+    |                                     |
+    libsyntax -> librustc -> librustc_trans
 
 
-Modules in the rustc crate
-==========================
+The compiler process:
+=====================
 
-The rustc crate itself consists of the following submodules
+The Rust compiler is comprised of six main compilation phases.
+
+1. Parsing input
+2. Configuration & expanding (cfg rules & syntax extension expansion)
+3. Running analysis passes
+4. Translation to LLVM
+5. LLVM passes
+6. Linking
+
+Phase one is responsible for parsing & lexing the input to the compiler. The
+output of this phase is an abstract syntax tree (AST). The AST at this point
+includes all macro uses & attributes. This means code which will be later
+expanded and/or removed due to `cfg` attributes is still present in this
+version of the AST. Parsing abstracts away details about individual files which
+have been read into the AST.
+
+Phase two handles configuration and macro expansion. You can think of this
+phase as a function acting on the AST from the previous phase. The input for
+this phase is the unexpanded AST from phase one, and the output is an expanded
+version of the same AST. This phase will expand all macros & syntax
+extensions and will evaluate all `cfg` attributes, potentially removing some
+code. The resulting AST will not contain any macros or `macro_use` statements.
+
+The code for these first two phases is in [`libsyntax`][libsyntax].
+
+After this phase, the compiler allocates IDs to each node in the AST
+(technically not every node, but most of them). If we are writing out
+dependencies, that happens now.
+
+The third phase is analysis. This is the most complex phase in the compiler,
+and makes up much of the code. This phase included name resolution, type
+checking, borrow checking, type & lifetime inference, trait selection, method
+selection, linting and so on. Most of the error detection in the compiler comes
+from this phase (with the exception of parse errors which arise during
+parsing). The "output" of this phase is a set of side tables containing
+semantic information about the source program. The analysis code is in
+[`librustc`][rustc] and some other crates with the `librustc_` prefix.
+
+The fourth phase is translation. This phase translates the AST (and the side
+tables from the previous phase) into LLVM IR (intermediate representation).
+This is achieved by calling into the LLVM libraries. The code for this is in
+[`librustc_trans`][trans].
+
+Phase five runs the LLVM backend. This runs LLVM's optimization passes on the
+generated IR and generates machine code resulting in object files. This phase
+is not really part of the Rust compiler, as LLVM carries out all the work.
+The interface between LLVM and Rust is in [`librustc_llvm`][llvm].
+
+The final phase, phase six, links the object files into an executable. This is
+again outsourced to other tools and not performed by the Rust compiler
+directly. The interface is in [`librustc_back`][back] (which also contains some
+things used primarily during translation).
+
+A module called the driver coordinates all these phases. It handles all the
+highest level coordination of compilation from parsing command line arguments
+all the way to invoking the linker to produce an executable.
+
+Modules in the librustc crate
+=============================
+
+The librustc crate itself consists of the following submodules
 (mostly, but not entirely, in their own directories):
 
 - session: options and data that pertain to the compilation session as
@@ -71,7 +131,7 @@ The rustc crate itself consists of the following submodules
 - util: ubiquitous types and helper functions
 - lib: bindings to LLVM
 
-The entry-point for the compiler is main() in the librustc_driver
+The entry-point for the compiler is main() in the [`librustc_driver`][driver]
 crate.
 
 The 3 central data structures:
@@ -106,23 +166,9 @@ The 3 central data structures:
    Each of these is an opaque pointer to an LLVM type,
    manipulated through the `lib::llvm` interface.
 
-
-Control and information flow within the compiler:
--------------------------------------------------
-
-- main() in lib.rs assumes control on startup. Options are
-  parsed, platform is detected, etc.
-
-- `./../libsyntax/parse/parser.rs` parses the input files and produces
-  an AST that represents the input crate.
-
-- Multiple middle-end passes (`middle/resolve.rs`, `middle/typeck.rs`)
-  analyze the semantics of the resulting AST. Each pass generates new
-  information about the AST and stores it in various environment data
-  structures. The driver passes environments to each compiler pass
-  that needs to refer to them.
-
-- Finally, the `trans` module in `librustc_trans` translates the Rust
-  AST to LLVM bitcode in a type-directed way. When it's finished
-  synthesizing LLVM values, rustc asks LLVM to write them out in some
-  form (`.bc`, `.o`) and possibly run the system linker.
+[libsyntax]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/
+[trans]: https://github.com/rust-lang/rust/tree/master/src/librustc_trans/
+[llvm]: https://github.com/rust-lang/rust/tree/master/src/librustc_llvm/
+[back]: https://github.com/rust-lang/rust/tree/master/src/librustc_back/
+[rustc]: https://github.com/rust-lang/rust/tree/master/src/librustc/
+[driver]: https://github.com/rust-lang/rust/tree/master/src/librustc_driver
