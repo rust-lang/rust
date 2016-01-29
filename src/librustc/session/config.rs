@@ -643,6 +643,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "keep the AST after lowering it to HIR"),
     show_span: Option<String> = (None, parse_opt_string,
           "show spans for compiler debugging (expr|pat|ty)"),
+    print_trans_items: Option<String> = (None, parse_opt_string,
+          "print the result of the translation item collection pass"),
 }
 
 pub fn default_lib_output() -> CrateType {

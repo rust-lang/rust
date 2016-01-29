@@ -563,7 +563,7 @@ impl<'tcx> ctxt<'tcx> {
             const_qualif_map: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             cast_kinds: RefCell::new(NodeMap()),
-            fragment_infos: RefCell::new(DefIdMap()),
+            fragment_infos: RefCell::new(DefIdMap())
        }, f)
     }
 }
