@@ -229,28 +229,12 @@ pub const DTOR_NEEDED_HINT: u8 = 0x3d;
 pub const DTOR_MOVED_HINT: u8 = 0x2d;
 
 pub const DTOR_NEEDED: u8 = 0xd4;
-pub const DTOR_NEEDED_U32: u32 = repeat_u8_as_u32(DTOR_NEEDED);
-pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64(DTOR_NEEDED);
 #[allow(dead_code)]
-pub fn dtor_needed_usize(ccx: &CrateContext) -> usize {
-    match &ccx.tcx().sess.target.target.target_pointer_width[..] {
-        "32" => DTOR_NEEDED_U32 as usize,
-        "64" => DTOR_NEEDED_U64 as usize,
-        tws => panic!("Unsupported target word size for int: {}", tws),
-    }
-}
+pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64(DTOR_NEEDED);
 
 pub const DTOR_DONE: u8 = 0x1d;
-pub const DTOR_DONE_U32: u32 = repeat_u8_as_u32(DTOR_DONE);
-pub const DTOR_DONE_U64: u64 = repeat_u8_as_u64(DTOR_DONE);
 #[allow(dead_code)]
-pub fn dtor_done_usize(ccx: &CrateContext) -> usize {
-    match &ccx.tcx().sess.target.target.target_pointer_width[..] {
-        "32" => DTOR_DONE_U32 as usize,
-        "64" => DTOR_DONE_U64 as usize,
-        tws => panic!("Unsupported target word size for int: {}", tws),
-    }
-}
+pub const DTOR_DONE_U64: u64 = repeat_u8_as_u64(DTOR_DONE);
 
 fn dtor_to_init_u8(dtor: bool) -> u8 {
     if dtor { DTOR_NEEDED } else { 0 }
