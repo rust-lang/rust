@@ -179,28 +179,17 @@ macro_rules! make_mir_visitor {
 
                     Terminator::Call { ref $($mutability)* func,
                                        ref $($mutability)* args,
-                                       ref $($mutability)* kind } => {
+                                       ref $($mutability)* destination,
+                                       ref $($mutability)* cleanup } => {
                         self.visit_operand(func);
                         for arg in args {
                             self.visit_operand(arg);
                         }
-                        match *kind {
-                            CallKind::Converging {
-                                ref $($mutability)* destination,
-                                ..
-                            }        |
-                            CallKind::ConvergingCleanup {
-                                ref $($mutability)* destination,
-                                ..
-                            } => {
-                                self.visit_lvalue(destination, LvalueContext::Store);
-                            }
-                            CallKind::Diverging           |
-                            CallKind::DivergingCleanup(_) => {}
-                        }
-                        for &target in kind.successors() {
+                        if let Some((ref $($mutability)* destination, target)) = *destination {
+                            self.visit_lvalue(destination, LvalueContext::Store);
                             self.visit_branch(block, target);
                         }
+                        cleanup.map(|t| self.visit_branch(block, t));
                     }
                 }
             }

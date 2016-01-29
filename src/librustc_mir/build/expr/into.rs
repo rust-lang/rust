@@ -253,17 +253,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.cfg.terminate(block, Terminator::Call {
                     func: fun,
                     args: args,
-                    kind: match (cleanup, diverges) {
-                        (None, true) => CallKind::Diverging,
-                        (Some(c), true) => CallKind::DivergingCleanup(c),
-                        (None, false) => CallKind::Converging {
-                            destination: destination.clone(),
-                            target: success
-                        },
-                        (Some(c), false) => CallKind::ConvergingCleanup {
-                            destination: destination.clone(),
-                            targets: (success, c)
-                        }
+                    cleanup: cleanup,
+                    destination: if diverges {
+                        None
+                    } else {
+                        Some ((destination.clone(), success))
                     }
                 });
                 success.unit()

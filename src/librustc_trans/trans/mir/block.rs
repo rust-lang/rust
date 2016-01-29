@@ -94,7 +94,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
             }
 
-            mir::Terminator::Call { ref func, ref args, ref kind } => {
+            mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {
                 // Create the callee. This will always be a fn ptr and hence a kind of scalar.
                 let callee = self.trans_operand(bcx, func);
                 let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
@@ -115,7 +115,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 };
 
                 // Prepare the return value destination
-                let (ret_dest_ty, must_copy_dest) = if let Some(d) = kind.destination() {
+                let (ret_dest_ty, must_copy_dest) = if let Some((ref d, _)) = *destination {
                     let dest = self.trans_lvalue(bcx, d);
                     let ret_ty = dest.ty.to_ty(bcx.tcx());
                     if !is_foreign && type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
@@ -144,9 +144,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
 
                 // Many different ways to call a function handled here
-                match (is_foreign, base::avoid_invoke(bcx), kind) {
+                match (is_foreign, base::avoid_invoke(bcx), cleanup, destination) {
                     // The two cases below are the only ones to use LLVM’s `invoke`.
-                    (false, false, &mir::CallKind::DivergingCleanup(cleanup)) => {
+                    (false, false, &Some(cleanup), &None) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
@@ -158,14 +158,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                       Some(attrs),
                                       debugloc);
                     },
-                    (false, false, &mir::CallKind::ConvergingCleanup { ref targets, .. }) => {
-                        let cleanup = self.bcx(targets.1);
+                    (false, false, &Some(cleanup), &Some((_, success))) => {
+                        let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let (target, postinvoke) = if must_copy_dest {
-                            (bcx.fcx.new_block("", None),
-                             Some(self.bcx(targets.0)))
+                            (bcx.fcx.new_block("", None), Some(self.bcx(success)))
                         } else {
-                            (self.bcx(targets.0), None)
+                            (self.bcx(success), None)
                         };
                         let invokeret = build::Invoke(bcx,
                                                       callee.immediate(),
@@ -205,19 +204,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             build::Br(target, postinvoketarget.llbb, debugloc);
                         }
                     },
-                    (false, _, &mir::CallKind::DivergingCleanup(_)) |
-                    (false, _, &mir::CallKind::Diverging) => {
+                    (false, _, _, &None) => {
                         build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
                         build::Unreachable(bcx);
                     }
-                    (false, _, k@&mir::CallKind::ConvergingCleanup { .. }) |
-                    (false, _, k@&mir::CallKind::Converging { .. }) => {
-                        // FIXME: Bug #20046
-                        let target = match *k {
-                            mir::CallKind::ConvergingCleanup { targets, .. } => targets.0,
-                            mir::CallKind::Converging { target, .. } => target,
-                            _ => unreachable!()
-                        };
+                    (false, _, _, &Some((_, target))) => {
                         let llret = build::Call(bcx,
                                                 callee.immediate(),
                                                 &llargs[..],
@@ -231,7 +222,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         build::Br(bcx, self.llblock(target), debugloc);
                     }
                     // Foreign functions
-                    (true, _, k) => {
+                    (true, _, _, destination) => {
                         let (dest, _) = ret_dest_ty
                             .expect("return destination is not set");
                         bcx = foreign::trans_native_call(bcx,
@@ -241,13 +232,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                    &llargs[..],
                                                    arg_tys,
                                                    debugloc);
-                        match *k {
-                            mir::CallKind::ConvergingCleanup { targets, .. } =>
-                                build::Br(bcx, self.llblock(targets.0), debugloc),
-                            mir::CallKind::Converging { target, .. } =>
-                                build::Br(bcx, self.llblock(target), debugloc),
-                            _ => ()
-                        };
+                        if let Some((_, target)) = *destination {
+                            build::Br(bcx, self.llblock(target), debugloc);
+                        }
                     },
                 }
             }
