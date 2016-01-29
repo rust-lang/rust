@@ -262,6 +262,13 @@ pub enum Terminator<'tcx> {
     /// `END_BLOCK`.
     Return,
 
+    /// Drop the Lvalue
+    Drop {
+        value: Lvalue<'tcx>,
+        target: BasicBlock,
+        unwind: Option<BasicBlock>
+    },
+
     /// Block ends with a call of a converging function
     Call {
         /// The function that’s being called
@@ -290,6 +297,8 @@ impl<'tcx> Terminator<'tcx> {
                 slice::ref_slice(t).into_cow(),
             Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
             Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
+            Drop { target, unwind: Some(unwind), .. } => vec![target, unwind].into_cow(),
+            Drop { ref target, .. } => slice::ref_slice(target).into_cow(),
         }
     }
 
@@ -308,6 +317,8 @@ impl<'tcx> Terminator<'tcx> {
             Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
             Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
             Call { destination: None, cleanup: None, .. } => vec![],
+            Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
+            Drop { ref mut target, .. } => vec![target]
         }
     }
 }
@@ -374,6 +385,7 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
+            Drop { ref value, .. } => write!(fmt, "drop({:?})", value),
             Call { ref func, ref args, ref destination, .. } => {
                 if let Some((ref destination, _)) = *destination {
                     try!(write!(fmt, "{:?} = ", destination));
@@ -418,6 +430,8 @@ impl<'tcx> Terminator<'tcx> {
             Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
             Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
             Call { destination: None, cleanup: None, .. } => vec![],
+            Drop { unwind: None, .. } => vec!["return".into_cow()],
+            Drop { .. } => vec!["return".into_cow(), "unwind".into_cow()],
         }
     }
 }
@@ -435,15 +449,13 @@ pub struct Statement<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     Assign(Lvalue<'tcx>, Rvalue<'tcx>),
-    Drop(Lvalue<'tcx>),
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
-            Drop(ref lv) => write!(fmt, "drop {:?}", lv),
+            Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv)
         }
     }
 }

@@ -18,10 +18,11 @@ use trans::base;
 use trans::build;
 use trans::common::{self, Block, LandingPad};
 use trans::debuginfo::DebugLoc;
+use trans::Disr;
 use trans::foreign;
+use trans::glue;
 use trans::type_of;
 use trans::type_::Type;
-use trans::Disr;
 
 use super::MirContext;
 use super::operand::OperandValue::{FatPtr, Immediate, Ref};
@@ -92,6 +93,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Terminator::Return => {
                 let return_ty = bcx.monomorphize(&self.mir.return_ty);
                 base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
+            }
+
+            mir::Terminator::Drop { ref value, target, unwind: _ } => {
+                let lvalue = self.trans_lvalue(bcx, value);
+                // FIXME: this does not account for possibility of unwinding (and totally should).
+                glue::drop_ty(bcx, lvalue.llval, lvalue.ty.to_ty(bcx.tcx()), DebugLoc::None);
+                build::Br(bcx, self.llblock(target), DebugLoc::None);
             }
 
             mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {

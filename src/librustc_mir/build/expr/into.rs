@@ -188,7 +188,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // operators like x[j] = x[i].
                 let rhs = unpack!(block = this.as_operand(block, rhs));
                 let lhs = unpack!(block = this.as_lvalue(block, lhs));
-                this.cfg.push_drop(block, expr_span, &lhs);
+                unpack!(block = this.build_drop(block, lhs.clone()));
                 this.cfg.push_assign(block, expr_span, &lhs, Rvalue::Use(rhs));
                 block.unit()
             }
