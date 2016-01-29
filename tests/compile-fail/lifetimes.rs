@@ -3,6 +3,7 @@
 
 #![deny(needless_lifetimes, unused_lifetimes)]
 #![allow(dead_code)]
+
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) { }
 //~^ERROR explicit lifetimes given
 
@@ -97,6 +98,7 @@ fn struct_with_lt3<'a>(_foo: &Foo<'a> ) -> &'a str { unimplemented!() }
 fn struct_with_lt4<'a, 'b>(_foo: &'a Foo<'b> ) -> &'a str { unimplemented!() }
 
 trait WithLifetime<'a> {}
+
 type WithLifetimeAlias<'a> = WithLifetime<'a>;
 
 // should not warn because it won't build without the lifetime
@@ -122,6 +124,9 @@ fn alias_with_lt4<'a, 'b>(_foo: &'a FooAlias<'b> ) -> &'a str { unimplemented!()
 fn named_input_elided_output<'a>(_arg: &'a str) -> &str { unimplemented!() } //~ERROR explicit lifetimes given
 
 fn elided_input_named_output<'a>(_arg: &str) -> &'a str { unimplemented!() }
+
+fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() } //~ERROR explicit lifetimes given
+fn trait_bound<'a, T: WithLifetime<'a>>(_: &'a u8, _: T) { unimplemented!() }
 
 fn main() {
 }
