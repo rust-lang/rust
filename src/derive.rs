@@ -29,6 +29,7 @@ use rustc::middle::ty::TypeVariants;
 /// impl PartialEq for Foo {
 ///     ..
 /// }
+/// ```
 declare_lint! {
     pub DERIVE_HASH_NOT_EQ,
     Warn,
@@ -52,6 +53,7 @@ declare_lint! {
 /// impl Clone for Foo {
 ///     ..
 /// }
+/// ```
 declare_lint! {
     pub EXPL_IMPL_CLONE_ON_COPY,
     Warn,

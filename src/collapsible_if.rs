@@ -19,7 +19,7 @@ use syntax::codemap::Spanned;
 use utils::{in_macro, snippet, snippet_block, span_lint_and_then};
 
 /// **What it does:** This lint checks for nested `if`-statements which can be collapsed by
-/// `&&`-combining their conditions and for `else { if .. } expressions that can be collapsed to
+/// `&&`-combining their conditions and for `else { if .. }` expressions that can be collapsed to
 /// `else if ..`. It is `Warn` by default.
 ///
 /// **Why is this bad?** Each `if`-statement adds one level of nesting, which makes code look more complex than it really is.
