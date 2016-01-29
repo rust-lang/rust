@@ -417,6 +417,7 @@ impl Target {
             powerpc64le_unknown_linux_gnu,
             arm_unknown_linux_gnueabi,
             arm_unknown_linux_gnueabihf,
+            armv7_unknown_linux_gnueabihf,
             aarch64_unknown_linux_gnu,
             x86_64_unknown_linux_musl,
 
