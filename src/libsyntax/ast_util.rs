@@ -356,7 +356,7 @@ pub fn pat_is_ident(pat: P<ast::Pat>) -> bool {
 // since I'm using this to replace ==, it seems appropriate
 // to compare the span, global, etc. fields as well.
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
-    (a.span == b.span)
+    (a.span.source_equal(&b.span))
     && (a.global == b.global)
     && (segments_name_eq(&a.segments[..], &b.segments[..]))
 }
