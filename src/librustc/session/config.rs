@@ -137,8 +137,13 @@ pub struct Options {
     pub no_trans: bool,
     pub error_format: ErrorOutputType,
     pub treat_err_as_bug: bool,
-    pub incremental_compilation: bool,
+
+    /// if true, build up the dep-graph
+    pub build_dep_graph: bool,
+
+    /// if true, -Z dump-dep-graph was passed to dump out the dep-graph
     pub dump_dep_graph: bool,
+
     pub no_analysis: bool,
     pub debugging_opts: DebuggingOptions,
     pub prints: Vec<PrintRequest>,
@@ -246,7 +251,7 @@ pub fn basic_options() -> Options {
         parse_only: false,
         no_trans: false,
         treat_err_as_bug: false,
-        incremental_compilation: false,
+        build_dep_graph: false,
         dump_dep_graph: false,
         no_analysis: false,
         debugging_opts: basic_debugging_options(),
@@ -1145,7 +1150,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         parse_only: parse_only,
         no_trans: no_trans,
         treat_err_as_bug: treat_err_as_bug,
-        incremental_compilation: incremental_compilation || dump_dep_graph,
+        build_dep_graph: incremental_compilation || dump_dep_graph,
         dump_dep_graph: dump_dep_graph,
         no_analysis: no_analysis,
         debugging_opts: debugging_opts,

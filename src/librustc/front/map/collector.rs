@@ -79,6 +79,7 @@ impl<'ast> NodeCollector<'ast> {
 
     fn create_def(&mut self, node_id: NodeId, data: DefPathData) -> DefIndex {
         let parent_def = self.parent_def();
+        debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
         self.definitions.create_def_with_parent(parent_def, node_id, data)
     }
 
@@ -115,10 +116,13 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
     fn visit_nested_item(&mut self, item: ItemId) {
+        debug!("visit_nested_item: {:?}", item);
         self.visit_item(self.krate.item(item.id))
     }
 
     fn visit_item(&mut self, i: &'ast Item) {
+        debug!("visit_item: {:?}", i);
+
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
