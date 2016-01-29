@@ -257,7 +257,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         errors.extend(self.resolve_imports_for_module(module_));
         self.resolver.current_module = orig_module;
 
-        build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
+        build_reduced_graph::populate_module_if_necessary(self.resolver, module_);
         module_.for_each_local_child(|_, _, child_node| {
             match child_node.module() {
                 None => {
@@ -345,14 +345,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // We found the module that the target is contained
                 // within. Attempt to resolve the import within it.
                 if let SingleImport(target, source) = import_directive.subclass {
-                    self.resolve_single_import(&module_,
+                    self.resolve_single_import(module_,
                                                containing_module,
                                                target,
                                                source,
                                                import_directive,
                                                lp)
                 } else {
-                    self.resolve_glob_import(&module_, containing_module, import_directive, lp)
+                    self.resolve_glob_import(module_, containing_module, import_directive, lp)
                 }
             })
             .and_then(|()| {
@@ -465,9 +465,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         // We need to resolve both namespaces for this to succeed.
         let (value_result, value_used_reexport) =
-            self.resolve_name_in_module(&target_module, source, ValueNS, module_);
+            self.resolve_name_in_module(target_module, source, ValueNS, module_);
         let (type_result, type_used_reexport) =
-            self.resolve_name_in_module(&target_module, source, TypeNS, module_);
+            self.resolve_name_in_module(target_module, source, TypeNS, module_);
 
         match (&value_result, &type_result) {
             (&Success((_, ref name_binding)), _) if !value_used_reexport &&
@@ -585,7 +585,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         if let (&Failed(_), &Failed(_)) = (&value_result, &type_result) {
             let msg = format!("There is no `{}` in `{}`{}",
                               source,
-                              module_to_string(&target_module), lev_suggestion);
+                              module_to_string(target_module), lev_suggestion);
             return Failed(Some((directive.span, msg)));
         }
 
@@ -711,7 +711,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         // Add all children from the containing module.
-        build_reduced_graph::populate_module_if_necessary(self.resolver, &target_module);
+        build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
 
         target_module.for_each_local_child(|name, ns, name_binding| {
             self.merge_import_resolution(module_,

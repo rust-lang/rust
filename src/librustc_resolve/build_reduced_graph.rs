@@ -297,7 +297,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     let external_module = self.new_extern_crate_module(parent_link, def);
                     self.define(parent, name, TypeNS, (external_module, sp));
 
-                    self.build_reduced_graph_for_external_crate(&external_module);
+                    self.build_reduced_graph_for_external_crate(external_module);
                 }
                 parent
             }
@@ -353,7 +353,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 for variant in &(*enum_definition).variants {
                     let item_def_id = self.ast_map.local_def_id(item.id);
                     self.build_reduced_graph_for_variant(variant, item_def_id,
-                                                         &module, variant_modifiers);
+                                                         module, variant_modifiers);
                 }
                 parent
             }
@@ -409,7 +409,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     };
 
                     let modifiers = DefModifiers::PUBLIC; // NB: not DefModifiers::IMPORTABLE
-                    self.define(&module_parent, item.name, ns, (def, item.span, modifiers));
+                    self.define(module_parent, item.name, ns, (def, item.span, modifiers));
 
                     self.trait_item_map.insert((item.name, def_id), item_def_id);
                 }

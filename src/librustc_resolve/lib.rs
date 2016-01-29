@@ -1262,7 +1262,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
                     let mut span = span;
-                    let msg = if "???" == &module_name[..] {
+                    let msg = if "???" == &module_name {
                         span.hi = span.lo + Pos::from_usize(segment_name.len());
 
                         match search_parent_externals(name, &self.current_module) {
@@ -1568,7 +1568,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                module_to_string(&*module_));
 
         // First, check the direct children of the module.
-        build_reduced_graph::populate_module_if_necessary(self, &module_);
+        build_reduced_graph::populate_module_if_necessary(self, module_);
 
         if let Some(binding) = module_.get_child(name, namespace) {
             debug!("(resolving name in module) found node as child");
@@ -1609,7 +1609,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Descend into children and anonymous children.
-        build_reduced_graph::populate_module_if_necessary(self, &module_);
+        build_reduced_graph::populate_module_if_necessary(self, module_);
 
         module_.for_each_local_child(|_, _, child_node| {
             match child_node.module() {
@@ -2947,7 +2947,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let containing_module;
         let last_private;
         match self.resolve_module_path_from_root(root_module,
-                                                 &module_path[..],
+                                                 &module_path,
                                                  0,
                                                  span,
                                                  LastMod(AllPublic)) {
@@ -2956,7 +2956,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some((span, msg)) => (span, msg),
                     None => {
                         let msg = format!("Use of undeclared module `::{}`",
-                                          names_to_string(&module_path[..]));
+                                          names_to_string(&module_path));
                         (span, msg)
                     }
                 };
