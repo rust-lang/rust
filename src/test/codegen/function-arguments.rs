@@ -51,14 +51,16 @@ pub fn named_borrow<'r>(_: &'r i32) {
 pub fn unsafe_borrow(_: &UnsafeInner) {
 }
 
-// CHECK: @mutable_unsafe_borrow(%UnsafeInner* noalias dereferenceable(2))
+// CHECK: @mutable_unsafe_borrow(%UnsafeInner* dereferenceable(2))
 // ... unless this is a mutable borrow, those never alias
+// ... except that there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 }
 
-// CHECK: @mutable_borrow(i32* noalias dereferenceable(4))
+// CHECK: @mutable_borrow(i32* dereferenceable(4))
 // FIXME #25759 This should also have `nocapture`
+// ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_borrow(_: &mut i32) {
 }
@@ -100,8 +102,9 @@ fn helper(_: usize) {
 fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice(i8* noalias nonnull, [[USIZE]])
+// CHECK: @mutable_slice(i8* nonnull, [[USIZE]])
 // FIXME #25759 This should also have `nocapture`
+// ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 fn mutable_slice(_: &mut [u8]) {
 }
