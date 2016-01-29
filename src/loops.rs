@@ -11,7 +11,7 @@ use std::collections::{HashSet, HashMap};
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro, expr_block,
             span_help_and_lint, is_integer_literal, get_enclosing_block};
-use utils::{HASHMAP_PATH, VEC_PATH, LL_PATH, OPTION_PATH};
+use utils::{HASHMAP_PATH, VEC_PATH, LL_PATH, OPTION_PATH, RESULT_PATH};
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index. It is `Warn` by default.
 ///
@@ -48,7 +48,7 @@ declare_lint!{ pub EXPLICIT_ITER_LOOP, Warn,
 declare_lint!{ pub ITER_NEXT_LOOP, Warn,
                "for-looping over `_.next()` which is probably not intended" }
 
-/// **What it does:** This lint checks for `for` loops over Option values. It is `Warn` by default.
+/// **What it does:** This lint checks for `for` loops over `Option` values. It is `Warn` by default.
 ///
 /// **Why is this bad?** Readability. This is more clearly expressed as an `if let`.
 ///
@@ -56,7 +56,17 @@ declare_lint!{ pub ITER_NEXT_LOOP, Warn,
 ///
 /// **Example:** `for x in option { .. }`. This should be `if let Some(x) = option { .. }`.
 declare_lint!{ pub FOR_LOOP_OVER_OPTION, Warn,
-               "for-looping over an Option, which is more clear as an `if let`" }
+               "for-looping over an `Option`, which is more clearly expressed as an `if let`" }
+
+/// **What it does:** This lint checks for `for` loops over `Result` values. It is `Warn` by default.
+///
+/// **Why is this bad?** Readability. This is more clearly expressed as an `if let`.
+///
+/// **Known problems:** None
+///
+/// **Example:** `for x in result { .. }`. This should be `if let Ok(x) = result { .. }`.
+declare_lint!{ pub FOR_LOOP_OVER_RESULT, Warn,
+               "for-looping over a `Result`, which is more clearly expressed as an `if let`" }
 
 /// **What it does:** This lint detects `loop + match` combinations that are easier written as a `while let` loop. It is `Warn` by default.
 ///
@@ -417,21 +427,32 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
         }
     }
     if !next_loop_linted {
-        check_option_looping(cx, pat, arg);
+        check_arg_type(cx, pat, arg);
     }
 }
 
-/// Check for `for` loops over `Option`s
-fn check_option_looping(cx: &LateContext, pat: &Pat, arg: &Expr) {
+/// Check for `for` loops over `Option`s and `Results`
+fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
     let ty = cx.tcx.expr_ty(arg);
     if match_type(cx, ty, &OPTION_PATH) {
         span_help_and_lint(
             cx,
             FOR_LOOP_OVER_OPTION,
             arg.span,
-            &format!("for loop over `{0}`, which is an Option. This is more readably written as \
+            &format!("for loop over `{0}`, which is an `Option`. This is more readably written as \
                       an `if let` statement.", snippet(cx, arg.span, "_")),
             &format!("consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
+                     snippet(cx, pat.span, "_"), snippet(cx, arg.span, "_"))
+        );
+    }
+    else if match_type(cx, ty, &RESULT_PATH) {
+        span_help_and_lint(
+            cx,
+            FOR_LOOP_OVER_RESULT,
+            arg.span,
+            &format!("for loop over `{0}`, which is a `Result`. This is more readably written as \
+                      an `if let` statement.", snippet(cx, arg.span, "_")),
+            &format!("consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
                      snippet(cx, pat.span, "_"), snippet(cx, arg.span, "_"))
         );
     }
