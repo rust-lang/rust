@@ -223,8 +223,8 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
                            expr.span,
                            "you seem to be trying to match on a boolean expression. Consider using \
                            an if..else block:", move |db| {
-            if let Some(ref sugg) = sugg {
-                db.span_suggestion(expr.span, "try this", sugg.clone());
+            if let Some(sugg) = sugg {
+                db.span_suggestion(expr.span, "try this", sugg);
             }
         });
     }

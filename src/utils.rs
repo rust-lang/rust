@@ -649,7 +649,7 @@ fn is_cast_ty_equal(left: &Ty, right: &Ty) -> bool {
     }
 }
 
-/// Return the pre-expansion span is this comes from a expansion of the macro `name`.
+/// Return the pre-expansion span if is this comes from an expansion of the macro `name`.
 pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> {
     loop {
         let span_name_span = cx.tcx.sess.codemap().with_expn_info(span.expn_id, |expn| {
