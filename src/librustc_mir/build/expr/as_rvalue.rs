@@ -61,16 +61,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
-                let value_ty = value.ty.clone();
-                let result = this.temp(value_ty.clone());
+                let result = this.temp(expr.ty);
 
                 // to start, malloc some memory of suitable type (thus far, uninitialized):
-                let rvalue = Rvalue::Box(value.ty.clone());
+                let rvalue = Rvalue::Box(value.ty);
                 this.cfg.push_assign(block, expr_span, &result, rvalue);
 
                 // schedule a shallow free of that memory, lest we unwind:
                 let extent = this.extent_of_innermost_scope();
-                this.schedule_drop(expr_span, extent, DropKind::Free, &result, value_ty);
+                this.schedule_drop(expr_span, extent, DropKind::Free, &result, value.ty);
 
                 // initialize the box contents:
                 let contents = result.clone().deref();
