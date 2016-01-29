@@ -2516,29 +2516,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.value_ribs.push(Rib::new(NormalRibKind));
         }
 
-        // Check for imports appearing after non-item statements.
-        let mut found_non_item = false;
-        for statement in &block.stmts {
-            if let hir::StmtDecl(ref declaration, _) = statement.node {
-                if let hir::DeclItem(i) = declaration.node {
-                    let i = self.ast_map.expect_item(i.id);
-                    match i.node {
-                        ItemExternCrate(_) | ItemUse(_) if found_non_item => {
-                            span_err!(self.session,
-                                      i.span,
-                                      E0154,
-                                      "imports are not allowed after non-item statements");
-                        }
-                        _ => {}
-                    }
-                } else {
-                    found_non_item = true
-                }
-            } else {
-                found_non_item = true;
-            }
-        }
-
         // Descend into the block.
         intravisit::walk_block(self, block);
 

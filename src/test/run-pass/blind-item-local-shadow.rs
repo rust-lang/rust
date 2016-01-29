@@ -15,6 +15,5 @@ mod bar {
 fn main() {
     let foo = || false;
     use bar::foo;
-    //~^ ERROR imports are not allowed after non-item statements
     assert_eq!(foo(), false);
 }
