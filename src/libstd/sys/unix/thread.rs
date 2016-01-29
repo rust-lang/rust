@@ -15,7 +15,6 @@ use cmp;
 #[cfg(not(target_env = "newlib"))]
 use ffi::CString;
 use io;
-use libc::PTHREAD_STACK_MIN;
 use libc;
 use mem;
 use ptr;
@@ -339,14 +338,20 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     });
 
     match unsafe { __pthread_get_minstack } {
-        None => PTHREAD_STACK_MIN as usize,
+        None => libc::PTHREAD_STACK_MIN as usize,
         Some(f) => unsafe { f(attr) as usize },
     }
 }
 
 // No point in looking up __pthread_get_minstack() on non-glibc
 // platforms.
-#[cfg(not(target_os = "linux"))]
+#[cfg(all(not(target_os = "linux"),
+          not(target_os = "netbsd")))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    PTHREAD_STACK_MIN as usize
+    libc::PTHREAD_STACK_MIN as usize
+}
+
+#[cfg(target_os = "netbsd")]
+fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
+    2048 // just a guess
 }
