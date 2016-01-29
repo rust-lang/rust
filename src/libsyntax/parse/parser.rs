@@ -850,7 +850,7 @@ impl<'a> Parser<'a> {
                                   -> PResult<'a, Vec<T>> where
         F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
     {
-        let val = try!(self.parse_seq_to_before_end(ket, sep, f));
+        let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
         Ok(val)
     }
@@ -862,23 +862,37 @@ impl<'a> Parser<'a> {
                                          ket: &token::Token,
                                          sep: SeqSep,
                                          mut f: F)
-                                         -> PResult<'a, Vec<T>> where
-        F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
+                                         -> Vec<T>
+        where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
     {
         let mut first: bool = true;
         let mut v = vec!();
         while self.token != *ket {
             match sep.sep {
-              Some(ref t) => {
-                if first { first = false; }
-                else { try!(self.expect(t)); }
-              }
-              _ => ()
+                Some(ref t) => {
+                    if first {
+                        first = false;
+                    } else {
+                        if let Err(mut e) = self.expect(t) {
+                            e.emit();
+                            break;
+                        }
+                    }
+                }
+                _ => ()
             }
             if sep.trailing_sep_allowed && self.check(ket) { break; }
-            v.push(try!(f(self)));
+
+            match f(self) {
+                Ok(t) => v.push(t),
+                Err(mut e) => {
+                    e.emit();
+                    break;
+                }
+            }
         }
-        return Ok(v);
+
+        v
     }
 
     /// Parse a sequence, including the closing delimiter. The function
@@ -893,7 +907,7 @@ impl<'a> Parser<'a> {
         F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
     {
         try!(self.expect(bra));
-        let result = try!(self.parse_seq_to_before_end(ket, sep, f));
+        let result = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
         Ok(result)
     }
@@ -929,7 +943,7 @@ impl<'a> Parser<'a> {
     {
         let lo = self.span.lo;
         try!(self.expect(bra));
-        let result = try!(self.parse_seq_to_before_end(ket, sep, f));
+        let result = self.parse_seq_to_before_end(ket, sep, f);
         let hi = self.span.hi;
         self.bump();
         Ok(spanned(lo, hi, result))
@@ -2643,13 +2657,14 @@ impl<'a> Parser<'a> {
 
         match self.token {
             token::Eof => {
-                let open_braces = self.open_braces.clone();
                 let mut err: DiagnosticBuilder<'a> =
-                    self.fatal("this file contains an un-closed delimiter");
-                for sp in &open_braces {
+                    self.diagnostic().struct_span_err(self.span,
+                                                      "this file contains an un-closed delimiter");
+                for sp in &self.open_braces {
                     err.span_help(*sp, "did you mean to close this delimiter?");
                 }
-                return Err(err);
+
+                Err(err)
             },
             token::OpenDelim(delim) => {
                 // The span for beginning of the delimited section
@@ -2661,11 +2676,9 @@ impl<'a> Parser<'a> {
                 self.bump();
 
                 // Parse the token trees within the delimiters
-                let tts = try!(self.parse_seq_to_before_end(
-                    &token::CloseDelim(delim),
-                    seq_sep_none(),
-                    |p| p.parse_token_tree()
-                ));
+                let tts = self.parse_seq_to_before_end(&token::CloseDelim(delim),
+                                                       seq_sep_none(),
+                                                       |p| p.parse_token_tree());
 
                 // Parse the close delimiter.
                 let close_span = self.span;
@@ -2691,7 +2704,7 @@ impl<'a> Parser<'a> {
                 match self.token {
                     token::CloseDelim(_) => {
                         let token_str = self.this_token_to_string();
-                        let mut err = self.fatal(
+                        let mut err = self.diagnostic().struct_span_err(self.span,
                             &format!("incorrect close delimiter: `{}`", token_str));
                         // This is a conservative error: only report the last unclosed delimiter.
                         // The previous unclosed delimiters could actually be closed! The parser
@@ -4516,11 +4529,11 @@ impl<'a> Parser<'a> {
                 token::Comma => {
                     self.bump();
                     let sep = seq_sep_trailing_allowed(token::Comma);
-                    let mut fn_inputs = try!(self.parse_seq_to_before_end(
+                    let mut fn_inputs = self.parse_seq_to_before_end(
                         &token::CloseDelim(token::Paren),
                         sep,
                         parse_arg_fn
-                    ));
+                    );
                     fn_inputs.insert(0, Arg::new_self(explicit_self_sp, mutbl_self, $self_id));
                     fn_inputs
                 }
@@ -4539,8 +4552,7 @@ impl<'a> Parser<'a> {
         let fn_inputs = match explicit_self {
             SelfKind::Static =>  {
                 let sep = seq_sep_trailing_allowed(token::Comma);
-                try!(self.parse_seq_to_before_end(&token::CloseDelim(token::Paren),
-                                                  sep, parse_arg_fn))
+                self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)
             }
             SelfKind::Value(id) => parse_remaining_arguments!(id),
             SelfKind::Region(_,_,id) => parse_remaining_arguments!(id),
@@ -4571,11 +4583,11 @@ impl<'a> Parser<'a> {
             } else {
                 try!(self.expect(&token::BinOp(token::Or)));
                 try!(self.parse_obsolete_closure_kind());
-                let args = try!(self.parse_seq_to_before_end(
+                let args = self.parse_seq_to_before_end(
                     &token::BinOp(token::Or),
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_fn_block_arg()
-                ));
+                );
                 self.bump();
                 args
             }
