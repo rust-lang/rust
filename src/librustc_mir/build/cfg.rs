@@ -43,13 +43,6 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).statements.push(statement);
     }
 
-    pub fn push_drop(&mut self, block: BasicBlock, span: Span, lvalue: &Lvalue<'tcx>) {
-        self.push(block, Statement {
-            span: span,
-            kind: StatementKind::Drop(lvalue.clone())
-        });
-    }
-
     pub fn push_assign(&mut self,
                        block: BasicBlock,
                        span: Span,

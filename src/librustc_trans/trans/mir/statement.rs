@@ -10,8 +10,6 @@
 
 use rustc::mir::repr as mir;
 use trans::common::Block;
-use trans::debuginfo::DebugLoc;
-use trans::glue;
 
 use super::MirContext;
 use super::TempRef;
@@ -49,12 +47,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         self.trans_rvalue(bcx, tr_dest, rvalue)
                     }
                 }
-            }
-
-            mir::StatementKind::Drop(ref lvalue) => {
-                let tr_lvalue = self.trans_lvalue(bcx, lvalue);
-                let ty = tr_lvalue.ty.to_ty(bcx.tcx());
-                glue::drop_ty(bcx, tr_lvalue.llval, ty, DebugLoc::None)
             }
         }
     }
