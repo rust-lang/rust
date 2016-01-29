@@ -1046,8 +1046,8 @@ register_diagnostics! {
 //  E0153, unused error code
 //  E0157, unused error code
     E0254, // import conflicts with imported crate in this module
-    E0257,
-    E0258,
+//  E0257,
+//  E0258,
     E0402, // cannot use an outer type parameter in this context
     E0406, // undeclared associated type
     E0408, // variable from pattern #1 is not bound in pattern #
