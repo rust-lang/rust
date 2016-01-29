@@ -124,6 +124,7 @@
 
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(position)]
 
 #![cfg_attr(test, feature(test))]
 

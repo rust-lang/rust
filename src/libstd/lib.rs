@@ -268,6 +268,7 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
+#![feature(position)]
 
 // Don't link to std. We are std.
 #![no_std]

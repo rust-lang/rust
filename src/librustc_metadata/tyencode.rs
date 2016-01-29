@@ -69,7 +69,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         None => {}
     }
 
-    let pos = w.position();
+    let pos = w.position().unwrap();
 
     match t.sty {
         ty::TyBool => { write!(w, "b"); }
@@ -174,22 +174,23 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         }
     }
 
-    let end = w.position();
+    let end = w.position().unwrap();
     let len = end - pos;
 
     let mut abbrev = Cursor::new(Vec::with_capacity(16));
     abbrev.write_all(b"#");
     {
-        let start_position = abbrev.position() as usize;
+        let start_position = abbrev.position().unwrap() as usize;
         let bytes_written = leb128::write_unsigned_leb128(abbrev.get_mut(),
                                                           start_position,
                                                           pos);
         abbrev.set_position((start_position + bytes_written) as u64);
     }
 
+    let abbrev_pos = abbrev.position().unwrap();
     cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
-        s: if abbrev.position() < len {
-            abbrev.get_ref()[..abbrev.position() as usize].to_owned()
+        s: if abbrev_pos < len {
+            abbrev.get_ref()[..abbrev_pos as usize].to_owned()
         } else {
             // if the abbreviation is longer than the real type,
             // don't use #-notation. However, insert it here so
