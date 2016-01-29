@@ -273,7 +273,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     ));
                     let func = Constant {
                         span: item.1,
-                        ty: tcx.lookup_item_type(item.0).ty.subst(substs),
+                        ty: tcx.lookup_item_type(item.0).ty,
                         literal: Literal::Item {
                             def_id: item.0,
                             kind: ItemKind::Function,
@@ -285,10 +285,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     self.cfg.terminate(new_block, Terminator::Call {
                         func: Operand::Constant(func),
                         args: vec![Operand::Consume(lvalue.clone())],
-                        kind: CallKind::Converging {
-                            target: old_block,
-                            destination: unit_tmp.clone()
-                        }
+                        destination: Some((unit_tmp.clone(), old_block)),
+                        cleanup: None // we’re already doing divergence cleanups
                     });
                     terminator = Terminator::Goto { target: new_block };
                 }
@@ -383,10 +381,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.terminate(block, Terminator::Call {
             func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref), index, len],
-            kind: match cleanup {
-                None => CallKind::Diverging,
-                Some(c) => CallKind::DivergingCleanup(c)
-            }
+            destination: None,
+            cleanup: cleanup,
         });
     }
 
@@ -423,10 +419,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.terminate(block, Terminator::Call {
             func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref)],
-            kind: match cleanup {
-                None => CallKind::Diverging,
-                Some(c) => CallKind::DivergingCleanup(c)
-            }
+            cleanup: cleanup,
+            destination: None,
         });
     }
 

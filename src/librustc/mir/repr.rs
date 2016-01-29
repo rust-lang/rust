@@ -268,69 +268,11 @@ pub enum Terminator<'tcx> {
         func: Operand<'tcx>,
         /// Arguments the function is called with
         args: Vec<Operand<'tcx>>,
-        /// The kind of call with associated information
-        kind: CallKind<'tcx>,
+        /// Destination for the return value. If some, the call is converging.
+        destination: Option<(Lvalue<'tcx>, BasicBlock)>,
+        /// Cleanups to be done if the call unwinds.
+        cleanup: Option<BasicBlock>
     },
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum CallKind<'tcx> {
-    /// Diverging function without associated cleanup
-    Diverging,
-    /// Diverging function with associated cleanup
-    DivergingCleanup(BasicBlock),
-    /// Converging function without associated cleanup
-    Converging {
-        /// Destination where the call result is written
-        destination: Lvalue<'tcx>,
-        /// Block to branch into on successful return
-        target: BasicBlock,
-    },
-    ConvergingCleanup {
-        /// Destination where the call result is written
-        destination: Lvalue<'tcx>,
-        /// First target is branched to on successful return.
-        /// Second block contains the cleanups to do on unwind.
-        targets: (BasicBlock, BasicBlock)
-    }
-}
-
-impl<'tcx> CallKind<'tcx> {
-    pub fn successors(&self) -> &[BasicBlock] {
-        match *self {
-            CallKind::Diverging => &[],
-            CallKind::DivergingCleanup(ref b) |
-            CallKind::Converging { target: ref b, .. } => slice::ref_slice(b),
-            CallKind::ConvergingCleanup { ref targets, .. } => targets.as_slice(),
-        }
-    }
-
-    pub fn successors_mut(&mut self) -> &mut [BasicBlock] {
-        match *self {
-            CallKind::Diverging => &mut [],
-            CallKind::DivergingCleanup(ref mut b) |
-            CallKind::Converging { target: ref mut b, .. } => slice::mut_ref_slice(b),
-            CallKind::ConvergingCleanup { ref mut targets, .. } => targets.as_mut_slice(),
-        }
-    }
-
-    pub fn destination(&self) -> Option<&Lvalue<'tcx>> {
-        match *self {
-            CallKind::Converging { ref destination, .. } |
-            CallKind::ConvergingCleanup { ref destination, .. } => Some(destination),
-            CallKind::Diverging |
-            CallKind::DivergingCleanup(_) => None
-        }
-    }
-
-    pub fn destination_mut(&mut self) -> Option<&mut Lvalue<'tcx>> {
-        match *self {
-            CallKind::Converging { ref mut destination, .. } |
-            CallKind::ConvergingCleanup { ref mut destination, .. } => Some(destination),
-            CallKind::Diverging |
-            CallKind::DivergingCleanup(_) => None
-        }
-    }
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -343,7 +285,11 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
-            Call { ref kind, .. } => kind.successors()[..].into_cow(),
+            Call { destination: Some((_, t)), cleanup: Some(c), .. } => vec![t, c].into_cow(),
+            Call { destination: Some((_, ref t)), cleanup: None, .. } =>
+                slice::ref_slice(t).into_cow(),
+            Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
+            Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
         }
     }
 
@@ -358,7 +304,10 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
             Resume => Vec::new(),
             Return => Vec::new(),
-            Call { ref mut kind, .. } => kind.successors_mut().iter_mut().collect(),
+            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut c), .. } => vec![t, c],
+            Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
+            Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
+            Call { destination: None, cleanup: None, .. } => vec![],
         }
     }
 }
@@ -425,8 +374,8 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
-            Call { ref kind, ref func, ref args } => {
-                if let Some(destination) = kind.destination() {
+            Call { ref func, ref args, ref destination, .. } => {
+                if let Some((ref destination, _)) = *destination {
                     try!(write!(fmt, "{:?} = ", destination));
                 }
                 try!(write!(fmt, "{:?}(", func));
@@ -464,16 +413,11 @@ impl<'tcx> Terminator<'tcx> {
                       .chain(iter::once(String::from("otherwise").into()))
                       .collect()
             }
-            Call { ref kind, .. } => match *kind {
-                CallKind::Diverging =>
-                    vec![],
-                CallKind::DivergingCleanup(..) =>
-                    vec!["unwind".into_cow()],
-                CallKind::Converging { .. } =>
-                    vec!["return".into_cow()],
-                CallKind::ConvergingCleanup { .. } =>
-                    vec!["return".into_cow(), "unwind".into_cow()],
-            },
+            Call { destination: Some(_), cleanup: Some(_), .. } =>
+                vec!["return".into_cow(), "unwind".into_cow()],
+            Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
+            Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
+            Call { destination: None, cleanup: None, .. } => vec![],
         }
     }
 }
