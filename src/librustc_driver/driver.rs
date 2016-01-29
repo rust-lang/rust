@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::dep_graph::DepGraph;
 use rustc::front;
 use rustc::front::map as hir_map;
 use rustc_mir as mir;
@@ -115,9 +116,11 @@ pub fn compile_input(sess: &Session,
         let expanded_crate = assign_node_ids(sess, expanded_crate);
         // Lower ast -> hir.
         let lcx = LoweringContext::new(sess, Some(&expanded_crate));
+        let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
         let mut hir_forest = time(sess.time_passes(),
                                   "lowering ast -> hir",
-                                  || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate)));
+                                  || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate),
+                                                          dep_graph));
 
         // Discard MTWT tables that aren't required past lowering to HIR.
         if !sess.opts.debugging_opts.keep_mtwt_tables &&
@@ -130,17 +133,20 @@ pub fn compile_input(sess: &Session,
 
         write_out_deps(sess, &outputs, &id);
 
-        controller_entry_point!(after_write_deps,
-                                sess,
-                                CompileState::state_after_write_deps(input,
-                                                                     sess,
-                                                                     outdir,
-                                                                     &hir_map,
-                                                                     &expanded_crate,
-                                                                     &hir_map.krate(),
-                                                                     &id[..],
-                                                                     &lcx),
-                                Ok(()));
+        {
+            let _ignore = hir_map.dep_graph.in_ignore();
+            controller_entry_point!(after_write_deps,
+                                    sess,
+                                    CompileState::state_after_write_deps(input,
+                                                                         sess,
+                                                                         outdir,
+                                                                         &hir_map,
+                                                                         &expanded_crate,
+                                                                         &hir_map.krate(),
+                                                                         &id[..],
+                                                                         &lcx),
+                                    Ok(()));
+        }
 
         time(sess.time_passes(), "attribute checking", || {
             front::check_attr::check_crate(sess, &expanded_crate);
@@ -166,6 +172,9 @@ pub fn compile_input(sess: &Session,
                                               control.make_glob_map,
                                               |tcx, mir_map, analysis, result| {
             {
+                // Eventually, we will want to track plugins.
+                let _ignore = tcx.dep_graph.in_ignore();
+
                 let state = CompileState::state_after_analysis(input,
                                                                &tcx.sess,
                                                                outdir,
@@ -735,11 +744,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     }
 
     let time_passes = sess.time_passes();
-    let krate = hir_map.krate();
 
     time(time_passes,
          "external crate/lib resolution",
-         || LocalCrateReader::new(sess, cstore, &hir_map).read_crates(krate));
+         || LocalCrateReader::new(sess, cstore, &hir_map).read_crates());
 
     let lang_items = try!(time(time_passes, "language item collection", || {
         sess.track_errors(|| {
@@ -769,7 +777,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     let named_region_map = try!(time(time_passes,
                                      "lifetime resolution",
                                      || middle::resolve_lifetime::krate(sess,
-                                                                        krate,
+                                                                        &hir_map,
                                                                         &def_map.borrow())));
 
     time(time_passes,
@@ -777,20 +785,22 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
          || middle::entry::find_entry_point(sess, &hir_map));
 
     sess.plugin_registrar_fn.set(time(time_passes, "looking for plugin registrar", || {
-        plugin::build::find_plugin_registrar(sess.diagnostic(), krate)
+        plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
     }));
 
     let region_map = time(time_passes,
                           "region resolution",
-                          || middle::region::resolve_crate(sess, krate));
+                          || middle::region::resolve_crate(sess, &hir_map));
 
     time(time_passes,
          "loop checking",
-         || loops::check_crate(sess, krate));
+         || loops::check_crate(sess, &hir_map));
 
     try!(time(time_passes,
               "static item recursion checking",
-              || static_recursion::check_crate(sess, krate, &def_map.borrow(), &hir_map)));
+              || static_recursion::check_crate(sess, &def_map.borrow(), &hir_map)));
+
+    let index = stability::Index::new(&hir_map);
 
     ty::ctxt::create_and_enter(sess,
                                arenas,
@@ -800,7 +810,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                freevars,
                                region_map,
                                lang_items,
-                               stability::Index::new(krate),
+                               index,
                                |tcx| {
         // passes are timed inside typeck
         try_with_f!(typeck::check_crate(tcx, trait_map), (tcx, None, analysis));
@@ -818,7 +828,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         // Do not move this check past lint
         time(time_passes, "stability index", || {
-            tcx.stability.borrow_mut().build(tcx, krate, &analysis.access_levels)
+            tcx.stability.borrow_mut().build(tcx, &analysis.access_levels)
         });
 
         time(time_passes,

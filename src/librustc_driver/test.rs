@@ -11,6 +11,7 @@
 //! # Standalone Tests for the Inference Module
 
 use driver;
+use rustc::dep_graph::DepGraph;
 use rustc_lint;
 use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
@@ -118,17 +119,19 @@ fn test_env<F>(source_string: &str,
 
     let krate = driver::assign_node_ids(&sess, krate);
     let lcx = LoweringContext::new(&sess, Some(&krate));
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
+    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
     let arenas = ty::CtxtArenas::new();
     let ast_map = driver::make_map(&sess, &mut hir_forest);
-    let krate = ast_map.krate();
 
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(&sess, &ast_map);
     let resolve::CrateMap { def_map, freevars, .. } =
         resolve::resolve_crate(&sess, &ast_map, resolve::MakeGlobMap::No);
-    let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map.borrow());
-    let region_map = region::resolve_crate(&sess, krate);
+    let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &def_map.borrow());
+    let region_map = region::resolve_crate(&sess, &ast_map);
+    let index = stability::Index::new(&ast_map);
     ty::ctxt::create_and_enter(&sess,
                                &arenas,
                                def_map,
@@ -137,7 +140,7 @@ fn test_env<F>(source_string: &str,
                                freevars,
                                region_map,
                                lang_items,
-                               stability::Index::new(krate),
+                               index,
                                |tcx| {
                                    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
                                    body(Env { infcx: &infcx });
