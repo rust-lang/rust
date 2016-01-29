@@ -28,13 +28,13 @@ const CRATE_ROOT_DEF_ID: DefId = DefId {
     index: CRATE_DEF_INDEX,
 };
 
-pub struct Recorder {
+pub struct Recorder<'a> {
     // output file
-    pub out: Box<Write + 'static>,
+    pub out: &'a mut (Write + 'a),
     pub dump_spans: bool,
 }
 
-impl Recorder {
+impl<'a> Recorder<'a> {
     pub fn record(&mut self, info: &str) {
         match write!(self.out, "{}", info) {
             Err(_) => error!("Error writing output '{}'", info),
@@ -52,8 +52,8 @@ impl Recorder {
     }
 }
 
-pub struct FmtStrs<'a, 'tcx: 'a> {
-    pub recorder: Box<Recorder>,
+pub struct FmtStrs<'a, 'tcx: 'a, 'output> {
+    pub recorder: Box<Recorder<'output>>,
     span: SpanUtils<'a>,
     tcx: &'a ty::ctxt<'tcx>,
 }
@@ -98,11 +98,11 @@ pub enum Row {
     FnRef,
 }
 
-impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
-    pub fn new(rec: Box<Recorder>,
+impl<'a, 'tcx: 'a, 'r> FmtStrs<'a, 'tcx, 'r> {
+    pub fn new(rec: Box<Recorder<'r>>,
                span: SpanUtils<'a>,
                tcx: &'a ty::ctxt<'tcx>)
-               -> FmtStrs<'a, 'tcx> {
+               -> FmtStrs<'a, 'tcx, 'r> {
         FmtStrs {
             recorder: rec,
             span: span,

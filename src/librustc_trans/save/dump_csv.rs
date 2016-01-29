@@ -36,7 +36,7 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use middle::ty;
 
-use std::fs::File;
+use std::io::Write;
 
 use syntax::ast::{self, NodeId};
 use syntax::codemap::*;
@@ -60,24 +60,24 @@ macro_rules! down_cast_data {
     };
 }
 
-pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
+pub struct DumpCsvVisitor<'l, 'tcx: 'l, 'r> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
     tcx: &'l ty::ctxt<'tcx>,
     analysis: &'l ty::CrateAnalysis<'l>,
 
     span: SpanUtils<'l>,
-    fmt: FmtStrs<'l, 'tcx>,
+    fmt: FmtStrs<'l, 'tcx, 'r>,
 
     cur_scope: NodeId,
 }
 
-impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
+impl <'l, 'tcx, 'r> DumpCsvVisitor<'l, 'tcx, 'r> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
                lcx: &'l LoweringContext<'l>,
                analysis: &'l ty::CrateAnalysis<'l>,
-               output_file: Box<File>)
-               -> DumpCsvVisitor<'l, 'tcx> {
+               output: &'r mut (Write + 'r))
+               -> DumpCsvVisitor<'l, 'tcx, 'r> {
         let span_utils = SpanUtils::new(&tcx.sess);
         DumpCsvVisitor {
             sess: &tcx.sess,
@@ -86,7 +86,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             analysis: analysis,
             span: span_utils.clone(),
             fmt: FmtStrs::new(box Recorder {
-                                  out: output_file,
+                                  out: output,
                                   dump_spans: false,
                               },
                               span_utils,
@@ -96,7 +96,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn nest<F>(&mut self, scope_id: NodeId, f: F)
-        where F: FnOnce(&mut DumpCsvVisitor<'l, 'tcx>)
+        where F: FnOnce(&mut DumpCsvVisitor<'l, 'tcx, 'r>)
     {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
@@ -816,7 +816,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     }
 }
 
-impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
+impl<'l, 'tcx, 'v, 'r> Visitor<'v> for DumpCsvVisitor<'l, 'tcx, 'r> {
     fn visit_item(&mut self, item: &ast::Item) {
         match item.node {
             ast::ItemUse(ref use_item) => {
