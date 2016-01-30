@@ -65,13 +65,30 @@ enum RefLt {
     Static,
     Named(Name),
 }
-use self::RefLt::*;
+
+fn bound_lifetimes(bound: &TyParamBound) -> Option<HirVec<&Lifetime>> {
+    if let TraitTyParamBound(ref trait_ref, _) = *bound {
+        let lt = trait_ref.trait_ref.path.segments
+            .last().expect("a path must have at least one segment")
+            .parameters.lifetimes();
+
+        Some(lt)
+    } else {
+        None
+    }
+}
 
 fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, generics: &Generics, span: Span) {
     if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
-    if could_use_elision(cx, decl, slf, &generics.lifetimes) {
+
+    let bounds_lts =
+        generics.ty_params
+            .iter()
+            .flat_map(|ref typ| typ.bounds.iter().filter_map(bound_lifetimes).flat_map(|lts| lts));
+
+    if could_use_elision(cx, decl, slf, &generics.lifetimes, bounds_lts) {
         span_lint(cx,
                   NEEDLESS_LIFETIMES,
                   span,
@@ -80,7 +97,10 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, g
     report_extra_lifetimes(cx, decl, &generics, slf);
 }
 
-fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>, named_lts: &[LifetimeDef]) -> bool {
+fn could_use_elision<'a, T: Iterator<Item=&'a Lifetime>>(
+    cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
+    named_lts: &[LifetimeDef], bounds_lts: T
+) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT
@@ -112,7 +132,7 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
         output_visitor.visit_ty(ty);
     }
 
-    let input_lts = input_visitor.into_vec();
+    let input_lts = lts_from_bounds(input_visitor.into_vec(), bounds_lts);
     let output_lts = output_visitor.into_vec();
 
     // check for lifetimes from higher scopes
@@ -129,7 +149,7 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
         // no output lifetimes, check distinctness of input lifetimes
 
         // only unnamed and static, ok
-        if input_lts.iter().all(|lt| *lt == Unnamed || *lt == Static) {
+        if input_lts.iter().all(|lt| *lt == RefLt::Unnamed || *lt == RefLt::Static) {
             return false;
         }
         // we have no output reference, so we only need all distinct lifetimes
@@ -142,8 +162,8 @@ fn could_use_elision(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>
         }
         if input_lts.len() == 1 {
             match (&input_lts[0], &output_lts[0]) {
-                (&Named(n1), &Named(n2)) if n1 == n2 => true,
-                (&Named(_), &Unnamed) => true,
+                (&RefLt::Named(n1), &RefLt::Named(n2)) if n1 == n2 => true,
+                (&RefLt::Named(_), &RefLt::Unnamed) => true,
                 _ => false, // already elided, different named lifetimes
                 // or something static going on
             }
@@ -157,12 +177,22 @@ fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {
     let mut allowed_lts = HashSet::new();
     for lt in named_lts {
         if lt.bounds.is_empty() {
-            allowed_lts.insert(Named(lt.lifetime.name));
+            allowed_lts.insert(RefLt::Named(lt.lifetime.name));
         }
     }
-    allowed_lts.insert(Unnamed);
-    allowed_lts.insert(Static);
+    allowed_lts.insert(RefLt::Unnamed);
+    allowed_lts.insert(RefLt::Static);
     allowed_lts
+}
+
+fn lts_from_bounds<'a, T: Iterator<Item=&'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
+    for lt in bounds_lts {
+        if lt.name.as_str() != "'static" {
+            vec.push(RefLt::Named(lt.name));
+        }
+    }
+
+    vec
 }
 
 /// Number of unique lifetimes in the given vector.
@@ -170,9 +200,9 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
     lts.iter().collect::<HashSet<_>>().len()
 }
 
-/// A visitor usable for rustc_front::visit::walk_ty().
+/// A visitor usable for `rustc_front::visit::walk_ty()`.
 struct RefVisitor<'v, 't: 'v> {
-    cx: &'v LateContext<'v, 't>, // context reference
+    cx: &'v LateContext<'v, 't>,
     lts: Vec<RefLt>,
 }
 
@@ -187,12 +217,12 @@ impl<'v, 't> RefVisitor<'v, 't> {
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let Some(ref lt) = *lifetime {
             if lt.name.as_str() == "'static" {
-                self.lts.push(Static);
+                self.lts.push(RefLt::Static);
             } else {
-                self.lts.push(Named(lt.name));
+                self.lts.push(RefLt::Named(lt.name));
             }
         } else {
-            self.lts.push(Unnamed);
+            self.lts.push(RefLt::Unnamed);
         }
     }
 

@@ -14,7 +14,7 @@ use utils::{is_expn_of, match_path, snippet, span_lint_and_then};
 /// **Known problems:** None.
 ///
 /// **Example:**
-/// ```rust, ignore
+/// ```rust,ignore
 /// foo(&vec![1, 2])
 /// ```
 declare_lint! {

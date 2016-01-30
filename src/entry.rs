@@ -93,19 +93,19 @@ fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: 
         ], {
             let help = if sole_expr {
                 format!("{}.entry({}).or_insert({})",
-                        snippet(cx, map.span, ".."),
+                        snippet(cx, map.span, "map"),
                         snippet(cx, params[1].span, ".."),
                         snippet(cx, params[2].span, ".."))
             }
             else {
                 format!("{}.entry({})",
-                        snippet(cx, map.span, ".."),
+                        snippet(cx, map.span, "map"),
                         snippet(cx, params[1].span, ".."))
             };
 
             span_lint_and_then(cx, MAP_ENTRY, span,
                                &format!("usage of `contains_key` followed by `insert` on `{}`", kind), |db| {
-                db.span_suggestion(span, "Consider using", help.clone());
+                db.span_suggestion(span, "Consider using", help);
             });
         }
     }

@@ -5,9 +5,12 @@ use syntax::attr::*;
 use syntax::ast::*;
 use utils::in_macro;
 
-/// **What it does:** It `Warn`s on blocks where there are items that are declared in the middle of or after the statements
+/// **What it does:** It `Warn`s on blocks where there are items that are declared in the middle of
+/// or after the statements
 ///
-/// **Why is this bad?** Items live for the entire scope they are declared in. But statements are processed in order. This might cause confusion as it's hard to figure out which item is meant in a statement.
+/// **Why is this bad?** Items live for the entire scope they are declared in. But statements are
+/// processed in order. This might cause confusion as it's hard to figure out which item is meant
+/// in a statement.
 ///
 /// **Known problems:** None
 ///
@@ -23,6 +26,7 @@ use utils::in_macro;
 ///     }
 ///     foo(); // prints "foo"
 /// }
+/// ```
 declare_lint! { pub ITEMS_AFTER_STATEMENTS, Warn, "finds blocks where an item comes after a statement" }
 
 pub struct ItemsAfterStatemets;
