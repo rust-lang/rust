@@ -736,7 +736,7 @@ fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     debug_impl_exists
 }
 
-#[rustfmt_skip]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
     ("into_", &[SelfKind::Value]),
     ("to_", &[SelfKind::Ref]),
@@ -745,7 +745,7 @@ const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
     ("from_", &[SelfKind::No]),
 ];
 
-#[rustfmt_skip]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
     ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
     ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
