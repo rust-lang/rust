@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use utils::{get_parent_expr, is_exp_equal, span_lint};
+use utils::{get_parent_expr, in_macro, is_exp_equal, is_stmt_equal, over, span_lint, span_note_and_lint};
 
 /// **What it does:** This lint checks for consecutive `ifs` with the same condition. This lint is
 /// `Warn` by default.
@@ -16,33 +16,79 @@ declare_lint! {
     "consecutive `ifs` with the same condition"
 }
 
+/// **What it does:** This lint checks for `if/else` with the same body as the *then* part and the
+/// *else* part. This lint is `Warn` by default.
+///
+/// **Why is this bad?** This is probably a copy & paste error.
+///
+/// **Known problems:** Hopefully none.
+///
+/// **Example:** `if .. { 42 } else { 42 }`
+declare_lint! {
+    pub IF_SAME_THEN_ELSE,
+    Warn,
+    "if with the same *then* and *else* blocks"
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct CopyAndPaste;
 
 impl LintPass for CopyAndPaste {
     fn get_lints(&self) -> LintArray {
         lint_array![
-            IFS_SAME_COND
+            IFS_SAME_COND,
+            IF_SAME_THEN_ELSE
         ]
     }
 }
 
 impl LateLintPass for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        // skip ifs directly in else, it will be checked in the parent if
-        if let Some(&Expr{node: ExprIf(_, _, Some(ref else_expr)), ..}) = get_parent_expr(cx, expr) {
-            if else_expr.id == expr.id {
-                return;
-            }
+        if !in_macro(cx, expr.span) {
+            lint_same_then_else(cx, expr);
+            lint_same_cond(cx, expr);
         }
+    }
+}
 
-        let conds = condition_sequence(expr);
-
-        for (n, i) in conds.iter().enumerate() {
-            for j in conds.iter().skip(n+1) {
-                if is_exp_equal(cx, i, j) {
-                    span_lint(cx, IFS_SAME_COND, j.span, "this if as the same condition as a previous if");
+/// Implementation of `IF_SAME_THEN_ELSE`.
+fn lint_same_then_else(cx: &LateContext, expr: &Expr) {
+    if let ExprIf(_, ref then_block, Some(ref else_expr)) = expr.node {
+        let must_lint = if let ExprBlock(ref else_block) = else_expr.node {
+            over(&then_block.stmts, &else_block.stmts, |l, r| is_stmt_equal(cx, l, r)) &&
+                match (&then_block.expr, &else_block.expr) {
+                    (&Some(ref then_expr), &Some(ref else_expr)) => {
+                        is_exp_equal(cx, &then_expr, &else_expr)
+                    }
+                    (&None, &None) => true,
+                    _ => false,
                 }
+        }
+        else {
+            false
+        };
+
+        if must_lint {
+            span_lint(cx, IF_SAME_THEN_ELSE, expr.span, "this if has the same then and else blocks");
+        }
+    }
+}
+
+/// Implementation of `IFS_SAME_COND`.
+fn lint_same_cond(cx: &LateContext, expr: &Expr) {
+    // skip ifs directly in else, it will be checked in the parent if
+    if let Some(&Expr{node: ExprIf(_, _, Some(ref else_expr)), ..}) = get_parent_expr(cx, expr) {
+        if else_expr.id == expr.id {
+            return;
+        }
+    }
+
+    let conds = condition_sequence(expr);
+
+    for (n, i) in conds.iter().enumerate() {
+        for j in conds.iter().skip(n+1) {
+            if is_exp_equal(cx, i, j) {
+                span_note_and_lint(cx, IFS_SAME_COND, j.span, "this if has the same condition as a previous if", i.span, "same as this");
             }
         }
     }

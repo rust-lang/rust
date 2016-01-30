@@ -192,6 +192,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
+        copies::IF_SAME_THEN_ELSE,
         copies::IFS_SAME_COND,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_NOT_EQ,

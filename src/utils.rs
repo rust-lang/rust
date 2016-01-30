@@ -589,6 +589,14 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
     }
 }
 
+pub fn is_stmt_equal(cx: &LateContext, left: &Stmt, right: &Stmt) -> bool {
+    match (&left.node, &right.node) {
+        (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) => is_exp_equal(cx, l, r),
+        (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => is_exp_equal(cx, l, r),
+        _ => false,
+    }
+}
+
 pub fn is_exp_equal(cx: &LateContext, left: &Expr, right: &Expr) -> bool {
     if let (Some(l), Some(r)) = (constant(cx, left), constant(cx, right)) {
         if l == r {
@@ -649,7 +657,7 @@ fn is_qself_equal(left: &QSelf, right: &QSelf) -> bool {
     left.ty.node == right.ty.node && left.position == right.position
 }
 
-fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
+pub fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
     where F: FnMut(&X, &X) -> bool
 {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
