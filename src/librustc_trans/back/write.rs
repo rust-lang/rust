@@ -27,24 +27,16 @@ use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::ptr;
 use std::str;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread;
-use libc::{self, c_uint, c_int, c_void};
+use libc::{c_uint, c_int, c_void};
 
 pub fn llvm_err(handler: &errors::Handler, msg: String) -> ! {
-    unsafe {
-        let cstr = llvm::LLVMRustGetLastError();
-        if cstr == ptr::null() {
-            panic!(handler.fatal(&msg[..]));
-        } else {
-            let err = CStr::from_ptr(cstr).to_bytes();
-            let err = String::from_utf8_lossy(err).to_string();
-            libc::free(cstr as *mut _);
-            panic!(handler.fatal(&format!("{}: {}", &msg[..], &err[..])));
-        }
+    match llvm::last_error() {
+        Some(err) => panic!(handler.fatal(&format!("{}: {}", msg, err))),
+        None => panic!(handler.fatal(&msg)),
     }
 }
 

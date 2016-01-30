@@ -559,7 +559,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
             // NB: we must hit the discriminant first so that structural
             // comparison know not to proceed when the discriminants differ.
 
-            match adt::trans_switch(cx, &*repr, av) {
+            match adt::trans_switch(cx, &*repr, av, false) {
                 (_match::Single, None) => {
                     if n_variants != 0 {
                         assert!(n_variants == 1);
@@ -984,23 +984,11 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// currently uses SEH-ish unwinding with DWARF info tables to the side (same as
 /// 64-bit MinGW) instead of "full SEH".
 pub fn wants_msvc_seh(sess: &Session) -> bool {
-    sess.target.target.options.is_like_msvc && sess.target.target.arch == "x86"
+    sess.target.target.options.is_like_msvc
 }
 
 pub fn avoid_invoke(bcx: Block) -> bool {
-    // FIXME(#25869) currently SEH-based unwinding is pretty buggy in LLVM and
-    //               is being overhauled as this is being written. Until that
-    //               time such that upstream LLVM's implementation is more solid
-    //               and we start binding it we need to skip invokes for any
-    //               target which wants SEH-based unwinding.
-    if bcx.sess().no_landing_pads() || wants_msvc_seh(bcx.sess()) {
-        true
-    } else if bcx.is_lpad {
-        // Avoid using invoke if we are already inside a landing pad.
-        true
-    } else {
-        false
-    }
+    bcx.sess().no_landing_pads() || bcx.lpad.borrow().is_some()
 }
 
 pub fn need_invoke(bcx: Block) -> bool {
@@ -1148,10 +1136,9 @@ pub fn init_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, local: &hir::Local) -> Blo
 }
 
 pub fn raw_block<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
-                             is_lpad: bool,
                              llbb: BasicBlockRef)
                              -> Block<'blk, 'tcx> {
-    common::BlockS::new(llbb, is_lpad, None, fcx)
+    common::BlockS::new(llbb, None, fcx)
 }
 
 pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>, val: ValueRef, f: F) -> Block<'blk, 'tcx>
@@ -1324,7 +1311,7 @@ fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte:
     let volatile = C_bool(ccx, false);
     b.call(llintrinsicfn,
            &[llptr, llzeroval, size, align, volatile],
-           None);
+           None, None);
 }
 
 /// In general, when we create an scratch value in an alloca, the
@@ -1398,7 +1385,7 @@ pub fn alloca_dropped<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ty: Ty<'tcx>, name: &st
     // Block, which we do not have for `alloca_insert_pt`).
     core_lifetime_emit(cx.ccx(), p, Lifetime::Start, |ccx, size, lifetime_start| {
         let ptr = b.pointercast(p, Type::i8p(ccx));
-        b.call(lifetime_start, &[C_u64(ccx, size), ptr], None);
+        b.call(lifetime_start, &[C_u64(ccx, size), ptr], None, None);
     });
     memfill(&b, p, ty, adt::DTOR_DONE);
     p
@@ -1620,7 +1607,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         alloca_insert_pt: Cell::new(None),
         llreturn: Cell::new(None),
         needs_ret_allocas: nested_returns,
-        personality: Cell::new(None),
+        landingpad_alloca: Cell::new(None),
         caller_expects_out_pointer: uses_outptr,
         lllocals: RefCell::new(NodeMap()),
         llupvars: RefCell::new(NodeMap()),
@@ -1899,7 +1886,7 @@ pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
             if !last_bcx.terminated.get() {
                 Br(last_bcx, llreturn, DebugLoc::None);
             }
-            raw_block(fcx, false, llreturn)
+            raw_block(fcx, llreturn)
         }
         None => last_bcx,
     };
@@ -2713,11 +2700,12 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                 (rust_main, args)
             };
 
-            let result = llvm::LLVMBuildCall(bld,
-                                             start_fn,
-                                             args.as_ptr(),
-                                             args.len() as c_uint,
-                                             noname());
+            let result = llvm::LLVMRustBuildCall(bld,
+                                                 start_fn,
+                                                 args.as_ptr(),
+                                                 args.len() as c_uint,
+                                                 0 as *mut _,
+                                                 noname());
 
             llvm::LLVMBuildRet(bld, result);
         }

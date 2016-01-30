@@ -83,13 +83,13 @@ use sys_common::mutex::Mutex;
 // implementations. One goes through SEH on Windows and the other goes through
 // libgcc via the libunwind-like API.
 
-// i686-pc-windows-msvc
-#[cfg(all(windows, target_arch = "x86", target_env = "msvc"))]
+// *-pc-windows-msvc
+#[cfg(target_env = "msvc")]
 #[path = "seh.rs"] #[doc(hidden)]
 pub mod imp;
 
-// x86_64-pc-windows-*
-#[cfg(all(windows, target_arch = "x86_64"))]
+// x86_64-pc-windows-gnu
+#[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))]
 #[path = "seh64_gnu.rs"] #[doc(hidden)]
 pub mod imp;
 
@@ -122,45 +122,54 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     let mut f = Some(f);
     return inner_try(try_fn::<F>, &mut f as *mut _ as *mut u8);
 
-    // If an inner function were not used here, then this generic function `try`
-    // uses the native symbol `rust_try`, for which the code is statically
-    // linked into the standard library. This means that the DLL for the
-    // standard library must have `rust_try` as an exposed symbol that
-    // downstream crates can link against (because monomorphizations of `try` in
-    // downstream crates will have a reference to the `rust_try` symbol).
-    //
-    // On MSVC this requires the symbol `rust_try` to be tagged with
-    // `dllexport`, but it's easier to not have conditional `src/rt/rust_try.ll`
-    // files and instead just have this non-generic shim the compiler can take
-    // care of exposing correctly.
-    unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
-                        -> Result<(), Box<Any + Send>> {
-        PANIC_COUNT.with(|s| {
-            let prev = s.get();
-            s.set(0);
-            let ep = intrinsics::try(f, data);
-            s.set(prev);
-            if ep.is_null() {
-                Ok(())
-            } else {
-                Err(imp::cleanup(ep))
-            }
-        })
-    }
-
     fn try_fn<F: FnOnce()>(opt_closure: *mut u8) {
         let opt_closure = opt_closure as *mut Option<F>;
         unsafe { (*opt_closure).take().unwrap()(); }
     }
+}
 
-    extern {
-        // Rust's try-catch
-        // When f(...) returns normally, the return value is null.
-        // When f(...) throws, the return value is a pointer to the caught
-        // exception object.
-        fn rust_try(f: extern fn(*mut u8),
-                    data: *mut u8) -> *mut u8;
-    }
+#[cfg(not(stage0))]
+unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
+                    -> Result<(), Box<Any + Send>> {
+    PANIC_COUNT.with(|s| {
+        let prev = s.get();
+        s.set(0);
+
+        // The "payload" here is a platform-specific region of memory which is
+        // used to transmit information about the exception being thrown from
+        // the point-of-throw back to this location.
+        //
+        // A pointer to this data is passed to the `try` intrinsic itself,
+        // allowing this function, the `try` intrinsic, imp::payload(), and
+        // imp::cleanup() to all work in concert to transmit this information.
+        //
+        // More information about what this pointer actually is can be found in
+        // each implementation as well as browsing the compiler source itself.
+        let mut payload = imp::payload();
+        let r = intrinsics::try(f, data, &mut payload as *mut _ as *mut _);
+        s.set(prev);
+        if r == 0 {
+            Ok(())
+        } else {
+            Err(imp::cleanup(payload))
+        }
+    })
+}
+
+#[cfg(stage0)]
+unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
+                    -> Result<(), Box<Any + Send>> {
+    PANIC_COUNT.with(|s| {
+        let prev = s.get();
+        s.set(0);
+        let ep = intrinsics::try(f, data);
+        s.set(prev);
+        if ep.is_null() {
+            Ok(())
+        } else {
+            Err(imp::cleanup(ep))
+        }
+    })
 }
 
 /// Determines whether the current thread is unwinding because of panic.
