@@ -596,16 +596,38 @@ pub fn is_exp_equal(cx: &LateContext, left: &Expr, right: &Expr) -> bool {
         }
     }
     match (&left.node, &right.node) {
+        (&ExprAddrOf(ref lmut, ref le), &ExprAddrOf(ref rmut, ref re)) => {
+            lmut == rmut && is_exp_equal(cx, le, re)
+        }
+        (&ExprBinary(lop, ref ll, ref lr), &ExprBinary(rop, ref rl, ref rr)) => {
+            lop.node == rop.node && is_exp_equal(cx, ll, rl) && is_exp_equal(cx, lr, rr)
+        }
+        (&ExprCall(ref lfun, ref largs), &ExprCall(ref rfun, ref rargs)) => {
+            is_exp_equal(cx, lfun, rfun) && is_exps_equal(cx, largs, rargs)
+        }
+        (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => is_exp_equal(cx, lx, rx) && is_cast_ty_equal(lt, rt),
         (&ExprField(ref lfexp, ref lfident), &ExprField(ref rfexp, ref rfident)) => {
             lfident.node == rfident.node && is_exp_equal(cx, lfexp, rfexp)
         }
+        (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => {
+            is_exp_equal(cx, la, ra) && is_exp_equal(cx, li, ri)
+        }
         (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
+        (&ExprMethodCall(ref lname, ref ltys, ref largs), &ExprMethodCall(ref rname, ref rtys, ref rargs)) => {
+            // TODO: tys
+            lname.node == rname.node && ltys.is_empty() && rtys.is_empty() && is_exps_equal(cx, largs, rargs)
+        }
         (&ExprPath(ref lqself, ref lsubpath), &ExprPath(ref rqself, ref rsubpath)) => {
             both(lqself, rqself, is_qself_equal) && is_path_equal(lsubpath, rsubpath)
         }
         (&ExprTup(ref ltup), &ExprTup(ref rtup)) => is_exps_equal(cx, ltup, rtup),
+        (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => {
+            li.node == ri.node && is_exp_equal(cx, le, re)
+        }
+        (&ExprUnary(lop, ref le), &ExprUnary(rop, ref re)) => {
+            lop == rop && is_exp_equal(cx, le, re)
+        }
         (&ExprVec(ref l), &ExprVec(ref r)) => is_exps_equal(cx, l, r),
-        (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => is_exp_equal(cx, lx, rx) && is_cast_ty_equal(lt, rt),
         _ => false,
     }
 }
