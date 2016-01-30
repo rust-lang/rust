@@ -34,7 +34,7 @@ declare_lint!(pub BOXED_LOCAL, Warn, "using Box<T> where unnecessary");
 fn is_non_trait_box(ty: ty::Ty) -> bool {
     match ty.sty {
         ty::TyBox(ref inner) => !inner.is_trait(),
-        _ => false
+        _ => false,
     }
 }
 

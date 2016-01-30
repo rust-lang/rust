@@ -60,10 +60,10 @@ impl LateLintPass for AttrPass {
                         check_semver(cx, item.span, lit);
                     }
                 }
-            } 
+            }
         }
     }
-    
+
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if is_relevant_item(item) {
             check_attrs(cx, item.span, &item.name, &item.attrs)
@@ -164,7 +164,7 @@ fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
             return;
         }
     }
-    span_lint(cx, 
+    span_lint(cx,
               DEPRECATED_SEMVER,
               span,
               "the since field must contain a semver-compliant version");

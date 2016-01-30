@@ -68,9 +68,13 @@ enum RefLt {
 
 fn bound_lifetimes(bound: &TyParamBound) -> Option<HirVec<&Lifetime>> {
     if let TraitTyParamBound(ref trait_ref, _) = *bound {
-        let lt = trait_ref.trait_ref.path.segments
-            .last().expect("a path must have at least one segment")
-            .parameters.lifetimes();
+        let lt = trait_ref.trait_ref
+                          .path
+                          .segments
+                          .last()
+                          .expect("a path must have at least one segment")
+                          .parameters
+                          .lifetimes();
 
         Some(lt)
     } else {
@@ -83,10 +87,9 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, g
         return;
     }
 
-    let bounds_lts =
-        generics.ty_params
-            .iter()
-            .flat_map(|ref typ| typ.bounds.iter().filter_map(bound_lifetimes).flat_map(|lts| lts));
+    let bounds_lts = generics.ty_params
+                             .iter()
+                             .flat_map(|ref typ| typ.bounds.iter().filter_map(bound_lifetimes).flat_map(|lts| lts));
 
     if could_use_elision(cx, decl, slf, &generics.lifetimes, bounds_lts) {
         span_lint(cx,
@@ -97,10 +100,9 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, g
     report_extra_lifetimes(cx, decl, &generics, slf);
 }
 
-fn could_use_elision<'a, T: Iterator<Item=&'a Lifetime>>(
-    cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
-    named_lts: &[LifetimeDef], bounds_lts: T
-) -> bool {
+fn could_use_elision<'a, T: Iterator<Item = &'a Lifetime>>(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
+                                                           named_lts: &[LifetimeDef], bounds_lts: T)
+                                                           -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT
@@ -185,7 +187,7 @@ fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {
     allowed_lts
 }
 
-fn lts_from_bounds<'a, T: Iterator<Item=&'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
+fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
     for lt in bounds_lts {
         if lt.name.as_str() != "'static" {
             vec.push(RefLt::Named(lt.name));
@@ -332,8 +334,7 @@ impl<'v> Visitor<'v> for LifetimeChecker {
     }
 }
 
-fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl,
-                          generics: &Generics, slf: Option<&ExplicitSelf>) {
+fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics, slf: Option<&ExplicitSelf>) {
     let hs = generics.lifetimes
                      .iter()
                      .map(|lt| (lt.lifetime.name, lt.lifetime.span))

@@ -349,16 +349,18 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
 
         if name == "unwrap_or" {
             if let ExprPath(_, ref path) = fun.node {
-                let path : &str = &path.segments.last()
-                    .expect("A path must have at least one segment")
-                    .identifier.name.as_str();
+                let path: &str = &path.segments
+                                      .last()
+                                      .expect("A path must have at least one segment")
+                                      .identifier
+                                      .name
+                                      .as_str();
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tcx.expr_ty(arg);
                     let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &DEFAULT_TRAIT_PATH) {
                         default_trait_id
-                    }
-                    else {
+                    } else {
                         return false;
                     };
 
@@ -408,7 +410,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
             };
 
         if !poss.contains(&name) {
-            return
+            return;
         }
 
         let sugg = match (fn_has_arguments, !or_has_args) {
@@ -444,17 +446,20 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
     }
     let arg_ty = cx.tcx.expr_ty(&args[1]);
     if let Some((span, r)) = derefs_to_slice(cx, &args[1], &arg_ty) {
-        span_lint(cx, EXTEND_FROM_SLICE, expr.span,
+        span_lint(cx,
+                  EXTEND_FROM_SLICE,
+                  expr.span,
                   &format!("use of `extend` to extend a Vec by a slice"))
-            .span_suggestion(expr.span, "try this",
+            .span_suggestion(expr.span,
+                             "try this",
                              format!("{}.extend_from_slice({}{})",
                                      snippet(cx, args[0].span, "_"),
-                                     r, snippet(cx, span, "_")));
+                                     r,
+                                     snippet(cx, span, "_")));
     }
 }
 
-fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty)
-   -> Option<(Span, &'static str)> {
+fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> Option<(Span, &'static str)> {
     fn may_slice(cx: &LateContext, ty: &ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
@@ -462,12 +467,11 @@ fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty)
             ty::TyArray(_, size) => size < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
             ty::TyBox(ref inner) => may_slice(cx, inner),
-            _ => false
+            _ => false,
         }
     }
     if let ExprMethodCall(name, _, ref args) = expr.node {
-        if &name.node.as_str() == &"iter" &&
-               may_slice(cx, &cx.tcx.expr_ty(&args[0])) {
+        if &name.node.as_str() == &"iter" && may_slice(cx, &cx.tcx.expr_ty(&args[0])) {
             Some((args[0].span, "&"))
         } else {
             None
@@ -476,10 +480,14 @@ fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty)
         match ty.sty {
             ty::TySlice(_) => Some((expr.span, "")),
             ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
-            ty::TyBox(ref inner) => if may_slice(cx, inner) {
-                Some((expr.span, ""))
-            } else { None },
-            _ => None
+            ty::TyBox(ref inner) => {
+                if may_slice(cx, inner) {
+                    Some((expr.span, ""))
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }

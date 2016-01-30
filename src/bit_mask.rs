@@ -151,7 +151,6 @@ fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_, mask_value: 
                     } else if mask_value == 0 {
                         span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                     }
-
                 }
                 BiBitOr => {
                     if mask_value | cmp_value != cmp_value {
