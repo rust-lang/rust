@@ -718,6 +718,9 @@ pub fn is_exp_equal(cx: &LateContext, left: &Expr, right: &Expr, ignore_fn: bool
                 is_block_equal(cx, lt, rt, ignore_fn) &&
                 both(le, re, |l, r| is_exp_equal(cx, l, r, ignore_fn))
         }
+        (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => {
+            is_exp_equal(cx, la, ra) && is_exp_equal(cx, li, ri)
+        }
         (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
         (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
             ls == rs &&
