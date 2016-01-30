@@ -172,7 +172,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
     // disregard field privacy).
     __lock: &'a StaticMutex,
-    __data: &'a UnsafeCell<T>,
+    __data: &'a mut T,
     __poison: poison::Guard,
 }
 
@@ -212,7 +212,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
         unsafe { self.inner.lock.lock() }
-        MutexGuard::new(&*self.inner, &self.data)
+        unsafe { MutexGuard::new(&*self.inner, &self.data) }
     }
 
     /// Attempts to acquire this lock.
@@ -231,7 +231,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
         if unsafe { self.inner.lock.try_lock() } {
-            Ok(try!(MutexGuard::new(&*self.inner, &self.data)))
+            Ok(try!(unsafe { MutexGuard::new(&*self.inner, &self.data) }))
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -339,14 +339,14 @@ impl StaticMutex {
     #[inline]
     pub fn lock(&'static self) -> LockResult<MutexGuard<()>> {
         unsafe { self.lock.lock() }
-        MutexGuard::new(self, &DUMMY.0)
+        unsafe { MutexGuard::new(self, &DUMMY.0) }
     }
 
     /// Attempts to grab this lock, see `Mutex::try_lock`
     #[inline]
     pub fn try_lock(&'static self) -> TryLockResult<MutexGuard<()>> {
         if unsafe { self.lock.try_lock() } {
-            Ok(try!(MutexGuard::new(self, &DUMMY.0)))
+            Ok(try!(unsafe { MutexGuard::new(self, &DUMMY.0) }))
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -369,12 +369,12 @@ impl StaticMutex {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
 
-    fn new(lock: &'mutex StaticMutex, data: &'mutex UnsafeCell<T>)
+    unsafe fn new(lock: &'mutex StaticMutex, data: &'mutex UnsafeCell<T>)
            -> LockResult<MutexGuard<'mutex, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             MutexGuard {
                 __lock: lock,
-                __data: data,
+                __data: &mut *data.get(),
                 __poison: guard,
             }
         })
@@ -385,7 +385,10 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     /// Applies the supplied closure to the data, returning a new lock
     /// guard referencing the borrow returned by the closure.
     ///
+    /// # Examples
+    ///
     /// ```rust
+    /// # #![feature(guard_map)]
     /// # use std::sync::{Mutex, MutexGuard};
     /// let x = Mutex::new(vec![1, 2]);
     ///
@@ -401,13 +404,15 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
                issue = "0")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> MutexGuard<'mutex, U>
     where F: FnOnce(&'mutex mut T) -> &'mutex mut U {
-        let new_data = unsafe {
-            let data = cb(&mut *this.__data.get());
-            mem::transmute::<&'mutex mut U, &'mutex UnsafeCell<U>>(data)
-        };
+        // Compute the new data while still owning the original lock
+        // in order to correctly poison if the callback panics.
+        let data = unsafe { ptr::read(&this.__data) };
+        let new_data = cb(data);
 
-        let lock = unsafe { ptr::read(&this.__lock) };
+        // We don't want to unlock the lock by running the destructor of the
+        // original lock, so just read the fields we need and forget it.
         let poison = unsafe { ptr::read(&this.__poison) };
+        let lock = unsafe { ptr::read(&this.__lock) };
         mem::forget(this);
 
         MutexGuard {
@@ -422,16 +427,12 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
 impl<'mutex, T: ?Sized> Deref for MutexGuard<'mutex, T> {
     type Target = T;
 
-    fn deref(&self) -> &T {
-        unsafe { &*self.__data.get() }
-    }
+    fn deref(&self) -> &T {self.__data }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'mutex, T: ?Sized> DerefMut for MutexGuard<'mutex, T> {
-    fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.__data.get() }
-    }
+    fn deref_mut(&mut self) -> &mut T { self.__data }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
