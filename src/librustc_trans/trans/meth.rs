@@ -33,7 +33,8 @@ use trans::glue;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty::{self, Ty, TyCtxt};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use middle::ty::MethodCall;
 
 use syntax::ast::{self, Name};
 use syntax::attr;

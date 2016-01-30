@@ -10,9 +10,10 @@
 
 use dep_graph::DepNode;
 use middle::def_id::DefId;
+use middle::traits;
 use middle::ty;
 use middle::ty::fast_reject;
-use middle::ty::{Ty, TyCtxt};
+use middle::ty::{Ty, TyCtxt, TraitRef};
 use std::borrow::{Borrow};
 use std::cell::{Cell, Ref, RefCell};
 use syntax::ast::Name;
@@ -127,6 +128,12 @@ impl<'tcx> TraitDef<'tcx> {
                    impl_trait_ref: TraitRef<'tcx>) -> bool {
         debug!("TraitDef::record_impl for {:?}, from {:?}",
                self, impl_trait_ref);
+
+        // Record the write into the impl set, but only for local
+        // impls: external impls are handled differently.
+        if impl_def_id.is_local() {
+            self.write_trait_impls(tcx);
+        }
 
         // We don't want to borrow_mut after we already populated all impls,
         // so check if an impl is present with an immutable borrow first.

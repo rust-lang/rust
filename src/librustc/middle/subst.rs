@@ -162,9 +162,9 @@ impl<'tcx> Substs<'tcx> {
 
     pub fn with_method_from_subst(self, other: &Substs<'tcx>) -> Substs<'tcx> {
         let Substs { types, regions } = self;
-        let types = types.with_vec(FnSpace, other.types.get_slice(FnSpace).to_vec());
+        let types = types.with_slice(FnSpace, other.types.get_slice(FnSpace));
         let regions = regions.map(|r| {
-            r.with_vec(FnSpace, other.regions().get_slice(FnSpace).to_vec())
+            r.with_slice(FnSpace, other.regions().get_slice(FnSpace))
         });
         Substs { types: types, regions: regions }
     }
