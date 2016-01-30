@@ -2774,9 +2774,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        // Check the items.
+        let module = self.current_module;
         let name = identifier.unhygienic_name;
-        self.resolve_item_by_name_in_lexical_scope(name, namespace, record_used)
-            .map(LocalDef::from_def)
+        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
+            Success((target, _)) => target.binding.def().map(LocalDef::from_def),
+            Failed(Some((span, msg))) => {
+                resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                None
+            }
+            _ => None,
+        }
     }
 
     // Resolve a local definition, potentially adjusting for closures.
@@ -3018,49 +3026,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         None
-    }
-
-    fn resolve_item_by_name_in_lexical_scope(&mut self,
-                                             name: Name,
-                                             namespace: Namespace,
-                                             record_used: bool)
-                                             -> Option<Def> {
-        // Check the items.
-        let module = self.current_module;
-        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
-            Success((target, _)) => {
-                match target.binding.def() {
-                    None => {
-                        // This can happen if we were looking for a type and
-                        // found a module instead. Modules don't have defs.
-                        debug!("(resolving item path by identifier in lexical scope) failed to \
-                                resolve {} after success...",
-                               name);
-                        None
-                    }
-                    Some(def) => {
-                        debug!("(resolving item path in lexical scope) resolved `{}` to item",
-                               name);
-                        // This lookup is "all public" because it only searched
-                        // for one identifier in the current module (couldn't
-                        // have passed through reexports or anything like that.
-                        Some(def)
-                    }
-                }
-            }
-            Indeterminate => None,
-            Failed(err) => {
-                debug!("(resolving item path by identifier in lexical scope) failed to \
-                        resolve `{}`",
-                       name);
-
-                if let Some((span, msg)) = err {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&*msg))
-                }
-
-                None
-            }
-        }
     }
 
     fn with_no_errors<T, F>(&mut self, f: F) -> T
