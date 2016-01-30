@@ -153,8 +153,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // If we see a const here, that's because it evaluates to a type with zero size. We
             // should be able to just discard it, since const expressions are guaranteed not to
             // have side effects. This seems to be reached through tuple struct constructors being
-            // passed repeat array constructors with zero-size constants as the expression to be
-            // repeated.
+            // passed zero-size constants.
             if let hir::ExprPath(..) = expr.node {
                 match bcx.def(expr.id) {
                     Def::Const(_) | Def::AssociatedConst(_) => {
