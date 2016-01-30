@@ -9,7 +9,7 @@ and documentation.
 
 Read ["Installing Rust"] from [The Book].
 
-["Installing Rust"]: https://doc.rust-lang.org/book/installing-rust.html
+["Installing Rust"]: https://doc.rust-lang.org/book/getting-started.html#installing-rust
 [The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Building from Source

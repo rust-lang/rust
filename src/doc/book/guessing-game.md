@@ -279,7 +279,7 @@ displaying the message.
 [expect]: ../std/option/enum.Option.html#method.expect
 [panic]: error-handling.html
 
-If we leave off calling these two methods, our program will compile, but
+If we leave off calling this method, our program will compile, but
 we’ll get a warning:
 
 ```bash
@@ -680,7 +680,7 @@ fn main() {
 }
 ```
 
-The new three lines:
+The new two lines:
 
 ```rust,ignore
     let guess: u32 = guess.trim().parse()
