@@ -819,7 +819,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             Some(def) => Export { name: name, def_id: def.def_id() },
             None => return,
         };
-        self.resolver.export_map.entry(node_id).or_insert(Vec::new()).push(export);
+        self.resolver.export_map.entry(node_id).or_insert(Default::default()).insert(export);
     }
 
     /// Checks that imported names and items don't have the same name.
