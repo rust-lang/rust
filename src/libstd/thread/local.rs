@@ -56,6 +56,26 @@ use mem;
 ///     assert_eq!(*f.borrow(), 2);
 /// });
 /// ```
+///
+/// # Platform-specific behavior
+///
+/// Note that a "best effort" is made to ensure that destructors for types
+/// stored in thread local storage are run, but not all platforms can gurantee
+/// that destructors will be run for all types in thread local storage. For
+/// example, there are a number of known caveats where destructors are not run:
+///
+/// 1. On Unix systems when pthread-based TLS is being used, destructors will
+///    not be run for TLS values on the main thread when it exits. Note that the
+///    application will exit immediately after the main thread exits as well.
+/// 2. On all platforms it's possible for TLS to re-initialize other TLS slots
+///    during destruction. Some platforms ensure that this cannot happen
+///    infinitely by preventing re-initialization of any slot that has been
+///    destroyed, but not all platforms have this guard. Those platforms that do
+///    not guard typically have a synthetic limit after which point no more
+///    destructors are run.
+/// 3. On OSX, initializing TLS during destruction of other TLS slots can
+///    sometimes cancel *all* destructors for the current thread, whether or not
+///    the slots have already had their destructors run or not.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
     // This outer `LocalKey<T>` type is what's going to be stored in statics,
@@ -602,7 +622,12 @@ mod tests {
         }).join().ok().unwrap();
     }
 
+    // Note that this test will deadlock if TLS destructors aren't run (this
+    // requires the destructor to be run to pass the test). OSX has a known bug
+    // where dtors-in-dtors may cancel other destructors, so we just ignore this
+    // test on OSX.
     #[test]
+    #[cfg_attr(target_os = "macos", ignore)]
     fn dtors_in_dtors_in_dtors() {
         struct S1(Sender<()>);
         thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
