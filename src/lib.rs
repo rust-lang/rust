@@ -194,6 +194,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::EMPTY_LOOP,
         loops::EXPLICIT_COUNTER_LOOP,
         loops::EXPLICIT_ITER_LOOP,
+        loops::FOR_LOOP_OVER_OPTION,
+        loops::FOR_LOOP_OVER_RESULT,
         loops::ITER_NEXT_LOOP,
         loops::NEEDLESS_RANGE_LOOP,
         loops::REVERSE_RANGE_LOOP,

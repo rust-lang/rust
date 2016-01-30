@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 102 lints included in this crate:
+There are 104 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -37,6 +37,8 @@ name                                                                            
 [extend_from_slice](https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice)                         | warn    | `.extend_from_slice(_)` is a faster way to extend a Vec by a slice
 [filter_next](https://github.com/Manishearth/rust-clippy/wiki#filter_next)                                     | warn    | using `filter(p).next()`, which is more succinctly expressed as `.find(p)`
 [float_cmp](https://github.com/Manishearth/rust-clippy/wiki#float_cmp)                                         | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
+[for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                   | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
+[for_loop_over_result](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result)                   | warn    | for-looping over a `Result`, which is more clearly expressed as an `if let`
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                     | warn    | using identity operations, e.g. `x + 0` or `y / 1`
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                   | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                 | warn    | `#[inline(always)]` is a bad idea in most cases
