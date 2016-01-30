@@ -13,10 +13,9 @@ use self::ImportDirectiveSubclass::*;
 use DefModifiers;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
-use {NameBindings, NameBinding};
-use NamespaceResult::{BoundResult, UnboundResult, UnknownResult};
-use NamespaceResult;
+use NameBinding;
 use ResolveResult;
+use ResolveResult::*;
 use Resolver;
 use UseLexicalScopeFlag;
 use {names_to_string, module_to_string};
@@ -100,26 +99,20 @@ impl<'a> Target<'a> {
 }
 
 #[derive(Debug)]
-/// An ImportResolutionPerNamespace records what we know about an imported name.
+/// An ImportResolution records what we know about an imported name in a given namespace.
 /// More specifically, it records the number of unresolved `use` directives that import the name,
-/// and for each namespace, it records the `use` directive importing the name in the namespace
-/// and the `Target` to which the name in the namespace resolves (if applicable).
+/// the `use` directive importing the name in the namespace, and the `NameBinding` to which the
+/// name in the namespace resolves (if applicable).
 /// Different `use` directives may import the same name in different namespaces.
-pub struct ImportResolutionPerNamespace<'a> {
+pub struct ImportResolution<'a> {
     // When outstanding_references reaches zero, outside modules can count on the targets being
     // correct. Before then, all bets are off; future `use` directives could override the name.
     // Since shadowing is forbidden, the only way outstanding_references > 1 in a legal program
     // is if the name is imported by exactly two `use` directives, one of which resolves to a
     // value and the other of which resolves to a type.
     pub outstanding_references: usize,
-    pub type_ns: ImportResolution<'a>,
-    pub value_ns: ImportResolution<'a>,
-}
 
-/// Records what we know about an imported name in a namespace (see `ImportResolutionPerNamespace`).
-#[derive(Clone,Debug)]
-pub struct ImportResolution<'a> {
-    /// Whether the name in the namespace was imported with a `use` or a `pub use`.
+    /// Whether this resolution came from a `use` or a `pub use`.
     pub is_public: bool,
 
     /// Resolution of the name in the namespace
@@ -129,29 +122,18 @@ pub struct ImportResolution<'a> {
     pub id: NodeId,
 }
 
-impl<'a> ::std::ops::Index<Namespace> for ImportResolutionPerNamespace<'a> {
-    type Output = ImportResolution<'a>;
-    fn index(&self, ns: Namespace) -> &ImportResolution<'a> {
-        match ns { TypeNS => &self.type_ns, ValueNS => &self.value_ns }
-    }
-}
-
-impl<'a> ::std::ops::IndexMut<Namespace> for ImportResolutionPerNamespace<'a> {
-    fn index_mut(&mut self, ns: Namespace) -> &mut ImportResolution<'a> {
-        match ns { TypeNS => &mut self.type_ns, ValueNS => &mut self.value_ns }
-    }
-}
-
-impl<'a> ImportResolutionPerNamespace<'a> {
+impl<'a> ImportResolution<'a> {
     pub fn new(id: NodeId, is_public: bool) -> Self {
-        let resolution = ImportResolution { id: id, is_public: is_public, target: None };
-        ImportResolutionPerNamespace {
-            outstanding_references: 0, type_ns: resolution.clone(), value_ns: resolution,
+        ImportResolution {
+            outstanding_references: 0,
+            id: id,
+            target: None,
+            is_public: is_public,
         }
     }
 
-    pub fn shadowable(&self, namespace: Namespace) -> Shadowable {
-        match self[namespace].target {
+    pub fn shadowable(&self) -> Shadowable {
+        match self.target {
             Some(ref target) => target.shadowable,
             None => Shadowable::Always,
         }
@@ -232,7 +214,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
         for (_, child_node) in module_.children.borrow().iter() {
-            match child_node.type_ns.module() {
+            match child_node.module() {
                 None => {
                     // Nothing to do.
                 }
@@ -393,6 +375,80 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         return resolution_result;
     }
 
+    /// Resolves the name in the namespace of the module because it is being imported by
+    /// importing_module. Returns the module in which the name was defined (as opposed to imported),
+    /// the name bindings defining the name, and whether or not the name was imported into `module`.
+    fn resolve_name_in_module(&mut self,
+                              module: Module<'b>, // Module containing the name
+                              name: Name,
+                              ns: Namespace,
+                              importing_module: Module<'b>) // Module importing the name
+                              -> (ResolveResult<(Module<'b>, NameBinding<'b>)>, bool) {
+        build_reduced_graph::populate_module_if_necessary(self.resolver, module);
+        if let Some(name_binding) = module.get_child(name, ns) {
+            return (Success((module, name_binding)), false);
+        }
+
+        if ns == TypeNS {
+            if let Some(extern_crate) = module.external_module_children.borrow().get(&name) {
+                // track the extern crate as used.
+                if let Some(DefId{ krate: kid, .. }) = extern_crate.def_id() {
+                    self.resolver.used_crates.insert(kid);
+                }
+                let name_binding = NameBinding::create_from_module(extern_crate, None);
+                return (Success((module, name_binding)), false);
+            }
+        }
+
+        // If there is an unresolved glob at this point in the containing module, bail out.
+        // We don't know enough to be able to resolve the name.
+        if module.pub_glob_count.get() > 0 {
+            return (Indeterminate, false);
+        }
+
+        match module.import_resolutions.borrow().get(&(name, ns)) {
+            // The containing module definitely doesn't have an exported import with the
+            // name in question. We can therefore accurately report that names are unbound.
+            None => (Failed(None), false),
+
+            // The name is an import which has been fully resolved, so we just follow it.
+            Some(resolution) if resolution.outstanding_references == 0 => {
+                // Import resolutions must be declared with "pub" in order to be exported.
+                if !resolution.is_public {
+                    return (Failed(None), false);
+                }
+
+                let target = resolution.target.clone();
+                if let Some(Target { target_module, binding, shadowable: _ }) = target {
+                    // track used imports and extern crates as well
+                    self.resolver.used_imports.insert((resolution.id, ns));
+                    self.resolver.record_import_use(resolution.id, name);
+                    if let Some(DefId { krate, .. }) = target_module.def_id() {
+                        self.resolver.used_crates.insert(krate);
+                    }
+                    (Success((target_module, binding)), true)
+                } else {
+                    (Failed(None), false)
+                }
+            }
+
+            // If module is the same module whose import we are resolving and
+            // it has an unresolved import with the same name as `name`, then the user
+            // is actually trying to import an item that is declared in the same scope
+            //
+            // e.g
+            // use self::submodule;
+            // pub mod submodule;
+            //
+            // In this case we continue as if we resolved the import and let
+            // check_for_conflicts_between_imports_and_items handle the conflict
+            Some(_) => match (importing_module.def_id(), module.def_id()) {
+                (Some(id1), Some(id2)) if id1 == id2 => (Failed(None), false),
+                _ => (Indeterminate, false)
+            },
+        }
+    }
+
     fn resolve_single_import(&mut self,
                              module_: Module<'b>,
                              target_module: Module<'b>,
@@ -420,253 +476,86 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         };
 
         // We need to resolve both namespaces for this to succeed.
+        let (value_result, value_used_reexport) =
+            self.resolve_name_in_module(&target_module, source, ValueNS, module_);
+        let (type_result, type_used_reexport) =
+            self.resolve_name_in_module(&target_module, source, TypeNS, module_);
 
-        let mut value_result = UnknownResult;
-        let mut type_result = UnknownResult;
-        let mut lev_suggestion = "".to_owned();
+        match (&value_result, &type_result) {
+            (&Success((_, ref name_binding)), _) if !value_used_reexport &&
+                                                    directive.is_public &&
+                                                    !name_binding.is_public() => {
+                let msg = format!("`{}` is private, and cannot be reexported", source);
+                let note_msg = format!("Consider marking `{}` as `pub` in the imported module",
+                                        source);
+                struct_span_err!(self.resolver.session, directive.span, E0364, "{}", &msg)
+                    .span_note(directive.span, &note_msg)
+                    .emit();
+            }
 
-        // Search for direct children of the containing module.
-        build_reduced_graph::populate_module_if_necessary(self.resolver, &target_module);
-
-        match target_module.children.borrow().get(&source) {
-            None => {
-                let names = target_module.children.borrow();
-                if let Some(name) = find_best_match_for_name(names.keys(),
-                                                             &source.as_str(),
-                                                             None) {
-                    lev_suggestion = format!(". Did you mean to use `{}`?", name);
+            (_, &Success((_, ref name_binding))) if !type_used_reexport &&
+                                                    directive.is_public => {
+                if !name_binding.is_public() {
+                    let msg = format!("`{}` is private, and cannot be reexported", source);
+                    let note_msg =
+                        format!("Consider declaring type or module `{}` with `pub`", source);
+                    struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
+                        .span_note(directive.span, &note_msg)
+                        .emit();
+                } else if name_binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
+                    let msg = format!("variant `{}` is private, and cannot be reexported \
+                                       (error E0364), consider declaring its enum as `pub`",
+                                       source);
+                    self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                   directive.id,
+                                                   directive.span,
+                                                   msg);
                 }
             }
-            Some(ref child_name_bindings) => {
-                // pub_err makes sure we don't give the same error twice.
-                let mut pub_err = false;
-                if child_name_bindings.value_ns.defined() {
-                    debug!("(resolving single import) found value binding");
-                    value_result = BoundResult(target_module,
-                                               child_name_bindings.value_ns.clone());
-                    if directive.is_public && !child_name_bindings.value_ns.is_public() {
-                        let msg = format!("`{}` is private, and cannot be reexported", source);
-                        let note_msg = format!("Consider marking `{}` as `pub` in the imported \
-                                                module",
-                                               source);
-                        struct_span_err!(self.resolver.session, directive.span, E0364, "{}", &msg)
-                            .span_note(directive.span, &note_msg)
-                            .emit();
-                        pub_err = true;
-                    }
-                    if directive.is_public && child_name_bindings.value_ns.
-                                              defined_with(DefModifiers::PRIVATE_VARIANT) {
-                        let msg = format!("variant `{}` is private, and cannot be reexported ( \
-                                           error E0364), consider declaring its enum as `pub`",
-                                           source);
-                        self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                                       directive.id,
-                                                       directive.span,
-                                                       msg);
-                        pub_err = true;
-                    }
-                }
-                if child_name_bindings.type_ns.defined() {
-                    debug!("(resolving single import) found type binding");
-                    type_result = BoundResult(target_module,
-                                              child_name_bindings.type_ns.clone());
-                    if !pub_err && directive.is_public &&
-                       !child_name_bindings.type_ns.is_public() {
-                        let msg = format!("`{}` is private, and cannot be reexported", source);
-                        let note_msg = format!("Consider declaring module `{}` as a `pub mod`",
-                                               source);
-                        struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
-                            .span_note(directive.span, &note_msg)
-                            .emit();
-                    }
-                    if !pub_err && directive.is_public && child_name_bindings.type_ns.
-                                                    defined_with(DefModifiers::PRIVATE_VARIANT) {
-                        let msg = format!("variant `{}` is private, and cannot be reexported ( \
-                                           error E0365), consider declaring its enum as `pub`",
-                                           source);
-                        self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                                       directive.id,
-                                                       directive.span,
-                                                       msg);
-                    }
-                }
-            }
+
+            _ => {}
         }
 
-        // Unless we managed to find a result in both namespaces (unlikely),
-        // search imports as well.
-        let mut value_used_reexport = false;
-        let mut type_used_reexport = false;
-        match (value_result.clone(), type_result.clone()) {
-            (BoundResult(..), BoundResult(..)) => {} // Continue.
-            _ => {
-                // If there is an unresolved glob at this point in the
-                // containing module, bail out. We don't know enough to be
-                // able to resolve this import.
-
-                if target_module.pub_glob_count.get() > 0 {
-                    debug!("(resolving single import) unresolved pub glob; bailing out");
-                    return ResolveResult::Indeterminate;
-                }
-
-                // Now search the exported imports within the containing module.
-                match target_module.import_resolutions.borrow().get(&source) {
-                    None => {
-                        debug!("(resolving single import) no import");
-                        // The containing module definitely doesn't have an
-                        // exported import with the name in question. We can
-                        // therefore accurately report that the names are
-                        // unbound.
-
-                        if lev_suggestion.is_empty() {  // skip if we already have a suggestion
-                            let names = target_module.import_resolutions.borrow();
-                            if let Some(name) = find_best_match_for_name(names.keys(),
-                                                                         &source.as_str(),
-                                                                         None) {
-                                lev_suggestion =
-                                    format!(". Did you mean to use the re-exported import `{}`?",
-                                            name);
-                            }
-                        }
-
-                        if value_result.is_unknown() {
-                            value_result = UnboundResult;
-                        }
-                        if type_result.is_unknown() {
-                            type_result = UnboundResult;
-                        }
-                    }
-                    Some(import_resolution) if import_resolution.outstanding_references == 0 => {
-
-                        fn get_binding<'a>(this: &mut Resolver,
-                                           import_resolution: &ImportResolutionPerNamespace<'a>,
-                                           namespace: Namespace,
-                                           source: Name)
-                                           -> NamespaceResult<'a> {
-
-                            // Import resolutions must be declared with "pub"
-                            // in order to be exported.
-                            if !import_resolution[namespace].is_public {
-                                return UnboundResult;
-                            }
-
-                            match import_resolution[namespace].target.clone() {
-                                None => {
-                                    return UnboundResult;
-                                }
-                                Some(Target {
-                                    target_module,
-                                    binding,
-                                    shadowable: _
-                                }) => {
-                                    debug!("(resolving single import) found import in ns {:?}",
-                                           namespace);
-                                    let id = import_resolution[namespace].id;
-                                    // track used imports and extern crates as well
-                                    this.used_imports.insert((id, namespace));
-                                    this.record_import_use(id, source);
-                                    match target_module.def_id() {
-                                        Some(DefId{krate: kid, ..}) => {
-                                            this.used_crates.insert(kid);
-                                        }
-                                        _ => {}
-                                    }
-                                    return BoundResult(target_module, binding);
-                                }
-                            }
-                        }
-
-                        // The name is an import which has been fully
-                        // resolved. We can, therefore, just follow it.
-                        if value_result.is_unknown() {
-                            value_result = get_binding(self.resolver,
-                                                       import_resolution,
-                                                       ValueNS,
-                                                       source);
-                            value_used_reexport = import_resolution.value_ns.is_public;
-                        }
-                        if type_result.is_unknown() {
-                            type_result = get_binding(self.resolver,
-                                                      import_resolution,
-                                                      TypeNS,
-                                                      source);
-                            type_used_reexport = import_resolution.type_ns.is_public;
-                        }
-
-                    }
-                    Some(_) => {
-                        // If target_module is the same module whose import we are resolving
-                        // and there it has an unresolved import with the same name as `source`,
-                        // then the user is actually trying to import an item that is declared
-                        // in the same scope
-                        //
-                        // e.g
-                        // use self::submodule;
-                        // pub mod submodule;
-                        //
-                        // In this case we continue as if we resolved the import and let the
-                        // check_for_conflicts_between_imports_and_items call below handle
-                        // the conflict
-                        match (module_.def_id(), target_module.def_id()) {
-                            (Some(id1), Some(id2)) if id1 == id2 => {
-                                if value_result.is_unknown() {
-                                    value_result = UnboundResult;
-                                }
-                                if type_result.is_unknown() {
-                                    type_result = UnboundResult;
-                                }
-                            }
-                            _ => {
-                                // The import is unresolved. Bail out.
-                                debug!("(resolving single import) unresolved import; bailing out");
-                                return ResolveResult::Indeterminate;
-                            }
-                        }
+        let mut lev_suggestion = "".to_owned();
+        match (&value_result, &type_result) {
+            (&Indeterminate, _) | (_, &Indeterminate) => return Indeterminate,
+            (&Failed(_), &Failed(_)) => {
+                let children = target_module.children.borrow();
+                let names = children.keys().map(|&(ref name, _)| name);
+                if let Some(name) = find_best_match_for_name(names, &source.as_str(), None) {
+                    lev_suggestion = format!(". Did you mean to use `{}`?", name);
+                } else {
+                    let resolutions = target_module.import_resolutions.borrow();
+                    let names = resolutions.keys().map(|&(ref name, _)| name);
+                    if let Some(name) = find_best_match_for_name(names,
+                                                                 &source.as_str(),
+                                                                 None) {
+                        lev_suggestion =
+                            format!(". Did you mean to use the re-exported import `{}`?", name);
                     }
                 }
             }
+            _ => (),
         }
 
         let mut value_used_public = false;
         let mut type_used_public = false;
 
-        // If we didn't find a result in the type namespace, search the
-        // external modules.
-        match type_result {
-            BoundResult(..) => {}
-            _ => {
-                match target_module.external_module_children.borrow_mut().get(&source) {
-                    None => {} // Continue.
-                    Some(module) => {
-                        debug!("(resolving single import) found external module");
-                        // track the module as used.
-                        match module.def_id() {
-                            Some(DefId{krate: kid, ..}) => {
-                                self.resolver.used_crates.insert(kid);
-                            }
-                            _ => {}
-                        }
-                        let name_binding = NameBinding::create_from_module(module);
-                        type_result = BoundResult(target_module, name_binding);
-                        type_used_public = true;
-                    }
-                }
-            }
-        }
-
         // We've successfully resolved the import. Write the results in.
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let import_resolution = import_resolutions.get_mut(&target).unwrap();
 
         {
-            let mut check_and_write_import = |namespace, result: &_, used_public: &mut bool| {
+            let mut check_and_write_import = |namespace, result, used_public: &mut bool| {
+                let result: &ResolveResult<(Module<'b>, NameBinding)> = result;
+
+                let import_resolution = import_resolutions.get_mut(&(target, namespace)).unwrap();
                 let namespace_name = match namespace {
                     TypeNS => "type",
                     ValueNS => "value",
                 };
 
                 match *result {
-                    BoundResult(ref target_module, ref name_binding) => {
+                    Success((ref target_module, ref name_binding)) => {
                         debug!("(resolving single import) found {:?} target: {:?}",
                                namespace_name,
                                name_binding.def());
@@ -679,67 +568,68 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                              directive.span,
                                                              target);
 
-                        import_resolution[namespace] = ImportResolution {
-                            target: Some(Target::new(target_module,
-                                                     name_binding.clone(),
-                                                     directive.shadowable)),
-                            id: directive.id,
-                            is_public: directive.is_public
-                        };
+                        import_resolution.target = Some(Target::new(target_module,
+                                                                    name_binding.clone(),
+                                                                    directive.shadowable));
+                        import_resolution.id = directive.id;
+                        import_resolution.is_public = directive.is_public;
 
-                        self.add_export(module_, target, &import_resolution[namespace]);
+                        self.add_export(module_, target, &import_resolution);
                         *used_public = name_binding.is_public();
                     }
-                    UnboundResult => {
+                    Failed(_) => {
                         // Continue.
                     }
-                    UnknownResult => {
+                    Indeterminate => {
                         panic!("{:?} result should be known at this point", namespace_name);
                     }
                 }
+
+                self.check_for_conflicts_between_imports_and_items(module_,
+                                                                   import_resolution,
+                                                                   directive.span,
+                                                                   (target, namespace));
             };
             check_and_write_import(ValueNS, &value_result, &mut value_used_public);
             check_and_write_import(TypeNS, &type_result, &mut type_used_public);
         }
 
-        self.check_for_conflicts_between_imports_and_items(module_,
-                                                           import_resolution,
-                                                           directive.span,
-                                                           target);
-
-        if value_result.is_unbound() && type_result.is_unbound() {
+        if let (&Failed(_), &Failed(_)) = (&value_result, &type_result) {
             let msg = format!("There is no `{}` in `{}`{}",
                               source,
                               module_to_string(&target_module), lev_suggestion);
-            return ResolveResult::Failed(Some((directive.span, msg)));
+            return Failed(Some((directive.span, msg)));
         }
+
         let value_used_public = value_used_reexport || value_used_public;
         let type_used_public = type_used_reexport || type_used_public;
 
-        assert!(import_resolution.outstanding_references >= 1);
-        import_resolution.outstanding_references -= 1;
+        let value_def_and_priv = {
+            let import_resolution_value = import_resolutions.get_mut(&(target, ValueNS)).unwrap();
+            assert!(import_resolution_value.outstanding_references >= 1);
+            import_resolution_value.outstanding_references -= 1;
 
-        // Record what this import resolves to for later uses in documentation,
-        // this may resolve to either a value or a type, but for documentation
-        // purposes it's good enough to just favor one over the other.
-        let value_def_and_priv = import_resolution.value_ns.target.as_ref().map(|target| {
-            let def = target.binding.def().unwrap();
-            (def,
-             if value_used_public {
-                lp
-            } else {
-                DependsOn(def.def_id())
+            // Record what this import resolves to for later uses in documentation,
+            // this may resolve to either a value or a type, but for documentation
+            // purposes it's good enough to just favor one over the other.
+            import_resolution_value.target.as_ref().map(|target| {
+                let def = target.binding.def().unwrap();
+                let last_private = if value_used_public { lp } else { DependsOn(def.def_id()) };
+                (def, last_private)
             })
-        });
-        let type_def_and_priv = import_resolution.type_ns.target.as_ref().map(|target| {
-            let def = target.binding.def().unwrap();
-            (def,
-             if type_used_public {
-                lp
-            } else {
-                DependsOn(def.def_id())
+        };
+
+        let type_def_and_priv = {
+            let import_resolution_type = import_resolutions.get_mut(&(target, TypeNS)).unwrap();
+            assert!(import_resolution_type.outstanding_references >= 1);
+            import_resolution_type.outstanding_references -= 1;
+
+            import_resolution_type.target.as_ref().map(|target| {
+                let def = target.binding.def().unwrap();
+                let last_private = if type_used_public { lp } else { DependsOn(def.def_id()) };
+                (def, last_private)
             })
-        });
+        };
 
         let import_lp = LastImport {
             value_priv: value_def_and_priv.map(|(_, p)| p),
@@ -766,7 +656,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         debug!("(resolving single import) successfully resolved import");
-        return ResolveResult::Success(());
+        return Success(());
     }
 
     // Resolves a glob import. Note that this function cannot fail; it either
@@ -806,44 +696,41 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                "Cannot glob-import a module into itself.".into())));
         }
 
-        for (name, target_import_resolution) in import_resolutions.iter() {
+        for (&(name, ns), target_import_resolution) in import_resolutions.iter() {
             debug!("(resolving glob import) writing module resolution {} into `{}`",
-                   *name,
+                   name,
                    module_to_string(module_));
 
             // Here we merge two import resolutions.
             let mut import_resolutions = module_.import_resolutions.borrow_mut();
-            let mut dest_import_resolution = import_resolutions.entry(*name).or_insert_with(|| {
-                ImportResolutionPerNamespace::new(id, is_public)
-            });
+            let mut dest_import_resolution =
+                import_resolutions.entry((name, ns))
+                                  .or_insert_with(|| ImportResolution::new(id, is_public));
 
-            for &ns in [TypeNS, ValueNS].iter() {
-                match target_import_resolution[ns].target {
-                    Some(ref target) if target_import_resolution[ns].is_public => {
-                        self.check_for_conflicting_import(&dest_import_resolution,
-                                                          import_directive.span,
-                                                          *name,
-                                                          ns);
-                        dest_import_resolution[ns] = ImportResolution {
-                            id: id, is_public: is_public, target: Some(target.clone())
-                        };
-                        self.add_export(module_, *name, &dest_import_resolution[ns]);
-                    }
-                    _ => {}
+            match target_import_resolution.target {
+                Some(ref target) if target_import_resolution.is_public => {
+                    self.check_for_conflicting_import(&dest_import_resolution,
+                                                      import_directive.span,
+                                                      name,
+                                                      ns);
+                    dest_import_resolution.id = id;
+                    dest_import_resolution.is_public = is_public;
+                    dest_import_resolution.target = Some(target.clone());
+                    self.add_export(module_, name, &dest_import_resolution);
                 }
+                _ => {}
             }
         }
 
         // Add all children from the containing module.
         build_reduced_graph::populate_module_if_necessary(self.resolver, &target_module);
 
-        for (&name, name_bindings) in target_module.children.borrow().iter() {
+        for (&name, name_binding) in target_module.children.borrow().iter() {
             self.merge_import_resolution(module_,
                                          target_module,
                                          import_directive,
                                          name,
-                                         name_bindings.clone());
-
+                                         name_binding.clone());
         }
 
         // Record the destination of this import
@@ -864,14 +751,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                module_: Module<'b>,
                                containing_module: Module<'b>,
                                import_directive: &ImportDirective,
-                               name: Name,
-                               name_bindings: NameBindings<'b>) {
+                               (name, ns): (Name, Namespace),
+                               name_binding: NameBinding<'b>) {
         let id = import_directive.id;
         let is_public = import_directive.is_public;
 
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let dest_import_resolution = import_resolutions.entry(name).or_insert_with(|| {
-            ImportResolutionPerNamespace::new(id, is_public)
+        let dest_import_resolution = import_resolutions.entry((name, ns)).or_insert_with(|| {
+            ImportResolution::new(id, is_public)
         });
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` to `{}`",
@@ -880,61 +767,46 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                module_to_string(module_));
 
         // Merge the child item into the import resolution.
-        // pub_err makes sure we don't give the same error twice.
-        let mut pub_err = false;
-        {
-            let mut merge_child_item = |namespace| {
-                if !pub_err && is_public &&
-                        name_bindings[namespace].defined_with(DefModifiers::PRIVATE_VARIANT) {
-                    let msg = format!("variant `{}` is private, and cannot be reexported (error \
-                                       E0364), consider declaring its enum as `pub`", name);
-                    self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                                   import_directive.id,
-                                                   import_directive.span,
-                                                   msg);
-                    pub_err = true;
-                }
+        let modifier = DefModifiers::IMPORTABLE | DefModifiers::PUBLIC;
 
-                let modifier = DefModifiers::IMPORTABLE | DefModifiers::PUBLIC;
-                if name_bindings[namespace].defined_with(modifier) {
-                    let namespace_name = match namespace {
-                        TypeNS => "type",
-                        ValueNS => "value",
-                    };
-                    debug!("(resolving glob import) ... for {} target", namespace_name);
-                    if dest_import_resolution.shadowable(namespace) == Shadowable::Never {
-                        let msg = format!("a {} named `{}` has already been imported in this \
-                                           module",
-                                          namespace_name,
-                                          name);
-                        span_err!(self.resolver.session,
-                                  import_directive.span,
-                                  E0251,
-                                  "{}",
-                                  msg);
-                    } else {
-                        dest_import_resolution[namespace] = ImportResolution {
-                            target: Some(Target::new(containing_module,
-                                                     name_bindings[namespace].clone(),
-                                                     import_directive.shadowable)),
-                            id: id,
-                            is_public: is_public
-                        };
-                        self.add_export(module_, name, &dest_import_resolution[namespace]);
-                    }
-                } else {
-                    // FIXME #30159: This is required for backwards compatability.
-                    dest_import_resolution[namespace].is_public |= is_public;
-                }
+        if ns == TypeNS && is_public && name_binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
+            let msg = format!("variant `{}` is private, and cannot be reexported (error \
+                               E0364), consider declaring its enum as `pub`", name);
+            self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                           import_directive.id,
+                                           import_directive.span,
+                                           msg);
+        }
+
+        if name_binding.defined_with(modifier) {
+            let namespace_name = match ns {
+                TypeNS => "type",
+                ValueNS => "value",
             };
-            merge_child_item(ValueNS);
-            merge_child_item(TypeNS);
+            debug!("(resolving glob import) ... for {} target", namespace_name);
+            if dest_import_resolution.shadowable() == Shadowable::Never {
+                let msg = format!("a {} named `{}` has already been imported in this module",
+                                 namespace_name,
+                                 name);
+                span_err!(self.resolver.session, import_directive.span, E0251, "{}", msg);
+           } else {
+                let target = Target::new(containing_module,
+                                         name_binding.clone(),
+                                         import_directive.shadowable);
+                dest_import_resolution.target = Some(target);
+                dest_import_resolution.id = id;
+                dest_import_resolution.is_public = is_public;
+                self.add_export(module_, name, &dest_import_resolution);
+            }
+        } else {
+            // FIXME #30159: This is required for backwards compatability.
+            dest_import_resolution.is_public |= is_public;
         }
 
         self.check_for_conflicts_between_imports_and_items(module_,
                                                            dest_import_resolution,
                                                            import_directive.span,
-                                                           name);
+                                                           (name, ns));
     }
 
     fn add_export(&mut self, module: Module<'b>, name: Name, resolution: &ImportResolution<'b>) {
@@ -952,11 +824,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
     /// Checks that imported names and items don't have the same name.
     fn check_for_conflicting_import(&mut self,
-                                    import_resolution: &ImportResolutionPerNamespace,
+                                    import_resolution: &ImportResolution,
                                     import_span: Span,
                                     name: Name,
                                     namespace: Namespace) {
-        let target = &import_resolution[namespace].target;
+        let target = &import_resolution.target;
         debug!("check_for_conflicting_import: {}; target exists: {}",
                name,
                target.is_some());
@@ -973,7 +845,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     }
                     ValueNS => "value",
                 };
-                let use_id = import_resolution[namespace].id;
+                let use_id = import_resolution.id;
                 let item = self.resolver.ast_map.expect_item(use_id);
                 let mut err = struct_span_err!(self.resolver.session,
                                                import_span,
@@ -1006,55 +878,53 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     /// Checks that imported names and items don't have the same name.
     fn check_for_conflicts_between_imports_and_items(&mut self,
                                                      module: Module<'b>,
-                                                     import: &ImportResolutionPerNamespace<'b>,
+                                                     import: &ImportResolution<'b>,
                                                      import_span: Span,
-                                                     name: Name) {
+                                                     (name, ns): (Name, Namespace)) {
         // First, check for conflicts between imports and `extern crate`s.
-        if module.external_module_children
-                 .borrow()
-                 .contains_key(&name) {
-            match import.type_ns.target {
-                Some(ref target) if target.shadowable != Shadowable::Always => {
-                    let msg = format!("import `{0}` conflicts with imported crate in this module \
-                                       (maybe you meant `use {0}::*`?)",
-                                      name);
-                    span_err!(self.resolver.session, import_span, E0254, "{}", &msg[..]);
+        if ns == TypeNS {
+            if module.external_module_children.borrow().contains_key(&name) {
+                match import.target {
+                    Some(ref target) if target.shadowable != Shadowable::Always => {
+                        let msg = format!("import `{0}` conflicts with imported crate \
+                                           in this module (maybe you meant `use {0}::*`?)",
+                                          name);
+                        span_err!(self.resolver.session, import_span, E0254, "{}", &msg[..]);
+                    }
+                    Some(_) | None => {}
                 }
-                Some(_) | None => {}
             }
         }
 
         // Check for item conflicts.
-        let name_bindings = match module.children.borrow().get(&name) {
+        let name_binding = match module.get_child(name, ns) {
             None => {
                 // There can't be any conflicts.
                 return;
             }
-            Some(ref name_bindings) => (*name_bindings).clone(),
+            Some(name_binding) => name_binding,
         };
 
-        match import.value_ns.target {
-            Some(ref target) if target.shadowable != Shadowable::Always => {
-                if let Some(ref value) = *name_bindings.value_ns.borrow() {
+        if ns == ValueNS {
+            match import.target {
+                Some(ref target) if target.shadowable != Shadowable::Always => {
                     let mut err = struct_span_err!(self.resolver.session,
                                                    import_span,
                                                    E0255,
                                                    "import `{}` conflicts with \
                                                     value in this module",
                                                    name);
-                    if let Some(span) = value.span {
+                    if let Some(span) = name_binding.span {
                         err.span_note(span, "conflicting value here");
                     }
                     err.emit();
                 }
+                Some(_) | None => {}
             }
-            Some(_) | None => {}
-        }
-
-        match import.type_ns.target {
-            Some(ref target) if target.shadowable != Shadowable::Always => {
-                if let Some(ref ty) = *name_bindings.type_ns.borrow() {
-                    let (what, note) = match ty.module() {
+        } else {
+            match import.target {
+                Some(ref target) if target.shadowable != Shadowable::Always => {
+                    let (what, note) = match name_binding.module() {
                         Some(ref module) if module.is_normal() =>
                             ("existing submodule", "note conflicting module here"),
                         Some(ref module) if module.is_trait() =>
@@ -1067,13 +937,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                    "import `{}` conflicts with {}",
                                                    name,
                                                    what);
-                    if let Some(span) = ty.span {
+                    if let Some(span) = name_binding.span {
                         err.span_note(span, note);
                     }
                     err.emit();
                 }
+                Some(_) | None => {}
             }
-            Some(_) | None => {}
         }
     }
 }
