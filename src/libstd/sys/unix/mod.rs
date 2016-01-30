@@ -36,6 +36,7 @@ pub mod condvar;
 pub mod ext;
 pub mod fd;
 pub mod fs;
+pub mod libunwind;
 pub mod mutex;
 pub mod net;
 pub mod os;
@@ -44,10 +45,11 @@ pub mod pipe;
 pub mod process;
 pub mod rwlock;
 pub mod stack_overflow;
+pub mod stdio;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod stdio;
+pub mod unwind;
 
 #[cfg(not(test))]
 pub fn init() {

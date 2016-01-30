@@ -87,7 +87,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let ps = self.get_personality_slot(bcx);
                 let lp = build::Load(bcx, ps);
                 base::call_lifetime_end(bcx, ps);
-                base::trans_unwind_resume(bcx, lp);
+                build::Resume(bcx, lp);
             }
 
             mir::Terminator::Return => {

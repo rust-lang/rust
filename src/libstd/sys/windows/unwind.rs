@@ -56,13 +56,6 @@
 //! [win64]: http://msdn.microsoft.com/en-us/library/1eyas8tf.aspx
 //! [llvm]: http://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
-use sys::c;
-
-// A code which indicates panics that originate from Rust. Note that some of the
-// upper bits are used by the system so we just set them to 0 and ignore them.
-//                           0x 0 R S T
-const RUST_PANIC: c::DWORD = 0x00525354;
-
 pub use self::imp::*;
 
 #[cfg(stage0)]
@@ -100,8 +93,13 @@ mod imp {
     use any::Any;
     use mem;
     use raw;
-    use super::RUST_PANIC;
     use sys::c;
+
+    // A code which indicates panics that originate from Rust. Note that some of
+    // the upper bits are used by the system so we just set them to 0 and ignore
+    // them.
+    //                           0x 0 R S T
+    const RUST_PANIC: c::DWORD = 0x00525354;
 
     pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
         // As mentioned above, the call stack here is preserved while the filter

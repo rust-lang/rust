@@ -980,11 +980,9 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Returns whether this session's target will use SEH-based unwinding.
 ///
-/// This is only true for MSVC targets, and even then the 64-bit MSVC target
-/// currently uses SEH-ish unwinding with DWARF info tables to the side (same as
-/// 64-bit MinGW) instead of "full SEH".
+/// This is currentlyt true for all Windows targets.
 pub fn wants_msvc_seh(sess: &Session) -> bool {
-    sess.target.target.options.is_like_msvc
+    sess.target.target.options.is_like_windows
 }
 
 pub fn avoid_invoke(bcx: Block) -> bool {
@@ -1219,19 +1217,6 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
              DebugLoc::None);
     })
 }
-
-// Generates code for resumption of unwind at the end of a landing pad.
-pub fn trans_unwind_resume(bcx: Block, lpval: ValueRef) {
-    if !bcx.sess().target.target.options.custom_unwind_resume {
-        Resume(bcx, lpval);
-    } else {
-        let exc_ptr = ExtractValue(bcx, lpval, 0);
-        let llunwresume = bcx.fcx.eh_unwind_resume();
-        Call(bcx, llunwresume, &[exc_ptr], None, DebugLoc::None);
-        Unreachable(bcx);
-    }
-}
-
 
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
@@ -1981,7 +1966,9 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     record_translation_item_as_generated(ccx, fn_ast_id, param_substs);
 
     let _icx = push_ctxt("trans_closure");
-    attributes::emit_uwtable(llfndecl, true);
+    if !wants_msvc_seh(ccx.sess()) {
+        attributes::emit_uwtable(llfndecl, true);
+    }
 
     debug!("trans_closure(..., param_substs={:?})", param_substs);
 

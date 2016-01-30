@@ -17,5 +17,5 @@ mod imp;
 
 #[cfg(not(any(target_os = "macos", target_os = "ios",
               target_os = "emscripten")))]
-#[path = "gnu.rs"]
+#[path = "libbacktrace.rs"]
 mod imp;

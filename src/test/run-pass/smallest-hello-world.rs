@@ -21,10 +21,7 @@ extern { fn puts(s: *const u8); }
 extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }
 
 #[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "eh_unwind_resume"] extern fn eh_unwind_resume() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
-#[no_mangle] pub extern fn rust_eh_register_frames () {}
-#[no_mangle] pub extern fn rust_eh_unregister_frames () {}
 
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {

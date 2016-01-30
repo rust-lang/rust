@@ -8,21 +8,105 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! # Implementation of Rust stack unwinding
+//!
+//! Also might be known as itanium exceptions, libunwind-based unwinding,
+//! libgcc unwinding, etc. Unwinding on Unix currently always happens through
+//! the libunwind support library, although we don't always link to libunwind
+//! directly as it's often bundled directly into libgcc (or libgcc_s).
+//!
+//! For background on exception handling and stack unwinding please see
+//! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
+//! documents linked from it.
+//!
+//! These are also good reads:
+//!
+//! * http://mentorembedded.github.io/cxx-abi/abi-eh.html
+//! * http://monoinfinito.wordpress.com/series/exception-handling-in-c/
+//! * http://www.airs.com/blog/index.php?s=exception+frames
+//!
+//! The basic premise here is that we're going to literally throw an exception,
+//! only with library support rather than language support. This interacts with
+//! LLVM by using the `invoke` instruction all over the place instead of a
+//! typical `call` instruction. As a reminder, when LLVM translates an `invoke`
+//! instruction it requires that the surrounding function is attached with a
+//! **personality** function. The major purpose of this module is to define
+//! these personality functions.
+//!
+//! First, though, let's take a look at how unwinding works:
+//!
+//! ## A brief summary
+//!
+//! Exception handling happens in two phases: a search phase and a cleanup
+//! phase.
+//!
+//! In both phases the unwinder walks stack frames from top to bottom using
+//! information from the stack frame unwind sections of the current process's
+//! modules ("module" here refers to an OS module, i.e. an executable or a
+//! dynamic library).
+//!
+//! For each stack frame, it invokes the associated "personality routine", whose
+//! address is also stored in the unwind info section.
+//!
+//! In the search phase, the job of a personality routine is to examine
+//! exception object being thrown, and to decide whether it should be caught at
+//! that stack frame. Once the handler frame has been identified, cleanup phase
+//! begins.
+//!
+//! In the cleanup phase, the unwinder invokes each personality routine again.
+//! This time it decides which (if any) cleanup code needs to be run for
+//! the current stack frame. If so, the control is transferred to a special
+//! branch in the function body, the "landing pad", which invokes destructors,
+//! frees memory, etc. At the end of the landing pad, control is transferred
+//! back to the unwinder and unwinding resumes.
+//!
+//! Once stack has been unwound down to the handler frame level, unwinding stops
+//! and the last personality routine transfers control to the catch block.
+//!
+//! ## `eh_personality` and `eh_personality_catch`
+//!
+//! The main personality function, `eh_personality`, is used by almost all Rust
+//! functions that are translated. This personality indicates that no exceptions
+//! should be caught, but cleanups should always be run. The second personality
+//! function, `eh_personality_catch`, is distinct in that it indicates that
+//! exceptions should be caught (no cleanups are run). The compiler will
+//! annotate all generated functions with these two personalities, and then
+//! we're just left to implement them over here!
+//!
+//! We could implement our personality routine in pure Rust, however exception
+//! info decoding is tedious. More importantly, personality routines have to
+//! handle various platform quirks, which are not fun to maintain. For this
+//! reason, we attempt to reuse personality routine of the C language. This
+//! comes under a number of names and ABIs, including `__gcc_personality_v0` and
+//! `__gcc_personality_sj0`.
+//!
+//! Since C does not support exception catching, this personality function
+//! simply always returns `_URC_CONTINUE_UNWIND` in search phase, and always
+//! returns `_URC_INSTALL_CONTEXT` (i.e. "invoke cleanup code") in cleanup
+//! phase.
+//!
+//! To implement the `eh_personality_catch` function, however, we detect when
+//! the search phase is occurring and return `_URC_HANDLER_FOUND` to indicate
+//! that we want to catch the exception.
+//!
+//! See also: `rustc_trans::trans::intrinsic::trans_gnu_try`
+
 #![allow(private_no_mangle_fns)]
 
 use prelude::v1::*;
 
 use any::Any;
-use sys_common::libunwind as uw;
+use sys::libunwind as uw;
 
+#[repr(C)]
 struct Exception {
-    uwe: uw::_Unwind_Exception,
+    _uwe: uw::_Unwind_Exception,
     cause: Option<Box<Any + Send + 'static>>,
 }
 
 pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     let exception: Box<_> = box Exception {
-        uwe: uw::_Unwind_Exception {
+        _uwe: uw::_Unwind_Exception {
             exception_class: rust_exception_class(),
             exception_cleanup: exception_cleanup,
             private: [0; uw::unwinder_private_data_size],
@@ -60,30 +144,9 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
     0x4d4f5a_00_52555354
 }
 
-// We could implement our personality routine in pure Rust, however exception
-// info decoding is tedious.  More importantly, personality routines have to
-// handle various platform quirks, which are not fun to maintain.  For this
-// reason, we attempt to reuse personality routine of the C language:
-// __gcc_personality_v0.
-//
-// Since C does not support exception catching, __gcc_personality_v0 simply
-// always returns _URC_CONTINUE_UNWIND in search phase, and always returns
-// _URC_INSTALL_CONTEXT (i.e. "invoke cleanup code") in cleanup phase.
-//
-// This is pretty close to Rust's exception handling approach, except that Rust
-// does have a single "catch-all" handler at the bottom of each thread's stack.
-// So we have two versions of the personality routine:
-// - rust_eh_personality, used by all cleanup landing pads, which never catches,
-//   so the behavior of __gcc_personality_v0 is perfectly adequate there, and
-// - rust_eh_personality_catch, used only by rust_try(), which always catches.
-//
-// See also: rustc_trans::trans::intrinsic::trans_gnu_try
-
-#[cfg(all(not(target_arch = "arm"),
-          not(all(windows, target_arch = "x86_64")),
-          not(test)))]
+#[cfg(all(not(target_arch = "arm"), not(test)))]
 pub mod eabi {
-    use sys_common::libunwind as uw;
+    use sys::libunwind as uw;
     use libc::c_int;
 
     extern {
@@ -139,7 +202,7 @@ pub mod eabi {
 
 #[cfg(all(target_os = "ios", target_arch = "arm", not(test)))]
 pub mod eabi {
-    use sys_common::libunwind as uw;
+    use sys::libunwind as uw;
     use libc::c_int;
 
     extern {
@@ -194,7 +257,7 @@ pub mod eabi {
 // but otherwise works the same.
 #[cfg(all(target_arch = "arm", not(target_os = "ios"), not(test)))]
 pub mod eabi {
-    use sys_common::libunwind as uw;
+    use sys::libunwind as uw;
     use libc::c_int;
 
     extern {
@@ -234,40 +297,5 @@ pub mod eabi {
                 __gcc_personality_v0(state, ue_header, context)
             }
         }
-    }
-}
-
-// See docs in the `unwind` module.
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu", not(test)))]
-#[lang = "eh_unwind_resume"]
-#[unwind]
-unsafe extern fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
-    uw::_Unwind_Resume(panic_ctx as *mut uw::_Unwind_Exception);
-}
-
-#[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-pub mod eh_frame_registry {
-    // The implementation of stack unwinding is (for now) deferred to libgcc_eh, however Rust
-    // crates use these Rust-specific entry points to avoid potential clashes with GCC runtime.
-    // See also: rtbegin.rs, `unwind` module.
-
-    #[link(name = "gcc_eh")]
-    extern {
-        fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
-        fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
-    }
-    #[cfg(not(test))]
-    #[no_mangle]
-    #[unstable(feature = "libstd_sys_internals", issue = "0")]
-    pub unsafe extern fn rust_eh_register_frames(eh_frame_begin: *const u8,
-                                                 object: *mut u8) {
-        __register_frame_info(eh_frame_begin, object);
-    }
-    #[cfg(not(test))]
-    #[no_mangle]
-    #[unstable(feature = "libstd_sys_internals", issue = "0")]
-    pub  unsafe extern fn rust_eh_unregister_frames(eh_frame_begin: *const u8,
-                                                   object: *mut u8) {
-        __deregister_frame_info(eh_frame_begin, object);
     }
 }

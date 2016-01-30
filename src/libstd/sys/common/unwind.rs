@@ -8,95 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Implementation of Rust stack unwinding
+//! Common unwinding support to all platforms.
 //!
-//! For background on exception handling and stack unwinding please see
-//! "Exception Handling in LLVM" (llvm.org/docs/ExceptionHandling.html) and
-//! documents linked from it.
-//! These are also good reads:
-//!     http://mentorembedded.github.io/cxx-abi/abi-eh.html
-//!     http://monoinfinito.wordpress.com/series/exception-handling-in-c/
-//!     http://www.airs.com/blog/index.php?s=exception+frames
+//! This module does not contain the lowest-level implementation of unwinding
+//! itself, but rather contains some of the Rust APIs used as entry points to
+//! unwinding itself. For example this is the location of the lang item
+//! `panic_fmt` which is the entry point of all panics from libcore.
 //!
-//! ## A brief summary
-//!
-//! Exception handling happens in two phases: a search phase and a cleanup phase.
-//!
-//! In both phases the unwinder walks stack frames from top to bottom using
-//! information from the stack frame unwind sections of the current process's
-//! modules ("module" here refers to an OS module, i.e. an executable or a
-//! dynamic library).
-//!
-//! For each stack frame, it invokes the associated "personality routine", whose
-//! address is also stored in the unwind info section.
-//!
-//! In the search phase, the job of a personality routine is to examine exception
-//! object being thrown, and to decide whether it should be caught at that stack
-//! frame.  Once the handler frame has been identified, cleanup phase begins.
-//!
-//! In the cleanup phase, the unwinder invokes each personality routine again.
-//! This time it decides which (if any) cleanup code needs to be run for
-//! the current stack frame.  If so, the control is transferred to a special branch
-//! in the function body, the "landing pad", which invokes destructors, frees memory,
-//! etc.  At the end of the landing pad, control is transferred back to the unwinder
-//! and unwinding resumes.
-//!
-//! Once stack has been unwound down to the handler frame level, unwinding stops
-//! and the last personality routine transfers control to the catch block.
-//!
-//! ## `eh_personality` and `eh_unwind_resume`
-//!
-//! These language items are used by the compiler when generating unwind info.
-//! The first one is the personality routine described above.  The second one
-//! allows compilation target to customize the process of resuming unwind at the
-//! end of the landing pads.  `eh_unwind_resume` is used only if `custom_unwind_resume`
-//! flag in the target options is set.
-//!
-//! ## Frame unwind info registration
-//!
-//! Each module's image contains a frame unwind info section (usually ".eh_frame").
-//! When a module is loaded/unloaded into the process, the unwinder must be informed
-//! about the location of this section in memory. The methods of achieving that vary
-//! by the platform.
-//! On some (e.g. Linux), the unwinder can discover unwind info sections on its own
-//! (by dynamically enumerating currently loaded modules via the dl_iterate_phdr() API
-//! and finding their ".eh_frame" sections);
-//! Others, like Windows, require modules to actively register their unwind info
-//! sections via unwinder API (see `rust_eh_register_frames`/`rust_eh_unregister_frames`).
-
-#![allow(dead_code)]
-#![allow(unused_imports)]
+//! For details on how each platform implements unwinding, see the
+//! platform-specific `sys::unwind` module.
 
 use prelude::v1::*;
 
 use any::Any;
-use boxed;
-use cmp;
 use panicking::{self,PANIC_COUNT};
 use fmt;
 use intrinsics;
-use mem;
-use sync::atomic::{self, Ordering};
-use sys_common::mutex::Mutex;
-
-// The actual unwinding implementation is cfg'd here, and we've got two current
-// implementations. One goes through SEH on Windows and the other goes through
-// libgcc via the libunwind-like API.
-
-// *-pc-windows-msvc
-#[cfg(target_env = "msvc")]
-#[path = "seh.rs"] #[doc(hidden)]
-pub mod imp;
-
-// x86_64-pc-windows-gnu
-#[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))]
-#[path = "seh64_gnu.rs"] #[doc(hidden)]
-pub mod imp;
-
-// i686-pc-windows-gnu and all others
-#[cfg(any(unix, all(windows, target_arch = "x86", target_env = "gnu")))]
-#[path = "gcc.rs"] #[doc(hidden)]
-pub mod imp;
+use sys::unwind;
 
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
@@ -140,18 +68,19 @@ unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
         // the point-of-throw back to this location.
         //
         // A pointer to this data is passed to the `try` intrinsic itself,
-        // allowing this function, the `try` intrinsic, imp::payload(), and
-        // imp::cleanup() to all work in concert to transmit this information.
+        // allowing this function, the `try` intrinsic, unwind::payload(), and
+        // unwind::cleanup() to all work in concert to transmit this
+        // information.
         //
         // More information about what this pointer actually is can be found in
         // each implementation as well as browsing the compiler source itself.
-        let mut payload = imp::payload();
+        let mut payload = unwind::payload();
         let r = intrinsics::try(f, data, &mut payload as *mut _ as *mut _);
         s.set(prev);
         if r == 0 {
             Ok(())
         } else {
-            Err(imp::cleanup(payload))
+            Err(unwind::cleanup(payload))
         }
     })
 }
@@ -167,7 +96,7 @@ unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
         if ep.is_null() {
             Ok(())
         } else {
-            Err(imp::cleanup(ep))
+            Err(unwind::cleanup(ep))
         }
     })
 }
@@ -183,7 +112,7 @@ pub fn panicking() -> bool {
 #[allow(private_no_mangle_fns)]
 pub fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
     unsafe {
-        imp::panic(cause)
+        unwind::panic(cause)
     }
 }
 

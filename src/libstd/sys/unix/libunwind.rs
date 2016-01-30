@@ -120,9 +120,7 @@ pub type _Unwind_Exception_Cleanup_Fn =
            link(name = "gcc_pic"))]
 #[cfg_attr(target_os = "bitrig",
            link(name = "c++abi"))]
-#[cfg_attr(all(target_os = "windows", target_env="gnu"),
-           link(name = "gcc_eh"))]
-extern "C" {
+extern {
     // iOS on armv7 uses SjLj exceptions and requires to link
     // against corresponding routine (..._SjLj_...)
     #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
