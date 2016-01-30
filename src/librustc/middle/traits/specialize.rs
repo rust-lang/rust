@@ -52,10 +52,9 @@ pub struct SpecializationGraph {
 }
 
 /// Information pertinent to an overlapping impl error.
-pub struct Overlap<'tcx> {
+pub struct Overlap<'a, 'tcx: 'a> {
+    pub in_context: InferCtxt<'a, 'tcx>,
     pub with_impl: DefId,
-
-    /// NB: this TraitRef can contain inference variables!
     pub on_trait_ref: ty::TraitRef<'tcx>,
 }
 
@@ -70,13 +69,13 @@ impl SpecializationGraph {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
-    pub fn insert<'tcx>(&mut self,
-                        tcx: &ty::ctxt<'tcx>,
-                        impl_def_id: DefId,
-                        trait_ref: ty::TraitRef)
-                        -> Result<(), Overlap<'tcx>> {
+    pub fn insert<'a, 'tcx>(&mut self,
+                            tcx: &'a ty::ctxt<'tcx>,
+                            impl_def_id: DefId)
+                            -> Result<(), Overlap<'a, 'tcx>> {
         assert!(impl_def_id.is_local());
 
+        let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let mut parent = trait_ref.def_id;
         let mut my_children = vec![];
 
@@ -98,6 +97,7 @@ impl SpecializationGraph {
                         return Err(Overlap {
                             with_impl: possible_sibling,
                             on_trait_ref: trait_ref,
+                            in_context: infcx,
                         });
                     }
 
@@ -118,6 +118,7 @@ impl SpecializationGraph {
                         return Err(Overlap {
                             with_impl: possible_sibling,
                             on_trait_ref: trait_ref,
+                            in_context: infcx,
                         });
                     }
 

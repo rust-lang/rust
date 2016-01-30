@@ -13,6 +13,8 @@
 
 struct TestType<T>(T);
 
+// TODO: nail down the rules here with @nikomatsakis
+
 unsafe impl<T> Send for TestType<T> {}
 impl !Send for TestType<u8> {}
 

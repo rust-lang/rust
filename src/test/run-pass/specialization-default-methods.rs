@@ -16,6 +16,12 @@ trait Foo {
     fn foo(&self) -> bool;
 }
 
+// Specialization tree for Foo:
+//
+//        T
+//       / \
+//    i32   i64
+
 impl<T> Foo for T {
     default fn foo(&self) -> bool { false }
 }
@@ -37,6 +43,23 @@ fn test_foo() {
 trait Bar {
     fn bar(&self) -> i32 { 0 }
 }
+
+// Specialization tree for Bar.
+// Uses of $ designate that method is provided
+//
+//           $Bar   (the trait)
+//             |
+//             T
+//            /|\
+//           / | \
+//          /  |  \
+//         /   |   \
+//        /    |    \
+//       /     |     \
+//     $i32   &str  $Vec<T>
+//                    /\
+//                   /  \
+//            Vec<i32>  $Vec<i64>
 
 impl<T> Bar for T {} // use the provided method
 
