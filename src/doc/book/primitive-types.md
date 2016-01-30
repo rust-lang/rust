@@ -97,9 +97,11 @@ and `i64` is a signed, 64-bit integer.
 
 ## Variable sized types
 
-Rust also provides types whose size depends on the size of a pointer of the
-underlying machine. These types have ‘size’ as the category, and come in signed
-and unsigned varieties. This makes for two types: `isize` and `usize`.
+Rust also provides types whose particular size depends on the underlying machine
+architecture. Their range is sufficient to express sizes of collections and they
+are used to address items in a vector, for example. These types have ‘size’ as
+the category, and come in signed and unsigned varieties. This makes for two types:
+`isize` and `usize`.
 
 ## Floating-point types
 
