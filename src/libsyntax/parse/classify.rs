@@ -23,22 +23,22 @@ use ast;
 /// isn't parsed as (if true {...} else {...} | x) | 5
 pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     match e.node {
-        ast::ExprIf(..)
-        | ast::ExprIfLet(..)
-        | ast::ExprMatch(..)
-        | ast::ExprBlock(_)
-        | ast::ExprWhile(..)
-        | ast::ExprWhileLet(..)
-        | ast::ExprLoop(..)
-        | ast::ExprForLoop(..) => false,
-        _ => true
+        ast::ExprIf(..) |
+        ast::ExprIfLet(..) |
+        ast::ExprMatch(..) |
+        ast::ExprBlock(_) |
+        ast::ExprWhile(..) |
+        ast::ExprWhileLet(..) |
+        ast::ExprLoop(..) |
+        ast::ExprForLoop(..) => false,
+        _ => true,
     }
 }
 
 pub fn expr_is_simple_block(e: &ast::Expr) -> bool {
     match e.node {
         ast::ExprBlock(ref block) => block.rules == ast::DefaultBlock,
-        _ => false
+        _ => false,
     }
 }
 
@@ -50,11 +50,11 @@ pub fn stmt_ends_with_semi(stmt: &ast::Stmt_) -> bool {
         ast::StmtDecl(ref d, _) => {
             match d.node {
                 ast::DeclLocal(_) => true,
-                ast::DeclItem(_) => false
+                ast::DeclItem(_) => false,
             }
         }
-        ast::StmtExpr(ref e, _) => { expr_requires_semi_to_be_stmt(e) }
-        ast::StmtSemi(..) => { false }
-        ast::StmtMac(..) => { false }
+        ast::StmtExpr(ref e, _) => expr_requires_semi_to_be_stmt(e),
+        ast::StmtSemi(..) => false,
+        ast::StmtMac(..) => false,
     }
 }
