@@ -334,14 +334,6 @@ enable_if_not_disabled() {
     fi
 }
 
-to_llvm_triple() {
-    case $1 in
-        i686-w64-mingw32) echo i686-pc-windows-gnu ;;
-        x86_64-w64-mingw32) echo x86_64-pc-windows-gnu ;;
-        *) echo $1 ;;
-    esac
-}
-
 to_gnu_triple() {
     case $1 in
         i686-pc-windows-gnu) echo i686-w64-mingw32 ;;
@@ -645,12 +637,6 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-
-# Temporarily support old triples until buildbots get updated
-CFG_BUILD=$(to_llvm_triple $CFG_BUILD)
-putvar CFG_BUILD # Yes, this creates a duplicate entry, but the last one wins.
-CFG_HOST=$(to_llvm_triple $CFG_HOST)
-CFG_TARGET=$(to_llvm_triple $CFG_TARGET)
 
 # On Windows this determines root of the subtree for target libraries.
 # Host runtime libs always go to 'bin'.
