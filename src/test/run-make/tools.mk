@@ -100,8 +100,13 @@ REMOVE_RLIBS      = rm $(TMPDIR)/$(call RLIB_GLOB,$(1))
 
 %.a: %.o
 	ar crus $@ $<
+ifdef IS_MSVC
+%.lib: lib%.o
+	$(MSVC_LIB) -out:`cygpath -w $@` $<
+else
 %.lib: lib%.o
 	ar crus $@ $<
+endif
 %.dylib: %.o
 	$(CC) -dynamiclib -Wl,-dylib -o $@ $<
 %.so: %.o

@@ -872,6 +872,16 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
                 return Some(f);
             }
         );
+        ($name:expr, fn(...) -> $ret:expr) => (
+            if key == $name {
+                let f = declare::declare_cfn(ccx, $name,
+                                             Type::variadic_func(&[], &$ret),
+                                             ccx.tcx().mk_nil());
+                llvm::SetUnnamedAddr(f, false);
+                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                return Some(f);
+            }
+        );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret),
@@ -880,7 +890,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
-        )
+        );
     }
     macro_rules! mk_struct {
         ($($field_ty:expr),*) => (Type::struct_(ccx, &[$($field_ty),*], false))
@@ -908,6 +918,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
 
     ifn!("llvm.trap", fn() -> void);
     ifn!("llvm.debugtrap", fn() -> void);
+    ifn!("llvm.frameaddress", fn(t_i32) -> i8p);
 
     ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32);
     ifn!("llvm.powi.f64", fn(t_f64, t_i32) -> t_f64);
@@ -1008,6 +1019,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
 
     ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
     ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
+    ifn!("llvm.localescape", fn(...) -> void);
+    ifn!("llvm.localrecover", fn(i8p, i8p, t_i32) -> i8p);
+    ifn!("llvm.x86.seh.recoverfp", fn(i8p, i8p) -> i8p);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
     // fallbacks in libc or libm and such.

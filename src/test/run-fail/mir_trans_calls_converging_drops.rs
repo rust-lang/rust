@@ -7,7 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 #![feature(rustc_attrs)]
+
+// ignore-msvc: FIXME(#30941)
 // error-pattern:converging_fn called
 // error-pattern:0 dropped
 // error-pattern:exit

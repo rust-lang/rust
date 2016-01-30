@@ -1271,7 +1271,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 };
             }
             Variant(_, ref repr, _, _) => {
-                let (the_kind, val_opt) = adt::trans_switch(bcx, &**repr, val.val);
+                let (the_kind, val_opt) = adt::trans_switch(bcx, &repr,
+                                                            val.val, true);
                 kind = the_kind;
                 if let Some(tval) = val_opt { test_val = tval; }
             }

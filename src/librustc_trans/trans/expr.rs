@@ -2097,7 +2097,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let datum = unpack_datum!(
             bcx, datum.to_lvalue_datum(bcx, "trans_imm_cast", expr.id));
         let llexpr_ptr = datum.to_llref();
-        let discr = adt::trans_get_discr(bcx, &*repr, llexpr_ptr, Some(Type::i64(ccx)));
+        let discr = adt::trans_get_discr(bcx, &*repr, llexpr_ptr,
+                                         Some(Type::i64(ccx)), true);
         ll_t_in = val_ty(discr);
         (discr, adt::is_discr_signed(&*repr))
     } else {
