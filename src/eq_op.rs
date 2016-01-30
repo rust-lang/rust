@@ -29,7 +29,7 @@ impl LintPass for EqOp {
 impl LateLintPass for EqOp {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
-            if is_cmp_or_bit(op) && is_exp_equal(cx, left, right) {
+            if is_cmp_or_bit(op) && is_exp_equal(cx, left, right, true) {
                 span_lint(cx,
                           EQ_OP,
                           e.span,

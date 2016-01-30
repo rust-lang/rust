@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use utils::{get_parent_expr, in_macro, is_exp_equal, is_stmt_equal, over, span_lint, span_note_and_lint};
+use utils::{get_parent_expr, in_macro, is_block_equal, is_exp_equal, span_lint, span_note_and_lint};
 
 /// **What it does:** This lint checks for consecutive `ifs` with the same condition. This lint is
 /// `Warn` by default.
@@ -55,14 +55,7 @@ impl LateLintPass for CopyAndPaste {
 fn lint_same_then_else(cx: &LateContext, expr: &Expr) {
     if let ExprIf(_, ref then_block, Some(ref else_expr)) = expr.node {
         let must_lint = if let ExprBlock(ref else_block) = else_expr.node {
-            over(&then_block.stmts, &else_block.stmts, |l, r| is_stmt_equal(cx, l, r)) &&
-                match (&then_block.expr, &else_block.expr) {
-                    (&Some(ref then_expr), &Some(ref else_expr)) => {
-                        is_exp_equal(cx, &then_expr, &else_expr)
-                    }
-                    (&None, &None) => true,
-                    _ => false,
-                }
+            is_block_equal(cx, &then_block, &else_block, false)
         }
         else {
             false
@@ -87,7 +80,7 @@ fn lint_same_cond(cx: &LateContext, expr: &Expr) {
 
     for (n, i) in conds.iter().enumerate() {
         for j in conds.iter().skip(n+1) {
-            if is_exp_equal(cx, i, j) {
+            if is_exp_equal(cx, i, j, true) {
                 span_note_and_lint(cx, IFS_SAME_COND, j.span, "this if has the same condition as a previous if", i.span, "same as this");
             }
         }

@@ -32,4 +32,9 @@ fn main() {
     // const folding
     1 + 1 == 2; //~ERROR equal expressions
     1 - 1 == 0; //~ERROR equal expressions
+
+    let mut a = vec![1];
+    a == a; //~ERROR equal expressions
+    2*a.len() == 2*a.len(); // ok, functions
+    a.pop() == a.pop(); // ok, functions
 }

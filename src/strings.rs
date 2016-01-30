@@ -84,7 +84,7 @@ impl LateLintPass for StringAdd {
                     if let Some(ref p) = parent {
                         if let ExprAssign(ref target, _) = p.node {
                             // avoid duplicate matches
-                            if is_exp_equal(cx, target, left) {
+                            if is_exp_equal(cx, target, left, false) {
                                 return;
                             }
                         }
@@ -113,7 +113,7 @@ fn is_string(cx: &LateContext, e: &Expr) -> bool {
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
-        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) => is_exp_equal(cx, target, left),
+        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) => is_exp_equal(cx, target, left, false),
         ExprBlock(ref block) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
         }
