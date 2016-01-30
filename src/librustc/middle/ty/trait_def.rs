@@ -125,7 +125,8 @@ impl<'tcx> TraitDef<'tcx> {
     fn record_impl(&self,
                    tcx: &TyCtxt<'tcx>,
                    impl_def_id: DefId,
-                   impl_trait_ref: TraitRef<'tcx>) -> bool {
+                   impl_trait_ref: TraitRef<'tcx>)
+                   -> bool {
         debug!("TraitDef::record_impl for {:?}, from {:?}",
                self, impl_trait_ref);
 
@@ -161,7 +162,9 @@ impl<'tcx> TraitDef<'tcx> {
                              tcx: &TyCtxt<'tcx>,
                              impl_def_id: DefId,
                              impl_trait_ref: TraitRef<'tcx>) {
-        self.record_impl(tcx, impl_def_id, impl_trait_ref);
+        assert!(impl_def_id.is_local());
+        let was_new = self.record_impl(tcx, impl_def_id, impl_trait_ref);
+        assert!(was_new);
     }
 
     /// Records a trait-to-implementation mapping for a non-local impl.
@@ -174,6 +177,8 @@ impl<'tcx> TraitDef<'tcx> {
                               impl_def_id: DefId,
                               impl_trait_ref: TraitRef<'tcx>,
                               parent_impl: DefId) {
+        assert!(!impl_def_id.is_local());
+
         // if the impl has not previously been recorded
         if self.record_impl(tcx, impl_def_id, impl_trait_ref) {
             // if the impl is non-local, it's placed directly into the
@@ -186,15 +191,14 @@ impl<'tcx> TraitDef<'tcx> {
     /// Adds a local impl into the specialization graph, returning an error with
     /// overlap information if the impl overlaps but does not specialize an
     /// existing impl.
-    pub fn add_impl_for_specialization(&self,
-                                       tcx: &ctxt<'tcx>,
-                                       impl_def_id: DefId,
-                                       impl_trait_ref: TraitRef<'tcx>)
-                                       -> Result<(), traits::Overlap<'tcx>> {
+    pub fn add_impl_for_specialization<'a>(&self,
+                                           tcx: &'a ctxt<'tcx>,
+                                           impl_def_id: DefId)
+                                           -> Result<(), traits::Overlap<'a, 'tcx>> {
         assert!(impl_def_id.is_local());
 
         self.specialization_graph.borrow_mut()
-            .insert(tcx, impl_def_id, impl_trait_ref)
+            .insert(tcx, impl_def_id)
     }
 
     /// Returns the immediately less specialized impl, if any.

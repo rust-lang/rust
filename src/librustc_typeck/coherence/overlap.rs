@@ -133,9 +133,7 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let def = self.tcx.lookup_trait_def(trait_def_id);
 
                 // attempt to insert into the specialization graph
-                let insert_result = def.add_impl_for_specialization(self.tcx,
-                                                                    impl_def_id,
-                                                                    trait_ref);
+                let insert_result = def.add_impl_for_specialization(self.tcx, impl_def_id);
 
                 // insertion failed due to overlap
                 if let Err(overlap) = insert_result {
