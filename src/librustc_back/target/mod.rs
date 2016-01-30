@@ -79,8 +79,8 @@ pub struct Target {
     pub target_env: String,
     /// Vendor name to use for conditional compilation.
     pub target_vendor: String,
-    /// Architecture to use for ABI considerations. Valid options: "x86", "x86_64", "arm",
-    /// "aarch64", "mips", "powerpc", "powerpc64" and "powerpc64le". "mips" includes "mipsel".
+    /// Architecture to use for ABI considerations. Valid options: "x86",
+    /// "x86_64", "arm", "aarch64", "mips", "powerpc", and "powerpc64".
     pub arch: String,
     /// Optional settings with defaults.
     pub options: TargetOptions,
