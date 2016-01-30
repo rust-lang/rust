@@ -353,7 +353,7 @@ fn file_name(file_path: &str) -> Option<&str> {
 You might think that we could use the `map` combinator to reduce the case
 analysis, but its type doesn't quite fit...
 
-```rust
+```rust,ignore
 fn file_path_ext(file_path: &str) -> Option<&str> {
     file_name(file_path).map(|x| extension(x)) //Compilation error
 }
