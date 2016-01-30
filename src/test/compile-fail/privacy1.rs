@@ -129,12 +129,17 @@ mod foo {
         ::bar::baz::foo(); //~ ERROR: function `foo` is inaccessible
                            //~^ NOTE: module `baz` is private
         ::bar::baz::bar(); //~ ERROR: function `bar` is inaccessible
+                           //~^ NOTE: module `baz` is private
     }
 
     fn test2() {
         use bar::baz::{foo, bar};
         //~^ ERROR: function `foo` is inaccessible
-        //~^^ ERROR: function `bar` is inaccessible
+        //~| NOTE: module `baz` is private
+        //~| ERROR: function `bar` is inaccessible
+        //~| NOTE: module `baz` is private
+
+
         foo();
         bar();
     }
