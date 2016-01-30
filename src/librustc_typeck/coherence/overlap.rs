@@ -20,11 +20,10 @@ use syntax::ast;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 use rustc_front::intravisit;
-use util::nodemap::{DefIdMap, DefIdSet};
+use util::nodemap::DefIdMap;
 
 pub fn check(tcx: &TyCtxt) {
     let mut overlap = OverlapChecker { tcx: tcx,
-                                       traits_checked: DefIdSet(),
                                        default_impls: DefIdMap() };
 
     // this secondary walk specifically checks for some other cases,
@@ -34,14 +33,6 @@ pub fn check(tcx: &TyCtxt) {
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
     tcx: &'cx TyCtxt<'tcx>,
-
-    // The set of traits where we have checked for overlap.  This is
-    // used to avoid checking the same trait twice.
-    //
-    // NB. It's ok to skip tracking this set because we fully
-    // encapsulate it, and we always create a task
-    // (`CoherenceOverlapCheck`) corresponding to each entry.
-    traits_checked: DefIdSet,
 
     // maps from a trait def-id to an impl id
     default_impls: DefIdMap<ast::NodeId>,
@@ -120,20 +111,19 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
 
-                self.check_for_overlapping_impls_of_trait(trait_ref.def_id);
-
                 let prev_default_impl = self.default_impls.insert(trait_ref.def_id, item.id);
                 if let Some(prev_id) = prev_default_impl {
-                    span_err!(self.tcx.sess,
-                              self.span_of_def_id(impl_def_id), E0519,
-                              "redundant default implementations of trait `{}`:",
-                              trait_ref);
-                    span_note!(self.tcx.sess,
-                               self.span_of_def_id(self.tcx.map.local_def_id(prev_id)),
-                               "redundant implementation is here:");
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        self.tcx.span_of_impl(impl_def_id).unwrap(), E0519,
+                        "redundant default implementations of trait `{}`:",
+                        trait_ref);
+                    err.span_note(self.tcx.span_of_impl(self.tcx.map.local_def_id(prev_id)).unwrap(),
+                                  "redundant implementation is here:");
+                    err.emit();
                 }
             }
-            hir::ItemImpl(_, _, _, Some(_), ref self_ty, _) => {
+            hir::ItemImpl(_, _, _, Some(_), _, _) => {
                 let impl_def_id = self.tcx.map.local_def_id(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
@@ -162,20 +152,22 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                         }).unwrap_or(String::new())
                     };
 
-                    span_err!(self.tcx.sess, self.span_of_def_id(impl_def_id), E0119,
-                              "conflicting implementations of trait `{}`{}:",
-                              overlap.on_trait_ref,
-                              self_type);
+                    let mut err = struct_span_err!(
+                        self.tcx.sess, self.tcx.span_of_impl(impl_def_id).unwrap(), E0119,
+                        "conflicting implementations of trait `{}`{}:",
+                        overlap.on_trait_ref,
+                        self_type);
 
                     match self.tcx.span_of_impl(overlap.with_impl) {
                         Ok(span) => {
-                            span_note!(self.tcx.sess, span, "conflicting implementation is here:");
+                            err.span_note(span, "conflicting implementation is here:");
                         }
                         Err(cname) => {
-                            self.tcx.sess.note(&format!("conflicting implementation in crate `{}`",
-                                                        cname));
+                            err.note(&format!("conflicting implementation in crate `{}`", cname));
                         }
                     }
+
+                    err.emit();
                 }
 
                 // check for overlap with the automatic `impl Trait for Trait`

@@ -16,9 +16,9 @@ pub trait Bar {
     type Output: 'static;
 }
 
-impl Foo<i32> for i32 { } //~ ERROR E0119
+impl Foo<i32> for i32 { }
 
-impl<A:Bar> Foo<A::Output> for A { }
+impl<A:Bar> Foo<A::Output> for A { } //~ ERROR E0119
 
 impl Bar for i32 {
     type Output = i32;

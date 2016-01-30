@@ -872,22 +872,24 @@ fn check_specialization_validity<'tcx, F>(tcx: &ty::ctxt<'tcx>,
 {
     let parent_item_opt = traits::get_parent_impl_item(tcx, impl_id, f);
     if let Some((Defaultness::Final, parent_impl)) = parent_item_opt {
-        span_err!(tcx.sess, impl_item.span, E0520,
-                  "item `{}` is provided by an implementation that \
-                   specializes another, but the item in the parent \
-                   implementations is not marked `default` and so it \
-                   cannot be specialized.",
-                  impl_item.name);
+        let mut err = struct_span_err!(
+            tcx.sess, impl_item.span, E0520,
+            "item `{}` is provided by an implementation that \
+             specializes another, but the item in the parent \
+             implementations is not marked `default` and so it \
+             cannot be specialized.",
+            impl_item.name);
 
         match tcx.span_of_impl(parent_impl) {
             Ok(span) => {
-                span_note!(tcx.sess, span, "parent implementation is here:");
+                err.span_note(span, "parent implementation is here:");
             }
             Err(cname) => {
-                tcx.sess.note(&format!("parent implementation is in crate `{}`",
-                                       cname));
+                err.note(&format!("parent implementation is in crate `{}`", cname));
             }
         }
+
+        err.emit();
     }
 }
 

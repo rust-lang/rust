@@ -87,7 +87,7 @@ impl SpecializationGraph {
             for slot in possible_siblings.iter_mut() {
                 let possible_sibling = *slot;
 
-                let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
+                let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
                 let overlap = traits::overlapping_impls(&infcx, possible_sibling, impl_def_id);
 
                 if let Some(trait_ref) = overlap {

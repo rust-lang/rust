@@ -654,12 +654,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn eat_contextual_keyword(&mut self, ident: Ident) -> PResult<bool> {
+    pub fn eat_contextual_keyword(&mut self, ident: Ident) -> bool {
         if self.check_contextual_keyword(ident) {
-            try!(self.bump());
-            Ok(true)
+            self.bump();
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 
@@ -5229,8 +5229,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse defaultness: DEFAULT or nothing
-    fn parse_defaultness(&mut self) -> PResult<Defaultness> {
-        if try!(self.eat_contextual_keyword(special_idents::DEFAULT)) {
+    fn parse_defaultness(&mut self) -> PResult<'a, Defaultness> {
+        if self.eat_contextual_keyword(special_idents::DEFAULT) {
             Ok(Defaultness::Default)
         } else {
             Ok(Defaultness::Final)
