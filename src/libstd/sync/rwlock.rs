@@ -133,7 +133,7 @@ impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     __lock: &'a StaticRwLock,
-    __data: &'a UnsafeCell<T>,
+    __data: &'a mut T,
     __poison: poison::Guard,
 }
 
@@ -178,7 +178,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
         unsafe { self.inner.lock.read() }
-        RwLockReadGuard::new(&*self.inner, &self.data)
+        unsafe { RwLockReadGuard::new(&*self.inner, &self.data) }
     }
 
     /// Attempts to acquire this rwlock with shared read access.
@@ -202,7 +202,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
         if unsafe { self.inner.lock.try_read() } {
-            Ok(try!(RwLockReadGuard::new(&*self.inner, &self.data)))
+            Ok(try!(unsafe { RwLockReadGuard::new(&*self.inner, &self.data) }))
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -226,7 +226,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
         unsafe { self.inner.lock.write() }
-        RwLockWriteGuard::new(&*self.inner, &self.data)
+        unsafe { RwLockWriteGuard::new(&*self.inner, &self.data) }
     }
 
     /// Attempts to lock this rwlock with exclusive write access.
@@ -250,7 +250,7 @@ impl<T: ?Sized> RwLock<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
         if unsafe { self.inner.lock.try_write() } {
-            Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
+            Ok(try!(unsafe { RwLockWriteGuard::new(&*self.inner, &self.data) }))
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -361,7 +361,7 @@ impl StaticRwLock {
     #[inline]
     pub fn read(&'static self) -> LockResult<RwLockReadGuard<'static, ()>> {
         unsafe { self.lock.read() }
-        RwLockReadGuard::new(self, &DUMMY.0)
+        unsafe { RwLockReadGuard::new(self, &DUMMY.0) }
     }
 
     /// Attempts to acquire this lock with shared read access.
@@ -371,7 +371,7 @@ impl StaticRwLock {
     pub fn try_read(&'static self)
                     -> TryLockResult<RwLockReadGuard<'static, ()>> {
         if unsafe { self.lock.try_read() } {
-            Ok(try!(RwLockReadGuard::new(self, &DUMMY.0)))
+            unsafe { Ok(try!(RwLockReadGuard::new(self, &DUMMY.0))) }
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -384,7 +384,7 @@ impl StaticRwLock {
     #[inline]
     pub fn write(&'static self) -> LockResult<RwLockWriteGuard<'static, ()>> {
         unsafe { self.lock.write() }
-        RwLockWriteGuard::new(self, &DUMMY.0)
+        unsafe { RwLockWriteGuard::new(self, &DUMMY.0) }
     }
 
     /// Attempts to lock this rwlock with exclusive write access.
@@ -394,7 +394,7 @@ impl StaticRwLock {
     pub fn try_write(&'static self)
                      -> TryLockResult<RwLockWriteGuard<'static, ()>> {
         if unsafe { self.lock.try_write() } {
-            Ok(try!(RwLockWriteGuard::new(self, &DUMMY.0)))
+            Ok(unsafe { try!(RwLockWriteGuard::new(self, &DUMMY.0)) })
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -412,12 +412,12 @@ impl StaticRwLock {
 }
 
 impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
-    fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
+    unsafe fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |_| {
             RwLockReadGuard {
                 __lock: lock,
-                __data: unsafe { &*data.get() },
+                __data: &*data.get(),
             }
         })
     }
@@ -427,7 +427,10 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// Applies the supplied closure to the data, returning a new lock
     /// guard referencing the borrow returned by the closure.
     ///
+    /// # Examples
+    ///
     /// ```rust
+    /// # #![feature(guard_map)]
     /// # use std::sync::{RwLockReadGuard, RwLock};
     /// let x = RwLock::new(vec![1, 2]);
     ///
@@ -451,12 +454,12 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
-    fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
+    unsafe fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             RwLockWriteGuard {
                 __lock: lock,
-                __data: data,
+                __data: &mut *data.get(),
                 __poison: guard,
             }
         })
@@ -467,7 +470,10 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// Applies the supplied closure to the data, returning a new lock
     /// guard referencing the borrow returned by the closure.
     ///
+    /// # Examples
+    ///
     /// ```rust
+    /// # #![feature(guard_map)]
     /// # use std::sync::{RwLockWriteGuard, RwLock};
     /// let x = RwLock::new(vec![1, 2]);
     ///
@@ -485,11 +491,13 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
                issue = "0")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockWriteGuard<'rwlock, U>
     where F: FnOnce(&'rwlock mut T) -> &'rwlock mut U {
-        let new_data = unsafe {
-            let data: &'rwlock mut T = &mut *this.__data.get();
-            mem::transmute::<&'rwlock mut U, &'rwlock UnsafeCell<U>>(cb(data))
-        };
+        // Compute the new data while still owning the original lock
+        // in order to correctly poison if the callback panics.
+        let data = unsafe { ptr::read(&this.__data) };
+        let new_data = cb(data);
 
+        // We don't want to unlock the lock by running the destructor of the
+        // original lock, so just read the fields we need and forget it.
         let poison = unsafe { ptr::read(&this.__poison) };
         let lock = unsafe { ptr::read(&this.__lock) };
         mem::forget(this);
@@ -513,13 +521,12 @@ impl<'rwlock, T: ?Sized> Deref for RwLockReadGuard<'rwlock, T> {
 impl<'rwlock, T: ?Sized> Deref for RwLockWriteGuard<'rwlock, T> {
     type Target = T;
 
-    fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
+    fn deref(&self) -> &T { self.__data }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T: ?Sized> DerefMut for RwLockWriteGuard<'rwlock, T> {
-    fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.__data.get() }
+    fn deref_mut(&mut self) -> &mut T { self.__data
     }
 }
 
