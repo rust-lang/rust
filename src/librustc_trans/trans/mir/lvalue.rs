@@ -65,7 +65,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 assert!(lvalue.llextra != ptr::null_mut());
                 lvalue.llextra
             }
-            _ => bcx.sess().bug("unexpected type in get_base_and_len"),
+            _ => bcx.sess().bug("unexpected type in lvalue_len"),
         }
     }
 

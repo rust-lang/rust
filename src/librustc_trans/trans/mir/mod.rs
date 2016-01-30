@@ -195,8 +195,8 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: Block<'bcx, 'tcx>,
 mod analyze;
 mod block;
 mod constant;
-mod lvalue;
-mod rvalue;
-mod operand;
-mod statement;
 mod did;
+mod lvalue;
+mod operand;
+mod rvalue;
+mod statement;

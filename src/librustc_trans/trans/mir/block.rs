@@ -95,11 +95,36 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
             }
 
-            mir::Terminator::Drop { ref value, target, unwind: _ } => {
+            mir::Terminator::Drop { ref value, target, unwind } => {
                 let lvalue = self.trans_lvalue(bcx, value);
-                // FIXME: this does not account for possibility of unwinding (and totally should).
-                glue::drop_ty(bcx, lvalue.llval, lvalue.ty.to_ty(bcx.tcx()), DebugLoc::None);
-                build::Br(bcx, self.llblock(target), DebugLoc::None);
+                let ty = lvalue.ty.to_ty(bcx.tcx());
+                // Double check for necessity to drop
+                if !glue::type_needs_drop(bcx.tcx(), ty) {
+                    build::Br(bcx, self.llblock(target), DebugLoc::None);
+                    return;
+                }
+                let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
+                let drop_ty = glue::get_drop_glue_type(bcx.ccx(), ty);
+                let llvalue = if drop_ty != ty {
+                    build::PointerCast(bcx, lvalue.llval,
+                                       type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                } else {
+                    lvalue.llval
+                };
+                if let Some(unwind) = unwind {
+                    let uwbcx = self.bcx(unwind);
+                    let unwind = self.make_landing_pad(uwbcx);
+                    build::Invoke(bcx,
+                                  drop_fn,
+                                  &[llvalue],
+                                  self.llblock(target),
+                                  unwind.llbb,
+                                  None,
+                                  DebugLoc::None);
+                } else {
+                    build::Call(bcx, drop_fn, &[llvalue], None, DebugLoc::None);
+                    build::Br(bcx, self.llblock(target), DebugLoc::None);
+                }
             }
 
             mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {
