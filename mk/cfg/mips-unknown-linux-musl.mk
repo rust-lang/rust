@@ -1,8 +1,8 @@
 # mips-unknown-linux-musl configuration
-CC_mips-unknown-linux-musl=mips-openwrt-linux-gcc
-CXX_mips-unknown-linux-musl=mips-openwrt-linux-g++
-CPP_mips-unknown-linux-musl=mips-openwrt-linux-gcc -E
-AR_mips-unknown-linux-musl=mips-openwrt-linux-ar
+CC_mips-unknown-linux-musl=mips-linux-musl-gcc
+CXX_mips-unknown-linux-musl=mips-linux-musl-g++
+CPP_mips-unknown-linux-musl=mips-linux-musl-gcc -E
+AR_mips-unknown-linux-musl=mips-linux-musl-ar
 CFG_LIB_NAME_mips-unknown-linux-musl=lib$(1).so
 CFG_STATIC_LIB_NAME_mips-unknown-linux-musl=lib$(1).a
 CFG_LIB_GLOB_mips-unknown-linux-musl=lib$(1)-*.so

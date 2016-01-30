@@ -16,5 +16,4 @@
 	url = https://github.com/rust-lang/rust-installer.git
 [submodule "src/liblibc"]
 	path = src/liblibc
-	url = https://github.com/japaric/libc.git
-	branch = mips-musl
+	url = https://github.com/rust-lang-nursery/libc.git
