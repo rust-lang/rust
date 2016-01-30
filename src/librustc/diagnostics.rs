@@ -226,7 +226,7 @@ const X: i32 = 42 / 0;
 ```
 "##,
 
-E0038: r####"
+E0038: r##"
 Trait objects like `Box<Trait>` can only be constructed when certain
 requirements are satisfied by the trait in question.
 
@@ -478,7 +478,7 @@ so they are forbidden when specifying supertraits.
 
 There's no easy fix for this, generally code will need to be refactored so that
 you no longer need to derive from `Super<Self>`.
-"####,
+"##,
 
 E0072: r##"
 When defining a recursive struct or enum, any use of the type being defined
@@ -1801,14 +1801,14 @@ attribute.
 
 
 register_diagnostics! {
-    // E0006 // merged with E0005
+//  E0006 // merged with E0005
 //  E0134,
 //  E0135,
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
     E0284, // cannot resolve type
-    E0285, // overflow evaluation builtin bounds
+//  E0285, // overflow evaluation builtin bounds
     E0298, // mismatched types between arms
     E0299, // mismatched types between arms
     // E0300, // unexpanded macro
