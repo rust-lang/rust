@@ -258,7 +258,7 @@ pub mod guard {
 
     #[cfg(target_os = "solaris")]
     pub unsafe fn current() -> Option<usize> {
-        let mut current_stack: libc::stack_t = mem::zeroed();
+        let mut current_stack: libc::stack_t = ::mem::zeroed();
         assert_eq!(libc::stack_getbounds(&mut current_stack), 0);
         Some(current_stack.ss_sp as usize)
     }
