@@ -12,8 +12,8 @@
 
 fn foo() { //~ HELP did you mean to close this delimiter?
   match Some(x) {
-      Some(y) { panic!(); }
-      None    { panic!(); }
+      Some(y) => { panic!(); }
+      None => { panic!(); }
 }
 
 fn bar() {
