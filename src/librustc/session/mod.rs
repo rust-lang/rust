@@ -179,13 +179,13 @@ impl Session {
     pub fn track_errors<F, T>(&self, f: F) -> Result<T, usize>
         where F: FnOnce() -> T
     {
-        let count = self.err_count();
+        let old_count = self.err_count();
         let result = f();
-        let count = self.err_count() - count;
-        if count == 0 {
+        let errors = self.err_count() - old_count;
+        if errors == 0 {
             Ok(result)
         } else {
-            Err(count)
+            Err(errors)
         }
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
