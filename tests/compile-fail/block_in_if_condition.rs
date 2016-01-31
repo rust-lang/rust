@@ -3,17 +3,28 @@
 
 #![deny(block_in_if_condition_expr)]
 #![deny(block_in_if_condition_stmt)]
-#![allow(unused)]
+#![allow(unused, let_and_return)]
 
 
 macro_rules! blocky {
     () => {{true}}
 }
 
+macro_rules! blocky_too {
+    () => {{
+        let r = true;
+        r
+    }}
+}
+
 fn macro_if() {
     if blocky!() {
     }
+    
+    if blocky_too!() {
+    }
 }
+
 fn condition_has_block() -> i32 {
 
     if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
