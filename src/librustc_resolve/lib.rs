@@ -1387,16 +1387,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        match self.resolve_module_in_lexical_scope(module_, module_path[0]) {
+                        match self.resolve_item_in_lexical_scope(module_,
+                                                                 module_path[0],
+                                                                 TypeNS,
+                                                                 true) {
                             Failed(err) => return Failed(err),
                             Indeterminate => {
                                 debug!("(resolving module path for import) indeterminate; bailing");
                                 return Indeterminate;
                             }
-                            Success(containing_module) => {
-                                search_module = containing_module;
-                                start_index = 1;
-                                last_private = LastMod(AllPublic);
+                            Success((target, _)) => match target.binding.module() {
+                                Some(containing_module) => {
+                                    search_module = containing_module;
+                                    start_index = 1;
+                                    last_private = LastMod(AllPublic);
+                                }
+                                None => return Failed(None),
                             }
                         }
                     }
@@ -1473,35 +1479,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 BlockParentLink(parent_module_node, _) => {
                     search_module = parent_module_node;
                 }
-            }
-        }
-    }
-
-    /// Resolves a module name in the current lexical scope.
-    fn resolve_module_in_lexical_scope(&mut self,
-                                       module_: Module<'a>,
-                                       name: Name)
-                                       -> ResolveResult<Module<'a>> {
-        // If this module is an anonymous module, resolve the item in the
-        // lexical scope. Otherwise, resolve the item from the crate root.
-        let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS, true);
-        match resolve_result {
-            Success((target, _)) => {
-                if let Some(module_def) = target.binding.module() {
-                    return Success(module_def)
-                } else {
-                    debug!("!!! (resolving module in lexical scope) module \
-                            wasn't actually a module!");
-                    return Failed(None);
-                }
-            }
-            Indeterminate => {
-                debug!("(resolving module in lexical scope) indeterminate; bailing");
-                return Indeterminate;
-            }
-            Failed(err) => {
-                debug!("(resolving module in lexical scope) failed to resolve");
-                return Failed(err);
             }
         }
     }
