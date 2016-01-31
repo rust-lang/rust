@@ -866,6 +866,7 @@ fn test_vec_default() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_bytes_set_memory() {
     use std::slice::bytes::MutableByteVector;
 

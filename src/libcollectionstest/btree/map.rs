@@ -379,6 +379,7 @@ fn test_clone() {
 }
 
 #[test]
+#[allow(dead_code)]
 fn test_variance() {
     use std::collections::btree_map::{Iter, IntoIter, Range, Keys, Values};
 
