@@ -790,7 +790,7 @@ enum ParentLink<'a> {
 /// One node in the tree of modules.
 pub struct ModuleS<'a> {
     parent_link: ParentLink<'a>,
-    def: Cell<Option<Def>>,
+    def: Option<Def>,
     is_public: bool,
     is_extern_crate: bool,
 
@@ -840,7 +840,7 @@ impl<'a> ModuleS<'a> {
     fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool, is_public: bool) -> Self {
         ModuleS {
             parent_link: parent_link,
-            def: Cell::new(def),
+            def: def,
             is_public: is_public,
             is_extern_crate: false,
             children: RefCell::new(HashMap::new()),
@@ -878,18 +878,18 @@ impl<'a> ModuleS<'a> {
     }
 
     fn def_id(&self) -> Option<DefId> {
-        self.def.get().as_ref().map(Def::def_id)
+        self.def.as_ref().map(Def::def_id)
     }
 
     fn is_normal(&self) -> bool {
-        match self.def.get() {
+        match self.def {
             Some(Def::Mod(_)) | Some(Def::ForeignMod(_)) => true,
             _ => false,
         }
     }
 
     fn is_trait(&self) -> bool {
-        match self.def.get() {
+        match self.def {
             Some(Def::Trait(_)) => true,
             _ => false,
         }
@@ -988,7 +988,7 @@ impl<'a> NameBinding<'a> {
     fn def(&self) -> Option<Def> {
         match self.def_or_module {
             DefOrModule::Def(def) => Some(def),
-            DefOrModule::Module(ref module) => module.def.get(),
+            DefOrModule::Module(ref module) => module.def,
         }
     }
 
