@@ -8,10 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow::{IntoCow, Cow};
+use std::borrow::Cow;
 use std::iter::repeat;
 
 use test::Bencher;
+
+pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
+    fn into_cow(self) -> Cow<'a, B>;
+}
+
+impl<'a> IntoCow<'a, str> for String {
+    fn into_cow(self) -> Cow<'a, str> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a> IntoCow<'a, str> for &'a str {
+    fn into_cow(self) -> Cow<'a, str> {
+        Cow::Borrowed(self)
+    }
+}
 
 #[test]
 fn test_from_str() {
@@ -175,7 +191,7 @@ fn test_push_bytes() {
     let mut s = String::from("ABC");
     unsafe {
         let mv = s.as_mut_vec();
-        mv.push_all(&[b'D']);
+        mv.extend_from_slice(&[b'D']);
     }
     assert_eq!(s, "ABCD");
 }

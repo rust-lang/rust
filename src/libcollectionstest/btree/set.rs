@@ -256,6 +256,7 @@ fn test_recovery() {
 }
 
 #[test]
+#[allow(dead_code)]
 fn test_variance() {
     use std::collections::btree_set::{IntoIter, Iter, Range};
 

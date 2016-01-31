@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use core::fmt::radix;
 
 #[test]
 fn test_format_int() {
@@ -153,17 +152,22 @@ fn test_format_int_twos_complement() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_format_radix() {
+    use core::fmt::radix;
     assert!(format!("{:04}", radix(3, 2)) == "0011");
     assert!(format!("{}", radix(55, 36)) == "1j");
 }
 
 #[test]
 #[should_panic]
+#[allow(deprecated)]
 fn test_radix_base_too_large() {
+    use core::fmt::radix;
     let _ = radix(55, 37);
 }
 
+#[allow(deprecated)]
 mod u32 {
     use test::Bencher;
     use core::fmt::radix;
@@ -207,6 +211,7 @@ mod u32 {
     }
 }
 
+#[allow(deprecated)]
 mod i32 {
     use test::Bencher;
     use core::fmt::radix;

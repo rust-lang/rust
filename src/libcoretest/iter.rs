@@ -607,15 +607,15 @@ fn test_count() {
 }
 
 #[test]
-fn test_max_by() {
+fn test_max_by_key() {
     let xs: &[isize] = &[-3, 0, 1, 5, -10];
-    assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    assert_eq!(*xs.iter().max_by_key(|x| x.abs()).unwrap(), -10);
 }
 
 #[test]
-fn test_min_by() {
+fn test_min_by_key() {
     let xs: &[isize] = &[-3, 0, 1, 5, -10];
-    assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    assert_eq!(*xs.iter().min_by_key(|x| x.abs()).unwrap(), 0);
 }
 
 #[test]
@@ -961,18 +961,18 @@ fn bench_multiple_take(b: &mut Bencher) {
 fn scatter(x: i32) -> i32 { (x * 31) % 127 }
 
 #[bench]
-fn bench_max_by(b: &mut Bencher) {
+fn bench_max_by_key(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
-        it.max_by(|&x| scatter(x))
+        it.max_by_key(|&x| scatter(x))
     })
 }
 
 // http://www.reddit.com/r/rust/comments/31syce/using_iterators_to_find_the_index_of_the_min_or/
 #[bench]
-fn bench_max_by2(b: &mut Bencher) {
+fn bench_max_by_key2(b: &mut Bencher) {
     fn max_index_iter(array: &[i32]) -> usize {
-        array.iter().enumerate().max_by(|&(_, item)| item).unwrap().0
+        array.iter().enumerate().max_by_key(|&(_, item)| item).unwrap().0
     }
 
     let mut data = vec![0i32; 1638];
