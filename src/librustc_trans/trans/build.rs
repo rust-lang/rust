@@ -150,7 +150,9 @@ pub fn Invoke(cx: Block,
            cx.val_to_string(fn_),
            args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().join(", "));
     debug_loc.apply(cx.fcx);
-    B(cx).invoke(fn_, args, then, catch, attributes)
+    let lpad = cx.lpad.borrow();
+    let bundle = lpad.as_ref().and_then(|b| b.bundle());
+    B(cx).invoke(fn_, args, then, catch, bundle, attributes)
 }
 
 pub fn Unreachable(cx: Block) {
@@ -914,7 +916,9 @@ pub fn Call(cx: Block,
         return _UndefReturn(cx, fn_);
     }
     debug_loc.apply(cx.fcx);
-    B(cx).call(fn_, args, attributes)
+    let lpad = cx.lpad.borrow();
+    let bundle = lpad.as_ref().and_then(|b| b.bundle());
+    B(cx).call(fn_, args, bundle, attributes)
 }
 
 pub fn CallWithConv(cx: Block,
@@ -928,7 +932,9 @@ pub fn CallWithConv(cx: Block,
         return _UndefReturn(cx, fn_);
     }
     debug_loc.apply(cx.fcx);
-    B(cx).call_with_conv(fn_, args, conv, attributes)
+    let lpad = cx.lpad.borrow();
+    let bundle = lpad.as_ref().and_then(|b| b.bundle());
+    B(cx).call_with_conv(fn_, args, conv, bundle, attributes)
 }
 
 pub fn AtomicFence(cx: Block, order: AtomicOrdering, scope: SynchronizationScope) {
@@ -1050,6 +1056,10 @@ pub fn SetCleanup(cx: Block, landing_pad: ValueRef) {
     B(cx).set_cleanup(landing_pad)
 }
 
+pub fn SetPersonalityFn(cx: Block, f: ValueRef) {
+    B(cx).set_personality_fn(f)
+}
+
 pub fn Resume(cx: Block, exn: ValueRef) -> ValueRef {
     check_not_terminated(cx);
     terminate(cx, "Resume");
@@ -1067,4 +1077,47 @@ pub fn AtomicRMW(cx: Block, op: AtomicBinOp,
                  dst: ValueRef, src: ValueRef,
                  order: AtomicOrdering) -> ValueRef {
     B(cx).atomic_rmw(op, dst, src, order)
+}
+
+pub fn CleanupPad(cx: Block,
+                  parent: Option<ValueRef>,
+                  args: &[ValueRef]) -> ValueRef {
+    check_not_terminated(cx);
+    assert!(!cx.unreachable.get());
+    B(cx).cleanup_pad(parent, args)
+}
+
+pub fn CleanupRet(cx: Block,
+                  cleanup: ValueRef,
+                  unwind: Option<BasicBlockRef>) -> ValueRef {
+    check_not_terminated(cx);
+    terminate(cx, "CleanupRet");
+    B(cx).cleanup_ret(cleanup, unwind)
+}
+
+pub fn CatchPad(cx: Block,
+                parent: ValueRef,
+                args: &[ValueRef]) -> ValueRef {
+    check_not_terminated(cx);
+    assert!(!cx.unreachable.get());
+    B(cx).catch_pad(parent, args)
+}
+
+pub fn CatchRet(cx: Block, pad: ValueRef, unwind: BasicBlockRef) -> ValueRef {
+    check_not_terminated(cx);
+    terminate(cx, "CatchRet");
+    B(cx).catch_ret(pad, unwind)
+}
+
+pub fn CatchSwitch(cx: Block,
+                   parent: Option<ValueRef>,
+                   unwind: Option<BasicBlockRef>,
+                   num_handlers: usize) -> ValueRef {
+    check_not_terminated(cx);
+    terminate(cx, "CatchSwitch");
+    B(cx).catch_switch(parent, unwind, num_handlers)
+}
+
+pub fn AddHandler(cx: Block, catch_switch: ValueRef, handler: BasicBlockRef) {
+    B(cx).add_handler(catch_switch, handler)
 }

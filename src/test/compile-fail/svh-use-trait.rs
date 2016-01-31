@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-msvc FIXME #31306
+
 // note that these aux-build directives must be in this order
 // aux-build:svh-uta-base.rs
 // aux-build:svh-utb.rs
@@ -20,7 +22,9 @@
 
 extern crate uta;
 extern crate utb; //~ ERROR: found possibly newer version of crate `uta` which `utb` depends
-//~^ NOTE: perhaps this crate needs to be recompiled
+//~| NOTE: perhaps this crate needs to be recompiled?
+//~| NOTE: crate `uta` path #1:
+//~| NOTE: crate `utb` path #1:
 
 fn main() {
     utb::foo()

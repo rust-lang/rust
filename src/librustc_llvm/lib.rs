@@ -56,7 +56,7 @@ pub use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
 pub use self::DLLStorageClassTypes::*;
 
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::cell::RefCell;
 use std::slice;
 use libc::{c_uint, c_ushort, uint64_t, c_int, size_t, c_char};
@@ -544,6 +544,9 @@ pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
 #[allow(missing_copy_implementations)]
 pub enum RustArchiveMember_opaque {}
 pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
+#[allow(missing_copy_implementations)]
+pub enum OperandBundleDef_opaque {}
+pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -1149,14 +1152,15 @@ extern {
                                Addr: ValueRef,
                                NumDests: c_uint)
                                -> ValueRef;
-    pub fn LLVMBuildInvoke(B: BuilderRef,
-                           Fn: ValueRef,
-                           Args: *const ValueRef,
-                           NumArgs: c_uint,
-                           Then: BasicBlockRef,
-                           Catch: BasicBlockRef,
-                           Name: *const c_char)
-                           -> ValueRef;
+    pub fn LLVMRustBuildInvoke(B: BuilderRef,
+                               Fn: ValueRef,
+                               Args: *const ValueRef,
+                               NumArgs: c_uint,
+                               Then: BasicBlockRef,
+                               Catch: BasicBlockRef,
+                               Bundle: OperandBundleDefRef,
+                               Name: *const c_char)
+                               -> ValueRef;
     pub fn LLVMRustBuildLandingPad(B: BuilderRef,
                                    Ty: TypeRef,
                                    PersFn: ValueRef,
@@ -1166,6 +1170,31 @@ extern {
                                    -> ValueRef;
     pub fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     pub fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
+
+    pub fn LLVMRustBuildCleanupPad(B: BuilderRef,
+                                   ParentPad: ValueRef,
+                                   ArgCnt: c_uint,
+                                   Args: *const ValueRef,
+                                   Name: *const c_char) -> ValueRef;
+    pub fn LLVMRustBuildCleanupRet(B: BuilderRef,
+                                   CleanupPad: ValueRef,
+                                   UnwindBB: BasicBlockRef) -> ValueRef;
+    pub fn LLVMRustBuildCatchPad(B: BuilderRef,
+                                 ParentPad: ValueRef,
+                                 ArgCnt: c_uint,
+                                 Args: *const ValueRef,
+                                 Name: *const c_char) -> ValueRef;
+    pub fn LLVMRustBuildCatchRet(B: BuilderRef,
+                                 Pad: ValueRef,
+                                 BB: BasicBlockRef) -> ValueRef;
+    pub fn LLVMRustBuildCatchSwitch(Builder: BuilderRef,
+                                    ParentPad: ValueRef,
+                                    BB: BasicBlockRef,
+                                    NumHandlers: c_uint,
+                                    Name: *const c_char) -> ValueRef;
+    pub fn LLVMRustAddHandler(CatchSwitch: ValueRef,
+                              Handler: BasicBlockRef);
+    pub fn LLVMRustSetPersonalityFn(B: BuilderRef, Pers: ValueRef);
 
     /* Add a case to the switch instruction */
     pub fn LLVMAddCase(Switch: ValueRef,
@@ -1476,12 +1505,13 @@ extern {
     /* Miscellaneous instructions */
     pub fn LLVMBuildPhi(B: BuilderRef, Ty: TypeRef, Name: *const c_char)
                         -> ValueRef;
-    pub fn LLVMBuildCall(B: BuilderRef,
-                         Fn: ValueRef,
-                         Args: *const ValueRef,
-                         NumArgs: c_uint,
-                         Name: *const c_char)
-                         -> ValueRef;
+    pub fn LLVMRustBuildCall(B: BuilderRef,
+                             Fn: ValueRef,
+                             Args: *const ValueRef,
+                             NumArgs: c_uint,
+                             Bundle: OperandBundleDefRef,
+                             Name: *const c_char)
+                             -> ValueRef;
     pub fn LLVMBuildSelect(B: BuilderRef,
                            If: ValueRef,
                            Then: ValueRef,
@@ -2126,6 +2156,12 @@ extern {
     pub fn LLVMRustSetDataLayoutFromTargetMachine(M: ModuleRef,
                                                   TM: TargetMachineRef);
     pub fn LLVMRustGetModuleDataLayout(M: ModuleRef) -> TargetDataRef;
+
+    pub fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
+                                         Inputs: *const ValueRef,
+                                         NumInputs: c_uint)
+                                         -> OperandBundleDefRef;
+    pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
 }
 
 #[cfg(have_component_x86)]
@@ -2402,6 +2438,48 @@ pub fn initialize_available_targets() {
     #[cfg(not(have_component_pnacl))]
     fn init_pnacl() { }
     init_pnacl();
+}
+
+pub fn last_error() -> Option<String> {
+    unsafe {
+        let cstr = LLVMRustGetLastError();
+        if cstr.is_null() {
+            None
+        } else {
+            let err = CStr::from_ptr(cstr).to_bytes();
+            let err = String::from_utf8_lossy(err).to_string();
+            libc::free(cstr as *mut _);
+            Some(err)
+        }
+    }
+}
+
+pub struct OperandBundleDef {
+    inner: OperandBundleDefRef,
+}
+
+impl OperandBundleDef {
+    pub fn new(name: &str, vals: &[ValueRef]) -> OperandBundleDef {
+        let name = CString::new(name).unwrap();
+        let def = unsafe {
+            LLVMRustBuildOperandBundleDef(name.as_ptr(),
+                                          vals.as_ptr(),
+                                          vals.len() as c_uint)
+        };
+        OperandBundleDef { inner: def }
+    }
+
+    pub fn raw(&self) -> OperandBundleDefRef {
+        self.inner
+    }
+}
+
+impl Drop for OperandBundleDef {
+    fn drop(&mut self) {
+        unsafe {
+            LLVMRustFreeOperandBundleDef(self.inner);
+        }
+    }
 }
 
 // The module containing the native LLVM dependencies, generated by the build system

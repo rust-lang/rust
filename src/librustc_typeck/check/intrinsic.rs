@@ -293,7 +293,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                     }),
                 };
                 let fn_ty = tcx.mk_bare_fn(fn_ty);
-                (0, vec![tcx.mk_fn(None, fn_ty), mut_u8], mut_u8)
+                (0, vec![tcx.mk_fn(None, fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
             ref other => {

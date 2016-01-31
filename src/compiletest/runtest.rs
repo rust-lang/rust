@@ -929,6 +929,13 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
         format!("{}:{}:", testfile.display(), ee.line)
     }).collect::<Vec<String>>();
 
+    let (expect_help, expect_note) =
+        expected_errors.iter()
+                        .fold((false, false),
+                              |(acc_help, acc_note), ee|
+                                  (acc_help || ee.kind == "help:", acc_note ||
+                                   ee.kind == "note:"));
+
     fn prefix_matches(line: &str, prefix: &str) -> bool {
         use std::ascii::AsciiExt;
         // On windows just translate all '\' path separators to '/'
@@ -992,8 +999,8 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
             was_expected = true;
         }
 
-        if !was_expected && is_compiler_error_or_warning(line) {
-            fatal_proc_rec(&format!("unexpected compiler error or warning: '{}'",
+        if !was_expected && is_unexpected_compiler_message(line, expect_help, expect_note) {
+            fatal_proc_rec(&format!("unexpected compiler message: '{}'",
                                     line),
                           proc_res);
         }
@@ -1009,7 +1016,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
     }
 }
 
-fn is_compiler_error_or_warning(line: &str) -> bool {
+fn is_unexpected_compiler_message(line: &str, expect_help: bool, expect_note: bool) -> bool {
     let mut c = Path::new(line).components();
     let line = match c.next() {
         Some(Component::Prefix(_)) => c.as_path().to_str().unwrap(),
@@ -1017,8 +1024,7 @@ fn is_compiler_error_or_warning(line: &str) -> bool {
     };
 
     let mut i = 0;
-    return
-        scan_until_char(line, ':', &mut i) &&
+    return scan_until_char(line, ':', &mut i) &&
         scan_char(line, ':', &mut i) &&
         scan_integer(line, &mut i) &&
         scan_char(line, ':', &mut i) &&
@@ -1030,7 +1036,10 @@ fn is_compiler_error_or_warning(line: &str) -> bool {
         scan_integer(line, &mut i) &&
         scan_char(line, ' ', &mut i) &&
         (scan_string(line, "error", &mut i) ||
-         scan_string(line, "warning", &mut i));
+         scan_string(line, "warning", &mut i) ||
+         (expect_help && scan_string(line, "help", &mut i)) ||
+         (expect_note && scan_string(line, "note", &mut i))
+        );
 }
 
 fn scan_until_char(haystack: &str, needle: char, idx: &mut usize) -> bool {

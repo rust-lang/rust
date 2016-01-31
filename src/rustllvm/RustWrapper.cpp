@@ -348,6 +348,19 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateFunction(
     LLVMValueRef Fn,
     LLVMMetadataRef TParam,
     LLVMMetadataRef Decl) {
+#if LLVM_VERSION_MINOR >= 8
+    DITemplateParameterArray TParams =
+        DITemplateParameterArray(unwrap<MDTuple>(TParam));
+    DISubprogram *Sub = Builder->createFunction(
+        unwrapDI<DIScope>(Scope), Name, LinkageName,
+        unwrapDI<DIFile>(File), LineNo,
+        unwrapDI<DISubroutineType>(Ty), isLocalToUnit, isDefinition, ScopeLine,
+        Flags, isOptimized,
+        TParams,
+        unwrapDIptr<DISubprogram>(Decl));
+    unwrap<Function>(Fn)->setSubprogram(Sub);
+    return wrap(Sub);
+#else
     return wrap(Builder->createFunction(
         unwrapDI<DIScope>(Scope), Name, LinkageName,
         unwrapDI<DIFile>(File), LineNo,
@@ -356,6 +369,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateFunction(
         unwrap<Function>(Fn),
         unwrapDIptr<MDNode>(TParam),
         unwrapDIptr<MDNode>(Decl)));
+#endif
 }
 
 extern "C" LLVMMetadataRef LLVMDIBuilderCreateBasicType(
@@ -830,7 +844,9 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 #if LLVM_VERSION_MINOR >= 6
     raw_string_ostream Stream(Err);
     DiagnosticPrinterRawOStream DP(Stream);
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 8
+    if (Linker::linkModules(*Dst, std::move(Src.get()))) {
+#elif LLVM_VERSION_MINOR >= 7
     if (Linker::LinkModules(Dst, Src->get(), [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
 #else
     if (Linker::LinkModules(Dst, *Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
@@ -971,3 +987,181 @@ LLVMRustBuildLandingPad(LLVMBuilderRef Builder,
                         LLVMValueRef F) {
     return LLVMBuildLandingPad(Builder, Ty, PersFn, NumClauses, Name);
 }
+
+extern "C" LLVMValueRef
+LLVMRustBuildCleanupPad(LLVMBuilderRef Builder,
+                        LLVMValueRef ParentPad,
+                        unsigned ArgCnt,
+                        LLVMValueRef *LLArgs,
+                        const char *Name) {
+#if LLVM_VERSION_MINOR >= 8
+    Value **Args = unwrap(LLArgs);
+    if (ParentPad == NULL) {
+        Type *Ty = Type::getTokenTy(unwrap(Builder)->getContext());
+        ParentPad = wrap(Constant::getNullValue(Ty));
+    }
+    return wrap(unwrap(Builder)->CreateCleanupPad(unwrap(ParentPad),
+                                                  ArrayRef<Value*>(Args, ArgCnt),
+                                                  Name));
+#else
+    return NULL;
+#endif
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildCleanupRet(LLVMBuilderRef Builder,
+                        LLVMValueRef CleanupPad,
+                        LLVMBasicBlockRef UnwindBB) {
+#if LLVM_VERSION_MINOR >= 8
+    CleanupPadInst *Inst = cast<CleanupPadInst>(unwrap(CleanupPad));
+    return wrap(unwrap(Builder)->CreateCleanupRet(Inst, unwrap(UnwindBB)));
+#else
+    return NULL;
+#endif
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildCatchPad(LLVMBuilderRef Builder,
+                      LLVMValueRef ParentPad,
+                      unsigned ArgCnt,
+                      LLVMValueRef *LLArgs,
+                      const char *Name) {
+#if LLVM_VERSION_MINOR >= 8
+    Value **Args = unwrap(LLArgs);
+    return wrap(unwrap(Builder)->CreateCatchPad(unwrap(ParentPad),
+                                                ArrayRef<Value*>(Args, ArgCnt),
+                                                Name));
+#else
+    return NULL;
+#endif
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildCatchRet(LLVMBuilderRef Builder,
+                      LLVMValueRef Pad,
+                      LLVMBasicBlockRef BB) {
+#if LLVM_VERSION_MINOR >= 8
+    return wrap(unwrap(Builder)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)),
+                                                unwrap(BB)));
+#else
+    return NULL;
+#endif
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildCatchSwitch(LLVMBuilderRef Builder,
+                         LLVMValueRef ParentPad,
+                         LLVMBasicBlockRef BB,
+                         unsigned NumHandlers,
+                         const char *Name) {
+#if LLVM_VERSION_MINOR >= 8
+    if (ParentPad == NULL) {
+        Type *Ty = Type::getTokenTy(unwrap(Builder)->getContext());
+        ParentPad = wrap(Constant::getNullValue(Ty));
+    }
+    return wrap(unwrap(Builder)->CreateCatchSwitch(unwrap(ParentPad),
+                                                   unwrap(BB),
+                                                   NumHandlers,
+                                                   Name));
+#else
+    return NULL;
+#endif
+}
+
+extern "C" void
+LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
+                   LLVMBasicBlockRef Handler) {
+#if LLVM_VERSION_MINOR >= 8
+    Value *CatchSwitch = unwrap(CatchSwitchRef);
+    cast<CatchSwitchInst>(CatchSwitch)->addHandler(unwrap(Handler));
+#endif
+}
+
+extern "C" void
+LLVMRustSetPersonalityFn(LLVMBuilderRef B,
+                         LLVMValueRef Personality) {
+#if LLVM_VERSION_MINOR >= 8
+    unwrap(B)->GetInsertBlock()
+             ->getParent()
+             ->setPersonalityFn(cast<Function>(unwrap(Personality)));
+#endif
+}
+
+#if LLVM_VERSION_MINOR >= 8
+extern "C" OperandBundleDef*
+LLVMRustBuildOperandBundleDef(const char *Name,
+                              LLVMValueRef *Inputs,
+                              unsigned NumInputs) {
+  return new OperandBundleDef(Name, makeArrayRef(unwrap(Inputs), NumInputs));
+}
+
+extern "C" void
+LLVMRustFreeOperandBundleDef(OperandBundleDef* Bundle) {
+  delete Bundle;
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildCall(LLVMBuilderRef B,
+                    LLVMValueRef Fn,
+                    LLVMValueRef *Args,
+                    unsigned NumArgs,
+                    OperandBundleDef *Bundle,
+                    const char *Name) {
+    unsigned len = Bundle ? 1 : 0;
+    ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, len);
+    return wrap(unwrap(B)->CreateCall(unwrap(Fn),
+                                      makeArrayRef(unwrap(Args), NumArgs),
+                                      Bundles,
+                                      Name));
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildInvoke(LLVMBuilderRef B,
+                    LLVMValueRef Fn,
+                    LLVMValueRef *Args,
+                    unsigned NumArgs,
+                    LLVMBasicBlockRef Then,
+                    LLVMBasicBlockRef Catch,
+                    OperandBundleDef *Bundle,
+                    const char *Name) {
+    unsigned len = Bundle ? 1 : 0;
+    ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, len);
+    return wrap(unwrap(B)->CreateInvoke(unwrap(Fn), unwrap(Then), unwrap(Catch),
+                                        makeArrayRef(unwrap(Args), NumArgs),
+                                        Bundles,
+                                        Name));
+}
+#else
+extern "C" void*
+LLVMRustBuildOperandBundleDef(const char *Name,
+                              LLVMValueRef *Inputs,
+                              unsigned NumInputs) {
+  return NULL;
+}
+
+extern "C" void
+LLVMRustFreeOperandBundleDef(void* Bundle) {
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildCall(LLVMBuilderRef B,
+                    LLVMValueRef Fn,
+                    LLVMValueRef *Args,
+                    unsigned NumArgs,
+                    void *Bundle,
+                    const char *Name) {
+    return LLVMBuildCall(B, Fn, Args, NumArgs, Name);
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildInvoke(LLVMBuilderRef B,
+                    LLVMValueRef Fn,
+                    LLVMValueRef *Args,
+                    unsigned NumArgs,
+                    LLVMBasicBlockRef Then,
+                    LLVMBasicBlockRef Catch,
+                    void *Bundle,
+                    const char *Name) {
+    return LLVMBuildInvoke(B, Fn, Args, NumArgs, Then, Catch, Name);
+}
+#endif

@@ -229,28 +229,12 @@ pub const DTOR_NEEDED_HINT: u8 = 0x3d;
 pub const DTOR_MOVED_HINT: u8 = 0x2d;
 
 pub const DTOR_NEEDED: u8 = 0xd4;
-pub const DTOR_NEEDED_U32: u32 = repeat_u8_as_u32(DTOR_NEEDED);
-pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64(DTOR_NEEDED);
 #[allow(dead_code)]
-pub fn dtor_needed_usize(ccx: &CrateContext) -> usize {
-    match &ccx.tcx().sess.target.target.target_pointer_width[..] {
-        "32" => DTOR_NEEDED_U32 as usize,
-        "64" => DTOR_NEEDED_U64 as usize,
-        tws => panic!("Unsupported target word size for int: {}", tws),
-    }
-}
+pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64(DTOR_NEEDED);
 
 pub const DTOR_DONE: u8 = 0x1d;
-pub const DTOR_DONE_U32: u32 = repeat_u8_as_u32(DTOR_DONE);
-pub const DTOR_DONE_U64: u64 = repeat_u8_as_u64(DTOR_DONE);
 #[allow(dead_code)]
-pub fn dtor_done_usize(ccx: &CrateContext) -> usize {
-    match &ccx.tcx().sess.target.target.target_pointer_width[..] {
-        "32" => DTOR_DONE_U32 as usize,
-        "64" => DTOR_DONE_U64 as usize,
-        tws => panic!("Unsupported target word size for int: {}", tws),
-    }
-}
+pub const DTOR_DONE_U64: u64 = repeat_u8_as_u64(DTOR_DONE);
 
 fn dtor_to_init_u8(dtor: bool) -> u8 {
     if dtor { DTOR_NEEDED } else { 0 }
@@ -890,12 +874,15 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
 ///
 /// This should ideally be less tightly tied to `_match`.
 pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                r: &Repr<'tcx>, scrutinee: ValueRef)
+                                r: &Repr<'tcx>,
+                                scrutinee: ValueRef,
+                                range_assert: bool)
                                 -> (_match::BranchKind, Option<ValueRef>) {
     match *r {
         CEnum(..) | General(..) |
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
+            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None,
+                                                  range_assert)))
         }
         Univariant(..) => {
             // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
@@ -916,14 +903,18 @@ pub fn is_discr_signed<'tcx>(r: &Repr<'tcx>) -> bool {
 
 /// Obtain the actual discriminant of a value.
 pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
-                                   scrutinee: ValueRef, cast_to: Option<Type>)
+                                   scrutinee: ValueRef, cast_to: Option<Type>,
+                                   range_assert: bool)
     -> ValueRef {
     debug!("trans_get_discr r: {:?}", r);
     let val = match *r {
-        CEnum(ity, min, max) => load_discr(bcx, ity, scrutinee, min, max),
+        CEnum(ity, min, max) => {
+            load_discr(bcx, ity, scrutinee, min, max, range_assert)
+        }
         General(ity, ref cases, _) => {
             let ptr = StructGEP(bcx, scrutinee, 0);
-            load_discr(bcx, ity, ptr, Disr(0), Disr(cases.len() as u64 - 1))
+            load_discr(bcx, ity, ptr, Disr(0), Disr(cases.len() as u64 - 1),
+                       range_assert)
         }
         Univariant(..) => C_u8(bcx.ccx(), 0),
         RawNullablePointer { nndiscr, nnty, .. } =>  {
@@ -950,7 +941,8 @@ fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: Disr, discrfield: &Disc
 }
 
 /// Helper for cases where the discriminant is simply loaded.
-fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
+fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr,
+              range_assert: bool)
     -> ValueRef {
     let llty = ll_inttype(bcx.ccx(), ity);
     assert_eq!(val_ty(ptr), llty.ptr_to());
@@ -960,7 +952,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     let mask = Disr(!0u64 >> (64 - bits));
     // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
     // However, that is fine here (it would still represent the full range),
-    if max.wrapping_add(Disr(1)) & mask == min & mask {
+    if max.wrapping_add(Disr(1)) & mask == min & mask || !range_assert {
         // i.e., if the range is everything.  The lo==hi case would be
         // rejected by the LLVM verifier (it would mean either an
         // empty set, which is impossible, or the entire range of the
@@ -1239,10 +1231,14 @@ pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             // runtime, so the basic block isn't actually unreachable, so we
             // need to make it do something with defined behavior. In this case
             // we just return early from the function.
+            //
+            // Note that this is also why the `trans_get_discr` below has
+            // `false` to indicate that loading the discriminant should
+            // not have a range assert.
             let ret_void_cx = fcx.new_temp_block("enum-variant-iter-ret-void");
             RetVoid(ret_void_cx, DebugLoc::None);
 
-            let discr_val = trans_get_discr(bcx, r, value, None);
+            let discr_val = trans_get_discr(bcx, r, value, None, false);
             let llswitch = Switch(bcx, discr_val, ret_void_cx.llbb, cases.len());
             let bcx_next = fcx.new_temp_block("enum-variant-iter-next");
 

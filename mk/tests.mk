@@ -45,7 +45,7 @@ ifdef CHECK_IGNORED
   TESTARGS += --ignored
 endif
 
-# Arguments to the cfail/rfail/rpass/bench tests
+# Arguments to the cfail/rfail/rpass tests
 ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
 endif
@@ -306,7 +306,6 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-rustdocck-exec \
         check-stage$(1)-T-$(2)-H-$(3)-crates-exec \
         check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-bench-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-gdb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-lldb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
@@ -344,7 +343,6 @@ check-stage$(1)-T-$(2)-H-$(3)-pretty-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-full-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-bench-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-exec
 
 endef
@@ -468,7 +466,6 @@ CFAIL_FULL_RS := $(wildcard $(S)src/test/compile-fail-fulldeps/*.rs)
 RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
 CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
 PFAIL_RS := $(wildcard $(S)src/test/parse-fail/*.rs)
-BENCH_RS := $(wildcard $(S)src/test/bench/*.rs)
 PRETTY_RS := $(wildcard $(S)src/test/pretty/*.rs)
 DEBUGINFO_GDB_RS := $(wildcard $(S)src/test/debuginfo/*.rs)
 DEBUGINFO_LLDB_RS := $(wildcard $(S)src/test/debuginfo/*.rs)
@@ -485,7 +482,6 @@ CFAIL_FULL_TESTS := $(CFAIL_FULL_RS)
 RFAIL_TESTS := $(RFAIL_RS)
 CFAIL_TESTS := $(CFAIL_RS)
 PFAIL_TESTS := $(PFAIL_RS)
-BENCH_TESTS := $(BENCH_RS)
 PRETTY_TESTS := $(PRETTY_RS)
 DEBUGINFO_GDB_TESTS := $(DEBUGINFO_GDB_RS)
 DEBUGINFO_LLDB_TESTS := $(DEBUGINFO_LLDB_RS)
@@ -532,11 +528,6 @@ CTEST_SRC_BASE_pfail = parse-fail
 CTEST_BUILD_BASE_pfail = parse-fail
 CTEST_MODE_pfail = parse-fail
 CTEST_RUNTOOL_pfail = $(CTEST_RUNTOOL)
-
-CTEST_SRC_BASE_bench = bench
-CTEST_BUILD_BASE_bench = bench
-CTEST_MODE_bench = run-pass
-CTEST_RUNTOOL_bench = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_debuginfo-gdb = debuginfo
 CTEST_BUILD_BASE_debuginfo-gdb = debuginfo-gdb
@@ -612,7 +603,7 @@ TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/compiletest$$(X_$(3)) \
 	$$(SREQ$(1)_T_$(2)_H_$(3))
 
-# Rules for the cfail/rfail/rpass/bench test runner
+# Rules for the cfail/rfail/rpass test runner
 
 # The tests select when to use debug configuration on their own;
 # remove directive, if present, from CFG_RUSTC_FLAGS (issue #7898).
@@ -675,7 +666,6 @@ CTEST_DEPS_cfail-full_$(1)-T-$(2)-H-$(3) = $$(CFAIL_FULL_TESTS) $$(CSREQ$(1)_T_$
 CTEST_DEPS_rfail_$(1)-T-$(2)-H-$(3) = $$(RFAIL_TESTS)
 CTEST_DEPS_cfail_$(1)-T-$(2)-H-$(3) = $$(CFAIL_TESTS)
 CTEST_DEPS_pfail_$(1)-T-$(2)-H-$(3) = $$(PFAIL_TESTS)
-CTEST_DEPS_bench_$(1)-T-$(2)-H-$(3) = $$(BENCH_TESTS)
 CTEST_DEPS_debuginfo-gdb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_GDB_TESTS)
 CTEST_DEPS_debuginfo-lldb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_LLDB_TESTS) \
                                                $(S)src/etc/lldb_batchmode.py \
@@ -748,7 +738,7 @@ endif
 endef
 
 CTEST_NAMES = rpass rpass-valgrind rpass-full rfail-full cfail-full rfail cfail pfail \
-	bench debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck
+	debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -757,20 +747,18 @@ $(foreach host,$(CFG_HOST), \
    $(eval $(call DEF_RUN_COMPILETEST,$(stage),$(target),$(host),$(name))))))))))
 
 PRETTY_NAMES = pretty-rpass pretty-rpass-valgrind pretty-rpass-full pretty-rfail-full pretty-rfail \
-    pretty-bench pretty-pretty
+    pretty-pretty
 PRETTY_DEPS_pretty-rpass = $(RPASS_TESTS)
 PRETTY_DEPS_pretty-rpass-valgrind = $(RPASS_VALGRIND_TESTS)
 PRETTY_DEPS_pretty-rpass-full = $(RPASS_FULL_TESTS)
 PRETTY_DEPS_pretty-rfail-full = $(RFAIL_FULL_TESTS)
 PRETTY_DEPS_pretty-rfail = $(RFAIL_TESTS)
-PRETTY_DEPS_pretty-bench = $(BENCH_TESTS)
 PRETTY_DEPS_pretty-pretty = $(PRETTY_TESTS)
 PRETTY_DIRNAME_pretty-rpass = run-pass
 PRETTY_DIRNAME_pretty-rpass-valgrind = run-pass-valgrind
 PRETTY_DIRNAME_pretty-rpass-full = run-pass-fulldeps
 PRETTY_DIRNAME_pretty-rfail-full = run-fail-fulldeps
 PRETTY_DIRNAME_pretty-rfail = run-fail
-PRETTY_DIRNAME_pretty-bench = bench
 PRETTY_DIRNAME_pretty-pretty = pretty
 
 define DEF_PRETTY_FULLDEPS
@@ -920,7 +908,6 @@ TEST_GROUPS = \
 	rfail \
 	cfail \
 	pfail \
-	bench \
 	rmake \
 	rustdocck \
 	debuginfo-gdb \
@@ -935,7 +922,6 @@ TEST_GROUPS = \
 	pretty-rpass-full \
 	pretty-rfail-full \
 	pretty-rfail \
-	pretty-bench \
 	pretty-pretty \
 	$(NULL)
 
@@ -1039,6 +1025,8 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(3)))
 $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(3)))
+$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
+	export MSVC_LIB := "$$(CFG_MSVC_LIB_$$(HOST_$(3)))"
 $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 		$(S)src/test/run-make/%/Makefile \
 		$$(CSREQ$(1)_T_$(2)_H_$(3))

@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(intrinsics, core)]
-
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
         let (a, b) = (&$a, &$b);
@@ -19,96 +16,52 @@ macro_rules! assert_approx_eq {
     })
 }
 
-mod rusti {
-    extern "rust-intrinsic" {
-        pub fn sqrtf32(x: f32) -> f32;
-        pub fn sqrtf64(x: f64) -> f64;
-        pub fn powif32(a: f32, x: i32) -> f32;
-        pub fn powif64(a: f64, x: i32) -> f64;
-        pub fn sinf32(x: f32) -> f32;
-        pub fn sinf64(x: f64) -> f64;
-        pub fn cosf32(x: f32) -> f32;
-        pub fn cosf64(x: f64) -> f64;
-        pub fn powf32(a: f32, x: f32) -> f32;
-        pub fn powf64(a: f64, x: f64) -> f64;
-        pub fn expf32(x: f32) -> f32;
-        pub fn expf64(x: f64) -> f64;
-        pub fn exp2f32(x: f32) -> f32;
-        pub fn exp2f64(x: f64) -> f64;
-        pub fn logf32(x: f32) -> f32;
-        pub fn logf64(x: f64) -> f64;
-        pub fn log10f32(x: f32) -> f32;
-        pub fn log10f64(x: f64) -> f64;
-        pub fn log2f32(x: f32) -> f32;
-        pub fn log2f64(x: f64) -> f64;
-        pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-        pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-        pub fn fabsf32(x: f32) -> f32;
-        pub fn fabsf64(x: f64) -> f64;
-        pub fn floorf32(x: f32) -> f32;
-        pub fn floorf64(x: f64) -> f64;
-        pub fn ceilf32(x: f32) -> f32;
-        pub fn ceilf64(x: f64) -> f64;
-        pub fn truncf32(x: f32) -> f32;
-        pub fn truncf64(x: f64) -> f64;
-    }
-}
-
 pub fn main() {
-    unsafe {
-        use rusti::*;
+    use std::f32;
+    use std::f64;
 
-        use std::f32;
-        use std::f64;
+    assert_approx_eq!(64f32.sqrt(), 8f32);
+    assert_approx_eq!(64f64.sqrt(), 8f64);
 
-        assert_approx_eq!(sqrtf32(64f32), 8f32);
-        assert_approx_eq!(sqrtf64(64f64), 8f64);
+    assert_approx_eq!(25f32.powi(-2), 0.0016f32);
+    assert_approx_eq!(23.2f64.powi(2), 538.24f64);
 
-        assert_approx_eq!(powif32(25f32, -2), 0.0016f32);
-        assert_approx_eq!(powif64(23.2f64, 2), 538.24f64);
+    assert_approx_eq!(0f32.sin(), 0f32);
+    assert_approx_eq!((f64::consts::PI / 2f64).sin(), 1f64);
 
-        assert_approx_eq!(sinf32(0f32), 0f32);
-        assert_approx_eq!(sinf64(f64::consts::PI / 2f64), 1f64);
+    assert_approx_eq!(0f32.cos(), 1f32);
+    assert_approx_eq!((f64::consts::PI * 2f64).cos(), 1f64);
 
-        assert_approx_eq!(cosf32(0f32), 1f32);
-        assert_approx_eq!(cosf64(f64::consts::PI * 2f64), 1f64);
+    assert_approx_eq!(25f32.powf(-2f32), 0.0016f32);
+    assert_approx_eq!(400f64.powf(0.5f64), 20f64);
 
-        assert_approx_eq!(powf32(25f32, -2f32), 0.0016f32);
-        assert_approx_eq!(powf64(400f64, 0.5f64), 20f64);
+    assert_approx_eq!((1f32.exp() - f32::consts::E).abs(), 0f32);
+    assert_approx_eq!(1f64.exp(), f64::consts::E);
 
-        assert_approx_eq!(fabsf32(expf32(1f32) - f32::consts::E), 0f32);
-        assert_approx_eq!(expf64(1f64), f64::consts::E);
+    assert_approx_eq!(10f32.exp2(), 1024f32);
+    assert_approx_eq!(50f64.exp2(), 1125899906842624f64);
 
-        assert_approx_eq!(exp2f32(10f32), 1024f32);
-        assert_approx_eq!(exp2f64(50f64), 1125899906842624f64);
+    assert_approx_eq!((f32::consts::E.ln() - 1f32).abs(), 0f32);
+    assert_approx_eq!(1f64.ln(), 0f64);
 
-        assert_approx_eq!(fabsf32(logf32(f32::consts::E) - 1f32), 0f32);
-        assert_approx_eq!(logf64(1f64), 0f64);
+    assert_approx_eq!(10f32.log10(), 1f32);
+    assert_approx_eq!(f64::consts::E.log10(), f64::consts::LOG10_E);
 
-        assert_approx_eq!(log10f32(10f32), 1f32);
-        assert_approx_eq!(log10f64(f64::consts::E), f64::consts::LOG10_E);
+    assert_approx_eq!(8f32.log2(), 3f32);
+    assert_approx_eq!(f64::consts::E.log2(), f64::consts::LOG2_E);
 
-        assert_approx_eq!(log2f32(8f32), 3f32);
-        assert_approx_eq!(log2f64(f64::consts::E), f64::consts::LOG2_E);
+    assert_approx_eq!(1.0f32.mul_add(2.0f32, 5.0f32), 7.0f32);
+    assert_approx_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
 
-        assert_approx_eq!(fmaf32(1.0f32, 2.0f32, 5.0f32), 7.0f32);
-        assert_approx_eq!(fmaf64(0.0f64, -2.0f64, f64::consts::E), f64::consts::E);
+    assert_approx_eq!((-1.0f32).abs(), 1.0f32);
+    assert_approx_eq!(34.2f64.abs(), 34.2f64);
 
-        assert_approx_eq!(fabsf32(-1.0f32), 1.0f32);
-        assert_approx_eq!(fabsf64(34.2f64), 34.2f64);
+    assert_approx_eq!(3.8f32.floor(), 3.0f32);
+    assert_approx_eq!((-1.1f64).floor(), -2.0f64);
 
-        assert_approx_eq!(floorf32(3.8f32), 3.0f32);
-        assert_approx_eq!(floorf64(-1.1f64), -2.0f64);
+    assert_approx_eq!((-2.3f32).ceil(), -2.0f32);
+    assert_approx_eq!(3.8f64.ceil(), 4.0f64);
 
-        // Causes linker error
-        // undefined reference to llvm.ceil.f32/64
-        //assert_eq!(ceilf32(-2.3f32), -2.0f32);
-        //assert_eq!(ceilf64(3.8f64), 4.0f64);
-
-        // Causes linker error
-        // undefined reference to llvm.trunc.f32/64
-        //assert_eq!(truncf32(0.1f32), 0.0f32);
-        //assert_eq!(truncf64(-0.1f64), 0.0f64);
-    }
-
+    assert_approx_eq!(0.1f32.trunc(), 0.0f32);
+    assert_approx_eq!((-0.1f64).trunc(), 0.0f64);
 }

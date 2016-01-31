@@ -10,11 +10,12 @@
 
 #![crate_type = "lib"]
 
+#[repr(C)]
 pub struct TestUnion {
-    val: u64
+    _val: u64
 }
 
-#[link(name = "test", kind = "static")]
+#[link(name = "ctest", kind = "static")]
 extern {
     pub fn give_back(tu: TestUnion) -> u64;
 }

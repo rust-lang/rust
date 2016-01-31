@@ -27,12 +27,11 @@ macro_rules! pos {
     () => ((file!(), line!()))
 }
 
-#[cfg(any(all(unix,
-              not(target_os = "macos"),
-              not(target_os = "ios"),
-              not(target_os = "android"),
-              not(all(target_os = "linux", target_arch = "arm"))),
-          all(windows, not(target_arch = "x86"))))]
+#[cfg(all(unix,
+          not(target_os = "macos"),
+          not(target_os = "ios"),
+          not(target_os = "android"),
+          not(all(target_os = "linux", target_arch = "arm"))))]
 macro_rules! dump_and_die {
     ($($pos:expr),*) => ({
         // FIXME(#18285): we cannot include the current position because
@@ -43,12 +42,11 @@ macro_rules! dump_and_die {
 }
 
 // this does not work on Windows, Android, OSX or iOS
-#[cfg(not(any(all(unix,
+#[cfg(not(all(unix,
               not(target_os = "macos"),
               not(target_os = "ios"),
               not(target_os = "android"),
-              not(all(target_os = "linux", target_arch = "arm"))),
-          all(windows, not(target_arch = "x86")))))]
+              not(all(target_os = "linux", target_arch = "arm")))))]
 macro_rules! dump_and_die {
     ($($pos:expr),*) => ({ let _ = [$($pos),*]; })
 }

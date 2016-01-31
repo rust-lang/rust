@@ -514,7 +514,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
     // the special dtor markings.
 
     let inttype = Type::int(bcx.ccx());
-    let dropped_pattern = C_integral(inttype, adt::dtor_done_usize(bcx.fcx.ccx) as u64, false);
+    let dropped_pattern = C_integral(inttype, adt::DTOR_DONE_U64, false);
 
     match t.sty {
         ty::TyBox(content_ty) => {

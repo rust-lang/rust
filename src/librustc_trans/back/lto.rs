@@ -52,7 +52,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     link::each_linked_rlib(sess, &mut |_, path| {
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let bytecodes = archive.iter().filter_map(|child| {
-            child.name().map(|name| (name, child))
+            child.ok().and_then(|c| c.name().map(|name| (name, c)))
         }).filter(|&(name, _)| name.ends_with("bytecode.deflate"));
         for (name, data) in bytecodes {
             let bc_encoded = data.data();

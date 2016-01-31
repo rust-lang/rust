@@ -220,7 +220,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let (llval, ll_t_in, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
                             let repr = adt::represent_type(bcx.ccx(), operand.ty);
                             let llval = operand.immediate();
-                            let discr = adt::trans_get_discr(bcx, &*repr, llval, None);
+                            let discr = adt::trans_get_discr(bcx, &*repr, llval,
+                                                             None, true);
                             (discr, common::val_ty(discr), adt::is_discr_signed(&*repr))
                         } else {
                             (operand.immediate(), ll_t_in, operand.ty.is_signed())

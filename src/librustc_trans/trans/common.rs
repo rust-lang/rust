@@ -17,7 +17,7 @@ pub use self::ExprOrMethodCall::*;
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
-use llvm::{True, False, Bool};
+use llvm::{True, False, Bool, OperandBundleDef};
 use middle::cfg;
 use middle::def::Def;
 use middle::def_id::DefId;
@@ -326,9 +326,13 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // we use a separate alloca for each return
     pub needs_ret_allocas: bool,
 
-    // The a value alloca'd for calls to upcalls.rust_personality. Used when
-    // outputting the resume instruction.
-    pub personality: Cell<Option<ValueRef>>,
+    // When working with landingpad-based exceptions this value is alloca'd and
+    // later loaded when using the resume instruction. This ends up being
+    // critical to chaining landing pads and resuing already-translated
+    // cleanups.
+    //
+    // Note that for cleanuppad-based exceptions this is not used.
+    pub landingpad_alloca: Cell<Option<ValueRef>>,
 
     // True if the caller expects this fn to use the out pointer to
     // return. Either way, your code should write into the slot llretslotptr
@@ -424,7 +428,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn new_block(&'a self,
-                     is_lpad: bool,
                      name: &str,
                      opt_node_id: Option<ast::NodeId>)
                      -> Block<'a, 'tcx> {
@@ -433,7 +436,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
                                                            self.llfn,
                                                            name.as_ptr());
-            BlockS::new(llbb, is_lpad, opt_node_id, self)
+            BlockS::new(llbb, opt_node_id, self)
         }
     }
 
@@ -441,13 +444,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                         name: &str,
                         node_id: ast::NodeId)
                         -> Block<'a, 'tcx> {
-        self.new_block(false, name, Some(node_id))
+        self.new_block(name, Some(node_id))
     }
 
     pub fn new_temp_block(&'a self,
                           name: &str)
                           -> Block<'a, 'tcx> {
-        self.new_block(false, name, None)
+        self.new_block(name, None)
     }
 
     pub fn join_blocks(&'a self,
@@ -577,8 +580,9 @@ pub struct BlockS<'blk, 'tcx: 'blk> {
     pub terminated: Cell<bool>,
     pub unreachable: Cell<bool>,
 
-    // Is this block part of a landing pad?
-    pub is_lpad: bool,
+    // If this block part of a landing pad, then this is `Some` indicating what
+    // kind of landing pad its in, otherwise this is none.
+    pub lpad: RefCell<Option<LandingPad>>,
 
     // AST node-id associated with this block, if any. Used for
     // debugging purposes only.
@@ -593,7 +597,6 @@ pub type Block<'blk, 'tcx> = &'blk BlockS<'blk, 'tcx>;
 
 impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn new(llbb: BasicBlockRef,
-               is_lpad: bool,
                opt_node_id: Option<ast::NodeId>,
                fcx: &'blk FunctionContext<'blk, 'tcx>)
                -> Block<'blk, 'tcx> {
@@ -601,7 +604,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             llbb: llbb,
             terminated: Cell::new(false),
             unreachable: Cell::new(false),
-            is_lpad: is_lpad,
+            lpad: RefCell::new(None),
             opt_node_id: opt_node_id,
             fcx: fcx
         })
@@ -655,6 +658,53 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
                                          value)
+    }
+}
+
+/// A structure representing an active landing pad for the duration of a basic
+/// block.
+///
+/// Each `Block` may contain an instance of this, indicating whether the block
+/// is part of a landing pad or not. This is used to make decision about whether
+/// to emit `invoke` instructions (e.g. in a landing pad we don't continue to
+/// use `invoke`) and also about various function call metadata.
+///
+/// For GNU exceptions (`landingpad` + `resume` instructions) this structure is
+/// just a bunch of `None` instances (not too interesting), but for MSVC
+/// exceptions (`cleanuppad` + `cleanupret` instructions) this contains data.
+/// When inside of a landing pad, each function call in LLVM IR needs to be
+/// annotated with which landing pad it's a part of. This is accomplished via
+/// the `OperandBundleDef` value created for MSVC landing pads.
+pub struct LandingPad {
+    cleanuppad: Option<ValueRef>,
+    operand: Option<OperandBundleDef>,
+}
+
+impl LandingPad {
+    pub fn gnu() -> LandingPad {
+        LandingPad { cleanuppad: None, operand: None }
+    }
+
+    pub fn msvc(cleanuppad: ValueRef) -> LandingPad {
+        LandingPad {
+            cleanuppad: Some(cleanuppad),
+            operand: Some(OperandBundleDef::new("funclet", &[cleanuppad])),
+        }
+    }
+
+    pub fn bundle(&self) -> Option<&OperandBundleDef> {
+        self.operand.as_ref()
+    }
+}
+
+impl Clone for LandingPad {
+    fn clone(&self) -> LandingPad {
+        LandingPad {
+            cleanuppad: self.cleanuppad,
+            operand: self.cleanuppad.map(|p| {
+                OperandBundleDef::new("funclet", &[p])
+            }),
+        }
     }
 }
 
