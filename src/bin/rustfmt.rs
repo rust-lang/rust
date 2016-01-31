@@ -57,8 +57,11 @@ fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
 
     loop {
         let config_file = current.join("rustfmt.toml");
-        if fs::metadata(&config_file).is_ok() {
-            return Ok(config_file);
+        if let Ok(md) = fs::metadata(&config_file) {
+            // Properly handle unlikely situation of a directory named `rustfmt.toml`.
+            if md.is_file() {
+                return Ok(config_file);
+            }
         }
 
         // If the current directory has no parent, we're done searching.
