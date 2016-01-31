@@ -58,13 +58,13 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
     }
 }
 
-impl MirPass for EraseRegions {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, tcx: &ty::ctxt<'tcx>) {
-        EraseRegionsVisitor::new(tcx).visit_mir(mir);
+impl<'a, 'tcx> MirPass<'tcx> for EraseRegions<'a, 'tcx> {
+    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>) {
+        self.visit_mir(mir);
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegions<'a, 'tcx> {
     fn visit_mir(&mut self, mir: &mut Mir<'tcx>) {
         self.erase_regions_return_ty(&mut mir.return_ty);
         self.erase_regions_tys(mir.var_decls.iter_mut().map(|d| &mut d.ty));
