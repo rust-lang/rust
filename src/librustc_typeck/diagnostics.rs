@@ -1489,22 +1489,46 @@ For information on the design of the orphan rules, see [RFC 1023].
 "##,
 
 E0118: r##"
-Rust can't find a base type for an implementation you are providing, or the type
-cannot have an implementation. For example, only a named type or a trait can
-have an implementation:
+You're trying to write an inherent implementation for something which isn't a
+struct nor an enum. Erroneous code example:
 
 ```
-type NineString = [char, ..9] // This isn't a named type (struct, enum or trait)
-impl NineString {
-    // Some code here
+impl (u8, u8) { // error: no base type found for inherent implementation
+    fn get_state(&self) -> String {
+        // ...
+    }
 }
 ```
 
-In the other, simpler case, Rust just can't find the type you are providing an
-impelementation for:
+To fix this error, please implement a trait on the type or wrap it in a struct.
+Example:
 
 ```
-impl SomeTypeThatDoesntExist {  }
+// we create a trait here
+trait LiveLongAndProsper {
+    fn get_state(&self) -> String;
+}
+
+// and now you can implement it on (u8, u8)
+impl LiveLongAndProsper for (u8, u8) {
+    fn get_state(&self) -> String {
+        "He's dead, Jim!".to_owned()
+    }
+}
+```
+
+Alternatively, you can create a newtype. A newtype is a wrapping tuple-struct.
+For example, `NewType` is a newtype over `Foo` in `struct NewType(Foo)`.
+Example:
+
+```
+struct TypeWrapper((u8, u8));
+
+impl TypeWrapper {
+    fn get_state(&self) -> String {
+        "Fascinating!".to_owned()
+    }
+}
 ```
 "##,
 
