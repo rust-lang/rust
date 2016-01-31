@@ -1249,7 +1249,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index];
-            match self.resolve_name_in_module(search_module, name, TypeNS, false) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, true) {
                 Failed(None) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
@@ -1487,7 +1487,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module, name, namespace, true) {
+            match self.resolve_name_in_module(search_module, name, namespace, true, record_used) {
                 Failed(Some((span, msg))) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
                 }
@@ -1612,7 +1612,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               module_: Module<'a>,
                               name: Name,
                               namespace: Namespace,
-                              allow_private_imports: bool)
+                              allow_private_imports: bool,
+                              record_used: bool)
                               -> ResolveResult<(Target<'a>, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
                name,
@@ -1641,11 +1642,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(target) => {
                         debug!("(resolving name in module) resolved to import");
                         // track used imports and extern crates as well
-                        let id = import_resolution.id;
-                        self.used_imports.insert((id, namespace));
-                        self.record_import_use(id, name);
-                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                            self.used_crates.insert(kid);
+                        if record_used {
+                            let id = import_resolution.id;
+                            self.used_imports.insert((id, namespace));
+                            self.record_import_use(id, name);
+                            if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
+                                self.used_crates.insert(kid);
+                            }
                         }
                         return Success((target, true));
                     }
@@ -2967,7 +2970,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        let def = match self.resolve_name_in_module(containing_module, name, namespace, false) {
+        let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
+        let def = match result {
             Success((Target { binding, .. }, _)) => {
                 let (def, lp) = binding.def_and_lp();
                 (def, last_private.or(lp))
@@ -3026,7 +3030,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        match self.resolve_name_in_module(containing_module, name, namespace, false) {
+        match self.resolve_name_in_module(containing_module, name, namespace, false, true) {
             Success((Target { binding, .. }, _)) => {
                 let (def, lp) = binding.def_and_lp();
                 Some((def, last_private.or(lp)))
@@ -3068,6 +3072,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Success((target, _)) = self.resolve_name_in_module(module,
                                                                           ident.unhygienic_name,
                                                                           namespace,
+                                                                          true,
                                                                           true) {
                     if let Some(def) = target.binding.def() {
                         return Some(LocalDef::from_def(def));

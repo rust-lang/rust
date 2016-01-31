@@ -26,7 +26,6 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
-use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};

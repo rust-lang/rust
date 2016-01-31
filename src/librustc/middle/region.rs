@@ -20,7 +20,7 @@ use front::map as ast_map;
 use session::Session;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 use middle::cstore::InlinedItem;
-use middle::ty::{self, Ty};
+use middle::ty;
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;

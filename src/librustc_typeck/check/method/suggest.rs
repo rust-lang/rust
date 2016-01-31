@@ -17,7 +17,7 @@ use astconv::AstConv;
 use check::{self, FnCtxt};
 use front::map as hir_map;
 use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
-use middle::cstore::{self, CrateStore, DefLike};
+use middle::cstore::{self, CrateStore};
 use middle::def::Def;
 use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;

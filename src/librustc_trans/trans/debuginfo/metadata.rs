@@ -26,7 +26,7 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 use middle::def_id::DefId;
 use middle::infer;
 use middle::pat_util;
-use middle::subst::{self, Substs};
+use middle::subst;
 use rustc::front::map as hir_map;
 use rustc_front::hir;
 use trans::{type_of, adt, machine, monomorphize};

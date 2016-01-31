@@ -50,7 +50,6 @@ use middle::ty::cast::{CastKind, CastTy};
 use syntax::codemap::Span;
 use rustc_front::hir;
 use syntax::ast;
-use syntax::ast::UintTy::TyU8;
 
 
 /// Reifies a cast check to be checked once we have full type information for
