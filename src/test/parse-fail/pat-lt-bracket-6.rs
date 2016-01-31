@@ -10,4 +10,5 @@
 
 fn main() {
     let Test(&desc[..]) = x; //~ error: expected one of `,` or `@`, found `[`
+    //~^ ERROR expected one of `:`, `;`, or `=`, found `..`
 }

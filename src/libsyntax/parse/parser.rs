@@ -598,7 +598,7 @@ impl<'a> Parser<'a> {
 
     /// Check if the next token is `tok`, and return `true` if so.
     ///
-    /// This method is will automatically add `tok` to `expected_tokens` if `tok` is not
+    /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
     /// encountered.
     pub fn check(&mut self, tok: &token::Token) -> bool {
         let is_present = self.token == *tok;
@@ -840,6 +840,12 @@ impl<'a> Parser<'a> {
         return Ok((v, returned));
     }
 
+    /// Eat and discard tokens until one of `kets` is encountered. Respects token trees,
+    /// passes through any errors encountered. Used for error recovery.
+    pub fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
+        self.parse_seq_to_before_tokens(kets, seq_sep_none(), |p| p.parse_token_tree());
+    }
+
     /// Parse a sequence, including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
@@ -861,13 +867,23 @@ impl<'a> Parser<'a> {
     pub fn parse_seq_to_before_end<T, F>(&mut self,
                                          ket: &token::Token,
                                          sep: SeqSep,
-                                         mut f: F)
+                                         f: F)
                                          -> Vec<T>
+        where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
+    {
+        self.parse_seq_to_before_tokens(&[ket], sep, f)
+    }
+
+    pub fn parse_seq_to_before_tokens<T, F>(&mut self,
+                                            kets: &[&token::Token],
+                                            sep: SeqSep,
+                                            mut f: F)
+                                            -> Vec<T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
     {
         let mut first: bool = true;
         let mut v = vec!();
-        while self.token != *ket {
+        while !kets.contains(&&self.token) {
             match sep.sep {
                 Some(ref t) => {
                     if first {
@@ -881,7 +897,9 @@ impl<'a> Parser<'a> {
                 }
                 _ => ()
             }
-            if sep.trailing_sep_allowed && self.check(ket) { break; }
+            if sep.trailing_sep_allowed && kets.iter().any(|k| self.check(k)) {
+                break;
+            }
 
             match f(self) {
                 Ok(t) => v.push(t),
@@ -1230,7 +1248,25 @@ impl<'a> Parser<'a> {
                 };
                 (ident, TraitItemKind::Const(ty, default))
             } else {
-                let (constness, unsafety, abi) = try!(p.parse_fn_front_matter());
+                let (constness, unsafety, abi) = match p.parse_fn_front_matter() {
+                    Ok(cua) => cua,
+                    Err(e) => {
+                        loop {
+                            p.bump();
+                            if p.token == token::Semi {
+                                p.bump();
+                                break;
+                            }
+
+                            if p.token == token::OpenDelim(token::DelimToken::Brace) {
+                                try!(p.parse_token_tree());
+                                break;
+                            }
+                        }
+                        
+                        return Err(e);
+                    }
+                };
 
                 let ident = try!(p.parse_ident());
                 let mut generics = try!(p.parse_generics());
@@ -4181,8 +4217,8 @@ impl<'a> Parser<'a> {
     fn forbid_lifetime(&mut self) -> PResult<'a, ()> {
         if self.token.is_lifetime() {
             let span = self.span;
-            return Err(self.span_fatal(span, "lifetime parameters must be declared \
-                                        prior to type parameters"))
+            return Err(self.diagnostic().struct_span_err(span, "lifetime parameters must be \
+                                                                declared prior to type parameters"))
         }
         Ok(())
     }
@@ -4310,7 +4346,8 @@ impl<'a> Parser<'a> {
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
         let sp = self.span;
-        let mut args: Vec<Option<Arg>> =
+        let mut variadic = false;
+        let args: Vec<Option<Arg>> =
             try!(self.parse_unspanned_seq(
                 &token::OpenDelim(token::Paren),
                 &token::CloseDelim(token::Paren),
@@ -4321,37 +4358,35 @@ impl<'a> Parser<'a> {
                         if allow_variadic {
                             if p.token != token::CloseDelim(token::Paren) {
                                 let span = p.span;
-                                return Err(p.span_fatal(span,
-                                    "`...` must be last in argument list for variadic function"))
+                                p.span_err(span,
+                                    "`...` must be last in argument list for variadic function");
                             }
                         } else {
                             let span = p.span;
-                            return Err(p.span_fatal(span,
-                                         "only foreign functions are allowed to be variadic"))
+                            p.span_err(span,
+                                       "only foreign functions are allowed to be variadic");
                         }
+                        variadic = true;
                         Ok(None)
                     } else {
-                        Ok(Some(try!(p.parse_arg_general(named_args))))
+                        match p.parse_arg_general(named_args) {
+                            Ok(arg) => Ok(Some(arg)),
+                            Err(mut e) => {
+                                e.emit();
+                                p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
+                                Ok(None)
+                            }
+                        }
                     }
                 }
             ));
-
-        let variadic = match args.pop() {
-            Some(None) => true,
-            Some(x) => {
-                // Need to put back that last arg
-                args.push(x);
-                false
-            }
-            None => false
-        };
 
         if variadic && args.is_empty() {
             self.span_err(sp,
                           "variadic function must be declared with at least one named argument");
         }
 
-        let args = args.into_iter().map(|x| x.unwrap()).collect();
+        let args = args.into_iter().filter_map(|x| x).collect();
 
         Ok((args, variadic))
     }
@@ -4749,8 +4784,8 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let delim = try!(self.expect_open_delim());
             let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
-                                            seq_sep_none(),
-                                            |p| p.parse_token_tree()));
+                                                 seq_sep_none(),
+                                                 |p| p.parse_token_tree()));
             let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
                                                 span: mk_sp(lo,
@@ -5809,8 +5844,8 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let delim = try!(self.expect_open_delim());
             let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
-                                            seq_sep_none(),
-                                            |p| p.parse_token_tree()));
+                                                 seq_sep_none(),
+                                                 |p| p.parse_token_tree()));
             // single-variant-enum... :
             let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,
