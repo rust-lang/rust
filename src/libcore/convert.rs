@@ -17,13 +17,13 @@
 //! Like many traits, these are often used as bounds for generic functions, to
 //! support arguments of multiple types.
 //!
-//! - Use `as` for reference-to-reference conversions
-//! - Use `into` when you want to consume the value
-//! - `from` is the more flexible way, which can convert values and references
+//! - Impl the `As*` traits for reference-to-reference conversions
+//! - Impl the `Into` trait when you want to consume the value in the conversion
+//! - The `From` trait is the most flexible, usefull for values _and_ references conversions
 //!
 //! As a library writer, you should prefer implementing `From<T>` rather than
 //! `Into<U>`, as `From` provides greater flexibility and offer the equivalent `Into`
-//! implementation for free thanks to a blanket implementation in the standard library.
+//! implementation for free, thanks to a blanket implementation in the standard library.
 //!
 //! **Note: these traits must not fail**. If the conversion can fail, you must use a dedicated
 //! method which return an `Option<T>` or a `Result<T, E>`.
@@ -103,7 +103,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// Library writer should not implement directly this trait, but should prefer the implementation
 /// of the `From` trait, which offer greater flexibility and provide the equivalent `Into`
-/// implementation for free thanks to a blanket implementation in the standard library.
+/// implementation for free, thanks to a blanket implementation in the standard library.
 ///
 /// # Examples
 ///
@@ -119,7 +119,7 @@ pub trait AsMut<T: ?Sized> {
 /// is_hello(s);
 /// ```
 ///
-/// #Generic Impls
+/// # Generic Impls
 ///
 /// - `From<T> for U` implies `Into<U> for T`
 /// - `into()` is reflexive, which means that `Into<T> for T` is implemented
