@@ -23,7 +23,7 @@ pub fn target() -> Target {
 
         options: TargetOptions {
             features: "+v7,+vfp2,+neon".to_string(),
-            cpu: "cortex-a7".to_string(),
+            cpu: "cortex-a8".to_string(),
             .. base
         }
     }
