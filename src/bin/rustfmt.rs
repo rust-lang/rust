@@ -51,9 +51,7 @@ fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
         input_file.to_path_buf()
     };
 
-    // FIXME: We should canonize path to properly handle its parents,
-    // but `canonicalize` function is unstable now (recently added API)
-    // current = try!(fs::canonicalize(current));
+    current = try!(fs::canonicalize(current));
 
     loop {
         let config_file = current.join("rustfmt.toml");
