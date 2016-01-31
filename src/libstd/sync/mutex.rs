@@ -211,8 +211,10 @@ impl<T: ?Sized> Mutex<T> {
     /// this call will return an error once the mutex is acquired.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
-        unsafe { self.inner.lock.lock() }
-        unsafe { MutexGuard::new(&*self.inner, &self.data) }
+        unsafe {
+            self.inner.lock.lock();
+            MutexGuard::new(&*self.inner, &self.data)
+        }
     }
 
     /// Attempts to acquire this lock.
@@ -230,10 +232,12 @@ impl<T: ?Sized> Mutex<T> {
     /// acquired.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
-        if unsafe { self.inner.lock.try_lock() } {
-            Ok(try!(unsafe { MutexGuard::new(&*self.inner, &self.data) }))
-        } else {
-            Err(TryLockError::WouldBlock)
+        unsafe {
+            if self.inner.lock.try_lock() {
+                Ok(try!(MutexGuard::new(&*self.inner, &self.data)))
+            } else {
+                Err(TryLockError::WouldBlock)
+            }
         }
     }
 
@@ -338,17 +342,21 @@ impl StaticMutex {
     /// Acquires this lock, see `Mutex::lock`
     #[inline]
     pub fn lock(&'static self) -> LockResult<MutexGuard<()>> {
-        unsafe { self.lock.lock() }
-        unsafe { MutexGuard::new(self, &DUMMY.0) }
+        unsafe {
+            self.lock.lock();
+            MutexGuard::new(self, &DUMMY.0)
+        }
     }
 
     /// Attempts to grab this lock, see `Mutex::try_lock`
     #[inline]
     pub fn try_lock(&'static self) -> TryLockResult<MutexGuard<()>> {
-        if unsafe { self.lock.try_lock() } {
-            Ok(try!(unsafe { MutexGuard::new(self, &DUMMY.0) }))
-        } else {
-            Err(TryLockError::WouldBlock)
+        unsafe {
+            if self.lock.try_lock() {
+                Ok(try!(MutexGuard::new(self, &DUMMY.0)))
+            } else {
+                Err(TryLockError::WouldBlock)
+            }
         }
     }
 
@@ -393,17 +401,18 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     /// let x = Mutex::new(vec![1, 2]);
     ///
     /// {
-    ///     let y = MutexGuard::map(x.lock().unwrap(), |v| &mut v[0]);
+    ///     let mut y = MutexGuard::map(x.lock().unwrap(), |v| &mut v[0]);
     ///     *y = 3;
     /// }
     ///
-    /// assert_eq!(&*x.lock(), &[3, 2]);
+    /// assert_eq!(&*x.lock().unwrap(), &[3, 2]);
     /// ```
     #[unstable(feature = "guard_map",
                reason = "recently added, needs RFC for stabilization",
-               issue = "0")]
+               issue = "27746")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> MutexGuard<'mutex, U>
-    where F: FnOnce(&'mutex mut T) -> &'mutex mut U {
+        where F: FnOnce(&'mutex mut T) -> &'mutex mut U
+    {
         // Compute the new data while still owning the original lock
         // in order to correctly poison if the callback panics.
         let data = unsafe { ptr::read(&this.__data) };
@@ -411,8 +420,9 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
 
         // We don't want to unlock the lock by running the destructor of the
         // original lock, so just read the fields we need and forget it.
-        let poison = unsafe { ptr::read(&this.__poison) };
-        let lock = unsafe { ptr::read(&this.__lock) };
+        let (poison, lock) = unsafe {
+            (ptr::read(&this.__poison), ptr::read(&this.__lock))
+        };
         mem::forget(this);
 
         MutexGuard {

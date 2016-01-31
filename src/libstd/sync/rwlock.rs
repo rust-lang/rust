@@ -177,8 +177,10 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
-        unsafe { self.inner.lock.read() }
-        unsafe { RwLockReadGuard::new(&*self.inner, &self.data) }
+        unsafe {
+            self.inner.lock.read();
+            RwLockReadGuard::new(&*self.inner, &self.data)
+        }
     }
 
     /// Attempts to acquire this rwlock with shared read access.
@@ -201,10 +203,12 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
-        if unsafe { self.inner.lock.try_read() } {
-            Ok(try!(unsafe { RwLockReadGuard::new(&*self.inner, &self.data) }))
-        } else {
-            Err(TryLockError::WouldBlock)
+        unsafe {
+            if self.inner.lock.try_read() {
+                Ok(try!(RwLockReadGuard::new(&*self.inner, &self.data)))
+            } else {
+                Err(TryLockError::WouldBlock)
+            }
         }
     }
 
@@ -225,8 +229,10 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
-        unsafe { self.inner.lock.write() }
-        unsafe { RwLockWriteGuard::new(&*self.inner, &self.data) }
+        unsafe {
+            self.inner.lock.write();
+            RwLockWriteGuard::new(&*self.inner, &self.data)
+        }
     }
 
     /// Attempts to lock this rwlock with exclusive write access.
@@ -249,10 +255,12 @@ impl<T: ?Sized> RwLock<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
-        if unsafe { self.inner.lock.try_write() } {
-            Ok(try!(unsafe { RwLockWriteGuard::new(&*self.inner, &self.data) }))
-        } else {
-            Err(TryLockError::WouldBlock)
+        unsafe {
+            if self.inner.lock.try_write() {
+                Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
+            } else {
+                Err(TryLockError::WouldBlock)
+            }
         }
     }
 
@@ -360,8 +368,10 @@ impl StaticRwLock {
     /// See `RwLock::read`.
     #[inline]
     pub fn read(&'static self) -> LockResult<RwLockReadGuard<'static, ()>> {
-        unsafe { self.lock.read() }
-        unsafe { RwLockReadGuard::new(self, &DUMMY.0) }
+        unsafe {
+            self.lock.read();
+            RwLockReadGuard::new(self, &DUMMY.0)
+        }
     }
 
     /// Attempts to acquire this lock with shared read access.
@@ -370,10 +380,12 @@ impl StaticRwLock {
     #[inline]
     pub fn try_read(&'static self)
                     -> TryLockResult<RwLockReadGuard<'static, ()>> {
-        if unsafe { self.lock.try_read() } {
-            unsafe { Ok(try!(RwLockReadGuard::new(self, &DUMMY.0))) }
-        } else {
-            Err(TryLockError::WouldBlock)
+        unsafe {
+            if self.lock.try_read(){
+                Ok(try!(RwLockReadGuard::new(self, &DUMMY.0)))
+            } else {
+                Err(TryLockError::WouldBlock)
+            }
         }
     }
 
@@ -383,8 +395,10 @@ impl StaticRwLock {
     /// See `RwLock::write`.
     #[inline]
     pub fn write(&'static self) -> LockResult<RwLockWriteGuard<'static, ()>> {
-        unsafe { self.lock.write() }
-        unsafe { RwLockWriteGuard::new(self, &DUMMY.0) }
+        unsafe {
+            self.lock.write();
+            RwLockWriteGuard::new(self, &DUMMY.0)
+        }
     }
 
     /// Attempts to lock this rwlock with exclusive write access.
@@ -393,10 +407,12 @@ impl StaticRwLock {
     #[inline]
     pub fn try_write(&'static self)
                      -> TryLockResult<RwLockWriteGuard<'static, ()>> {
-        if unsafe { self.lock.try_write() } {
-            Ok(unsafe { try!(RwLockWriteGuard::new(self, &DUMMY.0)) })
-        } else {
-            Err(TryLockError::WouldBlock)
+        unsafe {
+            if self.lock.try_write() {
+                Ok(try!(RwLockWriteGuard::new(self, &DUMMY.0)))
+            } else {
+                Err(TryLockError::WouldBlock)
+            }
         }
     }
 
@@ -439,9 +455,10 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// ```
     #[unstable(feature = "guard_map",
                reason = "recently added, needs RFC for stabilization",
-               issue = "0")]
+               issue = "27746")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockReadGuard<'rwlock, U>
-    where F: FnOnce(&'rwlock T) -> &'rwlock U {
+        where F: FnOnce(&'rwlock T) -> &'rwlock U
+    {
         let new = RwLockReadGuard {
             __lock: this.__lock,
             __data: cb(this.__data)
@@ -478,7 +495,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// let x = RwLock::new(vec![1, 2]);
     ///
     /// {
-    ///     let y = RwLockWriteGuard::map(x.write().unwrap(), |v| &mut v[0]);
+    ///     let mut y = RwLockWriteGuard::map(x.write().unwrap(), |v| &mut v[0]);
     ///     assert_eq!(*y, 1);
     ///
     ///     *y = 10;
@@ -488,9 +505,10 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// ```
     #[unstable(feature = "guard_map",
                reason = "recently added, needs RFC for stabilization",
-               issue = "0")]
+               issue = "27746")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockWriteGuard<'rwlock, U>
-    where F: FnOnce(&'rwlock mut T) -> &'rwlock mut U {
+        where F: FnOnce(&'rwlock mut T) -> &'rwlock mut U
+    {
         // Compute the new data while still owning the original lock
         // in order to correctly poison if the callback panics.
         let data = unsafe { ptr::read(&this.__data) };
@@ -498,8 +516,9 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
 
         // We don't want to unlock the lock by running the destructor of the
         // original lock, so just read the fields we need and forget it.
-        let poison = unsafe { ptr::read(&this.__poison) };
-        let lock = unsafe { ptr::read(&this.__lock) };
+        let (poison, lock) = unsafe {
+            (ptr::read(&this.__poison), ptr::read(&this.__lock))
+        };
         mem::forget(this);
 
         RwLockWriteGuard {
