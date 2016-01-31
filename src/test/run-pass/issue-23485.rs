@@ -13,12 +13,7 @@
 // problem occurred specifically because normalizing
 // `Self::Item::Target` was impossible in this case.
 
-use std::boxed::Box;
-use std::marker::Sized;
-use std::clone::Clone;
 use std::ops::Deref;
-use std::option::Option;
-use std::option::Option::{Some,None};
 
 trait Iterator {
     type Item;
@@ -28,7 +23,7 @@ trait Iterator {
     fn clone_first(mut self) -> Option<<Self::Item as Deref>::Target> where
         Self: Sized,
         Self::Item: Deref,
-        <Self::Item as Deref>::Target: Clone,
+        <Self::Item as Deref>::Target: Clone + Sized,
     {
         self.next().map(|x| x.clone())
     }

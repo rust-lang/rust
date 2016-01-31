@@ -32,8 +32,7 @@ fn b() {
     let x: Box<_> = box 3;
     let y = &x;
     let z = &x as &Foo;
-    //~^ ERROR E0038
-    //~| ERROR E0038
+    //~^ ERROR E0277
 }
 
 fn main() { }

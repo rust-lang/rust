@@ -49,7 +49,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
-pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
+pub trait TypeFoldable<'tcx>: Sized + fmt::Debug + Clone {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.super_fold_with(folder)

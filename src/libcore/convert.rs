@@ -76,7 +76,7 @@ pub trait AsMut<T: ?Sized> {
 /// is_hello(s);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Into<T>: Sized {
+pub trait Into<T> {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;
@@ -95,10 +95,10 @@ pub trait Into<T>: Sized {
 /// assert_eq!(string, other_string);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait From<T>: Sized {
+pub trait From<T> {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from(T) -> Self;
+    fn from(T) -> Self where Self: Sized;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

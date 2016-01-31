@@ -56,9 +56,9 @@ pub mod diy_float;
 #[unstable(feature = "zero_one",
            reason = "unsure of placement, wants to use associated constants",
            issue = "27739")]
-pub trait Zero: Sized {
+pub trait Zero {
     /// The "zero" (usually, additive identity) for this type.
-    fn zero() -> Self;
+    fn zero() -> Self where Self: Sized;
 }
 
 /// Types that have a "one" value.
@@ -68,9 +68,9 @@ pub trait Zero: Sized {
 #[unstable(feature = "zero_one",
            reason = "unsure of placement, wants to use associated constants",
            issue = "27739")]
-pub trait One: Sized {
+pub trait One {
     /// The "one" (usually, multiplicative identity) for this type.
-    fn one() -> Self;
+    fn one() -> Self where Self: Sized;
 }
 
 macro_rules! zero_one_impl {
@@ -2296,9 +2296,9 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
 trait FromStrRadixHelper: PartialOrd + Copy {
     fn min_value() -> Self;
     fn from_u32(u: u32) -> Self;
-    fn checked_mul(&self, other: u32) -> Option<Self>;
-    fn checked_sub(&self, other: u32) -> Option<Self>;
-    fn checked_add(&self, other: u32) -> Option<Self>;
+    fn checked_mul(&self, other: u32) -> Option<Self> where Self: Sized;
+    fn checked_sub(&self, other: u32) -> Option<Self> where Self: Sized;
+    fn checked_add(&self, other: u32) -> Option<Self> where Self: Sized;
 }
 
 macro_rules! doit {

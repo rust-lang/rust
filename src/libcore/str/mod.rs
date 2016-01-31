@@ -45,7 +45,7 @@ pub mod pattern;
 /// [`str`]: ../primitive.str.html
 /// [`parse()`]: ../primitive.str.html#method.parse
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait FromStr: Sized {
+pub trait FromStr {
     /// The associated error which can be returned from parsing.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Err;
@@ -71,7 +71,7 @@ pub trait FromStr: Sized {
     /// assert_eq!(5, x);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_str(s: &str) -> Result<Self, Self::Err>;
+    fn from_str(s: &str) -> Result<Self, Self::Err> where Self: Sized;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

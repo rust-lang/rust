@@ -27,7 +27,7 @@ use marker::Sized;
 ///
 /// This trait can be used with `#[derive]`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Clone : Sized {
+pub trait Clone {
     /// Returns a copy of the value.
     ///
     /// # Examples
@@ -38,7 +38,7 @@ pub trait Clone : Sized {
     /// assert_eq!("Hello", hello.clone());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn clone(&self) -> Self;
+    fn clone(&self) -> Self where Self: Sized;
 
     /// Performs copy-assignment from `source`.
     ///
@@ -47,7 +47,7 @@ pub trait Clone : Sized {
     /// allocations.
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn clone_from(&mut self, source: &Self) {
+    fn clone_from(&mut self, source: &Self) where Self: Sized {
         *self = source.clone()
     }
 }
