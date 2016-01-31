@@ -1423,47 +1423,29 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                namespace,
                module_to_string(&*module_));
 
-        // The current module node is handled specially. First, check for
-        // its immediate children.
-        build_reduced_graph::populate_module_if_necessary(self, &module_);
-
-        if let Some(binding) = module_.get_child(name, namespace) {
-            debug!("top name bindings succeeded");
-            return Success((Target::new(module_, binding, Shadowable::Never), false));
-        }
-
-        // Now check for its import directives. We don't have to have resolved
-        // all its imports in the usual way; this is because chains of
-        // adjacent import statements are processed as though they mutated the
-        // current scope.
-        if let Some(import_resolution) =
-            module_.import_resolutions.borrow().get(&(name, namespace)) {
-            match import_resolution.target.clone() {
-                None => {
-                    // Not found; continue.
-                    debug!("(resolving item in lexical scope) found import resolution, but not \
-                            in namespace {:?}",
-                           namespace);
-                }
-                Some(target) => {
-                    debug!("(resolving item in lexical scope) using import resolution");
-                    // track used imports and extern crates as well
-                    let id = import_resolution.id;
-                    if record_used {
-                        self.used_imports.insert((id, namespace));
-                        self.record_import_use(id, name);
-                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                            self.used_crates.insert(kid);
-                        }
-                    }
-                    return Success((target, false));
-                }
-            }
-        }
-
-        // Finally, proceed up the scope chain looking for parent modules.
+        // Proceed up the scope chain looking for parent modules.
         let mut search_module = module_;
         loop {
+            // Resolve the name in the parent module.
+            match self.resolve_name_in_module(search_module, name, namespace, true, record_used) {
+                Failed(Some((span, msg))) => {
+                    resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                }
+                Failed(None) => (), // Continue up the search chain.
+                Indeterminate => {
+                    // We couldn't see through the higher scope because of an
+                    // unresolved import higher up. Bail.
+
+                    debug!("(resolving item in lexical scope) indeterminate higher scope; bailing");
+                    return Indeterminate;
+                }
+                Success((target, used_reexport)) => {
+                    // We found the module.
+                    debug!("(resolving item in lexical scope) found name in module, done");
+                    return Success((target, used_reexport));
+                }
+            }
+
             // Go to the next parent.
             match search_module.parent_link {
                 NoParentLink => {
@@ -1483,26 +1465,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 BlockParentLink(parent_module_node, _) => {
                     search_module = parent_module_node;
-                }
-            }
-
-            // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module, name, namespace, true, record_used) {
-                Failed(Some((span, msg))) => {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
-                }
-                Failed(None) => (), // Continue up the search chain.
-                Indeterminate => {
-                    // We couldn't see through the higher scope because of an
-                    // unresolved import higher up. Bail.
-
-                    debug!("(resolving item in lexical scope) indeterminate higher scope; bailing");
-                    return Indeterminate;
-                }
-                Success((target, used_reexport)) => {
-                    // We found the module.
-                    debug!("(resolving item in lexical scope) found name in module, done");
-                    return Success((target, used_reexport));
                 }
             }
         }
