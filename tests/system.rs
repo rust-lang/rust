@@ -26,9 +26,9 @@ use rustfmt::rustfmt_diff::*;
 static DIFF_CONTEXT_SIZE: usize = 3;
 
 fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
-    let path = dir_entry.ok().expect("Couldn't get DirEntry.").path();
+    let path = dir_entry.expect("Couldn't get DirEntry").path();
 
-    path.to_str().expect("Couldn't stringify path.").to_owned()
+    path.to_str().expect("Couldn't stringify path").to_owned()
 }
 
 // Integration tests. The files in the tests/source are formatted and compared
@@ -40,7 +40,7 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
 #[test]
 fn system_tests() {
     // Get all files in the tests/source directory.
-    let files = fs::read_dir("tests/source").ok().expect("Couldn't read source dir.");
+    let files = fs::read_dir("tests/source").expect("Couldn't read source dir");
     // Turn a DirEntry into a String that represents the relative path to the
     // file.
     let files = files.map(get_path_string);
@@ -55,7 +55,7 @@ fn system_tests() {
 // the only difference is the coverage mode
 #[test]
 fn coverage_tests() {
-    let files = fs::read_dir("tests/coverage-source").ok().expect("Couldn't read source dir.");
+    let files = fs::read_dir("tests/coverage-source").expect("Couldn't read source dir");
     let files = files.map(get_path_string);
     let (_reports, count, fails) = check_files(files, WriteMode::Coverage);
 
@@ -82,13 +82,10 @@ fn assert_output(source: &str, expected_filename: &str, write_mode: WriteMode) {
     let _ = filemap::write_all_files(&file_map, &mut out, write_mode, &config);
     let output = String::from_utf8(out).unwrap();
 
-    let mut expected_file = fs::File::open(&expected_filename)
-                                .ok()
-                                .expect("Couldn't open target.");
+    let mut expected_file = fs::File::open(&expected_filename).expect("Couldn't open target");
     let mut expected_text = String::new();
     expected_file.read_to_string(&mut expected_text)
-                 .ok()
-                 .expect("Failed reading target.");
+                 .expect("Failed reading target");
 
     let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
     if compare.len() > 0 {
@@ -105,8 +102,7 @@ fn assert_output(source: &str, expected_filename: &str, write_mode: WriteMode) {
 fn idempotence_tests() {
     // Get all files in the tests/target directory.
     let files = fs::read_dir("tests/target")
-                    .ok()
-                    .expect("Couldn't read target dir.")
+                    .expect("Couldn't read target dir")
                     .map(get_path_string);
     let (_reports, count, fails) = check_files(files, WriteMode::Default);
 
@@ -120,9 +116,8 @@ fn idempotence_tests() {
 #[test]
 fn self_tests() {
     let files = fs::read_dir("src/bin")
-                    .ok()
-                    .expect("Couldn't read src dir.")
-                    .chain(fs::read_dir("tests").ok().expect("Couldn't read tests dir."))
+                    .expect("Couldn't read src dir")
+                    .chain(fs::read_dir("tests").expect("Couldn't read tests dir"))
                     .map(get_path_string);
     // Hack because there's no `IntoIterator` impl for `[T; N]`.
     let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
@@ -236,11 +231,9 @@ fn get_config(config_file: Option<&str>) -> Config {
         }
     };
 
-    let mut def_config_file = fs::File::open(config_file_name)
-                                  .ok()
-                                  .expect("Couldn't open config.");
+    let mut def_config_file = fs::File::open(config_file_name).expect("Couldn't open config");
     let mut def_config = String::new();
-    def_config_file.read_to_string(&mut def_config).ok().expect("Couldn't read config.");
+    def_config_file.read_to_string(&mut def_config).expect("Couldn't read config");
 
     Config::from_toml(&def_config)
 }
@@ -248,25 +241,22 @@ fn get_config(config_file: Option<&str>) -> Config {
 // Reads significant comments of the form: // rustfmt-key: value
 // into a hash map.
 fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
-    let file = fs::File::open(file_name)
-                   .ok()
-                   .expect(&format!("Couldn't read file {}.", file_name));
+    let file = fs::File::open(file_name).expect(&format!("Couldn't read file {}", file_name));
     let reader = BufReader::new(file);
     let pattern = r"^\s*//\s*rustfmt-([^:]+):\s*(\S+)";
-    let regex = regex::Regex::new(&pattern).ok().expect("Failed creating pattern 1.");
+    let regex = regex::Regex::new(&pattern).expect("Failed creating pattern 1");
 
     // Matches lines containing significant comments or whitespace.
     let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
-                         .ok()
-                         .expect("Failed creating pattern 2.");
+                         .expect("Failed creating pattern 2");
 
     reader.lines()
-          .map(|line| line.ok().expect("Failed getting line."))
+          .map(|line| line.expect("Failed getting line"))
           .take_while(|line| line_regex.is_match(&line))
           .filter_map(|line| {
               regex.captures_iter(&line).next().map(|capture| {
-                  (capture.at(1).expect("Couldn't unwrap capture.").to_owned(),
-                   capture.at(2).expect("Couldn't unwrap capture.").to_owned())
+                  (capture.at(1).expect("Couldn't unwrap capture").to_owned(),
+                   capture.at(2).expect("Couldn't unwrap capture").to_owned())
               })
           })
           .collect()
@@ -283,10 +273,10 @@ fn handle_result(result: HashMap<String, String>,
     for (file_name, fmt_text) in result {
         // If file is in tests/source, compare to file with same name in tests/target.
         let target = get_target(&file_name, target, write_mode);
-        let mut f = fs::File::open(&target).ok().expect("Couldn't open target.");
+        let mut f = fs::File::open(&target).expect("Couldn't open target");
 
         let mut text = String::new();
-        f.read_to_string(&mut text).ok().expect("Failed reading target.");
+        f.read_to_string(&mut text).expect("Failed reading target");
 
         if fmt_text != text {
             let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);
