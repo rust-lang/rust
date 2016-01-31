@@ -657,6 +657,9 @@ impl fmt::Display for UnsafetySpace {
 
 impl fmt::Display for ConstnessSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() {
+            return Ok(());
+        }
         match self.get() {
             hir::Constness::Const => write!(f, "const "),
             hir::Constness::NotConst => Ok(())
