@@ -23,7 +23,7 @@ extern crate rustc_front;
 use build;
 use graphviz;
 use pretty;
-use transform::*;
+use transform::{simplify_cfg, MirPass};
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;

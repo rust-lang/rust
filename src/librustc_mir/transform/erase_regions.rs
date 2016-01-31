@@ -14,8 +14,9 @@
 
 use rustc::middle::ty;
 use rustc::mir::repr::*;
-use transform::MirPass;
+use rustc::mir::visit::MutVisitor;
 use mir_map::MirMap;
+use transform::MirPass;
 
 pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
     let mut eraser = EraseRegions::new(tcx);
@@ -29,178 +30,10 @@ pub struct EraseRegions<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
 }
 
-impl<'a, 'tcx> MirPass<'tcx> for EraseRegions<'a, 'tcx> {
-
-    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>) {
-
-        for basic_block in &mut mir.basic_blocks {
-            self.erase_regions_basic_block(basic_block);
-        }
-
-        self.erase_regions_return_ty(&mut mir.return_ty);
-
-        self.erase_regions_tys(mir.var_decls.iter_mut().map(|d| &mut d.ty));
-        self.erase_regions_tys(mir.arg_decls.iter_mut().map(|d| &mut d.ty));
-        self.erase_regions_tys(mir.temp_decls.iter_mut().map(|d| &mut d.ty));
-    }
-}
-
 impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
-
     pub fn new(tcx: &'a ty::ctxt<'tcx>) -> EraseRegions<'a, 'tcx> {
         EraseRegions {
             tcx: tcx
-        }
-    }
-
-    fn erase_regions_basic_block(&mut self,
-                                 basic_block: &mut BasicBlockData<'tcx>) {
-        for statement in &mut basic_block.statements {
-            self.erase_regions_statement(statement);
-        }
-
-        self.erase_regions_terminator(basic_block.terminator_mut());
-    }
-
-    fn erase_regions_statement(&mut self,
-                               statement: &mut Statement<'tcx>) {
-        match statement.kind {
-            StatementKind::Assign(ref mut lvalue, ref mut rvalue) => {
-                self.erase_regions_lvalue(lvalue);
-                self.erase_regions_rvalue(rvalue);
-            }
-        }
-    }
-
-    fn erase_regions_terminator(&mut self,
-                                terminator: &mut Terminator<'tcx>) {
-        match *terminator {
-            Terminator::Goto { .. } |
-            Terminator::Resume |
-            Terminator::Return => {
-                /* nothing to do */
-            }
-            Terminator::If { ref mut cond, .. } => {
-                self.erase_regions_operand(cond);
-            }
-            Terminator::Switch { ref mut discr, .. } => {
-                self.erase_regions_lvalue(discr);
-            }
-            Terminator::SwitchInt { ref mut discr, ref mut switch_ty, .. } => {
-                self.erase_regions_lvalue(discr);
-                *switch_ty = self.tcx.erase_regions(switch_ty);
-            },
-            Terminator::Drop { ref mut value, .. } => {
-                self.erase_regions_lvalue(value);
-            }
-            Terminator::Call { ref mut func, ref mut args, ref mut destination, .. } => {
-                if let Some((ref mut destination, _)) = *destination {
-                    self.erase_regions_lvalue(destination);
-                }
-                self.erase_regions_operand(func);
-                for arg in &mut *args {
-                    self.erase_regions_operand(arg);
-                }
-            }
-        }
-    }
-
-    fn erase_regions_operand(&mut self, operand: &mut Operand<'tcx>) {
-        match *operand {
-            Operand::Consume(ref mut lvalue) => {
-                self.erase_regions_lvalue(lvalue);
-            }
-            Operand::Constant(ref mut constant) => {
-                self.erase_regions_constant(constant);
-            }
-        }
-    }
-
-    fn erase_regions_lvalue(&mut self, lvalue: &mut Lvalue<'tcx>) {
-        match *lvalue {
-            Lvalue::Var(_)        |
-            Lvalue::Temp(_)       |
-            Lvalue::Arg(_)        |
-            Lvalue::Static(_)     |
-            Lvalue::ReturnPointer => {}
-            Lvalue::Projection(ref mut lvalue_projection) => {
-                self.erase_regions_lvalue(&mut lvalue_projection.base);
-                match lvalue_projection.elem {
-                    ProjectionElem::Deref              |
-                    ProjectionElem::Field(_)           |
-                    ProjectionElem::Downcast(..)       |
-                    ProjectionElem::ConstantIndex {..} => { /* nothing to do */ }
-                    ProjectionElem::Index(ref mut index) => {
-                        self.erase_regions_operand(index);
-                    }
-                }
-            }
-        }
-    }
-
-    fn erase_regions_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>) {
-        match *rvalue {
-            Rvalue::Use(ref mut operand) => {
-                self.erase_regions_operand(operand)
-            }
-            Rvalue::Repeat(ref mut operand, ref mut value) => {
-                self.erase_regions_operand(operand);
-                value.ty = self.tcx.erase_regions(&value.ty);
-            }
-            Rvalue::Ref(ref mut region, _, ref mut lvalue) => {
-                *region = ty::ReStatic;
-                self.erase_regions_lvalue(lvalue);
-            }
-            Rvalue::Len(ref mut lvalue) => self.erase_regions_lvalue(lvalue),
-            Rvalue::Cast(_, ref mut operand, ref mut ty) => {
-                self.erase_regions_operand(operand);
-                *ty = self.tcx.erase_regions(ty);
-            }
-            Rvalue::BinaryOp(_, ref mut operand1, ref mut operand2) => {
-                self.erase_regions_operand(operand1);
-                self.erase_regions_operand(operand2);
-            }
-            Rvalue::UnaryOp(_, ref mut operand) => {
-                self.erase_regions_operand(operand);
-            }
-            Rvalue::Box(ref mut ty) => *ty = self.tcx.erase_regions(ty),
-            Rvalue::Aggregate(ref mut aggregate_kind, ref mut operands) => {
-                match *aggregate_kind {
-                    AggregateKind::Vec   |
-                    AggregateKind::Tuple => {},
-                    AggregateKind::Adt(_, _, ref mut substs) => {
-                        let erased = self.tcx.erase_regions(*substs);
-                        *substs = self.tcx.mk_substs(erased);
-                    }
-                    AggregateKind::Closure(def_id, ref mut closure_substs) => {
-                        let cloned = Box::new(closure_substs.clone());
-                        let ty = self.tcx.mk_closure_from_closure_substs(def_id,
-                                                                         cloned);
-                        let erased = self.tcx.erase_regions(&ty);
-                        *closure_substs = match erased.sty {
-                            ty::TyClosure(_, ref closure_substs) => &*closure_substs,
-                            _ => unreachable!()
-                        };
-                    }
-                }
-                for operand in &mut *operands {
-                    self.erase_regions_operand(operand);
-                }
-            }
-            Rvalue::Slice { ref mut input, .. } => {
-                self.erase_regions_lvalue(input);
-            }
-            Rvalue::InlineAsm(_) => {},
-        }
-    }
-
-    fn erase_regions_constant(&mut self, constant: &mut Constant<'tcx>) {
-        constant.ty = self.tcx.erase_regions(&constant.ty);
-        match constant.literal {
-            Literal::Item { ref mut substs, .. } => {
-                *substs = self.tcx.mk_substs(self.tcx.erase_regions(substs));
-            }
-            Literal::Value { .. } => { /* nothing to do */ }
         }
     }
 
@@ -220,5 +53,82 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
         for ty in tys {
             *ty = self.tcx.erase_regions(ty);
         }
+    }
+}
+
+impl<'a, 'tcx> MirPass<'tcx> for EraseRegions<'a, 'tcx> {
+    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>) {
+        self.visit_mir(mir);
+    }
+}
+
+impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegions<'a, 'tcx> {
+    fn visit_mir(&mut self, mir: &mut Mir<'tcx>) {
+        self.erase_regions_return_ty(&mut mir.return_ty);
+        self.erase_regions_tys(mir.var_decls.iter_mut().map(|d| &mut d.ty));
+        self.erase_regions_tys(mir.arg_decls.iter_mut().map(|d| &mut d.ty));
+        self.erase_regions_tys(mir.temp_decls.iter_mut().map(|d| &mut d.ty));
+        self.super_mir(mir);
+    }
+
+    fn visit_terminator(&mut self, bb: BasicBlock, terminator: &mut Terminator<'tcx>) {
+        match *terminator {
+            Terminator::Goto { .. } |
+            Terminator::Resume |
+            Terminator::Return |
+            Terminator::If { .. } |
+            Terminator::Switch { .. } |
+            Terminator::Drop { .. } |
+            Terminator::Call { .. } => {
+                /* nothing to do */
+            },
+            Terminator::SwitchInt { ref mut switch_ty, .. } => {
+                *switch_ty = self.tcx.erase_regions(switch_ty);
+            },
+        }
+        self.super_terminator(bb, terminator);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>) {
+        match *rvalue {
+            Rvalue::Use(_) |
+            Rvalue::Len(_) |
+            Rvalue::BinaryOp(_, _, _) |
+            Rvalue::UnaryOp(_, _) |
+            Rvalue::Slice { input: _, from_start: _, from_end: _ } |
+            Rvalue::InlineAsm(_) => {},
+
+            Rvalue::Repeat(_, ref mut value) => value.ty = self.tcx.erase_regions(&value.ty),
+            Rvalue::Ref(ref mut region, _, _) => *region = ty::ReStatic,
+            Rvalue::Cast(_, _, ref mut ty) => *ty = self.tcx.erase_regions(ty),
+            Rvalue::Box(ref mut ty) => *ty = self.tcx.erase_regions(ty),
+
+
+            Rvalue::Aggregate(AggregateKind::Vec, _) |
+            Rvalue::Aggregate(AggregateKind::Tuple, _) => {},
+            Rvalue::Aggregate(AggregateKind::Adt(_, _, ref mut substs), _) =>
+                *substs = self.tcx.mk_substs(self.tcx.erase_regions(*substs)),
+            Rvalue::Aggregate(AggregateKind::Closure(def_id, ref mut closure_substs), _) => {
+                let cloned = Box::new(closure_substs.clone());
+                let ty = self.tcx.mk_closure_from_closure_substs(def_id, cloned);
+                let erased = self.tcx.erase_regions(&ty);
+                *closure_substs = match erased.sty {
+                    ty::TyClosure(_, ref closure_substs) => &*closure_substs,
+                    _ => unreachable!()
+                };
+            }
+        }
+        self.super_rvalue(rvalue);
+    }
+
+    fn visit_constant(&mut self, constant: &mut Constant<'tcx>) {
+        constant.ty = self.tcx.erase_regions(&constant.ty);
+        match constant.literal {
+            Literal::Item { ref mut substs, .. } => {
+                *substs = self.tcx.mk_substs(self.tcx.erase_regions(substs));
+            }
+            Literal::Value { .. } => { /* nothing to do */ }
+        }
+        self.super_constant(constant);
     }
 }
