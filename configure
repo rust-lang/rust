@@ -1164,7 +1164,7 @@ do
             ;;
 
 
-        *-musl)
+        x86_64-*-musl)
             if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
             then
                 err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
