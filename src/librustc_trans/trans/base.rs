@@ -2003,7 +2003,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let mut bcx = init_function(&fcx, false, output_type);
 
     if attributes.iter().any(|item| item.check_name("rustc_mir")) {
-        mir::trans_mir(bcx);
+        mir::trans_mir(bcx.build());
         fcx.cleanup();
         return;
     }
