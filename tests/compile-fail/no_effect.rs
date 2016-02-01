@@ -11,8 +11,8 @@ struct Struct {
     field: i32
 }
 enum Enum {
-    TupleVariant(i32),
-    StructVariant { field: i32 },
+    Tuple(i32),
+    Struct { field: i32 },
 }
 
 fn get_number() -> i32 { 0 }
@@ -26,14 +26,14 @@ fn main() {
     Tuple(0); //~ERROR statement with no effect
     Struct { field: 0 }; //~ERROR statement with no effect
     Struct { ..s }; //~ERROR statement with no effect
-    Enum::TupleVariant(0); //~ERROR statement with no effect
-    Enum::StructVariant { field: 0 }; //~ERROR statement with no effect
+    Enum::Tuple(0); //~ERROR statement with no effect
+    Enum::Struct { field: 0 }; //~ERROR statement with no effect
 
     // Do not warn
     get_number();
     Tuple(get_number());
     Struct { field: get_number() };
     Struct { ..get_struct() };
-    Enum::TupleVariant(get_number());
-    Enum::StructVariant { field: get_number() };
+    Enum::Tuple(get_number());
+    Enum::Struct { field: get_number() };
 }

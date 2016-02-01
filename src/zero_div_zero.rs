@@ -35,8 +35,8 @@ impl LateLintPass for ZeroDivZeroPass {
                 // TODO - constant_simple does not fold many operations involving floats.
                 // That's probably fine for this lint - it's pretty unlikely that someone would
                 // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
-                let Some(Constant::ConstantFloat(ref lhs_value, lhs_width)) = constant_simple(left),
-                let Some(Constant::ConstantFloat(ref rhs_value, rhs_width)) = constant_simple(right),
+                let Some(Constant::Float(ref lhs_value, lhs_width)) = constant_simple(left),
+                let Some(Constant::Float(ref rhs_value, rhs_width)) = constant_simple(right),
                 let Some(0.0) = lhs_value.parse().ok(),
                 let Some(0.0) = rhs_value.parse().ok()
             ],

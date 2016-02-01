@@ -16,8 +16,8 @@ struct S {
 struct TS(Vec<Vec<Box<(u32, u32, u32, u32)>>>); //~ERROR very complex type
 
 enum E {
-    V1(Vec<Vec<Box<(u32, u32, u32, u32)>>>), //~ERROR very complex type
-    V2 { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> }, //~ERROR very complex type
+    Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>), //~ERROR very complex type
+    Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> }, //~ERROR very complex type
 }
 
 impl S {
