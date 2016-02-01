@@ -78,8 +78,11 @@ that will be used somewhat commonly.
 
 #### Semantic
 
-The core semantic of the feature is described below. Note that the sections after
-this one go into more detail on some of the design decisions.
+The core semantic of the feature is described below.
+
+Note that the sections after this one go into more detail on some of the design
+decisions, and that it is likely for most of the mentioned limitations to be
+lifted at some point in the future.
 
 - `@Trait` may only be written at return type position
   of a freestanding or inherent-impl function, not in trait definitions,
@@ -87,7 +90,9 @@ this one go into more detail on some of the design decisions.
 - The function body can return values of any type that implements Trait,
   but all return values need to be of the same type.
 - Outside of the function body, the return type is only known to implement Trait.
-- As an exception to the above, OIBITS like `Send` and `Sync` leak through an abstract return type.
+- As an exception to the above, OIBITS like `Send` and `Sync` leak through an
+  abstract return type. This will cause some additional complexity in the
+  compiler due to some non-local typechecking becoming neccessary.
 - The return type is unnameable.
 - The return type has a identity based on all generic parameters the
   function body is parametrized by, and by the location of the function
