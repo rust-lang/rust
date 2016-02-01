@@ -118,7 +118,7 @@ least. If your function has a non-trivial contract like this, that is
 detected/enforced by panics, documenting it is very important.
 
 ```rust
-/// # Failures
+/// # Errors
 # fn foo() {}
 ```
 
