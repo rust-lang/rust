@@ -239,12 +239,12 @@ that would conflict with the fixed-trait-set case, this RFC punts on that issue 
 
 #### Limitation to free/inherent functions
 
-One important usecase of abstract retutn types is to use them in trait methods.
+One important usecase of abstract return types is to use them in trait methods.
 
 However, there is an issue with this, namely that in combinations with generic
 trait methods, they are effectively equivalent to higher kinded types.
 Which is an issue because Rust HKT story is not yet figured out, so
-any "accidential implementation" might cause uninteded fallout.
+any "accidential implementation" might cause unintended fallout.
 
 HKT allows you to be generic over a type constructor, aka a
 "thing with type parameters", and then instantiate them at some later point to
