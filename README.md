@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 104 lints included in this crate:
+There are 105 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -89,6 +89,7 @@ name                                                                            
 [shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                           | allow   | The name is re-bound without even using the original value
 [should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)               | warn    | defining a method that should be implementing a std trait
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                   | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
+[single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                         | allow   | a match statement with a two arms where the second arm's pattern is a wildcard; recommends `if let` instead
 [str_to_string](https://github.com/Manishearth/rust-clippy/wiki#str_to_string)                                 | warn    | using `to_string()` on a str, which should be `to_owned()`
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                       | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                         | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead

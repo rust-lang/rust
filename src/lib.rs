@@ -149,6 +149,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 
     reg.register_lint_group("clippy_pedantic", vec![
+        matches::SINGLE_MATCH_ELSE,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,
