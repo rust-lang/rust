@@ -63,7 +63,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::save;
-use rustc::session::{config, Session, build_session};
+use rustc::session::{config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
@@ -105,18 +105,6 @@ pub mod target_features;
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
 
-// Err(0) means compilation was stopped, but no errors were found.
-// This would be better as a dedicated enum, but using try! is so convenient.
-pub type CompileResult = Result<(), usize>;
-
-pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
-    if err_count == 0 {
-        Ok(())
-    } else {
-        Err(err_count)
-    }
-}
-
 #[inline]
 fn abort_msg(err_count: usize) -> String {
     match err_count {
@@ -146,7 +134,7 @@ pub fn run(args: Vec<String>) -> isize {
                         let mut emitter =
                             errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
                         emitter.emit(None, &abort_msg(err_count), None, errors::Level::Fatal);
-                        panic!(errors::FatalError);
+                        exit_on_err();
                     }
                 }
             }
@@ -462,6 +450,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.out_dir)
                 });
             };
+            control.after_analysis.run_callback_on_error = true;
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
@@ -947,13 +936,17 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                 println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
             }
 
-            // Panic so the process returns a failure code, but don't pollute the
-            // output with some unnecessary panic messages, we've already
-            // printed everything that we needed to.
-            io::set_panic(box io::sink());
-            panic!();
+            exit_on_err();
         }
     }
+}
+
+fn exit_on_err() -> ! {
+    // Panic so the process returns a failure code, but don't pollute the
+    // output with some unnecessary panic messages, we've already
+    // printed everything that we needed to.
+    io::set_panic(box io::sink());
+    panic!();
 }
 
 pub fn diagnostics_registry() -> diagnostics::registry::Registry {

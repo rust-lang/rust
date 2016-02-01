@@ -105,7 +105,7 @@ use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::ty::util::Representability;
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
-use session::Session;
+use session::{Session, CompileResult};
 use {CrateCtxt, lookup_full_def};
 use TypeAndSubsts;
 use lint;
@@ -383,29 +383,29 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_wf_new(ccx: &CrateCtxt) {
-    ccx.tcx.sess.abort_if_new_errors(|| {
+pub fn check_wf_new(ccx: &CrateCtxt) -> CompileResult {
+    ccx.tcx.sess.track_errors(|| {
         let mut visit = wfcheck::CheckTypeWellFormedVisitor::new(ccx);
         ccx.tcx.visit_all_items_in_krate(DepNode::WfCheck, &mut visit);
-    });
+    })
 }
 
-pub fn check_item_types(ccx: &CrateCtxt) {
-    ccx.tcx.sess.abort_if_new_errors(|| {
+pub fn check_item_types(ccx: &CrateCtxt) -> CompileResult {
+    ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemTypesVisitor { ccx: ccx };
         ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemType, &mut visit);
-    });
+    })
 }
 
-pub fn check_item_bodies(ccx: &CrateCtxt) {
-    ccx.tcx.sess.abort_if_new_errors(|| {
+pub fn check_item_bodies(ccx: &CrateCtxt) -> CompileResult {
+    ccx.tcx.sess.track_errors(|| {
         let mut visit = CheckItemBodiesVisitor { ccx: ccx };
         ccx.tcx.visit_all_items_in_krate(DepNode::TypeckItemBody, &mut visit);
-    });
+    })
 }
 
-pub fn check_drop_impls(ccx: &CrateCtxt) {
-    ccx.tcx.sess.abort_if_new_errors(|| {
+pub fn check_drop_impls(ccx: &CrateCtxt) -> CompileResult {
+    ccx.tcx.sess.track_errors(|| {
         let _task = ccx.tcx.dep_graph.in_task(DepNode::Dropck);
         let drop_trait = match ccx.tcx.lang_items.drop_trait() {
             Some(id) => ccx.tcx.lookup_trait_def(id), None => { return }
@@ -421,7 +421,7 @@ pub fn check_drop_impls(ccx: &CrateCtxt) {
                 }
             }
         });
-    });
+    })
 }
 
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,

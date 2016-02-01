@@ -242,9 +242,9 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         abort_on_err(driver::phase_3_run_analysis_passes(
             &sess, &cstore, ast_map, &arenas, &id,
-            MakeGlobMap::No, |tcx, mir_map, analysis| {
+            MakeGlobMap::No, |tcx, mir_map, analysis, _| {
 
-            let trans = driver::phase_4_translate_to_llvm(tcx, mir_map, analysis);
+            let trans = driver::phase_4_translate_to_llvm(tcx, mir_map.unwrap(), analysis);
 
             let crates = tcx.sess.cstore.used_crates(LinkagePreference::RequireDynamic);
 

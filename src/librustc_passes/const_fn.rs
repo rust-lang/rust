@@ -11,16 +11,16 @@
 //! Verifies that const fn arguments are immutable by value bindings
 //! and the const fn body doesn't contain any statements
 
-use rustc::session::Session;
+use rustc::session::{Session, CompileResult};
 
 use syntax::ast;
 use syntax::visit::{self, Visitor, FnKind};
 use syntax::codemap::Span;
 
-pub fn check_crate(sess: &Session, krate: &ast::Crate) {
-    sess.abort_if_new_errors(|| {
+pub fn check_crate(sess: &Session, krate: &ast::Crate) -> CompileResult {
+    sess.track_errors(|| {
         visit::walk_crate(&mut CheckConstFn{ sess: sess }, krate);
-    });
+    })
 }
 
 struct CheckConstFn<'a> {
