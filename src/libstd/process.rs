@@ -47,6 +47,16 @@ use thread::{self, JoinHandle};
 ///
 /// assert!(ecode.success());
 /// ```
+///
+/// # Note
+///
+/// Take note that there is no implementation of
+/// [`Drop`](../../core/ops/trait.Drop.html) for child processes, so if you
+/// do not ensure the `Child` has exited then it will continue to run, even
+/// after the `Child` handle to the child process has gone out of scope.
+///
+/// Calling `wait` (or other functions that wrap around it) will make the
+/// parent process wait until the child has actually exited before continuing.
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
     handle: imp::Process,
