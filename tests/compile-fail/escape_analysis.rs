@@ -11,7 +11,22 @@ impl A {
     fn foo(&self){}
 }
 
+trait Z {
+    fn bar(&self);
+}
+
+impl Z for A {
+    fn bar(&self) {
+        //nothing
+    }
+}
+
 fn main() {
+}
+
+fn ok_box_trait(boxed_trait: &Box<Z>) {
+    let boxed_local = boxed_trait;
+    // done
 }
 
 fn warn_call() {

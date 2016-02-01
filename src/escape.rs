@@ -31,9 +31,9 @@ pub struct EscapePass;
 /// ```
 declare_lint!(pub BOXED_LOCAL, Warn, "using Box<T> where unnecessary");
 
-fn is_box(ty: ty::Ty) -> bool {
+fn is_non_trait_box(ty: ty::Ty) -> bool {
     match ty.sty {
-        ty::TyBox(..) => true,
+        ty::TyBox(ref inner) => !inner.is_trait(),
         _ => false
     }
 }
@@ -90,7 +90,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
                 return;
             }
-            if is_box(cmt.ty) {
+            if is_non_trait_box(cmt.ty) {
                 self.set.insert(consume_pat.id);
             }
             return;
@@ -101,7 +101,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                     if let DeclLocal(ref loc) = decl.node {
                         if let Some(ref ex) = loc.init {
                             if let ExprBox(..) = ex.node {
-                                if is_box(cmt.ty) {
+                                if is_non_trait_box(cmt.ty) {
                                     // let x = box (...)
                                     self.set.insert(consume_pat.id);
                                 }
