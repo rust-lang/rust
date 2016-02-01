@@ -22,7 +22,7 @@ use rustfmt::config::{Config, WriteMode};
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::io::{self, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 
 use getopts::{Matches, Options};
@@ -43,39 +43,56 @@ enum Operation {
     Stdin(String, WriteMode),
 }
 
-/// Try to find a project file in the input file directory and its parents.
-fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
-    let mut current = if input_file.is_relative() {
-        try!(env::current_dir()).join(input_file)
+/// Try to find a project file in the given directory and its parents. Returns the path of a the
+/// nearest project file if one exists, or `None` if no project file was found.
+fn lookup_project_file(dir: &Path) -> io::Result<Option<PathBuf>> {
+    let mut current = if dir.is_relative() {
+        try!(env::current_dir()).join(dir)
     } else {
-        input_file.to_path_buf()
+        dir.to_path_buf()
     };
 
     current = try!(fs::canonicalize(current));
 
     loop {
         let config_file = current.join("rustfmt.toml");
-        if let Ok(md) = fs::metadata(&config_file) {
-            // Properly handle unlikely situation of a directory named `rustfmt.toml`.
-            if md.is_file() {
-                return Ok(config_file);
+        match fs::metadata(&config_file) {
+            Ok(md) => {
+                // Properly handle unlikely situation of a directory named `rustfmt.toml`.
+                if md.is_file() {
+                    return Ok(Some(config_file));
+                }
+            }
+            // If it's not found, we continue searching; otherwise something went wrong and we
+            // return the error.
+            Err(e) => {
+                if e.kind() != ErrorKind::NotFound {
+                    return Err(e);
+                }
             }
         }
 
         // If the current directory has no parent, we're done searching.
         if !current.pop() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, "Config not found"));
+            return Ok(None);
         }
     }
 }
 
-/// Try to find a project file. If it's found, read it.
-fn lookup_and_read_project_file(input_file: &Path) -> io::Result<(PathBuf, String)> {
-    let path = try!(lookup_project_file(input_file));
+/// Resolve the config for input in `dir`.
+///
+/// Returns the `Config` to use, and the path of the project file if there was
+/// one.
+fn resolve_config(dir: &Path) -> io::Result<(Config, Option<PathBuf>)> {
+    let path = try!(lookup_project_file(dir));
+    if path.is_none() {
+        return Ok((Config::default(), None));
+    }
+    let path = path.unwrap();
     let mut file = try!(File::open(&path));
     let mut toml = String::new();
     try!(file.read_to_string(&mut toml));
-    Ok((path, toml))
+    Ok((Config::from_toml(&toml), Some(path)))
 }
 
 fn update_config(config: &mut Config, matches: &Matches) {
@@ -127,25 +144,22 @@ fn execute() -> i32 {
         }
         Operation::Stdin(input, write_mode) => {
             // try to read config from local directory
-            let config = match lookup_and_read_project_file(&Path::new(".")) {
-                Ok((_, toml)) => Config::from_toml(&toml),
-                Err(_) => Default::default(),
-            };
+            let (config, _) = resolve_config(&env::current_dir().unwrap())
+                                  .expect("Error resolving config");
 
             run_from_stdin(input, write_mode, &config);
             0
         }
         Operation::Format(files, write_mode) => {
             for file in files {
-                let mut config = match lookup_and_read_project_file(&file) {
-                    Ok((path, toml)) => {
-                        println!("Using rustfmt config file {} for {}",
-                                 path.display(),
-                                 file.display());
-                        Config::from_toml(&toml)
-                    }
-                    Err(_) => Default::default(),
-                };
+                let (mut config, path) = resolve_config(file.parent().unwrap())
+                                             .expect(&format!("Error resolving config for {}",
+                                                              file.display()));
+                if let Some(path) = path {
+                    println!("Using rustfmt config file {} for {}",
+                             path.display(),
+                             file.display());
+                }
 
                 update_config(&mut config, &matches);
                 run(&file, write_mode, &config);
