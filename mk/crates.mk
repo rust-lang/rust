@@ -139,13 +139,13 @@ ONLY_RLIB_alloc_system := 1
 # Documented-by-default crates
 DOC_CRATES := std alloc collections core libc rustc_unicode
 
-ifeq ($(CFG_DISABLE_JEMALLOC),)
+ifdef CFG_DISABLE_JEMALLOC
+RUSTFLAGS_rustc_back := --cfg disable_jemalloc
+else
 TARGET_CRATES += alloc_jemalloc
 DEPS_std += alloc_jemalloc
 DEPS_alloc_jemalloc := core libc native:jemalloc
 ONLY_RLIB_alloc_jemalloc := 1
-else
-RUSTFLAGS_rustc_back := --cfg disable_jemalloc
 endif
 
 ################################################################################
