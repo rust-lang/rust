@@ -20,5 +20,5 @@ CFG_UNIXY_mipsel-unknown-linux-gnu := 1
 CFG_LDPATH_mipsel-unknown-linux-gnu :=
 CFG_RUN_mipsel-unknown-linux-gnu=
 CFG_RUN_TARG_mipsel-unknown-linux-gnu=
-RUSTC_FLAGS_mipsel-unknown-linux-gnu := -C target-cpu=mips32 -C target-feature="+mips32"
+RUSTC_FLAGS_mipsel-unknown-linux-gnu :=
 CFG_GNU_TRIPLE_mipsel-unknown-linux-gnu := mipsel-unknown-linux-gnu
