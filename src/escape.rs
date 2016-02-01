@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::front::map::Node::NodeStmt;
+use rustc::front::map::Node::{NodeExpr, NodeStmt};
 use rustc_front::hir::*;
 use rustc_front::intravisit as visit;
 use rustc::middle::ty;
@@ -84,17 +84,19 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
     fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, _: ConsumeMode) {
-        if self.cx.tcx.map.is_argument(consume_pat.id) {
+        let map = &self.cx.tcx.map;
+        if map.is_argument(consume_pat.id) {
+            // Skip closure arguments
+            if let Some(NodeExpr(..)) = map.find(map.get_parent_node(consume_pat.id)) {
+                return;
+            }
             if is_box(cmt.ty) {
                 self.set.insert(consume_pat.id);
             }
             return;
         }
         if let Categorization::Rvalue(..) = cmt.cat {
-            if let Some(NodeStmt(st)) = self.cx
-                                                  .tcx
-                                                  .map
-                                                  .find(self.cx.tcx.map.get_parent_node(cmt.id)) {
+            if let Some(NodeStmt(st)) = map.find(map.get_parent_node(cmt.id)) {
                 if let StmtDecl(ref decl, _) = st.node {
                     if let DeclLocal(ref loc) = decl.node {
                         if let Some(ref ex) = loc.init {

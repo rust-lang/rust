@@ -23,6 +23,11 @@ fn warn_arg(x: Box<A>) { //~ ERROR local variable
     x.foo();
 }
 
+fn nowarn_closure_arg() {
+    let x = Some(box A);
+    x.map_or((), |x| take_ref(&x));
+}
+
 fn warn_rename_call() {
     let x = box A;
 
