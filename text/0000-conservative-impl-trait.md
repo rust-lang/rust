@@ -94,34 +94,36 @@ this one go into more detail on some of the design decisions.
   in the module system. This means type equality behaves like this:
   ```rust
   fn foo<T: Trait>(t: T) -> @Trait {
-    t
+      t
   }
 
   fn bar() -> @Trait {
-    123
+      123
   }
 
   fn equal_type<T>(a: T, b: T) {}
 
-  equal_type(bar(), bar())                      // OK
-  equal_type(foo::<i32>(0), foo::<i32>(0))      // OK
-  equal_type(bar(), foo::<i32>(0))              // ERROR, `@Trait {bar}` is not the same type as `@Trait {foo<i32>}`
-  equal_type(foo::<bool>(false), foo::<i32>(0)) // ERROR, `@Trait {foo<bool>}` is not the same type as `@Trait {foo<i32>}`
+  equal_type(bar(), bar());                      // OK
+  equal_type(foo::<i32>(0), foo::<i32>(0));      // OK
+  equal_type(bar(), foo::<i32>(0));              // ERROR, `@Trait {bar}` is not the same type as `@Trait {foo<i32>}`
+  equal_type(foo::<bool>(false), foo::<i32>(0)); // ERROR, `@Trait {foo<bool>}` is not the same type as `@Trait {foo<i32>}`
   ```
+
 - The function body can not see through its own return type, so code like this
   would be forbidden just like on the outside:
   ```rust
   fn sum_to(n: u32) -> @Display {
       if n == 0 {
-        0
+          0
       } else {
-        n + sum_to(n - 1)
+          n + sum_to(n - 1)
       }
   }
   ```
+
 - Abstract return types are considered `Sized`, just like all return types today.
 
-#### Limitation to only retun type position
+#### Limitation to only return type position
 
 There have been various proposed additional places where abstract types
 might be usable. For example, `fn x(y: @Trait)` as shorthand for
