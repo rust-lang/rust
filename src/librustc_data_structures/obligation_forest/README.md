@@ -9,15 +9,18 @@ place).
 `ObligationForest` supports two main public operations (there are a
 few others not discussed here):
 
-1. Add a new root obligation (`push_root`).
+1. Add a new root obligations (`push_tree`).
 2. Process the pending obligations (`process_obligations`).
 
 When a new obligation `N` is added, it becomes the root of an
-obligation tree. This tree is a singleton to start, so `N` is both the
-root and the only leaf. Each time the `process_obligations` method is
-called, it will invoke its callback with every pending obligation (so
-that will include `N`, the first time). The callback shoud process the
-obligation `O` that it is given and return one of three results:
+obligation tree. This tree can also carry some per-tree state `T`,
+which is given at the same time. This tree is a singleton to start, so
+`N` is both the root and the only leaf. Each time the
+`process_obligations` method is called, it will invoke its callback
+with every pending obligation (so that will include `N`, the first
+time). The callback also receives a (mutable) reference to the
+per-tree state `T`. The callback should process the obligation `O`
+that it is given and return one of three results:
 
 - `Ok(None)` -> ambiguous result. Obligation was neither a success
   nor a failure. It is assumed that further attempts to process the
