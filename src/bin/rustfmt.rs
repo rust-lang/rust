@@ -43,7 +43,8 @@ enum Operation {
     Stdin(String, WriteMode),
 }
 
-/// Try to find a project file in the given directory and its parents.
+/// Try to find a project file in the given directory and its parents. Returns the path of a the
+/// nearest project file if one exists, or `None` if no project file was found.
 fn lookup_project_file(dir: &Path) -> io::Result<Option<PathBuf>> {
     let mut current = if dir.is_relative() {
         try!(env::current_dir()).join(dir)
