@@ -19,11 +19,16 @@ use std::fmt::Debug;
 use std::mem;
 
 mod node_index;
+use self::node_index::NodeIndex;
+
+mod tree_index;
+use self::tree_index::TreeIndex;
+
 
 #[cfg(test)]
 mod test;
 
-pub struct ObligationForest<O> {
+pub struct ObligationForest<O,T> {
     /// The list of obligations. In between calls to
     /// `process_obligations`, this list only contains nodes in the
     /// `Pending` or `Success` state (with a non-zero number of
@@ -37,6 +42,7 @@ pub struct ObligationForest<O> {
     /// at a higher index than its parent. This is needed by the
     /// backtrace iterator (which uses `split_at`).
     nodes: Vec<Node<O>>,
+    trees: Vec<Tree<T>>,
     snapshots: Vec<usize>
 }
 
@@ -44,12 +50,15 @@ pub struct Snapshot {
     len: usize,
 }
 
-pub use self::node_index::NodeIndex;
+struct Tree<T> {
+    root: NodeIndex,
+    state: T,
+}
 
 struct Node<O> {
     state: NodeState<O>,
     parent: Option<NodeIndex>,
-    root: NodeIndex, // points to the root, which may be the current node
+    tree: TreeIndex,
 }
 
 /// The state of one node in some tree within the forest. This
@@ -99,9 +108,10 @@ pub struct Error<O,E> {
     pub backtrace: Vec<O>,
 }
 
-impl<O: Debug> ObligationForest<O> {
-    pub fn new() -> ObligationForest<O> {
+impl<O: Debug, T: Debug> ObligationForest<O, T> {
+    pub fn new() -> ObligationForest<O, T> {
         ObligationForest {
+            trees: vec![],
             nodes: vec![],
             snapshots: vec![]
         }
@@ -114,30 +124,39 @@ impl<O: Debug> ObligationForest<O> {
     }
 
     pub fn start_snapshot(&mut self) -> Snapshot {
-        self.snapshots.push(self.nodes.len());
+        self.snapshots.push(self.trees.len());
         Snapshot { len: self.snapshots.len() }
     }
 
     pub fn commit_snapshot(&mut self, snapshot: Snapshot) {
         assert_eq!(snapshot.len, self.snapshots.len());
-        let nodes_len = self.snapshots.pop().unwrap();
-        assert!(self.nodes.len() >= nodes_len);
+        let trees_len = self.snapshots.pop().unwrap();
+        assert!(self.trees.len() >= trees_len);
     }
 
     pub fn rollback_snapshot(&mut self, snapshot: Snapshot) {
         // Check that we are obeying stack discipline.
         assert_eq!(snapshot.len, self.snapshots.len());
-        let nodes_len = self.snapshots.pop().unwrap();
+        let trees_len = self.snapshots.pop().unwrap();
 
-        // The only action permitted while in a snapshot is to push
-        // new root obligations. Because no processing will have been
-        // done, those roots should still be in the pending state.
-        debug_assert!(self.nodes[nodes_len..].iter().all(|n| match n.state {
-            NodeState::Pending { .. } => true,
-            _ => false,
-        }));
+        // If nothing happened in snapshot, done.
+        if self.trees.len() == trees_len {
+            return;
+        }
 
-        self.nodes.truncate(nodes_len);
+        // Find root of first tree; because nothing can happen in a
+        // snapshot but pushing trees, all nodes after that should be
+        // roots of other trees as well
+        let first_root_index = self.trees[trees_len].root.get();
+        debug_assert!(
+            self.nodes[first_root_index..]
+                .iter()
+                .zip(first_root_index..)
+                .all(|(root, root_index)| self.trees[root.tree.get()].root.get() == root_index));
+
+        // Pop off tree/root pairs pushed during snapshot.
+        self.trees.truncate(trees_len);
+        self.nodes.truncate(first_root_index);
     }
 
     pub fn in_snapshot(&self) -> bool {
@@ -147,9 +166,11 @@ impl<O: Debug> ObligationForest<O> {
     /// Adds a new tree to the forest.
     ///
     /// This CAN be done during a snapshot.
-    pub fn push_root(&mut self, obligation: O) {
+    pub fn push_tree(&mut self, obligation: O, tree_state: T) {
         let index = NodeIndex::new(self.nodes.len());
-        self.nodes.push(Node::new(index, None, obligation));
+        let tree = TreeIndex::new(self.trees.len());
+        self.trees.push(Tree { root: index, state: tree_state });
+        self.nodes.push(Node::new(tree, None, obligation));
     }
 
     /// Convert all remaining obligations to the given error.
@@ -186,7 +207,7 @@ impl<O: Debug> ObligationForest<O> {
     ///
     /// This CANNOT be unrolled (presently, at least).
     pub fn process_obligations<E,F>(&mut self, mut action: F) -> Outcome<O,E>
-        where E: Debug, F: FnMut(&mut O, Backtrace<O>) -> Result<Option<Vec<O>>, E>
+        where E: Debug, F: FnMut(&mut O, &mut T, Backtrace<O>) -> Result<Option<Vec<O>>, E>
     {
         debug!("process_obligations(len={})", self.nodes.len());
         assert!(!self.in_snapshot()); // cannot unroll this action
@@ -210,7 +231,7 @@ impl<O: Debug> ObligationForest<O> {
                    index, self.nodes[index].state);
 
             let result = {
-                let parent = self.nodes[index].parent;
+                let Node { tree, parent, .. } = self.nodes[index];
                 let (prefix, suffix) = self.nodes.split_at_mut(index);
                 let backtrace = Backtrace::new(prefix, parent);
                 match suffix[0].state {
@@ -218,7 +239,7 @@ impl<O: Debug> ObligationForest<O> {
                     NodeState::Success { .. } =>
                         continue,
                     NodeState::Pending { ref mut obligation } =>
-                        action(obligation, backtrace),
+                        action(obligation, &mut self.trees[tree.get()].state, backtrace),
                 }
             };
 
@@ -268,11 +289,11 @@ impl<O: Debug> ObligationForest<O> {
             self.update_parent(index);
         } else {
             // create child work
-            let root_index = self.nodes[index].root;
+            let tree_index = self.nodes[index].tree;
             let node_index = NodeIndex::new(index);
             self.nodes.extend(
                 children.into_iter()
-                        .map(|o| Node::new(root_index, Some(node_index), o)));
+                        .map(|o| Node::new(tree_index, Some(node_index), o)));
         }
 
         // change state from `Pending` to `Success`, temporarily swapping in `Error`
@@ -311,8 +332,9 @@ impl<O: Debug> ObligationForest<O> {
     /// skip the remaining obligations from a tree once some other
     /// node in the tree is found to be in error.
     fn inherit_error(&mut self, child: usize) {
-        let root = self.nodes[child].root.get();
-        if let NodeState::Error = self.nodes[root].state {
+        let tree = self.nodes[child].tree;
+        let root = self.trees[tree.get()].root;
+        if let NodeState::Error = self.nodes[root.get()].state {
             self.nodes[child].state = NodeState::Error;
         }
     }
@@ -353,7 +375,8 @@ impl<O: Debug> ObligationForest<O> {
     /// indices. Cannot be used during a transaction.
     fn compress(&mut self) -> Vec<O> {
         assert!(!self.in_snapshot()); // didn't write code to unroll this action
-        let mut rewrites: Vec<_> = (0..self.nodes.len()).collect();
+        let mut node_rewrites: Vec<_> = (0..self.nodes.len()).collect();
+        let mut tree_rewrites: Vec<_> = (0..self.trees.len()).collect();
 
         // Finish propagating error state. Note that in this case we
         // only have to check immediate parents, rather than all
@@ -366,43 +389,69 @@ impl<O: Debug> ObligationForest<O> {
             }
         }
 
+        // Determine which trees to remove by checking if their root
+        // is popped.
+        let mut dead_trees = 0;
+        let trees_len = self.trees.len();
+        for i in 0..trees_len {
+            let root_node = self.trees[i].root;
+            if self.nodes[root_node.get()].is_popped() {
+                dead_trees += 1;
+            } else if dead_trees > 0 {
+                self.trees.swap(i, i - dead_trees);
+                tree_rewrites[i] -= dead_trees;
+            }
+        }
+
         // Now go through and move all nodes that are either
         // successful or which have an error over into to the end of
         // the list, preserving the relative order of the survivors
         // (which is important for the `inherit_error` logic).
-        let mut dead = 0;
+        let mut dead_nodes = 0;
         for i in 0..nodes_len {
             if self.nodes[i].is_popped() {
-                dead += 1;
-            } else if dead > 0 {
-                self.nodes.swap(i, i - dead);
-                rewrites[i] -= dead;
+                dead_nodes += 1;
+            } else if dead_nodes > 0 {
+                self.nodes.swap(i, i - dead_nodes);
+                node_rewrites[i] -= dead_nodes;
             }
         }
+
+        // No compression needed.
+        if dead_nodes == 0 && dead_trees == 0 {
+            return vec![];
+        }
+
+        // Pop off the trees we killed.
+        self.trees.truncate(trees_len - dead_trees);
 
         // Pop off all the nodes we killed and extract the success
         // stories.
         let successful =
-            (0 .. dead).map(|_| self.nodes.pop().unwrap())
-                       .flat_map(|node| match node.state {
-                           NodeState::Error => None,
-                           NodeState::Pending { .. } => unreachable!(),
-                           NodeState::Success { obligation, num_incomplete_children } => {
-                               assert_eq!(num_incomplete_children, 0);
-                               Some(obligation)
-                           }
-                       })
-                       .collect();
+            (0 .. dead_nodes)
+            .map(|_| self.nodes.pop().unwrap())
+            .flat_map(|node| match node.state {
+                NodeState::Error => None,
+                NodeState::Pending { .. } => unreachable!(),
+                NodeState::Success { obligation, num_incomplete_children } => {
+                    assert_eq!(num_incomplete_children, 0);
+                    Some(obligation)
+                }
+            })
+            .collect();
 
-        // Adjust the parent indices, since we compressed things.
+        // Adjust the various indices, since we compressed things.
+        for tree in &mut self.trees {
+            tree.root = NodeIndex::new(node_rewrites[tree.root.get()]);
+        }
         for node in &mut self.nodes {
             if let Some(ref mut index) = node.parent {
-                let new_index = rewrites[index.get()];
-                debug_assert!(new_index < (nodes_len - dead));
+                let new_index = node_rewrites[index.get()];
+                debug_assert!(new_index < (nodes_len - dead_nodes));
                 *index = NodeIndex::new(new_index);
             }
 
-            node.root = NodeIndex::new(rewrites[node.root.get()]);
+            node.tree = TreeIndex::new(tree_rewrites[node.tree.get()]);
         }
 
         successful
@@ -410,11 +459,11 @@ impl<O: Debug> ObligationForest<O> {
 }
 
 impl<O> Node<O> {
-    fn new(root: NodeIndex, parent: Option<NodeIndex>, obligation: O) -> Node<O> {
+    fn new(tree: TreeIndex, parent: Option<NodeIndex>, obligation: O) -> Node<O> {
         Node {
             parent: parent,
             state: NodeState::Pending { obligation: obligation },
-            root: root
+            tree: tree,
         }
     }
 

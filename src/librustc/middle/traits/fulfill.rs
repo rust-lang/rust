@@ -66,7 +66,7 @@ pub struct FulfillmentContext<'tcx> {
 
     // A list of all obligations that have been registered with this
     // fulfillment context.
-    predicates: ObligationForest<PendingPredicateObligation<'tcx>>,
+    predicates: ObligationForest<PendingPredicateObligation<'tcx>, ()>,
 
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
@@ -192,7 +192,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             obligation: obligation,
             stalled_on: vec![]
         };
-        self.predicates.push_root(obligation);
+        self.predicates.push_tree(obligation, ());
     }
 
     pub fn region_obligations(&self,
@@ -278,10 +278,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
             let outcome = {
                 let region_obligations = &mut self.region_obligations;
                 self.predicates.process_obligations(
-                    |obligation, backtrace| process_predicate(selcx,
-                                                              obligation,
-                                                              backtrace,
-                                                              region_obligations))
+                    |obligation, _tree, backtrace| process_predicate(selcx,
+                                                                     obligation,
+                                                                     backtrace,
+                                                                     region_obligations))
             };
 
             debug!("select_where_possible: outcome={:?}", outcome);
@@ -405,7 +405,7 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         pending_obligation.stalled_on = vec![];
     }
 
-    let obligation = &pending_obligation.obligation;
+    let obligation = &mut pending_obligation.obligation;
 
     // If we exceed the recursion limit, take a moment to look for a
     // cycle so we can give a better error report from here, where we
@@ -417,8 +417,16 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
     }
 
+    if obligation.predicate.has_infer_types() {
+        obligation.predicate = selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+    }
+
     match obligation.predicate {
         ty::Predicate::Trait(ref data) => {
+            if selcx.tcx().fulfilled_predicates.borrow().check_duplicate_trait(data) {
+                return Ok(Some(vec![]));
+            }
+
             if coinductive_match(selcx, obligation, data, &backtrace) {
                 return Ok(Some(vec![]));
             }
@@ -426,9 +434,14 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             let trait_obligation = obligation.with(data.clone());
             match selcx.select(&trait_obligation) {
                 Ok(Some(vtable)) => {
+                    info!("selecting trait `{:?}` at depth {} yielded Ok(Some)",
+                          data, obligation.recursion_depth);
                     Ok(Some(vtable.nested_obligations()))
                 }
                 Ok(None) => {
+                    info!("selecting trait `{:?}` at depth {} yielded Ok(None)",
+                          data, obligation.recursion_depth);
+
                     // This is a bit subtle: for the most part, the
                     // only reason we can fail to make progress on
                     // trait selection is because we don't have enough
@@ -457,6 +470,8 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                     Ok(None)
                 }
                 Err(selection_err) => {
+                    info!("selecting trait `{:?}` at depth {} yielded Err",
+                          data, obligation.recursion_depth);
                     Err(CodeSelectionError(selection_err))
                 }
             }
@@ -642,18 +657,28 @@ impl<'tcx> GlobalFulfilledPredicates<'tcx> {
 
     pub fn check_duplicate(&self, key: &ty::Predicate<'tcx>) -> bool {
         if let ty::Predicate::Trait(ref data) = *key {
-            // For the global predicate registry, when we find a match, it
-            // may have been computed by some other task, so we want to
-            // add a read from the node corresponding to the predicate
-            // processing to make sure we get the transitive dependencies.
-            if self.set.contains(data) {
-                debug_assert!(data.is_global());
-                self.dep_graph.read(data.dep_node());
-                return true;
-            }
+            self.check_duplicate_trait(data)
+        } else {
+            false
         }
+    }
 
-        return false;
+    pub fn check_duplicate_trait(&self, data: &ty::PolyTraitPredicate<'tcx>) -> bool {
+        // For the global predicate registry, when we find a match, it
+        // may have been computed by some other task, so we want to
+        // add a read from the node corresponding to the predicate
+        // processing to make sure we get the transitive dependencies.
+        if self.set.contains(data) {
+            debug_assert!(data.is_global());
+            self.dep_graph.read(data.dep_node());
+            debug!("check_duplicate: global predicate `{:?}` already proved elsewhere", data);
+
+            info!("check_duplicate_trait hit: `{:?}`", data);
+
+            true
+        } else {
+            false
+        }
     }
 
     fn add_if_global(&mut self, key: &ty::Predicate<'tcx>) {
@@ -663,7 +688,10 @@ impl<'tcx> GlobalFulfilledPredicates<'tcx> {
             // already has the required read edges, so we don't need
             // to add any more edges here.
             if data.is_global() {
-                self.set.insert(data.clone());
+                if self.set.insert(data.clone()) {
+                    debug!("add_if_global: global predicate `{:?}` added", data);
+                    info!("check_duplicate_trait entry: `{:?}`", data);
+                }
             }
         }
     }
