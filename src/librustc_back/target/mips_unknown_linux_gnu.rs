@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -19,6 +19,10 @@ pub fn target() -> Target {
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "unknown".to_string(),
-        options: super::linux_base::opts()
+        options: TargetOptions {
+            cpu: "mips32r2".to_string(),
+            features: "+mips32r2,+soft-float".to_string(),
+            ..super::linux_base::opts()
+        },
     }
 }
