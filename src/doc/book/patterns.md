@@ -173,7 +173,31 @@ let (x, _, z) = coordinate();
 Here, we bind the first and last element of the tuple to `x` and `z`, but
 ignore the middle element.
 
-Similarly, you can use `..` in a pattern to disregard multiple values.
+It’s worth noting that using `_` never binds the value in the first place,
+which means a value may not move:
+
+```rust
+let tuple: (u32, String) = (5, String::from("five"));
+
+// Here, tuple is moved, because the String moved:
+let (x, _s) = tuple;
+
+// The next line would give "error: use of partially moved value: `tuple`"
+// println!("Tuple is: {:?}", tuple);
+
+// However,
+
+let tuple = (5, String::from("five"));
+
+// Here, tuple is _not_ moved, as the String was never moved, and u32 is Copy:
+let (x, _) = tuple;
+
+// That means this works:
+println!("Tuple is: {:?}", tuple);
+```
+
+In a similar fashion to `_`, you can use `..` in a pattern to disregard
+multiple values:
 
 ```rust
 enum OptionalTuple {
