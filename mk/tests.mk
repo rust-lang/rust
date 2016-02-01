@@ -36,6 +36,8 @@ TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 # Environment configuration
 ######################################################################
 
+TESTARGS :=
+
 # The arguments to all test runners
 ifdef TESTNAME
   TESTARGS += $(TESTNAME)
@@ -48,6 +50,8 @@ endif
 # Arguments to the cfail/rfail/rpass tests
 ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
+else
+  CTEST_RUNTOOL =
 endif
 
 CTEST_TESTARGS := $(TESTARGS)
@@ -143,10 +147,11 @@ else
 CFG_ADB_TEST_DIR=
 endif
 
+DOC_NAMES :=
 # $(1) - name of doc test
 # $(2) - file of the test
 define DOCTEST
-DOC_NAMES := $$(DOC_NAMES) $(1)
+DOC_NAMES += $(1)
 DOCFILE_$(1) := $(2)
 endef
 
@@ -362,7 +367,7 @@ define TEST_RUNNER
 # If NO_REBUILD is set then break the dependencies on everything but
 # the source files so we can test crates without rebuilding any of the
 # parent crates.
-ifeq ($(NO_REBUILD),)
+ifndef NO_REBUILD
 TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
 			    $$(foreach crate,$$(TARGET_CRATES), \
 				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
@@ -447,7 +452,7 @@ $(foreach host,$(CFG_HOST), \
     $(if $(findstring $(target),$(CFG_BUILD)), \
      $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))), \
      $(if $(findstring android, $(target)), \
-      $(if $(findstring $(CFG_ADB_DEVICE_STATUS),"true"), \
+      $(if $(findstring $(CFG_ADB_DEVICE_STATUS),true), \
        $(eval $(call DEF_TEST_CRATE_RULES_android,$(stage),$(target),$(host),$(crate))), \
        $(eval $(call DEF_TEST_CRATE_RULES_null,$(stage),$(target),$(host),$(crate))) \
       ), \
@@ -700,14 +705,14 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 # (Encoded as a separate variable because GNU make does not have a
 # good way to express OR on ifeq commands)
 
-ifneq ($$(CTEST_DISABLE_$(4)),)
+ifdef CTEST_DISABLE_$(4)
 # Test suite is disabled for all configured targets.
 CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4) := $$(CTEST_DISABLE_$(4))
 else
 # else, check if non-self-hosted target (i.e. target not-in hosts) ...
 ifeq ($$(findstring $(2),$$(CFG_HOST)),)
 # ... if so, then check if this test suite is disabled for non-selfhosts.
-ifneq ($$(CTEST_DISABLE_NONSELFHOST_$(4)),)
+ifdef CTEST_DISABLE_NONSELFHOST_$(4)
 # Test suite is disabled for this target.
 CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4) := $$(CTEST_DISABLE_NONSELFHOST_$(4))
 endif
@@ -715,7 +720,7 @@ endif
 # Neither DISABLE nor DISABLE_NONSELFHOST is set ==> okay, run the test.
 endif
 
-ifeq ($$(CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4)),)
+ifndef CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4)
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
@@ -824,7 +829,7 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3)
 # If NO_REBUILD is set then break the dependencies on everything but
 # the source files so we can test documentation without rebuilding
 # rustdoc etc.
-ifeq ($(NO_REBUILD),)
+ifndef NO_REBUILD
 DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
 	$$(DOCFILE_$(4)) \
 	$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
@@ -859,7 +864,7 @@ define DEF_CRATE_DOC_TEST
 # If NO_REBUILD is set then break the dependencies on everything but
 # the source files so we can test crate documentation without
 # rebuilding any of the parent crates.
-ifeq ($(NO_REBUILD),)
+ifndef NO_REBUILD
 CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
 	$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
 	$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4)) \
@@ -922,8 +927,7 @@ TEST_GROUPS = \
 	pretty-rpass-full \
 	pretty-rfail-full \
 	pretty-rfail \
-	pretty-pretty \
-	$(NULL)
+	pretty-pretty
 
 define DEF_CHECK_FOR_STAGE_AND_TARGET_AND_HOST
 check-stage$(1)-T-$(2)-H-$(3): check-stage$(1)-T-$(2)-H-$(3)-exec

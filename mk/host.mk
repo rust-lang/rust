@@ -18,7 +18,7 @@
 # $(5) - the name of the crate being processed
 define CP_HOST_STAGE_N_CRATE
 
-ifeq ($$(ONLY_RLIB_$(5)),)
+ifndef ONLY_RLIB_$(5)
 $$(HLIB$(2)_H_$(4))/stamp.$(5): \
 	$$(TLIB$(1)_T_$(3)_H_$(4))/stamp.$(5) \
 	$$(RUST_DEPS_$(5):%=$$(HLIB$(2)_H_$(4))/stamp.%) \
