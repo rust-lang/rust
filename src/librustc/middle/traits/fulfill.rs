@@ -36,6 +36,7 @@ pub struct GlobalFulfilledPredicates<'tcx> {
     dep_graph: DepGraph,
 }
 
+#[derive(Debug)]
 pub struct LocalFulfilledPredicates<'tcx> {
     set: FnvHashSet<ty::Predicate<'tcx>>
 }
@@ -66,7 +67,8 @@ pub struct FulfillmentContext<'tcx> {
 
     // A list of all obligations that have been registered with this
     // fulfillment context.
-    predicates: ObligationForest<PendingPredicateObligation<'tcx>, ()>,
+    predicates: ObligationForest<PendingPredicateObligation<'tcx>,
+                                 LocalFulfilledPredicates<'tcx>>,
 
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
@@ -192,7 +194,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             obligation: obligation,
             stalled_on: vec![]
         };
-        self.predicates.push_tree(obligation, ());
+        self.predicates.push_tree(obligation, LocalFulfilledPredicates::new());
     }
 
     pub fn region_obligations(&self,
@@ -278,7 +280,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
             let outcome = {
                 let region_obligations = &mut self.region_obligations;
                 self.predicates.process_obligations(
-                    |obligation, _tree, backtrace| process_predicate(selcx,
+                    |obligation, tree, backtrace| process_predicate(selcx,
+                                                                     tree,
                                                                      obligation,
                                                                      backtrace,
                                                                      region_obligations))
@@ -315,61 +318,97 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
 /// Like `process_predicate1`, but wrap result into a pending predicate.
 fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
+                              tree_cache: &mut LocalFulfilledPredicates<'tcx>,
                               pending_obligation: &mut PendingPredicateObligation<'tcx>,
-                              backtrace: Backtrace<PendingPredicateObligation<'tcx>>,
+                              mut backtrace: Backtrace<PendingPredicateObligation<'tcx>>,
                               region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
                               -> Result<Option<Vec<PendingPredicateObligation<'tcx>>>,
                                         FulfillmentErrorCode<'tcx>>
 {
-    match process_predicate1(selcx, pending_obligation, backtrace, region_obligations) {
+    match process_predicate1(selcx, pending_obligation, backtrace.clone(), region_obligations) {
         Ok(Some(v)) => {
-            // FIXME(#30977) the right thing to do here, I think, is to permit
-            // DAGs. That is, we should detect whenever this predicate
-            // has appeared somewhere in the current tree./ If it's a
-            // parent, that's a cycle, and we should either error out
-            // or consider it ok. But if it's NOT a parent, we can
-            // ignore it, since it will be proven (or not) separately.
-            // However, this is a touch tricky, so I'm doing something
-            // a bit hackier for now so that the `huge-struct.rs` passes.
+            // FIXME(#30977) The code below is designed to detect (and
+            // permit) DAGs, while still ensuring that the reasoning
+            // is acyclic. However, it does a few things
+            // suboptimally. For example, it refreshes type variables
+            // a lot, probably more than needed, but also less than
+            // you might want.
+            //
+            //   - more than needed: I want to be very sure we don't
+            //     accidentally treat a cycle as a DAG, so I am
+            //     refreshing type variables as we walk the ancestors;
+            //     but we are going to repeat this a lot, which is
+            //     sort of silly, and it would be nicer to refresh
+            //     them *in place* so that later predicate processing
+            //     can benefit from the same work;
+            //   - less than you might want: we only add items in the cache here,
+            //     but maybe we learn more about type variables and could add them into
+            //     the cache later on.
 
             let tcx = selcx.tcx();
 
-            let retain_vec: Vec<_> = {
-                let mut dedup = FnvHashSet();
-                v.iter()
-                 .map(|o| {
+            // Compute a little FnvHashSet for the ancestors. We only
+            // do this the first time that we care.
+            let mut cache = None;
+            let mut is_ancestor = |predicate: &ty::Predicate<'tcx>| {
+                if cache.is_none() {
+                    let mut c = FnvHashSet();
+                    for ancestor in backtrace.by_ref() {
+                        // Ugh. This just feels ridiculously
+                        // inefficient.  But we need to compare
+                        // predicates without being concerned about
+                        // the vagaries of type inference, so for now
+                        // just ensure that they are always
+                        // up-to-date. (I suppose we could just use a
+                        // snapshot and check if they are unifiable?)
+                        let resolved_predicate =
+                            selcx.infcx().resolve_type_vars_if_possible(
+                                &ancestor.obligation.predicate);
+                        c.insert(resolved_predicate);
+                    }
+                    cache = Some(c);
+                }
+
+                cache.as_ref().unwrap().contains(predicate)
+            };
+
+            let pending_predicate_obligations: Vec<_> =
+                v.into_iter()
+                 .filter_map(|obligation| {
+                     // Probably silly, but remove any inference
+                     // variables. This is actually crucial to the
+                     // ancestor check below, but it's not clear that
+                     // it makes sense to ALWAYS do it.
+                     let obligation = selcx.infcx().resolve_type_vars_if_possible(&obligation);
+
                      // Screen out obligations that we know globally
                      // are true. This should really be the DAG check
                      // mentioned above.
-                     if tcx.fulfilled_predicates.borrow().check_duplicate(&o.predicate) {
-                         return false;
+                     if tcx.fulfilled_predicates.borrow().check_duplicate(&obligation.predicate) {
+                         return None;
                      }
 
-                     // If we see two siblings that are exactly the
-                     // same, no need to add them twice.
-                     if !dedup.insert(&o.predicate) {
-                         return false;
+                     // Check whether this obligation appears somewhere else in the tree.
+                     if tree_cache.is_duplicate_or_add(&obligation.predicate) {
+                         // If the obligation appears as a parent,
+                         // allow it, because that is a cycle.
+                         // Otherwise though we can just ignore
+                         // it. Note that we have to be careful around
+                         // inference variables here -- for the
+                         // purposes of the ancestor check, we retain
+                         // the invariant that all type variables are
+                         // fully refreshed.
+                         if !(&mut is_ancestor)(&obligation.predicate) {
+                             return None;
+                         }
                      }
 
-                     true
+                     Some(PendingPredicateObligation {
+                         obligation: obligation,
+                         stalled_on: vec![]
+                     })
                  })
-                 .collect()
-            };
-
-            let pending_predicate_obligations =
-                v.into_iter()
-                 .zip(retain_vec)
-                 .flat_map(|(o, retain)| {
-                     if retain {
-                         Some(PendingPredicateObligation {
-                             obligation: o,
-                             stalled_on: vec![]
-                         })
-                     } else {
-                         None
-                     }
-                 })
-                .collect();
+                 .collect();
 
             Ok(Some(pending_predicate_obligations))
         }
