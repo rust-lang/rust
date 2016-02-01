@@ -33,27 +33,19 @@ impl LateLintPass for UnnecessaryMutPassed {
         let borrowed_table = cx.tcx.tables.borrow();
         match e.node {
             ExprCall(ref fn_expr, ref arguments) => {
-                match borrowed_table.node_types.get(&fn_expr.id) {
-                    Some(function_type) => {
-                        if let ExprPath(_, ref path) = fn_expr.node {
-                            check_arguments(cx, &arguments, function_type, &format!("{}", path));
-                        }
-                    }
-                    None => unreachable!(), // A function with unknown type is called.
-                    // If this happened the compiler would have aborted the
-                    // compilation long ago.
-                };
-
-
+                let function_type = borrowed_table.node_types
+                                                  .get(&fn_expr.id)
+                                                  .expect("A function with an unknown type is called. \
+                                                           If this happened, the compiler would have \
+                                                           aborted the compilation long ago");
+                if let ExprPath(_, ref path) = fn_expr.node {
+                    check_arguments(cx, &arguments, function_type, &format!("{}", path));
+                }
             }
             ExprMethodCall(ref name, _, ref arguments) => {
                 let method_call = MethodCall::expr(e.id);
-                match borrowed_table.method_map.get(&method_call) {
-                    Some(method_type) => {
-                        check_arguments(cx, &arguments, method_type.ty, &format!("{}", name.node.as_str()))
-                    }
-                    None => unreachable!(), // Just like above, this should never happen.
-                };
+                let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
+                check_arguments(cx, &arguments, method_type.ty, &format!("{}", name.node.as_str()))
             }
             _ => {}
         }

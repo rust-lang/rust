@@ -54,43 +54,38 @@ impl LateLintPass for CollapsibleIf {
 
 fn check_if(cx: &LateContext, e: &Expr) {
     if let ExprIf(ref check, ref then, ref else_) = e.node {
-        match *else_ {
-            Some(ref else_) => {
-                if_let_chain! {[
-                    let ExprBlock(ref block) = else_.node,
-                    block.stmts.is_empty(),
-                    block.rules == BlockCheckMode::DefaultBlock,
-                    let Some(ref else_) = block.expr,
-                    let ExprIf(_, _, _) = else_.node
-                ], {
-                    span_lint_and_then(cx,
-                                       COLLAPSIBLE_IF,
-                                       block.span,
-                                       "this `else { if .. }` block can be collapsed", |db| {
-                        db.span_suggestion(block.span, "try",
-                                           format!("else {}",
-                                                   snippet_block(cx, else_.span, "..")));
-                    });
-                }}
-            }
-            None => {
-                if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
+        if let Some(ref else_) = *else_ {
+            if_let_chain! {[
+                let ExprBlock(ref block) = else_.node,
+                block.stmts.is_empty(),
+                block.rules == BlockCheckMode::DefaultBlock,
+                let Some(ref else_) = block.expr,
+                let ExprIf(_, _, _) = else_.node
+            ], {
+                span_lint_and_then(cx,
+                                   COLLAPSIBLE_IF,
+                                   block.span,
+                                   "this `else { if .. }` block can be collapsed", |db| {
+                    db.span_suggestion(block.span, "try",
+                                       format!("else {}",
+                                               snippet_block(cx, else_.span, "..")));
+                });
+            }}
+        } else if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
                        single_stmt_of_block(then) {
-                    if e.span.expn_id != sp.expn_id {
-                        return;
-                    }
-                    span_lint_and_then(cx,
-                                       COLLAPSIBLE_IF,
-                                       e.span,
-                                       "this if statement can be collapsed", |db| {
-                        db.span_suggestion(e.span, "try",
-                                           format!("if {} && {} {}",
-                                                   check_to_string(cx, check),
-                                                   check_to_string(cx, check_inner),
-                                                   snippet_block(cx, content.span, "..")));
-                    });
-                }
+            if e.span.expn_id != sp.expn_id {
+                return;
             }
+            span_lint_and_then(cx,
+                               COLLAPSIBLE_IF,
+                               e.span,
+                               "this if statement can be collapsed", |db| {
+                db.span_suggestion(e.span, "try",
+                                   format!("if {} && {} {}",
+                                           check_to_string(cx, check),
+                                           check_to_string(cx, check_inner),
+                                           snippet_block(cx, content.span, "..")));
+            });
         }
     }
 }

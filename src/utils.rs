@@ -657,20 +657,10 @@ pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> 
                 (ei.callee.name(), ei.call_site)
             })
         });
-
-        return match span_name_span {
-            Some((mac_name, new_span)) => {
-                if mac_name.as_str() == name {
-                    Some(new_span)
-                }
-                else {
-                    span = new_span;
-                    continue;
-                }
-            }
-            None => {
-                None
-            }
-        };
+        match span_name_span {
+            Some((mac_name, new_span)) if mac_name.as_str() == name => return Some(new_span),
+            None => return None,
+            Some((_, new_span)) => span = new_span,
+        }
     }
 }
