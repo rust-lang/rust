@@ -1735,10 +1735,12 @@ it's easy to tell at a glance which of two impls will be preferred.
 
 On the other hand, the simplicity of this design has its own drawbacks:
 
-- You have to lift out trait parameters to enable specialization, as in the
-  `Extend` example above. The RFC mentions a few ways of dealing with this
-  limitation -- either by employing inherent item specialization, or by
-  eventually generalizing HRTBs.
+- You have to lift out trait parameters to enable specialization, as
+  in the `Extend` example above. Of course, this lifting can be hidden
+  behind an additional trait, so that the end-user interface remains
+  idiomatic.  The RFC mentions a few other extensions for dealing with
+  this limitation -- either by employing inherent item specialization,
+  or by eventually generalizing HRTBs.
 
 - You can't use specialization to handle some of the more "exotic" cases of
   overlap, as described in the Limitations section above. This is a deliberate
