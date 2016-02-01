@@ -15,5 +15,8 @@ mod spam {
     pub fn ham() { }
 }
 
-fn main() { ham(); eggs(); }
-//~^ ERROR unresolved name `eggs`
+fn main() {
+    ham();
+    // Expect eggs to pass because the compiler inserts a fake name for it
+    eggs();
+}

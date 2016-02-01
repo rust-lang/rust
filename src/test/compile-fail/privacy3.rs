@@ -27,8 +27,10 @@ pub fn foo() {}
 fn test1() {
     use bar::gpriv;
     //~^ ERROR unresolved import `bar::gpriv`. There is no `gpriv` in `bar`
+
+    // This should pass because the compiler will insert a fake name binding
+    // for `gpriv`
     gpriv();
-    //~^ ERROR unresolved name `gpriv`
 }
 
 #[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }

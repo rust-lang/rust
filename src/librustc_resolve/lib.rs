@@ -1468,7 +1468,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             match search_module.parent_link {
                 NoParentLink => {
                     // No more parents. This module was unresolved.
-                    debug!("(resolving item in lexical scope) unresolved module");
+                    debug!("(resolving item in lexical scope) unresolved module: no parent module");
                     return Failed(None);
                 }
                 ModuleParentLink(parent_module_node, _) => {
@@ -3109,7 +3109,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Indeterminate => None,
             Failed(err) => {
-                debug!("(resolving item path by identifier in lexical scope) failed to resolve {}",
+                debug!("(resolving item path by identifier in lexical scope) failed to \
+                        resolve `{}`",
                        name);
 
                 if let Some((span, msg)) = err {
