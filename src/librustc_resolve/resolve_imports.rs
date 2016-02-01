@@ -798,9 +798,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 dest_import_resolution.is_public = is_public;
                 self.add_export(module_, name, &dest_import_resolution);
             }
-        } else {
-            // FIXME #30159: This is required for backwards compatability.
-            dest_import_resolution.is_public |= is_public;
         }
 
         self.check_for_conflicts_between_imports_and_items(module_,
