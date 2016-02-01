@@ -105,7 +105,7 @@ use middle::def::Def;
 use middle::infer::{self, TypeOrigin};
 use middle::subst;
 use middle::ty::{self, Ty, TypeFoldable};
-use session::config;
+use session::{config, CompileResult};
 use util::common::time;
 use rustc_front::hir;
 
@@ -323,7 +323,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
+pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,
@@ -333,34 +333,40 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
-    tcx.sess.abort_if_new_errors(|| {
+    try!(tcx.sess.track_errors(|| {
         time(time_passes, "type collecting", ||
              collect::collect_item_types(tcx));
 
-    });
+    }));
 
     time(time_passes, "variance inference", ||
          variance::infer_variance(tcx));
 
-    tcx.sess.abort_if_new_errors(|| {
+    try!(tcx.sess.track_errors(|| {
       time(time_passes, "coherence checking", ||
           coherence::check_coherence(&ccx));
-    });
+    }));
 
-    time(time_passes, "wf checking", ||
-        check::check_wf_new(&ccx));
+    try!(time(time_passes, "wf checking", ||
+        check::check_wf_new(&ccx)));
 
-    time(time_passes, "item-types checking", ||
-        check::check_item_types(&ccx));
+    try!(time(time_passes, "item-types checking", ||
+        check::check_item_types(&ccx)));
 
-    time(time_passes, "item-bodies checking", ||
-        check::check_item_bodies(&ccx));
+    try!(time(time_passes, "item-bodies checking", ||
+        check::check_item_bodies(&ccx)));
 
-    time(time_passes, "drop-impl checking", ||
-        check::check_drop_impls(&ccx));
+    try!(time(time_passes, "drop-impl checking", ||
+        check::check_drop_impls(&ccx)));
 
     check_for_entry_fn(&ccx);
-    tcx.sess.abort_if_errors();
+
+    let err_count = tcx.sess.err_count();
+    if err_count == 0 {
+        Ok(())
+    } else {
+        Err(err_count)
+    }
 }
 
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }

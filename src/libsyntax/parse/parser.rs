@@ -2483,8 +2483,7 @@ impl<'a> Parser<'a> {
                                     float.trunc() as usize,
                                     format!(".{}", fstr.splitn(2, ".").last().unwrap())));
                     }
-                    err.emit();
-                    self.abort_if_errors();
+                    return Err(err);
 
                   }
                   _ => {
@@ -4117,9 +4116,7 @@ impl<'a> Parser<'a> {
                               or did you mean the comma-separated arguments \
                               'a, Type?");
             err.span_note(mk_sp(span_lo, span_hi), &msg);
-            err.emit();
-
-            self.abort_if_errors()
+            return Err(err);
         }
 
         // First parse types.
@@ -5189,8 +5186,7 @@ impl<'a> Parser<'a> {
                                         of possibly redeclaring it",
                                        paths.name));
             }
-            err.emit();
-            self.abort_if_errors();
+            return Err(err);
         }
 
         match paths.result {

@@ -200,7 +200,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  resolve::MakeGlobMap::No,
-                                                                 |tcx, _, _| {
+                                                                 |tcx, _, _, _| {
                     let annotation = TypedAnnotation {
                         tcx: tcx,
                     };
@@ -824,7 +824,7 @@ pub fn pretty_print_input(sess: Session,
                                                                      &arenas,
                                                                      &id,
                                                                      resolve::MakeGlobMap::No,
-                                                                     |tcx, _, _| {
+                                                                     |tcx, _, _, _| {
                         print_flowgraph(variants,
                                         tcx,
                                         code,

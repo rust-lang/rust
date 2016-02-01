@@ -153,7 +153,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                                                      &arenas,
                                                      &name,
                                                      resolve::MakeGlobMap::No,
-                                                     |tcx, _, analysis| {
+                                                     |tcx, _, analysis, _| {
         let _ignore = tcx.dep_graph.in_ignore();
         let ty::CrateAnalysis { access_levels, .. } = analysis;
 

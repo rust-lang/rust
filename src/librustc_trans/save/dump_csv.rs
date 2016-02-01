@@ -801,7 +801,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                 "<mutable>".to_string()
             };
             let types = self.tcx.node_types();
-            let typ = types.get(&id).unwrap().to_string();
+            let typ = types.get(&id).map(|t| t.to_string()).unwrap_or(String::new());
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).
             let sub_span = self.span.span_for_last_ident(p.span);
