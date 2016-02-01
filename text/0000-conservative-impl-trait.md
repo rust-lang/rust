@@ -315,7 +315,7 @@ cause issues down the road if limitations or incompatibilities become apparent.
 
 See the links in the motivation section for a more detailed analysis.
 
-But basically, with this feature certain things remain hard or impossible to do
+But basically, without this feature certain things remain hard or impossible to do
 in Rust, like returning a efficiently usable type parametricised by
 types private to a function body, like a iterator adapter containing a closure.
 
