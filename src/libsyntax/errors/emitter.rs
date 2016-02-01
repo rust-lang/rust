@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use codemap::{self, COMMAND_LINE_SP, COMMAND_LINE_EXPN, DUMMY_SP, Pos, Span, MultiSpan};
+use codemap::{self, COMMAND_LINE_SP, DUMMY_SP, Pos, Span, MultiSpan};
 use diagnostics;
 
 use errors::{Level, RenderSpan, CodeSuggestion, DiagnosticBuilder};
@@ -175,9 +175,7 @@ impl EmitterWriter {
         let msp = rsp.span();
         let bounds = msp.to_span_bounds();
 
-        // We cannot check equality directly with COMMAND_LINE_SP
-        // since PartialEq is manually implemented to ignore the ExpnId
-        let ss = if bounds.expn_id == COMMAND_LINE_EXPN {
+        let ss = if bounds == COMMAND_LINE_SP {
             "<command line option>".to_string()
         } else if let EndSpan(_) = *rsp {
             let span_end = Span { lo: bounds.hi, hi: bounds.hi, expn_id: bounds.expn_id};
@@ -606,7 +604,7 @@ impl EmitterWriter {
             };
 
             // Don't print recursive invocations
-            if span != last_span {
+            if !span.source_equal(&last_span) {
                 let mut diag_string = macro_decl_name;
                 if let Some(def_site_span) = def_site_span {
                     diag_string.push_str(&format!(" (defined in {})",

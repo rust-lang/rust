@@ -4250,14 +4250,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let def_id = ccx.tcx.map.local_def_id(id);
     let hint = *ccx.tcx.lookup_repr_hints(def_id).get(0).unwrap_or(&attr::ReprAny);
 
-    if hint != attr::ReprAny && vs.len() <= 1 {
-        if vs.len() == 1 {
-            span_err!(ccx.tcx.sess, sp, E0083,
-                "unsupported representation for univariant enum");
-        } else {
-            span_err!(ccx.tcx.sess, sp, E0084,
-                "unsupported representation for zero-variant enum");
-        };
+    if hint != attr::ReprAny && vs.is_empty() {
+        span_err!(ccx.tcx.sess, sp, E0084,
+            "unsupported representation for zero-variant enum");
     }
 
     do_check(ccx, vs, id, hint);

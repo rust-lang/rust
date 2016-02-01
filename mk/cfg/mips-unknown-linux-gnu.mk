@@ -20,5 +20,5 @@ CFG_UNIXY_mips-unknown-linux-gnu := 1
 CFG_LDPATH_mips-unknown-linux-gnu :=
 CFG_RUN_mips-unknown-linux-gnu=
 CFG_RUN_TARG_mips-unknown-linux-gnu=
-RUSTC_FLAGS_mips-unknown-linux-gnu := -C target-cpu=mips32r2 -C target-feature="+mips32r2" -C soft-float
+RUSTC_FLAGS_mips-unknown-linux-gnu :=
 CFG_GNU_TRIPLE_mips-unknown-linux-gnu := mips-unknown-linux-gnu

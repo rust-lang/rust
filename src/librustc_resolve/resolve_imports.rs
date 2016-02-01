@@ -213,7 +213,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         self.resolver.current_module = orig_module;
 
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
-        for (_, child_node) in module_.children.borrow().iter() {
+        module_.for_each_local_child(|_, _, child_node| {
             match child_node.module() {
                 None => {
                     // Nothing to do.
@@ -222,7 +222,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     errors.extend(self.resolve_imports_for_module_subtree(child_module));
                 }
             }
-        }
+        });
 
         for (_, child_module) in module_.anonymous_children.borrow().iter() {
             errors.extend(self.resolve_imports_for_module_subtree(child_module));
@@ -386,18 +386,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                               -> (ResolveResult<(Module<'b>, NameBinding<'b>)>, bool) {
         build_reduced_graph::populate_module_if_necessary(self.resolver, module);
         if let Some(name_binding) = module.get_child(name, ns) {
-            return (Success((module, name_binding)), false);
-        }
-
-        if ns == TypeNS {
-            if let Some(extern_crate) = module.external_module_children.borrow().get(&name) {
+            if name_binding.is_extern_crate() {
                 // track the extern crate as used.
-                if let Some(DefId{ krate: kid, .. }) = extern_crate.def_id() {
-                    self.resolver.used_crates.insert(kid);
+                if let Some(DefId { krate, .. }) = name_binding.module().unwrap().def_id() {
+                    self.resolver.used_crates.insert(krate);
                 }
-                let name_binding = NameBinding::create_from_module(extern_crate, None);
-                return (Success((module, name_binding)), false);
             }
+            return (Success((module, name_binding)), false)
         }
 
         // If there is an unresolved glob at this point in the containing module, bail out.
@@ -725,13 +720,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // Add all children from the containing module.
         build_reduced_graph::populate_module_if_necessary(self.resolver, &target_module);
 
-        for (&name, name_binding) in target_module.children.borrow().iter() {
+        target_module.for_each_local_child(|name, ns, name_binding| {
             self.merge_import_resolution(module_,
                                          target_module,
                                          import_directive,
-                                         name,
+                                         (name, ns),
                                          name_binding.clone());
-        }
+        });
 
         // Record the destination of this import
         if let Some(did) = target_module.def_id() {
@@ -798,9 +793,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 dest_import_resolution.is_public = is_public;
                 self.add_export(module_, name, &dest_import_resolution);
             }
-        } else {
-            // FIXME #30159: This is required for backwards compatability.
-            dest_import_resolution.is_public |= is_public;
         }
 
         self.check_for_conflicts_between_imports_and_items(module_,
@@ -881,21 +873,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                      import: &ImportResolution<'b>,
                                                      import_span: Span,
                                                      (name, ns): (Name, Namespace)) {
-        // First, check for conflicts between imports and `extern crate`s.
-        if ns == TypeNS {
-            if module.external_module_children.borrow().contains_key(&name) {
-                match import.target {
-                    Some(ref target) if target.shadowable != Shadowable::Always => {
-                        let msg = format!("import `{0}` conflicts with imported crate \
-                                           in this module (maybe you meant `use {0}::*`?)",
-                                          name);
-                        span_err!(self.resolver.session, import_span, E0254, "{}", &msg[..]);
-                    }
-                    Some(_) | None => {}
-                }
-            }
-        }
-
         // Check for item conflicts.
         let name_binding = match module.get_child(name, ns) {
             None => {
@@ -924,6 +901,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         } else {
             match import.target {
                 Some(ref target) if target.shadowable != Shadowable::Always => {
+                    if name_binding.is_extern_crate() {
+                        let msg = format!("import `{0}` conflicts with imported crate \
+                                           in this module (maybe you meant `use {0}::*`?)",
+                                          name);
+                        span_err!(self.resolver.session, import_span, E0254, "{}", &msg[..]);
+                        return;
+                    }
+
                     let (what, note) = match name_binding.module() {
                         Some(ref module) if module.is_normal() =>
                             ("existing submodule", "note conflicting module here"),

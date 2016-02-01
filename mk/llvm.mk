@@ -71,7 +71,7 @@ $$(LLVM_STAMP_$(1)): $$(S)src/rustllvm/llvm-auto-clean-trigger
 	@$$(call E, make: done cleaning llvm)
 	touch -r $$@.start_time $$@ && rm $$@.start_time
 
-ifeq ($$(CFG_ENABLE_LLVM_STATIC_STDCPP),1)
+ifdef CFG_ENABLE_LLVM_STATIC_STDCPP
 LLVM_STDCPP_RUSTFLAGS_$(1) = -L "$$(dir $$(shell $$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
 					-print-file-name=lib$(CFG_STDCPP_NAME).a))"
 else
@@ -94,9 +94,6 @@ endef
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(call DEF_LLVM_RULES,$(host))))
-
-$(foreach host,$(CFG_HOST), \
- $(eval LLVM_CONFIGS := $(LLVM_CONFIGS) $(LLVM_CONFIG_$(host))))
 
 # This can't be done in target.mk because it's included before this file.
 define LLVM_LINKAGE_DEPS
