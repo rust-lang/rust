@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 105 lints included in this crate:
+There are 106 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -30,6 +30,7 @@ name                                                                            
 [derive_hash_not_eq](https://github.com/Manishearth/rust-clippy/wiki#derive_hash_not_eq)                       | warn    | deriving `Hash` but implementing `PartialEq` explicitly
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument) | warn    | Function arguments having names which only differ by an underscore
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                       | warn    | empty `loop {}` detected
+[enum_variant_names](https://github.com/Manishearth/rust-clippy/wiki#enum_variant_names)                       | warn    | finds enums where all variants share a prefix/postfix
 [eq_op](https://github.com/Manishearth/rust-clippy/wiki#eq_op)                                                 | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
 [expl_impl_clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#expl_impl_clone_on_copy)             | warn    | implementing `Clone` explicitly on `Copy` types
 [explicit_counter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_counter_loop)                 | warn    | for-looping with an explicit counter when `_.enumerate()` would do

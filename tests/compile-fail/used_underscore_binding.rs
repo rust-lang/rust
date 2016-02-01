@@ -50,17 +50,17 @@ fn multiple_underscores(__foo: u32) -> u32 {
 fn _fn_test() {}
 struct _StructTest;
 enum _EnumTest {
-    _FieldA,
-    _FieldB(_StructTest)
+    _Empty,
+    _Value(_StructTest)
 }
 
 /// Test that we do not lint for non-variable bindings
 fn non_variables() {
     _fn_test();
     let _s = _StructTest;
-    let _e = match _EnumTest::_FieldB(_StructTest) {
-        _EnumTest::_FieldA => 0,
-        _EnumTest::_FieldB(_st) => 1,
+    let _e = match _EnumTest::_Value(_StructTest) {
+        _EnumTest::_Empty => 0,
+        _EnumTest::_Value(_st) => 1,
     };
     let f = _fn_test;
     f();

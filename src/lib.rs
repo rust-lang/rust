@@ -43,6 +43,7 @@ pub mod ptr_arg;
 pub mod needless_bool;
 pub mod approx_const;
 pub mod eta_reduction;
+pub mod enum_variants;
 pub mod identity_op;
 pub mod items_after_statements;
 pub mod minmax;
@@ -93,6 +94,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
     reg.register_late_lint_pass(box misc::CmpNan);
     reg.register_late_lint_pass(box eq_op::EqOp);
+    reg.register_early_lint_pass(box enum_variants::EnumVariantNames);
     reg.register_late_lint_pass(box bit_mask::BitMask);
     reg.register_late_lint_pass(box ptr_arg::PtrArg);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
@@ -183,6 +185,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         derive::DERIVE_HASH_NOT_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,
         entry::MAP_ENTRY,
+        enum_variants::ENUM_VARIANT_NAMES,
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,

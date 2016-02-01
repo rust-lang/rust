@@ -18,7 +18,6 @@ use syntax::ast::StrStyle::*;
 use syntax::ast::Sign::*;
 
 use clippy::consts::{constant_simple, Constant};
-use clippy::consts::Constant::*;
 
 fn spanned<T>(t: T) -> Spanned<T> {
     Spanned{ node: t, span: COMMAND_LINE_SP }
@@ -45,18 +44,18 @@ fn check(expect: Constant, expr: &Expr) {
     assert_eq!(Some(expect), constant_simple(expr))
 }
 
-const TRUE : Constant = ConstantBool(true);
-const FALSE : Constant = ConstantBool(false);
-const ZERO : Constant = ConstantInt(0, UnsuffixedIntLit(Plus));
-const ONE : Constant = ConstantInt(1, UnsuffixedIntLit(Plus));
-const TWO : Constant = ConstantInt(2, UnsuffixedIntLit(Plus));
+const TRUE : Constant = Constant::Bool(true);
+const FALSE : Constant = Constant::Bool(false);
+const ZERO : Constant = Constant::Int(0, UnsuffixedIntLit(Plus));
+const ONE : Constant = Constant::Int(1, UnsuffixedIntLit(Plus));
+const TWO : Constant = Constant::Int(2, UnsuffixedIntLit(Plus));
 
 #[test]
 fn test_lit() {
     check(TRUE, &lit(LitBool(true)));
     check(FALSE, &lit(LitBool(false)));
     check(ZERO, &lit(LitInt(0, UnsuffixedIntLit(Plus))));
-    check(ConstantStr("cool!".into(), CookedStr), &lit(LitStr(
+    check(Constant::Str("cool!".into(), CookedStr), &lit(LitStr(
         InternedString::new("cool!"), CookedStr)));
 }
 

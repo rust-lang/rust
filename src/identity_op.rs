@@ -2,8 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
 
-use consts::{constant_simple, is_negative};
-use consts::Constant::ConstantInt;
+use consts::{constant_simple, is_negative, Constant};
 use utils::{span_lint, snippet, in_macro};
 
 /// **What it does:** This lint checks for identity operations, e.g. `x + 0`. It is `Warn` by default.
@@ -54,7 +53,7 @@ impl LateLintPass for IdentityOp {
 
 
 fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
-    if let Some(ConstantInt(v, ty)) = constant_simple(e) {
+    if let Some(Constant::Int(v, ty)) = constant_simple(e) {
         if match m {
             0 => v == 0,
             -1 => is_negative(ty) && v == 1,
