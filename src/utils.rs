@@ -27,6 +27,7 @@ pub const CLONE_PATH: [&'static str; 3] = ["clone", "Clone", "clone"];
 pub const CLONE_TRAIT_PATH: [&'static str; 2] = ["clone", "Clone"];
 pub const COW_PATH: [&'static str; 3] = ["collections", "borrow", "Cow"];
 pub const DEFAULT_TRAIT_PATH: [&'static str; 3] = ["core", "default", "Default"];
+pub const DROP_PATH: [&'static str; 3] = ["core", "mem", "drop"];
 pub const HASHMAP_ENTRY_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "HashMap"];
 pub const HASH_PATH: [&'static str; 2] = ["hash", "Hash"];
