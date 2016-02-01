@@ -107,20 +107,37 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
-        let name_binding = def.to_name_binding();
-        let span = name_binding.span.unwrap_or(DUMMY_SP);
-        self.check_for_conflicts_between_external_crates_and_items(&parent, name, span);
-        if !parent.try_define_child(name, ns, name_binding) {
+        let binding = def.to_name_binding();
+        let old_binding = match parent.try_define_child(name, ns, binding.clone()) {
+            Some(old_binding) => old_binding,
+            None => return,
+        };
+
+        let span = binding.span.unwrap_or(DUMMY_SP);
+        if !old_binding.is_extern_crate() && !binding.is_extern_crate() {
             // Record an error here by looking up the namespace that had the duplicate
             let ns_str = match ns { TypeNS => "type or module", ValueNS => "value" };
             let resolution_error = ResolutionError::DuplicateDefinition(ns_str, name);
             let mut err = resolve_struct_error(self, span, resolution_error);
 
-            if let Some(sp) = parent.children.borrow().get(&(name, ns)).unwrap().span {
+            if let Some(sp) = old_binding.span {
                 let note = format!("first definition of {} `{}` here", ns_str, name);
                 err.span_note(sp, &note);
             }
             err.emit();
+        } else if old_binding.is_extern_crate() && binding.is_extern_crate() {
+            span_err!(self.session,
+                      span,
+                      E0259,
+                      "an external crate named `{}` has already been imported into this module",
+                      name);
+        } else {
+            span_err!(self.session,
+                      span,
+                      E0260,
+                      "the name `{}` conflicts with an external crate \
+                      that has been imported into this module",
+                      name);
         }
     }
 
@@ -289,14 +306,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent, name);
                     let def = Def::Mod(def_id);
-                    let external_module = self.new_module(parent_link, Some(def), false, true);
+                    let external_module = self.new_extern_crate_module(parent_link, def);
+                    self.define(parent, name, TypeNS, (external_module, sp));
 
-                    debug!("(build reduced graph for item) found extern `{}`",
-                           module_to_string(&*external_module));
-                    self.check_for_conflicts_for_external_crate(parent, name, sp);
-                    parent.external_module_children
-                          .borrow_mut()
-                          .insert(name, external_module);
                     self.build_reduced_graph_for_external_crate(&external_module);
                 }
                 parent
