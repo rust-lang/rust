@@ -70,9 +70,9 @@ pub struct Name(pub u32);
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
 /// a fresh u32. This u32 is a reference to a table stored
-// in thread-local storage.
-// The special value EMPTY_CTXT is used to indicate an empty
-// syntax context.
+/// in thread-local storage.
+/// The special value EMPTY_CTXT is used to indicate an empty
+/// syntax context.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct SyntaxContext(pub u32);
 

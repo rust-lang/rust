@@ -711,7 +711,7 @@ impl AtomicUsize {
     /// ```
     /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
-    /// let some_usize= AtomicUsize::new(5);
+    /// let some_usize = AtomicUsize::new(5);
     ///
     /// assert_eq!(some_usize.swap(10, Ordering::Relaxed), 5);
     /// assert_eq!(some_usize.load(Ordering::Relaxed), 10);
