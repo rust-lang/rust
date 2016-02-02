@@ -37,10 +37,7 @@ impl LateLintPass for PrintLint {
                             None => (span, "print"),
                         };
 
-                        span_lint(cx,
-                                  PRINT_STDOUT,
-                                  span,
-                                  &format!("use of `{}!`", name));
+                        span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
                     }
                 }
             }

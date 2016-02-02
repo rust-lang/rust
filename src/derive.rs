@@ -158,15 +158,13 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref:
             _ => (),
         }
 
-        span_lint_and_then(
-            cx, DERIVE_HASH_NOT_EQ, span,
-            "you are implementing `Clone` explicitly on a `Copy` type",
-            |db| {
-                db.span_note(
-                    span,
-                    "consider deriving `Clone` or removing `Copy`"
-                );
-        });
+        span_lint_and_then(cx,
+                           DERIVE_HASH_NOT_EQ,
+                           span,
+                           "you are implementing `Clone` explicitly on a `Copy` type",
+                           |db| {
+                               db.span_note(span, "consider deriving `Clone` or removing `Copy`");
+                           });
     }
 }
 
@@ -174,8 +172,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref:
 fn is_automatically_derived(attr: &Attribute) -> bool {
     if let MetaItem_::MetaWord(ref word) = attr.node.value.node {
         word == &"automatically_derived"
-    }
-    else {
+    } else {
         false
     }
 }

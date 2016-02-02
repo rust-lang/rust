@@ -56,8 +56,10 @@ impl EarlyLintPass for ItemsAfterStatemets {
                     if in_macro(cx, it.span) {
                         return;
                     }
-                    cx.struct_span_lint(ITEMS_AFTER_STATEMENTS, it.span,
-                                        "adding items after statements is confusing, since items exist from the start of the scope")
+                    cx.struct_span_lint(ITEMS_AFTER_STATEMENTS,
+                                        it.span,
+                                        "adding items after statements is confusing, since items exist from the \
+                                         start of the scope")
                       .emit();
                 }
             }

@@ -209,7 +209,7 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<cstore::DefLike> {
         loop {
             let segment = match path_it.next() {
                 Some(segment) => segment,
-                None => return None
+                None => return None,
             };
 
             for item in &mem::replace(&mut items, vec![]) {
@@ -229,8 +229,7 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<cstore::DefLike> {
                 }
             }
         }
-    }
-    else {
+    } else {
         None
     }
 }
@@ -250,13 +249,17 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
 
 /// Check whether a type implements a trait.
 /// See also `get_trait_def_id`.
-pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId, ty_params: Option<Vec<ty::Ty<'tcx>>>) -> bool {
+pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId,
+                                  ty_params: Option<Vec<ty::Ty<'tcx>>>)
+                                  -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None);
     let obligation = traits::predicate_for_trait_def(cx.tcx,
                                                      traits::ObligationCause::dummy(),
-                                                     trait_id, 0, ty,
+                                                     trait_id,
+                                                     0,
+                                                     ty,
                                                      ty_params.unwrap_or_default());
 
     traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
@@ -658,6 +661,7 @@ pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> 
                 (ei.callee.name(), ei.call_site)
             })
         });
+
         match span_name_span {
             Some((mac_name, new_span)) if mac_name.as_str() == name => return Some(new_span),
             None => return None,

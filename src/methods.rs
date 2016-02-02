@@ -219,6 +219,17 @@ declare_lint!(pub OR_FUN_CALL, Warn,
 declare_lint!(pub EXTEND_FROM_SLICE, Warn,
               "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice");
 
+/// **What it does:** This lint warns on using `.clone()` on a `Copy` type.
+///
+/// **Why is this bad?** The only reason `Copy` types implement `Clone` is for generics, not for
+/// using the `clone` method on a concrete type.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `42u64.clone()`
+declare_lint!(pub CLONE_ON_COPY, Warn,
+              "using `clone` on a `Copy` type");
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
@@ -233,7 +244,8 @@ impl LintPass for MethodsPass {
                     OPTION_MAP_UNWRAP_OR,
                     OPTION_MAP_UNWRAP_OR_ELSE,
                     OR_FUN_CALL,
-                    CHARS_NEXT_CMP)
+                    CHARS_NEXT_CMP,
+                    CLONE_ON_COPY)
     }
 }
 
@@ -269,6 +281,7 @@ impl LateLintPass for MethodsPass {
                 }
 
                 lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
+                lint_clone_on_copy(cx, expr, &name.node.as_str(), &args);
             }
             ExprBinary(op, ref lhs, ref rhs) if op.node == BiEq || op.node == BiNe => {
                 if !lint_chars_next(cx, expr, lhs, rhs, op.node == BiEq) {
@@ -349,16 +362,18 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
 
         if name == "unwrap_or" {
             if let ExprPath(_, ref path) = fun.node {
-                let path : &str = &path.segments.last()
-                    .expect("A path must have at least one segment")
-                    .identifier.name.as_str();
+                let path: &str = &path.segments
+                                      .last()
+                                      .expect("A path must have at least one segment")
+                                      .identifier
+                                      .name
+                                      .as_str();
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tcx.expr_ty(arg);
                     let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &DEFAULT_TRAIT_PATH) {
                         default_trait_id
-                    }
-                    else {
+                    } else {
                         return false;
                     };
 
@@ -408,7 +423,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
             };
 
         if !poss.contains(&name) {
-            return
+            return;
         }
 
         let sugg = match (fn_has_arguments, !or_has_args) {
@@ -437,6 +452,19 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
     }
 }
 
+/// Checks for the `CLONE_ON_COPY` lint.
+fn lint_clone_on_copy(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>]) {
+    if args.len() == 1 && name == "clone" {
+        let ty = cx.tcx.expr_ty(expr);
+        let parent = cx.tcx.map.get_parent(expr.id);
+        let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
+
+        if !ty.moves_by_default(&parameter_environment, expr.span) {
+            span_lint(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type");
+        }
+    }
+}
+
 fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
     if !match_type(cx, obj_ty, &VEC_PATH) {
@@ -444,17 +472,20 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
     }
     let arg_ty = cx.tcx.expr_ty(&args[1]);
     if let Some((span, r)) = derefs_to_slice(cx, &args[1], &arg_ty) {
-        span_lint(cx, EXTEND_FROM_SLICE, expr.span,
+        span_lint(cx,
+                  EXTEND_FROM_SLICE,
+                  expr.span,
                   &format!("use of `extend` to extend a Vec by a slice"))
-            .span_suggestion(expr.span, "try this",
+            .span_suggestion(expr.span,
+                             "try this",
                              format!("{}.extend_from_slice({}{})",
                                      snippet(cx, args[0].span, "_"),
-                                     r, snippet(cx, span, "_")));
+                                     r,
+                                     snippet(cx, span, "_")));
     }
 }
 
-fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty)
-   -> Option<(Span, &'static str)> {
+fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> Option<(Span, &'static str)> {
     fn may_slice(cx: &LateContext, ty: &ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
@@ -462,12 +493,11 @@ fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty)
             ty::TyArray(_, size) => size < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
             ty::TyBox(ref inner) => may_slice(cx, inner),
-            _ => false
+            _ => false,
         }
     }
     if let ExprMethodCall(name, _, ref args) = expr.node {
-        if &name.node.as_str() == &"iter" &&
-               may_slice(cx, &cx.tcx.expr_ty(&args[0])) {
+        if &name.node.as_str() == &"iter" && may_slice(cx, &cx.tcx.expr_ty(&args[0])) {
             Some((args[0].span, "&"))
         } else {
             None
@@ -476,10 +506,14 @@ fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty)
         match ty.sty {
             ty::TySlice(_) => Some((expr.span, "")),
             ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
-            ty::TyBox(ref inner) => if may_slice(cx, inner) {
-                Some((expr.span, ""))
-            } else { None },
-            _ => None
+            ty::TyBox(ref inner) => {
+                if may_slice(cx, inner) {
+                    Some((expr.span, ""))
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 }
@@ -693,7 +727,7 @@ fn lint_chars_next(cx: &LateContext, expr: &Expr, chain: &Expr, other: &Expr, eq
     false
 }
 
-// Given a `Result<T, E>` type, return its error type (`E`)
+/// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     if !match_type(cx, ty, &RESULT_PATH) {
         return None;
@@ -706,9 +740,9 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     None
 }
 
-// This checks whether a given type is known to implement Debug. It's
-// conservative, i.e. it should not return false positives, but will return
-// false negatives.
+/// This checks whether a given type is known to implement Debug. It's
+/// conservative, i.e. it should not return false positives, but will return
+/// false negatives.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     let no_ref_ty = walk_ptrs_ty(ty);
     let debug = match cx.tcx.lang_items.debug_trait() {
@@ -728,162 +762,48 @@ fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     debug_impl_exists
 }
 
-const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [("into_", &[SelfKind::Value]),
-                                                               ("to_", &[SelfKind::Ref]),
-                                                               ("as_", &[SelfKind::Ref, SelfKind::RefMut]),
-                                                               ("is_", &[SelfKind::Ref, SelfKind::No]),
-                                                               ("from_", &[SelfKind::No])];
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
+    ("into_", &[SelfKind::Value]),
+    ("to_", &[SelfKind::Ref]),
+    ("as_", &[SelfKind::Ref, SelfKind::RefMut]),
+    ("is_", &[SelfKind::Ref, SelfKind::No]),
+    ("from_", &[SelfKind::No]),
+];
 
-const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [("add",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Add"),
-                                                                                     ("sub",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Sub"),
-                                                                                     ("mul",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Mul"),
-                                                                                     ("div",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Div"),
-                                                                                     ("rem",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Rem"),
-                                                                                     ("shl",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Shl"),
-                                                                                     ("shr",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Shr"),
-                                                                                     ("bitand",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::BitAnd"),
-                                                                                     ("bitor",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::BitOr"),
-                                                                                     ("bitxor",
-                                                                                      2,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::BitXor"),
-                                                                                     ("neg",
-                                                                                      1,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Neg"),
-                                                                                     ("not",
-                                                                                      1,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::ops::Not"),
-                                                                                     ("drop",
-                                                                                      1,
-                                                                                      SelfKind::RefMut,
-                                                                                      OutType::Unit,
-                                                                                      "std::ops::Drop"),
-                                                                                     ("index",
-                                                                                      2,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Ref,
-                                                                                      "std::ops::Index"),
-                                                                                     ("index_mut",
-                                                                                      2,
-                                                                                      SelfKind::RefMut,
-                                                                                      OutType::Ref,
-                                                                                      "std::ops::IndexMut"),
-                                                                                     ("deref",
-                                                                                      1,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Ref,
-                                                                                      "std::ops::Deref"),
-                                                                                     ("deref_mut",
-                                                                                      1,
-                                                                                      SelfKind::RefMut,
-                                                                                      OutType::Ref,
-                                                                                      "std::ops::DerefMut"),
-                                                                                     ("clone",
-                                                                                      1,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Any,
-                                                                                      "std::clone::Clone"),
-                                                                                     ("borrow",
-                                                                                      1,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Ref,
-                                                                                      "std::borrow::Borrow"),
-                                                                                     ("borrow_mut",
-                                                                                      1,
-                                                                                      SelfKind::RefMut,
-                                                                                      OutType::Ref,
-                                                                                      "std::borrow::BorrowMut"),
-                                                                                     ("as_ref",
-                                                                                      1,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Ref,
-                                                                                      "std::convert::AsRef"),
-                                                                                     ("as_mut",
-                                                                                      1,
-                                                                                      SelfKind::RefMut,
-                                                                                      OutType::Ref,
-                                                                                      "std::convert::AsMut"),
-                                                                                     ("eq",
-                                                                                      2,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Bool,
-                                                                                      "std::cmp::PartialEq"),
-                                                                                     ("cmp",
-                                                                                      2,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Any,
-                                                                                      "std::cmp::Ord"),
-                                                                                     ("default",
-                                                                                      0,
-                                                                                      SelfKind::No,
-                                                                                      OutType::Any,
-                                                                                      "std::default::Default"),
-                                                                                     ("hash",
-                                                                                      2,
-                                                                                      SelfKind::Ref,
-                                                                                      OutType::Unit,
-                                                                                      "std::hash::Hash"),
-                                                                                     ("next",
-                                                                                      1,
-                                                                                      SelfKind::RefMut,
-                                                                                      OutType::Any,
-                                                                                      "std::iter::Iterator"),
-                                                                                     ("into_iter",
-                                                                                      1,
-                                                                                      SelfKind::Value,
-                                                                                      OutType::Any,
-                                                                                      "std::iter::IntoIterator"),
-                                                                                     ("from_iter",
-                                                                                      1,
-                                                                                      SelfKind::No,
-                                                                                      OutType::Any,
-                                                                                      "std::iter::FromIterator"),
-                                                                                     ("from_str",
-                                                                                      1,
-                                                                                      SelfKind::No,
-                                                                                      OutType::Any,
-                                                                                      "std::str::FromStr")];
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
+    ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
+    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
+    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
+    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
+    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
+    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
+    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("bitand", 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
+    ("bitor", 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
+    ("bitxor", 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
+    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
+    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
+    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
+    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
+    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
+    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
+    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
+    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
+    ("borrow", 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
+    ("borrow_mut", 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
+    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
+    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
+    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
+    ("cmp", 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
+    ("default", 0, SelfKind::No, OutType::Any, "std::default::Default"),
+    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
+    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
+    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("from_iter", 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
+    ("from_str", 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
+];
 
 #[derive(Clone, Copy)]
 enum SelfKind {

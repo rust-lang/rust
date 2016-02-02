@@ -87,9 +87,8 @@ mod reexport {
     pub use syntax::ast::{Name, NodeId};
 }
 
-#[allow(unused_attributes)]
 #[plugin_registrar]
-#[rustfmt_skip]
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
@@ -215,6 +214,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
         methods::CHARS_NEXT_CMP,
+        methods::CLONE_ON_COPY,
         methods::EXTEND_FROM_SLICE,
         methods::FILTER_NEXT,
         methods::OK_EXPECT,

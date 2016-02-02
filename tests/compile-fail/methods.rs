@@ -312,14 +312,25 @@ fn use_extend_from_slice() {
     //~^ERROR use of `extend`
     //~| HELP try this
     //~| SUGGESTION v.extend_from_slice(&vec!["Some", "more"]);
-    
+
     v.extend(vec!["And", "even", "more"].iter()); //~ERROR use of `extend`
     let o : Option<&'static str> = None;
     v.extend(o);
     v.extend(Some("Bye"));
     v.extend(vec!["Not", "like", "this"]);
-    v.extend(["But", "this"].iter()); 
+    v.extend(["But", "this"].iter());
     //~^ERROR use of `extend
     //~| HELP try this
     //~| SUGGESTION v.extend_from_slice(&["But", "this"]);
+}
+
+fn clone_on_copy() {
+    42.clone(); //~ERROR using `clone` on a `Copy` type
+    vec![1].clone(); // ok, not a Copy type
+    Some(vec![1]).clone(); // ok, not a Copy type
+}
+
+fn clone_on_copy_generic<T: Copy>(t: T) {
+    t.clone(); //~ERROR using `clone` on a `Copy` type
+    Some(t).clone(); //~ERROR using `clone` on a `Copy` type
 }

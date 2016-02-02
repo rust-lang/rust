@@ -296,16 +296,14 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
 
                 let skip: Cow<_> = if starts_at_zero {
                     "".into()
-                }
-                else {
+                } else {
                     format!(".skip({})", snippet(cx, l.span, "..")).into()
                 };
 
                 let take: Cow<_> = if let Some(ref r) = *r {
                     if !is_len_call(&r, &indexed) {
                         format!(".take({})", snippet(cx, r.span, "..")).into()
-                    }
-                    else {
+                    } else {
                         "".into()
                     }
                 } else {
@@ -327,8 +325,7 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
                         format!("&{}", indexed)
-                    }
-                    else {
+                    } else {
                         format!("{}.iter(){}{}", indexed, take, skip)
                     };
 
@@ -478,7 +475,7 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
                 let mut visitor2 = InitializeVisitor {
                     cx: cx,
                     end_expr: expr,
-                    var_id: id.clone(),
+                    var_id: *id,
                     state: VarState::IncrOnce,
                     name: None,
                     depth: 0,

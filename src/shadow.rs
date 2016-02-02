@@ -211,8 +211,8 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, lspan: Span, init: &
                                         &format!("{} is shadowed by {} which reuses the original value",
                                                  snippet(cx, lspan, "_"),
                                                  snippet(cx, expr.span, "..")),
-                                                 expr.span,
-                                                 "initialization happens here");
+                                        expr.span,
+                                        "initialization happens here");
             note_orig(cx, db, SHADOW_REUSE, prev_span);
         } else {
             let db = span_note_and_lint(cx,
@@ -221,8 +221,8 @@ fn lint_shadow<T>(cx: &LateContext, name: Name, span: Span, lspan: Span, init: &
                                         &format!("{} is shadowed by {}",
                                                  snippet(cx, lspan, "_"),
                                                  snippet(cx, expr.span, "..")),
-                                                 expr.span,
-                                                 "initialization happens here");
+                                        expr.span,
+                                        "initialization happens here");
             note_orig(cx, db, SHADOW_UNRELATED, prev_span);
         }
 

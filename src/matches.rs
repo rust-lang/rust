@@ -192,7 +192,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
         },
         PatEnum(ref path, None) => path.to_string(),
         PatIdent(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
-        _ => return
+        _ => return,
     };
 
     for &(ty_path, pat_path) in candidates {
@@ -206,15 +206,17 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
             span_lint_and_then(cx,
                                lint,
                                expr.span,
-                               "you seem to be trying to use match for destructuring a single pattern. \
-                               Consider using `if let`", |db| {
-                db.span_suggestion(expr.span, "try this",
-                                   format!("if let {} = {} {}{}",
-                                           snippet(cx, arms[0].pats[0].span, ".."),
-                                           snippet(cx, ex.span, ".."),
-                                           expr_block(cx, &arms[0].body, None, ".."),
-                                           els_str));
-            });
+                               "you seem to be trying to use match for destructuring a single pattern. Consider \
+                                using `if let`",
+                               |db| {
+                                   db.span_suggestion(expr.span,
+                                                      "try this",
+                                                      format!("if let {} = {} {}{}",
+                                                              snippet(cx, arms[0].pats[0].span, ".."),
+                                                              snippet(cx, ex.span, ".."),
+                                                              expr_block(cx, &arms[0].body, None, ".."),
+                                                              els_str));
+                               });
         }
     }
 }
@@ -267,12 +269,12 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
         span_lint_and_then(cx,
                            MATCH_BOOL,
                            expr.span,
-                           "you seem to be trying to match on a boolean expression. Consider using \
-                           an if..else block:", move |db| {
-            if let Some(sugg) = sugg {
-                db.span_suggestion(expr.span, "try this", sugg);
-            }
-        });
+                           "you seem to be trying to match on a boolean expression. Consider using an if..else block:",
+                           move |db| {
+                               if let Some(sugg) = sugg {
+                                   db.span_suggestion(expr.span, "try this", sugg);
+                               }
+                           });
     }
 }
 
