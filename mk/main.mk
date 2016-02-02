@@ -86,13 +86,13 @@ CFG_INFO := $(info cfg: version $(CFG_VERSION))
 
 MKFILE_DEPS := config.stamp $(call rwildcard,$(CFG_SRC_DIR)mk/,*)
 MKFILES_FOR_TARBALL:=$(MKFILE_DEPS)
-ifdef NO_MKFILE_DEPS
+ifneq ($(NO_MKFILE_DEPS),)
 MKFILE_DEPS :=
 endif
 NON_BUILD_HOST = $(filter-out $(CFG_BUILD),$(CFG_HOST))
 NON_BUILD_TARGET = $(filter-out $(CFG_BUILD),$(CFG_TARGET))
 
-ifdef MAKE_RESTARTS
+ifneq ($(MAKE_RESTARTS),)
 CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
 endif
 
@@ -107,39 +107,27 @@ ifneq ($(wildcard $(NON_BUILD_TARGET)),)
 CFG_INFO := $(info cfg: non-build target triples $(NON_BUILD_TARGET))
 endif
 
-CFG_RUSTC_FLAGS :=
-ifdef RUSTFLAGS
-  CFG_RUSTC_FLAGS += $(RUSTFLAGS)
-endif
+CFG_RUSTC_FLAGS := $(RUSTFLAGS)
 CFG_GCCISH_CFLAGS :=
 CFG_GCCISH_LINK_FLAGS :=
 
 CFG_JEMALLOC_FLAGS :=
-ifdef JEMALLOC_FLAGS
-  CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
-endif
 
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
+  CFG_RUSTC_FLAGS +=
   CFG_JEMALLOC_FLAGS += --enable-debug
 else
   # The rtopt cfg turns off runtime sanity checks
   CFG_RUSTC_FLAGS += -O --cfg rtopt
 endif
 
+CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
+
 ifdef CFG_ENABLE_DEBUG_ASSERTIONS
   $(info cfg: enabling debug assertions (CFG_ENABLE_DEBUG_ASSERTIONS))
   CFG_RUSTC_FLAGS += -C debug-assertions=on
 endif
-
-define DEF_RUSTFLAGS_STAGE
-RUSTFLAGS_STAGE$(1) :=
-endef
-
-STAGES = 0 1 2 3
-
-$(foreach stage,$(STAGES), \
-  $(eval $(call DEF_RUSTFLAGS_STAGE,$(stage))))
 
 ifdef CFG_ENABLE_DEBUGINFO
   $(info cfg: enabling debuginfo (CFG_ENABLE_DEBUGINFO))
@@ -198,9 +186,9 @@ endif
 
 
 ifndef CFG_DISABLE_VALGRIND_RPASS
-  $(info cfg: enabling valgrind run-pass tests)
+  $(info cfg: enabling valgrind run-pass tests (CFG_ENABLE_VALGRIND_RPASS))
   $(info cfg: valgrind-rpass command set to $(CFG_VALGRIND))
-  CFG_VALGRIND_RPASS := $(CFG_VALGRIND)
+  CFG_VALGRIND_RPASS :=$(CFG_VALGRIND)
 else
   $(info cfg: disabling valgrind run-pass tests)
   CFG_VALGRIND_RPASS :=
@@ -383,6 +371,8 @@ export CFG_BOOTSTRAP_KEY
 # target triple. See debuggers.mk for more information.
 TRIPLE_TO_DEBUGGER_SCRIPT_SETTING=\
  $(if $(findstring windows,$(1)),none,$(if $(findstring darwin,$(1)),lldb,gdb))
+
+STAGES = 0 1 2 3
 
 define SREQ
 # $(1) is the stage number
