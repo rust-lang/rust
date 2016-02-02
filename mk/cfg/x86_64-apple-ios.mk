@@ -29,4 +29,4 @@ CFG_UNIXY_x86_64-apple-ios := 1
 CFG_LDPATH_x86_64-apple-ios :=
 CFG_RUN_x86_64-apple-ios = $(2)
 CFG_RUN_TARG_x86_64-apple-ios = $(call CFG_RUN_x86_64-apple-ios,,$(2))
-CFG_GNU_TRIPLE_x86_64-apple-ios := x86_64-apple-ios
+CFG_GNU_TRIPLE_i386-apple-ios := x86_64-apple-ios

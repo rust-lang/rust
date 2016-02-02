@@ -41,8 +41,8 @@ $(BG)RustLexer.class: $(BG) $(SG)RustLexer.g4
 
 check-build-lexer-verifier: $(BG)verify
 
-ifndef NO_REBUILD
-VERIFY_DEPS := rustc-stage2-H-$(CFG_BUILD) $(LD)stamp.rustc
+ifeq ($(NO_REBUILD),)
+VERIFY_DEPS :=  rustc-stage2-H-$(CFG_BUILD) $(LD)stamp.rustc
 else
 VERIFY_DEPS :=
 endif

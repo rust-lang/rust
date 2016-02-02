@@ -71,7 +71,7 @@ DOC_L10N_TARGETS :=
 
 # If NO_REBUILD is set then break the dependencies on rustdoc so we
 # build the documentation without having to rebuild rustdoc.
-ifndef NO_REBUILD
+ifeq ($(NO_REBUILD),)
 HTML_DEPS := $(RUSTDOC_EXE)
 else
 HTML_DEPS :=
@@ -152,7 +152,7 @@ define DEF_LIB_DOC
 
 # If NO_REBUILD is set then break the dependencies on rustdoc so we
 # build crate documentation without having to rebuild rustdoc.
-ifndef NO_REBUILD
+ifeq ($(NO_REBUILD),)
 LIB_DOC_DEP_$(1) = \
 	$$(CRATEFILE_$(1)) \
 	$$(RSINPUTS_$(1)) \

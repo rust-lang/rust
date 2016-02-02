@@ -107,6 +107,8 @@ $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 
 endef
 
+$(foreach target,$(CFG_TARGET), \
+ $(eval $(call RUNTIME_RULES,$(target))))
 $(foreach lib,$(NATIVE_LIBS), \
  $(foreach target,$(CFG_TARGET), \
   $(eval $(call THIRD_PARTY_LIB,$(target),$(lib)))))
@@ -169,7 +171,7 @@ endif
 
 # See #17183 for details, this file is touched during the build process so we
 # don't want to consider it as a dependency.
-JEMALLOC_DEPS := $(filter-out $(S)src/jemalloc/VERSION,$$(JEMALLOC_DEPS))
+JEMALLOC_DEPS := $(filter-out $(S)src/jemalloc/VERSION,$(JEMALLOC_DEPS))
 
 JEMALLOC_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),jemalloc)
 ifeq ($$(CFG_WINDOWSY_$(1)),1)
