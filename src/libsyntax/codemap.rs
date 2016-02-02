@@ -1064,6 +1064,27 @@ impl CodeMap {
         span
     }
 
+    /// Return the source callee.
+    ///
+    /// Returns None if the supplied span has no expansion trace,
+    /// else returns the NameAndSpan for the macro definition
+    /// corresponding to the source callsite.
+    pub fn source_callee(&self, sp: Span) -> Option<NameAndSpan> {
+        let mut span = sp;
+        while let Some(callsite) = self.with_expn_info(span.expn_id,
+                                            |ei| ei.map(|ei| ei.call_site.clone())) {
+            if let Some(_) = self.with_expn_info(callsite.expn_id,
+                                                |ei| ei.map(|ei| ei.call_site.clone())) {
+                span = callsite;
+            }
+            else {
+                return self.with_expn_info(span.expn_id,
+                                           |ei| ei.map(|ei| ei.callee.clone()));
+            }
+        }
+        None
+    }
+
     pub fn span_to_filename(&self, sp: Span) -> FileName {
         self.lookup_char_pos(sp.lo).file.name.to_string()
     }

@@ -37,6 +37,8 @@ use middle::def_id::DefId;
 use middle::ty;
 
 use std::fs::File;
+use std::hash::*;
+use std::collections::HashSet;
 
 use syntax::ast::{self, NodeId};
 use syntax::codemap::*;
@@ -70,6 +72,14 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
     fmt: FmtStrs<'l, 'tcx>,
 
     cur_scope: NodeId,
+
+    // Set of macro definition (callee) spans, and the set
+    // of macro use (callsite) spans. We store these to ensure
+    // we only write one macro def per unique macro definition, and
+    // one macro use per unique callsite span.
+    mac_defs: HashSet<Span>,
+    mac_uses: HashSet<Span>,
+
 }
 
 impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
@@ -92,6 +102,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                               span_utils,
                               tcx),
             cur_scope: 0,
+            mac_defs: HashSet::new(),
+            mac_uses: HashSet::new(),
         }
     }
 
@@ -814,10 +826,41 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                   &typ);
         }
     }
+
+    /// Extract macro use and definition information from the AST node defined
+    /// by the given NodeId, using the expansion information from the node's
+    /// span.
+    ///
+    /// If the span is not macro-generated, do nothing, else use callee and
+    /// callsite spans to record macro definition and use data, using the
+    /// mac_uses and mac_defs sets to prevent multiples.
+    fn process_macro_use(&mut self, span: Span, id: NodeId) {
+        let data = match self.save_ctxt.get_macro_use_data(span, id) {
+            None => return,
+            Some(data) => data,
+        };
+        let mut hasher = SipHasher::new();
+        data.callee_span.hash(&mut hasher);
+        let hash = hasher.finish();
+        let qualname = format!("{}::{}", data.name, hash);
+        // Don't write macro definition for imported macros
+        if !self.mac_defs.contains(&data.callee_span)
+            && !data.imported {
+            self.mac_defs.insert(data.callee_span);
+            self.fmt.macro_str(data.callee_span, data.callee_span,
+                               data.name.clone(), qualname.clone());
+        }
+        if !self.mac_uses.contains(&data.span) {
+             self.mac_uses.insert(data.span);
+             self.fmt.macro_use_str(data.span, data.span, data.name,
+                                   qualname, data.scope);
+        }
+    }
 }
 
 impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
+        self.process_macro_use(item.span, item.id);
         match item.node {
             ast::ItemUse(ref use_item) => {
                 match use_item.node {
@@ -970,6 +1013,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+        self.process_macro_use(trait_item.span, trait_item.id);
         match trait_item.node {
             ast::ConstTraitItem(ref ty, Some(ref expr)) => {
                 self.process_const(trait_item.id,
@@ -991,6 +1035,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
+        self.process_macro_use(impl_item.span, impl_item.id);
         match impl_item.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 self.process_const(impl_item.id,
@@ -1012,6 +1057,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
+        self.process_macro_use(t.span, t.id);
         match t.node {
             ast::TyPath(_, ref path) => {
                 match self.lookup_type_ref(t.id) {
@@ -1031,6 +1077,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn visit_expr(&mut self, ex: &ast::Expr) {
+        self.process_macro_use(ex.span, ex.id);
         match ex.node {
             ast::ExprCall(ref _f, ref _args) => {
                 // Don't need to do anything for function calls,
@@ -1117,11 +1164,13 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
         }
     }
 
-    fn visit_mac(&mut self, _: &ast::Mac) {
-        // Just stop, macros are poison to us.
+    fn visit_mac(&mut self, mac: &ast::Mac) {
+        // These shouldn't exist in the AST at this point, log a span bug.
+        self.sess.span_bug(mac.span, "macro invocation should have been expanded out of AST");
     }
 
     fn visit_pat(&mut self, p: &ast::Pat) {
+        self.process_macro_use(p.span, p.id);
         self.process_pat(p);
     }
 
@@ -1177,10 +1226,13 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     }
 
     fn visit_stmt(&mut self, s: &ast::Stmt) {
+        let id = s.node.id();
+        self.process_macro_use(s.span, id.unwrap());
         visit::walk_stmt(self, s)
     }
 
     fn visit_local(&mut self, l: &ast::Local) {
+        self.process_macro_use(l.span, l.id);
         let value = self.span.snippet(l.span);
         self.process_var_decl(&l.pat, value);
 

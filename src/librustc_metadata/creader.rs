@@ -494,7 +494,7 @@ impl<'a> CrateReader<'a> {
         let mut macros = vec![];
         decoder::each_exported_macro(ekrate.metadata.as_slice(),
                                      &*self.cstore.intr,
-            |name, attrs, body| {
+            |name, attrs, span, body| {
                 // NB: Don't use parse::parse_tts_from_source_str because it parses with
                 // quote_depth > 0.
                 let mut p = parse::new_parser_from_source_str(&self.sess.parse_sess,
@@ -509,7 +509,7 @@ impl<'a> CrateReader<'a> {
                         panic!(FatalError);
                     }
                 };
-                let span = mk_sp(lo, p.last_span.hi);
+                let local_span = mk_sp(lo, p.last_span.hi);
 
                 // Mark the attrs as used
                 for attr in &attrs {
@@ -520,7 +520,7 @@ impl<'a> CrateReader<'a> {
                     ident: ast::Ident::with_empty_ctxt(name),
                     attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
-                    span: span,
+                    span: local_span,
                     imported_from: Some(item.ident),
                     // overridden in plugin/load.rs
                     export: false,
@@ -529,6 +529,8 @@ impl<'a> CrateReader<'a> {
 
                     body: body,
                 });
+                self.sess.imported_macro_spans.borrow_mut()
+                    .insert(local_span, (name.as_str().to_string(), span));
                 true
             }
         );
