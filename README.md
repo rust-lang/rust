@@ -28,7 +28,7 @@ name                                                                            
 [cyclomatic_complexity](https://github.com/Manishearth/rust-clippy/wiki#cyclomatic_complexity)                 | warn    | finds functions that should be split up into multiple functions
 [deprecated_semver](https://github.com/Manishearth/rust-clippy/wiki#deprecated_semver)                         | warn    | `Warn` on `#[deprecated(since = "x")]` where x is not semver
 [derive_hash_not_eq](https://github.com/Manishearth/rust-clippy/wiki#derive_hash_not_eq)                       | warn    | deriving `Hash` but implementing `PartialEq` explicitly
-[drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                           | warn    | call to `std::mem::drop` with a reference instead of an owned value, which will not not call the `Drop::drop` method on the underlying value
+[drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                           | warn    | call to `std::mem::drop` with a reference instead of an owned value, which will not call the `Drop::drop` method on the underlying value
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument) | warn    | Function arguments having names which only differ by an underscore
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                       | warn    | empty `loop {}` detected
 [enum_variant_names](https://github.com/Manishearth/rust-clippy/wiki#enum_variant_names)                       | warn    | finds enums where all variants share a prefix/postfix
