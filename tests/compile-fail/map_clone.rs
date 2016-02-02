@@ -3,7 +3,7 @@
 #![plugin(clippy)]
 #![deny(map_clone)]
 
-#![allow(unused)]
+#![allow(clone_on_copy, unused)]
 
 use std::ops::Deref;
 

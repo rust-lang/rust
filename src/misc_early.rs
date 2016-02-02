@@ -110,7 +110,7 @@ impl EarlyLintPass for MiscEarly {
                                            arg_name[1..].to_owned()));
                     }
                 } else {
-                    registered_names.insert(arg_name, arg.pat.span.clone());
+                    registered_names.insert(arg_name, arg.pat.span);
                 }
             }
         }

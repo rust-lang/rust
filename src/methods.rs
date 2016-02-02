@@ -219,6 +219,17 @@ declare_lint!(pub OR_FUN_CALL, Warn,
 declare_lint!(pub EXTEND_FROM_SLICE, Warn,
               "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice");
 
+/// **What it does:** This lint warns on using `.clone()` on a `Copy` type.
+///
+/// **Why is this bad?** The only reason `Copy` types implement `Clone` is for generics, not for
+/// using the `clone` method on a concrete type.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `42u64.clone()`
+declare_lint!(pub CLONE_ON_COPY, Warn,
+              "using `clone` on a `Copy` type");
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
@@ -233,7 +244,8 @@ impl LintPass for MethodsPass {
                     OPTION_MAP_UNWRAP_OR,
                     OPTION_MAP_UNWRAP_OR_ELSE,
                     OR_FUN_CALL,
-                    CHARS_NEXT_CMP)
+                    CHARS_NEXT_CMP,
+                    CLONE_ON_COPY)
     }
 }
 
@@ -269,6 +281,7 @@ impl LateLintPass for MethodsPass {
                 }
 
                 lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
+                lint_clone_on_copy(cx, expr, &name.node.as_str(), &args);
             }
             ExprBinary(op, ref lhs, ref rhs) if op.node == BiEq || op.node == BiNe => {
                 if !lint_chars_next(cx, expr, lhs, rhs, op.node == BiEq) {
@@ -435,6 +448,19 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
             if !check_unwrap_or_default(cx, name, fun, &args[0], &args[1], or_has_args, expr.span) {
                 check_general_case(cx, name, fun, &args[0], &args[1], or_has_args, expr.span);
             }
+        }
+    }
+}
+
+/// Checks for the `CLONE_ON_COPY` lint.
+fn lint_clone_on_copy(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>]) {
+    if args.len() == 1 && name == "clone" {
+        let ty = cx.tcx.expr_ty(expr);
+        let parent = cx.tcx.map.get_parent(expr.id);
+        let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
+
+        if !ty.moves_by_default(&parameter_environment, expr.span) {
+            span_lint(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type");
         }
     }
 }
@@ -701,7 +727,7 @@ fn lint_chars_next(cx: &LateContext, expr: &Expr, chain: &Expr, other: &Expr, eq
     false
 }
 
-// Given a `Result<T, E>` type, return its error type (`E`)
+/// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     if !match_type(cx, ty, &RESULT_PATH) {
         return None;
@@ -714,9 +740,9 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     None
 }
 
-// This checks whether a given type is known to implement Debug. It's
-// conservative, i.e. it should not return false positives, but will return
-// false negatives.
+/// This checks whether a given type is known to implement Debug. It's
+/// conservative, i.e. it should not return false positives, but will return
+/// false negatives.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     let no_ref_ty = walk_ptrs_ty(ty);
     let debug = match cx.tcx.lang_items.debug_trait() {

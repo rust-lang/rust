@@ -475,7 +475,7 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
                 let mut visitor2 = InitializeVisitor {
                     cx: cx,
                     end_expr: expr,
-                    var_id: id.clone(),
+                    var_id: *id,
                     state: VarState::IncrOnce,
                     name: None,
                     depth: 0,
