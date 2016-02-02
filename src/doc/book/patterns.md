@@ -196,8 +196,16 @@ let (x, _) = tuple;
 println!("Tuple is: {:?}", tuple);
 ```
 
-In a similar fashion to `_`, you can use `..` in a pattern to disregard
-multiple values:
+This also means that any temporary variables will be dropped at the end of the
+statement:
+
+```rust
+// Here, the String created will be dropped immediately, as it’s not bound:
+
+let _ = String::from("  hello  ").trim();
+```
+
+You can also use `..` in a pattern to disregard multiple values:
 
 ```rust
 enum OptionalTuple {
