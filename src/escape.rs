@@ -137,7 +137,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                                                                         .get(&borrow_id) {
                     if LoanCause::AutoRef == loan_cause {
                         // x.foo()
-                        if adj.autoderefs <= 0 {
+                        if adj.autoderefs == 0 {
                             self.set.remove(&lid); // Used without autodereffing (i.e. x.clone())
                         }
                     } else {

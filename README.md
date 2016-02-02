@@ -6,10 +6,11 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 108 lints included in this crate:
+There are 109 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+[absurd_unsigned_comparisons](https://github.com/Manishearth/rust-clippy/wiki#absurd_unsigned_comparisons)     | warn    | testing whether an unsigned integer is non-positive
 [approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                             | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                                   | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)       | warn    | braces can be eliminated in conditions that are expressions, e.g `if { true } ...`
