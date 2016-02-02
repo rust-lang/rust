@@ -1,4 +1,5 @@
 # aarch64-linux-android configuration
+# CROSS_PREFIX_aarch64-linux-android-
 CC_aarch64-linux-android=$(CFG_AARCH64_LINUX_ANDROID_NDK)/bin/aarch64-linux-android-gcc
 CXX_aarch64-linux-android=$(CFG_AARCH64_LINUX_ANDROID_NDK)/bin/aarch64-linux-android-g++
 CPP_aarch64-linux-android=$(CFG_AARCH64_LINUX_ANDROID_NDK)/bin/aarch64-linux-android-gcc -E
