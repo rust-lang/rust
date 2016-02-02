@@ -686,7 +686,7 @@ fn do_bench_push_all(b: &mut Bencher, dst_len: usize, src_len: usize) {
 
     b.iter(|| {
         let mut dst = dst.clone();
-        dst.push_all(&src);
+        dst.extend_from_slice(&src);
         assert_eq!(dst.len(), dst_len + src_len);
         assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
     });
