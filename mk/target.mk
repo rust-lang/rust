@@ -138,12 +138,12 @@ define TARGET_RUSTRT_STARTUP_OBJ
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o: \
 		$(S)src/rtstartup/$(4).rs \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.core \
-		$$(HSREQ$(1)_H_$(3)) \
+		$$(HSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TBIN$(1)_T_$(2)_H_$(3))/
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) --emit=obj -o $$@ $$<
 
-ifdef CFG_RUSTRT_HAS_STARTUP_OBJS_$(2)
+ifeq ($$(CFG_RUSTRT_HAS_STARTUP_OBJS_$(2)), 1)
 # Add dependencies on Rust startup objects to all crates that depend on core.
 # This ensures that they are built after core (since they depend on it),
 # but before everything else (since they are needed for linking dylib crates).

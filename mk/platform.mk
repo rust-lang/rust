@@ -82,11 +82,12 @@ AR := ar
 define SET_FROM_CFG
   ifdef CFG_$(1)
     ifeq ($(origin $(1)),undefined)
-      $$(info cfg: using $(1)=$$(CFG_$(1)) (CFG_$(1)))
-      $(1)=$$(CFG_$(1))
-    else ifeq ($(origin $(1)),default)
-      $$(info cfg: using $(1)=$$(CFG_$(1)) (CFG_$(1)))
-      $(1)=$$(CFG_$(1))
+      $$(info cfg: using $(1)=$(CFG_$(1)) (CFG_$(1)))
+      $(1)=$(CFG_$(1))
+    endif
+    ifeq ($(origin $(1)),default)
+      $$(info cfg: using $(1)=$(CFG_$(1)) (CFG_$(1)))
+      $(1)=$(CFG_$(1))
     endif
   endif
 endef
@@ -100,9 +101,7 @@ include $(wildcard $(CFG_SRC_DIR)mk/cfg/*.mk)
 
 define ADD_INSTALLED_OBJECTS
   INSTALLED_OBJECTS_$(1) += $$(CFG_INSTALLED_OBJECTS_$(1))
-  ifdef CFG_THIRD_PARTY_OBJECTS_$(1)
-    REQUIRED_OBJECTS_$(1) += $$(CFG_THIRD_PARTY_OBJECTS_$(1))
-  endif
+  REQUIRED_OBJECTS_$(1) += $$(CFG_THIRD_PARTY_OBJECTS_$(1))
   INSTALLED_OBJECTS_$(1) += $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
   REQUIRED_OBJECTS_$(1) += $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
 endef
@@ -164,15 +163,15 @@ define CFG_MAKE_TOOLCHAIN
   # Prepend the tools with their prefix if cross compiling
   ifneq ($(CFG_BUILD),$(1))
     ifneq ($$(findstring msvc,$(1)),msvc)
-      CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
-      CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
-      CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
-      AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
-      LINK_$(1)=$(CROSS_PREFIX_$(1))$(LINK_$(1))
-      RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(LINK_$(1))) \
-        -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
+       CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
+       CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
+       CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
+       AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
+       LINK_$(1)=$(CROSS_PREFIX_$(1))$(LINK_$(1))
+       RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(LINK_$(1))) \
+           -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
 
-      RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
+       RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
     endif
   endif
 
