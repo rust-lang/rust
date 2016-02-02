@@ -517,6 +517,25 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     Ok(())
 }
 
+pub fn remove_dir_all(path: &Path) -> io::Result<()> {
+    for child in try!(readdir(path)) {
+        let child = try!(child).path();
+        let stat = try!(lstat(&*child));
+        if stat.data.dwFileAttributes & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
+            if stat.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                // remove junctions and directory symlinks with rmdir
+                try!(rmdir(&*child));
+            } else {
+                try!(remove_dir_all(&*child));
+            }
+        } else {
+            // remove files and file symlinks
+            try!(unlink(&*child));
+        }
+    }
+    rmdir(path)
+}
+
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     let file = try!(File::open_reparse_point(p, false));
     file.readlink()
@@ -635,124 +654,49 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(size as u64)
 }
 
-#[test]
-fn directory_junctions_are_directories() {
-    use ffi::OsStr;
-    use env;
-    use rand::{self, Rng};
-    use vec::Vec;
+pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
+    symlink_junction_inner(src.as_ref(), dst.as_ref())
+}
 
-    macro_rules! t {
-        ($e:expr) => (match $e {
-            Ok(e) => e,
-            Err(e) => panic!("{} failed with: {}", stringify!($e), e),
-        })
-    }
-
+// Creating a directory junction on windows involves dealing with reparse
+// points and the DeviceIoControl function, and this code is a skeleton of
+// what can be found here:
+//
+// http://www.flexhex.com/docs/articles/hard-links.phtml
+fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
-    let p = env::temp_dir();
-    let mut r = rand::thread_rng();
-    let ret = p.join(&format!("rust-{}", r.next_u32()));
-    let foo = ret.join("foo");
-    let bar = ret.join("bar");
-    t!(d.mkdir(&ret));
-    t!(d.mkdir(&foo));
-    t!(d.mkdir(&bar));
+    try!(d.mkdir(&junction));
+    let f = try!(File::open_reparse_point(junction, true));
+    let h = f.handle().raw();
 
-    t!(create_junction(&bar, &foo));
-    let metadata = stat(&bar);
-    t!(delete_junction(&bar));
-
-    t!(rmdir(&foo));
-    t!(rmdir(&bar));
-    t!(rmdir(&ret));
-
-    let metadata = t!(metadata);
-    assert!(metadata.file_type().is_dir());
-
-    // Creating a directory junction on windows involves dealing with reparse
-    // points and the DeviceIoControl function, and this code is a skeleton of
-    // what can be found here:
-    //
-    // http://www.flexhex.com/docs/articles/hard-links.phtml
-    fn create_junction(src: &Path, dst: &Path) -> io::Result<()> {
-        let f = try!(opendir(src, true));
-        let h = f.handle().raw();
-
-        unsafe {
-            let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-            let mut db = data.as_mut_ptr()
-                            as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
-            let buf = &mut (*db).ReparseTarget as *mut _;
-            let mut i = 0;
-            let v = br"\??\";
-            let v = v.iter().map(|x| *x as u16);
-            for c in v.chain(dst.as_os_str().encode_wide()) {
-                *buf.offset(i) = c;
-                i += 1;
-            }
-            *buf.offset(i) = 0;
+    unsafe {
+        let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+        let mut db = data.as_mut_ptr()
+                        as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
+        let buf = &mut (*db).ReparseTarget as *mut _;
+        let mut i = 0;
+        // FIXME: this conversion is very hacky
+        let v = br"\??\";
+        let v = v.iter().map(|x| *x as u16);
+        for c in v.chain(target.as_os_str().encode_wide()) {
+            *buf.offset(i) = c;
             i += 1;
-            (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
-            (*db).ReparseTargetMaximumLength = (i * 2) as c::WORD;
-            (*db).ReparseTargetLength = ((i - 1) * 2) as c::WORD;
-            (*db).ReparseDataLength =
-                    (*db).ReparseTargetLength as c::DWORD + 12;
-
-            let mut ret = 0;
-            cvt(c::DeviceIoControl(h as *mut _,
-                                   c::FSCTL_SET_REPARSE_POINT,
-                                   data.as_ptr() as *mut _,
-                                   (*db).ReparseDataLength + 8,
-                                   ptr::null_mut(), 0,
-                                   &mut ret,
-                                   ptr::null_mut())).map(|_| ())
         }
-    }
+        *buf.offset(i) = 0;
+        i += 1;
+        (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
+        (*db).ReparseTargetMaximumLength = (i * 2) as c::WORD;
+        (*db).ReparseTargetLength = ((i - 1) * 2) as c::WORD;
+        (*db).ReparseDataLength =
+                (*db).ReparseTargetLength as c::DWORD + 12;
 
-    fn opendir(p: &Path, write: bool) -> io::Result<File> {
-        unsafe {
-            let mut token = ptr::null_mut();
-            let mut tp: c::TOKEN_PRIVILEGES = mem::zeroed();
-            try!(cvt(c::OpenProcessToken(c::GetCurrentProcess(),
-                                         c::TOKEN_ADJUST_PRIVILEGES,
-                                         &mut token)));
-            let name: &OsStr = if write {
-                "SeRestorePrivilege".as_ref()
-            } else {
-                "SeBackupPrivilege".as_ref()
-            };
-            let name = name.encode_wide().chain(Some(0)).collect::<Vec<_>>();
-            try!(cvt(c::LookupPrivilegeValueW(ptr::null(),
-                                              name.as_ptr(),
-                                              &mut tp.Privileges[0].Luid)));
-            tp.PrivilegeCount = 1;
-            tp.Privileges[0].Attributes = c::SE_PRIVILEGE_ENABLED;
-            let size = mem::size_of::<c::TOKEN_PRIVILEGES>() as c::DWORD;
-            try!(cvt(c::AdjustTokenPrivileges(token, c::FALSE, &mut tp, size,
-                                              ptr::null_mut(), ptr::null_mut())));
-            try!(cvt(c::CloseHandle(token)));
-
-            File::open_reparse_point(p, write)
-        }
-    }
-
-    fn delete_junction(p: &Path) -> io::Result<()> {
-        unsafe {
-            let f = try!(opendir(p, true));
-            let h = f.handle().raw();
-            let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-            let mut db = data.as_mut_ptr()
-                            as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
-            (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
-            let mut bytes = 0;
-            cvt(c::DeviceIoControl(h as *mut _,
-                                   c::FSCTL_DELETE_REPARSE_POINT,
-                                   data.as_ptr() as *mut _,
-                                   (*db).ReparseDataLength + 8,
-                                   ptr::null_mut(), 0,
-                                   &mut bytes,
-                                   ptr::null_mut())).map(|_| ())
-        }
+        let mut ret = 0;
+        cvt(c::DeviceIoControl(h as *mut _,
+                               c::FSCTL_SET_REPARSE_POINT,
+                               data.as_ptr() as *mut _,
+                               (*db).ReparseDataLength + 8,
+                               ptr::null_mut(), 0,
+                               &mut ret,
+                               ptr::null_mut())).map(|_| ())
     }
 }
