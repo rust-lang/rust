@@ -70,7 +70,7 @@ pub struct Metadata(fs_imp::FileAttr);
 /// information like the entry's path and possibly other metadata can be
 /// learned.
 ///
-/// # Failure
+/// # Errors
 ///
 /// This `io::Result` will be an `Err` if there's some sort of intermittent
 /// IO error during iteration.

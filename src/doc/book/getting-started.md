@@ -39,6 +39,7 @@ Specifically they will each satisfy the following requirements:
 
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
+| `i686-pc-windows-msvc`        |  ✓  |  ✓  |  ✓  | 32-bit MSVC (Windows 7+)   |
 | `x86_64-pc-windows-msvc`      |  ✓  |  ✓  |  ✓  | 64-bit MSVC (Windows 7+)   |
 | `i686-pc-windows-gnu`         |  ✓  |  ✓  |  ✓  | 32-bit MinGW (Windows 7+)  |
 | `x86_64-pc-windows-gnu`       |  ✓  |  ✓  |  ✓  | 64-bit MinGW (Windows 7+)  |
@@ -62,7 +63,6 @@ these platforms are required to have each of the following:
 
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
-| `i686-pc-windows-msvc`        |  ✓  |  ✓  |  ✓  | 32-bit MSVC (Windows 7+)   |
 | `x86_64-unknown-linux-musl`   |  ✓  |     |     | 64-bit Linux with MUSL     |
 | `arm-linux-androideabi`       |  ✓  |     |     | ARM Android                |
 | `arm-unknown-linux-gnueabi`   |  ✓  |  ✓  |     | ARM Linux (2.6.18+)        |
@@ -85,6 +85,9 @@ unofficial locations.
 | `i686-linux-android`          |  ✓  |     |     | 32-bit x86 Android         |
 | `aarch64-linux-android`       |  ✓  |     |     | ARM64 Android              |
 | `powerpc-unknown-linux-gnu`   |  ✓  |     |     | PowerPC Linux (2.6.18+)    |
+| `powerpc64-unknown-linux-gnu` |  ✓  |     |     | PPC64 Linux (2.6.18+)      |
+|`powerpc64le-unknown-linux-gnu`|  ✓  |     |     | PPC64LE Linux (2.6.18+)    |
+|`armv7-unknown-linux-gnueabihf`|  ✓  |     |     | ARMv7 Linux (2.6.18+)      |
 | `i386-apple-ios`              |  ✓  |     |     | 32-bit x86 iOS             |
 | `x86_64-apple-ios`            |  ✓  |     |     | 64-bit x86 iOS             |
 | `armv7-apple-ios`             |  ✓  |     |     | ARM iOS                    |
@@ -97,6 +100,7 @@ unofficial locations.
 | `x86_64-unknown-bitrig`       |  ✓  |  ✓  |     | 64-bit Bitrig              |
 | `x86_64-unknown-dragonfly`    |  ✓  |  ✓  |     | 64-bit DragonFlyBSD        |
 | `x86_64-rumprun-netbsd`       |  ✓  |     |     | 64-bit NetBSD Rump Kernel  |
+| `x86_64-sun-solaris`          |  ✓  |  ✓  |     | 64-bit Solaris/SunOS       |
 | `i686-pc-windows-msvc` (XP)   |  ✓  |     |     | Windows XP support         |
 | `x86_64-pc-windows-msvc` (XP) |  ✓  |     |     | Windows XP support         |
 
@@ -569,7 +573,7 @@ executable application, as opposed to a library. Executables are often called
 *binaries* (as in `/usr/bin`, if you’re on a Unix system).
 
 Cargo has generated two files and one directory for us: a `Cargo.toml` and a
-*src* directory with a *main.rs* file inside. These should look familliar,
+*src* directory with a *main.rs* file inside. These should look familiar,
 they’re exactly what we created by hand, above.
 
 This output is all you need to get started. First, open `Cargo.toml`. It should
