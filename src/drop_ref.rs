@@ -20,7 +20,7 @@ use utils::{match_def_path, span_note_and_lint};
 /// ```
 declare_lint!(pub DROP_REF, Warn,
     "call to `std::mem::drop` with a reference instead of an owned value, \
-    which will not not call the `Drop::drop` method on the underlying value");
+    which will not call the `Drop::drop` method on the underlying value");
 
 #[allow(missing_copy_implementations)]
 pub struct DropRefPass;
