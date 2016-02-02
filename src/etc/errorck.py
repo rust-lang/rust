@@ -114,7 +114,7 @@ if len(errcode_not_found) > 0:
         if errcode in errcode_checked:
             continue
         all_errors.append(errcode)
-        print("error: unused error code: " + errcode)
+        print("error: unused error code: {0} ({1}:{2})".format(*errcode_map[errcode][0]))
         errors = True
 
 
