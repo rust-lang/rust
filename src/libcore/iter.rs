@@ -2756,20 +2756,11 @@ pub trait Extend<A> {
 ///
 /// let mut iter = numbers.iter();
 ///
-/// let n = iter.next();
-/// assert_eq!(Some(&1), n);
-///
-/// let n = iter.next_back();
-/// assert_eq!(Some(&3), n);
-///
-/// let n = iter.next_back();
-/// assert_eq!(Some(&2), n);
-///
-/// let n = iter.next();
-/// assert_eq!(None, n);
-///
-/// let n = iter.next_back();
-/// assert_eq!(None, n);
+/// assert_eq!(Some(&1), iter.next());
+/// assert_eq!(Some(&3), iter.next_back());
+/// assert_eq!(Some(&2), iter.next_back());
+/// assert_eq!(None, iter.next());
+/// assert_eq!(None, iter.next_back());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DoubleEndedIterator: Iterator {
@@ -2789,20 +2780,11 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// let mut iter = numbers.iter();
     ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(&1), n);
-    ///
-    /// let n = iter.next_back();
-    /// assert_eq!(Some(&3), n);
-    ///
-    /// let n = iter.next_back();
-    /// assert_eq!(Some(&2), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(None, n);
-    ///
-    /// let n = iter.next_back();
-    /// assert_eq!(None, n);
+    /// assert_eq!(Some(&1), iter.next());
+    /// assert_eq!(Some(&3), iter.next_back());
+    /// assert_eq!(Some(&2), iter.next_back());
+    /// assert_eq!(None, iter.next());
+    /// assert_eq!(None, iter.next_back());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
