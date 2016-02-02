@@ -15,6 +15,7 @@ mod tests {
     use num;
     use core::ops::{BitOr, BitAnd, BitXor, Shl, Shr, Not};
     use std::str::FromStr;
+    use std::mem;
 
     #[test]
     fn test_overflows() {
@@ -54,9 +55,10 @@ mod tests {
 
     #[test]
     fn test_count_zeros() {
-        assert!(A.count_zeros() == BITS as u32 - 3);
-        assert!(B.count_zeros() == BITS as u32 - 2);
-        assert!(C.count_zeros() == BITS as u32 - 5);
+        let bits = mem::size_of::<$T>() * 8;
+        assert!(A.count_zeros() == bits as u32 - 3);
+        assert!(B.count_zeros() == bits as u32 - 2);
+        assert!(C.count_zeros() == bits as u32 - 5);
     }
 
     #[test]
