@@ -569,7 +569,7 @@ executable application, as opposed to a library. Executables are often called
 *binaries* (as in `/usr/bin`, if you’re on a Unix system).
 
 Cargo has generated two files and one directory for us: a `Cargo.toml` and a
-*src* directory with a *main.rs* file inside. These should look familliar,
+*src* directory with a *main.rs* file inside. These should look familiar,
 they’re exactly what we created by hand, above.
 
 This output is all you need to get started. First, open `Cargo.toml`. It should
