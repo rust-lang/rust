@@ -194,7 +194,7 @@ impl char {
     /// * `a-z`
     /// * `A-Z`
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// Returns `None` if the `char` does not refer to a digit in the given radix.
     ///

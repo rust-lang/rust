@@ -169,7 +169,7 @@ impl<T: ?Sized> RwLock<T> {
     /// Returns an RAII guard which will release this thread's shared access
     /// once it is dropped.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock.
@@ -192,7 +192,7 @@ impl<T: ?Sized> RwLock<T> {
     /// This function does not provide any guarantees with respect to the ordering
     /// of whether contentious readers or writers will acquire the lock first.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
@@ -217,7 +217,7 @@ impl<T: ?Sized> RwLock<T> {
     /// Returns an RAII guard which will drop the write access of this rwlock
     /// when dropped.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock.
@@ -240,7 +240,7 @@ impl<T: ?Sized> RwLock<T> {
     /// This function does not provide any guarantees with respect to the ordering
     /// of whether contentious readers or writers will acquire the lock first.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
@@ -269,7 +269,7 @@ impl<T: ?Sized> RwLock<T> {
 
     /// Consumes this `RwLock`, returning the underlying data.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock. An
@@ -301,7 +301,7 @@ impl<T: ?Sized> RwLock<T> {
     /// Since this call borrows the `RwLock` mutably, no actual locking needs to
     /// take place---the mutable borrow statically guarantees no locks exist.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// This function will return an error if the RwLock is poisoned. An RwLock
     /// is poisoned whenever a writer panics while holding an exclusive lock. An

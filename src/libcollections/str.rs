@@ -1511,6 +1511,13 @@ impl str {
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
     /// Core Property `White_Space`.
     ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Left' in this context means the first
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _right_ side, not the left.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1519,6 +1526,16 @@ impl str {
     /// let s = " Hello\tworld\t";
     ///
     /// assert_eq!("Hello\tworld\t", s.trim_left());
+    /// ```
+    ///
+    /// Directionality:
+    ///
+    /// ```
+    /// let s = "  English";
+    /// assert!(Some('E') == s.trim_left().chars().next());
+    ///
+    /// let s = "  עברית";
+    /// assert!(Some('ע') == s.trim_left().chars().next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_left(&self) -> &str {
@@ -1530,6 +1547,13 @@ impl str {
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
     /// Core Property `White_Space`.
     ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Right' in this context means the last
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _left_ side, not the right.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1538,6 +1562,16 @@ impl str {
     /// let s = " Hello\tworld\t";
     ///
     /// assert_eq!(" Hello\tworld", s.trim_right());
+    /// ```
+    ///
+    /// Directionality:
+    ///
+    /// ```
+    /// let s = "English  ";
+    /// assert!(Some('h') == s.trim_right().chars().rev().next());
+    ///
+    /// let s = "עברית  ";
+    /// assert!(Some('ת') == s.trim_right().chars().rev().next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right(&self) -> &str {
@@ -1584,6 +1618,13 @@ impl str {
     ///
     /// [`char`]: primitive.char.html
     ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Left' in this context means the first
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _right_ side, not the left.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1607,6 +1648,13 @@ impl str {
     /// determines if a character matches.
     ///
     /// [`char`]: primitive.char.html
+    ///
+    /// # Text directionality
+    ///
+    /// A string is a sequence of bytes. 'Right' in this context means the last
+    /// position of that byte string; for a language like Arabic or Hebrew
+    /// which are 'right to left' rather than 'left to right', this will be
+    /// the _left_ side, not the right.
     ///
     /// # Examples
     ///
@@ -1644,7 +1692,7 @@ impl str {
     ///
     /// [`FromStr`]: str/trait.FromStr.html
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// Will return `Err` if it's not possible to parse this string slice into
     /// the desired type.

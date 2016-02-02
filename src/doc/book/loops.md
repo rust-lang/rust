@@ -125,7 +125,8 @@ Don't forget to add the parentheses around the range.
 #### On iterators:
 
 ```rust
-# let lines = "hello\nworld".lines();
+let lines = "hello\nworld".lines();
+
 for (linenumber, line) in lines.enumerate() {
     println!("{}: {}", linenumber, line);
 }
@@ -134,10 +135,8 @@ for (linenumber, line) in lines.enumerate() {
 Outputs:
 
 ```text
-0: Content of line one
-1: Content of line two
-2: Content of line three
-3: Content of line four
+0: hello
+1: world
 ```
 
 ## Ending iteration early

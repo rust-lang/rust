@@ -516,7 +516,7 @@ impl EmitterWriter {
                 };
                 let lo = self.cm.lookup_char_pos(sp.lo);
                 let hi = self.cm.lookup_char_pos(sp.hi);
-                let elide_sp = (lo.line - hi.line) > MAX_SP_LINES;
+                let elide_sp = (hi.line - lo.line) >= MAX_SP_LINES;
 
                 let line_num = line.line_index + 1;
                 if !(lo.line <= line_num && hi.line >= line_num) {
@@ -1024,7 +1024,7 @@ mod test {
                        \x20              ^  ^\n";
 
         let expect0_end = "dummy.txt: 5 ccccc\n\
-                        \x20            ...\n\
+                           dummy.txt: 6 xxxxx\n\
                            dummy.txt: 7 yyyyy\n\
                         \x20                ^\n\
                         \x20            ...\n\
