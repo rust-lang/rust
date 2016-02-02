@@ -205,7 +205,7 @@ impl<T: ?Sized> Mutex<T> {
     /// held. An RAII guard is returned to allow scoped unlock of the lock. When
     /// the guard goes out of scope, the mutex will be unlocked.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error once the mutex is acquired.
@@ -223,7 +223,7 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// This function does not block.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
@@ -250,7 +250,7 @@ impl<T: ?Sized> Mutex<T> {
 
     /// Consumes this mutex, returning the underlying data.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error instead.
@@ -280,7 +280,7 @@ impl<T: ?Sized> Mutex<T> {
     /// Since this call borrows the `Mutex` mutably, no actual locking needs to
     /// take place---the mutable borrow statically guarantees no locks exist.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error instead.
