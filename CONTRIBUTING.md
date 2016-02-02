@@ -131,8 +131,12 @@ Some common make targets are:
   & everything builds in the correct manner.
 - `make check-stage1-std NO_REBUILD=1` - test the standard library without
   rebuilding the entire compiler
-- `make check TESTNAME=<path-to-test-file>.rs` - Run a single test file
-- `make check-stage1-rpass TESTNAME=<path-to-test-file>.rs` - Run a single
+- `make check TESTNAME=<substring-of-test-name>` - Run a matching set of tests.
+  - `TESTNAME` should be a substring of the tests to match against e.g. it could 
+    be the fully qualified test name, or just a part of it. 
+    `TESTNAME=collections::hash::map::test_map::test_capacity_not_less_than_len`
+    or `TESTNAME=test_capacity_not_less_than_len`.
+- `make check-stage1-rpass TESTNAME=<substring-of-test-name>` - Run a single
   rpass test with the stage1 compiler (this will be quicker than running the
   command above as we only build the stage1 compiler, not the entire thing).
   You can also leave off the `-rpass` to run all stage1 test types.
