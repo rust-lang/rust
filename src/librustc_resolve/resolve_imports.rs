@@ -402,14 +402,23 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
 
             (_, &Success(name_binding)) if !name_binding.is_import() && directive.is_public => {
-                // Disallow reexporting private items, excepting extern crates.
-                if !name_binding.is_public() && !name_binding.is_extern_crate() {
-                    let msg = format!("`{}` is private, and cannot be reexported", source);
-                    let note_msg =
-                        format!("Consider declaring type or module `{}` with `pub`", source);
-                    struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
-                        .span_note(directive.span, &note_msg)
-                        .emit();
+                if !name_binding.is_public() {
+                    if name_binding.is_extern_crate() {
+                        let msg = format!("extern crate `{}` is private, and cannot be reexported \
+                                           (error E0364), consider declaring with `pub`",
+                                           source);
+                        self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                       directive.id,
+                                                       directive.span,
+                                                       msg);
+                    } else {
+                        let msg = format!("`{}` is private, and cannot be reexported", source);
+                        let note_msg =
+                            format!("Consider declaring type or module `{}` with `pub`", source);
+                        struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
+                            .span_note(directive.span, &note_msg)
+                            .emit();
+                    }
                 } else if name_binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
                     let msg = format!("variant `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring its enum as `pub`",
