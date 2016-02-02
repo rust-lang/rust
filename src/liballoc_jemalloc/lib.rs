@@ -51,7 +51,6 @@ extern "C" {
 // constant at the call site and the branch will be optimized out.
 #[cfg(all(any(target_arch = "arm",
               target_arch = "mips",
-              target_arch = "mipsel",
               target_arch = "powerpc")))]
 const MIN_ALIGN: usize = 8;
 #[cfg(all(any(target_arch = "x86",
