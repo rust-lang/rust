@@ -16,10 +16,10 @@ use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
 use hash::{Hash, SipHasher, BuildHasher};
+use internal_rand;
 use iter::{self, Map, FromIterator};
 use mem::{self, replace};
 use ops::{Deref, Index};
-use rand::{self, Rng};
 
 use super::table::{
     self,
@@ -1648,9 +1648,10 @@ impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 
 /// `RandomState` is the default state for `HashMap` types.
 ///
-/// A particular instance `RandomState` will create the same instances of
-/// `Hasher`, but the hashers created by two different `RandomState`
-/// instances are unlikely to produce the same result for the same values.
+/// A particular instance `RandomState` will create the same instances
+/// of `Hasher`, but there is no guarantee that hashers created by two
+/// different `RandomState` instances will produce the same result for
+/// the same values.
 #[derive(Clone)]
 #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
 pub struct RandomState {
@@ -1664,8 +1665,18 @@ impl RandomState {
     #[allow(deprecated)] // rand
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn new() -> RandomState {
-        let mut r = rand::thread_rng();
-        RandomState { k0: r.gen(), k1: r.gen() }
+        thread_local!(static KEYS: (u64, u64) = {
+            // get some random bytes from the OS
+            let mut bytes = [0_u8; 16];
+            internal_rand::fill_bytes(&mut bytes);
+
+            let keys: (u64, u64) = unsafe { mem::transmute(bytes) };
+            keys
+        });
+
+        KEYS.with(|&(k0, k1)| {
+            RandomState { k0: k0, k1: k1 }
+        })
     }
 }
 
