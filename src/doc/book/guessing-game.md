@@ -276,7 +276,7 @@ it’s called on, and if it isn’t a successful one, [`panic!`][panic]s with a
 message you passed it. A `panic!` like this will cause our program to crash,
 displaying the message.
 
-[expect]: ../std/option/enum.Option.html#method.expect
+[expect]: ../std/result/enum.Result.html#method.expect
 [panic]: error-handling.html
 
 If we leave off calling this method, our program will compile, but
