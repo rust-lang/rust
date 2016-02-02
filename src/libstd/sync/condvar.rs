@@ -129,7 +129,7 @@ impl Condvar {
     /// the predicate must always be checked each time this function returns to
     /// protect against spurious wakeups.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// This function will return an error if the mutex being waited on is
     /// poisoned when this thread re-acquires the lock. For more information,

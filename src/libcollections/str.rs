@@ -1644,7 +1644,7 @@ impl str {
     ///
     /// [`FromStr`]: str/trait.FromStr.html
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// Will return `Err` if it's not possible to parse this string slice into
     /// the desired type.

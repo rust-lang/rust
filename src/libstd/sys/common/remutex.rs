@@ -78,7 +78,7 @@ impl<T> ReentrantMutex<T> {
     /// calling this method already holds the lock, the call shall succeed without
     /// blocking.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
@@ -95,7 +95,7 @@ impl<T> ReentrantMutex<T> {
     ///
     /// This function does not block.
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
