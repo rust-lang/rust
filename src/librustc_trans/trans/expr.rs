@@ -157,6 +157,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if let hir::ExprPath(..) = expr.node {
                 match bcx.def(expr.id) {
                     Def::Const(_) | Def::AssociatedConst(_) => {
+                        assert!(type_is_zero_size(bcx.ccx(), bcx.tcx().node_id_to_type(expr.id)));
                         return bcx;
                     }
                     _ => {}
