@@ -3603,6 +3603,41 @@ fn main() {
 In this example, the trait `Printable` occurs as a trait object in both the
 type signature of `print`, and the cast expression in `main`.
 
+Trait objects may contain references, and so those references will need a
+lifetime. If the trait contains some sort of lifetime bound, like this:
+
+```rust,ignore
+// Some trait like this...
+trait Bar<'a>: 'a { }
+
+// ... means these are the same:
+Box<Bar>
+Box<Bar + 'a>
+```
+
+If there’s no bound, then the default lifetime is the same as the pointer that
+the trait object is behind:
+
+```rust,ignore
+// Some trait like this...
+trait Bar { }
+
+// ... means these are the same:
+&Bar
+&'a (Bar + 'a)
+```
+
+In any other case, the default is `'static`:
+
+```rust,ignore
+// Some trait like this...
+trait Bar { }
+
+// ... means these are the same:
+Box<Bar>
+Box<Bar + 'static>
+```
+
 ### Type parameters
 
 Within the body of an item that has type parameter declarations, the names of
