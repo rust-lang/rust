@@ -1050,6 +1050,30 @@ pub trait Iterator {
     /// // got a false, take_while() isn't used any more
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// Because `take_while()` needs to look at the value in order to see if it
+    /// should be included or not, consuming iterators will see that it is
+    /// removed:
+    ///
+    /// ```
+    /// let a = [1, 2, 3, 4];
+    /// let mut iter = a.into_iter();
+    ///
+    /// let result: Vec<i32> = iter.by_ref()
+    ///                            .take_while(|n| **n != 3)
+    ///                            .cloned()
+    ///                            .collect();
+    ///
+    /// assert_eq!(result, &[1, 2]);
+    ///
+    /// let result: Vec<i32> = iter.cloned().collect();
+    ///
+    /// assert_eq!(result, &[4]);
+    /// ```
+    ///
+    /// The `3` is no longer there, because it was consumed in order to see if
+    /// the iteration should stop, but wasn't placed back into the iterator or
+    /// some similar thing.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P> where
