@@ -81,6 +81,7 @@ pub mod panic;
 pub mod derive;
 pub mod print;
 pub mod vec;
+pub mod drop_ref;
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -148,6 +149,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box types::CharLitAsU8);
     reg.register_late_lint_pass(box print::PrintLint);
     reg.register_late_lint_pass(box vec::UselessVec);
+    reg.register_late_lint_pass(box drop_ref::DropRefPass);
 
 
     reg.register_lint_group("clippy_pedantic", vec![
@@ -184,6 +186,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_NOT_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,
+        drop_ref::DROP_REF,
         entry::MAP_ENTRY,
         enum_variants::ENUM_VARIANT_NAMES,
         eq_op::EQ_OP,
