@@ -72,7 +72,10 @@ impl DefaultResizePolicy {
         //
         // This doesn't have to be checked for overflow since allocation size
         // in bytes will overflow earlier than multiplication by 10.
-        cap * 10 / 11
+        //
+        // As per https://github.com/rust-lang/rust/pull/30991 this is updated
+        // to be: (cap * den + den - 1) / num
+        (cap * 10 + 10 - 1) / 11
     }
 }
 
@@ -2417,5 +2420,30 @@ mod test_map {
         assert_eq!(a[&1], "one");
         assert_eq!(a[&2], "two");
         assert_eq!(a[&3], "three");
+    }
+
+    #[test]
+    fn test_capacity_not_less_than_len() {
+        let mut a = HashMap::new();
+        let mut item = 0;
+
+        for _ in 0..116 {
+            a.insert(item, 0);
+            item += 1;
+        }
+
+        assert!(a.capacity() > a.len());
+
+        let free = a.capacity() - a.len();
+        for _ in 0..free {
+            a.insert(item, 0);
+            item += 1;
+        }
+
+        assert_eq!(a.len(), a.capacity());
+
+        // Insert at capacity should cause allocation.
+        a.insert(item, 0);
+        assert!(a.capacity() > a.len());
     }
 }
