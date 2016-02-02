@@ -433,7 +433,7 @@ impl String {
     ///
     /// [`str::from_utf8()`]: ../str/fn.from_utf8.html
     ///
-    /// # Failure
+    /// # Errors
     ///
     /// Returns `Err` if the slice is not UTF-8 with a description as to why the
     /// provided bytes are not UTF-8. The vector you moved in is also included.
