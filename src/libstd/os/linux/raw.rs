@@ -86,8 +86,7 @@ mod arch {
     }
 }
 
-#[cfg(any(target_arch = "mips",
-          target_arch = "mipsel"))]
+#[cfg(target_arch = "mips")]
 mod arch {
     use super::mode_t;
     use os::raw::{c_long, c_ulong};
@@ -214,8 +213,7 @@ mod arch {
     }
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64",
-          target_arch = "powerpc64le"))]
+#[cfg(any(target_arch = "x86_64", target_arch = "powerpc64"))]
 mod arch {
     use super::{dev_t, mode_t};
     use os::raw::{c_long, c_int};

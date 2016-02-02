@@ -128,7 +128,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
         },
         "mips" => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
         "powerpc" => cabi_powerpc::compute_abi_info(ccx, atys, rty, ret_def),
-        "powerpc64" | "powerpc64le" => cabi_powerpc64::compute_abi_info(ccx, atys, rty, ret_def),
+        "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, atys, rty, ret_def),
         a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a)
                               ),
     }

@@ -19,7 +19,7 @@ pub fn target() -> Target {
         llvm_target: "powerpc64le-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
-        arch: "powerpc64le".to_string(),
+        arch: "powerpc64".to_string(),
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "unknown".to_string(),
