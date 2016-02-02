@@ -402,7 +402,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
 
             (_, &Success(name_binding)) if !name_binding.is_import() && directive.is_public => {
-                if !name_binding.is_public() {
+                // Disallow reexporting private items, excepting extern crates.
+                if !name_binding.is_public() && !name_binding.is_extern_crate() {
                     let msg = format!("`{}` is private, and cannot be reexported", source);
                     let note_msg =
                         format!("Consider declaring type or module `{}` with `pub`", source);
@@ -441,9 +442,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         module_.decrement_outstanding_references_for(target, TypeNS);
 
         let def_and_priv = |binding: &NameBinding| {
-            let def = binding.def().unwrap();
-            let last_private = if binding.is_public() { lp } else { DependsOn(def.def_id()) };
-            (def, last_private)
+            let last_private =
+                if binding.is_public() { lp } else { DependsOn(binding.local_def_id().unwrap()) };
+            (binding.def().unwrap(), last_private)
         };
         let value_def_and_priv = value_result.success().map(&def_and_priv);
         let type_def_and_priv = type_result.success().map(&def_and_priv);
@@ -493,7 +494,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
         target_module.for_each_child(|name, ns, binding| {
             if !binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) { return }
-            if binding.is_extern_crate() { return }
             self.define(module_, name, ns, directive.import(binding));
 
             if ns == TypeNS && directive.is_public &&

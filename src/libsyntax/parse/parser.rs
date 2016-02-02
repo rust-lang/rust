@@ -5487,13 +5487,6 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::Semi));
 
         let last_span = self.last_span;
-
-        if visibility == ast::Visibility::Public {
-            self.span_warn(mk_sp(lo, last_span.hi),
-                           "`pub extern crate` does not work as expected and should not be used. \
-                            Likely to become an error. Prefer `extern crate` and `pub use`.");
-        }
-
         Ok(self.mk_item(lo,
                         last_span.hi,
                         ident,
