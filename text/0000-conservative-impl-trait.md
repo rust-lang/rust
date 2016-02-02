@@ -176,7 +176,7 @@ item-level API, but has been deemed worth it for the following reasons:
   declare `Send`/`Sync`-ability, and not extending this problem to abstract
   return types is desireable. In practice, most uses
   of this feature would have to add explicit bounds for OIBITS
-  if they want to be maximally usable.
+  if they wanted to be maximally usable.
 - Low real change, since the situation already somewhat exists on structs with private fields:
   - In both cases, a change to the private implementation might change whether a OIBIT is
     implemented or not.
@@ -374,4 +374,12 @@ types private to a function body, for example a iterator adapter containing a cl
 
 > What parts of the design are still TBD?
 
-None for the core feature proposed here, but many for possible extensions as elaborated on in detailed design.
+- What happens if you specialize a function with an abstract return type,
+  and differ in whether the return type implements an OIBIT or not?
+  - It would mean that specialization choice
+    has to flow back into typechecking.
+  - It seems sound, but would mean that different input type combinations
+    of such a function could cause different OIBIT behavior independent
+    of the input type parameters themself.
+  - Which would not necessarily be an issue, since the actual type could not
+    be observed from the outside anyway.
