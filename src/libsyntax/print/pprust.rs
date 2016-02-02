@@ -1781,11 +1781,8 @@ impl<'a> State<'a> {
             token::Paren => try!(self.popen()),
             token::Bracket => try!(word(&mut self.s, "[")),
             token::Brace => {
-                // head-ibox, will be closed by bopen()
-                try!(self.ibox(0));
-                // Don't ask me why the regular bopen() does
-                // more then just opening a brace...
-                try!(self.bopen())
+                try!(self.head(""));
+                try!(self.bopen());
             }
         }
         try!(self.print_tts(&m.node.tts));
