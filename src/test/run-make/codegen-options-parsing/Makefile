@@ -22,3 +22,10 @@ all:
 	$(RUSTC) -C lto=foo dummy.rs 2>&1 | \
 		grep 'codegen option `lto` takes no value'
 	$(RUSTC) -C lto dummy.rs
+
+	# Should not link dead code...
+	$(RUSTC) -Z print-link-args dummy.rs 2>&1 | \
+		grep -e '--gc-sections\|-dead_strip\|/OPT:REF,ICF'
+	# ... unless you specifically ask to keep it
+	$(RUSTC) -Z print-link-args -C link-dead-code dummy.rs 2>&1 | \
+		(! grep -e '--gc-sections\|-dead_strip\|/OPT:REF,ICF')
