@@ -1174,6 +1174,20 @@ impl TokenTree {
             }
             (&TokenTree::Token(sp, token::DocComment(name)), _) => {
                 let stripped = strip_doc_comment_decoration(&name.as_str());
+
+                // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
+                // required to wrap the text.
+                let num_of_hashes = stripped.chars().scan(0, |cnt, x| {
+                    *cnt = if x == '"' {
+                        1
+                    } else if *cnt != 0 && x == '#' {
+                        *cnt + 1
+                    } else {
+                        0
+                    };
+                    Some(*cnt)
+                }).max().unwrap_or(0);
+
                 TokenTree::Delimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
@@ -1181,7 +1195,7 @@ impl TokenTree {
                                                                 token::Plain)),
                               TokenTree::Token(sp, token::Eq),
                               TokenTree::Token(sp, token::Literal(
-                                  token::StrRaw(token::intern(&stripped), 0), None))],
+                                  token::StrRaw(token::intern(&stripped), num_of_hashes), None))],
                     close_span: sp,
                 }))
             }
