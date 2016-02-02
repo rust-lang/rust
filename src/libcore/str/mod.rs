@@ -188,7 +188,7 @@ impl Utf8Error {
 /// it, this function is one way to have a stack-allocated string. There is
 /// an example of this in the examples section below.
 ///
-/// # Failure
+/// # Errors
 ///
 /// Returns `Err` if the slice is not UTF-8 with a description as to why the
 /// provided slice is not UTF-8.
