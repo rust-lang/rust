@@ -10,7 +10,8 @@
 
 use prelude::v1::*;
 use io::prelude::*;
-use os::unix::prelude::*;
+use os::unix::prelude::OsStrExt;
+use os::unix::prelude::OsStringExt;
 
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;

@@ -13,5 +13,13 @@ use std::mem::transmute;
 
 fn transmute() {}
 
+mod foo {
+    pub fn baz() {}
+    pub use self::baz as bar;
+}
+
+use foo::*; //~ ERROR import `bar` conflicts with value in this module
+fn bar() {}
+
 fn main() {
 }
