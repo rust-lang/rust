@@ -365,6 +365,9 @@ pub mod builtin {
     /// stringification of all the tokens passed to the macro. No restrictions
     /// are placed on the syntax of the macro invocation itself.
     ///
+    /// Note that the expanded results of the input tokens may change in the
+    /// future. You should be careful if you rely on the output.
+    ///
     /// # Examples
     ///
     /// ```
