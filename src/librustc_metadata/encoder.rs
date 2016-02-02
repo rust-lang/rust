@@ -42,6 +42,7 @@ use std::rc::Rc;
 use std::u32;
 use syntax::abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
+use syntax::codemap::BytePos;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::errors::Handler;
@@ -1727,6 +1728,10 @@ fn encode_macro_defs(rbml_w: &mut Encoder,
 
         encode_name(rbml_w, def.name);
         encode_attributes(rbml_w, &def.attrs);
+        let &BytePos(lo) = &def.span.lo;
+        let &BytePos(hi) = &def.span.hi;
+        rbml_w.wr_tagged_u32(tag_macro_def_span_lo, lo);
+        rbml_w.wr_tagged_u32(tag_macro_def_span_hi, hi);
 
         rbml_w.wr_tagged_str(tag_macro_def_body,
                              &::syntax::print::pprust::tts_to_string(&def.body));

@@ -52,7 +52,7 @@ use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;
 use syntax::ast;
 use syntax::abi;
-use syntax::codemap::{self, Span};
+use syntax::codemap::{self, Span, BytePos, NO_EXPANSION};
 use syntax::print::pprust;
 use syntax::ptr::P;
 
@@ -1471,17 +1471,26 @@ pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<DefIndex> {
 }
 
 pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
-    F: FnMut(ast::Name, Vec<ast::Attribute>, String) -> bool,
+    F: FnMut(ast::Name, Vec<ast::Attribute>, Span, String) -> bool,
 {
     let macros = reader::get_doc(rbml::Doc::new(data), tag_macro_defs);
     for macro_doc in reader::tagged_docs(macros, tag_macro_def) {
         let name = item_name(intr, macro_doc);
         let attrs = get_attributes(macro_doc);
+        let span = get_macro_span(macro_doc);
         let body = reader::get_doc(macro_doc, tag_macro_def_body);
-        if !f(name, attrs, body.as_str().to_string()) {
+        if !f(name, attrs, span, body.as_str().to_string()) {
             break;
         }
     }
+}
+
+pub fn get_macro_span(doc: rbml::Doc) -> Span {
+    let lo_doc = reader::get_doc(doc, tag_macro_def_span_lo);
+    let lo = BytePos(reader::doc_as_u32(lo_doc));
+    let hi_doc = reader::get_doc(doc, tag_macro_def_span_hi);
+    let hi = BytePos(reader::doc_as_u32(hi_doc));
+    return Span { lo: lo, hi: hi, expn_id: NO_EXPANSION };
 }
 
 pub fn get_dylib_dependency_formats(cdata: Cmd)

@@ -73,6 +73,8 @@ pub enum Data {
     FunctionCallData(FunctionCallData),
     /// Data about a method call.
     MethodCallData(MethodCallData),
+    /// Data about a macro use.
+    MacroUseData(MacroUseData),
 }
 
 /// Data for all kinds of functions and methods.
@@ -173,6 +175,22 @@ pub struct MethodCallData {
     pub ref_id: Option<DefId>,
     pub decl_id: Option<DefId>,
 }
+
+/// Data about a macro use.
+#[derive(Debug)]
+pub struct MacroUseData {
+    pub span: Span,
+    pub name: String,
+    // Because macro expansion happens before ref-ids are determined,
+    // we use the callee span to reference the associated macro definition.
+    pub callee_span: Span,
+    pub scope: NodeId,
+    pub imported: bool,
+}
+
+macro_rules! option_try(
+    ($e:expr) => (match $e { Some(e) => e, None => return None })
+);
 
 
 
@@ -652,6 +670,51 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             span: sub_span.unwrap(),
             scope: parent,
             ref_id: f.did,
+        })
+    }
+
+    /// Attempt to return MacroUseData for any AST node.
+    ///
+    /// For a given piece of AST defined by the supplied Span and NodeId,
+    /// returns None if the node is not macro-generated or the span is malformed,
+    /// else uses the expansion callsite and callee to return some MacroUseData.
+    pub fn get_macro_use_data(&self, span: Span, id: NodeId) -> Option<MacroUseData> {
+        if !generated_code(span) {
+            return None;
+        }
+        // Note we take care to use the source callsite/callee, to handle
+        // nested expansions and ensure we only generate data for source-visible
+        // macro uses.
+        let callsite = self.tcx.sess.codemap().source_callsite(span);
+        let callee = self.tcx.sess.codemap().source_callee(span);
+        let callee = option_try!(callee);
+        let callee_span = option_try!(callee.span);
+
+        // Ignore attribute macros, their spans are usually mangled
+        if let MacroAttribute(_) = callee.format {
+            return None;
+        }
+
+        // If the callee is an imported macro from an external crate, need to get
+        // the source span and name from the session, as their spans are localized
+        // when read in, and no longer correspond to the source.
+        if let Some(mac) = self.tcx.sess.imported_macro_spans.borrow().get(&callee_span) {
+            let &(ref mac_name, mac_span) = mac;
+            return Some(MacroUseData {
+                                        span: callsite,
+                                        name: mac_name.clone(),
+                                        callee_span: mac_span,
+                                        scope: self.enclosing_scope(id),
+                                        imported: true,
+                                    });
+        }
+
+        Some(MacroUseData {
+            span: callsite,
+            name: callee.name().to_string(),
+            callee_span: callee_span,
+            scope: self.enclosing_scope(id),
+            imported: false,
         })
     }
 
