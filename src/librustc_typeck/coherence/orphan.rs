@@ -209,9 +209,12 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         return;
                     }
                     _ => {
-                        span_err!(self.tcx.sess, item.span, E0118,
-                                  "no base type found for inherent implementation; \
-                                   implement a trait or new type instead");
+                        struct_span_err!(self.tcx.sess, item.span, E0118,
+                                         "no base type found for inherent implementation")
+                        .span_help(item.span,
+                                   "either implement a trait on it or create a newtype to wrap it \
+                                    instead")
+                        .emit();
                         return;
                     }
                 }
