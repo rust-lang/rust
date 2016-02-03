@@ -323,10 +323,13 @@ impl ConstVal {
     }
 }
 
-pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
+pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, span: Span)
+                         -> Result<P<hir::Pat>, DefId> {
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
-            PatKind::Tup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect()),
+            PatKind::Tup(try!(exprs.iter()
+                                   .map(|expr| const_expr_to_pat(tcx, &expr, span))
+                                   .collect())),
 
         hir::ExprCall(ref callee, ref args) => {
             let def = *tcx.def_map.borrow().get(&callee.id).unwrap();
@@ -336,31 +339,38 @@ pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
             let path = match def.full_def() {
                 Def::Struct(def_id) => def_to_path(tcx, def_id),
                 Def::Variant(_, variant_did) => def_to_path(tcx, variant_did),
-                Def::Fn(..) => return P(hir::Pat {
+                Def::Fn(..) => return Ok(P(hir::Pat {
                     id: expr.id,
                     node: PatKind::Lit(P(expr.clone())),
                     span: span,
-                }),
+                })),
                 _ => unreachable!()
             };
-            let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect();
+            let pats = try!(args.iter()
+                                .map(|expr| const_expr_to_pat(tcx, &**expr, span))
+                                .collect());
             PatKind::TupleStruct(path, Some(pats))
         }
 
         hir::ExprStruct(ref path, ref fields, None) => {
-            let field_pats = fields.iter().map(|field| codemap::Spanned {
-                span: codemap::DUMMY_SP,
-                node: hir::FieldPat {
-                    name: field.name.node,
-                    pat: const_expr_to_pat(tcx, &field.expr, span),
-                    is_shorthand: false,
-                },
-            }).collect();
+            let field_pats =
+                try!(fields.iter()
+                           .map(|field| Ok(codemap::Spanned {
+                               span: codemap::DUMMY_SP,
+                               node: hir::FieldPat {
+                                   name: field.name.node,
+                                   pat: try!(const_expr_to_pat(tcx, &field.expr, span)),
+                                   is_shorthand: false,
+                               },
+                           }))
+                           .collect());
             PatKind::Struct(path.clone(), field_pats, false)
         }
 
         hir::ExprVec(ref exprs) => {
-            let pats = exprs.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect();
+            let pats = try!(exprs.iter()
+                                 .map(|expr| const_expr_to_pat(tcx, &expr, span))
+                                 .collect());
             PatKind::Vec(pats, None, hir::HirVec::new())
         }
 
@@ -381,7 +391,7 @@ pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
 
         _ => PatKind::Lit(P(expr.clone()))
     };
-    P(hir::Pat { id: expr.id, node: pat, span: span })
+    Ok(P(hir::Pat { id: expr.id, node: pat, span: span }))
 }
 
 pub fn eval_const_expr(tcx: &TyCtxt, e: &Expr) -> ConstVal {
