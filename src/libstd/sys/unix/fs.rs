@@ -512,12 +512,11 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     for child in try!(readdir(path)) {
-        let child = try!(child).path();
-        let stat = try!(lstat(&*child));
-        if stat.file_type().is_dir() {
-            try!(remove_dir_all(&*child));
+        let child = try!(child);
+        if try!(child.file_type()).is_dir() {
+            try!(remove_dir_all(&child.path()));
         } else {
-            try!(unlink(&*child));
+            try!(unlink(&child.path()));
         }
     }
     rmdir(path)
