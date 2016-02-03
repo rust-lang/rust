@@ -218,12 +218,12 @@ macro_rules! create_config {
             }
 
             pub fn from_toml(toml: &str) -> Config {
-                let parsed = toml.parse().unwrap();
+                let parsed = toml.parse().expect("Could not parse TOML");
                 let parsed_config:ParsedConfig = match toml::decode(parsed) {
                     Some(decoded) => decoded,
                     None => {
                         println!("Decoding config file failed. Config:\n{}", toml);
-                        let parsed: toml::Value = toml.parse().unwrap();
+                        let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
                         println!("\n\nParsed:\n{:?}", parsed);
                         panic!();
                     }
@@ -235,10 +235,14 @@ macro_rules! create_config {
                 match key {
                     $(
                         stringify!($i) => {
-                            self.$i = val.parse::<$ty>().unwrap();
+                            self.$i = val.parse::<$ty>()
+                                .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
+                                                 stringify!($i),
+                                                 val,
+                                                 stringify!($ty)));
                         }
                     )+
-                    _ => panic!("Bad config key!")
+                    _ => panic!("Unknown config key in override: {}", key)
                 }
             }
 
