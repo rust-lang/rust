@@ -30,5 +30,6 @@ pub use sys::ext as windows;
 #[cfg(target_os = "nacl")]      pub mod nacl;
 #[cfg(target_os = "netbsd")]   pub mod netbsd;
 #[cfg(target_os = "openbsd")]   pub mod openbsd;
+#[cfg(target_os = "solaris")]   pub mod solaris;
 
 pub mod raw;

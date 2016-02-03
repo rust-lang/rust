@@ -511,7 +511,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
-        unsafe { intrinsics::logf64(self) }
+        self.log_wrapper(|n| { unsafe { intrinsics::logf64(n) } })
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -546,7 +546,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        unsafe { intrinsics::log2f64(self) }
+        self.log_wrapper(|n| { unsafe { intrinsics::log2f64(n) } })
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -562,7 +562,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
-        unsafe { intrinsics::log10f64(self) }
+        self.log_wrapper(|n| { unsafe { intrinsics::log10f64(n) } })
     }
 
     /// Converts radians to degrees.
@@ -1064,6 +1064,31 @@ impl f64 {
     #[inline]
     pub fn atanh(self) -> f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
+    }
+
+    // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
+    // because of their non-standard behavior (e.g. log(-n) returns -Inf instead
+    // of expected NaN).
+    fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
+        if !cfg!(target_os = "solaris") {
+            log_fn(self)
+        } else {
+            if self.is_finite() {
+                if self > 0.0 {
+                    log_fn(self)
+                } else if self == 0.0 {
+                    NEG_INFINITY // log(0) = -Inf
+                } else {
+                    NAN // log(-n) = NaN
+                }
+            } else if self.is_nan() {
+                self // log(NaN) = NaN
+            } else if self > 0.0 {
+                self // log(Inf) = Inf
+            } else {
+                NAN // log(-Inf) = NaN
+            }
+        }
     }
 }
 

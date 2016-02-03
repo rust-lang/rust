@@ -37,5 +37,6 @@ pub fn main() {
           target_os = "bitrig",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "android"))]
+          target_os = "android",
+          target_os = "solaris"))]
 pub fn main() { }

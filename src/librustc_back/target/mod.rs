@@ -59,6 +59,7 @@ mod freebsd_base;
 mod linux_base;
 mod openbsd_base;
 mod netbsd_base;
+mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
 
@@ -155,6 +156,10 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like OSX's. Only useful for compiling against iOS/OS X, in
     /// particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     pub is_like_osx: bool,
+    /// Whether the target toolchain is like Solaris's.
+    /// Only useful for compiling against Illumos/Solaris,
+    /// as they have a different set of linker flags. Defaults to false.
+    pub is_like_solaris: bool,
     /// Whether the target toolchain is like Windows'. Only useful for compiling against Windows,
     /// only really used for figuring out how to find libraries, since Windows uses its own
     /// library naming convention. Defaults to false.
@@ -227,6 +232,7 @@ impl Default for TargetOptions {
             staticlib_suffix: ".a".to_string(),
             target_family: None,
             is_like_osx: false,
+            is_like_solaris: false,
             is_like_windows: false,
             is_like_android: false,
             is_like_msvc: false,
@@ -446,6 +452,8 @@ impl Target {
             aarch64_apple_ios,
             armv7_apple_ios,
             armv7s_apple_ios,
+
+            x86_64_sun_solaris,
 
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu,

@@ -45,6 +45,7 @@ pub fn errno() -> i32 {
                        target_os = "android",
                        target_env = "newlib"),
                    link_name = "__errno")]
+        #[cfg_attr(target_os = "solaris", link_name = "___errno")]
         #[cfg_attr(target_os = "dragonfly", link_name = "__dfly_error")]
         #[cfg_attr(any(target_os = "macos",
                        target_os = "ios",
@@ -257,6 +258,30 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
+#[cfg(any(target_os = "solaris"))]
+pub fn current_exe() -> io::Result<PathBuf> {
+    extern {
+        fn getexecname() -> *const c_char;
+    }
+    unsafe {
+        let path = getexecname();
+        if path.is_null() {
+            Err(io::Error::last_os_error())
+        } else {
+            let filename = CStr::from_ptr(path).to_bytes();
+            let path = PathBuf::from(<OsStr as OsStrExt>::from_bytes(filename));
+
+            // Prepend a current working directory to the path if
+            // it doesn't contain an absolute pathname.
+            if filename[0] == b'/' {
+                Ok(path)
+            } else {
+                getcwd().map(|cwd| cwd.join(path))
+            }
+        }
+    }
+}
+
 pub struct Args {
     iter: vec::IntoIter<OsString>,
     _dont_send_or_sync_me: *mut (),
@@ -359,6 +384,7 @@ pub fn args() -> Args {
           target_os = "bitrig",
           target_os = "netbsd",
           target_os = "openbsd",
+          target_os = "solaris",
           target_os = "nacl"))]
 pub fn args() -> Args {
     use sys_common;
@@ -489,6 +515,28 @@ pub fn home_dir() -> Option<PathBuf> {
                   target_os = "ios",
                   target_os = "nacl")))]
     unsafe fn fallback() -> Option<OsString> {
+        #[cfg(not(target_os = "solaris"))]
+        unsafe fn getpwduid_r(me: libc::uid_t, passwd: &mut libc::passwd,
+                              buf: &mut Vec<c_char>) -> Option<()> {
+            let mut result = ptr::null_mut();
+            match libc::getpwuid_r(me, passwd, buf.as_mut_ptr(),
+                                   buf.capacity() as libc::size_t,
+                                   &mut result) {
+                0 if !result.is_null() => Some(()),
+                _ => None
+            }
+        }
+
+        #[cfg(target_os = "solaris")]
+        unsafe fn getpwduid_r(me: libc::uid_t, passwd: &mut libc::passwd,
+                              buf: &mut Vec<c_char>) -> Option<()> {
+            // getpwuid_r semantics is different on Illumos/Solaris:
+            // http://illumos.org/man/3c/getpwuid_r
+            let result = libc::getpwuid_r(me, passwd, buf.as_mut_ptr(),
+                                          buf.capacity() as libc::size_t);
+            if result.is_null() { None } else { Some(()) }
+        }
+
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,
             n => n as usize,
@@ -497,16 +545,14 @@ pub fn home_dir() -> Option<PathBuf> {
         loop {
             let mut buf = Vec::with_capacity(amt);
             let mut passwd: libc::passwd = mem::zeroed();
-            let mut result = ptr::null_mut();
-            match libc::getpwuid_r(me, &mut passwd, buf.as_mut_ptr(),
-                                   buf.capacity() as libc::size_t,
-                                   &mut result) {
-                0 if !result.is_null() => {}
-                _ => return None
+
+            if getpwduid_r(me, &mut passwd, &mut buf).is_some() {
+                let ptr = passwd.pw_dir as *const _;
+                let bytes = CStr::from_ptr(ptr).to_bytes().to_vec();
+                return Some(OsStringExt::from_vec(bytes))
+            } else {
+                return None;
             }
-            let ptr = passwd.pw_dir as *const _;
-            let bytes = CStr::from_ptr(ptr).to_bytes().to_vec();
-            return Some(OsStringExt::from_vec(bytes))
         }
     }
 }

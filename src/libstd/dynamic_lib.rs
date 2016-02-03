@@ -172,7 +172,8 @@ mod tests {
               target_os = "dragonfly",
               target_os = "bitrig",
               target_os = "netbsd",
-              target_os = "openbsd"))]
+              target_os = "openbsd",
+              target_os = "solaris"))]
     #[allow(deprecated)]
     fn test_errors_do_not_crash() {
         use path::Path;
@@ -195,7 +196,8 @@ mod tests {
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "netbsd",
-          target_os = "openbsd"))]
+          target_os = "openbsd",
+          target_os = "solaris"))]
 mod dl {
     use prelude::v1::*;
 

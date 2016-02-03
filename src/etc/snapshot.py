@@ -48,6 +48,7 @@ snapshot_files = {
         "macos": ["bin/rustc"],
         "netbsd": ["bin/rustc"],
         "openbsd": ["bin/rustc"],
+        "solaris": ["bin/rustc"],
         "winnt": ["bin/rustc.exe"],
         }
 
