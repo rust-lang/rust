@@ -14,6 +14,7 @@
 // seemingly completely unrelated change.
 // Unfortunately, LLVM has no "disable" option for this, so we have to set
 // "enable" to 0 instead.
+
 // compile-flags:-g -Cllvm-args=-enable-tail-merge=0
 // ignore-pretty as this critically relies on line numbers
 
@@ -27,28 +28,21 @@ macro_rules! pos {
     () => ((file!(), line!()))
 }
 
-#[cfg(all(unix,
-          not(target_os = "macos"),
-          not(target_os = "ios"),
-          not(target_os = "android"),
-          not(all(target_os = "linux", target_arch = "arm"))))]
 macro_rules! dump_and_die {
     ($($pos:expr),*) => ({
         // FIXME(#18285): we cannot include the current position because
         // the macro span takes over the last frame's file/line.
-        dump_filelines(&[$($pos),*]);
-        panic!();
+        if cfg!(target_os = "macos") ||
+           cfg!(target_os = "ios") ||
+           cfg!(target_os = "android") ||
+           cfg!(all(target_os = "linux", target_arch = "arm")) ||
+           cfg!(all(windows, target_env = "gnu")) {
+            // skip these platforms as this support isn't implemented yet.
+        } else {
+            dump_filelines(&[$($pos),*]);
+            panic!();
+        }
     })
-}
-
-// this does not work on Windows, Android, OSX or iOS
-#[cfg(not(all(unix,
-              not(target_os = "macos"),
-              not(target_os = "ios"),
-              not(target_os = "android"),
-              not(all(target_os = "linux", target_arch = "arm")))))]
-macro_rules! dump_and_die {
-    ($($pos:expr),*) => ({ let _ = [$($pos),*]; })
 }
 
 // we can't use a function as it will alter the backtrace
