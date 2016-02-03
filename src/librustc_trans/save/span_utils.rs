@@ -378,8 +378,8 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    // Given a macro_rules definition span, return the span of the macro's name.
-    pub fn span_for_macro_name(&self, span: Span) -> Option<Span> {
+    // Return the name for a macro definition (identifier after first `!`)
+    pub fn span_for_macro_def_name(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
             let ts = toks.real_token();
@@ -394,6 +394,26 @@ impl<'a> SpanUtils<'a> {
                     return None;
                 }
             }
+        }
+    }
+
+    // Return the name for a macro use (identifier before first `!`).
+    pub fn span_for_macro_use_name(&self, span:Span) -> Option<Span> {
+        let mut toks = self.retokenise_span(span);
+        let mut prev = toks.real_token();
+        loop {
+            if prev.tok == token::Eof {
+                return None;
+            }
+            let ts = toks.real_token();
+            if ts.tok == token::Not {
+                if prev.tok.is_ident() {
+                    return self.make_sub_span(span, Some(prev.sp));
+                } else {
+                    return None;
+                }
+            }
+            prev = ts;
         }
     }
 
