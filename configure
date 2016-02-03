@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# /bin/sh on Solaris is not a POSIX compatible shell, but /usr/bin/ksh is.
+if [ `uname -s` = 'SunOS' -a "${POSIX_SHELL}" != "true" ]; then
+    POSIX_SHELL="true"
+    export POSIX_SHELL
+    exec /usr/bin/ksh $0 "$@"
+fi
+unset POSIX_SHELL # clear it so if we invoke other scripts, they run as ksh as well
+
 msg() {
     echo "configure: $*"
 }
@@ -66,7 +74,7 @@ move_if_changed() {
 }
 
 putvar() {
-    local T
+    T=
     eval T=\$$1
     eval TLEN=\${#$1}
     if [ $TLEN -gt 35 ]
@@ -79,7 +87,7 @@ putvar() {
 }
 
 putpathvar() {
-    local T
+    T=
     eval T=\$$1
     eval TLEN=\${#$1}
     if [ $TLEN -gt 35 ]
@@ -97,10 +105,10 @@ putpathvar() {
 }
 
 probe() {
-    local V=$1
+    V=$1
     shift
-    local P
-    local T
+    P=
+    T=
     for P
     do
         T=$(command -v $P 2>&1)
@@ -125,7 +133,7 @@ probe() {
 }
 
 probe_need() {
-    local V=$1
+    V=$1
     probe $*
     eval VV=\$$V
     if [ -z "$VV" ]
@@ -183,18 +191,18 @@ validate_opt () {
 valopt_core() {
     VAL_OPTIONS="$VAL_OPTIONS $2"
 
-    local SAVE=$1
-    local OP=$2
-    local DEFAULT=$3
+    SAVE=$1
+    OP=$2
+    DEFAULT=$3
     shift
     shift
     shift
-    local DOC="$*"
+    DOC="$*"
     if [ $HELP -eq 0 ]
     then
-        local UOP=$(echo $OP | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
-        local V="CFG_${UOP}"
-        local V_PROVIDED="${V}_PROVIDED"
+        UOP=$(echo $OP | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
+        V="CFG_${UOP}"
+        V_PROVIDED="${V}_PROVIDED"
         eval $V="$DEFAULT"
         for arg in $CFG_CONFIGURE_ARGS
         do
@@ -239,14 +247,14 @@ valopt() {
 opt_core() {
     BOOL_OPTIONS="$BOOL_OPTIONS $2"
 
-    local SAVE=$1
-    local OP=$2
-    local DEFAULT=$3
+    SAVE=$1
+    OP=$2
+    DEFAULT=$3
     shift
     shift
     shift
-    local DOC="$*"
-    local FLAG=""
+    DOC="$*"
+    FLAG=""
 
     if [ $DEFAULT -eq 0 ]
     then
@@ -266,8 +274,8 @@ opt_core() {
             then
                 OP=$(echo $OP | tr 'a-z-' 'A-Z_')
                 FLAG=$(echo $FLAG | tr 'a-z' 'A-Z')
-                local V="CFG_${FLAG}_${OP}"
-                local V_PROVIDED="CFG_${FLAG}_${OP}_PROVIDED"
+                V="CFG_${FLAG}_${OP}"
+                V_PROVIDED="CFG_${FLAG}_${OP}_PROVIDED"
                 eval $V=1
                 eval $V_PROVIDED=1
                 if [ "$SAVE" = "save" ]
@@ -278,7 +286,7 @@ opt_core() {
             then
                 OP=$(echo $OP | tr 'a-z-' 'A-Z_')
                 DEFAULT_FLAG=$(echo $DEFAULT_FLAG | tr 'a-z' 'A-Z')
-                local V_PROVIDED="CFG_${DEFAULT_FLAG}_${OP}_PROVIDED"
+                V_PROVIDED="CFG_${DEFAULT_FLAG}_${OP}_PROVIDED"
                 eval $V_PROVIDED=1
             fi
         done
@@ -300,8 +308,8 @@ opt() {
 }
 
 envopt() {
-    local NAME=$1
-    local V="CFG_${NAME}"
+    NAME=$1
+    V="CFG_${NAME}"
     eval VV=\$$V
 
     # If configure didn't set a value already, then check environment.
@@ -324,10 +332,10 @@ envopt() {
 }
 
 enable_if_not_disabled() {
-    local OP=$1
-    local UOP=$(echo $OP | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
-    local ENAB_V="CFG_ENABLE_$UOP"
-    local EXPLICITLY_DISABLED="CFG_DISABLE_${UOP}_PROVIDED"
+    OP=$1
+    UOP=$(echo $OP | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
+    ENAB_V="CFG_ENABLE_$UOP"
+    EXPLICITLY_DISABLED="CFG_DISABLE_${UOP}_PROVIDED"
     eval VV=\$$EXPLICITLY_DISABLED
     if [ -z "$VV" ]; then
         eval $ENAB_V=1
@@ -344,7 +352,7 @@ to_gnu_triple() {
 
 # Prints the absolute path of a directory to stdout
 abs_path() {
-    local _path="$1"
+    _path="$1"
     # Unset CDPATH because it causes havok: it makes the destination unpredictable
     # and triggers 'cd' to print the path to stdout. Route `cd`'s output to /dev/null
     # for good measure.
@@ -414,6 +422,11 @@ case $CFG_OSTYPE in
 
     Darwin)
         CFG_OSTYPE=apple-darwin
+        ;;
+
+    SunOS)
+        CFG_OSTYPE=sun-solaris
+        CFG_CPUTYPE=$(isainfo -n)
         ;;
 
     MINGW*)
