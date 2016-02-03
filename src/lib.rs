@@ -420,8 +420,6 @@ fn check_write_mode(arg: WriteMode, config: WriteMode) -> WriteMode {
     }
 }
 
-// args are the arguments passed on the command line, generally passed through
-// to the compiler.
 // write_mode determines what happens to the result of running rustfmt, see
 // WriteMode.
 pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
