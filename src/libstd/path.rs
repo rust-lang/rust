@@ -1823,76 +1823,98 @@ impl Path {
     }
 
 
-    /// Gets information on the file, directory, etc at this path.
+    /// Query the file system to get information about a file, directory, etc.
     ///
-    /// Consult the `fs::metadata` documentation for more info.
+    /// This function will traverse symbolic links to query information about the
+    /// destination file.
     ///
-    /// This call preserves identical runtime/error semantics with
-    /// `fs::metadata`.
+    /// This is an alias to `fs::metadata`.
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn metadata(&self) -> io::Result<fs::Metadata> {
         fs::metadata(self)
     }
 
-    /// Gets information on the file, directory, etc at this path.
+    /// Query the metadata about a file without following symlinks.
     ///
-    /// Consult the `fs::symlink_metadata` documentation for more info.
-    ///
-    /// This call preserves identical runtime/error semantics with
-    /// `fs::symlink_metadata`.
+    /// This is an alias to `fs::symlink_metadata`.
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
         fs::symlink_metadata(self)
     }
 
-    /// Returns the canonical form of a path, normalizing all components and
-    /// eliminate all symlinks.
+    /// Returns the canonical form of the path with all intermediate components
+    /// normalized and symbolic links resolved.
     ///
-    /// This call preserves identical runtime/error semantics with
-    /// `fs::canonicalize`.
+    /// This is an alias to `fs::canonicalize`.
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {
         fs::canonicalize(self)
     }
 
-    /// Reads the symlink at this path.
+    /// Reads a symbolic link, returning the file that the link points to.
     ///
-    /// For more information see `fs::read_link`.
+    /// This is an alias to `fs::read_link`.
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_link(&self) -> io::Result<PathBuf> {
         fs::read_link(self)
     }
 
-    /// Reads the directory at this path.
+    /// Returns an iterator over the entries within a directory.
     ///
-    /// For more information see `fs::read_dir`.
+    /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
+    /// be encountered after an iterator is initially constructed.
+    ///
+    /// This is an alias to `fs::read_dir`.
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
         fs::read_dir(self)
     }
 
-    /// Boolean value indicator whether the underlying file exists on the local
-    /// filesystem. Returns false in exactly the cases where `fs::metadata`
-    /// fails.
+    /// Returns whether the path points at an existing entity.
+    ///
+    /// This function will traverse symbolic links to query information about the
+    /// destination file. In case of broken symbolic links this will return `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// assert_eq!(Path::new("does_not_exist.txt").exists(), false);
+    /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
     }
 
-    /// Whether the underlying implementation (be it a file path, or something
-    /// else) points at a "regular file" on the FS. Will return false for paths
-    /// to non-existent locations or directories or other non-regular files
-    /// (named pipes, etc). Follows links when making this determination.
+    /// Returns whether the path is pointing at a regular file.
+    ///
+    /// This function will traverse symbolic links to query information about the
+    /// destination file. In case of broken symbolic links this will return `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// assert_eq!(Path::new("./is_a_directory/").is_file(), false);
+    /// assert_eq!(Path::new("a_file.txt").is_file(), true);
+    /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
     }
 
-    /// Whether the underlying implementation (be it a file path, or something
-    /// else) is pointing at a directory in the underlying FS. Will return
-    /// false for paths to non-existent locations or if the item is not a
-    /// directory (eg files, named pipes, etc). Follows links when making this
-    /// determination.
+    /// Returns whether the path is pointing at a directory.
+    ///
+    /// This function will traverse symbolic links to query information about the
+    /// destination file. In case of broken symbolic links this will return `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// assert_eq!(Path::new("./is_a_directory/").is_dir(), true);
+    /// assert_eq!(Path::new("a_file.txt").is_dir(), false);
+    /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
