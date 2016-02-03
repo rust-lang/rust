@@ -1475,7 +1475,9 @@ mod tests {
     use str;
 
     #[cfg(windows)]
-    use os::windows::fs::{symlink_dir, symlink_file, symlink_junction};
+    use os::windows::fs::{symlink_dir, symlink_file};
+    #[cfg(windows)]
+    use sys::fs::symlink_junction;
     #[cfg(unix)]
     use os::unix::fs::symlink as symlink_dir;
     #[cfg(unix)]
@@ -1533,6 +1535,7 @@ mod tests {
     // `SeCreateSymbolicLinkPrivilege`). Instead of disabling these test on Windows, use this
     // function to test whether we have permission, and return otherwise. This way, we still don't
     // run these tests most of the time, but at least we do if the user has the right permissions.
+    #[cfg(windows)]
     pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
         let link = tmpdir.join("some_hopefully_unique_link_name");
 
@@ -1546,6 +1549,9 @@ mod tests {
                 }
         }
     }
+    #[cfg(not(windows))]
+    #[allow(unused_variables)]
+    pub fn got_symlink_permission(tmpdir: &TempDir) -> bool { true }
 
     #[test]
     fn file_test_io_smoke_test() {
@@ -2400,5 +2406,31 @@ mod tests {
     fn read_dir_not_found() {
         let res = fs::read_dir("/path/that/does/not/exist");
         assert_eq!(res.err().unwrap().kind(), ErrorKind::NotFound);
+    }
+
+    #[test]
+    fn create_dir_all_with_junctions() {
+        let tmpdir = tmpdir();
+        let target = tmpdir.join("target");
+
+        let junction = tmpdir.join("junction");
+        let b = junction.join("a/b");
+
+        let link = tmpdir.join("link");
+        let d = link.join("c/d");
+
+        fs::create_dir(&target).unwrap();
+
+        check!(symlink_junction(&target, &junction));
+        check!(fs::create_dir_all(&b));
+        // the junction itself is not a directory, but `is_dir()` on a Path follows links
+        assert!(junction.is_dir());
+        assert!(b.exists());
+
+        if !got_symlink_permission(&tmpdir) { return };
+        check!(symlink_dir(&target, &link));
+        check!(fs::create_dir_all(&d));
+        assert!(link.is_dir());
+        assert!(d.exists());
     }
 }

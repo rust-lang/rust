@@ -35,7 +35,7 @@ pub struct FileAttr {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FileType {
-    Dir, File, Symlink, ReparsePoint, MountPoint,
+    Dir, File, SymlinkFile, SymlinkDir, ReparsePoint, MountPoint,
 }
 
 pub struct ReadDir {
@@ -444,23 +444,30 @@ impl FilePermissions {
 
 impl FileType {
     fn new(attrs: c::DWORD, reparse_tag: c::DWORD) -> FileType {
-        if attrs & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-            match reparse_tag {
-                c::IO_REPARSE_TAG_SYMLINK => FileType::Symlink,
-                c::IO_REPARSE_TAG_MOUNT_POINT => FileType::MountPoint,
-                _ => FileType::ReparsePoint,
-            }
-        } else if attrs & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
-            FileType::Dir
-        } else {
-            FileType::File
+        match (attrs & c::FILE_ATTRIBUTE_DIRECTORY != 0,
+               attrs & c::FILE_ATTRIBUTE_REPARSE_POINT != 0,
+               reparse_tag) {
+            (false, false, _) => FileType::File,
+            (true, false, _) => FileType::Dir,
+            (false, true, c::IO_REPARSE_TAG_SYMLINK) => FileType::SymlinkFile,
+            (true, true, c::IO_REPARSE_TAG_SYMLINK) => FileType::SymlinkDir,
+            (true, true, c::IO_REPARSE_TAG_MOUNT_POINT) => FileType::MountPoint,
+            (_, true, _) => FileType::ReparsePoint,
+            // Note: if a _file_ has a reparse tag of the type IO_REPARSE_TAG_MOUNT_POINT it is
+            // invalid, as junctions always have to be dirs. We set the filetype to ReparsePoint
+            // to indicate it is something symlink-like, but not something you can follow.
         }
     }
 
     pub fn is_dir(&self) -> bool { *self == FileType::Dir }
     pub fn is_file(&self) -> bool { *self == FileType::File }
     pub fn is_symlink(&self) -> bool {
-        *self == FileType::Symlink || *self == FileType::MountPoint
+        *self == FileType::SymlinkFile ||
+        *self == FileType::SymlinkDir ||
+        *self == FileType::MountPoint
+    }
+    pub fn is_symlink_dir(&self) -> bool {
+        *self == FileType::SymlinkDir || *self == FileType::MountPoint
     }
 }
 
@@ -519,18 +526,14 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     for child in try!(readdir(path)) {
-        let child = try!(child).path();
-        let stat = try!(lstat(&*child));
-        if stat.data.dwFileAttributes & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
-            if stat.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                // remove junctions and directory symlinks with rmdir
-                try!(rmdir(&*child));
-            } else {
-                try!(remove_dir_all(&*child));
-            }
+        let child = try!(child);
+        let child_type = try!(child.file_type());
+        if child_type.is_dir() {
+            try!(remove_dir_all(&child.path()));
+        } else if child_type.is_symlink_dir() {
+            try!(rmdir(&child.path()));
         } else {
-            // remove files and file symlinks
-            try!(unlink(&*child));
+            try!(unlink(&child.path()));
         }
     }
     rmdir(path)
