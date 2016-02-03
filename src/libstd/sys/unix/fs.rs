@@ -211,20 +211,14 @@ impl DirEntry {
     #[cfg(any(target_os = "macos",
               target_os = "ios",
               target_os = "netbsd",
-              target_os = "openbsd"))]
-    fn name_bytes(&self) -> &[u8] {
-        unsafe {
-            ::slice::from_raw_parts(self.entry.d_name.as_ptr() as *const u8,
-                                    self.entry.d_namlen as usize)
-        }
-    }
-    #[cfg(any(target_os = "freebsd",
+              target_os = "openbsd",
+              target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig"))]
     fn name_bytes(&self) -> &[u8] {
         unsafe {
             ::slice::from_raw_parts(self.entry.d_name.as_ptr() as *const u8,
-                                    self.entry.d_namelen as usize)
+                                    self.entry.d_namlen as usize)
         }
     }
     #[cfg(any(target_os = "android",
