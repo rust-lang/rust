@@ -30,7 +30,7 @@ use expr::{rewrite_call, rewrite_array};
 use comment::FindUncommented;
 use utils::{wrap_str, span_after};
 
-static FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
+const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
 
 // FIXME: use the enum from libsyntax?
 #[derive(Clone, Copy, PartialEq, Eq)]

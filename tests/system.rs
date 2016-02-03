@@ -23,7 +23,7 @@ use rustfmt::filemap::{write_system_newlines, FileMap};
 use rustfmt::config::{Config, ReportTactic, WriteMode};
 use rustfmt::rustfmt_diff::*;
 
-static DIFF_CONTEXT_SIZE: usize = 3;
+const DIFF_CONTEXT_SIZE: usize = 3;
 
 fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
     let path = dir_entry.expect("Couldn't get DirEntry").path();
