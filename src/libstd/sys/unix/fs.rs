@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
 use io::prelude::*;
 use os::unix::prelude::*;
 
@@ -23,11 +24,6 @@ use sys::fd::FileDesc;
 use sys::platform::raw;
 use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
-use vec::Vec;
-#[cfg(target_os = "solaris")]
-use core_collections::borrow::ToOwned;
-#[cfg(target_os = "solaris")]
-use boxed::Box;
 
 pub struct File(FileDesc);
 
