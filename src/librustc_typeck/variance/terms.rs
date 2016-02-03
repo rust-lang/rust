@@ -20,8 +20,10 @@
 // a variable.
 
 use arena::TypedArena;
+use dep_graph::DepTrackingMapConfig;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
 use middle::ty;
+use middle::ty::maps::ItemVariances;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -97,8 +99,7 @@ pub struct InferredInfo<'a> {
 
 pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
     tcx: &'a ty::ctxt<'tcx>,
-    arena: &'a mut TypedArena<VarianceTerm<'a>>,
-    krate: &hir::Crate)
+    arena: &'a mut TypedArena<VarianceTerm<'a>>)
     -> TermsContext<'a, 'tcx>
 {
     let mut terms_cx = TermsContext {
@@ -117,7 +118,9 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
         })
     };
 
-    krate.visit_all_items(&mut terms_cx);
+    // See README.md for a discussion on dep-graph management.
+    tcx.visit_all_items_in_krate(|def_id| ItemVariances::to_dep_node(&def_id),
+                                 &mut terms_cx);
 
     terms_cx
 }

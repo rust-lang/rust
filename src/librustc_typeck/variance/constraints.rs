@@ -13,11 +13,13 @@
 //! The second pass over the AST determines the set of constraints.
 //! We walk the set of items and, for each member, generate new constraints.
 
+use dep_graph::DepTrackingMapConfig;
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::ParamSpace;
 use middle::ty::{self, Ty};
+use middle::ty::maps::ItemVariances;
 use rustc::front::map as hir_map;
 use syntax::ast;
 use rustc_front::hir;
@@ -48,10 +50,10 @@ pub struct Constraint<'a> {
     pub variance: &'a VarianceTerm<'a>,
 }
 
-pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
-                                            krate: &hir::Crate)
+pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
                                             -> ConstraintContext<'a, 'tcx>
 {
+    let tcx = terms_cx.tcx;
     let covariant = terms_cx.arena.alloc(ConstantTerm(ty::Covariant));
     let contravariant = terms_cx.arena.alloc(ConstantTerm(ty::Contravariant));
     let invariant = terms_cx.arena.alloc(ConstantTerm(ty::Invariant));
@@ -64,7 +66,11 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
         bivariant: bivariant,
         constraints: Vec::new(),
     };
-    krate.visit_all_items(&mut constraint_cx);
+
+    // See README.md for a discussion on dep-graph management.
+    tcx.visit_all_items_in_krate(|def_id| ItemVariances::to_dep_node(&def_id),
+                                 &mut constraint_cx);
+
     constraint_cx
 }
 
@@ -289,6 +295,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         let trait_def = self.tcx().lookup_trait_def(trait_ref.def_id);
 
+        // This edge is actually implied by the call to
+        // `lookup_trait_def`, but I'm trying to be future-proof. See
+        // README.md for a discussion on dep-graph management.
+        self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
+
         self.add_constraints_from_substs(
             generics,
             trait_ref.def_id,
@@ -345,6 +356,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::TyStruct(def, substs) => {
                 let item_type = self.tcx().lookup_item_type(def.did);
 
+                // This edge is actually implied by the call to
+                // `lookup_trait_def`, but I'm trying to be future-proof. See
+                // README.md for a discussion on dep-graph management.
+                self.tcx().dep_graph.read(ItemVariances::to_dep_node(&def.did));
+
                 // All type parameters on enums and structs should be
                 // in the TypeSpace.
                 assert!(item_type.generics.types.is_empty_in(subst::SelfSpace));
@@ -364,6 +380,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::TyProjection(ref data) => {
                 let trait_ref = &data.trait_ref;
                 let trait_def = self.tcx().lookup_trait_def(trait_ref.def_id);
+
+                // This edge is actually implied by the call to
+                // `lookup_trait_def`, but I'm trying to be future-proof. See
+                // README.md for a discussion on dep-graph management.
+                self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
+
                 self.add_constraints_from_substs(
                     generics,
                     trait_ref.def_id,
@@ -423,7 +445,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
         }
     }
-
 
     /// Adds constraints appropriate for a nominal type (enum, struct,
     /// object, etc) appearing in a context with ambient variance `variance`

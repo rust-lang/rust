@@ -12,7 +12,6 @@
 //! parameters. See README.md for details.
 
 use arena;
-use dep_graph::DepNode;
 use middle::ty;
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -29,11 +28,9 @@ mod solve;
 mod xform;
 
 pub fn infer_variance(tcx: &ty::ctxt) {
-    let _task = tcx.dep_graph.in_task(DepNode::Variance);
-    let krate = tcx.map.krate();
     let mut arena = arena::TypedArena::new();
-    let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena, krate);
-    let constraints_cx = constraints::add_constraints_from_crate(terms_cx, krate);
+    let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
+    let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
     solve::solve_constraints(constraints_cx);
     tcx.variance_computed.set(true);
 }

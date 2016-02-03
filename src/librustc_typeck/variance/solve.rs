@@ -96,6 +96,13 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         // item id).
 
         let tcx = self.terms_cx.tcx;
+
+        // Ignore the writes here because the relevant edges were
+        // already accounted for in `constraints.rs`. See the section
+        // on dependency graph management in README.md for more
+        // information.
+        let _ignore = tcx.dep_graph.in_ignore();
+
         let solutions = &self.solutions;
         let inferred_infos = &self.terms_cx.inferred_infos;
         let mut index = 0;
