@@ -5,6 +5,7 @@ use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::Span;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
+use rustc::middle::const_eval;
 use syntax::ast::IntTy::*;
 use syntax::ast::UintTy::*;
 use syntax::ast::FloatTy::*;
@@ -558,52 +559,158 @@ impl LateLintPass for CharLitAsU8 {
     }
 }
 
-/// **What it does:** This lint checks for expressions where an unsigned integer is tested to be non-positive and suggests testing for equality with zero instead.
+/// **What it does:** This lint checks for comparisons where one side of the relation is either the minimum or maximum value for its type and warns if it involves a case that is always true or always false. Only integer and boolean types are checked.
 ///
-/// **Why is this bad?** `x <= 0` may mislead the reader into thinking `x` can be negative. `x == 0` makes explicit that zero is the only possibility.
+/// **Why is this bad?** An expression like `min <= x` may misleadingly imply that is is possible for `x` to be less than the minimum. Expressions like `max < x` are probably mistakes.
 ///
 /// **Known problems:** None
 ///
-/// **Example:** `vec.len() <= 0`
-declare_lint!(pub ABSURD_UNSIGNED_COMPARISONS, Warn,
-              "testing whether an unsigned integer is non-positive");
+/// **Example:** `vec.len() <= 0`, `100 > std::i32::MAX`
+declare_lint!(pub ABSURD_EXTREME_COMPARISONS, Warn,
+              "a comparison involving a maximum or minimum value involves a case that is always \
+               true or always false");
 
-pub struct AbsurdUnsignedComparisons;
+pub struct AbsurdExtremeComparisons;
 
-impl LintPass for AbsurdUnsignedComparisons {
+impl LintPass for AbsurdExtremeComparisons {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ABSURD_UNSIGNED_COMPARISONS)
+        lint_array!(ABSURD_EXTREME_COMPARISONS)
     }
 }
 
-fn is_zero_lit(expr: &Expr) -> bool {
-    use syntax::ast::Lit_;
+enum ExtremeType {
+    Minimum,
+    Maximum,
+}
 
-    if let ExprLit(ref l) = expr.node {
-        if let Lit_::LitInt(val, _) = l.node {
-            return val == 0;
+struct ExtremeExpr<'a> {
+    which: ExtremeType,
+    expr: &'a Expr,
+}
+
+enum AbsurdComparisonResult {
+    AlwaysFalse,
+    AlwaysTrue,
+    InequalityImpossible,
+}
+
+fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
+                            -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
+    use types::ExtremeType::*;
+    use types::AbsurdComparisonResult::*;
+    type Extr<'a> = ExtremeExpr<'a>;
+
+    // Put the expression in the form lhs < rhs or lhs <= rhs.
+    enum Rel { Lt, Le };
+    let (rel, lhs2, rhs2) = match op {
+        BiLt => (Rel::Lt, lhs, rhs),
+        BiLe => (Rel::Le, lhs, rhs),
+        BiGt => (Rel::Lt, rhs, lhs),
+        BiGe => (Rel::Le, rhs, lhs),
+        _ => return None,
+    };
+
+    let lx = detect_extreme_expr(cx, lhs2);
+    let rx = detect_extreme_expr(cx, rhs2);
+
+    Some(match rel {
+        Rel::Lt => {
+            match (lx, rx) {
+                (Some(l @ Extr { which: Maximum, ..}), _) => (l, AlwaysFalse), // max < x
+                (_, Some(r @ Extr { which: Minimum, ..})) => (r, AlwaysFalse), // x < min
+                _ => return None,
+            }
         }
-    }
-    false
+        Rel::Le => {
+            match (lx, rx) {
+                (Some(l @ Extr { which: Minimum, ..}), _) => (l, AlwaysTrue), // min <= x
+                (Some(l @ Extr { which: Maximum, ..}), _) => (l, InequalityImpossible), //max <= x
+                (_, Some(r @ Extr { which: Minimum, ..})) => (r, InequalityImpossible), // x <= min
+                (_, Some(r @ Extr { which: Maximum, ..})) => (r, AlwaysTrue), // x <= max
+                _ => return None,
+            }
+        }
+    })
 }
 
-impl LateLintPass for AbsurdUnsignedComparisons {
+fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeExpr<'a>> {
+    use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+    use types::ExtremeType::*;
+    use rustc::middle::const_eval::ConstVal::*;
+
+    let ty = &cx.tcx.expr_ty(expr).sty;
+
+    match *ty {
+        ty::TyBool | ty::TyInt(_) | ty::TyUint(_) => (),
+        _ => return None,
+    };
+
+    let cv = match const_eval::eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
+        Ok(val) => val,
+        Err(_) => return None,
+    };
+
+    let which = match (ty, cv) {
+        (&ty::TyBool, Bool(false)) => Minimum,
+
+        (&ty::TyInt(TyIs), Int(x)) if x == ::std::isize::MIN as i64 => Minimum,
+        (&ty::TyInt(TyI8), Int(x)) if x == ::std::i8::MIN as i64 => Minimum,
+        (&ty::TyInt(TyI16), Int(x)) if x == ::std::i16::MIN as i64 => Minimum,
+        (&ty::TyInt(TyI32), Int(x)) if x == ::std::i32::MIN as i64 => Minimum,
+        (&ty::TyInt(TyI64), Int(x)) if x == ::std::i64::MIN as i64 => Minimum,
+
+        (&ty::TyUint(TyUs), Uint(x)) if x == ::std::usize::MIN as u64 => Minimum,
+        (&ty::TyUint(TyU8), Uint(x)) if x == ::std::u8::MIN as u64 => Minimum,
+        (&ty::TyUint(TyU16), Uint(x)) if x == ::std::u16::MIN as u64 => Minimum,
+        (&ty::TyUint(TyU32), Uint(x)) if x == ::std::u32::MIN as u64 => Minimum,
+        (&ty::TyUint(TyU64), Uint(x)) if x == ::std::u64::MIN as u64 => Minimum,
+
+        (&ty::TyBool, Bool(true)) => Maximum,
+
+        (&ty::TyInt(TyIs), Int(x)) if x == ::std::isize::MAX as i64 => Maximum,
+        (&ty::TyInt(TyI8), Int(x)) if x == ::std::i8::MAX as i64 => Maximum,
+        (&ty::TyInt(TyI16), Int(x)) if x == ::std::i16::MAX as i64 => Maximum,
+        (&ty::TyInt(TyI32), Int(x)) if x == ::std::i32::MAX as i64 => Maximum,
+        (&ty::TyInt(TyI64), Int(x)) if x == ::std::i64::MAX as i64 => Maximum,
+
+        (&ty::TyUint(TyUs), Uint(x)) if x == ::std::usize::MAX as u64 => Maximum,
+        (&ty::TyUint(TyU8), Uint(x)) if x == ::std::u8::MAX as u64 => Maximum,
+        (&ty::TyUint(TyU16), Uint(x)) if x == ::std::u16::MAX as u64 => Maximum,
+        (&ty::TyUint(TyU32), Uint(x)) if x == ::std::u32::MAX as u64 => Maximum,
+        (&ty::TyUint(TyU64), Uint(x)) if x == ::std::u64::MAX as u64 => Maximum,
+
+        _ => return None,
+    };
+    Some(ExtremeExpr { which: which, expr: expr })
+}
+
+impl LateLintPass for AbsurdExtremeComparisons {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        use types::ExtremeType::*;
+        use types::AbsurdComparisonResult::*;
+
         if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
-            let op = cmp.node;
-
-            let comparee = match op {
-                BiLe if is_zero_lit(rhs) => lhs, // x <= 0
-                BiGe if is_zero_lit(lhs) => rhs, // 0 >= x
-                _ => return,
-            };
-
-            if let ty::TyUint(_) = cx.tcx.expr_ty(comparee).sty {
+            if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
                 if !in_macro(cx, expr.span) {
-                    let msg = "testing whether an unsigned integer is non-positive";
-                    let help = format!("consider using {} == 0 instead",
-                                       snippet(cx, comparee.span, "x"));
-                    span_help_and_lint(cx, ABSURD_UNSIGNED_COMPARISONS, expr.span, msg, &help);
+                    let msg = "this comparison involving the minimum or maximum element for this \
+                               type contains a case that is always true or always false";
+
+                    let conclusion = match result {
+                        AlwaysFalse => "this comparison is always false".to_owned(),
+                        AlwaysTrue => "this comparison is always true".to_owned(),
+                        InequalityImpossible =>
+                            format!("the case where the two sides are not equal never occurs, \
+                                     consider using {} == {} instead",
+                                    snippet(cx, lhs.span, "lhs"),
+                                    snippet(cx, rhs.span, "rhs")),
+                    };
+
+                    let help = format!("because {} is the {} value for this type, {}",
+                                       snippet(cx, culprit.expr.span, "x"),
+                                       match culprit.which { Minimum => "minimum", Maximum => "maximum" },
+                                       conclusion);
+
+                    span_help_and_lint(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, &help);
                 }
             }
         }
