@@ -34,10 +34,10 @@ struct CFG<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// The `BlockAnd` "monad" packages up the new basic block along with a
-// produced value (sometimes just unit, of course). The `unpack!`
-// macro (and methods below) makes working with `BlockAnd` much more
-// convenient.
+/// The `BlockAnd` "monad" packages up the new basic block along with a
+/// produced value (sometimes just unit, of course). The `unpack!`
+/// macro (and methods below) makes working with `BlockAnd` much more
+/// convenient.
 
 #[must_use] // if you don't use one of these results, you're leaving a dangling edge
 pub struct BlockAnd<T>(BasicBlock, T);
@@ -77,7 +77,7 @@ macro_rules! unpack {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// construct() -- the main entry point for building MIR for a function
+/// the main entry point for building MIR for a function
 
 pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                           _span: Span,
