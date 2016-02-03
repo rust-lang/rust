@@ -11,6 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use DefModifiers;
+use DefOrModule;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use NameBinding;
@@ -50,7 +51,7 @@ pub enum Shadowable {
 }
 
 /// One import directive.
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct ImportDirective {
     pub module_path: Vec<Name>,
     pub subclass: ImportDirectiveSubclass,
@@ -140,9 +141,11 @@ impl<'a> ImportResolution<'a> {
     }
 }
 
-struct ImportResolvingError {
+struct ImportResolvingError<'a> {
+    /// Module where the error happened
+    source_module: Module<'a>,
+    import_directive: ImportDirective,
     span: Span,
-    path: String,
     help: String,
 }
 
@@ -181,9 +184,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // resolving failed
                 if errors.len() > 0 {
                     for e in errors {
-                        resolve_error(self.resolver,
-                                      e.span,
-                                      ResolutionError::UnresolvedImport(Some((&e.path, &e.help))));
+                        self.import_resolving_error(e)
                     }
                 } else {
                     // Report unresolved imports only if no hard error was already reported
@@ -200,11 +201,55 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
     }
 
+    /// Resolves an `ImportResolvingError` into the correct enum discriminant
+    /// and passes that on to `resolve_error`.
+    fn import_resolving_error(&self, e: ImportResolvingError) {
+        // If it's a single failed import then create a "fake" import
+        // resolution for it so that later resolve stages won't complain.
+        if let SingleImport(target, _) = e.import_directive.subclass {
+            let mut import_resolutions = e.source_module.import_resolutions.borrow_mut();
+
+            let resolution = import_resolutions.entry((target, ValueNS)).or_insert_with(|| {
+                debug!("(resolving import error) adding import resolution for `{}`",
+                       target);
+
+                ImportResolution::new(e.import_directive.id,
+                                      e.import_directive.is_public)
+            });
+
+            if resolution.target.is_none() {
+                debug!("(resolving import error) adding fake target to import resolution of `{}`",
+                       target);
+
+                let name_binding = NameBinding {
+                    modifiers: DefModifiers::IMPORTABLE,
+                    def_or_module: DefOrModule::Def(Def::Err),
+                    span: None,
+                };
+
+                // Create a fake target pointing to a fake name binding in our
+                // own module
+                let target = Target::new(e.source_module,
+                                         name_binding,
+                                         Shadowable::Always);
+
+                resolution.target = Some(target);
+            }
+        }
+
+        let path = import_path_to_string(&e.import_directive.module_path,
+                                         e.import_directive.subclass);
+
+        resolve_error(self.resolver,
+                      e.span,
+                      ResolutionError::UnresolvedImport(Some((&path, &e.help))));
+    }
+
     /// Attempts to resolve imports for the given module and all of its
     /// submodules.
     fn resolve_imports_for_module_subtree(&mut self,
                                           module_: Module<'b>)
-                                          -> Vec<ImportResolvingError> {
+                                          -> Vec<ImportResolvingError<'b>> {
         let mut errors = Vec::new();
         debug!("(resolving imports for module subtree) resolving {}",
                module_to_string(&*module_));
@@ -232,7 +277,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     }
 
     /// Attempts to resolve imports for the given module only.
-    fn resolve_imports_for_module(&mut self, module: Module<'b>) -> Vec<ImportResolvingError> {
+    fn resolve_imports_for_module(&mut self, module: Module<'b>) -> Vec<ImportResolvingError<'b>> {
         let mut errors = Vec::new();
 
         if module.all_imports_resolved() {
@@ -254,9 +299,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         None => (import_directive.span, String::new()),
                     };
                     errors.push(ImportResolvingError {
+                        source_module: module,
+                        import_directive: import_directive.clone(),
                         span: span,
-                        path: import_path_to_string(&import_directive.module_path,
-                                                    import_directive.subclass),
                         help: help,
                     });
                 }
@@ -784,7 +829,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                  namespace_name,
                                  name);
                 span_err!(self.resolver.session, import_directive.span, E0251, "{}", msg);
-           } else {
+            } else {
                 let target = Target::new(containing_module,
                                          name_binding.clone(),
                                          import_directive.shadowable);
