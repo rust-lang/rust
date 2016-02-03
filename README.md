@@ -98,7 +98,7 @@ name                                                                            
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                       | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                         | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_lit_as_bytes](https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes)                     | warn    | calling `as_bytes` on a string literal; suggests using a byte string literal instead
-[string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                           | warn    | calling `String.to_string()` which is a no-op
+[string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                           | warn    | calling `String::to_string` which is inefficient
 [temporary_assignment](https://github.com/Manishearth/rust-clippy/wiki#temporary_assignment)                   | warn    | assignments to temporaries
 [toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                           | warn    | An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take references with `&`.
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                             | warn    | usage of very complex types; recommends factoring out parts into `type` definitions

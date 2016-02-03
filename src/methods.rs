@@ -56,13 +56,14 @@ declare_lint!(pub STR_TO_STRING, Warn,
 
 /// **What it does:** This lint checks for `.to_string()` method calls on values of type `String`. It is `Warn` by default.
 ///
-/// **Why is this bad?** As our string is already owned, this whole operation is basically a no-op, but still creates a clone of the string (which, if really wanted, should be done with `.clone()`).
+/// **Why is this bad?** This is an non-efficient way to clone a `String`, `.clone()` should be used
+/// instead. `String` implements `ToString` mostly for generics.
 ///
 /// **Known problems:** None
 ///
 /// **Example:** `s.to_string()` where `s: String`
 declare_lint!(pub STRING_TO_STRING, Warn,
-              "calling `String.to_string()` which is a no-op");
+              "calling `String::to_string` which is inefficient");
 
 /// **What it does:** This lint checks for methods that should live in a trait implementation of a `std` trait (see [llogiq's blog post](http://llogiq.github.io/2015/07/30/traits.html) for further information) instead of an inherent implementation. It is `Warn` by default.
 ///
@@ -560,7 +561,7 @@ fn lint_to_string(cx: &LateContext, expr: &Expr, to_string_args: &MethodArgs) {
         span_lint(cx,
                   STRING_TO_STRING,
                   expr.span,
-                  "`String.to_string()` is a no-op; use `clone()` to make a copy");
+                  "`String::to_string` is an inefficient way to clone a `String`; use `clone()` instead");
     }
 }
 
