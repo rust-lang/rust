@@ -158,7 +158,7 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     }
 
     // The PowerPC64 big endian ABI doesn't return aggregates in registers
-    if ccx.sess().target.target.arch == "powerpc64" {
+    if ccx.sess().target.target.target_endian == "big" {
         return ArgType::indirect(ty, Some(Attribute::StructRet))
     }
 
