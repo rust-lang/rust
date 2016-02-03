@@ -135,7 +135,7 @@ mod imp {
         Handler { _data: MAIN_ALTSTACK };
     }
 
-    unsafe fn get_stack() -> *mut i8 {
+    unsafe fn get_stackp() -> *mut libc::c_void {
         let stackp = mmap(ptr::null_mut(),
                           SIGSTKSZ,
                           PROT_READ | PROT_WRITE,
@@ -145,11 +145,26 @@ mod imp {
         if stackp == MAP_FAILED {
             panic!("failed to allocate an alternative stack");
         }
-        stackp as *mut i8
+        stackp
+    }
+
+    #[cfg(any(target_os = "linux",
+              target_os = "macos",
+              target_os = "bitrig",
+              target_os = "netbsd",
+              target_os = "openbsd"))]
+    unsafe fn get_stack() -> libc::stack_t {
+        libc::stack_t { ss_sp: get_stackp(), ss_flags: 0, ss_size: SIGSTKSZ }
+    }
+
+    #[cfg(any(target_os = "freebsd",
+              target_os = "dragonfly"))]
+    unsafe fn get_stack() -> libc::stack_t {
+        libc::stack_t { ss_sp: get_stackp() as *mut i8, ss_flags: 0, ss_size: SIGSTKSZ }
     }
 
     pub unsafe fn make_handler() -> Handler {
-        let stack = libc::stack_t { ss_sp: get_stack(), ss_flags: 0, ss_size: SIGSTKSZ }
+        let stack = get_stack();
         sigaltstack(&stack, ptr::null_mut());
         Handler { _data: stack.ss_sp as *mut libc::c_void }
     }
