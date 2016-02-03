@@ -120,7 +120,7 @@ impl Def {
             Def::TyParam(..) | Def::Struct(..) | Def::Trait(..) |
             Def::Method(..) | Def::Const(..) | Def::AssociatedConst(..) |
             Def::PrimTy(..) | Def::Label(..) | Def::SelfTy(..) | Def::Err => {
-                panic!("attempted .def_id() on invalid {:?}", self)
+                panic!("attempted .var_id() on invalid {:?}", self)
             }
         }
     }
