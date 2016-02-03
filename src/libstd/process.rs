@@ -353,11 +353,7 @@ impl fmt::Debug for Command {
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{:?}", self.inner.program));
-        for arg in &self.inner.args {
-            try!(write!(f, " {:?}", arg));
-        }
-        Ok(())
+        self.inner.fmt(f)
     }
 }
 
@@ -886,5 +882,55 @@ mod tests {
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
+    }
+
+    // Regression tests for #30858.
+    #[test]
+    fn test_interior_nul_in_progname_is_error() {
+        match Command::new("has-some-\0\0s-inside").spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_interior_nul_in_arg_is_error() {
+        match Command::new("echo").arg("has-some-\0\0s-inside").spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_interior_nul_in_args_is_error() {
+        match Command::new("echo").args(&["has-some-\0\0s-inside"]).spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_interior_nul_in_current_dir_is_error() {
+        match Command::new("echo").current_dir("has-some-\0\0s-inside").spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
+    }
+
+    // Regression tests for #30862.
+    #[test]
+    fn test_interior_nul_in_env_key_is_error() {
+        match env_cmd().env("has-some-\0\0s-inside", "value").spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_interior_nul_in_env_value_is_error() {
+        match env_cmd().env("key", "has-some-\0\0s-inside").spawn() {
+            Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
+            Ok(_) => panic!(),
+        }
     }
 }

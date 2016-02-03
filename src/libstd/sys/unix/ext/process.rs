@@ -49,17 +49,17 @@ pub trait CommandExt {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
     fn uid(&mut self, id: uid_t) -> &mut process::Command {
-        self.as_inner_mut().uid = Some(id);
+        self.as_inner_mut().uid(id);
         self
     }
 
     fn gid(&mut self, id: gid_t) -> &mut process::Command {
-        self.as_inner_mut().gid = Some(id);
+        self.as_inner_mut().gid(id);
         self
     }
 
     fn session_leader(&mut self, on: bool) -> &mut process::Command {
-        self.as_inner_mut().session_leader = on;
+        self.as_inner_mut().session_leader(on);
         self
     }
 }
