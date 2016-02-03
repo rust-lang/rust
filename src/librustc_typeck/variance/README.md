@@ -93,6 +93,54 @@ failure, but rather because the target type `Foo<Y>` is itself just
 not well-formed. Basically we get to assume well-formedness of all
 types involved before considering variance.
 
+#### Dependency graph management
+
+Because variance works in two phases, if we are not careful, we wind
+up with a muddled mess of a dep-graph. Basically, when gathering up
+the constraints, things are fairly well-structured, but then we do a
+fixed-point iteration and write the results back where they
+belong. You can't give this fixed-point iteration a single task
+because it reads from (and writes to) the variance of all types in the
+crate. In principle, we *could* switch the "current task" in a very
+fine-grained way while propagating constraints in the fixed-point
+iteration and everything would be automatically tracked, but that
+would add some overhead and isn't really necessary anyway.
+
+Instead what we do is to add edges into the dependency graph as we
+construct the constraint set: so, if computing the constraints for
+node `X` requires loading the inference variables from node `Y`, then
+we can add an edge `Y -> X`, since the variance we ultimately infer
+for `Y` will affect the variance we ultimately infer for `X`.
+
+At this point, we've basically mirrored the inference graph in the
+dependency graph. This means we can just completely ignore the
+fixed-point iteration, since it is just shuffling values along this
+graph. In other words, if we added the fine-grained switching of tasks
+I described earlier, all it would show is that we repeatedly read the
+values described by the constraints, but those edges were already
+added when building the constraints in the first place.
+
+Here is how this is implemented (at least as of the time of this
+writing). The associated `DepNode` for the variance map is (at least
+presently) `Signature(DefId)`. This means that, in `constraints.rs`,
+when we visit an item to load up its constraints, we set
+`Signature(DefId)` as the current task (the "memoization" pattern
+described in the `dep-graph` README). Then whenever we find an
+embedded type or trait, we add a synthetic read of `Signature(DefId)`,
+which covers the variances we will compute for all of its
+parameters. This read is synthetic (i.e., we call
+`variance_map.read()`) because, in fact, the final variance is not yet
+computed -- the read *will* occur (repeatedly) during the fixed-point
+iteration phase.
+
+In fact, we don't really *need* this synthetic read. That's because we
+do wind up looking up the `TypeScheme` or `TraitDef` for all
+references types/traits, and those reads add an edge from
+`Signature(DefId)` (that is, they share the same dep node as
+variance). However, I've kept the synthetic reads in place anyway,
+just for future-proofing (in case we change the dep-nodes in the
+future), and because it makes the intention a bit clearer I think.
+
 ### Addendum: Variance on traits
 
 As mentioned above, we used to permit variance on traits. This was
@@ -250,3 +298,5 @@ validly derived as `&'a ()` for any `'a`:
 This change otoh means that `<'static () as Identity>::Out` is
 always `&'static ()` (which might then be upcast to `'a ()`,
 separately). This was helpful in solving #21750.
+
+
