@@ -585,7 +585,6 @@ fi
 BOOL_OPTIONS=""
 VAL_OPTIONS=""
 
-opt option-checking 1 "complain about unrecognized options"
 opt debug 0 "debug mode; disables optimization unless \`--enable-optimize\` given"
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
@@ -610,6 +609,7 @@ opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
 opt rustbuild 0 "use the rust and cargo based build system"
 opt orbit 0 "get MIR where it belongs - everywhere; most importantly, in orbit"
 opt codegen-tests 1 "run the src/test/codegen tests"
+opt option-checking 1 "complain about unrecognized options in this configure script"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
