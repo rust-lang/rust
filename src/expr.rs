@@ -1182,8 +1182,15 @@ fn rewrite_string_lit(context: &RewriteContext,
                       width: usize,
                       offset: Indent)
                       -> Option<String> {
-    if !context.config.format_strings {
-        return Some(context.snippet(span));
+    let string_lit = context.snippet(span);
+
+    if !context.config.format_strings && !context.config.force_format_strings {
+        return Some(string_lit);
+    }
+
+    if !context.config.force_format_strings &&
+       !string_requires_rewrite(context, span, &string_lit, width, offset) {
+        return Some(string_lit);
     }
 
     let fmt = StringFormat {
@@ -1197,10 +1204,35 @@ fn rewrite_string_lit(context: &RewriteContext,
         config: context.config,
     };
 
-    let string_lit = context.snippet(span);
-    let str_lit = &string_lit[1..string_lit.len() - 1]; // Remove the quote characters.
+    // Remove the quote characters.
+    let str_lit = &string_lit[1..string_lit.len() - 1];
 
     rewrite_string(str_lit, &fmt)
+}
+
+fn string_requires_rewrite(context: &RewriteContext,
+                           span: Span,
+                           string: &str,
+                           width: usize,
+                           offset: Indent)
+                           -> bool {
+    if context.codemap.lookup_char_pos(span.lo).col.0 != offset.width() {
+        return true;
+    }
+
+    for (i, line) in string.lines().enumerate() {
+        if i == 0 {
+            if line.len() > width {
+                return true;
+            }
+        } else {
+            if line.len() > width + offset.width() {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 pub fn rewrite_call<R>(context: &RewriteContext,

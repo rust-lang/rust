@@ -1,3 +1,4 @@
+// rustfmt-force_format_strings: true
 // Long string literals
 
 fn main() -> &'static str {
