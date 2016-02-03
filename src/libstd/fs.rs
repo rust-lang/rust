@@ -1531,12 +1531,14 @@ mod tests {
         TempDir(ret)
     }
 
-    // Several test fail on windows if the user does not have permission to create symlinks (the
-    // `SeCreateSymbolicLinkPrivilege`). Instead of disabling these test on Windows, use this
-    // function to test whether we have permission, and return otherwise. This way, we still don't
-    // run these tests most of the time, but at least we do if the user has the right permissions.
-    #[cfg(windows)]
+    // Several test fail on windows if the user does not have permission to
+    // create symlinks (the `SeCreateSymbolicLinkPrivilege`). Instead of
+    // disabling these test on Windows, use this function to test whether we
+    // have permission, and return otherwise. This way, we still don't run these
+    // tests most of the time, but at least we do if the user has the right
+    // permissions.
     pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
+        if cfg!(unix) { return true }
         let link = tmpdir.join("some_hopefully_unique_link_name");
 
         match symlink_file(r"nonexisting_target", link) {
@@ -1549,9 +1551,6 @@ mod tests {
                 }
         }
     }
-    #[cfg(not(windows))]
-    #[allow(unused_variables)]
-    pub fn got_symlink_permission(tmpdir: &TempDir) -> bool { true }
 
     #[test]
     fn file_test_io_smoke_test() {
@@ -2052,10 +2051,11 @@ mod tests {
         let tmpdir = tmpdir();
         if !got_symlink_permission(&tmpdir) { return };
 
-        // Use a relative path for testing. Symlinks get normalized by Windows, so we may not get
-        // the same path back for absolute paths
+        // Use a relative path for testing. Symlinks get normalized by Windows,
+        // so we may not get the same path back for absolute paths
         check!(symlink_file(&"foo", &tmpdir.join("bar")));
-        assert_eq!(check!(fs::read_link(&tmpdir.join("bar"))).to_str().unwrap(), "foo");
+        assert_eq!(check!(fs::read_link(&tmpdir.join("bar"))).to_str().unwrap(),
+                   "foo");
     }
 
     #[test]
@@ -2423,7 +2423,8 @@ mod tests {
 
         check!(symlink_junction(&target, &junction));
         check!(fs::create_dir_all(&b));
-        // the junction itself is not a directory, but `is_dir()` on a Path follows links
+        // the junction itself is not a directory, but `is_dir()` on a Path
+        // follows links
         assert!(junction.is_dir());
         assert!(b.exists());
 
