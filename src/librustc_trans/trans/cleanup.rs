@@ -200,6 +200,7 @@ pub enum UnwindKind {
 pub struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
+    last_cleanup: usize,
 }
 
 pub trait Cleanup<'tcx> {
@@ -560,7 +561,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         for scope in self.scopes.borrow_mut().iter_mut().rev() {
             if scope.kind.is_ast_with_id(cleanup_scope) {
                 scope.cleanups.push(cleanup);
-                scope.clear_cached_exits();
+                scope.cached_landing_pad = None;
                 return;
             } else {
                 // will be adding a cleanup to some enclosing scope
@@ -585,7 +586,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         let mut scopes = self.scopes.borrow_mut();
         let scope = &mut (*scopes)[custom_scope.index];
         scope.cleanups.push(cleanup);
-        scope.clear_cached_exits();
+        scope.cached_landing_pad = None;
     }
 
     /// Returns true if there are pending cleanups that should execute on panic.
@@ -723,6 +724,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         let orig_scopes_len = self.scopes_len();
         let mut prev_llbb;
         let mut popped_scopes = vec!();
+        let mut skip = 0;
 
         // First we pop off all the cleanup stacks that are
         // traversed until the exit is reached, pushing them
@@ -769,20 +771,25 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 }
             }
 
+            // Pop off the scope, since we may be generating
+            // unwinding code for it.
+            let top_scope = self.pop_scope();
+            let cached_exit = top_scope.cached_early_exit(label);
+            popped_scopes.push(top_scope);
+
             // Check if we have already cached the unwinding of this
             // scope for this label. If so, we can stop popping scopes
             // and branch to the cached label, since it contains the
             // cleanups for any subsequent scopes.
-            if let Some(exit) = self.top_scope(|s| s.cached_early_exit(label)) {
+            if let Some((exit, last_cleanup)) = cached_exit {
                 prev_llbb = exit;
+                skip = last_cleanup;
                 break;
             }
 
-            // Pop off the scope, since we will be generating
-            // unwinding code for it. If we are searching for a loop exit,
+            // If we are searching for a loop exit,
             // and this scope is that loop, then stop popping and set
             // `prev_llbb` to the appropriate exit block from the loop.
-            popped_scopes.push(self.pop_scope());
             let scope = popped_scopes.last().unwrap();
             match label {
                 UnwindExit(..) | ReturnExit => { }
@@ -826,13 +833,15 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 let bcx_in = self.new_block(&name[..], None);
                 let exit_label = label.start(bcx_in);
                 let mut bcx_out = bcx_in;
-                for cleanup in scope.cleanups.iter().rev() {
+                let len = scope.cleanups.len();
+                for cleanup in scope.cleanups.iter().rev().take(len - skip) {
                     bcx_out = cleanup.trans(bcx_out, scope.debug_loc);
                 }
+                skip = 0;
                 exit_label.branch(bcx_out, prev_llbb);
                 prev_llbb = bcx_in.llbb;
 
-                scope.add_cached_early_exit(exit_label, prev_llbb);
+                scope.add_cached_early_exit(exit_label, prev_llbb, len);
             }
             self.push_scope(scope);
         }
@@ -938,18 +947,20 @@ impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
 
     fn cached_early_exit(&self,
                          label: EarlyExitLabel)
-                         -> Option<BasicBlockRef> {
-        self.cached_early_exits.iter().
+                         -> Option<(BasicBlockRef, usize)> {
+        self.cached_early_exits.iter().rev().
             find(|e| e.label == label).
-            map(|e| e.cleanup_block)
+            map(|e| (e.cleanup_block, e.last_cleanup))
     }
 
     fn add_cached_early_exit(&mut self,
                              label: EarlyExitLabel,
-                             blk: BasicBlockRef) {
+                             blk: BasicBlockRef,
+                             last_cleanup: usize) {
         self.cached_early_exits.push(
             CachedEarlyExit { label: label,
-                              cleanup_block: blk });
+                              cleanup_block: blk,
+                              last_cleanup: last_cleanup});
     }
 
     /// True if this scope has cleanups that need unwinding
