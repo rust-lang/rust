@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
 
-use syntax::ast::Lit_::*;
+use syntax::ast::Lit_;
 
 use unicode_normalization::UnicodeNormalization;
 
@@ -51,7 +51,7 @@ impl LintPass for Unicode {
 impl LateLintPass for Unicode {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprLit(ref lit) = expr.node {
-            if let LitStr(_, _) = lit.node {
+            if let Lit_::LitStr(_, _) = lit.node {
                 check_str(cx, lit.span)
             }
         }

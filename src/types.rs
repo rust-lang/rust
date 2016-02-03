@@ -5,9 +5,7 @@ use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::Span;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
-use syntax::ast::IntTy::*;
-use syntax::ast::UintTy::*;
-use syntax::ast::FloatTy::*;
+use syntax::ast::{IntTy, UintTy, FloatTy};
 
 use utils::*;
 
@@ -217,7 +215,7 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
 
 fn is_isize_or_usize(typ: &ty::TyS) -> bool {
     match typ.sty {
-        ty::TyInt(TyIs) | ty::TyUint(TyUs) => true,
+        ty::TyInt(IntTy::TyIs) | ty::TyUint(UintTy::TyUs) => true,
         _ => false,
     }
 }
@@ -342,7 +340,7 @@ impl LateLintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits = if let ty::TyFloat(TyF32) = cast_to.sty {
+                        let to_nbits = if let ty::TyFloat(FloatTy::TyF32) = cast_to.sty {
                             32
                         } else {
                             64
@@ -373,7 +371,7 @@ impl LateLintPass for CastPass {
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                     }
                     (false, false) => {
-                        if let (&ty::TyFloat(TyF64), &ty::TyFloat(TyF32)) = (&cast_from.sty, &cast_to.sty) {
+                        if let (&ty::TyFloat(FloatTy::TyF64), &ty::TyFloat(FloatTy::TyF32)) = (&cast_from.sty, &cast_to.sty) {
                             span_lint(cx,
                                       CAST_POSSIBLE_TRUNCATION,
                                       expr.span,

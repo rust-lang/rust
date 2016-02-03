@@ -5,7 +5,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 
-use syntax::ast::Lit_::*;
+use syntax::ast::Lit_;
 
 use utils::{span_lint, snippet};
 
@@ -90,7 +90,7 @@ fn fetch_bool_expr(expr: &Expr) -> Option<bool> {
     match expr.node {
         ExprBlock(ref block) => fetch_bool_block(block),
         ExprLit(ref lit_ptr) => {
-            if let LitBool(value) = lit_ptr.node {
+            if let Lit_::LitBool(value) = lit_ptr.node {
                 Some(value)
             } else {
                 None
