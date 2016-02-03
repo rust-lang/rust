@@ -1,6 +1,6 @@
 -include ../tools.mk
 
-SKIP_OS := 'FreeBSD OpenBSD Bitrig'
+SKIP_OS := 'FreeBSD OpenBSD Bitrig SunOS'
 
 ifneq ($(UNAME),$(findstring $(UNAME),$(SKIP_OS)))
 

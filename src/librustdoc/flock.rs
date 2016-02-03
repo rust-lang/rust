@@ -111,6 +111,25 @@ mod imp {
         pub const F_SETLKW: libc::c_int = 9;
     }
 
+    #[cfg(target_os = "solaris")]
+    mod os {
+        use libc;
+
+        pub struct flock {
+            pub l_type: libc::c_short,
+            pub l_whence: libc::c_short,
+            pub l_start: libc::off_t,
+            pub l_len: libc::off_t,
+            pub l_sysid: libc::c_int,
+            pub l_pid: libc::pid_t,
+        }
+
+        pub const F_WRLCK: libc::c_short = 2;
+        pub const F_UNLCK: libc::c_short = 3;
+        pub const F_SETLK: libc::c_int = 6;
+        pub const F_SETLKW: libc::c_int = 7;
+    }
+
     pub struct Lock {
         fd: libc::c_int,
     }

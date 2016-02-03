@@ -131,6 +131,9 @@ impl<'a> Linker for GnuLinker<'a> {
         // insert it here.
         if self.sess.target.target.options.is_like_osx {
             self.cmd.arg("-Wl,-dead_strip");
+        } else if self.sess.target.target.options.is_like_solaris {
+            self.cmd.arg("-Wl,-z");
+            self.cmd.arg("-Wl,ignore");
 
         // If we're building a dylib, we don't use --gc-sections because LLVM
         // has already done the best it can do, and we also don't want to

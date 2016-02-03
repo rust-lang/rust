@@ -25,6 +25,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("openbsd", "openbsd"),
     ("win32", "windows"),
     ("windows", "windows"),
+    ("solaris", "solaris"),
 ];
 
 const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
