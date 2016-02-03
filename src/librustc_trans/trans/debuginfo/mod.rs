@@ -200,6 +200,13 @@ pub fn finalize(cx: &CrateContext) {
                                         2)
         }
 
+        // Indicate that we want CodeView debug information on MSVC
+        if cx.sess().target.target.options.is_like_msvc {
+            llvm::LLVMRustAddModuleFlag(cx.llmod(),
+                                        "CodeView\0".as_ptr() as *const _,
+                                        1)
+        }
+
         // Prevent bitcode readers from deleting the debug info.
         let ptr = "Debug Info Version\0".as_ptr();
         llvm::LLVMRustAddModuleFlag(cx.llmod(), ptr as *const _,
