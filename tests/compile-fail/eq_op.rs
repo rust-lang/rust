@@ -19,9 +19,9 @@ fn main() {
     // unary and binary operators
     (-(2) < -(2));  //~ERROR equal expressions
     ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
-          //~^ ERROR equal expressions
-                    //~^^ ERROR equal expressions
-                               //~^^^ ERROR equal expressions
+          //~^ ERROR equal expressions as operands to `==`
+                    //~^^ ERROR equal expressions as operands to `&`
+                               //~^^^ ERROR equal expressions as operands to `&`
     (1 * 2) + (3 * 4) == 1 * 2 + 3 * 4; //~ERROR equal expressions
 
     // various other things
@@ -31,7 +31,13 @@ fn main() {
 
     // const folding
     1 + 1 == 2; //~ERROR equal expressions
-    1 - 1 == 0; //~ERROR equal expressions
+    1 - 1 == 0; //~ERROR equal expressions as operands to `==`
+                //~^ ERROR equal expressions as operands to `-`
+
+    1 - 1; //~ERROR equal expressions
+    1 / 1; //~ERROR equal expressions
+    true && true; //~ERROR equal expressions
+    true || true; //~ERROR equal expressions
 
     let mut a = vec![1];
     a == a; //~ERROR equal expressions
