@@ -54,10 +54,12 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{self, ToJson};
 use syntax::{abi, ast};
+use syntax::feature_gate::UnstableFeatures;
 use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
+use rustc::session::config::get_unstable_features_setting;
 use rustc_front::hir;
 
 use clean::{self, SelfTy};
@@ -1897,10 +1899,14 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
+    let vis_constness = match get_unstable_features_setting() {
+        UnstableFeatures::Allow => f.constness,
+        _ => hir::Constness::NotConst
+    };
     try!(write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
                     {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
-           constness = ConstnessSpace(f.constness),
+           constness = ConstnessSpace(vis_constness),
            unsafety = UnsafetySpace(f.unsafety),
            abi = AbiSpace(f.abi),
            name = it.name.as_ref().unwrap(),
@@ -2122,9 +2128,13 @@ fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
                 href(did).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
             }
         };
+        let vis_constness = match get_unstable_features_setting() {
+            UnstableFeatures::Allow => constness,
+            _ => hir::Constness::NotConst
+        };
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
-               ConstnessSpace(constness),
+               ConstnessSpace(vis_constness),
                UnsafetySpace(unsafety),
                match abi {
                    Abi::Rust => String::new(),
