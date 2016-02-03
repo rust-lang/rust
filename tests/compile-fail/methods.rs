@@ -267,7 +267,7 @@ fn main() {
 
     let v = &"str";
     let string = v.to_string();  //~ERROR `(*v).to_owned()` is faster
-    let _again = string.to_string();  //~ERROR `String.to_string()` is a no-op
+    let _again = string.to_string();  //~ERROR `String::to_string` is an inefficient way to clone a `String`; use `clone()` instead
 
     res.ok().expect("disaster!"); //~ERROR called `ok().expect()`
     // the following should not warn, since `expect` isn't implemented unless
