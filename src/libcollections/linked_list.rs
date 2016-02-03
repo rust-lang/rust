@@ -82,7 +82,7 @@ pub struct IterMut<'a, T: 'a> {
     nelem: usize,
 }
 
-/// An iterator over mutable references to the items of a `LinkedList`.
+/// An iterator over the items of a `LinkedList`.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
