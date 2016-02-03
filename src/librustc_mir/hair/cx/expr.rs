@@ -15,7 +15,7 @@ use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::front::map;
 use rustc::middle::def::Def;
-use rustc::middle::const_eval;
+use rustc_const_eval::eval::eval_const_expr;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::pat_util;
 use rustc::middle::ty::{self, VariantDef, Ty};
@@ -329,7 +329,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 count: TypedConstVal {
                     ty: cx.tcx.expr_ty(c),
                     span: c.span,
-                    value: const_eval::eval_const_expr(cx.tcx, c)
+                    value: eval_const_expr(cx.tcx, c)
                 }
             },
             hir::ExprRet(ref v) =>

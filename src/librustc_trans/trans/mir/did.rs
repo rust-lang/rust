@@ -14,7 +14,7 @@ use syntax::codemap::DUMMY_SP;
 use rustc::front::map;
 use rustc::middle::ty::{self, Ty, TypeFoldable};
 use rustc::middle::subst::Substs;
-use rustc::middle::const_eval;
+use rustc_const_eval::eval::lookup_const_by_id;
 use rustc::middle::def_id::DefId;
 use rustc::middle::traits;
 use rustc::mir::repr::ItemKind;
@@ -49,7 +49,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             },
             ItemKind::Constant => {
                 let did = inline::maybe_instantiate_inline(bcx.ccx(), did);
-                let expr = const_eval::lookup_const_by_id(bcx.tcx(), did, None, Some(substs))
+                let expr = lookup_const_by_id(bcx.tcx(), did, None, Some(substs))
                             .expect("def was const, but lookup_const_by_id failed");
                 // FIXME: this is falling back to translating from HIR. This is not easy to fix,
                 // because we would have somehow adapt const_eval to work on MIR rather than HIR.

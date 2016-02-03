@@ -15,17 +15,18 @@ use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
 use middle::cstore::LOCAL_CRATE;
-use middle::const_eval::{self, ConstVal, ConstEvalErr};
-use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
-use middle::const_eval::{const_int_checked_add, const_uint_checked_add};
-use middle::const_eval::{const_int_checked_sub, const_uint_checked_sub};
-use middle::const_eval::{const_int_checked_mul, const_uint_checked_mul};
-use middle::const_eval::{const_int_checked_div, const_uint_checked_div};
-use middle::const_eval::{const_int_checked_rem, const_uint_checked_rem};
-use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
-use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
-use middle::const_eval::EvalHint::ExprTypeChecked;
-use middle::const_eval::eval_const_expr_partial;
+use rustc_const_eval::eval as const_eval;
+use rustc_const_eval::eval::{ConstVal, ConstEvalErr};
+use rustc_const_eval::eval::{const_int_checked_neg, const_uint_checked_neg};
+use rustc_const_eval::eval::{const_int_checked_add, const_uint_checked_add};
+use rustc_const_eval::eval::{const_int_checked_sub, const_uint_checked_sub};
+use rustc_const_eval::eval::{const_int_checked_mul, const_uint_checked_mul};
+use rustc_const_eval::eval::{const_int_checked_div, const_uint_checked_div};
+use rustc_const_eval::eval::{const_int_checked_rem, const_uint_checked_rem};
+use rustc_const_eval::eval::{const_int_checked_shl, const_uint_checked_shl};
+use rustc_const_eval::eval::{const_int_checked_shr, const_uint_checked_shr};
+use rustc_const_eval::eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::eval::{eval_const_expr_partial, eval_repeat_count};
 use middle::def::Def;
 use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
@@ -870,7 +871,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
-            let n = cx.tcx().eval_repeat_count(count);
+            let n = eval_repeat_count(cx.tcx(), count);
             let unit_val = try!(const_expr(cx, &**elem, param_substs, fn_args, trueconst)).0;
             let vs = vec![unit_val; n];
             if val_ty(unit_val) != llunitty {

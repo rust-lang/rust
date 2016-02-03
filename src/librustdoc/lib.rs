@@ -44,6 +44,7 @@ extern crate serialize;
 extern crate syntax;
 extern crate test as testing;
 extern crate rustc_unicode;
+extern crate rustc_const_eval;
 #[macro_use] extern crate log;
 
 extern crate serialize as rustc_serialize; // used by deriving

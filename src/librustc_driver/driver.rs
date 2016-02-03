@@ -831,7 +831,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes,
              "match checking",
-             || middle::check_match::check_crate(tcx));
+             || ::rustc_const_eval::matches::check_crate(tcx));
 
         let mir_map =
             time(time_passes,

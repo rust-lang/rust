@@ -11,7 +11,7 @@
 use hair::*;
 use hair::cx::Cx;
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc::middle::const_eval;
+use rustc_const_eval::eval::{eval_const_expr, lookup_const_by_id, const_expr_to_pat};
 use rustc::middle::def::Def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
 use rustc::middle::ty::{self, Ty};
@@ -67,14 +67,14 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             hir::PatWild => PatternKind::Wild,
 
             hir::PatLit(ref value) => {
-                let value = const_eval::eval_const_expr(self.cx.tcx, value);
+                let value = eval_const_expr(self.cx.tcx, value);
                 PatternKind::Constant { value: value }
             }
 
             hir::PatRange(ref lo, ref hi) => {
-                let lo = const_eval::eval_const_expr(self.cx.tcx, lo);
+                let lo = eval_const_expr(self.cx.tcx, lo);
                 let lo = Literal::Value { value: lo };
-                let hi = const_eval::eval_const_expr(self.cx.tcx, hi);
+                let hi = eval_const_expr(self.cx.tcx, hi);
                 let hi = Literal::Value { value: hi };
                 PatternKind::Range { lo: lo, hi: hi }
             },
@@ -85,11 +85,9 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
                 match def {
                     Def::Const(def_id) | Def::AssociatedConst(def_id) =>
-                        match const_eval::lookup_const_by_id(self.cx.tcx, def_id,
-                                                             Some(pat.id), None) {
+                        match lookup_const_by_id(self.cx.tcx, def_id, Some(pat.id), None) {
                             Some(const_expr) => {
-                                let pat = const_eval::const_expr_to_pat(self.cx.tcx, const_expr,
-                                                                        pat.span);
+                                let pat = const_expr_to_pat(self.cx.tcx, const_expr, pat.span);
                                 return self.to_pattern(&*pat);
                             }
                             None => {

@@ -49,8 +49,8 @@
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
 use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_projection};
-use middle::const_eval::{self, ConstVal};
-use middle::const_eval::EvalHint::UncheckedExprHint;
+use rustc_const_eval::eval::{ConstVal, eval_const_expr_partial};
+use rustc_const_eval::eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
@@ -1683,7 +1683,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         hir::TyFixedLengthVec(ref ty, ref e) => {
             let hint = UncheckedExprHint(tcx.types.usize);
-            match const_eval::eval_const_expr_partial(tcx, &e, hint, None) {
+            match eval_const_expr_partial(tcx, &e, hint, None) {
                 Ok(r) => {
                     match r {
                         ConstVal::Int(i) =>

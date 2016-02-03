@@ -22,7 +22,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
 use rustc::middle::subst;
 use rustc::middle::stability;
-use rustc::middle::const_eval;
+use rustc_const_eval::eval::lookup_const_by_id;
 
 use core::DocContext;
 use doctree;
@@ -322,7 +322,7 @@ pub fn build_impl(cx: &DocContext,
                 let did = assoc_const.def_id;
                 let type_scheme = tcx.lookup_item_type(did);
                 let default = if assoc_const.has_value {
-                    Some(const_eval::lookup_const_by_id(tcx, did, None, None)
+                    Some(lookup_const_by_id(tcx, did, None, None)
                          .unwrap().span.to_src(cx))
                 } else {
                     None
@@ -477,10 +477,9 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
 
 fn build_const(cx: &DocContext, tcx: &ty::ctxt,
                did: DefId) -> clean::Constant {
-    use rustc::middle::const_eval;
     use rustc_front::print::pprust;
 
-    let expr = const_eval::lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
+    let expr = lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });
     debug!("converting constant expr {:?} to snippet", expr);

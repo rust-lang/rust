@@ -8,25 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::Constructor::*;
+use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use dep_graph::DepNode;
-use middle::const_eval::{compare_const_vals, ConstVal};
-use middle::const_eval::{eval_const_expr, eval_const_expr_partial};
-use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
-use middle::const_eval::EvalHint::ExprTypeChecked;
-use middle::def::*;
-use middle::def_id::{DefId};
-use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
-use middle::expr_use_visitor::{LoanCause, MutateMode};
-use middle::expr_use_visitor as euv;
-use middle::infer;
-use middle::mem_categorization::{cmt};
-use middle::pat_util::*;
-use middle::ty::*;
-use middle::ty;
+use rustc::dep_graph::DepNode;
+use eval::{compare_const_vals, ConstVal};
+use eval::{eval_const_expr, eval_const_expr_partial};
+use eval::{const_expr_to_pat, lookup_const_by_id};
+use eval::EvalHint::ExprTypeChecked;
+use rustc::middle::def::*;
+use rustc::middle::def_id::{DefId};
+use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
+use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
+use rustc::middle::expr_use_visitor as euv;
+use rustc::middle::infer;
+use rustc::middle::mem_categorization::{cmt};
+use rustc::middle::pat_util::*;
+use rustc::middle::ty::*;
+use rustc::middle::ty;
+
 use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
@@ -43,9 +44,9 @@ use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use rustc_front::fold::{Folder, noop_fold_pat};
 use rustc_front::print::pprust::pat_to_string;
 use syntax::ptr::P;
-use util::nodemap::FnvHashMap;
+use rustc::util::nodemap::FnvHashMap;
 
-pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
+const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
     node: hir::PatWild,
     span: DUMMY_SP
@@ -377,9 +378,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
                 hir::MatchSource::ForLoopDesugar => {
                     // `witnesses[0]` has the form `Some(<head>)`, peel off the `Some`
                     let witness = match witnesses[0].node {
-                        hir::PatEnum(_, Some(ref pats)) => match &pats[..] {
-                            [ref pat] => &**pat,
-                            _ => unreachable!(),
+                        hir::PatEnum(_, Some(ref pats)) => {
+                            assert_eq!(pats.len(), 1);
+                            &pats[0]
                         },
                         _ => unreachable!(),
                     };
@@ -433,9 +434,9 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
 }
 
 pub struct StaticInliner<'a, 'tcx: 'a> {
-    pub tcx: &'a ty::ctxt<'tcx>,
-    pub failed: bool,
-    pub renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
+    tcx: &'a ty::ctxt<'tcx>,
+    failed: bool,
+    renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
@@ -533,7 +534,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
         ty::TyTuple(_) => hir::PatTup(pats.collect()),
 
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
-            let v = adt.variant_of_ctor(ctor);
+            let v = ctor.variant(adt);
             if let VariantKind::Struct = v.kind() {
                 let field_pats: hir::HirVec<_> = v.fields.iter()
                     .zip(pats)
@@ -598,13 +599,13 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
     })
 }
 
-impl<'tcx, 'container> ty::AdtDefData<'tcx, 'container> {
-    fn variant_of_ctor(&self,
-                       ctor: &Constructor)
-                       -> &VariantDefData<'tcx, 'container> {
-        match ctor {
-            &Variant(vid) => self.variant_with_id(vid),
-            _ => self.struct_variant()
+impl Constructor {
+    fn variant<'a, 'tcx, 'container>(&self,
+                                     adt: &'a ty::AdtDefData<'tcx, 'container>)
+                                     -> &'a VariantDefData<'tcx, 'container> {
+        match self {
+            &Variant(vid) => adt.variant_with_id(vid),
+            _ => adt.struct_variant(),
         }
     }
 }
@@ -838,7 +839,7 @@ pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> us
             _ => 1
         },
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _) => {
-            adt.variant_of_ctor(ctor).fields.len()
+            ctor.variant(adt).fields.len()
         }
         ty::TyArray(_, n) => n,
         _ => 0
@@ -920,7 +921,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         hir::PatStruct(_, ref pattern_fields, _) => {
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             let adt = cx.tcx.node_id_to_type(pat_id).ty_adt_def().unwrap();
-            let variant = adt.variant_of_ctor(constructor);
+            let variant = constructor.variant(adt);
             let def_variant = adt.variant_of_def(def);
             if variant.did == def_variant.did {
                 Some(variant.fields.iter().map(|sf| {

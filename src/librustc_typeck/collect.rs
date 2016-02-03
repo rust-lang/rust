@@ -65,8 +65,8 @@ use middle::def_id::DefId;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
-use middle::const_eval::{self, ConstVal};
-use middle::const_eval::EvalHint::UncheckedExprHint;
+use rustc_const_eval::eval::{eval_const_expr_partial, ConstVal};
+use rustc_const_eval::eval::EvalHint::UncheckedExprHint;
 use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{self, ToPolyTraitRef, Ty, TypeScheme};
@@ -1041,7 +1041,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
         debug!("disr expr, checking {}", pprust::expr_to_string(e));
 
         let hint = UncheckedExprHint(repr_ty);
-        match const_eval::eval_const_expr_partial(tcx, e, hint, None) {
+        match eval_const_expr_partial(tcx, e, hint, None) {
             Ok(ConstVal::Int(val)) => Some(val as ty::Disr),
             Ok(ConstVal::Uint(val)) => Some(val as ty::Disr),
             Ok(_) => {

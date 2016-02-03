@@ -18,7 +18,8 @@
 use hair::*;
 use rustc::mir::repr::*;
 
-use rustc::middle::const_eval::{self, ConstVal};
+use rustc_const_eval::eval::{ConstVal, eval_const_expr, eval_const_expr_partial};
+use rustc_const_eval::eval::EvalHint::ExprTypeChecked;
 use rustc::middle::infer::InferCtxt;
 use rustc::middle::ty::{self, Ty};
 use syntax::codemap::Span;
@@ -75,12 +76,11 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
-        Literal::Value { value: const_eval::eval_const_expr(self.tcx, e) }
+        Literal::Value { value: eval_const_expr(self.tcx, e) }
     }
 
     pub fn try_const_eval_literal(&mut self, e: &hir::Expr) -> Option<Literal<'tcx>> {
-        let hint = const_eval::EvalHint::ExprTypeChecked;
-        const_eval::eval_const_expr_partial(self.tcx, e, hint, None)
+        eval_const_expr_partial(self.tcx, e, ExprTypeChecked, None)
             .ok()
             .map(|v| Literal::Value { value: v })
     }

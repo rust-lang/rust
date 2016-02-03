@@ -189,9 +189,8 @@ use self::Opt::*;
 use self::FailureHandler::*;
 
 use llvm::{ValueRef, BasicBlockRef};
-use middle::check_match::StaticInliner;
-use middle::check_match;
-use middle::const_eval;
+use rustc_const_eval::matches::{self, Constructor};
+use rustc_const_eval::eval as const_eval;
 use middle::def::{Def, DefMap};
 use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
@@ -405,7 +404,7 @@ struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p hir::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
     bound_ptrs: Vec<(ast::Name, ValueRef)>,
-    // Thread along renamings done by the check_match::StaticInliner, so we can
+    // Thread along renamings done by the StaticInliner, so we can
     // map back to original NodeIds
     pat_renaming_map: Option<&'a FnvHashMap<(NodeId, Span), NodeId>>
 }
@@ -594,7 +593,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// The above is now outdated in that enter_match() now takes a function that
 /// takes the complete row of patterns rather than just the first one.
 /// Also, most of the enter_() family functions have been unified with
-/// the check_match specialization step.
+/// the matches specialization step.
 fn enter_opt<'a, 'p, 'blk, 'tcx>(
              bcx: Block<'blk, 'tcx>,
              _: ast::NodeId,
@@ -614,28 +613,28 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
     let _indenter = indenter();
 
     let ctor = match opt {
-        &ConstantValue(ConstantExpr(expr), _) => check_match::ConstantValue(
+        &ConstantValue(ConstantExpr(expr), _) => Constructor::ConstantValue(
             const_eval::eval_const_expr(bcx.tcx(), &*expr)
         ),
-        &ConstantRange(ConstantExpr(lo), ConstantExpr(hi), _) => check_match::ConstantRange(
+        &ConstantRange(ConstantExpr(lo), ConstantExpr(hi), _) => Constructor::ConstantRange(
             const_eval::eval_const_expr(bcx.tcx(), &*lo),
             const_eval::eval_const_expr(bcx.tcx(), &*hi)
         ),
         &SliceLengthEqual(n, _) =>
-            check_match::Slice(n),
+            Constructor::Slice(n),
         &SliceLengthGreaterOrEqual(before, after, _) =>
-            check_match::SliceWithSubslice(before, after),
+            Constructor::SliceWithSubslice(before, after),
         &Variant(_, _, def_id, _) =>
-            check_match::Constructor::Variant(def_id)
+            Constructor::Variant(def_id)
     };
 
     let param_env = bcx.tcx().empty_parameter_environment();
-    let mcx = check_match::MatchCheckCtxt {
+    let mcx = matches::MatchCheckCtxt {
         tcx: bcx.tcx(),
         param_env: param_env,
     };
     enter_match(bcx, dm, m, col, val, |pats|
-        check_match::specialize(&mcx, &pats[..], &ctor, col, variant_size)
+        matches::specialize(&mcx, &pats[..], &ctor, col, variant_size)
     )
 }
 
@@ -1184,7 +1183,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         node_id_type(bcx, pat_id)
     };
 
-    let mcx = check_match::MatchCheckCtxt {
+    let mcx = matches::MatchCheckCtxt {
         tcx: bcx.tcx(),
         param_env: bcx.tcx().empty_parameter_environment(),
     };
@@ -1240,9 +1239,9 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     match adt_vals {
         Some(field_vals) => {
             let pats = enter_match(bcx, dm, m, col, val, |pats|
-                check_match::specialize(&mcx, pats,
-                                        &check_match::Single, col,
-                                        field_vals.len())
+                matches::specialize(&mcx, pats,
+                                    &Constructor::Single, col,
+                                    field_vals.len())
             );
             let mut vals: Vec<_> = field_vals.into_iter()
                 .map(|v|MatchInput::from_val(v))
@@ -1614,8 +1613,8 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     };
 
     let arm_pats: Vec<Vec<P<hir::Pat>>> = {
-        let mut static_inliner = StaticInliner::new(scope_cx.tcx(),
-                                                    pat_renaming_map.as_mut());
+        let mut static_inliner = matches::StaticInliner::new(scope_cx.tcx(),
+                                                             pat_renaming_map.as_mut());
         arm_datas.iter().map(|arm_data| {
             arm_data.arm.pats.iter().map(|p| static_inliner.fold_pat((*p).clone())).collect()
         }).collect()

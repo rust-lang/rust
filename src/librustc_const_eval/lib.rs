@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Various checks
+//! For now just check_match is moved here. This crate contains
+//! things that require librustc and are required by librustc_trans
 //!
 //! # Note
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc_passes"]
+#![crate_name = "rustc_const_eval"]
 #![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -26,20 +27,17 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(staged_api)]
 #![feature(rustc_private)]
+#![feature(iter_arith)]
 
-extern crate core;
 extern crate rustc;
 extern crate rustc_front;
-extern crate rustc_const_eval;
+extern crate rustc_back;
 
-#[macro_use] extern crate log;
+extern crate graphviz;
 #[macro_use] extern crate syntax;
+#[macro_use] extern crate log;
 
 pub mod diagnostics;
 
-pub mod const_fn;
-pub mod consts;
-pub mod loops;
-pub mod no_asm;
-pub mod rvalues;
-pub mod static_recursion;
+pub mod matches;
+pub mod eval;
