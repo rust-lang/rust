@@ -14,6 +14,10 @@ pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
     base.cpu = "pentium4".to_string();
 
+    // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
+    // space available to x86 Windows binaries on x86_64.
+    base.pre_link_args.push("/LARGEADDRESSAWARE".to_string());
+
     Target {
         llvm_target: "i686-pc-windows-msvc".to_string(),
         target_endian: "little".to_string(),
