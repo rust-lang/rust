@@ -16,8 +16,6 @@
 // did not consider that a match (something I would like to revise in
 // a later PR).
 
-// pretty-expanded FIXME #23616
-
 #![allow(dead_code)]
 
 use std::marker::PhantomData;
