@@ -159,14 +159,6 @@ impl Process {
         si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
         si.dwFlags = c::STARTF_USESTDHANDLES;
 
-        let stdin = try!(in_handle.to_handle(c::STD_INPUT_HANDLE));
-        let stdout = try!(out_handle.to_handle(c::STD_OUTPUT_HANDLE));
-        let stderr = try!(err_handle.to_handle(c::STD_ERROR_HANDLE));
-
-        si.hStdInput = stdin.raw();
-        si.hStdOutput = stdout.raw();
-        si.hStdError = stderr.raw();
-
         let program = program.as_ref().unwrap_or(&cfg.program);
         let mut cmd_str = try!(make_command_line(program, &cfg.args));
         cmd_str.push(0); // add null terminator
@@ -180,12 +172,27 @@ impl Process {
         let (envp, _data) = try!(make_envp(cfg.env.as_ref()));
         let (dirp, _data) = try!(make_dirp(cfg.cwd.as_ref()));
         let mut pi = zeroed_process_information();
-        try!(unsafe {
-            // `CreateProcess` is racy!
-            // http://support.microsoft.com/kb/315939
-            static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
-            let _lock = CREATE_PROCESS_LOCK.lock();
 
+        // Prepare all stdio handles to be inherited by the child. This
+        // currently involves duplicating any existing ones with the ability to
+        // be inherited by child processes. Note, however, that once an
+        // inheritable handle is created, *any* spawned child will inherit that
+        // handle. We only want our own child to inherit this handle, so we wrap
+        // the remaining portion of this spawn in a mutex.
+        //
+        // For more information, msdn also has an article about this race:
+        // http://support.microsoft.com/kb/315939
+        static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
+        let _lock = CREATE_PROCESS_LOCK.lock();
+
+        let stdin = try!(in_handle.to_handle(c::STD_INPUT_HANDLE));
+        let stdout = try!(out_handle.to_handle(c::STD_OUTPUT_HANDLE));
+        let stderr = try!(err_handle.to_handle(c::STD_ERROR_HANDLE));
+        si.hStdInput = stdin.raw();
+        si.hStdOutput = stdout.raw();
+        si.hStdError = stderr.raw();
+
+        try!(unsafe {
             cvt(c::CreateProcessW(ptr::null(),
                                   cmd_str.as_mut_ptr(),
                                   ptr::null_mut(),
