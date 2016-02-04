@@ -127,7 +127,7 @@ fn algorithm_r<T: RawFloat>(f: &Big, e: i16, z0: T) -> T {
         // This is written a bit awkwardly because our bignums don't support
         // negative numbers, so we use the absolute value + sign information.
         // The multiplication with m_digits can't overflow. If `x` or `y` are large enough that
-        // we need to worry about overflow, then they are also large enough that`make_ratio` has
+        // we need to worry about overflow, then they are also large enough that `make_ratio` has
         // reduced the fraction by a factor of 2^64 or more.
         let (d2, d_negative) = if x >= y {
             // Don't need x any more, save a clone().
