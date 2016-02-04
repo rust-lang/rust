@@ -1052,9 +1052,18 @@ impl CodeMap {
     /// the macro callsite that expanded to it.
     pub fn source_callsite(&self, sp: Span) -> Span {
         let mut span = sp;
+        // Special case - if a macro is parsed as an argument to another macro, the source
+        // callsite is the first callsite, which is also source-equivalent to the span.
+        let mut first = true;
         while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
             if let Some(callsite) = self.with_expn_info(span.expn_id,
                                                |ei| ei.map(|ei| ei.call_site.clone())) {
+                if first && span.source_equal(&callsite) {
+                    if self.lookup_char_pos(span.lo).file.is_real_file() {
+                        return Span { expn_id: NO_EXPANSION, .. span };
+                    }
+                }
+                first = false;
                 span = callsite;
             }
             else {
@@ -1071,10 +1080,20 @@ impl CodeMap {
     /// corresponding to the source callsite.
     pub fn source_callee(&self, sp: Span) -> Option<NameAndSpan> {
         let mut span = sp;
+        // Special case - if a macro is parsed as an argument to another macro, the source
+        // callsite is source-equivalent to the span, and the source callee is the first callee.
+        let mut first = true;
         while let Some(callsite) = self.with_expn_info(span.expn_id,
                                             |ei| ei.map(|ei| ei.call_site.clone())) {
+            if first && span.source_equal(&callsite) {
+                if self.lookup_char_pos(span.lo).file.is_real_file() {
+                    return self.with_expn_info(span.expn_id,
+                                               |ei| ei.map(|ei| ei.callee.clone()));
+                }
+            }
+            first = false;
             if let Some(_) = self.with_expn_info(callsite.expn_id,
-                                                |ei| ei.map(|ei| ei.call_site.clone())) {
+                                                 |ei| ei.map(|ei| ei.call_site.clone())) {
                 span = callsite;
             }
             else {
