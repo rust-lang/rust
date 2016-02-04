@@ -58,6 +58,7 @@ pub struct Command {
     gid: Option<gid_t>,
     session_leader: bool,
     saw_nul: bool,
+    closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
 }
 
 impl Command {
@@ -75,6 +76,7 @@ impl Command {
             gid: None,
             session_leader: false,
             saw_nul: saw_nul,
+            closures: Vec::new(),
         }
     }
 
@@ -163,6 +165,11 @@ impl Command {
     }
     pub fn session_leader(&mut self, session_leader: bool) {
         self.session_leader = session_leader;
+    }
+
+    pub fn before_exec(&mut self,
+                       f: Box<FnMut() -> io::Result<()> + Send + Sync>) {
+        self.closures.push(f);
     }
 }
 
@@ -283,7 +290,7 @@ impl Process {
         Ok(())
     }
 
-    pub fn spawn(cfg: &Command,
+    pub fn spawn(cfg: &mut Command,
                  in_fd: Stdio,
                  out_fd: Stdio,
                  err_fd: Stdio) -> io::Result<Process> {
@@ -387,7 +394,7 @@ impl Process {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
-    unsafe fn exec(cfg: &Command,
+    unsafe fn exec(cfg: &mut Command,
                    in_fd: Stdio,
                    out_fd: Stdio,
                    err_fd: Stdio) -> io::Error {
@@ -495,6 +502,10 @@ impl Process {
             if ret == libc::SIG_ERR {
                 return io::Error::last_os_error()
             }
+        }
+
+        for callback in cfg.closures.iter_mut() {
+            try!(callback());
         }
 
         libc::execvp(cfg.argv[0], cfg.argv.as_ptr());

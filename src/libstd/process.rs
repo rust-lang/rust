@@ -269,7 +269,7 @@ impl Command {
         self
     }
 
-    fn spawn_inner(&self, default_io: StdioImp) -> io::Result<Child> {
+    fn spawn_inner(&mut self, default_io: StdioImp) -> io::Result<Child> {
         let default_io = Stdio(default_io);
 
         // See comment on `setup_io` for what `_drop_later` is.
@@ -283,7 +283,7 @@ impl Command {
             setup_io(self.stderr.as_ref().unwrap_or(&default_io), false)
         );
 
-        match imp::Process::spawn(&self.inner, their_stdin, their_stdout,
+        match imp::Process::spawn(&mut self.inner, their_stdin, their_stdout,
                                   their_stderr) {
             Err(e) => Err(e),
             Ok(handle) => Ok(Child {
