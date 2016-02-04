@@ -61,7 +61,11 @@ impl<F> Weak<F> {
             if self.addr.load(Ordering::SeqCst) == 1 {
                 self.addr.store(fetch(self.name), Ordering::SeqCst);
             }
-            mem::transmute::<&AtomicUsize, Option<&F>>(&self.addr)
+            if self.addr.load(Ordering::SeqCst) == 0 {
+                None
+            } else {
+                mem::transmute::<&AtomicUsize, Option<&F>>(&self.addr)
+            }
         }
     }
 }
