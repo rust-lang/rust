@@ -230,7 +230,7 @@ impl Command {
             match try!(cvt(libc::fork())) {
                 0 => {
                     drop(input);
-                    let err = self.exec(theirs);
+                    let err = self.do_exec(theirs);
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
                     let bytes = [
                         (errno >> 24) as u8,
@@ -290,6 +290,18 @@ impl Command {
         }
     }
 
+    pub fn exec(&mut self, default: Stdio) -> io::Error {
+        if self.saw_nul {
+            return io::Error::new(ErrorKind::InvalidInput,
+                                  "nul byte found in provided data")
+        }
+
+        match self.setup_io(default) {
+            Ok((_, theirs)) => unsafe { self.do_exec(theirs) },
+            Err(e) => e,
+        }
+    }
+
     // And at this point we've reached a special time in the life of the
     // child. The child must now be considered hamstrung and unable to
     // do anything other than syscalls really. Consider the following
@@ -320,7 +332,7 @@ impl Command {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
-    unsafe fn exec(&mut self, stdio: ChildPipes) -> io::Error {
+    unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
         macro_rules! try {
             ($e:expr) => (match $e {
                 Ok(e) => e,

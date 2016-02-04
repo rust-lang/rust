@@ -75,6 +75,28 @@ pub trait CommandExt {
     #[unstable(feature = "process_exec", issue = "31398")]
     fn before_exec<F>(&mut self, f: F) -> &mut process::Command
         where F: FnMut() -> io::Result<()> + Send + Sync + 'static;
+
+    /// Performs all the required setup by this `Command`, followed by calling
+    /// the `execvp` syscall.
+    ///
+    /// On success this function will not return, and otherwise it will return
+    /// an error indicating why the exec (or another part of the setup of the
+    /// `Command`) failed.
+    ///
+    /// This function, unlike `spawn`, will **not** `fork` the process to create
+    /// a new child. Like spawn, however, the default behavior for the stdio
+    /// descriptors will be to inherited from the current process.
+    ///
+    /// # Notes
+    ///
+    /// The process may be in a "broken state" if this function returns in
+    /// error. For example the working directory, environment variables, signal
+    /// handling settings, various user/group information, or aspects of stdio
+    /// file descriptors may have changed. If a "transactional spawn" is
+    /// required to gracefully handle errors it is recommended to use the
+    /// cross-platform `spawn` instead.
+    #[unstable(feature = "process_exec", issue = "31398")]
+    fn exec(&mut self) -> io::Error;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -99,6 +121,10 @@ impl CommandExt for process::Command {
     {
         self.as_inner_mut().before_exec(Box::new(f));
         self
+    }
+
+    fn exec(&mut self) -> io::Error {
+        self.as_inner_mut().exec(sys::process::Stdio::Inherit)
     }
 }
 
