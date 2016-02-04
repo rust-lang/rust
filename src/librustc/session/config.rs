@@ -845,11 +845,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::opt("", "explain", "Provide a detailed explanation of an error \
                                message", "OPT"),
         opt::flag("", "test", "Build a test harness"),
-        opt::opt("", "target", "Target triple cpu-manufacturer-kernel[-os] \
-                              to compile for (see chapter 3.4 of \
-                              http://www.sourceware.org/autobook/
-                              for details)",
-               "TRIPLE"),
+        opt::opt("", "target", "Target triple for which the code is compiled", "TARGET"),
         opt::multi("W", "warn", "Set lint warnings", "OPT"),
         opt::multi("A", "allow", "Set lint allowed", "OPT"),
         opt::multi("D", "deny", "Set lint denied", "OPT"),
