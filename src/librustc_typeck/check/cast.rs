@@ -346,8 +346,7 @@ impl<'tcx> CastCheck<'tcx> {
     {
         // array-ptr-cast.
 
-		if (m_expr.mutbl == hir::MutMutable && m_cast.mutbl == hir::MutImmutable) ||
-		    m_expr.mutbl == m_cast.mutbl {
+		if  !(m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutMutable) {
             if let ty::TyArray(ety, _) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
