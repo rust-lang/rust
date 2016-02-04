@@ -657,6 +657,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(size as u64)
 }
 
+#[allow(dead_code)]
 pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
     symlink_junction_inner(src.as_ref(), dst.as_ref())
 }
@@ -666,6 +667,7 @@ pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::R
 // what can be found here:
 //
 // http://www.flexhex.com/docs/articles/hard-links.phtml
+#[allow(dead_code)]
 fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
     try!(d.mkdir(&junction));
