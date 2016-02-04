@@ -20,7 +20,7 @@
 //! * `e` is a C-like enum and `U` is an integer type; *enum-cast*
 //! * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
 //! * `e` has type `u8` and `U` is `char`; *u8-char-cast*
-//! * `e` has type `&[T; n]` or `&mut [T; n]` and `U` is `*T`; *array-ptr-cast*
+//! * `e` has type `&.[T; n]` and `U` is `*T`; *array-ptr-cast*
 //! * `e` is a function pointer type and `U` has type `*T`,
 //!   while `T: Sized`; *fptr-ptr-cast*
 //! * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
@@ -345,8 +345,8 @@ impl<'tcx> CastCheck<'tcx> {
     {
         // array-ptr-cast.
 
-        if (m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable) || 
-		    (m_expr.mutbl == hir::MutMutable && m_cast.mutbl == hir::MutMutable) {
+	if (m_expr.mutbl == hir::MutMutable && m_cast.mutbl == hir::Immutable) ||
+		    m_expr.mutbl == m_cast.mutbl {
             if let ty::TyArray(ety, _) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
