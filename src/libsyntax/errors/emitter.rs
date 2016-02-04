@@ -15,7 +15,6 @@ use diagnostics;
 
 use errors::{Level, RenderSpan, CodeSuggestion, DiagnosticBuilder};
 use errors::RenderSpan::*;
-use errors::Level::*;
 
 use std::{cmp, fmt};
 use std::io::prelude::*;
@@ -207,7 +206,7 @@ impl EmitterWriter {
         if let Some(code) = code {
             if let Some(_) = self.registry.as_ref()
                                           .and_then(|registry| registry.find_description(code)) {
-                try!(print_diagnostic(&mut self.dst, &ss[..], Help,
+                try!(print_diagnostic(&mut self.dst, &ss[..], Level::Help,
                                       &format!("run `rustc --explain {}` to see a \
                                                detailed explanation", code), None));
             }
@@ -612,7 +611,7 @@ impl EmitterWriter {
                 }
 
                 let snippet = self.cm.span_to_string(span);
-                try!(print_diagnostic(&mut self.dst, &snippet, Note, &diag_string, None));
+                try!(print_diagnostic(&mut self.dst, &snippet, Level::Note, &diag_string, None));
             }
             last_span = span;
         }
