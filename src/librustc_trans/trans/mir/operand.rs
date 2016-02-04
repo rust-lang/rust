@@ -147,22 +147,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    pub fn trans_operand_into(&mut self,
-                              bcx: Block<'bcx, 'tcx>,
-                              lldest: ValueRef,
-                              operand: &mir::Operand<'tcx>)
-    {
-        debug!("trans_operand_into(lldest={}, operand={:?})",
-               bcx.val_to_string(lldest),
-               operand);
-
-        // FIXME: consider not copying constants through the
-        // stack.
-
-        let o = self.trans_operand(bcx, operand);
-        self.store_operand(bcx, lldest, o);
-    }
-
     pub fn store_operand(&mut self,
                          bcx: Block<'bcx, 'tcx>,
                          lldest: ValueRef,

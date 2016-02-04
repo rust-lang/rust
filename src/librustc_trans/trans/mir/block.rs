@@ -20,7 +20,6 @@ use trans::common::{self, Block, LandingPad};
 use trans::debuginfo::DebugLoc;
 use trans::Disr;
 use trans::foreign;
-use trans::glue;
 use trans::type_of;
 use trans::type_::Type;
 
@@ -96,35 +95,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Terminator::Drop { ref value, target, unwind } => {
-                let lvalue = self.trans_lvalue(bcx, value);
-                let ty = lvalue.ty.to_ty(bcx.tcx());
-                // Double check for necessity to drop
-                if !glue::type_needs_drop(bcx.tcx(), ty) {
-                    build::Br(bcx, self.llblock(target), DebugLoc::None);
-                    return;
-                }
-                let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
-                let drop_ty = glue::get_drop_glue_type(bcx.ccx(), ty);
-                let llvalue = if drop_ty != ty {
-                    build::PointerCast(bcx, lvalue.llval,
-                                       type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
-                } else {
-                    lvalue.llval
-                };
-                if let Some(unwind) = unwind {
-                    let uwbcx = self.bcx(unwind);
-                    let unwind = self.make_landing_pad(uwbcx);
-                    build::Invoke(bcx,
-                                  drop_fn,
-                                  &[llvalue],
-                                  self.llblock(target),
-                                  unwind.llbb,
-                                  None,
-                                  DebugLoc::None);
-                } else {
-                    build::Call(bcx, drop_fn, &[llvalue], None, DebugLoc::None);
-                    build::Br(bcx, self.llblock(target), DebugLoc::None);
-                }
+                self.trans_drop(bcx, value, target, unwind);
             }
 
             mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {
@@ -287,7 +258,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    fn make_landing_pad(&mut self, cleanup: Block<'bcx, 'tcx>) -> Block<'bcx, 'tcx> {
+    pub fn make_landing_pad(&mut self, cleanup: Block<'bcx, 'tcx>) -> Block<'bcx, 'tcx> {
         let bcx = cleanup.fcx.new_block("cleanup", None);
         // FIXME(#30941) this doesn't handle msvc-style exceptions
         *bcx.lpad.borrow_mut() = Some(LandingPad::gnu());
@@ -314,11 +285,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    fn bcx(&self, bb: mir::BasicBlock) -> Block<'bcx, 'tcx> {
+    pub fn bcx(&self, bb: mir::BasicBlock) -> Block<'bcx, 'tcx> {
         self.blocks[bb.index()]
     }
 
-    fn llblock(&self, bb: mir::BasicBlock) -> BasicBlockRef {
+    pub fn llblock(&self, bb: mir::BasicBlock) -> BasicBlockRef {
         self.blocks[bb.index()].llbb
     }
 }

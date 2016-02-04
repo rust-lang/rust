@@ -43,11 +43,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                rvalue);
 
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
-                self.trans_operand_into(bcx, dest.llval, operand);
-                bcx
-            }
-
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, cast_ty) => {
                 if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                     // into-coerce of a thin pointer to a fat pointer - just
@@ -168,6 +163,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
+                // FIXME: consider not copying constants through stack. (fixable by translating
+                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
                 let operand = self.trans_operand(bcx, operand);
                 (bcx, operand)
             }
