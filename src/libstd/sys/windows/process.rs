@@ -122,7 +122,7 @@ pub struct Process {
 
 pub enum Stdio {
     Inherit,
-    None,
+    Null,
     Raw(c::HANDLE),
 }
 
@@ -386,11 +386,10 @@ impl Stdio {
                 RawHandle::new(handle).duplicate(0, true, c::DUPLICATE_SAME_ACCESS)
             }
 
-            // Similarly to unix, we don't actually leave holes for the
-            // stdio file descriptors, but rather open up /dev/null
-            // equivalents. These equivalents are drawn from libuv's
-            // windows process spawning.
-            Stdio::None => {
+            // Open up a reference to NUL with appropriate read/write
+            // permissions as well as the ability to be inherited to child
+            // processes (as this is about to be inherited).
+            Stdio::Null => {
                 let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
                 let mut sa = c::SECURITY_ATTRIBUTES {
                     nLength: size as c::DWORD,
