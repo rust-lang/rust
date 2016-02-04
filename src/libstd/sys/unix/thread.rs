@@ -317,37 +317,12 @@ pub mod guard {
 // storage.  We need that information to avoid blowing up when a small stack
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
-//
-// Use dlsym to get the symbol value at runtime, both for
-// compatibility with older versions of glibc, and to avoid creating
-// dependencies on GLIBC_PRIVATE symbols.  Assumes that we've been
-// dynamically linked to libpthread but that is currently always the
-// case.  We previously used weak linkage (under the same assumption),
-// but that caused Debian to detect an unnecessarily strict versioned
-// dependency on libc6 (#23628).
 #[cfg(target_os = "linux")]
 #[allow(deprecated)]
 fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
-    use dynamic_lib::DynamicLibrary;
-    use sync::Once;
+    weak!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
 
-    type F = unsafe extern "C" fn(*const libc::pthread_attr_t) -> libc::size_t;
-    static INIT: Once = Once::new();
-    static mut __pthread_get_minstack: Option<F> = None;
-
-    INIT.call_once(|| {
-        let lib = match DynamicLibrary::open(None) {
-            Ok(l) => l,
-            Err(..) => return,
-        };
-        unsafe {
-            if let Ok(f) = lib.symbol("__pthread_get_minstack") {
-                __pthread_get_minstack = Some(mem::transmute::<*const (), F>(f));
-            }
-        }
-    });
-
-    match unsafe { __pthread_get_minstack } {
+    match __pthread_get_minstack.get() {
         None => libc::PTHREAD_STACK_MIN as usize,
         Some(f) => unsafe { f(attr) as usize },
     }
