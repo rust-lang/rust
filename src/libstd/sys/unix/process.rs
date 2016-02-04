@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_snake_case)]
-
 use prelude::v1::*;
 use os::unix::prelude::*;
 
@@ -271,7 +269,8 @@ impl fmt::Display for ExitStatus {
 
 /// The unique id of the process (this should never be negative).
 pub struct Process {
-    pid: pid_t
+    pid: pid_t,
+    status: Option<ExitStatus>,
 }
 
 pub enum Stdio {
@@ -285,11 +284,6 @@ pub type RawStdio = FileDesc;
 const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
-    pub unsafe fn kill(&self) -> io::Result<()> {
-        try!(cvt(libc::kill(self.pid, libc::SIGKILL)));
-        Ok(())
-    }
-
     pub fn spawn(cfg: &mut Command,
                  in_fd: Stdio,
                  out_fd: Stdio,
@@ -324,7 +318,7 @@ impl Process {
             }
         };
 
-        let p = Process{ pid: pid };
+        let mut p = Process { pid: pid, status: None };
         drop(output);
         let mut bytes = [0; 8];
 
@@ -516,22 +510,26 @@ impl Process {
         self.pid as u32
     }
 
-    pub fn wait(&self) -> io::Result<ExitStatus> {
-        let mut status = 0 as c_int;
-        try!(cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) }));
-        Ok(ExitStatus(status))
+    pub fn kill(&mut self) -> io::Result<()> {
+        // If we've already waited on this process then the pid can be recycled
+        // and used for another process, and we probably shouldn't be killing
+        // random processes, so just return an error.
+        if self.status.is_some() {
+            Err(Error::new(ErrorKind::InvalidInput,
+                           "invalid argument: can't kill an exited process"))
+        } else {
+            cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(|_| ())
+        }
     }
 
-    pub fn try_wait(&self) -> Option<ExitStatus> {
-        let mut status = 0 as c_int;
-        match cvt_r(|| unsafe {
-            libc::waitpid(self.pid, &mut status, libc::WNOHANG)
-        }) {
-            Ok(0) => None,
-            Ok(n) if n == self.pid => Some(ExitStatus(status)),
-            Ok(n) => panic!("unknown pid: {}", n),
-            Err(e) => panic!("unknown waitpid error: {}", e),
+    pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        if let Some(status) = self.status {
+            return Ok(status)
         }
+        let mut status = 0 as c_int;
+        try!(cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) }));
+        self.status = Some(ExitStatus(status));
+        Ok(ExitStatus(status))
     }
 }
 
