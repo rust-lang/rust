@@ -282,9 +282,9 @@ fn test_resize_policy() {
 /// let mut player_stats = HashMap::new();
 ///
 /// fn random_stat_buff() -> u8 {
-///   // could actually return some random value here - let's just return
-///   // some fixed value for now
-///   42
+///     // could actually return some random value here - let's just return
+///     // some fixed value for now
+///     42
 /// }
 ///
 /// // insert a key only if it doesn't already exist
