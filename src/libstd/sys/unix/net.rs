@@ -25,6 +25,16 @@ pub use libc as netc;
 
 pub type wrlen_t = size_t;
 
+// See below for the usage of SOCK_CLOEXEC, but this constant is only defined on
+// Linux currently (e.g. support doesn't exist on other platforms). In order to
+// get name resolution to work and things to compile we just define a dummy
+// SOCK_CLOEXEC here for other platforms. Note that the dummy constant isn't
+// actually ever used (the blocks below are wrapped in `if cfg!` as well.
+#[cfg(target_os = "linux")]
+use libc::SOCK_CLOEXEC;
+#[cfg(not(target_os = "linux"))]
+const SOCK_CLOEXEC: c_int = 0;
+
 pub struct Socket(FileDesc);
 
 pub fn init() {}
@@ -48,6 +58,19 @@ impl Socket {
             SocketAddr::V6(..) => libc::AF_INET6,
         };
         unsafe {
+            // On linux we first attempt to pass the SOCK_CLOEXEC flag to
+            // atomically create the socket and set it as CLOEXEC. Support for
+            // this option, however, was added in 2.6.27, and we still support
+            // 2.6.18 as a kernel, so if the returned error is EINVAL we
+            // fallthrough to the fallback.
+            if cfg!(target_os = "linux") {
+                match cvt(libc::socket(fam, ty | SOCK_CLOEXEC, 0)) {
+                    Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
+                    Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {}
+                    Err(e) => return Err(e),
+                }
+            }
+
             let fd = try!(cvt(libc::socket(fam, ty, 0)));
             let fd = FileDesc::new(fd);
             fd.set_cloexec();
