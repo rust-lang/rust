@@ -149,6 +149,21 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     },
                 }
             }
+
+            // If we see a const here, that's because it evaluates to a type with zero size. We
+            // should be able to just discard it, since const expressions are guaranteed not to
+            // have side effects. This seems to be reached through tuple struct constructors being
+            // passed zero-size constants.
+            if let hir::ExprPath(..) = expr.node {
+                match bcx.def(expr.id) {
+                    Def::Const(_) | Def::AssociatedConst(_) => {
+                        assert!(type_is_zero_size(bcx.ccx(), bcx.tcx().node_id_to_type(expr.id)));
+                        return bcx;
+                    }
+                    _ => {}
+                }
+            }
+
             // Even if we don't have a value to emit, and the expression
             // doesn't have any side-effects, we still have to translate the
             // body of any closures.
@@ -160,7 +175,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match expr.node {
                 hir::ExprPath(..) => {
                     match bcx.def(expr.id) {
-                        Def::Const(did) => {
+                        Def::Const(did) | Def::AssociatedConst(did) => {
                             let empty_substs = bcx.tcx().mk_substs(Substs::trans_empty());
                             let const_expr = consts::get_const_expr(bcx.ccx(), did, expr,
                                                                     empty_substs);
@@ -896,7 +911,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let lval = Lvalue::new("expr::trans_def");
             DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr(lval)))
         }
-        Def::Const(_) => {
+        Def::Const(_) | Def::AssociatedConst(_) => {
             bcx.sess().span_bug(ref_expr.span,
                 "constant expression should not reach expr::trans_def")
         }
