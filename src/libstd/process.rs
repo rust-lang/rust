@@ -11,15 +11,14 @@
 //! Working with processes.
 
 #![stable(feature = "process", since = "1.0.0")]
-#![allow(non_upper_case_globals)]
 
 use prelude::v1::*;
 use io::prelude::*;
 
 use ffi::OsStr;
 use fmt;
-use io::{self, Error, ErrorKind};
-use path;
+use io;
+use path::Path;
 use str;
 use sys::pipe::{self, AnonPipe};
 use sys::process as imp;
@@ -60,9 +59,6 @@ use thread::{self, JoinHandle};
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
     handle: imp::Process,
-
-    /// None until wait() or wait_with_output() is called.
-    status: Option<imp::ExitStatus>,
 
     /// The handle for writing to the child's stdin, if it has been captured
     #[stable(feature = "process", since = "1.0.0")]
@@ -243,7 +239,7 @@ impl Command {
 
     /// Sets the working directory for the child process.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn current_dir<P: AsRef<path::Path>>(&mut self, dir: P) -> &mut Command {
+    pub fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
         self
     }
@@ -288,7 +284,6 @@ impl Command {
             Err(e) => Err(e),
             Ok(handle) => Ok(Child {
                 handle: handle,
-                status: None,
                 stdin: our_stdin.map(|fd| ChildStdin { inner: fd }),
                 stdout: our_stdout.map(|fd| ChildStdout { inner: fd }),
                 stderr: our_stderr.map(|fd| ChildStderr { inner: fd }),
@@ -508,34 +503,7 @@ impl Child {
     /// SIGKILL on unix platforms.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
-        #[cfg(unix)] fn collect_status(p: &mut Child) {
-            // On Linux (and possibly other unices), a process that has exited will
-            // continue to accept signals because it is "defunct". The delivery of
-            // signals will only fail once the child has been reaped. For this
-            // reason, if the process hasn't exited yet, then we attempt to collect
-            // their status with WNOHANG.
-            if p.status.is_none() {
-                match p.handle.try_wait() {
-                    Some(status) => { p.status = Some(status); }
-                    None => {}
-                }
-            }
-        }
-        #[cfg(windows)] fn collect_status(_p: &mut Child) {}
-
-        collect_status(self);
-
-        // if the process has finished, and therefore had waitpid called,
-        // and we kill it, then on unix we might ending up killing a
-        // newer process that happens to have the same (re-used) id
-        if self.status.is_some() {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "invalid argument: can't kill an exited process",
-            ))
-        }
-
-        unsafe { self.handle.kill() }
+        self.handle.kill()
     }
 
     /// Returns the OS-assigned process identifier associated with this child.
@@ -555,14 +523,7 @@ impl Child {
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         drop(self.stdin.take());
-        match self.status {
-            Some(code) => Ok(ExitStatus(code)),
-            None => {
-                let status = try!(self.handle.wait());
-                self.status = Some(status);
-                Ok(ExitStatus(status))
-            }
-        }
+        self.handle.wait().map(ExitStatus)
     }
 
     /// Simultaneously waits for the child to exit and collect all remaining

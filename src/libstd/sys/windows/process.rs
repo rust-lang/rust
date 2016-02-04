@@ -202,8 +202,10 @@ impl Process {
         Ok(Process { handle: Handle::new(pi.hProcess) })
     }
 
-    pub unsafe fn kill(&self) -> io::Result<()> {
-        try!(cvt(c::TerminateProcess(self.handle.raw(), 1)));
+    pub fn kill(&mut self) -> io::Result<()> {
+        try!(cvt(unsafe {
+            c::TerminateProcess(self.handle.raw(), 1)
+        }));
         Ok(())
     }
 
@@ -213,7 +215,7 @@ impl Process {
         }
     }
 
-    pub fn wait(&self) -> io::Result<ExitStatus> {
+    pub fn wait(&mut self) -> io::Result<ExitStatus> {
         unsafe {
             let res = c::WaitForSingleObject(self.handle.raw(), c::INFINITE);
             if res != c::WAIT_OBJECT_0 {
