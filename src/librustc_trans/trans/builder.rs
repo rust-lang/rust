@@ -104,6 +104,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn position_at_start(&self, llbb: BasicBlockRef) {
+        unsafe {
+            llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
+        }
+    }
+
     pub fn ret_void(&self) {
         self.count_insn("retvoid");
         unsafe {
