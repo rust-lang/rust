@@ -1167,3 +1167,8 @@ LLVMRustBuildInvoke(LLVMBuilderRef B,
     return LLVMBuildInvoke(B, Fn, Args, NumArgs, Then, Catch, Name);
 }
 #endif
+
+extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B, LLVMBasicBlockRef BB) {
+    auto point = unwrap(BB)->getFirstInsertionPt();
+    unwrap(B)->SetInsertPoint(unwrap(BB), point);
+}

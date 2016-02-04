@@ -2165,6 +2165,8 @@ extern {
                                          NumInputs: c_uint)
                                          -> OperandBundleDefRef;
     pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
+
+    pub fn LLVMRustPositionBuilderAtStart(B: BuilderRef, BB: BasicBlockRef);
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed
