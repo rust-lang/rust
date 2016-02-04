@@ -37,8 +37,6 @@ impl AnonPipe {
     pub fn handle(&self) -> &Handle { &self.inner }
     pub fn into_handle(self) -> Handle { self.inner }
 
-    pub fn raw(&self) -> c::HANDLE { self.inner.raw() }
-
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
