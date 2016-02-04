@@ -984,8 +984,8 @@ fn first((value, _): (i32, i32)) -> i32 { value }
 #### Generic functions
 
 A _generic function_ allows one or more _parameterized types_ to appear in its
-signature. Each type parameter must be explicitly declared, in an
-angle-bracket-enclosed, comma-separated list following the function name.
+signature. Each type parameter must be explicitly declared in an
+angle-bracket-enclosed and comma-separated list, following the function name.
 
 ```rust,ignore
 // foo is generic over A and B
@@ -1179,7 +1179,7 @@ Enumeration constructors can have either named or unnamed fields:
 ```rust
 enum Animal {
     Dog (String, f64),
-    Cat { name: String, weight: f64 }
+    Cat { name: String, weight: f64 },
 }
 
 let mut a: Animal = Animal::Dog("Cocoa".to_string(), 37.2);
@@ -1237,12 +1237,12 @@ const STRING: &'static str = "bitstring";
 
 struct BitsNStrings<'a> {
     mybits: [u32; 2],
-    mystring: &'a str
+    mystring: &'a str,
 }
 
 const BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
     mybits: BITS,
-    mystring: STRING
+    mystring: STRING,
 };
 ```
 
@@ -1661,7 +1661,7 @@ struct Foo;
 
 // Declare a public struct with a private field
 pub struct Bar {
-    field: i32
+    field: i32,
 }
 
 // Declare a public enum with two public variants
@@ -3212,7 +3212,7 @@ may refer to the variables bound within the pattern they follow.
 let message = match maybe_digit {
     Some(x) if x < 10 => process_digit(x),
     Some(x) => process_other(x),
-    None => panic!()
+    None => panic!(),
 };
 ```
 
@@ -3504,7 +3504,7 @@ An example of a `fn` type:
 
 ```
 fn add(x: i32, y: i32) -> i32 {
-    return x + y;
+    x + y
 }
 
 let mut x = add(5,7);
