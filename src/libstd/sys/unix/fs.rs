@@ -413,10 +413,18 @@ impl File {
             libc::open(path.as_ptr(), flags, opts.mode as c_int)
         }));
         let fd = FileDesc::new(fd);
-        // Even though we open with the O_CLOEXEC flag, still set CLOEXEC here,
-        // in case the open flag is not supported (it's just ignored by the OS
-        // in that case).
-        fd.set_cloexec();
+
+        // Currently the standard library supports Linux 2.6.18 which did not
+        // have the O_CLOEXEC flag (passed above). If we're running on an older
+        // Linux kernel then the flag is just ignored by the OS, so we continue
+        // to explicitly ask for a CLOEXEC fd here.
+        //
+        // The CLOEXEC flag, however, is supported on versions of OSX/BSD/etc
+        // that we support, so we only do this on Linux currently.
+        if cfg!(target_os = "linux") {
+            fd.set_cloexec();
+        }
+
         Ok(File(fd))
     }
 
