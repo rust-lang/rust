@@ -984,8 +984,8 @@ fn first((value, _): (i32, i32)) -> i32 { value }
 #### Generic functions
 
 A _generic function_ allows one or more _parameterized types_ to appear in its
-signature. Each type parameter must be explicitly declared, in an
-angle-bracket-enclosed, comma-separated list following the function name.
+signature. Each type parameter must be explicitly declared in an
+angle-bracket-enclosed and comma-separated list, following the function name.
 
 ```rust,ignore
 // foo is generic over A and B
