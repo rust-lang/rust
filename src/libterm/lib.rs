@@ -32,7 +32,7 @@
 //!     t.fg(term::color::RED).unwrap();
 //!     writeln!(t, "world!").unwrap();
 //!
-//!     assert!(t.reset().unwrap());
+//!     t.reset().unwrap();
 //! }
 //! ```
 //!
@@ -166,6 +166,161 @@ pub enum Attr {
     BackgroundColor(color::Color),
 }
 
+/// An error arising from interacting with the terminal.
+#[derive(Debug)]
+pub enum Error {
+    /// Indicates an error from any underlying IO
+    Io(io::Error),
+    /// Indicates an error during terminfo parsing
+    TerminfoParsing(terminfo::Error),
+    /// Indicates an error expanding a parameterized string from the terminfo database
+    ParameterizedExpansion(terminfo::parm::Error),
+    /// Indicates that the terminal does not support the requested operation.
+    NotSupported,
+    /// Indicates that the `TERM` environment variable was unset, and thus we were unable to detect
+    /// which terminal we should be using.
+    TermUnset,
+    /// Indicates that we were unable to find a terminfo entry for the requested terminal.
+    TerminfoEntryNotFound,
+    /// Indicates that the cursor could not be moved to the requested position.
+    CursorDestinationInvalid,
+    /// Indicates that the terminal does not support displaying the requested color.
+    ///
+    /// This is like `NotSupported`, but more specific.
+    ColorOutOfRange,
+    #[doc(hidden)]
+    /// Please don't match against this - if you do, we can't promise we won't break your crate
+    /// with a semver-compliant version bump.
+    __Nonexhaustive,
+}
+
+// manually implemented because std::io::Error does not implement Eq/PartialEq
+impl std::cmp::PartialEq for Error {
+    fn eq(&self, other: &Error) -> bool {
+        use Error::*;
+        match self {
+            &Io(_) => false,
+            &TerminfoParsing(ref inner1) => {
+                match other {
+                    &TerminfoParsing(ref inner2) => inner1 == inner2,
+                    _ => false,
+                }
+            }
+            &ParameterizedExpansion(ref inner1) => {
+                match other {
+                    &ParameterizedExpansion(ref inner2) => inner1 == inner2,
+                    _ => false,
+                }
+            }
+            &NotSupported => {
+                match other {
+                    &NotSupported => true,
+                    _ => false,
+                }
+            }
+            &TermUnset => {
+                match other {
+                    &TermUnset => true,
+                    _ => false,
+                }
+            }
+            &TerminfoEntryNotFound => {
+                match other {
+                    &TerminfoEntryNotFound => true,
+                    _ => false,
+                }
+            }
+            &CursorDestinationInvalid => {
+                match other {
+                    &CursorDestinationInvalid => true,
+                    _ => false,
+                }
+            }
+            &ColorOutOfRange => {
+                match other {
+                    &ColorOutOfRange => true,
+                    _ => false,
+                }
+            }
+            &__Nonexhaustive => {
+                match other {
+                    &__Nonexhaustive => true,
+                    _ => false,
+                }
+            }
+        }
+    }
+}
+
+/// The canonical `Result` type using this crate's Error type.
+pub type Result<T> = std::result::Result<T, Error>;
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use std::error::Error;
+        if let &::Error::Io(ref e) = self {
+            write!(f, "{}", e)
+        } else {
+            f.write_str(self.description())
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn description(&self) -> &str {
+        use Error::*;
+        use std::error::Error;
+        match self {
+            &Io(ref io) => io.description(),
+            &TerminfoParsing(ref e) => e.description(),
+            &ParameterizedExpansion(ref e) => e.description(),
+            &NotSupported => "operation not supported by the terminal",
+            &TermUnset => "TERM environment variable unset, unable to detect a terminal",
+            &TerminfoEntryNotFound => "could not find a terminfo entry for this terminal",
+            &CursorDestinationInvalid => "could not move cursor to requested position",
+            &ColorOutOfRange => "color not supported by the terminal",
+            &__Nonexhaustive => "placeholder variant that shouldn't be used",
+        }
+    }
+
+    fn cause(&self) -> Option<&std::error::Error> {
+        match self {
+            &Error::Io(ref io) => Some(io),
+            &Error::TerminfoParsing(ref e) => Some(e),
+            &Error::ParameterizedExpansion(ref e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<Error> for io::Error {
+    fn from(err: Error) -> io::Error {
+        let kind = match &err {
+            &Error::Io(ref e) => e.kind(),
+            _ => io::ErrorKind::Other,
+        };
+        io::Error::new(kind, err)
+    }
+}
+
+impl std::convert::From<io::Error> for Error {
+    fn from(val: io::Error) -> Self {
+        Error::Io(val)
+    }
+}
+
+impl std::convert::From<terminfo::Error> for Error {
+    fn from(val: terminfo::Error) -> Self {
+        Error::TerminfoParsing(val)
+    }
+}
+
+impl std::convert::From<terminfo::parm::Error> for Error {
+    fn from(val: terminfo::parm::Error) -> Self {
+        Error::ParameterizedExpansion(val)
+    }
+}
+
 /// A terminal with similar capabilities to an ANSI Terminal
 /// (foreground/background colors etc).
 pub trait Terminal: Write {
@@ -177,38 +332,62 @@ pub trait Terminal: Write {
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
     ///
-    /// Returns `Ok(true)` if the color was set, `Ok(false)` otherwise, and `Err(e)`
-    /// if there was an I/O error.
-    fn fg(&mut self, color: color::Color) -> io::Result<bool>;
+    /// Returns `Ok(())` if the color change code was sent to the terminal, or `Err(e)` if there
+    /// was an error.
+    fn fg(&mut self, color: color::Color) -> Result<()>;
 
     /// Sets the background color to the given color.
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
     /// the corresponding normal color will be used instead.
     ///
-    /// Returns `Ok(true)` if the color was set, `Ok(false)` otherwise, and `Err(e)`
-    /// if there was an I/O error.
-    fn bg(&mut self, color: color::Color) -> io::Result<bool>;
+    /// Returns `Ok(())` if the color change code was sent to the terminal, or `Err(e)` if there
+    /// was an error.
+    fn bg(&mut self, color: color::Color) -> Result<()>;
 
-    /// Sets the given terminal attribute, if supported.  Returns `Ok(true)`
-    /// if the attribute was supported, `Ok(false)` otherwise, and `Err(e)` if
-    /// there was an I/O error.
-    fn attr(&mut self, attr: Attr) -> io::Result<bool>;
+    /// Sets the given terminal attribute, if supported.  Returns `Ok(())` if the attribute is
+    /// supported and was sent to the terminal, or `Err(e)` if there was an error or the attribute
+    /// wasn't supported.
+    fn attr(&mut self, attr: Attr) -> Result<()>;
 
     /// Returns whether the given terminal attribute is supported.
     fn supports_attr(&self, attr: Attr) -> bool;
 
     /// Resets all terminal attributes and colors to their defaults.
     ///
-    /// Returns `Ok(true)` if the terminal was reset, `Ok(false)` otherwise, and `Err(e)` if there
-    /// was an I/O error.
+    /// Returns `Ok(())` if the reset code was printed, or `Err(e)` if there was an error.
     ///
     /// *Note: This does not flush.*
     ///
     /// That means the reset command may get buffered so, if you aren't planning on doing anything
     /// else that might flush stdout's buffer (e.g. writing a line of text), you should flush after
     /// calling reset.
-    fn reset(&mut self) -> io::Result<bool>;
+    fn reset(&mut self) -> Result<()>;
+
+    /// Returns true if reset is supported.
+    fn supports_reset(&self) -> bool;
+
+    /// Returns true if color is fully supported.
+    ///
+    /// If this function returns `true`, `bg`, `fg`, and `reset` will never
+    /// return `Err(Error::NotSupported)`.
+    fn supports_color(&self) -> bool;
+
+    /// Moves the cursor up one line.
+    ///
+    /// Returns `Ok(())` if the cursor movement code was printed, or `Err(e)` if there was an
+    /// error.
+    fn cursor_up(&mut self) -> Result<()>;
+
+    /// Deletes the text from the cursor location to the end of the line.
+    ///
+    /// Returns `Ok(())` if the deletion code was printed, or `Err(e)` if there was an error.
+    fn delete_line(&mut self) -> Result<()>;
+
+    /// Moves the cursor to the left edge of the current line.
+    ///
+    /// Returns `Ok(true)` if the deletion code was printed, or `Err(e)` if there was an error.
+    fn carriage_return(&mut self) -> Result<()>;
 
     /// Gets an immutable reference to the stream inside
     fn get_ref<'a>(&'a self) -> &'a Self::Output;
