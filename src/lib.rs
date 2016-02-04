@@ -28,6 +28,9 @@ extern crate unicode_normalization;
 // for semver check in attrs.rs
 extern crate semver;
 
+// for regex checking
+extern crate regex_syntax;
+
 extern crate rustc_plugin;
 
 use rustc_plugin::Registry;
@@ -82,6 +85,7 @@ pub mod derive;
 pub mod print;
 pub mod vec;
 pub mod drop_ref;
+pub mod regex;
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -150,7 +154,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box vec::UselessVec);
     reg.register_late_lint_pass(box drop_ref::DropRefPass);
     reg.register_late_lint_pass(box types::AbsurdUnsignedComparisons);
-
+    reg.register_late_lint_pass(box regex::RegexPass);
 
     reg.register_lint_group("clippy_pedantic", vec![
         matches::SINGLE_MATCH_ELSE,
@@ -163,7 +167,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,
-        strings::STRING_ADD,
         strings::STRING_ADD_ASSIGN,
         types::CAST_POSSIBLE_TRUNCATION,
         types::CAST_POSSIBLE_WRAP,
@@ -250,6 +253,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         ptr_arg::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
+        regex::INVALID_REGEX,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         strings::STRING_LIT_AS_BYTES,

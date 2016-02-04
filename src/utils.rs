@@ -36,6 +36,7 @@ pub const LL_PATH: [&'static str; 3] = ["collections", "linked_list", "LinkedLis
 pub const MUTEX_PATH: [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
+pub const REGEX_NEW_PATH: [&'static str; 3] = ["regex", "Regex", "new"];
 pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
 pub const VEC_FROM_ELEM_PATH: [&'static str; 3] = ["std", "vec", "from_elem"];

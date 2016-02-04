@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 109 lints included in this crate:
+There are 111 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -46,6 +46,7 @@ name                                                                            
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                     | warn    | using identity operations, e.g. `x + 0` or `y / 1`
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                   | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                 | warn    | `#[inline(always)]` is a bad idea in most cases
+[invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                 | deny    | finds invalid regular expressions in `Regex::new(_)` invocations
 [items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)               | warn    | finds blocks where an item comes after a statement
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                               | warn    | for-looping over `_.next()` which is probably not intended
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                   | warn    | traits and impls that have `.len()` but not `.is_empty()`
@@ -85,6 +86,7 @@ name                                                                            
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                       | warn    | zipping iterator with a range when enumerate() would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                         | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 [redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                         | warn    | using `name @ _` in a pattern
+[regex_macro](https://github.com/Manishearth/rust-clippy/wiki#regex_macro)                                     | allow   | finds use of `regex!(_)`, suggests `Regex::new(_)` instead
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)                       | allow   | using `Result.unwrap()`, which might be better handled
 [reverse_range_loop](https://github.com/Manishearth/rust-clippy/wiki#reverse_range_loop)                       | warn    | Iterating over an empty range, such as `10..0` or `5..5`
 [search_is_some](https://github.com/Manishearth/rust-clippy/wiki#search_is_some)                               | warn    | using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`
