@@ -189,6 +189,17 @@ impl Error for string::ParseError {
     }
 }
 
+#[stable(feature = "box_error", since = "1.7.0")]
+impl<T: Error> Error for Box<T> {
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        Error::cause(&**self)
+    }
+}
+
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`
