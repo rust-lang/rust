@@ -26,6 +26,7 @@ use middle::ty::{self, Ty};
 use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
 use util::nodemap::NodeMap;
+use session::Session;
 
 use graphviz::IntoCow;
 use syntax::ast;
@@ -1117,7 +1118,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           debug!("const call({:?})", call_args);
           try!(eval_const_expr_partial(tcx, &**result, ty_hint, Some(&call_args)))
       },
-      hir::ExprLit(ref lit) => lit_to_const(&**lit, ety),
+      hir::ExprLit(ref lit) => lit_to_const(tcx.sess, e.span, &**lit, ety),
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ty_hint, fn_args)),
@@ -1319,7 +1320,7 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: Ty) -> CastResult {
     }
 }
 
-fn lit_to_const(lit: &ast::Lit, ty_hint: Option<Ty>) -> ConstVal {
+fn lit_to_const(sess: &Session, span: Span, lit: &ast::Lit, ty_hint: Option<Ty>) -> ConstVal {
     match lit.node {
         ast::LitStr(ref s, _) => Str((*s).clone()),
         ast::LitByteStr(ref data) => {
@@ -1339,7 +1340,12 @@ fn lit_to_const(lit: &ast::Lit, ty_hint: Option<Ty>) -> ConstVal {
         ast::LitInt(n, ast::UnsignedIntLit(_)) => Uint(n),
         ast::LitFloat(ref n, _) |
         ast::LitFloatUnsuffixed(ref n) => {
-            Float(n.parse::<f64>().unwrap() as f64)
+            if let Ok(x) = n.parse::<f64>() {
+                Float(x)
+            } else {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                sess.span_bug(span, "could not evaluate float literal (see issue #31407)");
+            }
         }
         ast::LitBool(b) => Bool(b)
     }
