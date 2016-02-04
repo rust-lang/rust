@@ -25,13 +25,11 @@ macro_rules! test_literal {
         let x64: f64 = $x;
         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
         for input in inputs {
-            if input != "inf" {
-                assert_eq!(input.parse(), Ok(x64));
-                assert_eq!(input.parse(), Ok(x32));
-                let neg_input = &format!("-{}", input);
-                assert_eq!(neg_input.parse(), Ok(-x64));
-                assert_eq!(neg_input.parse(), Ok(-x32));
-            }
+            assert_eq!(input.parse(), Ok(x64));
+            assert_eq!(input.parse(), Ok(x32));
+            let neg_input = &format!("-{}", input);
+            assert_eq!(neg_input.parse(), Ok(-x64));
+            assert_eq!(neg_input.parse(), Ok(-x32));
         }
     })
 }
