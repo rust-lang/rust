@@ -12,7 +12,7 @@ use prelude::v1::*;
 
 use ffi::CStr;
 use io;
-use libc::{self, c_int, size_t};
+use libc::{self, c_int, size_t, sockaddr, socklen_t};
 use net::{SocketAddr, Shutdown};
 use str;
 use sys::fd::FileDesc;
@@ -78,8 +78,28 @@ impl Socket {
         }
     }
 
-    pub fn accept(&self, storage: *mut libc::sockaddr,
-                  len: *mut libc::socklen_t) -> io::Result<Socket> {
+    pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t)
+                  -> io::Result<Socket> {
+        // Unfortunately the only known way right now to accept a socket and
+        // atomically set the CLOEXEC flag is to use the `accept4` syscall on
+        // Linux. This was added in 2.6.28, however, and because we support
+        // 2.6.18 we must detect this support dynamically.
+        if cfg!(target_os = "linux") {
+            weak! {
+                fn accept4(c_int, *mut sockaddr, *mut socklen_t, c_int) -> c_int
+            }
+            if let Some(accept) = accept4.get() {
+                let res = cvt_r(|| unsafe {
+                    accept(self.0.raw(), storage, len, SOCK_CLOEXEC)
+                });
+                match res {
+                    Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
+                    Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+
         let fd = try!(cvt_r(|| unsafe {
             libc::accept(self.0.raw(), storage, len)
         }));
