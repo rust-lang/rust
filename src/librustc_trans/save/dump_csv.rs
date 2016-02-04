@@ -847,13 +847,17 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         if !self.mac_defs.contains(&data.callee_span)
             && !data.imported {
             self.mac_defs.insert(data.callee_span);
-            self.fmt.macro_str(data.callee_span, data.callee_span,
-                               data.name.clone(), qualname.clone());
+            if let Some(sub_span) = self.span.span_for_macro_def_name(data.callee_span) {
+                self.fmt.macro_str(data.callee_span, sub_span,
+                                   data.name.clone(), qualname.clone());
+            }
         }
         if !self.mac_uses.contains(&data.span) {
-             self.mac_uses.insert(data.span);
-             self.fmt.macro_use_str(data.span, data.span, data.name,
-                                   qualname, data.scope);
+            self.mac_uses.insert(data.span);
+            if let Some(sub_span) = self.span.span_for_macro_use_name(data.span) {
+                self.fmt.macro_use_str(data.span, sub_span, data.name,
+                                       qualname, data.scope);
+            }
         }
     }
 }
