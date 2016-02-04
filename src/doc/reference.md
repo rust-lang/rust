@@ -1179,7 +1179,7 @@ Enumeration constructors can have either named or unnamed fields:
 ```rust
 enum Animal {
     Dog (String, f64),
-    Cat { name: String, weight: f64 }
+    Cat { name: String, weight: f64 },
 }
 
 let mut a: Animal = Animal::Dog("Cocoa".to_string(), 37.2);
@@ -1237,12 +1237,12 @@ const STRING: &'static str = "bitstring";
 
 struct BitsNStrings<'a> {
     mybits: [u32; 2],
-    mystring: &'a str
+    mystring: &'a str,
 }
 
 const BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
     mybits: BITS,
-    mystring: STRING
+    mystring: STRING,
 };
 ```
 
@@ -1661,7 +1661,7 @@ struct Foo;
 
 // Declare a public struct with a private field
 pub struct Bar {
-    field: i32
+    field: i32,
 }
 
 // Declare a public enum with two public variants
@@ -3212,7 +3212,7 @@ may refer to the variables bound within the pattern they follow.
 let message = match maybe_digit {
     Some(x) if x < 10 => process_digit(x),
     Some(x) => process_other(x),
-    None => panic!()
+    None => panic!(),
 };
 ```
 
