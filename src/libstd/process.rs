@@ -385,7 +385,7 @@ fn setup_io(io: &Stdio, readable: bool)
         }
         StdioImp::Raw(ref owned) => (imp::Stdio::Raw(owned.raw()), None, None),
         StdioImp::Inherit => (imp::Stdio::Inherit, None, None),
-        StdioImp::None => (imp::Stdio::None, None, None),
+        StdioImp::Null => (imp::Stdio::Null, None, None),
     })
 }
 
@@ -439,7 +439,7 @@ enum StdioImp {
     MakePipe,
     Raw(imp::RawStdio),
     Inherit,
-    None,
+    Null,
 }
 
 impl Stdio {
@@ -454,7 +454,7 @@ impl Stdio {
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn null() -> Stdio { Stdio(StdioImp::None) }
+    pub fn null() -> Stdio { Stdio(StdioImp::Null) }
 }
 
 impl FromInner<imp::RawStdio> for Stdio {

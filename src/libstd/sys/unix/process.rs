@@ -275,7 +275,7 @@ pub struct Process {
 
 pub enum Stdio {
     Inherit,
-    None,
+    Null,
     Raw(c_int),
 }
 
@@ -416,7 +416,7 @@ impl Process {
                         Stdio::Raw(fd.into_raw())
                     })
                 }
-                s @ Stdio::None |
+                s @ Stdio::Null |
                 s @ Stdio::Inherit |
                 s @ Stdio::Raw(_) => Ok(s),
             }
@@ -430,12 +430,10 @@ impl Process {
                 Stdio::Inherit => Ok(()),
                 Stdio::Raw(fd) => cvt_r(|| libc::dup2(fd, dst)).map(|_| ()),
 
-                // If a stdio file descriptor is set to be ignored, we open up
-                // /dev/null into that file descriptor. Otherwise, the first
-                // file descriptor opened up in the child would be numbered as
-                // one of the stdio file descriptors, which is likely to wreak
-                // havoc.
-                Stdio::None => {
+                // Open up a reference to /dev/null with appropriate read/write
+                // permissions and then move it into the correct location via
+                // `dup2`.
+                Stdio::Null => {
                     let mut opts = OpenOptions::new();
                     opts.read(dst == libc::STDIN_FILENO);
                     opts.write(dst != libc::STDIN_FILENO);
@@ -590,7 +588,7 @@ mod tests {
 
             let cat = t!(Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
                                               Stdio::Raw(stdout_write.raw()),
-                                              Stdio::None));
+                                              Stdio::Null));
             drop(stdin_read);
             drop(stdout_write);
 
