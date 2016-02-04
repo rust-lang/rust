@@ -12,6 +12,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use prelude::v1::*;
+
+use io;
 use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
 use os::unix::raw::{uid_t, gid_t};
 use process;
@@ -44,6 +47,34 @@ pub trait CommandExt {
     #[unstable(feature = "process_session_leader", reason = "recently added",
                issue = "27811")]
     fn session_leader(&mut self, on: bool) -> &mut process::Command;
+
+    /// Schedules a closure to be run just before the `exec` function is
+    /// invoked.
+    ///
+    /// The closure is allowed to return an I/O error whose OS error code will
+    /// be communicated back to the parent and returned as an error from when
+    /// the spawn was requested.
+    ///
+    /// Multiple closures can be registered and they will be called in order of
+    /// their registration. If a closure returns `Err` then no further closures
+    /// will be called and the spawn operation will immediately return with a
+    /// failure.
+    ///
+    /// # Notes
+    ///
+    /// This closure will be run in the context of the child process after a
+    /// `fork`. This primarily means that any modificatons made to memory on
+    /// behalf of this closure will **not** be visible to the parent process.
+    /// This is often a very constrained environment where normal operations
+    /// like `malloc` or acquiring a mutex are not guaranteed to work (due to
+    /// other threads perhaps still running when the `fork` was run).
+    ///
+    /// When this closure is run, aspects such as the stdio file descriptors and
+    /// working directory have successfully been changed, so output to these
+    /// locations may not appear where intended.
+    #[unstable(feature = "process_exec", issue = "31398")]
+    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+        where F: FnMut() -> io::Result<()> + Send + Sync + 'static;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -60,6 +91,13 @@ impl CommandExt for process::Command {
 
     fn session_leader(&mut self, on: bool) -> &mut process::Command {
         self.as_inner_mut().session_leader(on);
+        self
+    }
+
+    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+        where F: FnMut() -> io::Result<()> + Send + Sync + 'static
+    {
+        self.as_inner_mut().before_exec(Box::new(f));
         self
     }
 }
