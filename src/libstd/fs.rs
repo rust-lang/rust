@@ -1265,20 +1265,7 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    _remove_dir_all(path.as_ref())
-}
-
-fn _remove_dir_all(path: &Path) -> io::Result<()> {
-    for child in try!(read_dir(path)) {
-        let child = try!(child).path();
-        let stat = try!(symlink_metadata(&*child));
-        if stat.is_dir() {
-            try!(remove_dir_all(&*child));
-        } else {
-            try!(remove_file(&*child));
-        }
-    }
-    remove_dir(path)
+    fs_imp::remove_dir_all(path.as_ref())
 }
 
 /// Returns an iterator over the entries within a directory.
@@ -1489,18 +1476,26 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 
 #[cfg(test)]
 mod tests {
-    #![allow(deprecated)] //rand
-
     use prelude::v1::*;
     use io::prelude::*;
 
     use env;
     use fs::{self, File, OpenOptions};
     use io::{ErrorKind, SeekFrom};
-    use path::PathBuf;
-    use path::Path as Path2;
+    use path::{Path, PathBuf};
     use rand::{self, StdRng, Rng};
     use str;
+
+    #[cfg(windows)]
+    use os::windows::fs::{symlink_dir, symlink_file};
+    #[cfg(windows)]
+    use sys::fs::symlink_junction;
+    #[cfg(unix)]
+    use os::unix::fs::symlink as symlink_dir;
+    #[cfg(unix)]
+    use os::unix::fs::symlink as symlink_file;
+    #[cfg(unix)]
+    use os::unix::fs::symlink as symlink_junction;
 
     macro_rules! check { ($e:expr) => (
         match $e {
@@ -1525,7 +1520,7 @@ mod tests {
             p.join(path)
         }
 
-        fn path<'a>(&'a self) -> &'a Path2 {
+        fn path<'a>(&'a self) -> &'a Path {
             let TempDir(ref p) = *self;
             p
         }
@@ -1546,6 +1541,27 @@ mod tests {
         let ret = p.join(&format!("rust-{}", r.next_u32()));
         check!(fs::create_dir(&ret));
         TempDir(ret)
+    }
+
+    // Several test fail on windows if the user does not have permission to
+    // create symlinks (the `SeCreateSymbolicLinkPrivilege`). Instead of
+    // disabling these test on Windows, use this function to test whether we
+    // have permission, and return otherwise. This way, we still don't run these
+    // tests most of the time, but at least we do if the user has the right
+    // permissions.
+    pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
+        if cfg!(unix) { return true }
+        let link = tmpdir.join("some_hopefully_unique_link_name");
+
+        match symlink_file(r"nonexisting_target", link) {
+            Ok(_) => true,
+            Err(ref err) =>
+                if err.to_string().contains("A required privilege is not held by the client.") {
+                    false
+                } else {
+                    true
+                }
+        }
     }
 
     #[test]
@@ -1578,8 +1594,9 @@ mod tests {
         if cfg!(unix) {
             error!(result, "o such file or directory");
         }
-        // error!(result, "couldn't open path as file");
-        // error!(result, format!("path={}; mode=open; access=read", filename.display()));
+        if cfg!(windows) {
+            error!(result, "The system cannot find the file specified");
+        }
     }
 
     #[test]
@@ -1592,8 +1609,9 @@ mod tests {
         if cfg!(unix) {
             error!(result, "o such file or directory");
         }
-        // error!(result, "couldn't unlink path");
-        // error!(result, format!("path={}", filename.display()));
+        if cfg!(windows) {
+            error!(result, "The system cannot find the file specified");
+        }
     }
 
     #[test]
@@ -1799,6 +1817,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn file_test_walk_dir() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("walk_dir");
@@ -1855,19 +1874,13 @@ mod tests {
         let result = fs::create_dir_all(&file);
 
         assert!(result.is_err());
-        // error!(result, "couldn't recursively mkdir");
-        // error!(result, "couldn't create directory");
-        // error!(result, "mode=0700");
-        // error!(result, format!("path={}", file.display()));
     }
 
     #[test]
     fn recursive_mkdir_slash() {
-        check!(fs::create_dir_all(&Path2::new("/")));
+        check!(fs::create_dir_all(&Path::new("/")));
     }
 
-    // FIXME(#12795) depends on lstat to work on windows
-    #[cfg(not(windows))]
     #[test]
     fn recursive_rmdir() {
         let tmpdir = tmpdir();
@@ -1879,7 +1892,7 @@ mod tests {
         check!(fs::create_dir_all(&dtt));
         check!(fs::create_dir_all(&d2));
         check!(check!(File::create(&canary)).write(b"foo"));
-        check!(fs::soft_link(&d2, &dt.join("d2")));
+        check!(symlink_junction(&d2, &dt.join("d2")));
         check!(fs::remove_dir_all(&d1));
 
         assert!(!d1.is_dir());
@@ -1888,8 +1901,8 @@ mod tests {
 
     #[test]
     fn unicode_path_is_dir() {
-        assert!(Path2::new(".").is_dir());
-        assert!(!Path2::new("test/stdtest/fs.rs").is_dir());
+        assert!(Path::new(".").is_dir());
+        assert!(!Path::new("test/stdtest/fs.rs").is_dir());
 
         let tmpdir = tmpdir();
 
@@ -1907,21 +1920,21 @@ mod tests {
 
     #[test]
     fn unicode_path_exists() {
-        assert!(Path2::new(".").exists());
-        assert!(!Path2::new("test/nonexistent-bogus-path").exists());
+        assert!(Path::new(".").exists());
+        assert!(!Path::new("test/nonexistent-bogus-path").exists());
 
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
         let unicode = unicode.join(&format!("test-각丁ー再见"));
         check!(fs::create_dir(&unicode));
         assert!(unicode.exists());
-        assert!(!Path2::new("test/unicode-bogus-path-각丁ー再见").exists());
+        assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
     }
 
     #[test]
     fn copy_file_does_not_exist() {
-        let from = Path2::new("test/nonexistent-bogus-path");
-        let to = Path2::new("test/other-bogus-path");
+        let from = Path::new("test/nonexistent-bogus-path");
+        let to = Path::new("test/other-bogus-path");
 
         match fs::copy(&from, &to) {
             Ok(..) => panic!(),
@@ -1935,7 +1948,7 @@ mod tests {
     #[test]
     fn copy_src_does_not_exist() {
         let tmpdir = tmpdir();
-        let from = Path2::new("test/nonexistent-bogus-path");
+        let from = Path::new("test/nonexistent-bogus-path");
         let to = tmpdir.join("out.txt");
         check!(check!(File::create(&to)).write(b"hello"));
         assert!(fs::copy(&from, &to).is_err());
@@ -2026,19 +2039,17 @@ mod tests {
         assert_eq!(v, b"carrot".to_vec());
     }
 
-    #[cfg(not(windows))] // FIXME(#10264) operation not permitted?
     #[test]
     fn symlinks_work() {
         let tmpdir = tmpdir();
+        if !got_symlink_permission(&tmpdir) { return };
+
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
 
         check!(check!(File::create(&input)).write("foobar".as_bytes()));
-        check!(fs::soft_link(&input, &out));
-        // if cfg!(not(windows)) {
-        //     assert_eq!(check!(lstat(&out)).kind, FileType::Symlink);
-        //     assert_eq!(check!(out.lstat()).kind, FileType::Symlink);
-        // }
+        check!(symlink_file(&input, &out));
+        assert!(check!(out.symlink_metadata()).file_type().is_symlink());
         assert_eq!(check!(fs::metadata(&out)).len(),
                    check!(fs::metadata(&input)).len());
         let mut v = Vec::new();
@@ -2046,14 +2057,17 @@ mod tests {
         assert_eq!(v, b"foobar".to_vec());
     }
 
-    #[cfg(not(windows))] // apparently windows doesn't like symlinks
     #[test]
     fn symlink_noexist() {
+        // Symlinks can point to things that don't exist
         let tmpdir = tmpdir();
-        // symlinks can point to things that don't exist
-        check!(fs::soft_link(&tmpdir.join("foo"), &tmpdir.join("bar")));
-        assert_eq!(check!(fs::read_link(&tmpdir.join("bar"))),
-                   tmpdir.join("foo"));
+        if !got_symlink_permission(&tmpdir) { return };
+
+        // Use a relative path for testing. Symlinks get normalized by Windows,
+        // so we may not get the same path back for absolute paths
+        check!(symlink_file(&"foo", &tmpdir.join("bar")));
+        assert_eq!(check!(fs::read_link(&tmpdir.join("bar"))).to_str().unwrap(),
+                   "foo");
     }
 
     #[test]
@@ -2346,9 +2360,10 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn realpath_works() {
         let tmpdir = tmpdir();
+        if !got_symlink_permission(&tmpdir) { return };
+
         let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
         let file = tmpdir.join("test");
         let dir = tmpdir.join("test2");
@@ -2357,8 +2372,8 @@ mod tests {
 
         File::create(&file).unwrap();
         fs::create_dir(&dir).unwrap();
-        fs::soft_link(&file, &link).unwrap();
-        fs::soft_link(&dir, &linkdir).unwrap();
+        symlink_file(&file, &link).unwrap();
+        symlink_dir(&dir, &linkdir).unwrap();
 
         assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
 
@@ -2370,11 +2385,11 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
     fn realpath_works_tricky() {
         let tmpdir = tmpdir();
-        let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
+        if !got_symlink_permission(&tmpdir) { return };
 
+        let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
         let a = tmpdir.join("a");
         let b = a.join("b");
         let c = b.join("c");
@@ -2385,8 +2400,14 @@ mod tests {
         fs::create_dir_all(&b).unwrap();
         fs::create_dir_all(&d).unwrap();
         File::create(&f).unwrap();
-        fs::soft_link("../d/e", &c).unwrap();
-        fs::soft_link("../f", &e).unwrap();
+        if cfg!(not(windows)) {
+            symlink_dir("../d/e", &c).unwrap();
+            symlink_file("../f", &e).unwrap();
+        }
+        if cfg!(windows) {
+            symlink_dir(r"..\d\e", &c).unwrap();
+            symlink_file(r"..\f", &e).unwrap();
+        }
 
         assert_eq!(fs::canonicalize(&c).unwrap(), f);
         assert_eq!(fs::canonicalize(&e).unwrap(), f);
@@ -2419,5 +2440,32 @@ mod tests {
     fn read_dir_not_found() {
         let res = fs::read_dir("/path/that/does/not/exist");
         assert_eq!(res.err().unwrap().kind(), ErrorKind::NotFound);
+    }
+
+    #[test]
+    fn create_dir_all_with_junctions() {
+        let tmpdir = tmpdir();
+        let target = tmpdir.join("target");
+
+        let junction = tmpdir.join("junction");
+        let b = junction.join("a/b");
+
+        let link = tmpdir.join("link");
+        let d = link.join("c/d");
+
+        fs::create_dir(&target).unwrap();
+
+        check!(symlink_junction(&target, &junction));
+        check!(fs::create_dir_all(&b));
+        // the junction itself is not a directory, but `is_dir()` on a Path
+        // follows links
+        assert!(junction.is_dir());
+        assert!(b.exists());
+
+        if !got_symlink_permission(&tmpdir) { return };
+        check!(symlink_dir(&target, &link));
+        check!(fs::create_dir_all(&d));
+        assert!(link.is_dir());
+        assert!(d.exists());
     }
 }
