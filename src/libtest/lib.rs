@@ -733,7 +733,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         None => {}
     }
     try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
-    return st.write_run_finish();
+    st.write_run_finish()
 }
 
 #[test]
