@@ -516,7 +516,7 @@ struct_expr : expr_path '{' ident ':' expr
 ### Block expressions
 
 ```antlr
-block_expr : '{' [ stmt ';' | item ] *
+block_expr : '{' [ stmt | item ] *
                  [ expr ] '}' ;
 ```
 
