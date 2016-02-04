@@ -120,7 +120,9 @@ impl ExitStatusExt for process::ExitStatus {
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawFd for process::Stdio {
     unsafe fn from_raw_fd(fd: RawFd) -> process::Stdio {
-        process::Stdio::from_inner(sys::fd::FileDesc::new(fd))
+        let fd = sys::fd::FileDesc::new(fd);
+        let io = sys::process::Stdio::Fd(fd);
+        process::Stdio::from_inner(io)
     }
 }
 

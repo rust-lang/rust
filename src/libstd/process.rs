@@ -20,7 +20,7 @@ use fmt;
 use io;
 use path::Path;
 use str;
-use sys::pipe::{self, AnonPipe};
+use sys::pipe::AnonPipe;
 use sys::process as imp;
 use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use thread::{self, JoinHandle};
@@ -77,6 +77,17 @@ impl AsInner<imp::Process> for Child {
     fn as_inner(&self) -> &imp::Process { &self.handle }
 }
 
+impl FromInner<(imp::Process, imp::StdioPipes)> for Child {
+    fn from_inner((handle, io): (imp::Process, imp::StdioPipes)) -> Child {
+        Child {
+            handle: handle,
+            stdin: io.stdin.map(ChildStdin::from_inner),
+            stdout: io.stdout.map(ChildStdout::from_inner),
+            stderr: io.stderr.map(ChildStderr::from_inner),
+        }
+    }
+}
+
 impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
@@ -106,6 +117,12 @@ impl IntoInner<AnonPipe> for ChildStdin {
     fn into_inner(self) -> AnonPipe { self.inner }
 }
 
+impl FromInner<AnonPipe> for ChildStdin {
+    fn from_inner(pipe: AnonPipe) -> ChildStdin {
+        ChildStdin { inner: pipe }
+    }
+}
+
 /// A handle to a child process's stdout
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
@@ -125,6 +142,12 @@ impl AsInner<AnonPipe> for ChildStdout {
 
 impl IntoInner<AnonPipe> for ChildStdout {
     fn into_inner(self) -> AnonPipe { self.inner }
+}
+
+impl FromInner<AnonPipe> for ChildStdout {
+    fn from_inner(pipe: AnonPipe) -> ChildStdout {
+        ChildStdout { inner: pipe }
+    }
 }
 
 /// A handle to a child process's stderr
@@ -148,6 +171,12 @@ impl IntoInner<AnonPipe> for ChildStderr {
     fn into_inner(self) -> AnonPipe { self.inner }
 }
 
+impl FromInner<AnonPipe> for ChildStderr {
+    fn from_inner(pipe: AnonPipe) -> ChildStderr {
+        ChildStderr { inner: pipe }
+    }
+}
+
 /// The `Command` type acts as a process builder, providing fine-grained control
 /// over how a new process should be spawned. A default configuration can be
 /// generated using `Command::new(program)`, where `program` gives a path to the
@@ -167,11 +196,6 @@ impl IntoInner<AnonPipe> for ChildStderr {
 #[stable(feature = "process", since = "1.0.0")]
 pub struct Command {
     inner: imp::Command,
-
-    // Details explained in the builder methods
-    stdin: Option<Stdio>,
-    stdout: Option<Stdio>,
-    stderr: Option<Stdio>,
 }
 
 impl Command {
@@ -187,12 +211,7 @@ impl Command {
     /// otherwise configure the process.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr>>(program: S) -> Command {
-        Command {
-            inner: imp::Command::new(program.as_ref()),
-            stdin: None,
-            stdout: None,
-            stderr: None,
-        }
+        Command { inner: imp::Command::new(program.as_ref()) }
     }
 
     /// Add an argument to pass to the program.
@@ -247,48 +266,22 @@ impl Command {
     /// Configuration for the child process's stdin handle (file descriptor 0).
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdin(&mut self, cfg: Stdio) -> &mut Command {
-        self.stdin = Some(cfg);
+        self.inner.stdin(cfg.0);
         self
     }
 
     /// Configuration for the child process's stdout handle (file descriptor 1).
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stdout(&mut self, cfg: Stdio) -> &mut Command {
-        self.stdout = Some(cfg);
+        self.inner.stdout(cfg.0);
         self
     }
 
     /// Configuration for the child process's stderr handle (file descriptor 2).
     #[stable(feature = "process", since = "1.0.0")]
     pub fn stderr(&mut self, cfg: Stdio) -> &mut Command {
-        self.stderr = Some(cfg);
+        self.inner.stderr(cfg.0);
         self
-    }
-
-    fn spawn_inner(&mut self, default_io: StdioImp) -> io::Result<Child> {
-        let default_io = Stdio(default_io);
-
-        // See comment on `setup_io` for what `_drop_later` is.
-        let (their_stdin, our_stdin, _drop_later) = try!(
-            setup_io(self.stdin.as_ref().unwrap_or(&default_io), true)
-        );
-        let (their_stdout, our_stdout, _drop_later) = try!(
-            setup_io(self.stdout.as_ref().unwrap_or(&default_io), false)
-        );
-        let (their_stderr, our_stderr, _drop_later) = try!(
-            setup_io(self.stderr.as_ref().unwrap_or(&default_io), false)
-        );
-
-        match imp::Process::spawn(&mut self.inner, their_stdin, their_stdout,
-                                  their_stderr) {
-            Err(e) => Err(e),
-            Ok(handle) => Ok(Child {
-                handle: handle,
-                stdin: our_stdin.map(|fd| ChildStdin { inner: fd }),
-                stdout: our_stdout.map(|fd| ChildStdout { inner: fd }),
-                stderr: our_stderr.map(|fd| ChildStderr { inner: fd }),
-            })
-        }
     }
 
     /// Executes the command as a child process, returning a handle to it.
@@ -296,7 +289,7 @@ impl Command {
     /// By default, stdin, stdout and stderr are inherited from the parent.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
-        self.spawn_inner(StdioImp::Inherit)
+        self.inner.spawn(imp::Stdio::Inherit).map(Child::from_inner)
     }
 
     /// Executes the command as a child process, waiting for it to finish and
@@ -319,7 +312,8 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        self.spawn_inner(StdioImp::MakePipe).and_then(|p| p.wait_with_output())
+        self.inner.spawn(imp::Stdio::MakePipe).map(Child::from_inner)
+            .and_then(|p| p.wait_with_output())
     }
 
     /// Executes a command as a child process, waiting for it to finish and
@@ -360,33 +354,6 @@ impl AsInner<imp::Command> for Command {
 
 impl AsInnerMut<imp::Command> for Command {
     fn as_inner_mut(&mut self) -> &mut imp::Command { &mut self.inner }
-}
-
-// Takes a `Stdio` configuration (this module) and whether the to-be-owned
-// handle will be readable.
-//
-// Returns a triple of (stdio to spawn with, stdio to store, stdio to drop). The
-// stdio to spawn with is passed down to the `sys` module and indicates how the
-// stdio stream should be set up. The "stdio to store" is an object which
-// should be returned in the `Child` that makes its way out. The "stdio to drop"
-// represents the raw value of "stdio to spawn with", but is the owned variant
-// for it. This needs to be dropped after the child spawns
-fn setup_io(io: &Stdio, readable: bool)
-            -> io::Result<(imp::Stdio, Option<AnonPipe>, Option<AnonPipe>)>
-{
-    Ok(match io.0 {
-        StdioImp::MakePipe => {
-            let (reader, writer) = try!(pipe::anon_pipe());
-            if readable {
-                (imp::Stdio::Raw(reader.raw()), Some(writer), Some(reader))
-            } else {
-                (imp::Stdio::Raw(writer.raw()), Some(reader), Some(writer))
-            }
-        }
-        StdioImp::Raw(ref owned) => (imp::Stdio::Raw(owned.raw()), None, None),
-        StdioImp::Inherit => (imp::Stdio::Inherit, None, None),
-        StdioImp::Null => (imp::Stdio::Null, None, None),
-    })
 }
 
 /// The output of a finished process.
@@ -432,34 +399,26 @@ impl fmt::Debug for Output {
 
 /// Describes what to do with a standard I/O stream for a child process.
 #[stable(feature = "process", since = "1.0.0")]
-pub struct Stdio(StdioImp);
-
-// The internal enum for stdio setup; see below for descriptions.
-enum StdioImp {
-    MakePipe,
-    Raw(imp::RawStdio),
-    Inherit,
-    Null,
-}
+pub struct Stdio(imp::Stdio);
 
 impl Stdio {
     /// A new pipe should be arranged to connect the parent and child processes.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn piped() -> Stdio { Stdio(StdioImp::MakePipe) }
+    pub fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
 
     /// The child inherits from the corresponding parent descriptor.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn inherit() -> Stdio { Stdio(StdioImp::Inherit) }
+    pub fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn null() -> Stdio { Stdio(StdioImp::Null) }
+    pub fn null() -> Stdio { Stdio(imp::Stdio::Null) }
 }
 
-impl FromInner<imp::RawStdio> for Stdio {
-    fn from_inner(inner: imp::RawStdio) -> Stdio {
-        Stdio(StdioImp::Raw(inner))
+impl FromInner<imp::Stdio> for Stdio {
+    fn from_inner(inner: imp::Stdio) -> Stdio {
+        Stdio(inner)
     }
 }
 
