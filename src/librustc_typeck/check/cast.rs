@@ -13,7 +13,7 @@
 //! A cast `e as U` is valid if one of the following holds:
 //! * `e` has type `T` and `T` coerces to `U`; *coercion-cast*
 //! * `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or
-//!    unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
+//!   unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
 //! * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
 //! * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
 //! * `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
