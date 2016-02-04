@@ -77,9 +77,7 @@ impl FileDesc {
         // follow a strategy similar to musl [1] where if passing
         // F_DUPFD_CLOEXEC causes `fcntl` to return EINVAL it means it's not
         // supported (the third parameter, 0, is always valid), so we stop
-        // trying that. We also *still* call the `set_cloexec` method as
-        // apparently some kernel at some point stopped setting CLOEXEC even
-        // though it reported doing so on F_DUPFD_CLOEXEC.
+        // trying that.
         //
         // Also note that Android doesn't have F_DUPFD_CLOEXEC, but get it to
         // resolve so we at least compile this.
@@ -95,14 +93,25 @@ impl FileDesc {
             fd.set_cloexec();
             fd
         };
-        static TRY_CLOEXEC: AtomicBool = AtomicBool::new(true);
+        static TRY_CLOEXEC: AtomicBool =
+            AtomicBool::new(!cfg!(target_os = "android"));
         let fd = self.raw();
-        if !cfg!(target_os = "android") && TRY_CLOEXEC.load(Ordering::Relaxed) {
+        if TRY_CLOEXEC.load(Ordering::Relaxed) {
             match cvt(unsafe { libc::fcntl(fd, F_DUPFD_CLOEXEC, 0) }) {
+                // We *still* call the `set_cloexec` method as apparently some
+                // linux kernel at some point stopped setting CLOEXEC even
+                // though it reported doing so on F_DUPFD_CLOEXEC.
+                Ok(fd) => {
+                    return Ok(if cfg!(target_os = "linux") {
+                        make_filedesc(fd)
+                    } else {
+                        FileDesc::new(fd)
+                    })
+                }
                 Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {
                     TRY_CLOEXEC.store(false, Ordering::Relaxed);
                 }
-                res => return res.map(make_filedesc),
+                Err(e) => return Err(e),
             }
         }
         cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).map(make_filedesc)
