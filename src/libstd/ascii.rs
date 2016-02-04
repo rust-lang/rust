@@ -18,6 +18,27 @@ use mem;
 use ops::Range;
 
 /// Extension methods for ASCII-subset only operations on string slices.
+///
+/// Be aware that operations on seemingly non-ASCII characters can sometimes
+/// have unexpected results. Consider this example:
+///
+/// ```
+/// use std::ascii::AsciiExt;
+///
+/// assert_eq!("café".to_ascii_uppercase(), "CAFÉ");
+/// assert_eq!("café".to_ascii_uppercase(), "CAFé");
+/// ```
+///
+/// In the first example, the lowercased string is represented `"cafe\u{301}"`
+/// (the last character is an acute accent [combining character]). Unlike the
+/// other characters in the string, the combining character will not get mapped
+/// to an uppercase variant, resulting in `"CAFE\u{301}"`. In the second
+/// example, the lowercased string is represented `"caf\u{e9}"` (the last
+/// character is a single Unicode character representing an 'e' with an acute
+/// accent). Since the last character is defined outside the scope of ASCII,
+/// it will not get mapped to an uppercase variant, resulting in `"CAF\u{e9}"`.
+///
+/// [combining character]: https://en.wikipedia.org/wiki/Combining_character
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsciiExt {
     /// Container type for copied ASCII characters.
