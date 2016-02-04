@@ -21,7 +21,7 @@
 //! * `e` has type `bool` or `char` and `U` is an integer; *prim-int-cast*
 //! * `e` has type `u8` and `U` is `char`; *u8-char-cast*
 //! * `e` has type `&.[T; n]` and `U` is `*T`,
-//!   while if `e` is `&[T; n]` then `U` is not `*mut T`; *array-ptr-cast*
+//!   while if `e` is `&[T; n]` then `U` is `*const T`; *array-ptr-cast*
 //! * `e` is a function pointer type and `U` has type `*T`,
 //!   while `T: Sized`; *fptr-ptr-cast*
 //! * `e` is a function pointer type and `U` is an integer; *fptr-addr-cast*
