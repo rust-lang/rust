@@ -554,6 +554,18 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     Ok(())
 }
 
+pub fn remove_dir_all(path: &Path) -> io::Result<()> {
+    for child in try!(readdir(path)) {
+        let child = try!(child);
+        if try!(child.file_type()).is_dir() {
+            try!(remove_dir_all(&child.path()));
+        } else {
+            try!(unlink(&child.path()));
+        }
+    }
+    rmdir(path)
+}
+
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     let c_path = try!(cstr(p));
     let p = c_path.as_ptr();
