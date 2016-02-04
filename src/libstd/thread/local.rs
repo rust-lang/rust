@@ -92,7 +92,7 @@ pub struct LocalKey<T: 'static> {
     // trivially devirtualizable by LLVM because the value of `inner` never
     // changes and the constant should be readonly within a crate. This mainly
     // only runs into problems when TLS statics are exported across crates.
-    inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
+    inner: fn() -> Option<&'static UnsafeCell<Option<T>>>,
 
     // initialization routine to invoke to create a value
     init: fn() -> T,
@@ -126,7 +126,7 @@ macro_rules! __thread_local_inner {
     ($t:ty, $init:expr) => {{
         fn __init() -> $t { $init }
 
-        unsafe fn __getit() -> $crate::option::Option<
+        fn __getit() -> $crate::option::Option<
             &'static $crate::cell::UnsafeCell<
                 $crate::option::Option<$t>>>
         {
@@ -183,7 +183,7 @@ impl<T: 'static> LocalKey<T> {
     #[unstable(feature = "thread_local_internals",
                reason = "recently added to create a key",
                issue = "0")]
-    pub const fn new(inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
+    pub const fn new(inner: fn() -> Option<&'static UnsafeCell<Option<T>>>,
                      init: fn() -> T) -> LocalKey<T> {
         LocalKey {
             inner: inner,
@@ -303,11 +303,13 @@ pub mod elf {
             }
         }
 
-        pub unsafe fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
-            if intrinsics::needs_drop::<T>() && self.dtor_running.get() {
-                return None
+        pub fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
+            unsafe {
+                if intrinsics::needs_drop::<T>() && self.dtor_running.get() {
+                    return None
+                }
+                self.register_dtor();
             }
-            self.register_dtor();
             Some(&self.inner)
         }
 
@@ -452,24 +454,26 @@ pub mod os {
             }
         }
 
-        pub unsafe fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
-            let ptr = self.os.get() as *mut Value<T>;
-            if !ptr.is_null() {
-                if ptr as usize == 1 {
-                    return None
+        pub fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
+            unsafe {
+                let ptr = self.os.get() as *mut Value<T>;
+                if !ptr.is_null() {
+                    if ptr as usize == 1 {
+                        return None
+                    }
+                    return Some(&(*ptr).value);
                 }
-                return Some(&(*ptr).value);
-            }
 
-            // If the lookup returned null, we haven't initialized our own local
-            // copy, so do that now.
-            let ptr: Box<Value<T>> = box Value {
-                key: self,
-                value: UnsafeCell::new(None),
-            };
-            let ptr = Box::into_raw(ptr);
-            self.os.set(ptr as *mut u8);
-            Some(&(*ptr).value)
+                // If the lookup returned null, we haven't initialized our own local
+                // copy, so do that now.
+                let ptr: Box<Value<T>> = box Value {
+                    key: self,
+                    value: UnsafeCell::new(None),
+                };
+                let ptr = Box::into_raw(ptr);
+                self.os.set(ptr as *mut u8);
+                Some(&(*ptr).value)
+            }
         }
     }
 
