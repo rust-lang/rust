@@ -63,7 +63,6 @@ pub mod decodable;
 pub mod hash;
 pub mod debug;
 pub mod default;
-pub mod primitive;
 
 #[path="cmp/partial_eq.rs"]
 pub mod partial_eq;
@@ -177,8 +176,6 @@ derive_traits! {
     "Debug" => debug::expand_deriving_debug,
 
     "Default" => default::expand_deriving_default,
-
-    "FromPrimitive" => primitive::expand_deriving_from_primitive,
 
     "Send" => bounds::expand_deriving_unsafe_bound,
     "Sync" => bounds::expand_deriving_unsafe_bound,
