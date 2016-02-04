@@ -1,7 +1,7 @@
 - Feature Name: `process_exec`
 - Start Date: 2015-11-09
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1359](https://github.com/rust-lang/rfcs/pull/1359)
+- Rust Issue: [rust-lang/rust#31398](https://github.com/rust-lang/rust/issues/31398)
 
 # Summary
 [summary]: #summary
