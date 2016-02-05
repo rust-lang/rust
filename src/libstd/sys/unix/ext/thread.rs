@@ -12,11 +12,13 @@
 
 #![unstable(feature = "thread_extensions", issue = "29791")]
 
-use os::unix::raw::{pthread_t};
+#[allow(deprecated)]
+use os::unix::raw::pthread_t;
 use sys_common::{AsInner, IntoInner};
-use thread::{JoinHandle};
+use thread::JoinHandle;
 
 #[unstable(feature = "thread_extensions", issue = "29791")]
+#[allow(deprecated)]
 pub type RawPthread = pthread_t;
 
 /// Unix-specific extensions to `std::thread::JoinHandle`

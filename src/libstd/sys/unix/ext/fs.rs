@@ -15,69 +15,88 @@
 use fs::{self, Permissions, OpenOptions};
 use io;
 use libc;
-use os::raw::c_long;
+#[allow(deprecated)]
 use os::unix::raw;
 use path::Path;
-use sys::fs::MetadataExt as UnixMetadataExt;
 use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
+use sys::platform::fs::MetadataExt as UnixMetadataExt;
 
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const USER_READ: raw::mode_t = 0o400;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const USER_WRITE: raw::mode_t = 0o200;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const USER_EXECUTE: raw::mode_t = 0o100;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const USER_RWX: raw::mode_t = 0o700;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const GROUP_READ: raw::mode_t = 0o040;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const GROUP_WRITE: raw::mode_t = 0o020;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const GROUP_EXECUTE: raw::mode_t = 0o010;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const GROUP_RWX: raw::mode_t = 0o070;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const OTHER_READ: raw::mode_t = 0o004;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const OTHER_WRITE: raw::mode_t = 0o002;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const OTHER_EXECUTE: raw::mode_t = 0o001;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const OTHER_RWX: raw::mode_t = 0o007;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const ALL_READ: raw::mode_t = 0o444;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const ALL_WRITE: raw::mode_t = 0o222;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const ALL_EXECUTE: raw::mode_t = 0o111;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const ALL_RWX: raw::mode_t = 0o777;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const SETUID: raw::mode_t = 0o4000;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const SETGID: raw::mode_t = 0o2000;
 #[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 #[rustc_deprecated(since = "1.7.0", reason = "moved to the libc crate instead")]
+#[allow(deprecated)]
 pub const STICKY_BIT: raw::mode_t = 0o1000;
 
 /// Unix-specific extensions to `Permissions`
@@ -86,28 +105,30 @@ pub trait PermissionsExt {
     /// Returns the underlying raw `mode_t` bits that are the standard Unix
     /// permissions for this file.
     #[stable(feature = "fs_ext", since = "1.1.0")]
-    fn mode(&self) -> raw::mode_t;
+    fn mode(&self) -> u32;
 
-    /// Sets the underlying raw `mode_t` bits for this set of permissions.
+    /// Sets the underlying raw bits for this set of permissions.
     #[stable(feature = "fs_ext", since = "1.1.0")]
-    fn set_mode(&mut self, mode: raw::mode_t);
+    fn set_mode(&mut self, mode: u32);
 
     /// Creates a new instance of `Permissions` from the given set of Unix
     /// permission bits.
     #[stable(feature = "fs_ext", since = "1.1.0")]
-    fn from_mode(mode: raw::mode_t) -> Self;
+    fn from_mode(mode: u32) -> Self;
 }
 
 #[stable(feature = "fs_ext", since = "1.1.0")]
 impl PermissionsExt for Permissions {
-    fn mode(&self) -> raw::mode_t { self.as_inner().mode() }
-
-    fn set_mode(&mut self, mode: raw::mode_t) {
-        *self = FromInner::from_inner(FromInner::from_inner(mode));
+    fn mode(&self) -> u32 {
+        self.as_inner().mode()
     }
 
-    fn from_mode(mode: raw::mode_t) -> Permissions {
-        FromInner::from_inner(FromInner::from_inner(mode))
+    fn set_mode(&mut self, mode: u32) {
+        *self = Permissions::from_inner(FromInner::from_inner(mode));
+    }
+
+    fn from_mode(mode: u32) -> Permissions {
+        Permissions::from_inner(FromInner::from_inner(mode))
     }
 }
 
@@ -122,7 +143,7 @@ pub trait OpenOptionsExt {
     /// The operating system masks out bits with the systems `umask`, to produce
     /// the final permissions.
     #[stable(feature = "fs_ext", since = "1.1.0")]
-    fn mode(&mut self, mode: raw::mode_t) -> &mut Self;
+    fn mode(&mut self, mode: u32) -> &mut Self;
 
     /// Pass custom flags to the `flags` agument of `open`.
     ///
@@ -154,7 +175,7 @@ pub trait OpenOptionsExt {
 
 #[stable(feature = "fs_ext", since = "1.1.0")]
 impl OpenOptionsExt for OpenOptions {
-    fn mode(&mut self, mode: raw::mode_t) -> &mut OpenOptions {
+    fn mode(&mut self, mode: u32) -> &mut OpenOptions {
         self.as_inner_mut().mode(mode); self
     }
 
@@ -173,62 +194,57 @@ impl OpenOptionsExt for OpenOptions {
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn dev(&self) -> raw::dev_t;
+    fn dev(&self) -> u64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn ino(&self) -> raw::ino_t;
+    fn ino(&self) -> u64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn mode(&self) -> raw::mode_t;
+    fn mode(&self) -> u32;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn nlink(&self) -> raw::nlink_t;
+    fn nlink(&self) -> u64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn uid(&self) -> raw::uid_t;
+    fn uid(&self) -> u32;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn gid(&self) -> raw::gid_t;
+    fn gid(&self) -> u32;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn rdev(&self) -> raw::dev_t;
+    fn rdev(&self) -> u64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn size(&self) -> raw::off_t;
+    fn size(&self) -> u64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn atime(&self) -> raw::time_t;
+    fn atime(&self) -> i64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn atime_nsec(&self) -> c_long;
+    fn atime_nsec(&self) -> i64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn mtime(&self) -> raw::time_t;
+    fn mtime(&self) -> i64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn mtime_nsec(&self) -> c_long;
+    fn mtime_nsec(&self) -> i64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn ctime(&self) -> raw::time_t;
+    fn ctime(&self) -> i64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn ctime_nsec(&self) -> c_long;
+    fn ctime_nsec(&self) -> i64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn blksize(&self) -> raw::blksize_t;
+    fn blksize(&self) -> u64;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn blocks(&self) -> raw::blkcnt_t;
+    fn blocks(&self) -> u64;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for fs::Metadata {
-    fn dev(&self) -> raw::dev_t { self.as_raw_stat().st_dev as raw::dev_t }
-    fn ino(&self) -> raw::ino_t { self.as_raw_stat().st_ino as raw::ino_t }
-    fn mode(&self) -> raw::mode_t { self.as_raw_stat().st_mode as raw::mode_t }
-    fn nlink(&self) -> raw::nlink_t { self.as_raw_stat().st_nlink as raw::nlink_t }
-    fn uid(&self) -> raw::uid_t { self.as_raw_stat().st_uid as raw::uid_t }
-    fn gid(&self) -> raw::gid_t { self.as_raw_stat().st_gid as raw::gid_t }
-    fn rdev(&self) -> raw::dev_t { self.as_raw_stat().st_rdev as raw::dev_t }
-    fn size(&self) -> raw::off_t { self.as_raw_stat().st_size as raw::off_t }
-    fn atime(&self) -> raw::time_t { self.as_raw_stat().st_atime }
-    fn atime_nsec(&self) -> c_long { self.as_raw_stat().st_atime_nsec as c_long }
-    fn mtime(&self) -> raw::time_t { self.as_raw_stat().st_mtime }
-    fn mtime_nsec(&self) -> c_long { self.as_raw_stat().st_mtime_nsec as c_long }
-    fn ctime(&self) -> raw::time_t { self.as_raw_stat().st_ctime }
-    fn ctime_nsec(&self) -> c_long { self.as_raw_stat().st_ctime_nsec as c_long }
-
-    fn blksize(&self) -> raw::blksize_t {
-        self.as_raw_stat().st_blksize as raw::blksize_t
-    }
-    fn blocks(&self) -> raw::blkcnt_t {
-        self.as_raw_stat().st_blocks as raw::blkcnt_t
-    }
+    fn dev(&self) -> u64 { self.st_dev() }
+    fn ino(&self) -> u64 { self.st_ino() }
+    fn mode(&self) -> u32 { self.st_mode() }
+    fn nlink(&self) -> u64 { self.st_nlink() }
+    fn uid(&self) -> u32 { self.st_uid() }
+    fn gid(&self) -> u32 { self.st_gid() }
+    fn rdev(&self) -> u64 { self.st_rdev() }
+    fn size(&self) -> u64 { self.st_size() }
+    fn atime(&self) -> i64 { self.st_atime() }
+    fn atime_nsec(&self) -> i64 { self.st_atime_nsec() }
+    fn mtime(&self) -> i64 { self.st_mtime() }
+    fn mtime_nsec(&self) -> i64 { self.st_mtime_nsec() }
+    fn ctime(&self) -> i64 { self.st_ctime() }
+    fn ctime_nsec(&self) -> i64 { self.st_ctime_nsec() }
+    fn blksize(&self) -> u64 { self.st_blksize() }
+    fn blocks(&self) -> u64 { self.st_blocks() }
 }
 
 /// Add special unix types (block/char device, fifo and socket)
@@ -262,12 +278,12 @@ pub trait DirEntryExt {
     /// Returns the underlying `d_ino` field in the contained `dirent`
     /// structure.
     #[stable(feature = "dir_entry_ext", since = "1.1.0")]
-    fn ino(&self) -> raw::ino_t;
+    fn ino(&self) -> u64;
 }
 
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 impl DirEntryExt for fs::DirEntry {
-    fn ino(&self) -> raw::ino_t { self.as_inner().ino() }
+    fn ino(&self) -> u64 { self.as_inner().ino() }
 }
 
 /// Creates a new symbolic link on the filesystem.
@@ -305,12 +321,12 @@ pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
     #[stable(feature = "dir_builder", since = "1.6.0")]
-    fn mode(&mut self, mode: raw::mode_t) -> &mut Self;
+    fn mode(&mut self, mode: u32) -> &mut Self;
 }
 
 #[stable(feature = "dir_builder", since = "1.6.0")]
 impl DirBuilderExt for fs::DirBuilder {
-    fn mode(&mut self, mode: raw::mode_t) -> &mut fs::DirBuilder {
+    fn mode(&mut self, mode: u32) -> &mut fs::DirBuilder {
         self.as_inner_mut().set_mode(mode);
         self
     }
