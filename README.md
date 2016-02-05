@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 109 lints included in this crate:
+There are 110 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -23,6 +23,7 @@ name                                                                            
 [cast_sign_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss)                               | allow   | casts from signed types to unsigned types, e.g `x as u32` where `x: i32`
 [char_lit_as_u8](https://github.com/Manishearth/rust-clippy/wiki#char_lit_as_u8)                               | warn    | Casting a character literal to u8
 [chars_next_cmp](https://github.com/Manishearth/rust-clippy/wiki#chars_next_cmp)                               | warn    | using `.chars().next()` to check if a string starts with a char
+[clone_double_ref](https://github.com/Manishearth/rust-clippy/wiki#clone_double_ref)                           | warn    | using `clone` on `&&T`
 [clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#clone_on_copy)                                 | warn    | using `clone` on a `Copy` type
 [cmp_nan](https://github.com/Manishearth/rust-clippy/wiki#cmp_nan)                                             | deny    | comparisons to NAN (which will always return false, which is probably not intended)
 [cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                                         | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
