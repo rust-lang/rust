@@ -290,10 +290,23 @@ fn main() {
     }
 
     let rm = &m;
-    for (k, _values) in rm {
+    for (k, _value) in rm {
         //~^ you seem to want to iterate on a map's keys
         //~| HELP use the corresponding method
         //~| SUGGESTION for k in rm.keys()
+        let _k = k;
+    }
+
+    test_for_kv_map();
+}
+
+#[allow(used_underscore_binding)]
+fn test_for_kv_map() {
+    let m : HashMap<u64, u64> = HashMap::new();
+
+    // No error, _value is actually used
+    for (k, _value) in &m {
+        let _ = _value;
         let _k = k;
     }
 }

@@ -289,7 +289,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
     check_for_loop_reverse_range(cx, arg, expr);
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
-    check_for_loop_over_map_kv(cx, pat, arg, expr);
+    check_for_loop_over_map_kv(cx, pat, arg, body, expr);
 }
 
 /// Check for looping over a range and then indexing a sequence with it.
@@ -520,12 +520,13 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
 }
 
 // Check for the FOR_KV_MAP lint.
-fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
+fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
     if let PatTup(ref pat) = pat.node {
         if pat.len() == 2 {
+
             let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
-                (key, _) if pat_is_wild(key) => (&pat[1].span, "values"),
-                (_, value) if pat_is_wild(value) => (&pat[0].span, "keys"),
+                (key, _) if pat_is_wild(key, body) => (&pat[1].span, "values"),
+                (_, value) if pat_is_wild(value, body) => (&pat[0].span, "keys"),
                 _ => return
             };
 
@@ -558,11 +559,36 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Ex
 }
 
 // Return true if the pattern is a `PatWild` or an ident prefixed with '_'.
-fn pat_is_wild(pat: &Pat_) -> bool {
+fn pat_is_wild(pat: &Pat_, body: &Expr) -> bool {
     match *pat {
         PatWild => true,
-        PatIdent(_, ident, None) if ident.node.name.as_str().starts_with('_') => true,
+        PatIdent(_, ident, None) if ident.node.name.as_str().starts_with('_') => {
+            let mut visitor = UsedVisitor {
+                var: ident.node,
+                used: false,
+            };
+            walk_expr(&mut visitor, body);
+            !visitor.used
+        },
         _ => false,
+    }
+}
+
+struct UsedVisitor {
+    var: Ident, // var to look for
+    used: bool, // has the var been used otherwise?
+}
+
+impl<'a> Visitor<'a> for UsedVisitor {
+    fn visit_expr(&mut self, expr: &Expr) {
+        if let ExprPath(None, ref path) = expr.node {
+            if path.segments.len() == 1 && path.segments[0].identifier == self.var {
+                self.used = true;
+                return
+            }
+        }
+
+        walk_expr(self, expr);
     }
 }
 
