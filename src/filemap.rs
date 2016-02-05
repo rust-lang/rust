@@ -31,18 +31,14 @@ pub fn append_newlines(file_map: &mut FileMap) {
     }
 }
 
-pub fn write_all_files<T>(file_map: &FileMap,
-                          mut out: T,
-                          mode: WriteMode,
-                          config: &Config)
-                          -> Result<(), io::Error>
+pub fn write_all_files<T>(file_map: &FileMap, mut out: T, config: &Config) -> Result<(), io::Error>
     where T: Write
 {
-    output_header(&mut out, mode).ok();
+    output_header(&mut out, config.write_mode).ok();
     for filename in file_map.keys() {
-        try!(write_file(&file_map[filename], filename, &mut out, mode, config));
+        try!(write_file(&file_map[filename], filename, &mut out, config));
     }
-    output_footer(&mut out, mode).ok();
+    output_footer(&mut out, config.write_mode).ok();
 
     Ok(())
 }
@@ -87,7 +83,6 @@ pub fn write_system_newlines<T>(writer: T,
 pub fn write_file<T>(text: &StringBuffer,
                      filename: &str,
                      out: &mut T,
-                     mode: WriteMode,
                      config: &Config)
                      -> Result<Option<String>, io::Error>
     where T: Write
@@ -114,7 +109,7 @@ pub fn write_file<T>(text: &StringBuffer,
         Ok(make_diff(&ori, &fmt, 3))
     }
 
-    match mode {
+    match config.write_mode {
         WriteMode::Replace => {
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 if fmt != ori {
@@ -156,9 +151,6 @@ pub fn write_file<T>(text: &StringBuffer,
                 print_diff(make_diff(&ori, &fmt, 3),
                            |line_num| format!("\nDiff at line {}:", line_num));
             }
-        }
-        WriteMode::Default => {
-            unreachable!("The WriteMode should NEVER Be default at this point!");
         }
         WriteMode::Checkstyle => {
             let diff = try!(create_diff(filename, text, config));

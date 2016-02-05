@@ -530,7 +530,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
+            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
             visitor.block_indent = context.block_indent.block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 

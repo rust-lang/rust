@@ -17,7 +17,7 @@ use strings::string_buffer::StringBuffer;
 
 use Indent;
 use utils;
-use config::{Config, WriteMode};
+use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
@@ -31,7 +31,6 @@ pub struct FmtVisitor<'a> {
     // FIXME: use an RAII util or closure for indenting
     pub block_indent: Indent,
     pub config: &'a Config,
-    pub write_mode: Option<WriteMode>,
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -380,10 +379,7 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = span.hi;
     }
 
-    pub fn from_codemap(parse_session: &'a ParseSess,
-                        config: &'a Config,
-                        mode: Option<WriteMode>)
-                        -> FmtVisitor<'a> {
+    pub fn from_codemap(parse_session: &'a ParseSess, config: &'a Config) -> FmtVisitor<'a> {
         FmtVisitor {
             parse_session: parse_session,
             codemap: parse_session.codemap(),
@@ -394,7 +390,6 @@ impl<'a> FmtVisitor<'a> {
                 alignment: 0,
             },
             config: config,
-            write_mode: mode,
         }
     }
 
