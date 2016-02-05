@@ -41,7 +41,7 @@ use std::default::Default as StdDefault;
 use std::mem;
 use syntax::ast_util::{self, IdVisitingOperation};
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
+use syntax::codemap::{Span, MultiSpan};
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ast;
@@ -398,20 +398,20 @@ pub fn gather_attr(attr: &ast::Attribute)
 /// in trans that run after the main lint pass is finished. Most
 /// lints elsewhere in the compiler should call
 /// `Session::add_lint()` instead.
-pub fn raw_emit_lint(sess: &Session,
+pub fn raw_emit_lint<S: Into<MultiSpan>>(sess: &Session,
                      lints: &LintStore,
                      lint: &'static Lint,
                      lvlsrc: LevelSource,
-                     span: Option<Span>,
+                     span: Option<S>,
                      msg: &str) {
     raw_struct_lint(sess, lints, lint, lvlsrc, span, msg).emit();
 }
 
-pub fn raw_struct_lint<'a>(sess: &'a Session,
+pub fn raw_struct_lint<'a, S: Into<MultiSpan>>(sess: &'a Session,
                            lints: &LintStore,
                            lint: &'static Lint,
                            lvlsrc: LevelSource,
-                           span: Option<Span>,
+                           span: Option<S>,
                            msg: &str)
                            -> DiagnosticBuilder<'a> {
     let (mut level, source) = lvlsrc;
@@ -442,10 +442,15 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
     // For purposes of printing, we can treat forbid as deny.
     if level == Forbid { level = Deny; }
 
-    let mut err = match (level, span) {
-        (Warn, Some(sp)) => sess.struct_span_warn(sp, &msg[..]),
+    let span = span.map(|s| s.into());
+    let mut err = match (level, span.clone()) {
+        (Warn, Some(sp)) => {
+            sess.struct_span_warn(sp, &msg[..])
+        },
         (Warn, None)     => sess.struct_warn(&msg[..]),
-        (Deny, Some(sp)) => sess.struct_span_err(sp, &msg[..]),
+        (Deny, Some(sp)) => {
+            sess.struct_span_err(sp, &msg[..])
+        },
         (Deny, None)     => sess.struct_err(&msg[..]),
         _ => sess.bug("impossible level in raw_emit_lint"),
     };
@@ -458,7 +463,7 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
         if let Some(sp) = span {
-            err.fileline_warn(sp, &explanation);
+            err.fileline_warn(sp.clone(), &explanation);
             err.fileline_note(sp, &citation);
         } else {
             err.warn(&explanation);
@@ -497,7 +502,7 @@ pub trait LintContext: Sized {
         })
     }
 
-    fn lookup_and_emit(&self, lint: &'static Lint, span: Option<Span>, msg: &str) {
+    fn lookup_and_emit(&self, lint: &'static Lint, span: Option<MultiSpan>, msg: &str) {
         let (level, src) = match self.level_src(lint) {
             None => return,
             Some(pair) => pair,
@@ -520,8 +525,8 @@ pub trait LintContext: Sized {
     }
 
     /// Emit a lint at the appropriate level, for a particular span.
-    fn span_lint(&self, lint: &'static Lint, span: Span, msg: &str) {
-        self.lookup_and_emit(lint, Some(span), msg);
+    fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
+        self.lookup_and_emit(lint, Some(span.into()), msg);
     }
 
     fn struct_span_lint(&self,
@@ -1258,8 +1263,8 @@ pub fn check_crate(tcx: &ty::ctxt, access_levels: &AccessLevels) {
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
-        for &(lint, span, ref msg) in v {
-            tcx.sess.span_bug(span,
+        for &(lint, ref span, ref msg) in v {
+            tcx.sess.span_bug(span.clone(),
                               &format!("unprocessed lint {} at {}: {}",
                                        lint.as_str(), tcx.map.node_to_string(*id), *msg))
         }
@@ -1292,8 +1297,8 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
     for (_, v) in sess.lints.borrow().iter() {
-        for &(lint, span, ref msg) in v {
-            sess.span_bug(span,
+        for &(lint, ref span, ref msg) in v {
+            sess.span_bug(span.clone(),
                           &format!("unprocessed lint {}: {}",
                                    lint.as_str(), *msg))
         }
