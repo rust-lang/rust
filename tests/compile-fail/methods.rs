@@ -1,8 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![allow(unused)]
 #![deny(clippy, clippy_pedantic)]
+#![allow(unused, print_stdout)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -333,4 +333,14 @@ fn clone_on_copy() {
 fn clone_on_copy_generic<T: Copy>(t: T) {
     t.clone(); //~ERROR using `clone` on a `Copy` type
     Some(t).clone(); //~ERROR using `clone` on a `Copy` type
+}
+
+fn clone_on_double_ref() {
+    let x = vec![1];
+    let y = &&x;
+    let z: &Vec<_> = y.clone(); //~ERROR using `clone` on a double
+                                //~| HELP try dereferencing it
+                                //~| SUGGESTION let z: &Vec<_> = (*y).clone();
+                                //~^^^ERROR using `clone` on a `Copy` type
+    println!("{:p} {:p}",*y, z);
 }
