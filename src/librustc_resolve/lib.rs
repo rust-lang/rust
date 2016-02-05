@@ -47,6 +47,7 @@ use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
 use self::FallbackChecks::*;
 
+use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
@@ -3596,6 +3597,15 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
                                ast_map: &'a hir_map::Map<'tcx>,
                                make_glob_map: MakeGlobMap)
                                -> CrateMap {
+    // Currently, we ignore the name resolution data structures for
+    // the purposes of dependency tracking. Instead we will run name
+    // resolution and include its output in the hash of each item,
+    // much like we do for macro expansion. In other words, the hash
+    // reflects not just its contents but the results of name
+    // resolution on those contents. Hopefully we'll push this back at
+    // some point.
+    let _task = ast_map.dep_graph.in_task(DepNode::Resolve);
+
     let krate = ast_map.krate();
     let arenas = Resolver::arenas();
     let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, &arenas, None);

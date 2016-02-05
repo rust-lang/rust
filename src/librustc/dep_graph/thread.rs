@@ -19,6 +19,7 @@
 //! allocated (and both have a fairly large capacity).
 
 use rustc_data_structures::veccell::VecCell;
+use std::cell::Cell;
 use std::sync::mpsc::{self, Sender, Receiver};
 use std::thread;
 
@@ -38,6 +39,13 @@ pub enum DepMessage {
 
 pub struct DepGraphThreadData {
     enabled: bool,
+
+    // Local counter that just tracks how many tasks are pushed onto the
+    // stack, so that we still get an error in the case where one is
+    // missing. If dep-graph construction is enabled, we'd get the same
+    // error when processing tasks later on, but that's annoying because
+    // it lacks precision about the source of the error.
+    tasks_pushed: Cell<usize>,
 
     // current buffer, where we accumulate messages
     messages: VecCell<DepMessage>,
@@ -59,16 +67,24 @@ impl DepGraphThreadData {
         let (tx1, rx1) = mpsc::channel();
         let (tx2, rx2) = mpsc::channel();
         let (txq, rxq) = mpsc::channel();
+
         if enabled {
             thread::spawn(move || main(rx1, tx2, txq));
         }
+
         DepGraphThreadData {
             enabled: enabled,
+            tasks_pushed: Cell::new(0),
             messages: VecCell::with_capacity(INITIAL_CAPACITY),
             swap_in: rx2,
             swap_out: tx1,
             query_in: rxq,
         }
+    }
+
+    #[inline]
+    pub fn enabled(&self) -> bool {
+        self.enabled
     }
 
     /// Sends the current batch of messages to the thread. Installs a
@@ -100,12 +116,39 @@ impl DepGraphThreadData {
     /// the buffer is full, this may swap.)
     #[inline]
     pub fn enqueue(&self, message: DepMessage) {
-        if self.enabled {
-            let len = self.messages.push(message);
-            if len == INITIAL_CAPACITY {
-                self.swap();
-            }
+        // Regardless of whether dep graph construction is enabled, we
+        // still want to check that we always have a valid task on the
+        // stack when a read/write/etc event occurs.
+        match message {
+            DepMessage::Read(_) | DepMessage::Write(_) =>
+                if self.tasks_pushed.get() == 0 {
+                    self.invalid_message("read/write but no current task")
+                },
+            DepMessage::PushTask(_) | DepMessage::PushIgnore =>
+                self.tasks_pushed.set(self.tasks_pushed.get() + 1),
+            DepMessage::PopTask(_) | DepMessage::PopIgnore =>
+                self.tasks_pushed.set(self.tasks_pushed.get() - 1),
+            DepMessage::Query =>
+                (),
         }
+
+        if self.enabled {
+            self.enqueue_enabled(message);
+        }
+    }
+
+    // Outline this fn since I expect it may want to be inlined
+    // separately.
+    fn enqueue_enabled(&self, message: DepMessage) {
+        let len = self.messages.push(message);
+        if len == INITIAL_CAPACITY {
+            self.swap();
+        }
+    }
+
+    // Outline this too.
+    fn invalid_message(&self, string: &str) {
+        panic!("{}; see src/librustc/dep_graph/README.md for more information", string)
     }
 }
 

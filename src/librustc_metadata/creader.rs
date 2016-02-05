@@ -18,6 +18,7 @@ use decoder;
 use loader::{self, CratePaths};
 
 use rustc::back::svh::Svh;
+use rustc::dep_graph::DepNode;
 use rustc::session::{config, Session};
 use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateStore, validate_crate_name};
@@ -723,7 +724,10 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
     // Traverses an AST, reading all the information about use'd crates and
     // extern libraries necessary for later resolving, typechecking, linking,
     // etc.
-    pub fn read_crates(&mut self, krate: &hir::Crate) {
+    pub fn read_crates(&mut self) {
+        let _task = self.ast_map.dep_graph.in_task(DepNode::CrateReader);
+        let krate = self.ast_map.krate();
+
         self.process_crate(krate);
         krate.visit_all_items(self);
         self.creader.inject_allocator_crate();

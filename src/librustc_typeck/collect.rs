@@ -99,9 +99,8 @@ use rustc_front::print::pprust;
 
 pub fn collect_item_types(tcx: &ty::ctxt) {
     let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
-
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
-    ccx.tcx.map.krate().visit_all_items(&mut visitor);
+    ccx.tcx.visit_all_items_in_krate(DepNode::CollectItem, &mut visitor);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -146,9 +145,6 @@ struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let tcx = self.ccx.tcx;
-        let item_def_id = tcx.map.local_def_id(item.id);
-        let _task = tcx.dep_graph.in_task(DepNode::CollectItem(item_def_id));
         convert_item(self.ccx, item);
     }
 }

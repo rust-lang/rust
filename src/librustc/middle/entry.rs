@@ -9,6 +9,7 @@
 // except according to those terms.
 
 
+use dep_graph::DepNode;
 use front::map as ast_map;
 use middle::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
@@ -48,6 +49,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EntryContext<'a, 'tcx> {
 }
 
 pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
+    let _task = ast_map.dep_graph.in_task(DepNode::EntryPoint);
+
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateTypeExecutable
     });
