@@ -92,7 +92,7 @@ use middle::infer;
 use middle::infer::{TypeOrigin, type_variable};
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
-use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
+use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};

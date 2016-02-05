@@ -56,7 +56,10 @@ mod bar {
         use foo::Point;
         use foo::Square; //~ ERROR unused import
         pub fn cc(_p: Point) -> super::Square {
-            super::Square
+            fn f() -> super::Square {
+                super::Square
+            }
+            f()
         }
     }
 
