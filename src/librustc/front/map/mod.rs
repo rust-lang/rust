@@ -297,12 +297,12 @@ impl<'ast> Map<'ast> {
                     // NB                          ^~~~~~~
                     //
                     // You would expect that `item.id == id`, but this
-                    // is not always the case. In particular, for
-                    // ViewPath like `use self::{mem, foo}`, we record
+                    // is not always the case. In particular, for a
+                    // ViewPath item like `use self::{mem, foo}`, we
                     // map the ids for `mem` and `foo` to the
                     // enclosing view path item. This seems mega super
-                    // ultra wrong, but then who am I to
-                    // judge. -nmatsakis
+                    // ultra wrong, but then who am I to judge?
+                    // -nmatsakis
                     return DepNode::Hir(def_id);
                 }
 
@@ -544,7 +544,7 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn expect_item(&self, id: NodeId) -> &'ast Item {
-        match self.find(id) { // read recorded by `id`
+        match self.find(id) { // read recorded by `find`
             Some(NodeItem(item)) => item,
             _ => panic!("expected item, found {}", self.node_to_string(id))
         }
