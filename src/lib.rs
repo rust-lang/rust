@@ -167,6 +167,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,
+        strings::STRING_ADD,
         strings::STRING_ADD_ASSIGN,
         types::CAST_POSSIBLE_TRUNCATION,
         types::CAST_POSSIBLE_WRAP,

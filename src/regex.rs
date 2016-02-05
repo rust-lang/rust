@@ -1,6 +1,8 @@
 use regex_syntax;
 use std::error::Error;
-use syntax::codemap::{Span, BytePos, Pos};
+use syntax::ast::Lit_::LitStr;
+use syntax::codemap::{Span, BytePos};
+use syntax::parse::token::InternedString;
 use rustc_front::hir::*;
 use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
@@ -35,19 +37,47 @@ impl LateLintPass for RegexPass {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
             let ExprPath(_, ref path) = fun.node,
-            match_path(path, &REGEX_NEW_PATH) && args.len() == 1,
-            let Ok(ConstVal::Str(r)) = eval_const_expr_partial(cx.tcx, 
-                                                               &*args[0],
-                                                               ExprTypeChecked,
-                                                               None),
-            let Err(e) = regex_syntax::Expr::parse(&r)
+            match_path(path, &REGEX_NEW_PATH) && args.len() == 1
         ], {
-            let lo = args[0].span.lo + BytePos::from_usize(e.position());
-            let span = Span{ lo: lo, hi: lo, expn_id: args[0].span.expn_id };
-            span_lint(cx,
-                      INVALID_REGEX,
-                      span,
-                      &format!("Regex syntax error: {}", e.description()));
+            if let ExprLit(ref lit) = args[0].node {
+                if let LitStr(ref r, _) = lit.node {
+                    if let Err(e) = regex_syntax::Expr::parse(r) {
+                        span_lint(cx,
+                                  INVALID_REGEX,
+                                  str_span(args[0].span, &r, e.position()),
+                                  &format!("Regex syntax error: {}",
+                                           e.description()));
+                    }
+                }
+            } else {
+                if_let_chain!{[
+                    let Some(r) = const_str(cx, &*args[0]),
+                    let Err(e) = regex_syntax::Expr::parse(&r)
+                ], {
+                    span_lint(cx,
+                              INVALID_REGEX,
+                              args[0].span,
+                              &format!("Regex syntax error on position {}: {}",
+                                       e.position(),
+                                       e.description()));
+                }}
+            }
         }}
+    }
+}
+
+#[allow(cast_possible_truncation)]
+fn str_span(base: Span, s: &str, c: usize) -> Span {
+    let lo = match s.char_indices().nth(c) {
+        Some((b, _)) => base.lo + BytePos(b as u32),
+        _ => base.hi
+    };
+    Span{ lo: lo, hi: lo, ..base }
+}
+
+fn const_str(cx: &LateContext, e: &Expr) -> Option<InternedString> {
+    match eval_const_expr_partial(cx.tcx, e, ExprTypeChecked, None) {
+        Ok(ConstVal::Str(r)) => Some(r),
+        _ => None
     }
 }
