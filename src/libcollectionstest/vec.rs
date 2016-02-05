@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
 
@@ -464,6 +465,16 @@ fn test_split_off() {
 #[test]
 fn test_into_iter_count() {
     assert_eq!(vec![1, 2, 3].into_iter().count(), 3);
+}
+
+#[test]
+fn test_cow_from() {
+    let borrowed: &[_] = &["borrowed", "(slice)"];
+    let owned = vec!["owned", "(vec)"];
+    match (Cow::from(owned.clone()), Cow::from(borrowed)) {
+        (Cow::Owned(o), Cow::Borrowed(b)) => assert!(o == owned && b == borrowed),
+        _ => panic!("invalid `Cow::from`"),
+    }
 }
 
 #[bench]
