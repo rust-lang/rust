@@ -1,7 +1,7 @@
-- Feature Name: structural_match
-- Start Date: 2015-02-06
-- RFC PR: [rust-lang/rfcs#1445](https://github.com/rust-lang/rfcs/pull/1445)
-- Rust Issue: [rust-lang/rust#31434](https://github.com/rust-lang/rust/issues/31434)
+- Feature Name: (fill me in with a unique ident, my_awesome_feature)
+- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- RFC PR: (leave this empty)
+- Rust Issue: (leave this empty)
 
 # Summary
 [summary]: #summary
