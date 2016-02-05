@@ -387,50 +387,6 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
             }
         })
     }
-
-    /// Transform this guard to hold a sub-borrow of the original data.
-    ///
-    /// Applies the supplied closure to the data, returning a new lock
-    /// guard referencing the borrow returned by the closure.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # #![feature(guard_map)]
-    /// # use std::sync::{Mutex, MutexGuard};
-    /// let x = Mutex::new(vec![1, 2]);
-    ///
-    /// {
-    ///     let mut y = MutexGuard::map(x.lock().unwrap(), |v| &mut v[0]);
-    ///     *y = 3;
-    /// }
-    ///
-    /// assert_eq!(&*x.lock().unwrap(), &[3, 2]);
-    /// ```
-    #[unstable(feature = "guard_map",
-               reason = "recently added, needs RFC for stabilization",
-               issue = "27746")]
-    pub fn map<U: ?Sized, F>(this: Self, cb: F) -> MutexGuard<'mutex, U>
-        where F: FnOnce(&'mutex mut T) -> &'mutex mut U
-    {
-        // Compute the new data while still owning the original lock
-        // in order to correctly poison if the callback panics.
-        let data = unsafe { ptr::read(&this.__data) };
-        let new_data = cb(data);
-
-        // We don't want to unlock the lock by running the destructor of the
-        // original lock, so just read the fields we need and forget it.
-        let (poison, lock) = unsafe {
-            (ptr::read(&this.__poison), ptr::read(&this.__lock))
-        };
-        mem::forget(this);
-
-        MutexGuard {
-            __lock: lock,
-            __data: new_data,
-            __poison: poison
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -469,7 +425,7 @@ mod tests {
     use prelude::v1::*;
 
     use sync::mpsc::channel;
-    use sync::{Arc, Mutex, StaticMutex, Condvar, MutexGuard};
+    use sync::{Arc, Mutex, StaticMutex, Condvar};
     use sync::atomic::{AtomicUsize, Ordering};
     use thread;
 
@@ -712,20 +668,5 @@ mod tests {
         }
         let comp: &[i32] = &[4, 2, 5];
         assert_eq!(&*mutex.lock().unwrap(), comp);
-    }
-
-    #[test]
-    fn test_mutex_guard_map_panic() {
-        let mutex = Arc::new(Mutex::new(vec![1, 2]));
-        let mutex2 = mutex.clone();
-
-        thread::spawn(move || {
-            let _ = MutexGuard::map::<usize, _>(mutex2.lock().unwrap(), |_| panic!());
-        }).join().unwrap_err();
-
-        match mutex.lock() {
-            Ok(r) => panic!("Lock on poisioned Mutex is Ok: {:?}", &*r),
-            Err(_) => {}
-        };
     }
 }
