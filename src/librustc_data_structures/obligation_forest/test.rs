@@ -13,22 +13,24 @@ use super::{ObligationForest, Outcome, Error};
 #[test]
 fn push_pop() {
     let mut forest = ObligationForest::new();
-    forest.push_root("A");
-    forest.push_root("B");
-    forest.push_root("C");
+    forest.push_tree("A", "A");
+    forest.push_tree("B", "B");
+    forest.push_tree("C", "C");
 
     // first round, B errors out, A has subtasks, and C completes, creating this:
     //      A |-> A.1
     //        |-> A.2
     //        |-> A.3
-    let Outcome { completed: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
-        match *obligation {
-            "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
-            "B" => Err("B is for broken"),
-            "C" => Ok(Some(vec![])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
+            match *obligation {
+                "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
+                "B" => Err("B is for broken"),
+                "C" => Ok(Some(vec![])),
+                _ => unreachable!(),
+            }
+        });
     assert_eq!(ok, vec!["C"]);
     assert_eq!(err, vec![Error {error: "B is for broken",
                                 backtrace: vec!["B"]}]);
@@ -39,9 +41,10 @@ fn push_pop() {
     //        |-> A.3 |-> A.3.i
     //      D |-> D.1
     //        |-> D.2
-    forest.push_root("D");
+    forest.push_tree("D", "D");
     let Outcome { completed: ok, errors: err, .. }: Outcome<&'static str, ()> =
-        forest.process_obligations(|obligation, _| {
+        forest.process_obligations(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             match *obligation {
                 "A.1" => Ok(None),
                 "A.2" => Ok(None),
@@ -58,26 +61,30 @@ fn push_pop() {
     // propagates to A.3.i, but not D.1 or D.2.
     //      D |-> D.1 |-> D.1.i
     //        |-> D.2 |-> D.2.i
-    let Outcome { completed: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
-        match *obligation {
-            "A.1" => Ok(Some(vec![])),
-            "A.2" => Err("A is for apple"),
-            "D.1" => Ok(Some(vec!["D.1.i"])),
-            "D.2" => Ok(Some(vec!["D.2.i"])),
-            _ => unreachable!(),
-        }
-    });
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
+            match *obligation {
+                "A.1" => Ok(Some(vec![])),
+                "A.2" => Err("A is for apple"),
+                "D.1" => Ok(Some(vec!["D.1.i"])),
+                "D.2" => Ok(Some(vec!["D.2.i"])),
+                _ => unreachable!(),
+            }
+        });
     assert_eq!(ok, vec!["A.1"]);
     assert_eq!(err, vec![Error { error: "A is for apple",
                                  backtrace: vec!["A.2", "A"] }]);
 
     // fourth round: error in D.1.i that should propagate to D.2.i
-    let Outcome { completed: ok, errors: err, .. } = forest.process_obligations(|obligation, _| {
-        match *obligation {
-            "D.1.i" => Err("D is for dumb"),
-            _ => panic!("unexpected obligation {:?}", obligation),
-        }
-    });
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
+            match *obligation {
+                "D.1.i" => Err("D is for dumb"),
+                _ => panic!("unexpected obligation {:?}", obligation),
+            }
+        });
     assert_eq!(ok, Vec::<&'static str>::new());
     assert_eq!(err, vec![Error { error: "D is for dumb",
                                  backtrace: vec!["D.1.i", "D.1", "D"] }]);
@@ -94,10 +101,11 @@ fn push_pop() {
 #[test]
 fn success_in_grandchildren() {
     let mut forest = ObligationForest::new();
-    forest.push_root("A");
+    forest.push_tree("A", "A");
 
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, _| {
+        forest.process_obligations::<(),_>(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             match *obligation {
                 "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
                 _ => unreachable!(),
@@ -107,7 +115,8 @@ fn success_in_grandchildren() {
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, _| {
+        forest.process_obligations::<(),_>(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             match *obligation {
                 "A.1" => Ok(Some(vec![])),
                 "A.2" => Ok(Some(vec!["A.2.i", "A.2.ii"])),
@@ -119,7 +128,8 @@ fn success_in_grandchildren() {
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, _| {
+        forest.process_obligations::<(),_>(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             match *obligation {
                 "A.2.i" => Ok(Some(vec!["A.2.i.a"])),
                 "A.2.ii" => Ok(Some(vec![])),
@@ -130,7 +140,8 @@ fn success_in_grandchildren() {
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, _| {
+        forest.process_obligations::<(),_>(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             match *obligation {
                 "A.2.i.a" => Ok(Some(vec![])),
                 _ => unreachable!(),
@@ -140,7 +151,7 @@ fn success_in_grandchildren() {
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|_, _| unreachable!());
+        forest.process_obligations::<(),_>(|_, _, _| unreachable!());
     assert!(ok.is_empty());
     assert!(err.is_empty());
 }
@@ -150,9 +161,10 @@ fn to_errors_no_throw() {
     // check that converting multiple children with common parent (A)
     // only yields one of them (and does not panic, in particular).
     let mut forest = ObligationForest::new();
-    forest.push_root("A");
+    forest.push_tree("A", "A");
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, _| {
+        forest.process_obligations::<(),_>(|obligation, tree, _| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             match *obligation {
                 "A" => Ok(Some(vec!["A.1", "A.2", "A.3"])),
                 _ => unreachable!(),
@@ -168,10 +180,11 @@ fn to_errors_no_throw() {
 fn backtrace() {
     // check that converting multiple children with common parent (A)
     // only yields one of them (and does not panic, in particular).
-    let mut forest: ObligationForest<&'static str> = ObligationForest::new();
-    forest.push_root("A");
+    let mut forest = ObligationForest::new();
+    forest.push_tree("A", "A");
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, mut backtrace| {
+        forest.process_obligations::<(),_>(|obligation, tree, mut backtrace| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             assert!(backtrace.next().is_none());
             match *obligation {
                 "A" => Ok(Some(vec!["A.1"])),
@@ -181,7 +194,8 @@ fn backtrace() {
     assert!(ok.is_empty());
     assert!(err.is_empty());
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, mut backtrace| {
+        forest.process_obligations::<(),_>(|obligation, tree, mut backtrace| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             assert!(backtrace.next().unwrap() == &"A");
             assert!(backtrace.next().is_none());
             match *obligation {
@@ -192,7 +206,8 @@ fn backtrace() {
     assert!(ok.is_empty());
     assert!(err.is_empty());
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations::<(),_>(|obligation, mut backtrace| {
+        forest.process_obligations::<(),_>(|obligation, tree, mut backtrace| {
+            assert_eq!(obligation.chars().next(), tree.chars().next());
             assert!(backtrace.next().unwrap() == &"A.1");
             assert!(backtrace.next().unwrap() == &"A");
             assert!(backtrace.next().is_none());
