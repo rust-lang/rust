@@ -8,6 +8,9 @@ import re
 import sys
 
 
+level_re = re.compile(r'''(Forbid|Deny|Warn|Allow)''')
+
+
 def parse_path(p="src"):
     d = {}
     for f in os.listdir(p):
@@ -38,9 +41,20 @@ def parse_file(d, f):
             if not comment:
                 l = line.strip()
                 m = re.search(r"pub\s+([A-Z_]+)", l)
+
                 if m:
-                    print("found %s in %s" % (m.group(1).lower(), f))
-                    d[m.group(1).lower()] = last_comment
+                    name = m.group(1).lower()
+
+                    while True:
+                        m = re.search(level_re, line)
+                        if m:
+                            level = m.group(0)
+                            break
+
+                        line = next(rs)
+
+                    print("found %s with level %s in %s" % (name, level, f))
+                    d[name] = (level, last_comment)
                     last_comment = []
                     comment = True
                 if "}" in l:
@@ -51,7 +65,6 @@ PREFIX = """Welcome to the rust-clippy wiki!
 
 Here we aim to collect further explanations on the lints clippy provides. So \
 without further ado:
-
 """
 
 WARNING = """
@@ -61,7 +74,16 @@ Clippy works as a *plugin* to the compiler, which means using an unstable \
 internal API. We have gotten quite good at keeping pace with the API \
 evolution, but the consequence is that clippy absolutely needs to be compiled \
 with the version of `rustc` it will run on, otherwise you will get strange \
-errors of missing symbols."""
+errors of missing symbols.
+
+"""
+
+
+template = """# `%s`
+
+**Default level:** %s
+
+%s"""
 
 
 def write_wiki_page(d, f):
@@ -69,11 +91,16 @@ def write_wiki_page(d, f):
     keys.sort()
     with open(f, "w") as w:
         w.write(PREFIX)
-        for k in keys:
-            w.write("[`%s`](#%s)\n" % (k, k))
+
+        for level in ('Deny', 'Warn', 'Allow'):
+            w.write("\n**Those lints are %s by default**:\n\n" % level)
+            for k in keys:
+                if d[k][0] == level:
+                    w.write("[`%s`](#%s)\n" % (k, k))
+
         w.write(WARNING)
         for k in keys:
-            w.write("\n# `%s`\n\n%s" % (k, "".join(d[k])))
+            w.write(template % (k, d[k][0], "".join(d[k][1])))
 
 
 def check_wiki_page(d, f):
