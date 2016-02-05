@@ -8,8 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(FromPrimitive)] //~ERROR `#[derive]` for custom traits is not stable
-enum Foo {}
+#![feature(plugin_registrar, rustc_private)]
+#![crate_type = "dylib"]
+#![crate_name = "some_plugin"]
 
-fn main() {}
+extern crate rustc;
+extern crate rustc_plugin;
 
+#[link(name = "llvm-pass", kind = "static")]
+extern {}
+
+use rustc_plugin::registry::Registry;
+
+#[plugin_registrar]
+pub fn plugin_registrar(reg: &mut Registry) {
+    reg.register_llvm_pass("some-llvm-pass");
+}

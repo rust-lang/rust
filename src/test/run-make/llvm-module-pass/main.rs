@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(FromPrimitive)] //~ERROR `#[derive]` for custom traits is not stable
-enum Foo {}
+#![feature(plugin)]
+#![plugin(some_plugin)]
 
 fn main() {}
-

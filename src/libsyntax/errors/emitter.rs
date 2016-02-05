@@ -410,7 +410,7 @@ impl EmitterWriter {
                         chars.next();
                     }
                 }
-                if (col - col_ptr) > 1 {
+                if (col - col_ptr) > 0 {
                     // One extra squiggly is replaced by a "^"
                     s.pop();
                 }
@@ -962,7 +962,7 @@ mod test {
                    _____\n\
                    ddd__eee_\n\
                    elided\n\
-                   _ff_gg";
+                   __f_gg";
         let file = cm.new_filemap_and_lines("dummy.txt", inp);
 
         let span = |lo, hi, (off_lo, off_hi)| {
@@ -976,7 +976,7 @@ mod test {
         let sp1 = span(0, 6, (0, 5));
         let sp2 = span(8, 8, (0, 3));
         let sp3 = span(8, 8, (5, 8));
-        let sp4 = span(10, 10, (1, 3));
+        let sp4 = span(10, 10, (2, 3));
         let sp5 = span(10, 10, (4, 6));
 
         let expect0 = "dummy.txt: 5 ccccc\n\
@@ -986,8 +986,8 @@ mod test {
                        dummy.txt: 9 ddd__eee_\n\
                     \x20            ^~~  ^~~\n\
                     \x20            ...\n\
-                       dummy.txt:11 _ff_gg\n\
-                    \x20             ^~ ^~\n";
+                       dummy.txt:11 __f_gg\n\
+                    \x20              ^ ^~\n";
 
         let expect = "dummy.txt: 1 aaaaa\n\
                       dummy.txt: 2 aaaaa\n\
@@ -1008,8 +1008,8 @@ mod test {
         let expect2 = "dummy.txt: 9 ddd__eee_\n\
                     \x20            ^~~  ^~~\n\
                     \x20            ...\n\
-                       dummy.txt:11 _ff_gg\n\
-                    \x20             ^~ ^~\n";
+                       dummy.txt:11 __f_gg\n\
+                    \x20              ^ ^~\n";
 
 
         let expect_end = "dummy.txt: 1 aaaaa\n\
@@ -1020,7 +1020,7 @@ mod test {
                           dummy.txt: 9 ddd__eee_\n\
                        \x20              ^    ^\n\
                        \x20            ...\n\
-                          dummy.txt:11 _ff_gg\n\
+                          dummy.txt:11 __f_gg\n\
                        \x20              ^  ^\n";
 
         let expect0_end = "dummy.txt: 5 ccccc\n\
@@ -1031,7 +1031,7 @@ mod test {
                            dummy.txt: 9 ddd__eee_\n\
                         \x20              ^    ^\n\
                         \x20            ...\n\
-                           dummy.txt:11 _ff_gg\n\
+                           dummy.txt:11 __f_gg\n\
                         \x20              ^  ^\n";
 
         let expect_end_g1 = "dummy.txt:1 aaaaa\n\
@@ -1042,7 +1042,7 @@ mod test {
         let expect2_end = "dummy.txt: 9 ddd__eee_\n\
                         \x20              ^    ^\n\
                         \x20            ...\n\
-                           dummy.txt:11 _ff_gg\n\
+                           dummy.txt:11 __f_gg\n\
                         \x20              ^  ^\n";
 
         let expect_groups = [expect2, expect_g1];

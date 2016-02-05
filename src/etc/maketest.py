@@ -55,6 +55,7 @@ putenv('RUST_BUILD_STAGE', sys.argv[12])
 putenv('S', os.path.abspath(sys.argv[13]))
 putenv('RUSTFLAGS', sys.argv[15])
 putenv('LLVM_COMPONENTS', sys.argv[16])
+putenv('LLVM_CXXFLAGS', sys.argv[17])
 putenv('PYTHON', sys.executable)
 os.putenv('TARGET', target_triple)
 
