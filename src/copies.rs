@@ -87,7 +87,7 @@ fn lint_same_cond(cx: &LateContext, expr: &Expr) {
     }
 }
 
-/// Return the list of conditions expression in a sequence of `if/else`.
+/// Return the list of condition expressions in a sequence of `if/else`.
 /// Eg. would return `[a, b]` for the expression `if a {..} else if b {..}`.
 fn condition_sequence(mut expr: &Expr) -> Vec<&Expr> {
     let mut result = vec![];
