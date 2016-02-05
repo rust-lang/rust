@@ -39,6 +39,10 @@ design of the RFC means that existing code that uses constant patterns
 will generally "just work". The justification for this change is that
 it is clarifying
 ["underspecified language semantics" clause, as described in RFC 1122][ls].
+A [recent crater run][crater] with a prototype implementation found 6
+regressions.
+
+[crater]: https://gist.github.com/nikomatsakis/e714e4a824527e0ce5c9
 
 **Note:** this was also discussed on an [internals thread]. Major
 points from that thread are summarized either inline or in
@@ -432,6 +436,33 @@ When deriving the `Eq` trait, we will add the `#[structural_match]` to
 the type in question. Attributes added in this way will be **exempt from
 the feature gate**.
 
+## Exhaustiveness and dead-code checking
+
+We will treat user-defined structs "opaquely" for the purpose of
+exhaustiveness and dead-code checking. This is required to allow for
+semantic equality semantics in the future, since in that case we
+cannot rely on `Eq` to be correctly implemented (e.g., it could always
+return `false`, no matter values are supplied to it, even though it's
+not supposed to). The impact of this change has not been evaluated but
+is expected to be **very** small, since in practice it is rather
+challenging to successfully make an exhaustive match using
+user-defined constants, unless they are something trivial like
+newtype'd booleans (and, in that case, you can update the code to use
+a more extended pattern).
+
+Similarly, dead code detection should treat constants in a
+conservative fashion. that is, we can recognize that if there are two
+arms using the same constant, the second one is dead code, even though
+it may be that neither will matches (e.g., `match foo { C => _, C => _
+}`). We will make no assumptions about two distinct constants, even if
+we can concretely evaluate them to the same value.
+
+One **unresolved question** (described below) is what behavior to
+adopt for constants that involve no user-defined types. There, the
+definition of `Eq` is purely under our control, and we know that it
+matches structural equality, so we can retain our current aggressive
+analysis if desired.
+
 ### Phasing
 
 We will not make this change instantaneously. Rather, for at least one
@@ -492,24 +523,6 @@ constants for that purpose.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
-
-**Should we also adjust the exhaustiveness and match analysis
-algorithm to be more conservative around user-defined structs and
-enums?** This RFC leaves exhaustiveness and dead-code checking
-unchanged. If we adopted semantic equality semantics, then we would
-have to assume that the `Eq` impls are not buggy in order for the
-exhaustiveness checking to continue working like this (that is, we
-would have to assume that `x == x` always returned true). That said,
-this might be OK, so long as the compiler handles the failure in some
-graceful way, rather than generating undefined behavior. Furthermore,
-in practice it is rather challenging to successfully make an
-exhaustive match using user-defined constants unless they are
-something trivial like newtype'd bools.
-
-Still, for maximum flexibility, the ideal behavior would be to be
-conservative around exhaustiveness checking, but still detect and warn
-about "dead-code" arms (e.g., `match foo { C => _, C => _ }`). We
-would want to determine how possible this is.
 
 **What about exhaustiveness etc on builtin types?** Even if we ignore
 user-defined types, there are complications around exhaustiveness
