@@ -17,7 +17,6 @@
 //! - `#[rustc_mir(pretty="file.mir")]`
 
 extern crate syntax;
-extern crate rustc;
 extern crate rustc_front;
 
 use build;
@@ -29,21 +28,22 @@ use rustc::mir::repr::Mir;
 use hair::cx::Cx;
 use std::fs::File;
 
-use self::rustc::middle::infer;
-use self::rustc::middle::region::CodeExtentData;
-use self::rustc::middle::ty::{self, Ty};
-use self::rustc::util::common::ErrorReported;
-use self::rustc::util::nodemap::NodeMap;
-use self::rustc_front::hir;
-use self::rustc_front::intravisit::{self, Visitor};
-use self::syntax::ast;
-use self::syntax::attr::AttrMetaMethods;
-use self::syntax::codemap::Span;
-
-pub type MirMap<'tcx> = NodeMap<Mir<'tcx>>;
+use rustc::mir::mir_map::MirMap;
+use rustc::middle::infer;
+use rustc::middle::region::CodeExtentData;
+use rustc::middle::ty::{self, Ty};
+use rustc::util::common::ErrorReported;
+use rustc::util::nodemap::NodeMap;
+use rustc_front::hir;
+use rustc_front::intravisit::{self, Visitor};
+use syntax::ast;
+use syntax::attr::AttrMetaMethods;
+use syntax::codemap::Span;
 
 pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
-    let mut map = NodeMap();
+    let mut map = MirMap {
+        map: NodeMap(),
+    };
     {
         let mut dump = OuterDump {
             tcx: tcx,
@@ -182,7 +182,7 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                     }
                 }
 
-                let previous = self.map.insert(id, mir);
+                let previous = self.map.map.insert(id, mir);
                 assert!(previous.is_none());
             }
             Err(ErrorReported) => {}

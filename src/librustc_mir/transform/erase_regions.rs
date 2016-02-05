@@ -15,14 +15,14 @@
 use rustc::middle::ty;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
-use mir_map::MirMap;
 use transform::MirPass;
+use rustc::mir::mir_map::MirMap;
 
 pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
     let mut eraser = EraseRegions::new(tcx);
 
-    for mir in mir_map.iter_mut().map(|(_, v)| v) {
         eraser.run_on_mir(mir);
+    for (_, mir) in &mut mir_map.map {
     }
 }
 
