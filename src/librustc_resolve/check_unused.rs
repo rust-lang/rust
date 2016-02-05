@@ -18,6 +18,7 @@
 //
 
 use std::ops::{Deref, DerefMut};
+use std::collections::HashMap;
 
 use Resolver;
 use Namespace::{TypeNS, ValueNS};
@@ -25,7 +26,7 @@ use Namespace::{TypeNS, ValueNS};
 use rustc::lint;
 use rustc::middle::privacy::{DependsOn, LastImport, Used, Unused};
 use syntax::ast;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::{Span, MultiSpan, DUMMY_SP};
 
 use rustc_front::hir;
 use rustc_front::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -33,6 +34,7 @@ use rustc_front::intravisit::Visitor;
 
 struct UnusedImportCheckVisitor<'a, 'b: 'a, 'tcx: 'b> {
     resolver: &'a mut Resolver<'b, 'tcx>,
+    unused_imports: HashMap<ast::NodeId, Vec<Span>>,
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
@@ -58,16 +60,13 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     // only check imports and namespaces which are used. In particular, this
     // means that if an import could name either a public or private item, we
     // will check the correct thing, dependent on how the import is used.
-    fn finalize_import(&mut self, id: ast::NodeId, span: Span) {
+    fn finalize_import(&mut self, item_id: ast::NodeId, id: ast::NodeId, span: Span) {
         debug!("finalizing import uses for {:?}",
                self.session.codemap().span_to_snippet(span));
 
         if !self.used_imports.contains(&(id, TypeNS)) &&
            !self.used_imports.contains(&(id, ValueNS)) {
-            self.session.add_lint(lint::builtin::UNUSED_IMPORTS,
-                                  id,
-                                  span,
-                                  "unused import".to_string());
+               self.unused_imports.entry(item_id).or_insert_with(Vec::new).push(span);
         }
 
         let mut def_map = self.def_map.borrow_mut();
@@ -135,22 +134,19 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             hir::ItemUse(ref p) => {
                 match p.node {
                     ViewPathSimple(_, _) => {
-                        self.finalize_import(item.id, p.span)
+                        self.finalize_import(item.id, item.id, p.span)
                     }
 
                     ViewPathList(_, ref list) => {
                         for i in list {
-                            self.finalize_import(i.node.id(), i.span);
+                            self.finalize_import(item.id, i.node.id(), i.span);
                         }
                     }
                     ViewPathGlob(_) => {
                         if !self.used_imports.contains(&(item.id, TypeNS)) &&
                            !self.used_imports.contains(&(item.id, ValueNS)) {
-                            self.session
-                                .add_lint(lint::builtin::UNUSED_IMPORTS,
-                                          item.id,
-                                          p.span,
-                                          "unused import".to_string());
+                           self.unused_imports.entry(item.id).or_insert_with(Vec::new)
+                                                             .push(item.span);
                         }
                     }
                 }
@@ -161,6 +157,20 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 }
 
 pub fn check_crate(resolver: &mut Resolver, krate: &hir::Crate) {
-    let mut visitor = UnusedImportCheckVisitor { resolver: resolver };
+    let mut visitor = UnusedImportCheckVisitor { resolver: resolver,
+                                                 unused_imports: HashMap::new() };
     krate.visit_all_items(&mut visitor);
+
+    for (id, spans) in &visitor.unused_imports {
+        let ms = spans.iter().fold(MultiSpan::new(), |mut acc, &sp| { acc.push_merge(sp); acc });
+
+        visitor.session.add_lint(lint::builtin::UNUSED_IMPORTS,
+                                 *id,
+                                 ms,
+                                 if spans.len() > 1  {
+                                     "unused imports".to_string()
+                                 } else {
+                                     "unused import".to_string()
+                                 });
+    }
 }
