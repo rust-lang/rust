@@ -547,7 +547,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
                           |db| {
                     db.span_suggestion(expr.span,
                                        "use the corresponding method",
-                                       format!("for {} in {}.{}()",
+                                       format!("for {} in {}.{}() {{...}}",
                                                snippet(cx, *pat_span, ".."),
                                                snippet(cx, arg_span, ".."),
                                                kind));
