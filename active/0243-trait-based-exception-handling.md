@@ -128,7 +128,7 @@ behavior of exception-handling code.
 
 Note that `catch { foo()? }` is essentially equivalent to `foo()`.
 `catch` can be useful if you want to coalesce *multiple* potential
-exceptions -- `try { foo()?.bar()?.baz()? }` -- into a single
+exceptions -- `catch { foo()?.bar()?.baz()? }` -- into a single
 `Result`, which you wish to then e.g. pass on as-is to another
 function, rather than analyze yourself. (The last example could also
 be expressed using a series of `and_then` calls.)
