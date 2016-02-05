@@ -16,17 +16,32 @@ use rustc::middle::ty;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::mir_map::MirMap;
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{MirPass, Pass};
 
 pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
     let mut eraser = EraseRegions;
 
     for (_, mir) in &mut mir_map.map {
-        eraser.run_on_mir(mir, tcx);
+        eraser.run_pass(tcx, mir);
     }
 }
 
 pub struct EraseRegions;
+
+impl MirPass for EraseRegions {
+    fn run_pass<'tcx>(&mut self, tcx: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+        EraseRegionsVisitor::new(tcx).visit_mir(mir);
+    }
+
+}
+
+impl Pass for EraseRegions {
+    fn priority(&self) -> usize {
+        // We want this pass to run as late as possible in transformation chain, so we give it a
+        // very high priority number.
+        !50
+    }
+}
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -58,13 +73,7 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MirPass<'tcx> for EraseRegions<'a, 'tcx> {
-    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>) {
-        self.visit_mir(mir);
-    }
-}
-
-impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegions<'a, 'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     fn visit_mir(&mut self, mir: &mut Mir<'tcx>) {
         self.erase_regions_return_ty(&mut mir.return_ty);
         self.erase_regions_tys(mir.var_decls.iter_mut().map(|d| &mut d.ty));

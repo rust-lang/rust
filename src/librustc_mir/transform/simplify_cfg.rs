@@ -9,17 +9,14 @@
 // except according to those terms.
 
 use rustc::middle::const_eval::ConstVal;
+use rustc::middle::ty;
 use rustc::mir::repr::*;
 use transform::util;
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{MirPass, Pass};
 
 pub struct SimplifyCfg;
 
 impl SimplifyCfg {
-    pub fn new() -> SimplifyCfg {
-        SimplifyCfg
-    }
-
     fn remove_dead_blocks(&self, mir: &mut Mir) {
         let mut seen = vec![false; mir.basic_blocks.len()];
 
@@ -83,6 +80,7 @@ impl SimplifyCfg {
         changed
     }
 
+    // FIXME: This transformation should be interleaved with the constant-propagation pass.
     fn simplify_branches(&self, mir: &mut Mir) -> bool {
         let mut changed = false;
 
@@ -119,7 +117,7 @@ impl SimplifyCfg {
 }
 
 impl MirPass for SimplifyCfg {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &::rustc::middle::ty::ctxt<'tcx>) {
+    fn run_pass<'tcx>(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
         let mut changed = true;
         while changed {
             changed = self.simplify_branches(mir);
@@ -128,5 +126,11 @@ impl MirPass for SimplifyCfg {
         }
         // FIXME: Should probably be moved into some kind of pass manager
         mir.basic_blocks.shrink_to_fit();
+    }
+}
+
+impl Pass for SimplifyCfg {
+    fn priority(&self) -> usize {
+        50
     }
 }

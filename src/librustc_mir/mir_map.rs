@@ -22,13 +22,11 @@ extern crate rustc_front;
 use build;
 use graphviz;
 use pretty;
-use transform::{simplify_cfg, MirPass};
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
 use std::fs::File;
 
-use rustc::mir::transform::MirPass;
 use rustc::mir::mir_map::MirMap;
 use rustc::middle::infer;
 use rustc::middle::region::CodeExtentData;
@@ -147,9 +145,7 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
         let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env));
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
-            Ok(mut mir) => {
-                simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir, self.tcx);
-
+            Ok(mir) => {
                 let meta_item_list = self.attr
                                          .iter()
                                          .flat_map(|a| a.meta_item_list())

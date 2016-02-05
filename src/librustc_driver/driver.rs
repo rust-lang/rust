@@ -23,6 +23,7 @@ use rustc::middle;
 use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
 use rustc_borrowck as borrowck;
+use rustc_mir::transform;
 use rustc_resolve as resolve;
 use rustc_metadata::macro_import;
 use rustc_metadata::creader::LocalCrateReader;
@@ -561,8 +562,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-        *sess.plugin_mir_passes.borrow_mut() = mir_passes;
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
+        sess.mir_passes.borrow_mut().extend(mir_passes);
     }));
 
     // Lint plugins are registered; now we can process command line flags.
@@ -846,12 +847,18 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         let mut mir_map =
             time(time_passes,
-                 "MIR dump",
+                 "MIR build",
                  || mir::mir_map::build_mir_for_crate(tcx));
 
-        time(time_passes,
-             "MIR passes",
-             || mir_map.run_passes(&mut sess.plugin_mir_passes.borrow_mut(), tcx));
+
+        time(time_passes, "MIR passes", || {
+            let mut passes = sess.mir_passes.borrow_mut();
+            // Push all the built-in passes.
+            passes.push_pass(box transform::simplify_cfg::SimplifyCfg);
+            passes.push_pass(box transform::erase_regions::EraseRegions);
+            // And run everything.
+            passes.run_passes(tcx, &mut mir_map);
+        });
 
         time(time_passes,
              "liveness checking",
@@ -907,10 +914,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     })
 }
 
-/// Run the translation phase to LLVM, after which the AST and analysis can
-/// be discarded.
+/// Run the translation phase to LLVM, after which the MIR and analysis can be discarded.
 pub fn phase_4_translate_to_llvm<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                       mut mir_map: MirMap<'tcx>,
+                                       mir_map: MirMap<'tcx>,
                                        analysis: ty::CrateAnalysis)
                                        -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
@@ -919,11 +925,6 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &ty::ctxt<'tcx>,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
 
-    time(time_passes,
-         "erasing regions from MIR",
-         || mir::transform::erase_regions::erase_regions(tcx, &mut mir_map));
-
-    // Option dance to work around the lack of stack once closures.
     time(time_passes,
          "translation",
          move || trans::trans_crate(tcx, &mir_map, analysis))

@@ -18,8 +18,8 @@ extern crate rustc_front;
 extern crate rustc_plugin;
 extern crate syntax;
 
-use rustc::mir::transform::MirPass;
-use rustc::mir::repr::{Mir, Literal};
+use rustc::mir::transform::{self, MirBlockPass};
+use rustc::mir::repr::{BasicBlock, BasicBlockData, Literal};
 use rustc::mir::visit::MutVisitor;
 use rustc::middle::ty;
 use rustc::middle::const_eval::ConstVal;
@@ -30,9 +30,15 @@ use syntax::attr;
 
 struct Pass;
 
-impl MirPass for Pass {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, tcx: &ty::ctxt<'tcx>) {
-        Visitor.visit_mir(mir)
+impl transform::Pass for Pass {
+    fn priority(&self) -> usize {
+        1000
+    }
+}
+
+impl MirBlockPass for Pass {
+    fn run_pass<'tcx>(&mut self, tcx: &ty::ctxt<'tcx>, bb: BasicBlock, bbd: &mut BasicBlockData) {
+        Visitor.visit_basic_block_data(bb, bbd)
     }
 }
 
