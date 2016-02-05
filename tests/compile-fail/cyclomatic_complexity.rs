@@ -5,7 +5,7 @@
 #![allow(unused)]
 
 
-fn main() { //~ERROR The function has a cyclomatic complexity of 28
+fn main() { //~ERROR the function has a cyclomatic complexity of 28
     if true {
         println!("a");
     }
@@ -90,7 +90,7 @@ fn main() { //~ERROR The function has a cyclomatic complexity of 28
 }
 
 #[cyclomatic_complexity = "0"]
-fn kaboom() {  //~ ERROR: The function has a cyclomatic complexity of 8
+fn kaboom() {  //~ ERROR: the function has a cyclomatic complexity of 8
     let n = 0;
     'a: for i in 0..20 {
         'b: for j in i..20 {
@@ -136,7 +136,7 @@ fn bloo() {
 }
 
 #[cyclomatic_complexity = "0"]
-fn baa() { //~ ERROR: The function has a cyclomatic complexity of 2
+fn baa() { //~ ERROR: the function has a cyclomatic complexity of 2
     let x = || match 99 {
         0 => true,
         1 => false,
@@ -154,7 +154,7 @@ fn baa() { //~ ERROR: The function has a cyclomatic complexity of 2
 }
 
 #[cyclomatic_complexity = "0"]
-fn bar() { //~ ERROR: The function has a cyclomatic complexity of 2
+fn bar() { //~ ERROR: the function has a cyclomatic complexity of 2
     match 99 {
         0 => println!("hi"),
         _ => println!("bye"),
@@ -162,7 +162,7 @@ fn bar() { //~ ERROR: The function has a cyclomatic complexity of 2
 }
 
 #[cyclomatic_complexity = "0"]
-fn barr() { //~ ERROR: The function has a cyclomatic complexity of 2
+fn barr() { //~ ERROR: the function has a cyclomatic complexity of 2
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -172,7 +172,7 @@ fn barr() { //~ ERROR: The function has a cyclomatic complexity of 2
 }
 
 #[cyclomatic_complexity = "0"]
-fn barr2() { //~ ERROR: The function has a cyclomatic complexity of 3
+fn barr2() { //~ ERROR: the function has a cyclomatic complexity of 3
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -188,7 +188,7 @@ fn barr2() { //~ ERROR: The function has a cyclomatic complexity of 3
 }
 
 #[cyclomatic_complexity = "0"]
-fn barrr() { //~ ERROR: The function has a cyclomatic complexity of 2
+fn barrr() { //~ ERROR: the function has a cyclomatic complexity of 2
     match 99 {
         0 => println!("hi"),
         1 => panic!("bla"),
@@ -198,7 +198,7 @@ fn barrr() { //~ ERROR: The function has a cyclomatic complexity of 2
 }
 
 #[cyclomatic_complexity = "0"]
-fn barrr2() { //~ ERROR: The function has a cyclomatic complexity of 3
+fn barrr2() { //~ ERROR: the function has a cyclomatic complexity of 3
     match 99 {
         0 => println!("hi"),
         1 => panic!("bla"),
@@ -214,7 +214,7 @@ fn barrr2() { //~ ERROR: The function has a cyclomatic complexity of 3
 }
 
 #[cyclomatic_complexity = "0"]
-fn barrrr() { //~ ERROR: The function has a cyclomatic complexity of 2
+fn barrrr() { //~ ERROR: the function has a cyclomatic complexity of 2
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -224,7 +224,7 @@ fn barrrr() { //~ ERROR: The function has a cyclomatic complexity of 2
 }
 
 #[cyclomatic_complexity = "0"]
-fn barrrr2() { //~ ERROR: The function has a cyclomatic complexity of 3
+fn barrrr2() { //~ ERROR: the function has a cyclomatic complexity of 3
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -240,7 +240,7 @@ fn barrrr2() { //~ ERROR: The function has a cyclomatic complexity of 3
 }
 
 #[cyclomatic_complexity = "0"]
-fn cake() { //~ ERROR: The function has a cyclomatic complexity of 2
+fn cake() { //~ ERROR: the function has a cyclomatic complexity of 2
     if 4 == 5 {
         println!("yea");
     } else {
@@ -251,7 +251,7 @@ fn cake() { //~ ERROR: The function has a cyclomatic complexity of 2
 
 
 #[cyclomatic_complexity = "0"]
-pub fn read_file(input_path: &str) -> String { //~ ERROR: The function has a cyclomatic complexity of 4
+pub fn read_file(input_path: &str) -> String { //~ ERROR: the function has a cyclomatic complexity of 4
     use std::fs::File;
     use std::io::{Read, Write};
     use std::path::Path;
@@ -282,7 +282,7 @@ pub fn read_file(input_path: &str) -> String { //~ ERROR: The function has a cyc
 enum Void {}
 
 #[cyclomatic_complexity = "0"]
-fn void(void: Void) { //~ ERROR: The function has a cyclomatic complexity of 1
+fn void(void: Void) { //~ ERROR: the function has a cyclomatic complexity of 1
     if true {
         match void {
         }
