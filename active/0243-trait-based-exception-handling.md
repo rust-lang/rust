@@ -12,7 +12,7 @@ The new constructs are:
 
  * An `?` operator for explicitly propagating "exceptions".
 
- * A `try`..`catch` construct for conveniently catching and handling
+ * A `catch { ... }` expression for conveniently catching and handling
    "exceptions".
 
 The idea for the `?` operator originates from [RFC PR 204][204] by
@@ -39,10 +39,11 @@ These constructs are strict additions to the existing language, and apart from
 the issue of keywords, the legality and behavior of all currently existing Rust
 programs is entirely unaffected.
 
-The most important additions are a postfix `?` operator for propagating
-"exceptions" and a `try`..`catch` block for catching and handling them. By an
-"exception", for now, we essentially just mean the `Err` variant of a `Result`.
-
+The most important additions are a postfix `?` operator for
+propagating "exceptions" and a `catch {..}` expression for catching
+them. By an "exception", for now, we essentially just mean the `Err`
+variant of a `Result`, though the Unresolved Questions includes some
+discussion of extending to other types.
 
 ## `?` operator
 
@@ -112,54 +113,31 @@ forwarding from `From`). The precise requirements for a conversion to be "like"
 a subtyping coercion are an open question; see the "Unresolved questions"
 section.
 
+## `catch` expressions
 
-## `try`..`catch`
+This RFC also introduces an expression form `catch {..}`, which serves
+to "scope" the `?` operator. The `catch` operator executes its
+associated block. If no exception is thrown, then the result is
+`Ok(v)` where `v` is the value of the block. Otherwise, if an
+exception is thrown, then the result is `Err(e)`. Note that unlike
+other languages, a `catch` block always catches all errors, and they
+must all be coercable to a single type, as a `Result` only has a
+single `Err` type. This dramatically simplifies thinking about the
+behavior of exception-handling code.
 
-Like most other things in Rust, and unlike other languages that I know of,
-`try`..`catch` is an *expression*. If no exception is thrown in the `try` block,
-the  `try`..`catch` evaluates to the value of `try` block; if an exception is
-thrown, it is passed to the `catch` block, and the `try`..`catch` evaluates to
-the value of the `catch` block. As with `if`..`else` expressions, the types of
-the `try` and `catch` blocks must therefore unify. Unlike other languages, only
-a single type of exception may be thrown in the `try` block (a `Result` only has
-a single `Err` type); all exceptions are always caught; and there may only be
-one `catch` block. This dramatically simplifies thinking about the behavior of
-exception-handling code.
-
-There are two variations on this theme:
-
- 1. `try { EXPR }`
-
-    In this case the `try` block evaluates directly to a `Result` containing
-    either the value of `EXPR`, or the exception which was thrown. For instance,
-    `try { foo()? }` is essentially equivalent to `foo()`. This can be useful if
-    you want to coalesce *multiple* potential exceptions -
-    `try { foo()?.bar()?.baz()? }` - into a single `Result`, which you wish to
-    then e.g. pass on as-is to another function, rather than analyze yourself.
-
- 2. `try { EXPR } catch { PAT => EXPR, PAT => EXPR, ... }`
-
-    For example:
-
-        try {
-            foo()?.bar()?
-        } catch {
-            Red(rex)  => baz(rex),
-            Blue(bex) => quux(bex)
-        }
-
-    Here the `catch` performs a `match` on the caught exception directly, using
-    any number of refutable patterns. This form is convenient for handling the
-    exception in-place.
-
+Note that `catch { foo()? }` is essentially equivalent to `foo()`.
+`catch` can be useful if you want to coalesce *multiple* potential
+exceptions -- `try { foo()?.bar()?.baz()? }` -- into a single
+`Result`, which you wish to then e.g. pass on as-is to another
+function, rather than analyze yourself. (The last example could also
+be expressed using a series of `and_then` calls.)
 
 # Detailed design
 
 The meaning of the constructs will be specified by a source-to-source
-translation. We make use of an "early exit from any block" feature which doesn't
-currently exist in the language, generalizes the current `break` and `return`
-constructs, and is independently useful.
-
+translation. We make use of an "early exit from any block" feature
+which doesn't currently exist in the language, generalizes the current
+`break` and `return` constructs, and is independently useful.
 
 ## Early exit from any block
 
@@ -250,42 +228,6 @@ are merely one way.
             }.bar())
         }
 
- * Construct:
-
-        try {
-            foo()?.bar()
-        } catch {
-            A(a) => baz(a),
-            B(b) => quux(b)
-        }
-
-  Shallow:
-
-        match (try {
-            foo()?.bar()
-        }) {
-            Ok(a) => a,
-            Err(e) => match e {
-                A(a) => baz(a),
-                B(b) => quux(b)
-            }
-        }
-
-   Deep:
-
-        match ('here: {
-            Ok(match foo() {
-                Ok(a) => a,
-                Err(e) => break 'here Err(e.into())
-            }.bar())
-        }) {
-            Ok(a) => a,
-            Err(e) => match e {
-                A(a) => baz(a),
-                B(b) => quux(b)
-            }
-        }
-
 The fully expanded translations get quite gnarly, but that is why it's good that
 you don't have to write them!
 
@@ -325,9 +267,63 @@ independently.
 These questions should be satisfactorally resolved before stabilizing the
 relevant features, at the latest.
 
+## Optional `match` sugar
+
+Originally, the RFC included the ability to `match` the errors caught
+by a `catch` by writing `catch { .. } match { .. }`, which could be translated
+as follows:
+
+ * Construct:
+
+        catch {
+            foo()?.bar()
+        } match {
+            A(a) => baz(a),
+            B(b) => quux(b)
+        }
+
+  Shallow:
+
+        match (catch {
+            foo()?.bar()
+        }) {
+            Ok(a) => a,
+            Err(e) => match e {
+                A(a) => baz(a),
+                B(b) => quux(b)
+            }
+        }
+
+   Deep:
+
+        match ('here: {
+            Ok(match foo() {
+                Ok(a) => a,
+                Err(e) => break 'here Err(e.into())
+            }.bar())
+        }) {
+            Ok(a) => a,
+            Err(e) => match e {
+                A(a) => baz(a),
+                B(b) => quux(b)
+            }
+        }
+
+However, it was removed for the following reasons:
+
+- The `catch` (originally: `try`) keyword adds the real expressive "step up" here, the `match` (originally: `catch`) was just sugar for `unwrap_or`.
+- It would be easy to add further sugar in the future, once we see how `catch` is used (or not used) in practice.
+- There was some concern about potential user confusion about two aspects:
+  - `catch { }` yields a `Result<T,E>` but `catch { } match { }` yields just `T`;
+  - `catch { } match { }` handles all kinds of errors, unlike `try/catch` in other languages which let you pick and choose.
+ 
+It may be worth adding such a sugar in the future, or perhaps a
+variant that binds irrefutably and does not immediately lead into a
+`match` block.
+ 
 ## Choice of keywords
 
-The RFC to this point uses the keywords `try`..`catch`, but there are a number
+The RFC to this point uses the keyword `catch`, but there are a number
 of other possibilities, each with different advantages and drawbacks:
 
  * `try { ... } catch { ... }`
@@ -357,7 +353,6 @@ Among the considerations:
 
  * Language-level backwards compatibility when adding new keywords. I'm not sure
    how this could or should be handled.
-
 
 ## Semantics for "upcasting"
 
@@ -401,12 +396,20 @@ Some further thoughts and possibilities on this matter, only as brainstorming:
    (This perhaps ties into the subtyping angle: `Ipv4Addr` is clearly not a
    supertype of `u32`.)
 
-
 ## Forwards-compatibility
 
 If we later want to generalize this feature to other types such as `Option`, as
 described below, will we be able to do so while maintaining backwards-compatibility?
 
+## Monadic do notation
+
+There have been many comparisons drawn between this syntax and monadic
+do notation. Before stabilizing, we should determine whether we plan
+to make changes to better align this feature with a possible `do`
+notation (for example, by removing the implicit `Ok` at the end of a
+`catch` block). Note that such a notation would have to extend the
+standard monadic bind to accommodate rich control flow like `break`,
+`continue`, and `return`.
 
 # Drawbacks
 
@@ -465,60 +468,6 @@ described below, will we be able to do so while maintaining backwards-compatibil
 ## Expose a generalized form of `break` or `return` as described
 
 This RFC doesn't propose doing so at this time, but as it would be an independently useful feature, it could be added as well.
-
-## An additional `catch` form to bind the caught exception irrefutably
-
-The `catch` described above immediately passes the caught exception into a
-`match` block. It may sometimes be desirable to instead bind it directly to a
-single variable. That might look like this:
-
-    try { EXPR } catch IRR-PAT { EXPR }
-
-Where `catch` is followed by any irrefutable pattern (as with `let`).
-
-For example:
-
-    try {
-        foo()?.bar()?
-    } catch e {
-        let x = baz(e);
-        quux(x, e);
-    }
-
-While it may appear to be extravagant to provide both forms, there is reason to
-do so: either form on its own leads to unavoidable rightwards drift under some
-circumstances.
-
-The first form leads to rightwards drift if one wishes to do more complex
-multi-statement work with the caught exception:
-
-    try {
-        foo()?.bar()?
-    } catch {
-        e => {
-            let x = baz(e);
-            quux(x, e);
-        }
-    }
-
-This single case arm is quite redundant and unfortunate.
-
-The second form leads to rightwards drift if one wishes to `match` on the caught
-exception:
-
-    try {
-        foo()?.bar()?
-    } catch e {
-        match e {
-            Red(rex)  => baz(rex),
-            Blue(bex) => quux(bex)
-        }
-    }
-
-This `match e` is quite redundant and unfortunate.
-
-Therefore, neither form can be considered strictly superior to the other, and it
-may be preferable to simply provide both.
 
 ## `throw` and `throws`
 
