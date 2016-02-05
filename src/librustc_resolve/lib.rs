@@ -662,10 +662,11 @@ enum ResolveResult<T> {
 }
 
 impl<T> ResolveResult<T> {
-    fn success(&self) -> bool {
-        match *self {
-            Success(_) => true,
-            _ => false,
+    fn and_then<U, F: FnOnce(T) -> ResolveResult<U>>(self, f: F) -> ResolveResult<U> {
+        match self {
+            Failed(msg) => Failed(msg),
+            Indeterminate => Indeterminate,
+            Success(t) => f(t),
         }
     }
 }
@@ -789,7 +790,7 @@ enum ParentLink<'a> {
 /// One node in the tree of modules.
 pub struct ModuleS<'a> {
     parent_link: ParentLink<'a>,
-    def: Cell<Option<Def>>,
+    def: Option<Def>,
     is_public: bool,
     is_extern_crate: bool,
 
@@ -839,7 +840,7 @@ impl<'a> ModuleS<'a> {
     fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool, is_public: bool) -> Self {
         ModuleS {
             parent_link: parent_link,
-            def: Cell::new(def),
+            def: def,
             is_public: is_public,
             is_extern_crate: false,
             children: RefCell::new(HashMap::new()),
@@ -877,18 +878,18 @@ impl<'a> ModuleS<'a> {
     }
 
     fn def_id(&self) -> Option<DefId> {
-        self.def.get().as_ref().map(Def::def_id)
+        self.def.as_ref().map(Def::def_id)
     }
 
     fn is_normal(&self) -> bool {
-        match self.def.get() {
+        match self.def {
             Some(Def::Mod(_)) | Some(Def::ForeignMod(_)) => true,
             _ => false,
         }
     }
 
     fn is_trait(&self) -> bool {
-        match self.def.get() {
+        match self.def {
             Some(Def::Trait(_)) => true,
             _ => false,
         }
@@ -987,7 +988,7 @@ impl<'a> NameBinding<'a> {
     fn def(&self) -> Option<Def> {
         match self.def_or_module {
             DefOrModule::Def(def) => Some(def),
-            DefOrModule::Module(ref module) => module.def.get(),
+            DefOrModule::Module(ref module) => module.def,
         }
     }
 
@@ -1197,7 +1198,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     #[inline]
-    fn record_import_use(&mut self, import_id: NodeId, name: Name) {
+    fn record_import_use(&mut self, name: Name, ns: Namespace, resolution: &ImportResolution<'a>) {
+        let import_id = resolution.id;
+        self.used_imports.insert((import_id, ns));
+        match resolution.target.as_ref().and_then(|target| target.target_module.def_id()) {
+            Some(DefId { krate, .. }) => { self.used_crates.insert(krate); }
+            _ => {}
+        };
+
         if !self.make_glob_map {
             return;
         }
@@ -1249,12 +1257,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // modules as we go.
         while index < module_path_len {
             let name = module_path[index];
-            match self.resolve_name_in_module(search_module, name, TypeNS, false) {
+            match self.resolve_name_in_module(search_module, name, TypeNS, false, true) {
                 Failed(None) => {
                     let segment_name = name.as_str();
                     let module_name = module_to_string(search_module);
                     let mut span = span;
-                    let msg = if "???" == &module_name[..] {
+                    let msg = if "???" == &module_name {
                         span.hi = span.lo + Pos::from_usize(segment_name.len());
 
                         match search_parent_externals(name, &self.current_module) {
@@ -1328,8 +1336,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Span)
                            -> ResolveResult<(Module<'a>, LastPrivate)> {
-        let module_path_len = module_path.len();
-        assert!(module_path_len > 0);
+        if module_path.len() == 0 {
+            return Success((self.graph_root, LastMod(AllPublic))) // Use the crate root
+        }
 
         debug!("(resolving module path for import) processing `{}` rooted at `{}`",
                names_to_string(module_path),
@@ -1380,16 +1389,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        match self.resolve_module_in_lexical_scope(module_, module_path[0]) {
+                        match self.resolve_item_in_lexical_scope(module_,
+                                                                 module_path[0],
+                                                                 TypeNS,
+                                                                 true) {
                             Failed(err) => return Failed(err),
                             Indeterminate => {
                                 debug!("(resolving module path for import) indeterminate; bailing");
                                 return Indeterminate;
                             }
-                            Success(containing_module) => {
-                                search_module = containing_module;
-                                start_index = 1;
-                                last_private = LastMod(AllPublic);
+                            Success((target, _)) => match target.binding.module() {
+                                Some(containing_module) => {
+                                    search_module = containing_module;
+                                    start_index = 1;
+                                    last_private = LastMod(AllPublic);
+                                }
+                                None => return Failed(None),
                             }
                         }
                     }
@@ -1423,47 +1438,29 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                namespace,
                module_to_string(&*module_));
 
-        // The current module node is handled specially. First, check for
-        // its immediate children.
-        build_reduced_graph::populate_module_if_necessary(self, &module_);
-
-        if let Some(binding) = module_.get_child(name, namespace) {
-            debug!("top name bindings succeeded");
-            return Success((Target::new(module_, binding, Shadowable::Never), false));
-        }
-
-        // Now check for its import directives. We don't have to have resolved
-        // all its imports in the usual way; this is because chains of
-        // adjacent import statements are processed as though they mutated the
-        // current scope.
-        if let Some(import_resolution) =
-            module_.import_resolutions.borrow().get(&(name, namespace)) {
-            match import_resolution.target.clone() {
-                None => {
-                    // Not found; continue.
-                    debug!("(resolving item in lexical scope) found import resolution, but not \
-                            in namespace {:?}",
-                           namespace);
-                }
-                Some(target) => {
-                    debug!("(resolving item in lexical scope) using import resolution");
-                    // track used imports and extern crates as well
-                    let id = import_resolution.id;
-                    if record_used {
-                        self.used_imports.insert((id, namespace));
-                        self.record_import_use(id, name);
-                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                            self.used_crates.insert(kid);
-                        }
-                    }
-                    return Success((target, false));
-                }
-            }
-        }
-
-        // Finally, proceed up the scope chain looking for parent modules.
+        // Proceed up the scope chain looking for parent modules.
         let mut search_module = module_;
         loop {
+            // Resolve the name in the parent module.
+            match self.resolve_name_in_module(search_module, name, namespace, true, record_used) {
+                Failed(Some((span, msg))) => {
+                    resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                }
+                Failed(None) => (), // Continue up the search chain.
+                Indeterminate => {
+                    // We couldn't see through the higher scope because of an
+                    // unresolved import higher up. Bail.
+
+                    debug!("(resolving item in lexical scope) indeterminate higher scope; bailing");
+                    return Indeterminate;
+                }
+                Success((target, used_reexport)) => {
+                    // We found the module.
+                    debug!("(resolving item in lexical scope) found name in module, done");
+                    return Success((target, used_reexport));
+                }
+            }
+
             // Go to the next parent.
             match search_module.parent_link {
                 NoParentLink => {
@@ -1484,55 +1481,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 BlockParentLink(parent_module_node, _) => {
                     search_module = parent_module_node;
                 }
-            }
-
-            // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module, name, namespace, true) {
-                Failed(Some((span, msg))) => {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
-                }
-                Failed(None) => (), // Continue up the search chain.
-                Indeterminate => {
-                    // We couldn't see through the higher scope because of an
-                    // unresolved import higher up. Bail.
-
-                    debug!("(resolving item in lexical scope) indeterminate higher scope; bailing");
-                    return Indeterminate;
-                }
-                Success((target, used_reexport)) => {
-                    // We found the module.
-                    debug!("(resolving item in lexical scope) found name in module, done");
-                    return Success((target, used_reexport));
-                }
-            }
-        }
-    }
-
-    /// Resolves a module name in the current lexical scope.
-    fn resolve_module_in_lexical_scope(&mut self,
-                                       module_: Module<'a>,
-                                       name: Name)
-                                       -> ResolveResult<Module<'a>> {
-        // If this module is an anonymous module, resolve the item in the
-        // lexical scope. Otherwise, resolve the item from the crate root.
-        let resolve_result = self.resolve_item_in_lexical_scope(module_, name, TypeNS, true);
-        match resolve_result {
-            Success((target, _)) => {
-                if let Some(module_def) = target.binding.module() {
-                    return Success(module_def)
-                } else {
-                    debug!("!!! (resolving module in lexical scope) module \
-                            wasn't actually a module!");
-                    return Failed(None);
-                }
-            }
-            Indeterminate => {
-                debug!("(resolving module in lexical scope) indeterminate; bailing");
-                return Indeterminate;
-            }
-            Failed(err) => {
-                debug!("(resolving module in lexical scope) failed to resolve");
-                return Failed(err);
             }
         }
     }
@@ -1612,14 +1560,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               module_: Module<'a>,
                               name: Name,
                               namespace: Namespace,
-                              allow_private_imports: bool)
+                              allow_private_imports: bool,
+                              record_used: bool)
                               -> ResolveResult<(Target<'a>, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
                name,
                module_to_string(&*module_));
 
         // First, check the direct children of the module.
-        build_reduced_graph::populate_module_if_necessary(self, &module_);
+        build_reduced_graph::populate_module_if_necessary(self, module_);
 
         if let Some(binding) = module_.get_child(name, namespace) {
             debug!("(resolving name in module) found node as child");
@@ -1633,22 +1582,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     debug!("(resolving name in module) import unresolved; bailing out");
                     return Indeterminate;
                 }
-                match import_resolution.target.clone() {
-                    None => {
-                        debug!("(resolving name in module) name found, but not in namespace {:?}",
-                               namespace);
+                if let Some(target) = import_resolution.target.clone() {
+                    debug!("(resolving name in module) resolved to import");
+                    if record_used {
+                        self.record_import_use(name, namespace, &import_resolution);
                     }
-                    Some(target) => {
-                        debug!("(resolving name in module) resolved to import");
-                        // track used imports and extern crates as well
-                        let id = import_resolution.id;
-                        self.used_imports.insert((id, namespace));
-                        self.record_import_use(id, name);
-                        if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                            self.used_crates.insert(kid);
-                        }
-                        return Success((target, true));
-                    }
+                    return Success((target, true));
                 }
             }
             Some(..) | None => {} // Continue.
@@ -1670,7 +1609,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Descend into children and anonymous children.
-        build_reduced_graph::populate_module_if_necessary(self, &module_);
+        build_reduced_graph::populate_module_if_necessary(self, module_);
 
         module_.for_each_local_child(|_, _, child_node| {
             match child_node.module() {
@@ -2835,9 +2774,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        // Check the items.
+        let module = self.current_module;
         let name = identifier.unhygienic_name;
-        self.resolve_item_by_name_in_lexical_scope(name, namespace, record_used)
-            .map(LocalDef::from_def)
+        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
+            Success((target, _)) => target.binding.def().map(LocalDef::from_def),
+            Failed(Some((span, msg))) => {
+                resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                None
+            }
+            _ => None,
+        }
     }
 
     // Resolve a local definition, potentially adjusting for closures.
@@ -2967,7 +2914,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        let def = match self.resolve_name_in_module(containing_module, name, namespace, false) {
+        let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
+        let def = match result {
             Success((Target { binding, .. }, _)) => {
                 let (def, lp) = binding.def_and_lp();
                 (def, last_private.or(lp))
@@ -2999,7 +2947,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let containing_module;
         let last_private;
         match self.resolve_module_path_from_root(root_module,
-                                                 &module_path[..],
+                                                 &module_path,
                                                  0,
                                                  span,
                                                  LastMod(AllPublic)) {
@@ -3008,7 +2956,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some((span, msg)) => (span, msg),
                     None => {
                         let msg = format!("Use of undeclared module `::{}`",
-                                          names_to_string(&module_path[..]));
+                                          names_to_string(&module_path));
                         (span, msg)
                     }
                 };
@@ -3026,7 +2974,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let name = segments.last().unwrap().identifier.name;
-        match self.resolve_name_in_module(containing_module, name, namespace, false) {
+        match self.resolve_name_in_module(containing_module, name, namespace, false, true) {
             Success((Target { binding, .. }, _)) => {
                 let (def, lp) = binding.def_and_lp();
                 Some((def, last_private.or(lp)))
@@ -3068,6 +3016,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Success((target, _)) = self.resolve_name_in_module(module,
                                                                           ident.unhygienic_name,
                                                                           namespace,
+                                                                          true,
                                                                           true) {
                     if let Some(def) = target.binding.def() {
                         return Some(LocalDef::from_def(def));
@@ -3077,49 +3026,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         None
-    }
-
-    fn resolve_item_by_name_in_lexical_scope(&mut self,
-                                             name: Name,
-                                             namespace: Namespace,
-                                             record_used: bool)
-                                             -> Option<Def> {
-        // Check the items.
-        let module = self.current_module;
-        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
-            Success((target, _)) => {
-                match target.binding.def() {
-                    None => {
-                        // This can happen if we were looking for a type and
-                        // found a module instead. Modules don't have defs.
-                        debug!("(resolving item path by identifier in lexical scope) failed to \
-                                resolve {} after success...",
-                               name);
-                        None
-                    }
-                    Some(def) => {
-                        debug!("(resolving item path in lexical scope) resolved `{}` to item",
-                               name);
-                        // This lookup is "all public" because it only searched
-                        // for one identifier in the current module (couldn't
-                        // have passed through reexports or anything like that.
-                        Some(def)
-                    }
-                }
-            }
-            Indeterminate => None,
-            Failed(err) => {
-                debug!("(resolving item path by identifier in lexical scope) failed to \
-                        resolve `{}`",
-                       name);
-
-                if let Some((span, msg)) = err {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&*msg))
-                }
-
-                None
-            }
-        }
     }
 
     fn with_no_errors<T, F>(&mut self, f: F) -> T
@@ -3564,13 +3470,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
-                    let id = import.id;
-                    self.used_imports.insert((id, TypeNS));
                     let trait_name = self.get_trait_name(did);
-                    self.record_import_use(id, trait_name);
-                    if let Some(DefId{krate: kid, ..}) = target.target_module.def_id() {
-                        self.used_crates.insert(kid);
-                    }
+                    self.record_import_use(trait_name, TypeNS, &import);
                 }
             }
 
