@@ -23,6 +23,7 @@ use middle::def_id::{DefId, DefIndex};
 
 use rustc::front::map as hir_map;
 use rustc::mir::repr::Mir;
+use rustc::mir::mir_map::MirMap;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use std::cell::RefCell;
@@ -502,7 +503,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                        item_symbols: &RefCell<NodeMap<String>>,
                        link_meta: &LinkMeta,
                        reachable: &NodeSet,
-                       mir_map: &NodeMap<Mir<'tcx>>,
+                       mir_map: &MirMap<'tcx>,
                        krate: &hir::Crate) -> Vec<u8>
     {
         let encode_inlined_item: encoder::EncodeInlinedItem =

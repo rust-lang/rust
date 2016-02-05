@@ -12,7 +12,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::front;
 use rustc::front::map as hir_map;
 use rustc_mir as mir;
-use rustc_mir::mir_map::MirMap;
+use rustc::mir::mir_map::MirMap;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
