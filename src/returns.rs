@@ -6,7 +6,7 @@ use syntax::visit::FnKind;
 
 use utils::{span_lint, span_lint_and_then, snippet_opt, match_path_ast, in_external_macro};
 
-/// **What it does:** This lint checks for return statements at the end of a block. It is `Warn` by default.
+/// **What it does:** This lint checks for return statements at the end of a block.
 ///
 /// **Why is this bad?** Removing the `return` and semicolon will make the code more rusty.
 ///
@@ -18,7 +18,7 @@ declare_lint! {
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
-/// **What it does:** This lint checks for `let`-bindings, which are subsequently returned. It is `Warn` by default.
+/// **What it does:** This lint checks for `let`-bindings, which are subsequently returned.
 ///
 /// **Why is this bad?** It is just extraneous code. Remove it to make your code more rusty.
 ///

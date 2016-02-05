@@ -4,7 +4,7 @@ use rustc_front::hir::{Expr, ExprStruct};
 
 use utils::span_lint;
 
-/// **What it does:** This lint `Warn`s on needlessly including a base struct on update when all fields are changed anyway.
+/// **What it does:** This lint warns on needlessly including a base struct on update when all fields are changed anyway.
 ///
 /// **Why is this bad?** This will cost resources (because the base has to be somewhere), and make the code less readable.
 ///

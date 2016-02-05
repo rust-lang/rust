@@ -8,7 +8,7 @@ use syntax::ast::Lit_::*;
 
 use utils::span_lint;
 
-/// **What it does:** This lint checks for incompatible bit masks in comparisons. It is `Warn` by default.
+/// **What it does:** This lint checks for incompatible bit masks in comparisons.
 ///
 /// The formula for detecting if an expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
 /// is one of {`&`, `|`} and `<cmp_op>` is one of {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following table:
@@ -42,8 +42,6 @@ declare_lint! {
 /// |----------|---------|-----------|-------|
 /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
 /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|
-///
-/// This lint is `Warn` by default.
 ///
 /// **Why is this bad?** Not equally evil as [`bad_bit_mask`](#bad_bit_mask), but still a bit misleading, because the bit mask is ineffective.
 ///

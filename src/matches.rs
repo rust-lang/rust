@@ -11,7 +11,7 @@ use syntax::codemap::Span;
 use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
 use utils::{match_type, snippet, span_lint, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 
-/// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice. It is `Warn` by default.
+/// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
@@ -30,7 +30,7 @@ declare_lint! {
      is `_ => {}`) is used; recommends `if let` instead"
 }
 
-/// **What it does:** This lint checks for matches with a two arms where an `if let` will usually suffice. It is `Allow` by default.
+/// **What it does:** This lint checks for matches with a two arms where an `if let` will usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
@@ -49,7 +49,7 @@ declare_lint! {
      recommends `if let` instead"
 }
 
-/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It also checks for `if let &foo = bar` blocks. It is `Warn` by default.
+/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It also checks for `if let &foo = bar` blocks.
 ///
 /// **Why is this bad?** It just makes the code less readable. That reference destructuring adds nothing to the code.
 ///
@@ -70,7 +70,7 @@ declare_lint! {
      dereferenced instead"
 }
 
-/// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests to replace the expression with an `if...else` block. It is `Warn` by default.
+/// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests to replace the expression with an `if...else` block.
 ///
 /// **Why is this bad?** It makes the code less readable.
 ///
@@ -90,7 +90,7 @@ declare_lint! {
     "a match on boolean expression; recommends `if..else` block instead"
 }
 
-/// **What it does:** This lint checks for overlapping match arms. It is `Warn` by default.
+/// **What it does:** This lint checks for overlapping match arms.
 ///
 /// **Why is this bad?** It is likely to be an error and if not, makes the code less obvious.
 ///

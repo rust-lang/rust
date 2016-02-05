@@ -9,7 +9,7 @@ use utils::{snippet_opt, span_lint_and_then, is_adjusted};
 pub struct EtaPass;
 
 
-/// **What it does:** This lint checks for closures which just call another function where the function can be called directly. `unsafe` functions or calls where types get adjusted are ignored. It is `Warn` by default.
+/// **What it does:** This lint checks for closures which just call another function where the function can be called directly. `unsafe` functions or calls where types get adjusted are ignored.
 ///
 /// **Why is this bad?** Needlessly creating a closure just costs heap space and adds code for no benefit.
 ///

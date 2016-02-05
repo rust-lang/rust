@@ -4,12 +4,12 @@ use rustc_front::hir::*;
 use utils::span_help_and_lint;
 use consts::{Constant, constant_simple, FloatWidth};
 
-/// ZeroDivZeroPass is a pass that checks for a binary expression that consists
-/// of 0.0/0.0, which is always NaN. It is more clear to replace instances of
-/// 0.0/0.0 with std::f32::NaN or std::f64::NaN, depending on the precision.
+/// `ZeroDivZeroPass` is a pass that checks for a binary expression that consists
+/// `of 0.0/0.0`, which is always NaN. It is more clear to replace instances of
+/// `0.0/0.0` with `std::f32::NaN` or `std::f64::NaN`, depending on the precision.
 pub struct ZeroDivZeroPass;
 
-/// **What it does:** This lint checks for `0.0 / 0.0`. It is `Warn` by default.
+/// **What it does:** This lint checks for `0.0 / 0.0`.
 ///
 /// **Why is this bad?** It's less readable than `std::f32::NAN` or `std::f64::NAN`
 ///

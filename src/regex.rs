@@ -10,7 +10,7 @@ use rustc::lint::*;
 
 use utils::{match_path, REGEX_NEW_PATH, span_lint};
 
-/// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax. It is `deny` by default.
+/// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.
 ///
 /// **Why is this bad?** This will lead to a runtime panic.
 ///

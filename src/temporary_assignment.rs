@@ -4,9 +4,9 @@ use rustc_front::hir::{Expr, ExprAssign, ExprField, ExprStruct, ExprTup, ExprTup
 use utils::is_adjusted;
 use utils::span_lint;
 
-/// **What it does:** This lint `Warn`s on creating a struct or tuple just to assign a value in it.
+/// **What it does:** This lint checks for construction of a structure or tuple just to assign a value in it.
 ///
-/// **Why is this bad?** Readability. If the struct is only created to be updated, why not write the struct you want in the first place?
+/// **Why is this bad?** Readability. If the structure is only created to be updated, why not write the structure you want in the first place?
 ///
 /// **Known problems:** None.
 ///

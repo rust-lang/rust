@@ -2,8 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use utils::{IO_PRINT_PATH, is_expn_of, match_path, span_lint};
 
-/// **What it does:** This lint warns whenever you print on *stdout*. This lint is `Allow` by
-/// default, the purpose is to catch debugging remnants.
+/// **What it does:** This lint warns whenever you print on *stdout*. The purpose of this lint is to catch debugging remnants.
 ///
 /// **Why is this bad?** People often print on *stdout* while debugging an application and might
 /// forget to remove those prints afterward.

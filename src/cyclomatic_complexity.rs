@@ -11,7 +11,7 @@ use rustc_front::intravisit::{Visitor, walk_expr};
 
 use utils::{in_macro, LimitStack, span_help_and_lint};
 
-/// **What it does:** It `Warn`s on methods with high cyclomatic complexity
+/// **What it does:** This lint checks for methods with high cyclomatic complexity
 ///
 /// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly readable. Also LLVM will usually optimize small methods better.
 ///

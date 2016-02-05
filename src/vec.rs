@@ -7,7 +7,6 @@ use utils::{BOX_NEW_PATH, VEC_FROM_ELEM_PATH};
 use utils::{is_expn_of, match_path, snippet, span_lint_and_then};
 
 /// **What it does:** This lint warns about using `&vec![..]` when using `&[..]` would be possible.
-/// It is `Warn` by default.
 ///
 /// **Why is this bad?** This is less efficient.
 ///

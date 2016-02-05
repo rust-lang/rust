@@ -15,7 +15,7 @@ use utils::*;
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
 
-/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code. It is `Warn` by default.
+/// **What it does:** This lint checks for use of `Box<Vec<_>>` anywhere in the code.
 ///
 /// **Why is this bad?** `Vec` already keeps its contents in a separate area on the heap. So if you `Box` it, you just add another level of indirection without any benefit whatsoever.
 ///
@@ -27,7 +27,7 @@ declare_lint! {
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
-/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`). It is `Warn` by default.
+/// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`).
 ///
 /// **Why is this bad?** Gankro says:
 ///
@@ -78,7 +78,7 @@ impl LateLintPass for TypePass {
 #[allow(missing_copy_implementations)]
 pub struct LetPass;
 
-/// **What it does:** This lint checks for binding a unit value. It is `Warn` by default.
+/// **What it does:** This lint checks for binding a unit value.
 ///
 /// **Why is this bad?** A unit value cannot usefully be used anywhere. So binding one is kind of pointless.
 ///
@@ -121,7 +121,7 @@ impl LateLintPass for LetPass {
     }
 }
 
-/// **What it does:** This lint checks for comparisons to unit. It is `Warn` by default.
+/// **What it does:** This lint checks for comparisons to unit.
 ///
 /// **Why is this bad?** Unit is always equal to itself, and thus is just a clumsily written constant. Mostly this happens when someone accidentally adds semicolons at the end of the operands.
 ///
@@ -405,7 +405,7 @@ impl LateLintPass for CastPass {
     }
 }
 
-/// **What it does:** This lint checks for types used in structs, parameters and `let` declarations above a certain complexity threshold. It is `Warn` by default.
+/// **What it does:** This lint checks for types used in structs, parameters and `let` declarations above a certain complexity threshold.
 ///
 /// **Why is this bad?** Too complex types make the code less readable. Consider using a `type` definition to simplify them.
 ///
@@ -539,7 +539,7 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
     }
 }
 
-/// **What it does:** This lint points out expressions where a character literal is casted to u8 and suggests using a byte literal instead.
+/// **What it does:** This lint points out expressions where a character literal is casted to `u8` and suggests using a byte literal instead.
 ///
 /// **Why is this bad?** In general, casting values to smaller types is error-prone and should be avoided where possible. In the particular case of converting a character literal to u8, it is easy to avoid by just using a byte literal instead. As an added bonus, `b'a'` is even slightly shorter than `'a' as u8`.
 ///

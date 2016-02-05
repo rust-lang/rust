@@ -5,8 +5,7 @@ use syntax::attr::*;
 use syntax::ast::*;
 use utils::in_macro;
 
-/// **What it does:** It `Warn`s on blocks where there are items that are declared in the middle of
-/// or after the statements
+/// **What it does:** This lints checks for items declared after some statement in a block
 ///
 /// **Why is this bad?** Items live for the entire scope they are declared in. But statements are
 /// processed in order. This might cause confusion as it's hard to figure out which item is meant

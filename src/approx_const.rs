@@ -6,7 +6,7 @@ use syntax::ast::Lit_::*;
 use syntax::ast::Lit;
 use syntax::ast::FloatTy::*;
 
-/// **What it does:** This lint checks for floating point literals that approximate constants which are defined in [`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants) or [`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants), respectively, suggesting to use the predefined constant. This lint is `Warn` by default.
+/// **What it does:** This lint checks for floating point literals that approximate constants which are defined in [`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants) or [`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants), respectively, suggesting to use the predefined constant.
 ///
 /// **Why is this bad?** Usually, the definition in the standard library is more precise than what people come up with. If you find that your definition is actually more precise, please [file a Rust issue](https://github.com/rust-lang/rust/issues).
 ///

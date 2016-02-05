@@ -8,7 +8,7 @@ use syntax::visit::FnKind;
 
 use utils::{span_lint, span_help_and_lint};
 
-/// **What it does:** This lint `Warn`s on struct field patterns bound to wildcards.
+/// **What it does:** This lint checks for structure field patterns bound to wildcards.
 ///
 /// **Why is this bad?** Using `..` instead is shorter and leaves the focus on the fields that are actually bound.
 ///
@@ -20,7 +20,7 @@ declare_lint! {
     "Struct fields are bound to a wildcard instead of using `..`"
 }
 
-/// **What it does:** This lint `Warn`s on function arguments having the similar names differing by an underscore
+/// **What it does:** This lint checks for function arguments having the similar names differing by an underscore
 ///
 /// **Why is this bad?** It affects code readability
 ///

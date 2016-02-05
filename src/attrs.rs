@@ -9,7 +9,7 @@ use syntax::attr::*;
 use syntax::ast::{Attribute, Lit, Lit_, MetaList, MetaWord, MetaNameValue};
 use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 
-/// **What it does:** This lint `Warn`s on items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
+/// **What it does:** This lint checks for items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
 ///
 /// **Why is this bad?** While there are valid uses of this annotation (and once you know when to use it, by all means `allow` this lint), it's a common newbie-mistake to pepper one's code with it.
 ///
@@ -27,7 +27,7 @@ declare_lint! {
     "`#[inline(always)]` is a bad idea in most cases"
 }
 
-/// **What it does:** This lint `Warn`s on `#[deprecated]` annotations with a `since` field that is not a valid semantic version..
+/// **What it does:** This lint checks for `#[deprecated]` annotations with a `since` field that is not a valid semantic version..
 ///
 /// **Why is this bad?** For checking the version of the deprecation, it must be valid semver. Failing that, the contained information is useless.
 ///
