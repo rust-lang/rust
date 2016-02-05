@@ -23,7 +23,8 @@ use lint::{LintPass, LateLintPass};
 use std::cmp;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
-use syntax::{abi, ast};
+use syntax::ast;
+use syntax::abi::Abi;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
@@ -558,10 +559,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::TyBareFn(None, bare_fn) => {
                 match bare_fn.abi {
-                    abi::Rust |
-                    abi::RustIntrinsic |
-                    abi::PlatformIntrinsic |
-                    abi::RustCall => {
+                    Abi::Rust |
+                    Abi::RustIntrinsic |
+                    Abi::PlatformIntrinsic |
+                    Abi::RustCall => {
                         return FfiUnsafe(
                             "found function pointer with Rust calling \
                              convention in foreign module; consider using an \
@@ -677,7 +678,7 @@ impl LateLintPass for ImproperCTypes {
         }
 
         if let hir::ItemForeignMod(ref nmod) = it.node {
-            if nmod.abi != abi::RustIntrinsic && nmod.abi != abi::PlatformIntrinsic {
+            if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
                         hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),

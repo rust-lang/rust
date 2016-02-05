@@ -20,7 +20,7 @@ use middle::cstore::InlinedItem;
 use middle::cstore::InlinedItem as II;
 use middle::def_id::DefId;
 
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
@@ -512,7 +512,7 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn get_foreign_abi(&self, id: NodeId) -> abi::Abi {
+    pub fn get_foreign_abi(&self, id: NodeId) -> Abi {
         let parent = self.get_parent(id);
         let abi = match self.find_entry(parent) {
             Some(EntryItem(_, i)) => {
@@ -522,7 +522,7 @@ impl<'ast> Map<'ast> {
                 }
             }
             /// Wrong but OK, because the only inlined foreign items are intrinsics.
-            Some(RootInlinedParent(_)) => Some(abi::RustIntrinsic),
+            Some(RootInlinedParent(_)) => Some(Abi::RustIntrinsic),
             _ => None
         };
         match abi {

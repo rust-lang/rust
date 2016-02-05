@@ -14,7 +14,7 @@ use llvm::{self, ValueRef, AttrHelper};
 use middle::ty;
 use middle::infer;
 use session::config::NoDebugInfo;
-use syntax::abi;
+use syntax::abi::Abi;
 pub use syntax::attr::InlineAttr;
 use syntax::ast;
 use rustc_front::hir;
@@ -136,7 +136,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
             function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
-            (&function_type.sig, abi::RustCall, Some(self_type))
+            (&function_type.sig, Abi::RustCall, Some(self_type))
         }
         _ => ccx.sess().bug("expected closure or function.")
     };
@@ -151,7 +151,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     // unpack the input ty's
     let input_tys = match fn_type.sty {
         ty::TyClosure(..) => {
-            assert!(abi == abi::RustCall);
+            assert!(abi == Abi::RustCall);
 
             match fn_sig.inputs[0].sty {
                 ty::TyTuple(ref inputs) => {
@@ -162,7 +162,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         },
-        ty::TyBareFn(..) if abi == abi::RustCall => {
+        ty::TyBareFn(..) if abi == Abi::RustCall => {
             let mut inputs = vec![fn_sig.inputs[0]];
 
             match fn_sig.inputs[1].sty {

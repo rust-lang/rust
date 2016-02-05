@@ -684,7 +684,7 @@ mod tests {
     use std::rc::Rc;
     use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
     use ast::{self, TokenTree};
-    use abi;
+    use abi::Abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
     use parse;
     use parse::parser::Parser;
@@ -955,7 +955,7 @@ mod tests {
                             }),
                                     ast::Unsafety::Normal,
                                     ast::Constness::NotConst,
-                                    abi::Rust,
+                                    Abi::Rust,
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: Vec::new(),
                                         ty_params: P::empty(),

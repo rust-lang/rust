@@ -55,7 +55,7 @@ use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::MethodCall;
 use rustc_front::hir;
 
-use syntax::abi as synabi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::errors;
 use syntax::ptr::P;
@@ -157,8 +157,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                 }
             }
             Def::Fn(did) if match expr_ty.sty {
-                ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic ||
-                                          f.abi == synabi::PlatformIntrinsic,
+                ty::TyBareFn(_, ref f) => f.abi == Abi::RustIntrinsic ||
+                                          f.abi == Abi::PlatformIntrinsic,
                 _ => false
             } => {
                 let substs = common::node_id_substs(bcx.ccx(),
@@ -294,7 +294,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         match bare_fn_ty.sty {
             ty::TyBareFn(opt_def_id,
                            &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
-                                           abi: synabi::Rust,
+                                           abi: Abi::Rust,
                                            ref sig }) => {
                 (opt_def_id, sig)
             }
@@ -310,7 +310,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tuple_fn_ty = tcx.mk_fn(opt_def_id,
         tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Normal,
-            abi: synabi::RustCall,
+            abi: Abi::RustCall,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![bare_fn_ty_maybe_ref,
                              tuple_input_ty],
@@ -622,7 +622,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             (d.llfn, Some(d.llself))
         }
         Intrinsic(node, substs) => {
-            assert!(abi == synabi::RustIntrinsic || abi == synabi::PlatformIntrinsic);
+            assert!(abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic);
             assert!(dest.is_some());
 
             let call_info = match debug_loc {
@@ -652,9 +652,9 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     // Intrinsics should not become actual functions.
     // We trans them in place in `trans_intrinsic_call`
-    assert!(abi != synabi::RustIntrinsic && abi != synabi::PlatformIntrinsic);
+    assert!(abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic);
 
-    let is_rust_fn = abi == synabi::Rust || abi == synabi::RustCall;
+    let is_rust_fn = abi == Abi::Rust || abi == Abi::RustCall;
 
     // Generate a location to store the result. If the user does
     // not care about the result, just make a stack slot.
@@ -936,7 +936,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                   llargs: &mut Vec<ValueRef>,
                                   arg_cleanup_scope: cleanup::ScopeId,
                                   ignore_self: bool,
-                                  abi: synabi::Abi)
+                                  abi: Abi)
                                   -> Block<'blk, 'tcx> {
     debug!("trans_args(abi={})", abi);
 
@@ -953,7 +953,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     // to cast her view of the arguments to the caller's view.
     match args {
         ArgExprs(arg_exprs) => {
-            if abi == synabi::RustCall {
+            if abi == Abi::RustCall {
                 // This is only used for direct calls to the `call`,
                 // `call_mut` or `call_once` functions.
                 return trans_args_under_call_abi(cx,

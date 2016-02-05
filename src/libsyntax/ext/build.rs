@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi;
+use abi::Abi;
 use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp};
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
@@ -971,7 +971,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   ast::ItemFn(self.fn_decl(inputs, output),
                               ast::Unsafety::Normal,
                               ast::Constness::NotConst,
-                              abi::Rust,
+                              Abi::Rust,
                               generics,
                               body))
     }

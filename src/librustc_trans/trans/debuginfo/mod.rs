@@ -48,7 +48,8 @@ use std::ptr;
 use std::rc::Rc;
 
 use syntax::codemap::{Span, Pos};
-use syntax::{abi, ast, codemap};
+use syntax::{ast, codemap};
+use syntax::abi::Abi;
 use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 
@@ -455,7 +456,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             ty::FnDiverging => diverging_type_metadata(cx)
         });
 
-        let inputs = &if abi == abi::RustCall {
+        let inputs = &if abi == Abi::RustCall {
             type_of::untuple_arguments(cx, &sig.inputs)
         } else {
             sig.inputs

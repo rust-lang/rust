@@ -193,7 +193,6 @@ use std::collections::HashSet;
 use std::vec;
 
 use syntax::abi::Abi;
-use syntax::abi;
 use syntax::ast::{EnumDef, Expr, Ident, Generics, VariantData, BinOpKind, self};
 use syntax::ast_util;
 use syntax::attr;
@@ -681,7 +680,7 @@ impl<'a> TraitDef<'a> {
                                      self,
                                      type_ident,
                                      generics,
-                                     abi::Rust,
+                                     Abi::Rust,
                                      explicit_self,
                                      tys,
                                      body)
@@ -730,7 +729,7 @@ impl<'a> TraitDef<'a> {
                                      self,
                                      type_ident,
                                      generics,
-                                     abi::Rust,
+                                     Abi::Rust,
                                      explicit_self,
                                      tys,
                                      body)
