@@ -972,6 +972,7 @@ fn can_be_followed_by_any(frag: &str) -> bool {
 /// we expanded `expr` to include a new binary operator, we might
 /// break macros that were relying on that binary operator as a
 /// separator.
+// when changing this do not forget to update doc/book/macros.md!
 fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
     if let &CloseDelim(_) = tok {
         // closing a token tree can never be matched by any fragment;
@@ -1005,7 +1006,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             },
             "path" | "ty" => {
                 match *tok {
-                    OpenDelim(token::DelimToken::Brace) |
+                    OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
                     Ident(i, _) if (i.name.as_str() == "as" ||
                                     i.name.as_str() == "where") => Ok(true),
