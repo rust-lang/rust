@@ -219,6 +219,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
         methods::CHARS_NEXT_CMP,
+        methods::CLONE_DOUBLE_REF,
         methods::CLONE_ON_COPY,
         methods::EXTEND_FROM_SLICE,
         methods::FILTER_NEXT,

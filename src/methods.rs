@@ -7,15 +7,11 @@ use std::borrow::Cow;
 use syntax::ptr::P;
 use syntax::codemap::Span;
 
-use utils::{
-    get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path,
-    match_trait_method, match_type, method_chain_args, snippet, span_lint, span_lint_and_then,
-    span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth,
-};
-use utils::{
-    BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH,
-    STRING_PATH, VEC_PATH,
-};
+use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
+            match_type, method_chain_args, snippet, snippet_opt, span_lint, span_lint_and_then, span_note_and_lint,
+            walk_ptrs_ty, walk_ptrs_ty_depth};
+use utils::{BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH, STRING_PATH,
+            VEC_PATH,};
 use utils::MethodArgs;
 use rustc::middle::cstore::CrateStore;
 
@@ -231,6 +227,26 @@ declare_lint!(pub EXTEND_FROM_SLICE, Warn,
 declare_lint!(pub CLONE_ON_COPY, Warn,
               "using `clone` on a `Copy` type");
 
+/// **What it does:** This lint warns on using `.clone()` on an `&&T`
+///
+/// **Why is this bad?** Cloning an `&&T` copies the inner `&T`, instead of cloning the underlying
+/// `T`
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// fn main() {
+///    let x = vec![1];
+///    let y = &&x;
+///    let z = y.clone();
+///    println!("{:p} {:p}",*y, z); // prints out the same pointer
+/// }
+/// ```
+/// 
+declare_lint!(pub CLONE_DOUBLE_REF, Warn,
+              "using `clone` on `&&T`");
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
@@ -246,7 +262,8 @@ impl LintPass for MethodsPass {
                     OPTION_MAP_UNWRAP_OR_ELSE,
                     OR_FUN_CALL,
                     CHARS_NEXT_CMP,
-                    CLONE_ON_COPY)
+                    CLONE_ON_COPY,
+                    CLONE_DOUBLE_REF)
     }
 }
 
@@ -280,9 +297,11 @@ impl LateLintPass for MethodsPass {
                 } else if let Some(arglists) = method_chain_args(expr, &["extend"]) {
                     lint_extend(cx, expr, arglists[0]);
                 }
-
                 lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
-                lint_clone_on_copy(cx, expr, &name.node.as_str(), &args);
+                if args.len() == 1 && name.node.as_str() == "clone" {
+                    lint_clone_on_copy(cx, expr);
+                    lint_clone_double_ref(cx, expr, &args[0]);
+                }
             }
             ExprBinary(op, ref lhs, ref rhs) if op.node == BiEq || op.node == BiNe => {
                 if !lint_chars_next(cx, expr, lhs, rhs, op.node == BiEq) {
@@ -348,15 +367,9 @@ impl LateLintPass for MethodsPass {
 /// Checks for the `OR_FUN_CALL` lint.
 fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>]) {
     /// Check for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
-    fn check_unwrap_or_default(
-        cx: &LateContext,
-        name: &str,
-        fun: &Expr,
-        self_expr: &Expr,
-        arg: &Expr,
-        or_has_args: bool,
-        span: Span
-    ) -> bool {
+    fn check_unwrap_or_default(cx: &LateContext, name: &str, fun: &Expr, self_expr: &Expr, arg: &Expr,
+                               or_has_args: bool, span: Span)
+                               -> bool {
         if or_has_args {
             return false;
         }
@@ -379,11 +392,13 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
                     };
 
                     if implements_trait(cx, arg_ty, default_trait_id, None) {
-                        span_lint(cx, OR_FUN_CALL, span,
+                        span_lint(cx,
+                                  OR_FUN_CALL,
+                                  span,
                                   &format!("use of `{}` followed by a call to `{}`", name, path))
-                            .span_suggestion(span, "try this",
-                                             format!("{}.unwrap_or_default()",
-                                                     snippet(cx, self_expr.span, "_")));
+                            .span_suggestion(span,
+                                             "try this",
+                                             format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")));
                         return true;
                     }
                 }
@@ -394,34 +409,25 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
     }
 
     /// Check for `*or(foo())`.
-    fn check_general_case(
-        cx: &LateContext,
-        name: &str,
-        fun: &Expr,
-        self_expr: &Expr,
-        arg: &Expr,
-        or_has_args: bool,
-        span: Span
-    ) {
+    fn check_general_case(cx: &LateContext, name: &str, fun: &Expr, self_expr: &Expr, arg: &Expr, or_has_args: bool,
+                          span: Span) {
         // (path, fn_has_argument, methods)
-        let know_types : &[(&[_], _, &[_], _)] = &[
-            (&BTREEMAP_ENTRY_PATH, false, &["or_insert"], "with"),
-            (&HASHMAP_ENTRY_PATH, false, &["or_insert"], "with"),
-            (&OPTION_PATH, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
-            (&RESULT_PATH, true, &["or", "unwrap_or"], "else"),
-        ];
+        let know_types: &[(&[_], _, &[_], _)] = &[(&BTREEMAP_ENTRY_PATH, false, &["or_insert"], "with"),
+                                                  (&HASHMAP_ENTRY_PATH, false, &["or_insert"], "with"),
+                                                  (&OPTION_PATH,
+                                                   false,
+                                                   &["map_or", "ok_or", "or", "unwrap_or"],
+                                                   "else"),
+                                                  (&RESULT_PATH, true, &["or", "unwrap_or"], "else")];
 
         let self_ty = cx.tcx.expr_ty(self_expr);
 
-        let (fn_has_arguments, poss, suffix) =
-            if let Some(&(_, fn_has_arguments, poss, suffix)) = know_types.iter().find(|&&i| {
-                match_type(cx, self_ty, i.0)
-            }) {
-                (fn_has_arguments, poss, suffix)
-            }
-            else {
-                return
-            };
+        let (fn_has_arguments, poss, suffix) = if let Some(&(_, fn_has_arguments, poss, suffix)) =
+                                                      know_types.iter().find(|&&i| match_type(cx, self_ty, i.0)) {
+            (fn_has_arguments, poss, suffix)
+        } else {
+            return;
+        };
 
         if !poss.contains(&name) {
             return;
@@ -433,14 +439,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
             (false, true) => format!("{}", snippet(cx, fun.span, "..")),
         };
 
-        span_lint(cx, OR_FUN_CALL, span,
-                  &format!("use of `{}` followed by a function call", name))
-            .span_suggestion(span, "try this",
-                             format!("{}.{}_{}({})",
-                                     snippet(cx, self_expr.span, "_"),
-                                     name,
-                                     suffix,
-                                     sugg));
+        span_lint(cx, OR_FUN_CALL, span, &format!("use of `{}` followed by a function call", name))
+            .span_suggestion(span,
+                             "try this",
+                             format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
     }
 
     if args.len() == 2 {
@@ -454,14 +456,28 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
 }
 
 /// Checks for the `CLONE_ON_COPY` lint.
-fn lint_clone_on_copy(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>]) {
-    if args.len() == 1 && name == "clone" {
-        let ty = cx.tcx.expr_ty(expr);
-        let parent = cx.tcx.map.get_parent(expr.id);
-        let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
+fn lint_clone_on_copy(cx: &LateContext, expr: &Expr) {
+    let ty = cx.tcx.expr_ty(expr);
+    let parent = cx.tcx.map.get_parent(expr.id);
+    let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, parent);
 
-        if !ty.moves_by_default(&parameter_environment, expr.span) {
-            span_lint(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type");
+    if !ty.moves_by_default(&parameter_environment, expr.span) {
+        span_lint(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type");
+    }
+}
+
+/// Checks for the `CLONE_DOUBLE_REF` lint.
+fn lint_clone_double_ref(cx: &LateContext, expr: &Expr, arg: &Expr) {
+    let ty = cx.tcx.expr_ty(arg);
+    if let ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) = ty.sty {
+        if let ty::TyRef(..) = inner.sty {
+            let mut db = span_lint(cx, CLONE_DOUBLE_REF, expr.span,
+                                   "using `clone` on a double-reference; \
+                                    this will copy the reference instead of cloning \
+                                    the inner type");
+            if let Some(snip) = snippet_opt(cx, arg.span) {
+                db.span_suggestion(expr.span, "try dereferencing it", format!("(*{}).clone()", snip));
+            }
         }
     }
 }
