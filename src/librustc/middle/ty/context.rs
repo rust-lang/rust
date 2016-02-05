@@ -263,6 +263,8 @@ pub struct ctxt<'tcx> {
     pub trait_defs: RefCell<DepTrackingMap<maps::TraitDefs<'tcx>>>,
     pub adt_defs: RefCell<DepTrackingMap<maps::AdtDefs<'tcx>>>,
 
+    pub collection_finished: RefCell<bool>, // cruft
+
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
     pub predicates: RefCell<DepTrackingMap<maps::Predicates<'tcx>>>,
@@ -512,6 +514,7 @@ impl<'tcx> ctxt<'tcx> {
         let dep_graph = DepGraph::new(s.opts.incremental_compilation);
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter(ctxt {
+            collection_finished: RefCell::new(false), // cruft
             arenas: arenas,
             interner: interner,
             substs_interner: RefCell::new(FnvHashMap()),

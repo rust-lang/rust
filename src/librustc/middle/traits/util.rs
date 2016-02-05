@@ -69,6 +69,12 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
 // `Elaboration` iterator
 ///////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug, Clone, Copy)]
+enum ElaboratorMode {
+    Supertraits,
+    All,
+}
+
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently this basically means
 /// walking the "supertraits" and other similar assumptions. For
@@ -80,35 +86,61 @@ pub struct Elaborator<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
     stack: Vec<ty::Predicate<'tcx>>,
     visited: PredicateSet<'cx,'tcx>,
+    mode: ElaboratorMode,
+    allowed_iterations: usize,
 }
 
-pub fn elaborate_trait_ref<'cx, 'tcx>(
+fn elaborate_trait_ref_with_mode<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>)
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    mode: ElaboratorMode)
     -> Elaborator<'cx, 'tcx>
 {
-    elaborate_predicates(tcx, vec![trait_ref.to_predicate()])
+    elaborate_predicates_with_mode(tcx, vec![trait_ref.to_predicate()], mode)
 }
 
-pub fn elaborate_trait_refs<'cx, 'tcx>(
+fn elaborate_trait_refs_with_mode<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    trait_refs: &[ty::PolyTraitRef<'tcx>])
+    trait_refs: &[ty::PolyTraitRef<'tcx>],
+    mode: ElaboratorMode)
     -> Elaborator<'cx, 'tcx>
 {
     let predicates = trait_refs.iter()
                                .map(|trait_ref| trait_ref.to_predicate())
                                .collect();
-    elaborate_predicates(tcx, predicates)
+    elaborate_predicates_with_mode(tcx, predicates, mode)
+}
+
+// FIXME @reviewer: should this return a different type, and should ElaboratorMode above be
+// eschewed?
+pub fn elaborate_super_predicates<'cx, 'tcx>(
+    tcx: &'cx ty::ctxt<'tcx>,
+    predicates: Vec<ty::Predicate<'tcx>>)
+    -> Elaborator<'cx, 'tcx>
+{
+    elaborate_predicates_with_mode(tcx, predicates, ElaboratorMode::Supertraits)
 }
 
 pub fn elaborate_predicates<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    mut predicates: Vec<ty::Predicate<'tcx>>)
+    predicates: Vec<ty::Predicate<'tcx>>)
     -> Elaborator<'cx, 'tcx>
 {
+    assert!(*tcx.collection_finished.borrow(), "should not elaborate non-supertrait predicates before collection is finished.");  // cruft
+    elaborate_predicates_with_mode(tcx, predicates, ElaboratorMode::All)
+}
+
+fn elaborate_predicates_with_mode<'cx, 'tcx>(
+    tcx: &'cx ty::ctxt<'tcx>,
+    mut predicates: Vec<ty::Predicate<'tcx>>,
+    mode: ElaboratorMode)
+    -> Elaborator<'cx, 'tcx>
+{
+    debug!("elaborate_predicates_with_mode(predicates={:?}, mode={:?})", predicates, mode);
     let mut visited = PredicateSet::new(tcx);
     predicates.retain(|pred| visited.insert(pred));
-    Elaborator { tcx: tcx, stack: predicates, visited: visited }
+    Elaborator { tcx: tcx, stack: predicates, visited: visited, mode: mode,
+                 allowed_iterations: tcx.sess.recursion_limit.get() }
 }
 
 impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
@@ -117,19 +149,38 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
     }
 
     fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
+        // FIXME this is a hack to get around how hard it is to handle streams of associated type
+        // bounds when elaborating all predicates. The reason why this is hard, you could have a
+        // trait like this:
+        //
+        // trait A { type B: A; }
+        //
+        // And there's no way in this iterator to know whether or not there's an obligation of the
+        // form <... <<<Self::B as A>::B as A>::B as A>:: ...>::B: SomeOtherTrait that the calling
+        // code is trying to fulfill. We don't know how deep to go down the rabbit hole from here.
+        if self.allowed_iterations == 0 {
+            return;
+        } else {
+            self.allowed_iterations -= 1;
+        }
+
         match *predicate {
             ty::Predicate::Trait(ref data) => {
                 // Predicates declared on the trait.
-                let predicates = self.tcx.lookup_super_predicates(data.def_id());
+                let (predicates, mode_string) = match self.mode {  // mode_string is cruft
+                    ElaboratorMode::All =>
+                        (self.tcx.lookup_predicates(data.def_id()), "predicates"),
+                    ElaboratorMode::Supertraits =>
+                        (self.tcx.lookup_super_predicates(data.def_id()), "super_predicates")
+                };
 
                 let mut predicates: Vec<_> =
                     predicates.predicates
                               .iter()
                               .map(|p| p.subst_supertrait(self.tcx, &data.to_poly_trait_ref()))
                               .collect();
-
-                debug!("super_predicates: data={:?} predicates={:?}",
-                       data, predicates);
+                debug!("{}: data={:?} predicates={:?}",
+                       mode_string, data, predicates);
 
                 // Only keep those bounds that we haven't already
                 // seen.  This is necessary to prevent infinite
@@ -209,14 +260,14 @@ pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                               trait_ref: ty::PolyTraitRef<'tcx>)
                               -> Supertraits<'cx, 'tcx>
 {
-    elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
+    elaborate_trait_ref_with_mode(tcx, trait_ref, ElaboratorMode::Supertraits).filter_to_traits()
 }
 
 pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                                     bounds: &[ty::PolyTraitRef<'tcx>])
                                     -> Supertraits<'cx, 'tcx>
 {
-    elaborate_trait_refs(tcx, bounds).filter_to_traits()
+    elaborate_trait_refs_with_mode(tcx, bounds, ElaboratorMode::Supertraits).filter_to_traits()
 }
 
 ///////////////////////////////////////////////////////////////////////////
