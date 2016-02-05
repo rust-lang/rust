@@ -22,8 +22,10 @@ pub struct TypePass;
 /// **Known problems:** None
 ///
 /// **Example:** `struct X { values: Box<Vec<Foo>> }`
-declare_lint!(pub BOX_VEC, Warn,
-              "usage of `Box<Vec<T>>`, vector elements are already on the heap");
+declare_lint! {
+    pub BOX_VEC, Warn,
+    "usage of `Box<Vec<T>>`, vector elements are already on the heap"
+}
 
 /// **What it does:** This lint checks for usage of any `LinkedList`, suggesting to use a `Vec` or a `VecDeque` (formerly called `RingBuf`). It is `Warn` by default.
 ///
@@ -36,9 +38,11 @@ declare_lint!(pub BOX_VEC, Warn,
 /// **Known problems:** False positives – the instances where using a `LinkedList` makes sense are few and far between, but they can still happen.
 ///
 /// **Example:** `let x = LinkedList::new();`
-declare_lint!(pub LINKEDLIST, Warn,
-              "usage of LinkedList, usually a vector is faster, or a more specialized data \
-               structure like a VecDeque");
+declare_lint! {
+    pub LINKEDLIST, Warn,
+    "usage of LinkedList, usually a vector is faster, or a more specialized data \
+     structure like a VecDeque"
+}
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
@@ -81,8 +85,10 @@ pub struct LetPass;
 /// **Known problems:** None
 ///
 /// **Example:** `let x = { 1; };`
-declare_lint!(pub LET_UNIT_VALUE, Warn,
-              "creating a let binding to a value of unit type, which usually can't be used afterwards");
+declare_lint! {
+    pub LET_UNIT_VALUE, Warn,
+    "creating a let binding to a value of unit type, which usually can't be used afterwards"
+}
 
 fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
@@ -122,8 +128,10 @@ impl LateLintPass for LetPass {
 /// **Known problems:** None
 ///
 /// **Example:** `if { foo(); } == { bar(); } { baz(); }` is equal to `{ foo(); bar(); baz(); }`
-declare_lint!(pub UNIT_CMP, Warn,
-              "comparing unit values (which is always `true` or `false`, respectively)");
+declare_lint! {
+    pub UNIT_CMP, Warn,
+    "comparing unit values (which is always `true` or `false`, respectively)"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct UnitCmp;
@@ -169,8 +177,11 @@ pub struct CastPass;
 /// **Known problems:** None
 ///
 /// **Example:** `let x = u64::MAX; x as f64`
-declare_lint!(pub CAST_PRECISION_LOSS, Allow,
-              "casts that cause loss of precision, e.g `x as f32` where `x: u64`");
+declare_lint! {
+    pub CAST_PRECISION_LOSS, Allow,
+    "casts that cause loss of precision, e.g `x as f32` where `x: u64`"
+}
+
 /// **What it does:** This lint checks for casts from a signed to an unsigned numerical type. In this case, negative values wrap around to large positive values, which can be quite surprising in practice. However, as the cast works as defined, this lint is `Allow` by default.
 ///
 /// **Why is this bad?** Possibly surprising results. You can activate this lint as a one-time check to see where numerical wrapping can arise.
@@ -178,8 +189,11 @@ declare_lint!(pub CAST_PRECISION_LOSS, Allow,
 /// **Known problems:** None
 ///
 /// **Example:** `let y : i8 = -1; y as u64` will return 18446744073709551615
-declare_lint!(pub CAST_SIGN_LOSS, Allow,
-              "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`");
+declare_lint! {
+    pub CAST_SIGN_LOSS, Allow,
+    "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`"
+}
+
 /// **What it does:** This lint checks for on casts between numerical types that may truncate large values. This is expected behavior, so the cast is `Allow` by default.
 ///
 /// **Why is this bad?** In some problem domains, it is good practice to avoid truncation. This lint can be activated to help assess where additional checks could be beneficial.
@@ -187,8 +201,11 @@ declare_lint!(pub CAST_SIGN_LOSS, Allow,
 /// **Known problems:** None
 ///
 /// **Example:** `fn as_u8(x: u64) -> u8 { x as u8 }`
-declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
-              "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`");
+declare_lint! {
+    pub CAST_POSSIBLE_TRUNCATION, Allow,
+    "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
+}
+
 /// **What it does:** This lint checks for casts from an unsigned type to a signed type of the same size. Performing such a cast is a 'no-op' for the compiler, i.e. nothing is changed at the bit level, and the binary representation of the value is reinterpreted. This can cause wrapping if the value is too big for the target signed type. However, the cast works as defined, so this lint is `Allow` by default.
 ///
 /// **Why is this bad?** While such a cast is not bad in itself, the results can be surprising when this is not the intended behavior, as demonstrated by the example below.
@@ -196,8 +213,10 @@ declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
 /// **Known problems:** None
 ///
 /// **Example:** `u32::MAX as i32` will yield a value of `-1`.
-declare_lint!(pub CAST_POSSIBLE_WRAP, Allow,
-              "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`");
+declare_lint! {
+    pub CAST_POSSIBLE_WRAP, Allow,
+    "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`"
+}
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
@@ -393,8 +412,10 @@ impl LateLintPass for CastPass {
 /// **Known problems:** None
 ///
 /// **Example:** `struct Foo { inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>> }`
-declare_lint!(pub TYPE_COMPLEXITY, Warn,
-              "usage of very complex types; recommends factoring out parts into `type` definitions");
+declare_lint! {
+    pub TYPE_COMPLEXITY, Warn,
+    "usage of very complex types; recommends factoring out parts into `type` definitions"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct TypeComplexityPass;
@@ -525,8 +546,10 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
 /// **Known problems:** None
 ///
 /// **Example:** `'x' as u8`
-declare_lint!(pub CHAR_LIT_AS_U8, Warn,
-              "Casting a character literal to u8");
+declare_lint! {
+    pub CHAR_LIT_AS_U8, Warn,
+    "Casting a character literal to u8"
+}
 
 pub struct CharLitAsU8;
 
@@ -565,8 +588,10 @@ impl LateLintPass for CharLitAsU8 {
 /// **Known problems:** None
 ///
 /// **Example:** `vec.len() <= 0`
-declare_lint!(pub ABSURD_UNSIGNED_COMPARISONS, Warn,
-              "testing whether an unsigned integer is non-positive");
+declare_lint! {
+    pub ABSURD_UNSIGNED_COMPARISONS, Warn,
+    "testing whether an unsigned integer is non-positive"
+}
 
 pub struct AbsurdUnsignedComparisons;
 

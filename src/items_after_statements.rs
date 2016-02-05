@@ -27,7 +27,11 @@ use utils::in_macro;
 ///     foo(); // prints "foo"
 /// }
 /// ```
-declare_lint! { pub ITEMS_AFTER_STATEMENTS, Warn, "finds blocks where an item comes after a statement" }
+declare_lint! {
+    pub ITEMS_AFTER_STATEMENTS,
+    Warn,
+    "finds blocks where an item comes after a statement"
+}
 
 pub struct ItemsAfterStatemets;
 

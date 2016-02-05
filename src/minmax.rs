@@ -15,9 +15,10 @@ use self::MinMax::{Min, Max};
 /// **Known problems:** None
 ///
 /// **Example:** `min(0, max(100, x))` will always be equal to `0`. Probably the author meant to clamp the value between 0 and 100, but has erroneously swapped `min` and `max`.
-declare_lint!(pub MIN_MAX, Warn,
-    "`min(_, max(_, _))` (or vice versa) with bounds clamping the result \
-    to a constant");
+declare_lint! {
+    pub MIN_MAX, Warn,
+    "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct MinMaxPass;

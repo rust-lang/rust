@@ -14,8 +14,10 @@ use utils::span_help_and_lint;
 /// **Known problems:** None
 ///
 /// **Example:** enum Cake { BlackForestCake, HummingbirdCake }
-declare_lint! { pub ENUM_VARIANT_NAMES, Warn,
-    "finds enums where all variants share a prefix/postfix" }
+declare_lint! {
+    pub ENUM_VARIANT_NAMES, Warn,
+    "finds enums where all variants share a prefix/postfix"
+}
 
 pub struct EnumVariantNames;
 

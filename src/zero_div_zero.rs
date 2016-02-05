@@ -16,8 +16,11 @@ pub struct ZeroDivZeroPass;
 /// **Known problems:** None
 ///
 /// **Example** `0.0f32 / 0.0`
-declare_lint!(pub ZERO_DIVIDED_BY_ZERO, Warn,
-              "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN");
+declare_lint! {
+    pub ZERO_DIVIDED_BY_ZERO,
+    Warn,
+    "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN"
+}
 
 impl LintPass for ZeroDivZeroPass {
     fn get_lints(&self) -> LintArray {

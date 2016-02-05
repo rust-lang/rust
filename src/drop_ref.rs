@@ -18,9 +18,11 @@ use utils::{match_def_path, span_note_and_lint};
 /// std::mem::drop(&lock_guard) //Should have been drop(lock_guard), mutex still locked
 /// operation_that_requires_mutex_to_be_unlocked();
 /// ```
-declare_lint!(pub DROP_REF, Warn,
+declare_lint! {
+    pub DROP_REF, Warn,
     "call to `std::mem::drop` with a reference instead of an owned value, \
-    which will not call the `Drop::drop` method on the underlying value");
+    which will not call the `Drop::drop` method on the underlying value"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct DropRefPass;

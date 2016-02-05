@@ -13,7 +13,9 @@ use utils::{span_lint, in_external_macro, match_path, BEGIN_UNWIND};
 /// ```
 /// panic!("This panic! is probably missing a parameter there: {}");
 /// ```
-declare_lint!(pub PANIC_PARAMS, Warn, "missing parameters in `panic!`");
+declare_lint! {
+    pub PANIC_PARAMS, Warn, "missing parameters in `panic!`"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct PanicPass;

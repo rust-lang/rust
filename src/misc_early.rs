@@ -15,8 +15,10 @@ use utils::{span_lint, span_help_and_lint};
 /// **Known problems:** None.
 ///
 /// **Example:** `let { a: _, b: ref b, c: _ } = ..`
-declare_lint!(pub UNNEEDED_FIELD_PATTERN, Warn,
-              "Struct fields are bound to a wildcard instead of using `..`");
+declare_lint! {
+    pub UNNEEDED_FIELD_PATTERN, Warn,
+    "Struct fields are bound to a wildcard instead of using `..`"
+}
 
 /// **What it does:** This lint `Warn`s on function arguments having the similar names differing by an underscore
 ///
@@ -25,8 +27,10 @@ declare_lint!(pub UNNEEDED_FIELD_PATTERN, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `fn foo(a: i32, _a: i32) {}`
-declare_lint!(pub DUPLICATE_UNDERSCORE_ARGUMENT, Warn,
-              "Function arguments having names which only differ by an underscore");
+declare_lint! {
+    pub DUPLICATE_UNDERSCORE_ARGUMENT, Warn,
+    "Function arguments having names which only differ by an underscore"
+}
 
 #[derive(Copy, Clone)]
 pub struct MiscEarly;

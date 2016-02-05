@@ -16,8 +16,11 @@ use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_not
 /// **Known problems:** This lint, as the other shadowing related lints, currently only catches very simple patterns.
 ///
 /// **Example:** `let x = &x;`
-declare_lint!(pub SHADOW_SAME, Allow,
-    "rebinding a name to itself, e.g. `let mut x = &mut x`");
+declare_lint! {
+    pub SHADOW_SAME, Allow,
+    "rebinding a name to itself, e.g. `let mut x = &mut x`"
+}
+
 /// **What it does:** This lint checks for bindings that shadow other bindings already in scope, while reusing the original value. It is `Allow` by default.
 ///
 /// **Why is this bad?** Not too much, in fact it's a common pattern in Rust code. Still, some argue that name shadowing like this hurts readability, because a value may be bound to different things depending on position in the code.
@@ -25,9 +28,12 @@ declare_lint!(pub SHADOW_SAME, Allow,
 /// **Known problems:** This lint, as the other shadowing related lints, currently only catches very simple patterns.
 ///
 /// **Example:** `let x = x + 1;`
-declare_lint!(pub SHADOW_REUSE, Allow,
+declare_lint! {
+    pub SHADOW_REUSE, Allow,
     "rebinding a name to an expression that re-uses the original value, e.g. \
-    `let x = x + 1`");
+    `let x = x + 1`"
+}
+
 /// **What it does:** This lint checks for bindings that shadow other bindings already in scope, either without a initialization or with one that does not even use the original value. This lint is `Warn` by default.
 ///
 /// **Why is this bad?** Name shadowing can hurt readability, especially in large code bases, because it is easy to lose track of the active binding at any place in the code. This can be alleviated by either giving more specific names to bindings ore introducing more scopes to contain the bindings.
@@ -35,8 +41,10 @@ declare_lint!(pub SHADOW_REUSE, Allow,
 /// **Known problems:** This lint, as the other shadowing related lints, currently only catches very simple patterns.
 ///
 /// **Example:** `let x = y; let x = z; // shadows the earlier binding`
-declare_lint!(pub SHADOW_UNRELATED, Allow,
-    "The name is re-bound without even using the original value");
+declare_lint! {
+    pub SHADOW_UNRELATED, Allow,
+    "The name is re-bound without even using the original value"
+}
 
 #[derive(Copy, Clone)]
 pub struct ShadowPass;

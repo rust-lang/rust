@@ -22,10 +22,12 @@ use utils::{span_help_and_lint, walk_ptrs_ty, is_integer_literal, implements_tra
 /// **Known problems:** If the argument is dereferenced within the function, removing the `ref` will lead to errors. This can be fixed by removing the dereferences, e.g. changing `*x` to `x` within the function.
 ///
 /// **Example:** `fn foo(ref x: u8) -> bool { .. }`
-declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
-              "An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), \
-               or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take \
-               references with `&`.");
+declare_lint! {
+    pub TOPLEVEL_REF_ARG, Warn,
+    "An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), \
+     or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take \
+     references with `&`."
+}
 
 #[allow(missing_copy_implementations)]
 pub struct TopLevelRefPass;

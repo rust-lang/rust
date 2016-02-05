@@ -25,8 +25,11 @@ use utils::{BTREEMAP_PATH, HASHMAP_PATH, LL_PATH, OPTION_PATH, RESULT_PATH, VEC_
 ///     println!("{}", vec[i]);
 /// }
 /// ```
-declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
-               "for-looping over a range of indices where an iterator over items would do" }
+declare_lint! {
+    pub NEEDLESS_RANGE_LOOP,
+    Warn,
+    "for-looping over a range of indices where an iterator over items would do"
+}
 
 /// **What it does:** This lint checks for loops on `x.iter()` where `&x` will do, and suggest the latter. It is `Warn` by default.
 ///
@@ -35,8 +38,11 @@ declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
 /// **Known problems:** False negatives. We currently only warn on some known types.
 ///
 /// **Example:** `for x in y.iter() { .. }` (where y is a `Vec` or slice)
-declare_lint!{ pub EXPLICIT_ITER_LOOP, Warn,
-               "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do" }
+declare_lint! {
+    pub EXPLICIT_ITER_LOOP,
+    Warn,
+    "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
+}
 
 /// **What it does:** This lint checks for loops on `x.next()`. It is `Warn` by default.
 ///
@@ -45,8 +51,11 @@ declare_lint!{ pub EXPLICIT_ITER_LOOP, Warn,
 /// **Known problems:** None
 ///
 /// **Example:** `for x in y.next() { .. }`
-declare_lint!{ pub ITER_NEXT_LOOP, Warn,
-               "for-looping over `_.next()` which is probably not intended" }
+declare_lint! {
+    pub ITER_NEXT_LOOP,
+    Warn,
+    "for-looping over `_.next()` which is probably not intended"
+}
 
 /// **What it does:** This lint checks for `for` loops over `Option` values. It is `Warn` by default.
 ///
@@ -55,8 +64,11 @@ declare_lint!{ pub ITER_NEXT_LOOP, Warn,
 /// **Known problems:** None
 ///
 /// **Example:** `for x in option { .. }`. This should be `if let Some(x) = option { .. }`.
-declare_lint!{ pub FOR_LOOP_OVER_OPTION, Warn,
-               "for-looping over an `Option`, which is more clearly expressed as an `if let`" }
+declare_lint! {
+    pub FOR_LOOP_OVER_OPTION,
+    Warn,
+    "for-looping over an `Option`, which is more clearly expressed as an `if let`"
+}
 
 /// **What it does:** This lint checks for `for` loops over `Result` values. It is `Warn` by default.
 ///
@@ -65,8 +77,11 @@ declare_lint!{ pub FOR_LOOP_OVER_OPTION, Warn,
 /// **Known problems:** None
 ///
 /// **Example:** `for x in result { .. }`. This should be `if let Ok(x) = result { .. }`.
-declare_lint!{ pub FOR_LOOP_OVER_RESULT, Warn,
-               "for-looping over a `Result`, which is more clearly expressed as an `if let`" }
+declare_lint! {
+    pub FOR_LOOP_OVER_RESULT,
+    Warn,
+    "for-looping over a `Result`, which is more clearly expressed as an `if let`"
+}
 
 /// **What it does:** This lint detects `loop + match` combinations that are easier written as a `while let` loop. It is `Warn` by default.
 ///
@@ -89,8 +104,11 @@ declare_lint!{ pub FOR_LOOP_OVER_RESULT, Warn,
 ///     // .. do something with x
 /// }
 /// ```
-declare_lint!{ pub WHILE_LET_LOOP, Warn,
-               "`loop { if let { ... } else break }` can be written as a `while let` loop" }
+declare_lint! {
+    pub WHILE_LET_LOOP,
+    Warn,
+    "`loop { if let { ... } else break }` can be written as a `while let` loop"
+}
 
 /// **What it does:** This lint checks for using `collect()` on an iterator without using the result. It is `Warn` by default.
 ///
@@ -99,9 +117,12 @@ declare_lint!{ pub WHILE_LET_LOOP, Warn,
 /// **Known problems:** None
 ///
 /// **Example:** `vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();`
-declare_lint!{ pub UNUSED_COLLECT, Warn,
-               "`collect()`ing an iterator without using the result; this is usually better \
-                written as a for loop" }
+declare_lint! {
+    pub UNUSED_COLLECT,
+    Warn,
+    "`collect()`ing an iterator without using the result; this is usually better \
+     written as a for loop"
+}
 
 /// **What it does:** This lint checks for loops over ranges `x..y` where both `x` and `y` are constant and `x` is greater or equal to `y`, unless the range is reversed or has a negative `.step_by(_)`. It is `Warn` by default.
 ///
@@ -110,8 +131,11 @@ declare_lint!{ pub UNUSED_COLLECT, Warn,
 /// **Known problems:** The lint cannot catch loops over dynamically defined ranges. Doing this would require simulating all possible inputs and code paths through the program, which would be complex and error-prone.
 ///
 /// **Examples**: `for x in 5..10-5 { .. }` (oops, stray `-`)
-declare_lint!{ pub REVERSE_RANGE_LOOP, Warn,
-               "Iterating over an empty range, such as `10..0` or `5..5`" }
+declare_lint! {
+    pub REVERSE_RANGE_LOOP,
+    Warn,
+    "Iterating over an empty range, such as `10..0` or `5..5`"
+}
 
 /// **What it does:** This lint checks `for` loops over slices with an explicit counter and suggests the use of `.enumerate()`. It is `Warn` by default.
 ///
@@ -120,8 +144,11 @@ declare_lint!{ pub REVERSE_RANGE_LOOP, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `for i in 0..v.len() { foo(v[i]); }` or `for i in 0..v.len() { bar(i, v[i]); }`
-declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
-               "for-looping with an explicit counter when `_.enumerate()` would do" }
+declare_lint! {
+    pub EXPLICIT_COUNTER_LOOP,
+    Warn,
+    "for-looping with an explicit counter when `_.enumerate()` would do"
+}
 
 /// **What it does:** This lint checks for empty `loop` expressions. It is `Warn` by default.
 ///
@@ -130,7 +157,11 @@ declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
 /// **Known problems:** None
 ///
 /// **Example:** `loop {}`
-declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
+declare_lint! {
+    pub EMPTY_LOOP,
+    Warn,
+    "empty `loop {}` detected"
+}
 
 /// **What it does:** This lint checks for `while let` expressions on iterators. It is `Warn` by default.
 ///
@@ -139,7 +170,11 @@ declare_lint!{ pub EMPTY_LOOP, Warn, "empty `loop {}` detected" }
 /// **Known problems:** None
 ///
 /// **Example:** `while let Some(val) = iter() { .. }`
-declare_lint!{ pub WHILE_LET_ON_ITERATOR, Warn, "using a while-let loop instead of a for loop on an iterator" }
+declare_lint! {
+    pub WHILE_LET_ON_ITERATOR,
+    Warn,
+    "using a while-let loop instead of a for loop on an iterator"
+}
 
 /// **What it does:** This warns when you iterate on a map (`HashMap` or `BTreeMap`) and ignore
 /// either the keys or values.
@@ -157,7 +192,11 @@ declare_lint!{ pub WHILE_LET_ON_ITERATOR, Warn, "using a while-let loop instead 
 /// ```rust
 /// for k in map.keys() { .. }
 /// ```
-declare_lint!{ pub FOR_KV_MAP, Warn, "looping on a map using `iter` when `keys` or `values` would do" }
+declare_lint! {
+    pub FOR_KV_MAP,
+    Warn,
+    "looping on a map using `iter` when `keys` or `values` would do"
+}
 
 #[derive(Copy, Clone)]
 pub struct LoopsPass;

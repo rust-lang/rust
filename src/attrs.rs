@@ -22,8 +22,10 @@ use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 /// #[inline(always)]
 /// fn not_quite_hot_code(..) { ... }
 /// ```
-declare_lint! { pub INLINE_ALWAYS, Warn,
-    "`#[inline(always)]` is a bad idea in most cases" }
+declare_lint! {
+    pub INLINE_ALWAYS, Warn,
+    "`#[inline(always)]` is a bad idea in most cases"
+}
 
 /// **What it does:** This lint `Warn`s on `#[deprecated]` annotations with a `since` field that is not a valid semantic version..
 ///
@@ -36,8 +38,10 @@ declare_lint! { pub INLINE_ALWAYS, Warn,
 /// #[deprecated(since = "forever")]
 /// fn something_else(..) { ... }
 /// ```
-declare_lint! { pub DEPRECATED_SEMVER, Warn,
-    "`Warn` on `#[deprecated(since = \"x\")]` where x is not semver" }
+declare_lint! {
+    pub DEPRECATED_SEMVER, Warn,
+    "`Warn` on `#[deprecated(since = \"x\")]` where x is not semver"
+}
 
 #[derive(Copy,Clone)]
 pub struct AttrPass;

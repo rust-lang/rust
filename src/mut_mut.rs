@@ -11,9 +11,12 @@ use utils::{in_external_macro, span_lint};
 /// **Known problems:** None
 ///
 /// **Example:** `let x = &mut &mut y;`
-declare_lint!(pub MUT_MUT, Allow,
-              "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
-               or shows a fundamental misunderstanding of references)");
+declare_lint! {
+    pub MUT_MUT,
+    Allow,
+    "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
+     or shows a fundamental misunderstanding of references)"
+}
 
 #[derive(Copy,Clone)]
 pub struct MutMut;

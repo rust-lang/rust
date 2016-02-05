@@ -25,8 +25,10 @@ pub struct MethodsPass;
 /// **Known problems:** None
 ///
 /// **Example:** `x.unwrap()`
-declare_lint!(pub OPTION_UNWRAP_USED, Allow,
-              "using `Option.unwrap()`, which should at least get a better message using `expect()`");
+declare_lint! {
+    pub OPTION_UNWRAP_USED, Allow,
+    "using `Option.unwrap()`, which should at least get a better message using `expect()`"
+}
 
 /// **What it does:** This lint checks for `.unwrap()` calls on `Result`s. It is `Allow` by default.
 ///
@@ -37,8 +39,10 @@ declare_lint!(pub OPTION_UNWRAP_USED, Allow,
 /// **Known problems:** None
 ///
 /// **Example:** `x.unwrap()`
-declare_lint!(pub RESULT_UNWRAP_USED, Allow,
-              "using `Result.unwrap()`, which might be better handled");
+declare_lint! {
+    pub RESULT_UNWRAP_USED, Allow,
+    "using `Result.unwrap()`, which might be better handled"
+}
 
 /// **What it does:** This lint checks for `.to_string()` method calls on values of type `&str`. It is `Warn` by default.
 ///
@@ -47,8 +51,10 @@ declare_lint!(pub RESULT_UNWRAP_USED, Allow,
 /// **Known problems:** None
 ///
 /// **Example:** `s.to_string()` where `s: &str`
-declare_lint!(pub STR_TO_STRING, Warn,
-              "using `to_string()` on a str, which should be `to_owned()`");
+declare_lint! {
+    pub STR_TO_STRING, Warn,
+    "using `to_string()` on a str, which should be `to_owned()`"
+}
 
 /// **What it does:** This lint checks for `.to_string()` method calls on values of type `String`. It is `Warn` by default.
 ///
@@ -58,8 +64,10 @@ declare_lint!(pub STR_TO_STRING, Warn,
 /// **Known problems:** None
 ///
 /// **Example:** `s.to_string()` where `s: String`
-declare_lint!(pub STRING_TO_STRING, Warn,
-              "calling `String::to_string` which is inefficient");
+declare_lint! {
+    pub STRING_TO_STRING, Warn,
+    "calling `String::to_string` which is inefficient"
+}
 
 /// **What it does:** This lint checks for methods that should live in a trait implementation of a `std` trait (see [llogiq's blog post](http://llogiq.github.io/2015/07/30/traits.html) for further information) instead of an inherent implementation. It is `Warn` by default.
 ///
@@ -74,8 +82,10 @@ declare_lint!(pub STRING_TO_STRING, Warn,
 ///    fn add(&self, other: &X) -> X { .. }
 /// }
 /// ```
-declare_lint!(pub SHOULD_IMPLEMENT_TRAIT, Warn,
-              "defining a method that should be implementing a std trait");
+declare_lint! {
+    pub SHOULD_IMPLEMENT_TRAIT, Warn,
+    "defining a method that should be implementing a std trait"
+}
 
 /// **What it does:** This lint checks for methods with certain name prefixes and `Warn`s (by default) if the prefix doesn't match how self is taken. The actual rules are:
 ///
@@ -98,9 +108,11 @@ declare_lint!(pub SHOULD_IMPLEMENT_TRAIT, Warn,
 ///     fn as_str(self) -> &str { .. }
 /// }
 /// ```
-declare_lint!(pub WRONG_SELF_CONVENTION, Warn,
-              "defining a method named with an established prefix (like \"into_\") that takes \
-               `self` with the wrong convention");
+declare_lint! {
+    pub WRONG_SELF_CONVENTION, Warn,
+    "defining a method named with an established prefix (like \"into_\") that takes \
+     `self` with the wrong convention"
+}
 
 /// **What it does:** This is the same as [`wrong_self_convention`](#wrong_self_convention), but for public items. This lint is `Allow` by default.
 ///
@@ -114,9 +126,11 @@ declare_lint!(pub WRONG_SELF_CONVENTION, Warn,
 ///     pub fn as_str(self) -> &str { .. }
 /// }
 /// ```
-declare_lint!(pub WRONG_PUB_SELF_CONVENTION, Allow,
-              "defining a public method named with an established prefix (like \"into_\") that takes \
-               `self` with the wrong convention");
+declare_lint! {
+    pub WRONG_PUB_SELF_CONVENTION, Allow,
+    "defining a public method named with an established prefix (like \"into_\") that takes \
+     `self` with the wrong convention"
+}
 
 /// **What it does:** This lint `Warn`s on using `ok().expect(..)`.
 ///
@@ -125,9 +139,11 @@ declare_lint!(pub WRONG_PUB_SELF_CONVENTION, Allow,
 /// **Known problems:** None.
 ///
 /// **Example:** `x.ok().expect("why did I do this again?")`
-declare_lint!(pub OK_EXPECT, Warn,
-              "using `ok().expect()`, which gives worse error messages than \
-               calling `expect` directly on the Result");
+declare_lint! {
+    pub OK_EXPECT, Warn,
+    "using `ok().expect()`, which gives worse error messages than \
+     calling `expect` directly on the Result"
+}
 
 /// **What it does:** This lint `Warn`s on `_.map(_).unwrap_or(_)`.
 ///
@@ -136,9 +152,11 @@ declare_lint!(pub OK_EXPECT, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `x.map(|a| a + 1).unwrap_or(0)`
-declare_lint!(pub OPTION_MAP_UNWRAP_OR, Warn,
-              "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
-               `map_or(a, f)`");
+declare_lint! {
+    pub OPTION_MAP_UNWRAP_OR, Warn,
+    "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
+     `map_or(a, f)`"
+}
 
 /// **What it does:** This lint `Warn`s on `_.map(_).unwrap_or_else(_)`.
 ///
@@ -147,9 +165,11 @@ declare_lint!(pub OPTION_MAP_UNWRAP_OR, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `x.map(|a| a + 1).unwrap_or_else(some_function)`
-declare_lint!(pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
-              "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
-               `map_or_else(g, f)`");
+declare_lint! {
+    pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
+    "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
+     `map_or_else(g, f)`"
+}
 
 /// **What it does:** This lint `Warn`s on `_.filter(_).next()`.
 ///
@@ -158,8 +178,10 @@ declare_lint!(pub OPTION_MAP_UNWRAP_OR_ELSE, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `iter.filter(|x| x == 0).next()`
-declare_lint!(pub FILTER_NEXT, Warn,
-              "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`");
+declare_lint! {
+    pub FILTER_NEXT, Warn,
+    "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
+}
 
 /// **What it does:** This lint `Warn`s on an iterator search (such as `find()`, `position()`, or
 /// `rposition()`) followed by a call to `is_some()`.
@@ -169,9 +191,11 @@ declare_lint!(pub FILTER_NEXT, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `iter.find(|x| x == 0).is_some()`
-declare_lint!(pub SEARCH_IS_SOME, Warn,
-              "using an iterator search followed by `is_some()`, which is more succinctly \
-               expressed as a call to `any()`");
+declare_lint! {
+    pub SEARCH_IS_SOME, Warn,
+    "using an iterator search followed by `is_some()`, which is more succinctly \
+     expressed as a call to `any()`"
+}
 
 /// **What it does:** This lint `Warn`s on using `.chars().next()` on a `str` to check if it
 /// starts with a given char.
@@ -181,8 +205,10 @@ declare_lint!(pub SEARCH_IS_SOME, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `name.chars().next() == Some('_')`
-declare_lint!(pub CHARS_NEXT_CMP, Warn,
-              "using `.chars().next()` to check if a string starts with a char");
+declare_lint! {
+    pub CHARS_NEXT_CMP, Warn,
+    "using `.chars().next()` to check if a string starts with a char"
+}
 
 /// **What it does:** This lint checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`, etc., and
 /// suggests to use `or_else`, `unwrap_or_else`, etc., or `unwrap_or_default` instead.
@@ -203,8 +229,10 @@ declare_lint!(pub CHARS_NEXT_CMP, Warn,
 ///
 /// **Known problems:** If the function as side-effects, not calling it will change the semantic of
 /// the program, but you shouldn't rely on that anyway.
-declare_lint!(pub OR_FUN_CALL, Warn,
-              "using any `*or` method when the `*or_else` would do");
+declare_lint! {
+    pub OR_FUN_CALL, Warn,
+    "using any `*or` method when the `*or_else` would do"
+}
 
 /// **What it does:** This lint `Warn`s on using `.extend(s)` on a `vec` to extend the vec by a slice.
 ///
@@ -213,8 +241,10 @@ declare_lint!(pub OR_FUN_CALL, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `my_vec.extend(&xs)`
-declare_lint!(pub EXTEND_FROM_SLICE, Warn,
-              "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice");
+declare_lint! {
+    pub EXTEND_FROM_SLICE, Warn,
+    "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice"
+}
 
 /// **What it does:** This lint warns on using `.clone()` on a `Copy` type.
 ///
@@ -224,8 +254,9 @@ declare_lint!(pub EXTEND_FROM_SLICE, Warn,
 /// **Known problems:** None.
 ///
 /// **Example:** `42u64.clone()`
-declare_lint!(pub CLONE_ON_COPY, Warn,
-              "using `clone` on a `Copy` type");
+declare_lint! {
+    pub CLONE_ON_COPY, Warn, "using `clone` on a `Copy` type"
+}
 
 /// **What it does:** This lint warns on using `.clone()` on an `&&T`
 ///
@@ -244,8 +275,9 @@ declare_lint!(pub CLONE_ON_COPY, Warn,
 /// }
 /// ```
 /// 
-declare_lint!(pub CLONE_DOUBLE_REF, Warn,
-              "using `clone` on `&&T`");
+declare_lint! {
+    pub CLONE_DOUBLE_REF, Warn, "using `clone` on `&&T`"
+}
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {

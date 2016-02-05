@@ -11,9 +11,11 @@ use utils::{walk_ptrs_ty, walk_ptrs_ty_depth};
 /// **Known problems:** None
 ///
 /// **Example:** `x.map(|e| e.clone());`
-declare_lint!(pub MAP_CLONE, Warn,
-              "using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends \
-              `.cloned()` instead)");
+declare_lint! {
+    pub MAP_CLONE, Warn,
+    "using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends \
+     `.cloned()` instead)"
+}
 
 #[derive(Copy, Clone)]
 pub struct MapClonePass;
