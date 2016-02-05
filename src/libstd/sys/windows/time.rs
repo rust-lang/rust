@@ -166,6 +166,12 @@ impl fmt::Debug for SystemTime {
     }
 }
 
+impl From<c::FILETIME> for SystemTime {
+    fn from(t: c::FILETIME) -> SystemTime {
+        SystemTime { t: t }
+    }
+}
+
 fn dur2intervals(d: &Duration) -> i64 {
     d.as_secs().checked_mul(INTERVALS_PER_SEC).and_then(|i| {
         i.checked_add(d.subsec_nanos() as u64 / 100)

@@ -22,6 +22,7 @@ use ptr;
 use sync::Arc;
 use sys::fd::FileDesc;
 use sys::platform::raw;
+use sys::time::SystemTime;
 use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 
@@ -83,6 +84,67 @@ impl FileAttr {
 
     pub fn file_type(&self) -> FileType {
         FileType { mode: self.stat.st_mode as mode_t }
+    }
+}
+
+#[cfg(any(target_os = "ios", target_os = "macos"))]
+// FIXME: update SystemTime to store a timespec and don't lose precision
+impl FileAttr {
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timeval {
+            tv_sec: self.stat.st_mtime,
+            tv_usec: (self.stat.st_mtime_nsec / 1000) as libc::suseconds_t,
+        }))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timeval {
+            tv_sec: self.stat.st_atime,
+            tv_usec: (self.stat.st_atime_nsec / 1000) as libc::suseconds_t,
+        }))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timeval {
+            tv_sec: self.stat.st_birthtime,
+            tv_usec: (self.stat.st_birthtime_nsec / 1000) as libc::suseconds_t,
+        }))
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "macos")))]
+impl FileAttr {
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_mtime,
+            tv_nsec: self.stat.st_mtime_nsec as libc::c_long,
+        }))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_atime,
+            tv_nsec: self.stat.st_atime_nsec as libc::c_long,
+        }))
+    }
+
+    #[cfg(any(target_os = "bitrig",
+              target_os = "freebsd",
+              target_os = "openbsd"))]
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_birthtime,
+            tv_nsec: self.stat.st_birthtime_nsec as libc::c_long,
+        }))
+    }
+
+    #[cfg(not(any(target_os = "bitrig",
+                  target_os = "freebsd",
+                  target_os = "openbsd")))]
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Err(io::Error::new(io::ErrorKind::Other,
+                           "creation time is not available on this platform \
+                            currently"))
     }
 }
 

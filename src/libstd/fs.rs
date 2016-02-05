@@ -25,6 +25,7 @@ use sys::fs as fs_imp;
 use sys_common::io::read_to_end_uninitialized;
 use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
 use vec::Vec;
+use time::SystemTime;
 
 /// A reference to an open file on the filesystem.
 ///
@@ -659,6 +660,52 @@ impl Metadata {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn permissions(&self) -> Permissions {
         Permissions(self.0.perm())
+    }
+
+    /// Returns the last modification time listed in this metadata.
+    ///
+    /// The returned value corresponds to the `mtime` field of `stat` on Unix
+    /// platforms and the `ftLastWriteTime` field on Windows platforms.
+    ///
+    /// # Errors
+    ///
+    /// This field may not be available on all platforms, and will return an
+    /// `Err` on platforms where it is not available.
+    #[unstable(feature = "fs_time", issue = "31399")]
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        self.0.modified().map(FromInner::from_inner)
+    }
+
+    /// Returns the last access time of this metadata.
+    ///
+    /// The returned value corresponds to the `atime` field of `stat` on Unix
+    /// platforms and the `ftLastAccessTime` field on Windows platforms.
+    ///
+    /// Note that not all platforms will keep this field update in a file's
+    /// metadata, for example Windows has an option to disable updating this
+    /// time when files are accessed and Linux similarly has `noatime`.
+    ///
+    /// # Errors
+    ///
+    /// This field may not be available on all platforms, and will return an
+    /// `Err` on platforms where it is not available.
+    #[unstable(feature = "fs_time", issue = "31399")]
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        self.0.accessed().map(FromInner::from_inner)
+    }
+
+    /// Returns the creation time listed in the this metadata.
+    ///
+    /// The returned value corresponds to the `birthtime` field of `stat` on
+    /// Unix platforms and the `ftCreationTime` field on Windows platforms.
+    ///
+    /// # Errors
+    ///
+    /// This field may not be available on all platforms, and will return an
+    /// `Err` on platforms where it is not available.
+    #[unstable(feature = "fs_time", issue = "31399")]
+    pub fn created(&self) -> io::Result<SystemTime> {
+        self.0.created().map(FromInner::from_inner)
     }
 }
 
@@ -2467,5 +2514,25 @@ mod tests {
         check!(fs::create_dir_all(&d));
         assert!(link.is_dir());
         assert!(d.exists());
+    }
+
+    #[test]
+    fn metadata_access_times() {
+        let tmpdir = tmpdir();
+
+        let b = tmpdir.join("b");
+        File::create(&b).unwrap();
+
+        let a = check!(fs::metadata(&tmpdir.path()));
+        let b = check!(fs::metadata(&b));
+
+        assert_eq!(check!(a.accessed()), check!(a.accessed()));
+        assert_eq!(check!(a.modified()), check!(a.modified()));
+        assert_eq!(check!(b.accessed()), check!(b.modified()));
+
+        if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
+            check!(a.created());
+            check!(b.created());
+        }
     }
 }
