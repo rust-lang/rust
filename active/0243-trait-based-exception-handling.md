@@ -61,11 +61,11 @@ Naturally, in this case the types of the "exceptions thrown by" `foo()` and
 `bar()` must unify. Like the current `try!()` macro, the `?` operator will also
 perform an implicit "upcast" on the exception type.
 
-When used outside of a `try` block, the `?` operator propagates the exception to
+When used outside of a `catch` block, the `?` operator propagates the exception to
 the caller of the current function, just like the current `try!` macro does. (If
 the return type of the function isn't a `Result`, then this is a type error.)
-When used inside a `try` block, it propagates the exception up to the innermost
-`try` block, as one would expect.
+When used inside a `catch` block, it propagates the exception up to the innermost
+`catch` block, as one would expect.
 
 Requiring an explicit `?` operator to propagate exceptions strikes a very
 pleasing balance between completely automatic exception propagation, which most
@@ -203,7 +203,7 @@ are merely one way.
             Err(e) => break 'here Err(e.into())
         }
 
-   Where `'here` refers to the innermost enclosing `try` block, or to `'fn` if
+   Where `'here` refers to the innermost enclosing `catch` block, or to `'fn` if
    there is none.
 
    The `?` operator has the same precedence as `.`.
@@ -247,21 +247,18 @@ items.
 
 Without any attempt at completeness, here are some things which should be true:
 
- * `try { foo()          }                      ` = `Ok(foo())`
- * `try { Err(e)?        }                      ` = `Err(e.into())`
- * `try { try_foo()?     }                      ` = `try_foo().map_err(Into::into)`
- * `try { Err(e)?        } catch { e => e      }` = `e.into()`
- * `try { Ok(try_foo()?) } catch { e => Err(e) }` = `try_foo().map_err(Into::into)`
+ * `catch { foo()          }                      ` = `Ok(foo())`
+ * `catch { Err(e)?        }                      ` = `Err(e.into())`
+ * `catch { try_foo()?     }                      ` = `try_foo().map_err(Into::into)`
 
 (In the above, `foo()` is a function returning any type, and `try_foo()` is a
 function returning a `Result`.)
 
 ## Feature gates
 
-The two major features here, the `?` syntax and the `try`/`catch`
-syntax, will be tracked by independent feature gates. Each of the
-features has a distinct motivation, and we should evaluate them
-independently.
+The two major features here, the `?` syntax and `catch` expressions,
+will be tracked by independent feature gates. Each of the features has
+a distinct motivation, and we should evaluate them independently.
 
 # Unresolved questions
 
@@ -435,11 +432,9 @@ standard monadic bind to accommodate rich control flow like `break`,
 
  * Don't.
 
- * Only add the `?` operator, but not `try` and `try`..`catch`.
+ * Only add the `?` operator, but not `catch` expressions.
 
- * Only add `?` and `try`, but not `try`..`catch`.
-
- * Instead of a built-in `try`..`catch` construct, attempt to define one using
+ * Instead of a built-in `catch` construct, attempt to define one using
    macros. However, this is likely to be awkward because, at least, macros may
    only have their contents as a single block, rather than two. Furthermore,
    macros are excellent as a "safety net" for features which we forget to add
@@ -477,7 +472,7 @@ It is possible to carry the exception handling analogy further and also add
 
 `throw` is very simple: `throw EXPR` is essentially the same thing as
 `Err(EXPR)?`; in other words it throws the exception `EXPR` to the innermost
-`try` block, or to the function's caller if there is none.
+`catch` block, or to the function's caller if there is none.
 
 A `throws` clause on a function:
 
