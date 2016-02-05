@@ -20,7 +20,7 @@ use middle::ty::fold::TypeFolder;
 use {CrateCtxt, require_same_types};
 
 use std::collections::{HashMap};
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
@@ -30,7 +30,7 @@ use rustc_front::hir;
 
 fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &hir::ForeignItem,
                                    n_tps: usize,
-                                   abi: abi::Abi,
+                                   abi: Abi,
                                    inputs: Vec<ty::Ty<'tcx>>,
                                    output: ty::FnOutput<'tcx>) {
     let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
@@ -285,7 +285,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
                 let fn_ty = ty::BareFnTy {
                     unsafety: hir::Unsafety::Normal,
-                    abi: abi::Rust,
+                    abi: Abi::Rust,
                     sig: ty::Binder(FnSig {
                         inputs: vec![mut_u8],
                         output: ty::FnOutput::FnConverging(tcx.mk_nil()),
@@ -308,7 +308,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
         tcx,
         it,
         n_tps,
-        abi::RustIntrinsic,
+        Abi::RustIntrinsic,
         inputs,
         output
         )
@@ -398,7 +398,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
         tcx,
         it,
         n_tps,
-        abi::PlatformIntrinsic,
+        Abi::PlatformIntrinsic,
         inputs,
         ty::FnConverging(output)
         )

@@ -10,7 +10,7 @@
 
 pub use self::AnnNode::*;
 
-use abi;
+use abi::{self, Abi};
 use ast::{self, TokenTree, BlockCheckMode};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
@@ -387,7 +387,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
                      -> String {
     to_string(|s| {
         try!(s.head(""));
-        try!(s.print_fn(decl, unsafety, constness, abi::Rust, Some(name),
+        try!(s.print_fn(decl, unsafety, constness, Abi::Rust, Some(name),
                         generics, opt_explicit_self, ast::Inherited));
         try!(s.end()); // Close the head box
         s.end() // Close the outer box
@@ -1058,7 +1058,7 @@ impl<'a> State<'a> {
                 try!(self.head(""));
                 try!(self.print_fn(decl, ast::Unsafety::Normal,
                                    ast::Constness::NotConst,
-                                   abi::Rust, Some(item.ident),
+                                   Abi::Rust, Some(item.ident),
                                    generics, None, item.vis));
                 try!(self.end()); // end head-ibox
                 try!(word(&mut self.s, ";"));
@@ -3086,10 +3086,10 @@ impl<'a> State<'a> {
     }
 
     pub fn print_opt_abi_and_extern_if_nondefault(&mut self,
-                                                  opt_abi: Option<abi::Abi>)
+                                                  opt_abi: Option<Abi>)
         -> io::Result<()> {
         match opt_abi {
-            Some(abi::Rust) => Ok(()),
+            Some(Abi::Rust) => Ok(()),
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
                 self.word_nbsp(&abi.to_string())
@@ -3099,7 +3099,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_extern_opt_abi(&mut self,
-                                opt_abi: Option<abi::Abi>) -> io::Result<()> {
+                                opt_abi: Option<Abi>) -> io::Result<()> {
         match opt_abi {
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
@@ -3112,7 +3112,7 @@ impl<'a> State<'a> {
     pub fn print_fn_header_info(&mut self,
                                 unsafety: ast::Unsafety,
                                 constness: ast::Constness,
-                                abi: abi::Abi,
+                                abi: Abi,
                                 vis: ast::Visibility) -> io::Result<()> {
         try!(word(&mut self.s, &visibility_qualified(vis, "")));
 
@@ -3123,7 +3123,7 @@ impl<'a> State<'a> {
 
         try!(self.print_unsafety(unsafety));
 
-        if abi != abi::Rust {
+        if abi != Abi::Rust {
             try!(self.word_nbsp("extern"));
             try!(self.word_nbsp(&abi.to_string()));
         }

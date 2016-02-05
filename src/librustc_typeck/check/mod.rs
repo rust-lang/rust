@@ -115,7 +115,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::{HashSet};
 use std::mem::replace;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -691,11 +691,11 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_bounds_are_used(ccx, &generics.ty_params, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
-        if m.abi == abi::RustIntrinsic {
+        if m.abi == Abi::RustIntrinsic {
             for item in &m.items {
                 intrinsic::check_intrinsic_type(ccx, item);
             }
-        } else if m.abi == abi::PlatformIntrinsic {
+        } else if m.abi == Abi::PlatformIntrinsic {
             for item in &m.items {
                 intrinsic::check_platform_intrinsic_type(ccx, item);
             }

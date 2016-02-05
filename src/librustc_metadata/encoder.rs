@@ -40,7 +40,7 @@ use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use std::rc::Rc;
 use std::u32;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
 use syntax::codemap::BytePos;
 use syntax::attr;
@@ -1381,7 +1381,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                           nitem: &hir::ForeignItem,
                                           index: &mut CrateIndex<'tcx>,
                                           path: PathElems,
-                                          abi: abi::Abi) {
+                                          abi: Abi) {
     let def_id = ecx.tcx.map.local_def_id(nitem.id);
 
     index.record(def_id, rbml_w);
@@ -1393,7 +1393,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_family(rbml_w, FN_FAMILY);
         encode_bounds_and_type_for_item(rbml_w, ecx, index, nitem.id);
         encode_name(rbml_w, nitem.name);
-        if abi == abi::RustIntrinsic || abi == abi::PlatformIntrinsic {
+        if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
         }
         encode_attributes(rbml_w, &*nitem.attrs);
