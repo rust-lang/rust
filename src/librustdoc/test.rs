@@ -25,6 +25,7 @@ use std::sync::{Arc, Mutex};
 
 use testing;
 use rustc_lint;
+use rustc::dep_graph::DepGraph;
 use rustc::front::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
@@ -99,7 +100,9 @@ pub fn run(input: &str,
 
     let opts = scrape_test_config(&krate);
 
-    let mut forest = hir_map::Forest::new(krate);
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
+    let mut forest = hir_map::Forest::new(krate, dep_graph.clone());
     let map = hir_map::map_crate(&mut forest);
 
     let ctx = core::DocContext {

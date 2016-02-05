@@ -11,6 +11,7 @@ pub use self::MaybeTyped::*;
 
 use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
+use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
@@ -143,7 +144,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let krate = driver::assign_node_ids(&sess, krate);
     // Lower ast -> hir.
     let lcx = LoweringContext::new(&sess, Some(&krate));
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
+    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), DepGraph::new(false));
     let arenas = ty::CtxtArenas::new();
     let hir_map = driver::make_map(&sess, &mut hir_forest);
 

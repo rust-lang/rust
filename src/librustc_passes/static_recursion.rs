@@ -11,6 +11,7 @@
 // This compiler pass detects constants that refer to themselves
 // recursively.
 
+use rustc::dep_graph::DepNode;
 use rustc::front::map as ast_map;
 use rustc::session::{Session, CompileResult};
 use rustc::middle::def::{Def, DefMap};
@@ -90,9 +91,11 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckCrateVisitor<'a, 'ast> {
 }
 
 pub fn check_crate<'ast>(sess: &Session,
-                         krate: &'ast hir::Crate,
                          def_map: &DefMap,
-                         ast_map: &ast_map::Map<'ast>) -> CompileResult {
+                         ast_map: &ast_map::Map<'ast>)
+                         -> CompileResult {
+    let _task = ast_map.dep_graph.in_task(DepNode::CheckStaticRecursion);
+
     let mut visitor = CheckCrateVisitor {
         sess: sess,
         def_map: def_map,
@@ -100,7 +103,7 @@ pub fn check_crate<'ast>(sess: &Session,
         discriminant_map: RefCell::new(NodeMap()),
     };
     sess.track_errors(|| {
-        krate.visit_all_items(&mut visitor);
+        ast_map.krate().visit_all_items(&mut visitor);
     })
 }
 

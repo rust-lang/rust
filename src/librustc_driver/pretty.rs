@@ -19,6 +19,7 @@ use rustc_trans::back::link;
 
 use {driver, abort_on_err};
 
+use rustc::dep_graph::DepGraph;
 use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
@@ -183,7 +184,7 @@ impl PpSourceMode {
                     sess: sess,
                     ast_map: Some(ast_map.clone()),
                 };
-                f(&annotation, payload, &ast_map.forest.krate)
+                f(&annotation, payload, ast_map.forest.krate())
             }
 
             PpmIdentified => {
@@ -191,7 +192,7 @@ impl PpSourceMode {
                     sess: sess,
                     ast_map: Some(ast_map.clone()),
                 };
-                f(&annotation, payload, &ast_map.forest.krate)
+                f(&annotation, payload, ast_map.forest.krate())
             }
             PpmTyped => {
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
@@ -207,7 +208,7 @@ impl PpSourceMode {
                     let _ignore = tcx.dep_graph.in_ignore();
                     f(&annotation,
                       payload,
-                      &ast_map.forest.krate)
+                      ast_map.forest.krate())
                 }), sess)
             }
             _ => panic!("Should use call_with_pp_support"),
@@ -706,8 +707,10 @@ pub fn pretty_print_input(sess: Session,
     let mut hir_forest;
     let lcx = LoweringContext::new(&sess, Some(&krate));
     let arenas = ty::CtxtArenas::new();
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
     let ast_map = if compute_ast_map {
-        hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate));
+        hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
         let map = driver::make_map(&sess, &mut hir_forest);
         Some(map)
     } else {

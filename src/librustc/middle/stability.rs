@@ -14,6 +14,7 @@
 pub use self::StabilityLevel::*;
 
 use dep_graph::DepNode;
+use front::map as hir_map;
 use session::Session;
 use lint;
 use middle::cstore::{CrateStore, LOCAL_CRATE};
@@ -30,7 +31,7 @@ use syntax::attr::{self, Stability, Deprecation, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
-use rustc_front::hir::{Crate, Item, Generics, StructField, Variant};
+use rustc_front::hir::{Item, Generics, StructField, Variant};
 use rustc_front::intravisit::{self, Visitor};
 
 use std::mem::replace;
@@ -278,7 +279,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
 
 impl<'tcx> Index<'tcx> {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(&mut self, tcx: &ty::ctxt<'tcx>, krate: &Crate, access_levels: &AccessLevels) {
+    pub fn build(&mut self, tcx: &ty::ctxt<'tcx>, access_levels: &AccessLevels) {
+        let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
+        let krate = tcx.map.krate();
         let mut annotator = Annotator {
             tcx: tcx,
             index: self,
@@ -291,7 +294,10 @@ impl<'tcx> Index<'tcx> {
                            |v| intravisit::walk_crate(v, krate));
     }
 
-    pub fn new(krate: &Crate) -> Index<'tcx> {
+    pub fn new(hir_map: &hir_map::Map) -> Index<'tcx> {
+        let _task = hir_map.dep_graph.in_task(DepNode::StabilityIndex);
+        let krate = hir_map.krate();
+
         let mut is_staged_api = false;
         for attr in &krate.attrs {
             if attr.name() == "stable" || attr.name() == "unstable" {

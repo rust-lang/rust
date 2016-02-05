@@ -40,8 +40,21 @@ pub enum DepNode {
     Hir(DefId),
 
     // Represents different phases in the compiler.
+    CrateReader,
+    CollectLanguageItems,
+    CheckStaticRecursion,
+    ResolveLifetimes,
+    RegionResolveCrate,
+    CheckLoops,
+    PluginRegistrar,
+    StabilityIndex,
     CollectItem(DefId),
     Coherence,
+    EffectCheck,
+    Liveness,
+    Resolve,
+    EntryPoint,
+    CheckEntryFn,
     CoherenceCheckImpl(DefId),
     CoherenceOverlapCheck(DefId),
     CoherenceOverlapCheckSpecial(DefId),
@@ -114,6 +127,13 @@ impl DepGraph {
         DepGraph {
             data: Rc::new(DepGraphThreadData::new(enabled))
         }
+    }
+
+    /// True if we are actually building a dep-graph. If this returns false,
+    /// then the other methods on this `DepGraph` will have no net effect.
+    #[inline]
+    pub fn enabled(&self) -> bool {
+        self.data.enabled()
     }
 
     pub fn query(&self) -> DepGraphQuery {

@@ -12,6 +12,7 @@
 //! `unsafe`.
 use self::RootUnsafeContext::*;
 
+use dep_graph::DepNode;
 use middle::def::Def;
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
@@ -182,6 +183,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
+    let _task = tcx.dep_graph.in_task(DepNode::EffectCheck);
+
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         unsafe_context: UnsafeContext::new(SafeContext),

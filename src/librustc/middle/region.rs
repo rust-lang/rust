@@ -16,6 +16,7 @@
 //! Most of the documentation on regions can be found in
 //! `middle/infer/region_inference/README.md`
 
+use dep_graph::DepNode;
 use front::map as ast_map;
 use session::Session;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
@@ -1224,7 +1225,10 @@ impl<'a, 'v> Visitor<'v> for RegionResolutionVisitor<'a> {
     }
 }
 
-pub fn resolve_crate(sess: &Session, krate: &hir::Crate) -> RegionMaps {
+pub fn resolve_crate(sess: &Session, map: &ast_map::Map) -> RegionMaps {
+    let _task = map.dep_graph.in_task(DepNode::RegionResolveCrate);
+    let krate = map.krate();
+
     let maps = RegionMaps {
         code_extents: RefCell::new(vec![]),
         code_extent_interner: RefCell::new(FnvHashMap()),

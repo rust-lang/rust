@@ -18,6 +18,8 @@
 pub use self::DefRegion::*;
 use self::ScopeChain::*;
 
+use dep_graph::DepNode;
+use front::map::Map;
 use session::Session;
 use middle::def::{Def, DefMap};
 use middle::region;
@@ -94,9 +96,11 @@ type Scope<'a> = &'a ScopeChain<'a>;
 static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
 pub fn krate(sess: &Session,
-             krate: &hir::Crate,
+             hir_map: &Map,
              def_map: &DefMap)
              -> Result<NamedRegionMap, usize> {
+    let _task = hir_map.dep_graph.in_task(DepNode::ResolveLifetimes);
+    let krate = hir_map.krate();
     let mut named_region_map = NodeMap();
     try!(sess.track_errors(|| {
         krate.visit_all_items(&mut LifetimeContext {

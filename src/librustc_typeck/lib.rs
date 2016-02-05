@@ -100,6 +100,7 @@ pub use rustc::middle;
 pub use rustc::session;
 pub use rustc::util;
 
+use dep_graph::DepNode;
 use front::map as hir_map;
 use middle::def::Def;
 use middle::infer::{self, TypeOrigin};
@@ -312,6 +313,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
 fn check_for_entry_fn(ccx: &CrateCtxt) {
     let tcx = ccx.tcx;
+    let _task = tcx.dep_graph.in_task(DepNode::CheckEntryFn);
     match *tcx.sess.entry_fn.borrow() {
         Some((id, sp)) => match tcx.sess.entry_type.get() {
             Some(config::EntryMain) => check_main_fn_ty(ccx, id, sp),

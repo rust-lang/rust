@@ -509,7 +509,7 @@ impl<'tcx> ctxt<'tcx> {
     {
         let interner = RefCell::new(FnvHashMap());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
-        let dep_graph = DepGraph::new(s.opts.incremental_compilation);
+        let dep_graph = map.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter(ctxt {
             arenas: arenas,
