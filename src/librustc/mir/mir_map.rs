@@ -10,8 +10,19 @@
 
 use util::nodemap::NodeMap;
 use mir::repr::Mir;
+use mir::transform::MirPass;
+use middle::ty;
 
 pub struct MirMap<'tcx> {
     pub map: NodeMap<Mir<'tcx>>,
 }
 
+impl<'tcx> MirMap<'tcx> {
+    pub fn run_passes(&mut self, passes: &mut [Box<MirPass>], tcx: &ty::ctxt<'tcx>) {
+        for (_, ref mut mir) in &mut self.map {
+            for pass in &mut *passes {
+                pass.run_on_mir(mir, tcx)
+            }
+        }
+    }
+}
