@@ -16,7 +16,6 @@ use prelude::v1::*;
 
 use io;
 use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
-use os::unix::raw::{uid_t, gid_t};
 use process;
 use sys;
 use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
@@ -28,12 +27,12 @@ pub trait CommandExt {
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn uid(&mut self, id: uid_t) -> &mut process::Command;
+    fn uid(&mut self, id: u32) -> &mut process::Command;
 
     /// Similar to `uid`, but sets the group id of the child process. This has
     /// the same semantics as the `uid` field.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn gid(&mut self, id: gid_t) -> &mut process::Command;
+    fn gid(&mut self, id: u32) -> &mut process::Command;
 
     /// Create a new session (cf. `setsid(2)`) for the child process. This means
     /// that the child is the leader of a new process group. The parent process
@@ -101,12 +100,12 @@ pub trait CommandExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
-    fn uid(&mut self, id: uid_t) -> &mut process::Command {
+    fn uid(&mut self, id: u32) -> &mut process::Command {
         self.as_inner_mut().uid(id);
         self
     }
 
-    fn gid(&mut self, id: gid_t) -> &mut process::Command {
+    fn gid(&mut self, id: u32) -> &mut process::Command {
         self.as_inner_mut().gid(id);
         self
     }

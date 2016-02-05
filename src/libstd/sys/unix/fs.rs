@@ -21,16 +21,20 @@ use path::{Path, PathBuf};
 use ptr;
 use sync::Arc;
 use sys::fd::FileDesc;
-use sys::platform::raw;
 use sys::time::SystemTime;
 use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
+
+#[cfg(target_os = "linux")]
+use libc::{stat64, fstat64, lstat64};
+#[cfg(not(target_os = "linux"))]
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64};
 
 pub struct File(FileDesc);
 
 #[derive(Clone)]
 pub struct FileAttr {
-    stat: raw::stat,
+    stat: stat64,
 }
 
 pub struct ReadDir {
@@ -116,14 +120,14 @@ impl FileAttr {
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime,
+            tv_sec: self.stat.st_mtime as libc::time_t,
             tv_nsec: self.stat.st_mtime_nsec as libc::c_long,
         }))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime,
+            tv_sec: self.stat.st_atime as libc::time_t,
             tv_nsec: self.stat.st_atime_nsec as libc::c_long,
         }))
     }
@@ -133,7 +137,7 @@ impl FileAttr {
               target_os = "openbsd"))]
     pub fn created(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_birthtime,
+            tv_sec: self.stat.st_birthtime as libc::time_t,
             tv_nsec: self.stat.st_birthtime_nsec as libc::c_long,
         }))
     }
@@ -148,26 +152,8 @@ impl FileAttr {
     }
 }
 
-impl AsInner<raw::stat> for FileAttr {
-    fn as_inner(&self) -> &raw::stat { &self.stat }
-}
-
-/// OS-specific extension methods for `fs::Metadata`
-#[stable(feature = "metadata_ext", since = "1.1.0")]
-pub trait MetadataExt {
-    /// Gain a reference to the underlying `stat` structure which contains the
-    /// raw information returned by the OS.
-    ///
-    /// The contents of the returned `stat` are **not** consistent across Unix
-    /// platforms. The `os::unix::fs::MetadataExt` trait contains the cross-Unix
-    /// abstractions contained within the raw stat.
-    #[stable(feature = "metadata_ext", since = "1.1.0")]
-    fn as_raw_stat(&self) -> &raw::stat;
-}
-
-#[stable(feature = "metadata_ext", since = "1.1.0")]
-impl MetadataExt for ::fs::Metadata {
-    fn as_raw_stat(&self) -> &raw::stat { &self.as_inner().stat }
+impl AsInner<stat64> for FileAttr {
+    fn as_inner(&self) -> &stat64 { &self.stat }
 }
 
 impl FilePermissions {
@@ -179,7 +165,7 @@ impl FilePermissions {
             self.mode |= 0o222;
         }
     }
-    pub fn mode(&self) -> raw::mode_t { self.mode }
+    pub fn mode(&self) -> u32 { self.mode as u32 }
 }
 
 impl FileType {
@@ -190,8 +176,8 @@ impl FileType {
     pub fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT == mode }
 }
 
-impl FromInner<raw::mode_t> for FilePermissions {
-    fn from_inner(mode: raw::mode_t) -> FilePermissions {
+impl FromInner<u32> for FilePermissions {
+    fn from_inner(mode: u32) -> FilePermissions {
         FilePermissions { mode: mode as mode_t }
     }
 }
@@ -293,15 +279,11 @@ impl DirEntry {
     #[cfg(any(target_os = "macos",
               target_os = "ios",
               target_os = "linux",
-              target_os = "solaris",
-              target_os = "emscripten"))]
-    pub fn ino(&self) -> raw::ino_t {
-        self.entry.d_ino
-    }
-
-    #[cfg(target_os = "android")]
-    pub fn ino(&self) -> raw::ino_t {
-        self.entry.d_ino as raw::ino_t
+              target_os = "emscripten",
+              target_os = "android",
+              target_os = "solaris"))]
+    pub fn ino(&self) -> u64 {
+        self.entry.d_ino as u64
     }
 
     #[cfg(any(target_os = "freebsd",
@@ -309,8 +291,8 @@ impl DirEntry {
               target_os = "bitrig",
               target_os = "netbsd",
               target_os = "dragonfly"))]
-    pub fn ino(&self) -> raw::ino_t {
-        self.entry.d_fileno
+    pub fn ino(&self) -> u64 {
+        self.entry.d_fileno as u64
     }
 
     #[cfg(any(target_os = "macos",
@@ -364,7 +346,7 @@ impl OpenOptions {
     pub fn create_new(&mut self, create_new: bool) { self.create_new = create_new; }
 
     pub fn custom_flags(&mut self, flags: i32) { self.custom_flags = flags; }
-    pub fn mode(&mut self, mode: raw::mode_t) { self.mode = mode as mode_t; }
+    pub fn mode(&mut self, mode: u32) { self.mode = mode as mode_t; }
 
     fn get_access_mode(&self) -> io::Result<c_int> {
         match (self.read, self.write, self.append) {
@@ -431,9 +413,9 @@ impl File {
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        let mut stat: raw::stat = unsafe { mem::zeroed() };
+        let mut stat: stat64 = unsafe { mem::zeroed() };
         try!(cvt(unsafe {
-            libc::fstat(self.0.raw(), &mut stat as *mut _ as *mut _)
+            fstat64(self.0.raw(), &mut stat)
         }));
         Ok(FileAttr { stat: stat })
     }
@@ -506,8 +488,8 @@ impl DirBuilder {
         Ok(())
     }
 
-    pub fn set_mode(&mut self, mode: mode_t) {
-        self.mode = mode;
+    pub fn set_mode(&mut self, mode: u32) {
+        self.mode = mode as mode_t;
     }
 }
 
@@ -689,18 +671,18 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let p = try!(cstr(p));
-    let mut stat: raw::stat = unsafe { mem::zeroed() };
+    let mut stat: stat64 = unsafe { mem::zeroed() };
     try!(cvt(unsafe {
-        libc::stat(p.as_ptr(), &mut stat as *mut _ as *mut _)
+        stat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
     }));
     Ok(FileAttr { stat: stat })
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     let p = try!(cstr(p));
-    let mut stat: raw::stat = unsafe { mem::zeroed() };
+    let mut stat: stat64 = unsafe { mem::zeroed() };
     try!(cvt(unsafe {
-        libc::lstat(p.as_ptr(), &mut stat as *mut _ as *mut _)
+        lstat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
     }));
     Ok(FileAttr { stat: stat })
 }
