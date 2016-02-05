@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::str::from_utf8;
 
@@ -1265,6 +1266,16 @@ fn test_box_slice_clone() {
     let data2 = data.clone().into_boxed_str().clone().into_string();
 
     assert_eq!(data, data2);
+}
+
+#[test]
+fn test_cow_from() {
+    let borrowed = "borrowed";
+    let owned = String::from("owned");
+    match (Cow::from(owned.clone()), Cow::from(borrowed)) {
+        (Cow::Owned(o), Cow::Borrowed(b)) => assert!(o == owned && b == borrowed),
+        _ => panic!("invalid `Cow::from`"),
+    }
 }
 
 mod pattern {
