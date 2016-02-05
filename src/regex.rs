@@ -45,7 +45,7 @@ impl LateLintPass for RegexPass {
                         span_lint(cx,
                                   INVALID_REGEX,
                                   str_span(args[0].span, &r, e.position()),
-                                  &format!("Regex syntax error: {}",
+                                  &format!("regex syntax error: {}",
                                            e.description()));
                     }
                 }
@@ -57,7 +57,7 @@ impl LateLintPass for RegexPass {
                     span_lint(cx,
                               INVALID_REGEX,
                               args[0].span,
-                              &format!("Regex syntax error on position {}: {}",
+                              &format!("regex syntax error on position {}: {}",
                                        e.position(),
                                        e.description()));
                 }}

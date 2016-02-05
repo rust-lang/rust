@@ -62,8 +62,8 @@ impl CyclomaticComplexity {
                 span_help_and_lint(cx,
                                    CYCLOMATIC_COMPLEXITY,
                                    span,
-                                   &format!("The function has a cyclomatic complexity of {}", rust_cc),
-                                   "You could split it up into multiple smaller functions");
+                                   &format!("the function has a cyclomatic complexity of {}", rust_cc),
+                                   "you could split it up into multiple smaller functions");
             }
         }
     }
