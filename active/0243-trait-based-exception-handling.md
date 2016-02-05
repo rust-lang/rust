@@ -1,6 +1,7 @@
+- Feature-gates: `question_mark`, `try_catch`
 - Start Date: 2014-09-16
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- RFC PR #: [rust-lang/rfcs#243](https://github.com/rust-lang/rfcs/pull/243)
+- Rust Issue #: [rust-lang/rust#31436](https://github.com/rust-lang/rust/issues/31436)
 
 
 # Summary
