@@ -21,7 +21,7 @@ use trans::machine;
 use trans::type_of;
 use trans::type_::Type;
 
-use super::MirContext;
+use super::{MirContext, TempRef};
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_drop(&mut self,
@@ -77,5 +77,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let size = machine::llsize_of(bcx.ccx(), llty);
         let align = common::C_u32(bcx.ccx(), machine::llalign_of_min(bcx.ccx(), llty));
         base::call_memset(&build::B(bcx), llptr, filling, size, align, false);
+    }
+
+    pub fn set_operand_dropped(&mut self,
+                               bcx: Block<'bcx, 'tcx>,
+                               operand: &mir::Operand<'tcx>) {
+        match *operand {
+            mir::Operand::Constant(_) => return,
+            mir::Operand::Consume(ref lvalue) => {
+                if let mir::Lvalue::Temp(idx) = *lvalue {
+                    if let TempRef::Operand(..) = self.temps[idx as usize] {
+                        return // we do not handle these, should we?
+                    }
+                }
+                let lvalue = self.trans_lvalue(bcx, lvalue);
+                let ty = lvalue.ty.to_ty(bcx.tcx());
+                if !glue::type_needs_drop(bcx.tcx(), ty) ||
+                    common::type_is_fat_ptr(bcx.tcx(), ty) {
+                    return
+                } else {
+                    self.drop_fill(bcx, lvalue.llval, ty);
+                }
+            }
+        }
     }
 }

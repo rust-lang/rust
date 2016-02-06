@@ -43,6 +43,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                rvalue);
 
         match *rvalue {
+            mir::Rvalue::Use(ref operand) => {
+                // FIXME: consider not copying constants through stack. (fixable by translating
+                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
+                let tr_operand = self.trans_operand(bcx, operand);
+                self.store_operand(bcx, dest.llval, tr_operand);
+                self.set_operand_dropped(bcx, operand);
+                bcx
+            }
+
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, cast_ty) => {
                 if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                     // into-coerce of a thin pointer to a fat pointer - just
@@ -162,13 +171,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
-                // FIXME: consider not copying constants through stack. (fixable by translating
-                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
-                let operand = self.trans_operand(bcx, operand);
-                (bcx, operand)
-            }
-
             mir::Rvalue::Cast(ref kind, ref operand, cast_ty) => {
                 let operand = self.trans_operand(bcx, operand);
                 debug!("cast operand is {}", operand.repr(bcx));
@@ -398,6 +400,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 })
             }
 
+            mir::Rvalue::Use(..) |
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) |
             mir::Rvalue::Slice { .. } |
@@ -508,7 +511,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
 pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
     match *rvalue {
-        mir::Rvalue::Use(..) | // (*)
         mir::Rvalue::Ref(..) |
         mir::Rvalue::Len(..) |
         mir::Rvalue::Cast(..) | // (*)
@@ -516,6 +518,7 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
         mir::Rvalue::UnaryOp(..) |
         mir::Rvalue::Box(..) =>
             true,
+        mir::Rvalue::Use(..) | // (**)
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) |
         mir::Rvalue::Slice { .. } |
@@ -524,4 +527,6 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
     }
 
     // (*) this is only true if the type is suitable
+    // (**) we need to zero-out the old value before moving, so we are restricted to either
+    // ensuring all users of `Use` set it themselves or not allowing to “create” operand for it.
 }

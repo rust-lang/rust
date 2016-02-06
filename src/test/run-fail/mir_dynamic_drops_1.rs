@@ -14,22 +14,24 @@ use std::io::{self, Write};
 
 
 /// Structure which will not allow to be dropped twice.
-struct Droppable(bool, u32);
-impl Drop for Droppable {
+struct Droppable<'a>(&'a mut bool, u32);
+impl<'a> Drop for Droppable<'a> {
     fn drop(&mut self) {
-        if self.0 {
+        if *self.0 {
             writeln!(io::stderr(), "{} dropped twice", self.1);
             ::std::process::exit(1);
         }
         writeln!(io::stderr(), "drop {}", self.1);
-        self.0 = true;
+        *self.0 = true;
     }
 }
 
 #[rustc_mir]
 fn mir(){
-    let x = Droppable(false, 1);
-    let y = Droppable(false, 2);
+    let mut b1 = false;
+    let mut b2 = false;
+    let x = Droppable(&mut b1, 1);
+    let y = Droppable(&mut b2, 2);
     let mut z = x;
     let k = y;
     z = k;
