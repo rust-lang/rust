@@ -84,16 +84,19 @@ mod imp {
     // were originally supposed to do.
     //
     // This handler currently exists purely to print an informative message
-    // whenever a thread overflows its stack. When run the handler always
-    // un-registers itself after running and then returns (to allow the original
-    // signal to be delivered again). By returning we're ensuring that segfaults
-    // do indeed look like segfaults.
+    // whenever a thread overflows its stack. We then abort to exit and
+    // indicate a crash, but to avoid a misleading SIGSEGV that might lead
+    // users to believe that unsafe code has accessed an invalid pointer; the
+    // SIGSEGV encountered when overflowing the stack is expected and
+    // well-defined.
     //
-    // Returning from this kind of signal handler is technically not defined to
-    // work when reading the POSIX spec strictly, but in practice it turns out
-    // many large systems and all implementations allow returning from a signal
-    // handler to work. For a more detailed explanation see the comments on
-    // #26458.
+    // If this is not a stack overflow, the handler un-registers itself and
+    // then returns (to allow the original signal to be delivered again).
+    // Returning from this kind of signal handler is technically not defined
+    // to work when reading the POSIX spec strictly, but in practice it turns
+    // out many large systems and all implementations allow returning from a
+    // signal handler to work. For a more detailed explanation see the
+    // comments on #26458.
     unsafe extern fn signal_handler(signum: libc::c_int,
                                     info: *mut libc::siginfo_t,
                                     _data: *mut libc::c_void) {
@@ -103,17 +106,18 @@ mod imp {
         let addr = siginfo_si_addr(info);
 
         // If the faulting address is within the guard page, then we print a
-        // message saying so.
+        // message saying so and abort.
         if guard != 0 && guard - PAGE_SIZE <= addr && addr < guard {
             report_overflow();
+            rtabort!("stack overflow");
+        } else {
+            // Unregister ourselves by reverting back to the default behavior.
+            let mut action: sigaction = mem::zeroed();
+            action.sa_sigaction = SIG_DFL;
+            sigaction(signum, &action, ptr::null_mut());
+
+            // See comment above for why this function returns.
         }
-
-        // Unregister ourselves by reverting back to the default behavior.
-        let mut action: sigaction = mem::zeroed();
-        action.sa_sigaction = SIG_DFL;
-        sigaction(signum, &action, ptr::null_mut());
-
-        // See comment above for why this function returns.
     }
 
     static mut MAIN_ALTSTACK: *mut libc::c_void = ptr::null_mut();

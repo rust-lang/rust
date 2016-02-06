@@ -158,6 +158,11 @@ rust_get_test_int() {
   return 1;
 }
 
+char *
+rust_get_null_ptr() {
+    return 0;
+}
+
 /* Debug helpers strictly to verify ABI conformance.
  *
  * FIXME (#2665): move these into a testcase when the testsuite

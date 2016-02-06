@@ -12,6 +12,10 @@
 // ignore-musl
 
 #![feature(asm)]
+#![feature(libc)]
+
+#[cfg(unix)]
+extern crate libc;
 
 use std::env;
 use std::process::Command;
@@ -34,6 +38,24 @@ fn loud_recurse() {
     loud_recurse();
     black_box(()); // don't optimize this into a tail call. please.
 }
+
+#[cfg(unix)]
+fn check_status(status: std::process::ExitStatus)
+{
+    use libc;
+    use std::os::unix::process::ExitStatusExt;
+
+    assert!(!status.success());
+    assert!(status.signal() != Some(libc::SIGSEGV)
+            && status.signal() != Some(libc::SIGBUS));
+}
+
+#[cfg(not(unix))]
+fn check_status(status: std::process::ExitStatus)
+{
+    assert!(!status.success());
+}
+
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -62,7 +84,9 @@ fn main() {
             println!("testing: {}", mode);
 
             let silent = Command::new(&args[0]).arg(mode).output().unwrap();
-            assert!(!silent.status.success());
+
+            check_status(silent.status);
+
             let error = String::from_utf8_lossy(&silent.stderr);
             assert!(error.contains("has overflowed its stack"),
                     "missing overflow message: {}", error);
