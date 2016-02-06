@@ -465,7 +465,7 @@ impl<T: ?Sized> PartialOrd for *mut T {
     fn ge(&self, other: &*mut T) -> bool { *self >= *other }
 }
 
-/// A wrapper around a raw `*mut T` that indicates that the possessor
+/// A wrapper around a raw non-null `*mut T` that indicates that the possessor
 /// of this wrapper owns the referent. This in turn implies that the
 /// `Unique<T>` is `Send`/`Sync` if `T` is `Send`/`Sync`, unlike a raw
 /// `*mut T` (which conveys no particular ownership semantics).  It
@@ -502,6 +502,10 @@ unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 #[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique`.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be non-null.
     pub const unsafe fn new(ptr: *mut T) -> Unique<T> {
         Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
     }
@@ -537,7 +541,7 @@ impl<T> fmt::Pointer for Unique<T> {
     }
 }
 
-/// A wrapper around a raw `*mut T` that indicates that the possessor
+/// A wrapper around a raw non-null `*mut T` that indicates that the possessor
 /// of this wrapper has shared ownership of the referent. Useful for
 /// building abstractions like `Rc<T>` or `Arc<T>`, which internally
 /// use raw pointers to manage the memory that they own.
@@ -566,6 +570,10 @@ impl<T: ?Sized> !Sync for Shared<T> { }
 #[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Shared<T> {
     /// Creates a new `Shared`.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must be non-null.
     pub unsafe fn new(ptr: *mut T) -> Self {
         Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
     }
