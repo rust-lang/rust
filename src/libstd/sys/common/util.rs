@@ -10,7 +10,6 @@
 
 use env;
 use fmt;
-use intrinsics;
 use io::prelude::*;
 use sync::atomic::{self, Ordering};
 use sys::stdio::Stderr;
@@ -34,9 +33,32 @@ pub fn dumb_print(args: fmt::Arguments) {
     let _ = Stderr::new().map(|mut stderr| stderr.write_fmt(args));
 }
 
+// On Unix-like platforms, libc::abort will unregister signal handlers
+// including the SIGABRT handler, preventing the abort from being blocked, and
+// fclose streams, with the side effect of flushing them so libc bufferred
+// output will be printed.  Additionally the shell will generally print a more
+// understandable error message like "Abort trap" rather than "Illegal
+// instruction" that intrinsics::abort would cause, as intrinsics::abort is
+// implemented as an illegal instruction.
+#[cfg(unix)]
+unsafe fn abort_internal() -> ! {
+    use libc;
+    libc::abort()
+}
+
+// On Windows, we want to avoid using libc, and there isn't a direct
+// equivalent of libc::abort.  The __failfast intrinsic may be a reasonable
+// substitute, but desireability of using it over the abort instrinsic is
+// debateable; see https://github.com/rust-lang/rust/pull/31519 for details.
+#[cfg(not(unix))]
+unsafe fn abort_internal() -> ! {
+    use intrinsics;
+    intrinsics::abort()
+}
+
 pub fn abort(args: fmt::Arguments) -> ! {
     dumb_print(format_args!("fatal runtime error: {}\n", args));
-    unsafe { intrinsics::abort(); }
+    unsafe { abort_internal(); }
 }
 
 #[allow(dead_code)] // stack overflow detection not enabled on all platforms
