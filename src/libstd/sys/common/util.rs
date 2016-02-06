@@ -10,7 +10,6 @@
 
 use env;
 use fmt;
-use intrinsics;
 use io::prelude::*;
 use sync::atomic::{self, Ordering};
 use sys::stdio::Stderr;
@@ -34,7 +33,16 @@ pub fn dumb_print(args: fmt::Arguments) {
     let _ = Stderr::new().map(|mut stderr| stderr.write_fmt(args));
 }
 
+#[cfg(unix)]
 pub fn abort(args: fmt::Arguments) -> ! {
+    use libc;
+    dumb_print(format_args!("fatal runtime error: {}\n", args));
+    unsafe { libc::abort(); }
+}
+
+#[cfg(not(unix))]
+pub fn abort(args: fmt::Arguments) -> ! {
+    use intrinsics;
     dumb_print(format_args!("fatal runtime error: {}\n", args));
     unsafe { intrinsics::abort(); }
 }
