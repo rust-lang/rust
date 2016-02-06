@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use sys::fd::FileDesc;
 use io;
-use libc;
+use libc::{self, c_int};
+use sys::cvt_r;
+use sys::fd::FileDesc;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Anonymous pipes
@@ -20,6 +21,24 @@ pub struct AnonPipe(FileDesc);
 
 pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     let mut fds = [0; 2];
+
+    // Unfortunately the only known way right now to create atomically set the
+    // CLOEXEC flag is to use the `pipe2` syscall on Linux. This was added in
+    // 2.6.27, however, and because we support 2.6.18 we must detect this
+    // support dynamically.
+    if cfg!(target_os = "linux") {
+        weak! { fn pipe2(*mut c_int, c_int) -> c_int }
+        if let Some(pipe) = pipe2.get() {
+            match cvt_r(|| unsafe { pipe(fds.as_mut_ptr(), libc::O_CLOEXEC) }) {
+                Ok(_) => {
+                    return Ok((AnonPipe(FileDesc::new(fds[0])),
+                               AnonPipe(FileDesc::new(fds[1]))))
+                }
+                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
+                Err(e) => return Err(e),
+            }
+        }
+    }
     if unsafe { libc::pipe(fds.as_mut_ptr()) == 0 } {
         Ok((AnonPipe::from_fd(fds[0]), AnonPipe::from_fd(fds[1])))
     } else {

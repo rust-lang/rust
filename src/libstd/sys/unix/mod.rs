@@ -27,6 +27,9 @@ use ops::Neg;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
 #[cfg(target_os = "solaris")]   pub use os::solaris as platform;
 
+#[macro_use]
+pub mod weak;
+
 pub mod backtrace;
 pub mod condvar;
 pub mod ext;

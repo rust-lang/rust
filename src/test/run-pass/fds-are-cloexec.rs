@@ -16,11 +16,11 @@
 extern crate libc;
 
 use std::env;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io;
 use std::net::{TcpListener, TcpStream, UdpSocket};
 use std::os::unix::prelude::*;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::thread;
 
 fn main() {
@@ -45,6 +45,17 @@ fn parent() {
     let udp1 = UdpSocket::bind("127.0.0.1:0").unwrap();
     let udp2 = udp1.try_clone().unwrap();
 
+    let mut child = Command::new(env::args().next().unwrap())
+                            .arg("100")
+                            .stdout(Stdio::piped())
+                            .stdin(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn().unwrap();
+    let pipe1 = child.stdin.take().unwrap();
+    let pipe2 = child.stdout.take().unwrap();
+    let pipe3 = child.stderr.take().unwrap();
+
+
     let status = Command::new(env::args().next().unwrap())
                         .arg(file.as_raw_fd().to_string())
                         .arg(tcp1.as_raw_fd().to_string())
@@ -55,9 +66,13 @@ fn parent() {
                         .arg(tcp6.as_raw_fd().to_string())
                         .arg(udp1.as_raw_fd().to_string())
                         .arg(udp2.as_raw_fd().to_string())
+                        .arg(pipe1.as_raw_fd().to_string())
+                        .arg(pipe2.as_raw_fd().to_string())
+                        .arg(pipe3.as_raw_fd().to_string())
                         .status()
                         .unwrap();
     assert!(status.success());
+    child.wait().unwrap();
 }
 
 fn child(args: &[String]) {
