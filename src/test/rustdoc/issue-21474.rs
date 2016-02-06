@@ -19,3 +19,16 @@ pub trait Blah { }
 // @count issue_21474/struct.What.html \
 //        '//*[@class="impl"]' 1
 pub struct What;
+
+/* !search-index
+{
+    "issue_21474": {
+        "issue_21474::Blah": [
+            "Trait"
+        ],
+        "issue_21474::What": [
+            "Struct"
+        ]
+    }
+}
+*/

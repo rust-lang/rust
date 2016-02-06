@@ -17,3 +17,19 @@ extern crate inline_default_methods;
 // @has - '//*[@class="rust trait"]' 'fn bar(&self);'
 // @has - '//*[@class="rust trait"]' 'fn foo(&mut self) { ... }'
 pub use inline_default_methods::Foo;
+
+/* !search-index
+{
+    "inline_default_methods": {
+        "inline_default_methods::Foo": [
+            "Trait"
+        ],
+        "inline_default_methods::Foo::bar": [
+            "TyMethod()"
+        ],
+        "inline_default_methods::Foo::foo": [
+            "Method()"
+        ]
+    }
+}
+*/

@@ -34,3 +34,22 @@ impl Deref for Bar {
     type Target = Bar;
     fn deref(&self) -> &Bar { self }
 }
+
+/* !search-index
+{
+    "rustdoc_test": {
+        "rustdoc_test::Bar": [
+            "Struct"
+        ],
+        "rustdoc_test::Bar::deref": [
+            "Method(bar) -> bar"
+        ],
+        "rustdoc_test::Foo": [
+            "Struct"
+        ],
+        "rustdoc_test::Foo::test_method": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

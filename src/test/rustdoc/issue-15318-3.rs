@@ -13,3 +13,18 @@
 /// dox
 #[doc(primitive = "pointer")]
 pub mod ptr {}
+
+/* !search-index
+{
+    "issue_15318_3": {
+        "issue_15318_3::pointer": [
+            "Primitive",
+            "dox"
+        ],
+        "issue_15318_3::ptr": [
+            "Module",
+            "dox"
+        ]
+    }
+}
+*/

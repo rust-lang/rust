@@ -28,3 +28,28 @@ pub trait Foo {
 
 // @has - '//*[@id="method.foo"]' 'fn foo'
 impl Foo for Any {}
+
+/* !search-index
+{
+    "issue_19055": {
+        "issue_19055::Any": [
+            "Trait"
+        ],
+        "issue_19055::Any::downcast_mut": [
+            "Method(any) -> option"
+        ],
+        "issue_19055::Any::downcast_ref": [
+            "Method(any) -> option"
+        ],
+        "issue_19055::Any::is": [
+            "Method(any) -> bool"
+        ],
+        "issue_19055::Foo": [
+            "Trait"
+        ],
+        "issue_19055::Foo::foo": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

@@ -14,3 +14,13 @@
 
 extern crate issue_28927_1 as inner1;
 pub use inner1 as foo;
+
+/* !search-index
+{
+    "issue_28927": {
+        "issue_28927::foo::issue_28927_2::Baz": [
+            "Struct"
+        ]
+    }
+}
+*/

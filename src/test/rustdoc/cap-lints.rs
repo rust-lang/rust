@@ -18,3 +18,13 @@
 pub struct foo {
     field: i32,
 }
+
+/* !search-index
+{
+    "cap_lints": {
+        "cap_lints::foo": [
+            "Struct"
+        ]
+    }
+}
+*/

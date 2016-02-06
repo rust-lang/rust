@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags:--test --cfg feature="bar"
+// ignore-search-index
 
 /// ```rust
 /// assert_eq!(cfg!(feature = "bar"), true);

@@ -20,3 +20,20 @@ pub use issue_15318::ptr;
 //          '*mut T'
 pub fn bar<T>(ptr: *mut T) {}
 
+/* !search-index
+{
+    "issue_15318_2": {
+        "issue_15318_2::bar": [
+            "Function()"
+        ],
+        "issue_15318_2::pointer": [
+            "Primitive",
+            "dox"
+        ],
+        "issue_15318_2::ptr": [
+            "Module",
+            "dox"
+        ]
+    }
+}
+*/

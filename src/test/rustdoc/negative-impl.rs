@@ -20,3 +20,16 @@ impl !Send for Alpha {}
 
 // @matches negative_impl/struct.Bravo.html '//*[@class="impl"]//code' "impl<B> !Send for Bravo<B>"
 impl<B> !Send for Bravo<B> {}
+
+/* !search-index
+{
+    "negative_impl": {
+        "negative_impl::Alpha": [
+            "Struct"
+        ],
+        "negative_impl::Bravo": [
+            "Struct"
+        ]
+    }
+}
+*/

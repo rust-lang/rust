@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags:--test
+// ignore-search-index
 
 /// Example of rustdoc incorrectly parsing <code>```rust,should_panic</code>.
 ///

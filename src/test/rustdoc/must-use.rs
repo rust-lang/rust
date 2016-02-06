@@ -19,3 +19,19 @@ pub struct Struct {
 pub enum Enum {
     Variant(i32),
 }
+
+/* !search-index
+{
+    "must_use": {
+        "must_use::Enum": [
+            "Enum"
+        ],
+        "must_use::Enum::Variant": [
+            "Variant"
+        ],
+        "must_use::Struct": [
+            "Struct"
+        ]
+    }
+}
+*/

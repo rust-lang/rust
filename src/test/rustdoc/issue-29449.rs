@@ -28,3 +28,25 @@ impl Foo {
     /// # Panics
     pub fn bar_2() {}
 }
+
+/* !search-index
+{
+    "issue_29449": {
+        "issue_29449::Foo": [
+            "Struct"
+        ],
+        "issue_29449::Foo::bar": [
+            "Method(foo)",
+            "# Examples\n# Panics"
+        ],
+        "issue_29449::Foo::bar_1": [
+            "Method(foo)",
+            "# Examples"
+        ],
+        "issue_29449::Foo::bar_2": [
+            "Method(foo)",
+            "# Examples\n# Panics"
+        ]
+    }
+}
+*/

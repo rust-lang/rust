@@ -40,3 +40,34 @@ pub fn cmp_input<T: Feed, U: Feed>(a: &T::Input, b: &U::Input) -> bool
 {
     a == b
 }
+
+/* !search-index
+{
+    "assoc_types": {
+        "assoc_types::Feed": [
+            "Trait"
+        ],
+        "assoc_types::Feed::Input": [
+            "AssociatedType"
+        ],
+        "assoc_types::Index": [
+            "Trait"
+        ],
+        "assoc_types::Index::Output": [
+            "AssociatedType"
+        ],
+        "assoc_types::Index::index": [
+            "TyMethod(index, i) -> output"
+        ],
+        "assoc_types::cmp_input": [
+            "Function(input, input) -> bool"
+        ],
+        "assoc_types::use_input": [
+            "Function(t, input)"
+        ],
+        "assoc_types::use_output": [
+            "Function(t, usize) -> output"
+        ]
+    }
+}
+*/

@@ -31,3 +31,30 @@ pub mod reexport {
     pub use issue_20727::Add;
 }
 
+/* !search-index
+{
+    "issue_20727_2": {
+        "issue_20727_2::Add": [
+            "Trait"
+        ],
+        "issue_20727_2::Add::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_2::Add::add": [
+            "TyMethod(add, rhs) -> output"
+        ],
+        "issue_20727_2::reexport": [
+            "Module"
+        ],
+        "issue_20727_2::reexport::Add": [
+            "Trait"
+        ],
+        "issue_20727_2::reexport::Add::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_2::reexport::Add::add": [
+            "TyMethod()"
+        ]
+    }
+}
+*/

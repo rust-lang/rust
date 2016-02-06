@@ -15,3 +15,16 @@ extern crate rustdoc_extern_default_method as ext;
 
 // @count extern_default_method/struct.Struct.html '//*[@id="method.provided"]' 1
 pub use ext::Struct;
+
+/* !search-index
+{
+    "extern_default_method": {
+        "extern_default_method::Struct": [
+            "Struct"
+        ],
+        "rustdoc_extern_default_method::Struct::provided": [
+            "Method()"
+        ]
+    }
+}
+*/

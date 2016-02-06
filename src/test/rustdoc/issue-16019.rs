@@ -17,3 +17,9 @@ macro_rules! define_struct {
 }
 
 define_struct!(2);
+
+/* !search-index
+{
+    "issue_16019": {}
+}
+*/

@@ -32,3 +32,31 @@ pub mod reexport {
     //      "fn deref(&'a self) -> &'a Self::Target;"
     pub use issue_20727::Deref;
 }
+
+/* !search-index
+{
+    "issue_20727": {
+        "issue_20727::Deref": [
+            "Trait"
+        ],
+        "issue_20727::Deref::Target": [
+            "AssociatedType"
+        ],
+        "issue_20727::Deref::deref": [
+            "TyMethod(deref) -> target"
+        ],
+        "issue_20727::reexport": [
+            "Module"
+        ],
+        "issue_20727::reexport::Deref": [
+            "Trait"
+        ],
+        "issue_20727::reexport::Deref::Target": [
+            "AssociatedType"
+        ],
+        "issue_20727::reexport::Deref::deref": [
+            "TyMethod()"
+        ]
+    }
+}
+*/

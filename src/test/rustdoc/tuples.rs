@@ -16,3 +16,19 @@ pub fn tuple0(x: ()) -> () { x }
 pub fn tuple1(x: (i32,)) -> (i32,) { x }
 // @has foo/fn.tuple2.html //pre 'pub fn tuple2(x: (i32, i32)) -> (i32, i32)'
 pub fn tuple2(x: (i32, i32)) -> (i32, i32) { x }
+
+/* !search-index
+{
+    "foo": {
+        "foo::tuple0": [
+            "Function()"
+        ],
+        "foo::tuple1": [
+            "Function()"
+        ],
+        "foo::tuple2": [
+            "Function()"
+        ]
+    }
+}
+*/

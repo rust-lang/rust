@@ -18,3 +18,13 @@ macro_rules! my_macro {
     ($a:tt) => ();
     ($e:expr) => {};
 }
+
+/* !search-index
+{
+    "macros": {
+        "macros::my_macro!": [
+            "Macro"
+        ]
+    }
+}
+*/

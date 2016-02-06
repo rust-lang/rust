@@ -36,3 +36,33 @@ impl Deref for MyBar {
     fn deref(&self) -> &Baz { loop {} }
 }
 
+/* !search-index
+{
+    "issue_19190_3": {
+        "issue_19190_3::Bar": [
+            "Struct"
+        ],
+        "issue_19190_3::Bar::deref": [
+            "Method(bar) -> baz"
+        ],
+        "issue_19190_3::Baz::baz": [
+            "Method()"
+        ],
+        "issue_19190_3::Baz::static_baz": [
+            "Method()"
+        ],
+        "issue_19190_3::Foo": [
+            "Struct"
+        ],
+        "issue_19190_3::Foo::deref": [
+            "Method(foo) -> i32"
+        ],
+        "issue_19190_3::MyBar": [
+            "Struct"
+        ],
+        "issue_19190_3::MyBar::deref": [
+            "Method(mybar) -> baz"
+        ]
+    }
+}
+*/

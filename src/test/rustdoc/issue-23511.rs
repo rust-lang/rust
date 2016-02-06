@@ -20,3 +20,16 @@ pub mod str {
         pub fn foo(&self) {}
     }
 }
+
+/* !search-index
+{
+    "issue_23511": {
+        "issue_23511::str": [
+            "Primitive"
+        ],
+        "issue_23511::str::foo": [
+            "Method(str)"
+        ]
+    }
+}
+*/

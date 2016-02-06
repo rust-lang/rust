@@ -51,3 +51,28 @@ impl<'a, T> Bar for &'a mut Foo<T> {
     // @has - '//*[@id="method.quux-2"]//code' 'fn quux(self)'
     fn quux(self) {}
 }
+
+/* !search-index
+{
+    "issue_25001": {
+        "issue_25001::Bar": [
+            "Trait"
+        ],
+        "issue_25001::Bar::Item": [
+            "AssociatedType"
+        ],
+        "issue_25001::Bar::quux": [
+            "TyMethod(bar)"
+        ],
+        "issue_25001::Foo": [
+            "Struct"
+        ],
+        "issue_25001::Foo::pass": [
+            "Method(foo) -> isize"
+        ],
+        "issue_25001::Foo::quux": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

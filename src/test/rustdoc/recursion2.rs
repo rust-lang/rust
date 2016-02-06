@@ -22,3 +22,9 @@ mod m {
         pub use super::*;
     }
 }
+
+/* !search-index
+{
+    "recursion2": {}
+}
+*/

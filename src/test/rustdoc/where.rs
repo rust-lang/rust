@@ -46,3 +46,46 @@ impl<F> MyTrait for Foxtrot<F> where F: MyTrait {}
 // @has foo/type.Golf.html '//pre[@class="rust typedef"]' \
 //          "type Golf<T> where T: Clone = (T, T)"
 pub type Golf<T> where T: Clone = (T, T);
+
+/* !search-index
+{
+    "foo": {
+        "foo::Alpha": [
+            "Struct"
+        ],
+        "foo::Bravo": [
+            "Trait"
+        ],
+        "foo::Bravo::get": [
+            "TyMethod(bravo, b)"
+        ],
+        "foo::Delta": [
+            "Struct"
+        ],
+        "foo::Delta::delta": [
+            "Method(delta)"
+        ],
+        "foo::Echo": [
+            "Struct"
+        ],
+        "foo::Foxtrot": [
+            "Enum"
+        ],
+        "foo::Foxtrot::Foxtrot1": [
+            "Variant"
+        ],
+        "foo::Golf": [
+            "Typedef"
+        ],
+        "foo::MyTrait": [
+            "Trait"
+        ],
+        "foo::MyTrait::dummy": [
+            "Method(mytrait)"
+        ],
+        "foo::charlie": [
+            "Function()"
+        ]
+    }
+}
+*/

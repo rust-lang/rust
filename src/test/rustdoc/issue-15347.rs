@@ -13,3 +13,13 @@
 // @has issue_15347/fn.foo.html
 #[doc(hidden)]
 pub fn foo() {}
+
+/* !search-index
+{
+    "issue_15347": {
+        "issue_15347::foo": [
+            "Function()"
+        ]
+    }
+}
+*/

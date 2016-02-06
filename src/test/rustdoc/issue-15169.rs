@@ -11,3 +11,19 @@
 // @has issue_15169/struct.Foo.html '//*[@id="method.eq"]' 'fn eq'
 #[derive(PartialEq)]
 pub struct Foo;
+
+/* !search-index
+{
+    "issue_15169": {
+        "issue_15169::Foo": [
+            "Struct"
+        ],
+        "issue_15169::Foo::eq": [
+            "Method(foo, foo) -> bool"
+        ],
+        "issue_15169::Foo::ne": [
+            "Method(foo, foo) -> bool"
+        ]
+    }
+}
+*/

@@ -19,3 +19,13 @@ extern crate issue_15318;
 //      '//*[@href="http://example.com/issue_15318/primitive.pointer.html"]' \
 //      '*mut T'
 pub fn bar<T>(ptr: *mut T) {}
+
+/* !search-index
+{
+    "issue_15318": {
+        "issue_15318::bar": [
+            "Function()"
+        ]
+    }
+}
+*/

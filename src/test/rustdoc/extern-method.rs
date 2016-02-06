@@ -27,3 +27,28 @@ pub trait Bar {
     // @has - '//*[@id="method.bar_"]//code' 'extern "rust-call" fn bar_'
     extern "rust-call" fn bar_(&self, _: ()) { }
 }
+
+/* !search-index
+{
+    "extern_method": {
+        "extern_method::Bar": [
+            "Trait"
+        ],
+        "extern_method::Bar::bar": [
+            "TyMethod()"
+        ],
+        "extern_method::Bar::bar_": [
+            "Method()"
+        ],
+        "extern_method::Foo": [
+            "Trait"
+        ],
+        "extern_method::Foo::foo": [
+            "TyMethod()"
+        ],
+        "extern_method::Foo::foo_": [
+            "Method()"
+        ]
+    }
+}
+*/

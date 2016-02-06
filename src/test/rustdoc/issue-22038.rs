@@ -27,3 +27,22 @@ pub extern fn bar() {}
 // @has issue_22038/fn.baz.html \
 //      '//*[@class="rust fn"]' 'pub extern "system" fn baz()'
 pub extern "system" fn baz() {}
+
+/* !search-index
+{
+    "issue_22038": {
+        "issue_22038::bar": [
+            "Function()"
+        ],
+        "issue_22038::baz": [
+            "Function()"
+        ],
+        "issue_22038::foo1": [
+            "Function()"
+        ],
+        "issue_22038::foo2": [
+            "Function()"
+        ]
+    }
+}
+*/

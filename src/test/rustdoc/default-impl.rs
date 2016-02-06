@@ -17,3 +17,34 @@ pub use foo::bar;
 
 pub fn wut<T: bar::Bar>() {
 }
+
+/* !search-index
+{
+    "default_impl": {
+        "default_impl::Foo::test": [
+            "Method()"
+        ],
+        "default_impl::bar": [
+            "Module"
+        ],
+        "default_impl::bar::Bar": [
+            "Trait"
+        ],
+        "default_impl::bar::Foo": [
+            "Trait"
+        ],
+        "default_impl::bar::Foo::foo": [
+            "Method()"
+        ],
+        "default_impl::bar::TypeId": [
+            "Struct"
+        ],
+        "default_impl::wut": [
+            "Function()"
+        ],
+        "rustdoc_default_impl::bar::TypeId::of": [
+            "Method(typeid) -> typeid"
+        ]
+    }
+}
+*/

@@ -13,3 +13,9 @@
 
 trait Y {}
 impl Y for Option<u32>{}
+
+/* !search-index
+{
+    "issue_16265_2": {}
+}
+*/

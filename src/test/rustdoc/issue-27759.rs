@@ -24,3 +24,16 @@ pub mod unstable {
     #[unstable(feature="test_function", issue="1234567890")]
     pub fn issue() {}
 }
+
+/* !search-index
+{
+    "issue_27759": {
+        "issue_27759::unstable": [
+            "Module"
+        ],
+        "issue_27759::unstable::issue": [
+            "Function()"
+        ]
+    }
+}
+*/

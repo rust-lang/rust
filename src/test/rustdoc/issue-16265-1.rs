@@ -16,3 +16,19 @@ pub mod traits {
         fn eq(&self, _: &super::Foo) -> bool { true }
     }
 }
+
+/* !search-index
+{
+    "issue_16265_1": {
+        "issue_16265_1::Foo": [
+            "Struct"
+        ],
+        "issue_16265_1::Foo::eq": [
+            "Method(foo, foo) -> bool"
+        ],
+        "issue_16265_1::traits": [
+            "Module"
+        ]
+    }
+}
+*/

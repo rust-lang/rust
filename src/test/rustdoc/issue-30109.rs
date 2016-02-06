@@ -22,3 +22,21 @@ pub mod quux {
     //          '//a/@href' '../issue_30109_1/struct.Bar.html'
     impl Foo for Bar {}
 }
+
+/* !search-index
+{
+    "issue_30109": {
+        "issue_30109::quux": [
+            "Module"
+        ],
+        "issue_30109::quux::Foo": [
+            "Trait"
+        ]
+    },
+    "issue_30109_1": {
+        "issue_30109_1::Bar": [
+            "Struct"
+        ]
+    }
+}
+*/

@@ -27,3 +27,14 @@ pub fn foo() {}
 
 // @!has hidden_line/fn.foo.html invisible
 // @matches - //pre "#\[derive\(PartialEq\)\] // Bar"
+
+/* !search-index
+{
+    "hidden_line": {
+        "hidden_line::foo": [
+            "Function()",
+        "The '# ' lines should be removed from the output, but the #[derive] should be\nretained."
+        ]
+    }
+}
+*/

@@ -19,3 +19,13 @@ pub struct Foo;
 //      '//*[@href="http://example.com/issue_17476/trait.Foo.html#method.foo"]' \
 //      'foo'
 impl issue_17476::Foo for Foo {}
+
+/* !search-index
+{
+    "issue_17476": {
+        "issue_17476::Foo": [
+            "Struct"
+        ]
+    }
+}
+*/

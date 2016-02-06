@@ -18,3 +18,19 @@ pub struct Bar;
 //      '//*[@id="method.foo"]' \
 //      'fn foo'
 impl<'a> Foo for &'a Bar {}
+
+/* !search-index
+{
+    "issue_20175": {
+        "issue_20175::Bar": [
+            "Struct"
+        ],
+        "issue_20175::Foo": [
+            "Trait"
+        ],
+        "issue_20175::Foo::foo": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

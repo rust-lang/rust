@@ -48,3 +48,43 @@ pub mod reexport {
     //        'fn index_mut(&mut self, index: Idx) -> &mut Self::Output;'
     pub use issue_20727::IndexMut;
 }
+
+/* !search-index
+{
+    "issue_20727_4": {
+        "issue_20727_4::Index": [
+            "Trait"
+        ],
+        "issue_20727_4::Index::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_4::Index::index": [
+            "TyMethod(index, idx) -> output"
+        ],
+        "issue_20727_4::IndexMut": [
+            "Trait"
+        ],
+        "issue_20727_4::IndexMut::index_mut": [
+            "TyMethod(indexmut, idx) -> output"
+        ],
+        "issue_20727_4::reexport": [
+            "Module"
+        ],
+        "issue_20727_4::reexport::Index": [
+            "Trait"
+        ],
+        "issue_20727_4::reexport::Index::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_4::reexport::Index::index": [
+            "TyMethod()"
+        ],
+        "issue_20727_4::reexport::IndexMut": [
+            "Trait"
+        ],
+        "issue_20727_4::reexport::IndexMut::index_mut": [
+            "TyMethod()"
+        ]
+    }
+}
+*/

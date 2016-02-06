@@ -20,3 +20,16 @@ impl Deref for Bar {
 // @has issue_19190_2/struct.Bar.html
 // @has - '//*[@id="method.count_ones"]' 'fn count_ones(self) -> u32'
 // @!has - '//*[@id="method.min_value"]' 'fn min_value() -> i32'
+
+/* !search-index
+{
+    "issue_19190_2": {
+        "issue_19190_2::Bar": [
+            "Struct"
+        ],
+        "issue_19190_2::Bar::deref": [
+            "Method(bar) -> i32"
+        ]
+    }
+}
+*/

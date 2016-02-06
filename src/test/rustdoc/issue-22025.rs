@@ -14,3 +14,16 @@
 extern crate issue_22025;
 
 pub use issue_22025::foo::{Foo, Bar};
+
+/* !search-index
+{
+    "issue_22025": {
+        "issue_22025::Bar": [
+            "Struct"
+        ],
+        "issue_22025::Foo": [
+            "Trait"
+        ]
+    }
+}
+*/

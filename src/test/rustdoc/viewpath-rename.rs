@@ -26,3 +26,31 @@ pub mod prelude {
     // @has foo/prelude/index.html '//code' 'pub use Maybe::{self, Just as MaybeJust, Nothing}'
     #[doc(no_inline)] pub use Maybe::{self, Just as MaybeJust, Nothing};
 }
+
+/* !search-index
+{
+    "foo": {
+        "foo::Maybe": [
+            "Enum"
+        ],
+        "foo::Maybe::Just": [
+            "Variant"
+        ],
+        "foo::Maybe::Nothing": [
+            "Variant"
+        ],
+        "foo::io": [
+            "Module"
+        ],
+        "foo::io::Reader": [
+            "Trait"
+        ],
+        "foo::io::Reader::dummy": [
+            "Method(reader)"
+        ],
+        "foo::prelude": [
+            "Module"
+        ]
+    }
+}
+*/

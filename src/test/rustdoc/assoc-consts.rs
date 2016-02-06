@@ -24,3 +24,22 @@ impl Bar {
     //      'const BAR: usize = 3'
     pub const BAR: usize = 3;
 }
+
+/* !search-index
+{
+    "assoc_consts": {
+        "assoc_consts::BAR": [
+            "Constant"
+        ],
+        "assoc_consts::Bar": [
+            "Struct"
+        ],
+        "assoc_consts::Foo": [
+            "Trait"
+        ],
+        "assoc_consts::Foo::FOO": [
+            "AssociatedConst"
+        ]
+    }
+}
+*/

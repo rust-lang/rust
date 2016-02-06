@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags:--test
+// ignore-search-index
 
 #![doc(test(attr(feature(staged_api))))]
 

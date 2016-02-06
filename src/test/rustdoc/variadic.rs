@@ -12,3 +12,13 @@ extern "C" {
     // @has variadic/fn.foo.html //pre 'pub unsafe extern fn foo(x: i32, ...)'
     pub fn foo(x: i32, ...);
 }
+
+/* !search-index
+{
+    "variadic": {
+        "variadic::foo": [
+            "Function()"
+        ]
+    }
+}
+*/

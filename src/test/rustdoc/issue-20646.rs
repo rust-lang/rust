@@ -34,3 +34,31 @@ pub mod reexport {
     //      '//*[@class="rust fn"]' 'where T: Trait<Output=i32>'
     pub use issue_20646::{Trait, fun};
 }
+
+/* !search-index
+{
+    "issue_20646": {
+        "issue_20646::Trait": [
+            "Trait"
+        ],
+        "issue_20646::Trait::Output": [
+            "AssociatedType"
+        ],
+        "issue_20646::fun": [
+            "Function(t)"
+        ],
+        "issue_20646::reexport": [
+            "Module"
+        ],
+        "issue_20646::reexport::Trait": [
+            "Trait"
+        ],
+        "issue_20646::reexport::Trait::Output": [
+            "AssociatedType"
+        ],
+        "issue_20646::reexport::fun": [
+            "Function()"
+        ]
+    }
+}
+*/

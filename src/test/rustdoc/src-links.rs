@@ -54,3 +54,70 @@ pub fn modfn() { }
 // @has foo/qux/bar/struct.Foo.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
 // @has foo/qux/bar/fn.prawns.html '//a/@href' '../../../src/foo/src-links/mod.rs.html'
 // @has foo/qux/fn.modfn.html '//a/@href' '../../src/foo/src-links/mod.rs.html'
+
+/* !search-index
+{
+    "foo": {
+        "foo::bar": [
+            "Module"
+        ],
+        "foo::bar::Foo": [
+            "Struct"
+        ],
+        "foo::bar::Foobar": [
+            "Trait",
+            "Dox"
+        ],
+        "foo::bar::Foobar::dummy": [
+            "Method(foobar)"
+        ],
+        "foo::bar::baz": [
+            "Module",
+            "Dox"
+        ],
+        "foo::bar::baz::baz": [
+            "Function()",
+            "Dox"
+        ],
+        "foo::bar::prawns": [
+            "Function()"
+        ],
+        "foo::modfn": [
+            "Function()",
+            "Dox"
+        ],
+        "foo::qux": [
+            "Module",
+            "Dox"
+        ],
+        "foo::qux::bar": [
+            "Module"
+        ],
+        "foo::qux::bar::Foo": [
+            "Struct"
+        ],
+        "foo::qux::bar::Foobar": [
+            "Trait",
+            "Dox"
+        ],
+        "foo::qux::bar::Foobar::dummy": [
+            "Method(foobar)"
+        ],
+        "foo::qux::bar::baz": [
+            "Module",
+            "Dox"
+        ],
+        "foo::qux::bar::baz::baz": [
+            "Function()",
+            "Dox"
+        ],
+        "foo::qux::bar::prawns": [
+            "Function()"
+        ],
+        "foo::qux::modfn": [
+            "Function()",
+            "Dox"
+        ]
+    }
+}
+*/
