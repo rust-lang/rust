@@ -45,8 +45,16 @@ fn trivial_regex() {
     //~^ERROR: trivial regex
     //~|HELP consider using `str::contains`
 
+    let trivial_backslash = Regex::new("a\\.b");
+    //~^ERROR: trivial regex
+    //~|HELP consider using `str::contains`
+
     // unlikely corner cases
     let trivial_empty = Regex::new("");
+    //~^ERROR: trivial regex
+    //~|HELP the regex is unlikely to be useful
+
+    let trivial_empty = Regex::new("^");
     //~^ERROR: trivial regex
     //~|HELP the regex is unlikely to be useful
 
@@ -55,6 +63,7 @@ fn trivial_regex() {
     //~|HELP consider using `str::is_empty`
 
     // non-trivial regexes
+    let non_trivial_dot = Regex::new("a.b");
     let non_trivial_eq = Regex::new("^foo|bar$");
     let non_trivial_starts_with = Regex::new("^foo|bar");
     let non_trivial_ends_with = Regex::new("^foo|bar");
