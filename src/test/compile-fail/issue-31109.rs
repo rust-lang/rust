@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod _common;
-
-use std::mem::transmute;
-use _common::validate;
-
 fn main() {
-    for bits in 0u32..(1 << 21) {
-        let single: f32 = unsafe { transmute(bits) };
-        validate(&format!("{:e}", single));
-        let double: f64 = unsafe { transmute(bits as u64) };
-        validate(&format!("{:e}", double));
-    }
+    // FIXME(#31407) this error should go away, but in the meantime we test that it
+    // is accompanied by a somewhat useful error message.
+    let _: f64 = 1234567890123456789012345678901234567890e-340; //~ ERROR could not evaluate float
 }

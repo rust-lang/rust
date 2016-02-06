@@ -127,7 +127,7 @@ fn algorithm_r<T: RawFloat>(f: &Big, e: i16, z0: T) -> T {
         // This is written a bit awkwardly because our bignums don't support
         // negative numbers, so we use the absolute value + sign information.
         // The multiplication with m_digits can't overflow. If `x` or `y` are large enough that
-        // we need to worry about overflow, then they are also large enough that`make_ratio` has
+        // we need to worry about overflow, then they are also large enough that `make_ratio` has
         // reduced the fraction by a factor of 2^64 or more.
         let (d2, d_negative) = if x >= y {
             // Don't need x any more, save a clone().
@@ -278,7 +278,7 @@ fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
     // The target ratio is one where u/v is in an in-range significand. Thus our termination
     // condition is log2(u / v) being the significand bits, plus/minus one.
     // FIXME Looking at the second bit could improve the estimate and avoid some more divisions.
-    let target_ratio = f64::sig_bits() as i16;
+    let target_ratio = T::sig_bits() as i16;
     let log2_u = u.bit_length() as i16;
     let log2_v = v.bit_length() as i16;
     let mut u_shift: i16 = 0;
