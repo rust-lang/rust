@@ -58,7 +58,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
 
         match (&left.node, &right.node) {
-            (&ExprAddrOf(ref lmut, ref le), &ExprAddrOf(ref rmut, ref re)) => {
+            (&ExprAddrOf(lmut, ref le), &ExprAddrOf(rmut, ref re)) => {
                 lmut == rmut && self.eq_expr(le, re)
             }
             (&ExprAgain(li), &ExprAgain(ri)) => {
@@ -102,6 +102,11 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     both(le, re, |l, r| self.eq_expr(l, r))
             }
             (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
+            (&ExprLoop(ref lb, ref ll), &ExprLoop(ref rb, ref rl)) => {
+                self.eq_block(lb, rb) &&
+                    both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
+
+            }
             (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
                 ls == rs &&
                     self.eq_expr(le, re) &&
