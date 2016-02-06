@@ -1105,7 +1105,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         for _ in 0..num_vars {
             graph.add_node(());
         }
-        let dummy_idx = graph.add_node(());
+
+        // Issue #30438: two distinct dummy nodes, one for incoming
+        // edges (dummy_source) and another for outgoing edges
+        // (dummy_sink). In `dummy -> a -> b -> dummy`, using one
+        // dummy node leads one to think (erroneously) there exists a
+        // path from `b` to `a`. Two dummy nodes sidesteps the issue.
+        let dummy_source = graph.add_node(());
+        let dummy_sink = graph.add_node(());
 
         for (constraint, _) in constraints.iter() {
             match *constraint {
@@ -1115,10 +1122,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                    *constraint);
                 }
                 ConstrainRegSubVar(_, b_id) => {
-                    graph.add_edge(dummy_idx, NodeIndex(b_id.index as usize), *constraint);
+                    graph.add_edge(dummy_source, NodeIndex(b_id.index as usize), *constraint);
                 }
                 ConstrainVarSubReg(a_id, _) => {
-                    graph.add_edge(NodeIndex(a_id.index as usize), dummy_idx, *constraint);
+                    graph.add_edge(NodeIndex(a_id.index as usize), dummy_sink, *constraint);
                 }
             }
         }
