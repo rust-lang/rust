@@ -818,6 +818,8 @@ pub struct ModuleS<'a> {
     // entry block for `f`.
     anonymous_children: RefCell<NodeMap<Module<'a>>>,
 
+    shadowed_traits: RefCell<Vec<&'a NameBinding<'a>>>,
+
     // The number of unresolved globs that this module exports.
     glob_count: Cell<usize>,
 
@@ -848,6 +850,7 @@ impl<'a> ModuleS<'a> {
             children: RefCell::new(HashMap::new()),
             imports: RefCell::new(Vec::new()),
             anonymous_children: RefCell::new(NodeMap()),
+            shadowed_traits: RefCell::new(Vec::new()),
             glob_count: Cell::new(0),
             pub_count: Cell::new(0),
             pub_glob_count: Cell::new(0),
@@ -871,8 +874,19 @@ impl<'a> ModuleS<'a> {
     // Define the name or return the existing binding if there is a collision.
     fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
                         -> Result<(), &'a NameBinding<'a>> {
-        self.children.borrow_mut().entry((name, ns)).or_insert_with(Default::default)
-                                                    .try_define(binding)
+        let mut children = self.children.borrow_mut();
+        let resolution = children.entry((name, ns)).or_insert_with(Default::default);
+
+        // FIXME #31379: We can use methods from imported traits shadowed by non-import items
+        if let Some(old_binding) = resolution.binding {
+            if !old_binding.is_import() && binding.is_import() {
+                if let Some(Def::Trait(_)) = binding.def() {
+                    self.shadowed_traits.borrow_mut().push(binding);
+                }
+            }
+        }
+
+        resolution.try_define(binding)
     }
 
     fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
@@ -3465,6 +3479,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.record_use(trait_name, TypeNS, name_binding);
                 }
             });
+
+            // Look for shadowed traits.
+            for binding in search_module.shadowed_traits.borrow().iter() {
+                let did = binding.def().unwrap().def_id();
+                if self.trait_item_map.contains_key(&(name, did)) {
+                    add_trait_info(&mut found_traits, did, name);
+                    let trait_name = self.get_trait_name(did);
+                    self.record_use(trait_name, TypeNS, binding);
+                }
+            }
 
             match search_module.parent_link {
                 NoParentLink | ModuleParentLink(..) => break,
