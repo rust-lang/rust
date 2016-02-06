@@ -1,6 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use utils::{get_parent_expr, in_macro, is_block_equal, is_exp_equal, span_lint, span_note_and_lint};
+use utils::SpanlessEq;
+use utils::{get_parent_expr, in_macro, span_lint, span_note_and_lint};
 
 /// **What it does:** This lint checks for consecutive `ifs` with the same condition. This lint is
 /// `Warn` by default.
@@ -55,7 +56,7 @@ impl LateLintPass for CopyAndPaste {
 fn lint_same_then_else(cx: &LateContext, expr: &Expr) {
     if let ExprIf(_, ref then_block, Some(ref else_expr)) = expr.node {
         if let ExprBlock(ref else_block) = else_expr.node {
-            if is_block_equal(cx, &then_block, &else_block, false) {
+            if SpanlessEq::new(cx).eq_block(&then_block, &else_block) {
                 span_lint(cx, IF_SAME_THEN_ELSE, expr.span, "this if has the same then and else blocks");
             }
         }
@@ -75,7 +76,7 @@ fn lint_same_cond(cx: &LateContext, expr: &Expr) {
 
     for (n, i) in conds.iter().enumerate() {
         for j in conds.iter().skip(n+1) {
-            if is_exp_equal(cx, i, j, true) {
+            if SpanlessEq::new(cx).ignore_fn().eq_expr(i, j) {
                 span_note_and_lint(cx, IFS_SAME_COND, j.span, "this if has the same condition as a previous if", i.span, "same as this");
             }
         }

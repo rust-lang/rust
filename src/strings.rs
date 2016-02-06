@@ -7,7 +7,8 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
 
-use utils::{is_exp_equal, match_type, span_lint, walk_ptrs_ty, get_parent_expr};
+use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
+use utils::SpanlessEq;
 use utils::STRING_PATH;
 
 /// **What it does:** This lint matches code of the form `x = x + y` (without `let`!).
@@ -84,7 +85,7 @@ impl LateLintPass for StringAdd {
                     if let Some(ref p) = parent {
                         if let ExprAssign(ref target, _) = p.node {
                             // avoid duplicate matches
-                            if is_exp_equal(cx, target, left, false) {
+                            if SpanlessEq::new(cx).eq_expr(target, left) {
                                 return;
                             }
                         }
@@ -113,7 +114,7 @@ fn is_string(cx: &LateContext, e: &Expr) -> bool {
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
-        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) => is_exp_equal(cx, target, left, false),
+        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprBlock(ref block) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
         }
