@@ -188,7 +188,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // operators like x[j] = x[i].
                 let rhs = unpack!(block = this.as_operand(block, rhs));
                 let lhs = unpack!(block = this.as_lvalue(block, lhs));
-                this.cfg.push_drop(block, expr_span, DropKind::Deep, &lhs);
+                unpack!(block = this.build_drop(block, lhs.clone()));
                 this.cfg.push_assign(block, expr_span, &lhs, Rvalue::Use(rhs));
                 block.unit()
             }
@@ -253,17 +253,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 this.cfg.terminate(block, Terminator::Call {
                     func: fun,
                     args: args,
-                    kind: match (cleanup, diverges) {
-                        (None, true) => CallKind::Diverging,
-                        (Some(c), true) => CallKind::DivergingCleanup(c),
-                        (None, false) => CallKind::Converging {
-                            destination: destination.clone(),
-                            target: success
-                        },
-                        (Some(c), false) => CallKind::ConvergingCleanup {
-                            destination: destination.clone(),
-                            targets: (success, c)
-                        }
+                    cleanup: cleanup,
+                    destination: if diverges {
+                        None
+                    } else {
+                        Some ((destination.clone(), success))
                     }
                 });
                 success.unit()

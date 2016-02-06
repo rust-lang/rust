@@ -362,7 +362,7 @@ pub fn find_reachable(tcx: &ty::ctxt,
     for (id, _) in &access_levels.map {
         reachable_context.worklist.push(*id);
     }
-    for (_, item) in tcx.lang_items.items() {
+    for item in tcx.lang_items.items().iter() {
         if let Some(did) = *item {
             if let Some(node_id) = tcx.map.as_local_node_id(did) {
                 reachable_context.worklist.push(node_id);

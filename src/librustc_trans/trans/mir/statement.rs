@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::ty::LvaluePreference;
 use rustc::mir::repr as mir;
 use trans::common::Block;
-use trans::debuginfo::DebugLoc;
-use trans::glue;
 
 use super::MirContext;
 use super::TempRef;
@@ -50,20 +47,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         self.trans_rvalue(bcx, tr_dest, rvalue)
                     }
                 }
-            }
-
-            mir::StatementKind::Drop(mir::DropKind::Deep, ref lvalue) => {
-                let tr_lvalue = self.trans_lvalue(bcx, lvalue);
-                let ty = tr_lvalue.ty.to_ty(bcx.tcx());
-                glue::drop_ty(bcx, tr_lvalue.llval, ty, DebugLoc::None)
-            }
-
-            mir::StatementKind::Drop(mir::DropKind::Free, ref lvalue) => {
-                let tr_lvalue = self.trans_lvalue(bcx, lvalue);
-                let ty = tr_lvalue.ty.to_ty(bcx.tcx());
-                let content_ty = ty.builtin_deref(true, LvaluePreference::NoPreference);
-                let content_ty = content_ty.unwrap().ty;
-                glue::trans_exchange_free_ty(bcx, tr_lvalue.llval, content_ty, DebugLoc::None)
             }
         }
     }

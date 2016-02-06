@@ -601,7 +601,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ty: var_ty.clone(),
         });
         let index = index as u32;
-        self.schedule_drop(span, var_extent, DropKind::Deep, &Lvalue::Var(index), var_ty);
+        self.schedule_drop(span, var_extent, &Lvalue::Var(index), var_ty);
         self.var_indices.insert(var_id, index);
 
         debug!("declare_binding: index={:?}", index);
