@@ -26,6 +26,7 @@ use ops::Neg;
 #[cfg(target_os = "netbsd")]    pub use os::netbsd as platform;
 #[cfg(target_os = "openbsd")]   pub use os::openbsd as platform;
 #[cfg(target_os = "solaris")]   pub use os::solaris as platform;
+#[cfg(target_os = "emscripten")] pub use os::emscripten as platform;
 
 #[macro_use]
 pub mod weak;

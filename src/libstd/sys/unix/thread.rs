@@ -81,7 +81,9 @@ impl Thread {
         debug_assert_eq!(ret, 0);
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux",
+              target_os = "android",
+              target_os = "emscripten"))]
     pub fn set_name(name: &str) {
         const PR_SET_NAME: libc::c_int = 15;
         let cname = CString::new(name).unwrap_or_else(|_| {
@@ -166,7 +168,7 @@ impl Drop for Thread {
     }
 }
 
-#[cfg(all(not(target_os = "linux"),
+#[cfg(all(not(all(target_os = "linux", not(target_env = "musl"))),
           not(target_os = "macos"),
           not(target_os = "bitrig"),
           not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
@@ -179,7 +181,7 @@ pub mod guard {
 }
 
 
-#[cfg(any(target_os = "linux",
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")),
           target_os = "macos",
           target_os = "bitrig",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),

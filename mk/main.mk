@@ -361,6 +361,9 @@ export CFG_DISABLE_UNSTABLE_FEATURES
 export RUSTC_BOOTSTRAP_KEY:=$(CFG_BOOTSTRAP_KEY)
 endif
 export CFG_BOOTSTRAP_KEY
+ifdef CFG_MUSL_ROOT
+export CFG_MUSL_ROOT
+endif
 
 ######################################################################
 # Per-stage targets and runner
