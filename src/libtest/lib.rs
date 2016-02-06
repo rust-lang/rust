@@ -928,7 +928,8 @@ fn get_concurrency() -> usize {
               target_os = "macos",
               target_os = "ios",
               target_os = "android",
-              target_os = "solaris"))]
+              target_os = "solaris",
+              target_os = "emscripten"))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }
     }
@@ -1174,14 +1175,16 @@ impl MetricMap {
 /// elimination.
 ///
 /// This function is a no-op, and does not even read from `dummy`.
-#[cfg(not(all(target_os = "nacl", target_arch = "le32")))]
+#[cfg(not(any(all(target_os = "nacl", target_arch = "le32"),
+              target_arch = "asmjs")))]
 pub fn black_box<T>(dummy: T) -> T {
     // we need to "use" the argument in some way LLVM can't
     // introspect.
     unsafe { asm!("" : : "r"(&dummy)) }
     dummy
 }
-#[cfg(all(target_os = "nacl", target_arch = "le32"))]
+#[cfg(any(all(target_os = "nacl", target_arch = "le32"),
+          target_arch = "asmjs"))]
 #[inline(never)]
 pub fn black_box<T>(dummy: T) -> T {
     dummy

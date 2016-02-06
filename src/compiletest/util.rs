@@ -26,6 +26,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("win32", "windows"),
     ("windows", "windows"),
     ("solaris", "solaris"),
+    ("emscripten", "emscripten"),
 ];
 
 const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
@@ -44,6 +45,7 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("sparc", "sparc"),
     ("x86_64", "x86_64"),
     ("xcore", "xcore"),
+    ("asmjs", "asmjs"),
 ];
 
 pub fn get_os(triple: &str) -> &'static str {

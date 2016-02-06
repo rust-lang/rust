@@ -197,7 +197,8 @@ mod tests {
           target_os = "bitrig",
           target_os = "netbsd",
           target_os = "openbsd",
-          target_os = "solaris"))]
+          target_os = "solaris",
+          target_os = "emscripten"))]
 mod dl {
     use prelude::v1::*;
 

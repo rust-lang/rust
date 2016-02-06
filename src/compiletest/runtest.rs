@@ -1357,7 +1357,12 @@ fn make_lib_name(config: &Config, auxfile: &Path, testfile: &Path) -> PathBuf {
 
 fn make_exe_name(config: &Config, testfile: &Path) -> PathBuf {
     let mut f = output_base_name(config, testfile);
-    if !env::consts::EXE_SUFFIX.is_empty() {
+    // FIXME: This is using the host architecture exe suffix, not target!
+    if config.target == "asmjs-unknown-emscripten" {
+        let mut fname = f.file_name().unwrap().to_os_string();
+        fname.push(".js");
+        f.set_file_name(&fname);
+    } else if !env::consts::EXE_SUFFIX.is_empty() {
         let mut fname = f.file_name().unwrap().to_os_string();
         fname.push(env::consts::EXE_SUFFIX);
         f.set_file_name(&fname);
@@ -1370,6 +1375,12 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path)
     // If we've got another tool to run under (valgrind),
     // then split apart its command
     let mut args = split_maybe_args(&config.runtool);
+
+    // If this is emscripten, then run tests under nodejs
+    if config.target == "asmjs-unknown-emscripten" {
+        args.push("nodejs".to_owned());
+    }
+
     let exe_file = make_exe_name(config, testfile);
 
     // FIXME (#9639): This needs to handle non-utf8 paths

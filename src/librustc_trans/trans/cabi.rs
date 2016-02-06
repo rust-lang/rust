@@ -21,6 +21,7 @@ use trans::cabi_aarch64;
 use trans::cabi_powerpc;
 use trans::cabi_powerpc64;
 use trans::cabi_mips;
+use trans::cabi_asmjs;
 use trans::type_::Type;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -129,6 +130,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
         "mips" => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
         "powerpc" => cabi_powerpc::compute_abi_info(ccx, atys, rty, ret_def),
         "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, atys, rty, ret_def),
+        "asmjs" => cabi_asmjs::compute_abi_info(ccx, atys, rty, ret_def),
         a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a)
                               ),
     }

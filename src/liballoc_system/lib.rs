@@ -30,7 +30,8 @@ extern crate libc;
               target_arch = "arm",
               target_arch = "mips",
               target_arch = "powerpc",
-              target_arch = "powerpc64")))]
+              target_arch = "powerpc64",
+              target_arch = "asmjs")))]
 const MIN_ALIGN: usize = 8;
 #[cfg(all(any(target_arch = "x86_64",
               target_arch = "aarch64")))]
