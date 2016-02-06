@@ -856,6 +856,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             // Push all the built-in passes.
             passes.push_pass(box transform::simplify_cfg::SimplifyCfg);
             passes.push_pass(box transform::erase_regions::EraseRegions);
+            passes.push_pass(box transform::simplify_cfg::CompactMir);
             // And run everything.
             passes.run_passes(tcx, &mut mir_map);
         });
