@@ -375,7 +375,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             hir::ExprType(ref source, _) =>
                 return source.make_mirror(cx),
             hir::ExprBox(ref value) =>
-                ExprKind::Box { value: value.to_ref() },
+                ExprKind::Box {
+                    value: value.to_ref(),
+                    value_extents: cx.tcx.region_maps.node_extent(value.id)
+                },
             hir::ExprVec(ref fields) =>
                 ExprKind::Vec { fields: fields.to_ref() },
             hir::ExprTup(ref fields) =>

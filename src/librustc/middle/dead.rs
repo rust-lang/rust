@@ -435,7 +435,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         let is_named = node.name().is_some();
         let field_type = self.tcx.node_id_to_type(node.id);
         let is_marker_field = match field_type.ty_to_def_id() {
-            Some(def_id) => self.tcx.lang_items.items().any(|(_, item)| *item == Some(def_id)),
+            Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
             _ => false
         };
         is_named

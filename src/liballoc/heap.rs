@@ -16,6 +16,8 @@
             issue = "27700")]
 
 use core::{isize, usize};
+#[cfg(not(test))]
+use core::intrinsics::{size_of, min_align_of};
 
 #[allow(improper_ctypes)]
 extern "C" {
@@ -145,6 +147,17 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 #[inline]
 unsafe fn exchange_free(ptr: *mut u8, old_size: usize, align: usize) {
     deallocate(ptr, old_size, align);
+}
+
+#[cfg(not(test))]
+#[lang = "box_free"]
+#[inline]
+unsafe fn box_free<T>(ptr: *mut T) {
+    let size = size_of::<T>();
+    // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
+    if size != 0 {
+        deallocate(ptr as *mut u8, size, min_align_of::<T>());
+    }
 }
 
 #[cfg(test)]

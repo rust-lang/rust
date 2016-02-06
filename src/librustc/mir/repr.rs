@@ -8,21 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use graphviz::IntoCow;
 use middle::const_eval::ConstVal;
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use rustc_back::slice;
-use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_front::hir::InlineAsm;
-use syntax::ast::{self, Name};
-use syntax::codemap::Span;
-use graphviz::IntoCow;
 use std::ascii;
-use std::borrow::Cow;
+use std::borrow::{Cow};
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, u32};
 use std::ops::{Index, IndexMut};
+use syntax::ast::{self, Name};
+use syntax::codemap::Span;
 
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -263,101 +262,63 @@ pub enum Terminator<'tcx> {
     /// `END_BLOCK`.
     Return,
 
+    /// Drop the Lvalue
+    Drop {
+        value: Lvalue<'tcx>,
+        target: BasicBlock,
+        unwind: Option<BasicBlock>
+    },
+
     /// Block ends with a call of a converging function
     Call {
         /// The function that’s being called
         func: Operand<'tcx>,
         /// Arguments the function is called with
         args: Vec<Operand<'tcx>>,
-        /// The kind of call with associated information
-        kind: CallKind<'tcx>,
+        /// Destination for the return value. If some, the call is converging.
+        destination: Option<(Lvalue<'tcx>, BasicBlock)>,
+        /// Cleanups to be done if the call unwinds.
+        cleanup: Option<BasicBlock>
     },
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum CallKind<'tcx> {
-    /// Diverging function without associated cleanup
-    Diverging,
-    /// Diverging function with associated cleanup
-    DivergingCleanup(BasicBlock),
-    /// Converging function without associated cleanup
-    Converging {
-        /// Destination where the call result is written
-        destination: Lvalue<'tcx>,
-        /// Block to branch into on successful return
-        target: BasicBlock,
-    },
-    ConvergingCleanup {
-        /// Destination where the call result is written
-        destination: Lvalue<'tcx>,
-        /// First target is branched to on successful return.
-        /// Second block contains the cleanups to do on unwind.
-        targets: (BasicBlock, BasicBlock)
-    }
-}
-
-impl<'tcx> CallKind<'tcx> {
-    pub fn successors(&self) -> &[BasicBlock] {
-        match *self {
-            CallKind::Diverging => &[],
-            CallKind::DivergingCleanup(ref b) |
-            CallKind::Converging { target: ref b, .. } => slice::ref_slice(b),
-            CallKind::ConvergingCleanup { ref targets, .. } => targets.as_slice(),
-        }
-    }
-
-    pub fn successors_mut(&mut self) -> &mut [BasicBlock] {
-        match *self {
-            CallKind::Diverging => &mut [],
-            CallKind::DivergingCleanup(ref mut b) |
-            CallKind::Converging { target: ref mut b, .. } => slice::mut_ref_slice(b),
-            CallKind::ConvergingCleanup { ref mut targets, .. } => targets.as_mut_slice(),
-        }
-    }
-
-    pub fn destination(&self) -> Option<&Lvalue<'tcx>> {
-        match *self {
-            CallKind::Converging { ref destination, .. } |
-            CallKind::ConvergingCleanup { ref destination, .. } => Some(destination),
-            CallKind::Diverging |
-            CallKind::DivergingCleanup(_) => None
-        }
-    }
-
-    pub fn destination_mut(&mut self) -> Option<&mut Lvalue<'tcx>> {
-        match *self {
-            CallKind::Converging { ref mut destination, .. } |
-            CallKind::ConvergingCleanup { ref mut destination, .. } => Some(destination),
-            CallKind::Diverging |
-            CallKind::DivergingCleanup(_) => None
-        }
-    }
 }
 
 impl<'tcx> Terminator<'tcx> {
-    pub fn successors(&self) -> &[BasicBlock] {
+    pub fn successors(&self) -> Cow<[BasicBlock]> {
         use self::Terminator::*;
         match *self {
-            Goto { target: ref b } => slice::ref_slice(b),
-            If { targets: ref b, .. } => b.as_slice(),
-            Switch { targets: ref b, .. } => b,
-            SwitchInt { targets: ref b, .. } => b,
-            Resume => &[],
-            Return => &[],
-            Call { ref kind, .. } => kind.successors(),
+            Goto { target: ref b } => slice::ref_slice(b).into_cow(),
+            If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
+            Switch { targets: ref b, .. } => b[..].into_cow(),
+            SwitchInt { targets: ref b, .. } => b[..].into_cow(),
+            Resume => (&[]).into_cow(),
+            Return => (&[]).into_cow(),
+            Call { destination: Some((_, t)), cleanup: Some(c), .. } => vec![t, c].into_cow(),
+            Call { destination: Some((_, ref t)), cleanup: None, .. } =>
+                slice::ref_slice(t).into_cow(),
+            Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
+            Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
+            Drop { target, unwind: Some(unwind), .. } => vec![target, unwind].into_cow(),
+            Drop { ref target, .. } => slice::ref_slice(target).into_cow(),
         }
     }
 
-    pub fn successors_mut(&mut self) -> &mut [BasicBlock] {
+    // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [BasicBlock]` and
+    // `Vec<&mut BasicBlock>` would look like in the first place.
+    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
         use self::Terminator::*;
         match *self {
-            Goto { target: ref mut b } => slice::mut_ref_slice(b),
-            If { targets: ref mut b, .. } => b.as_mut_slice(),
-            Switch { targets: ref mut b, .. } => b,
-            SwitchInt { targets: ref mut b, .. } => b,
-            Resume => &mut [],
-            Return => &mut [],
-            Call { ref mut kind, .. } => kind.successors_mut(),
+            Goto { target: ref mut b } => vec![b],
+            If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
+            Switch { targets: ref mut b, .. } => b.iter_mut().collect(),
+            SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
+            Resume => Vec::new(),
+            Return => Vec::new(),
+            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut c), .. } => vec![t, c],
+            Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
+            Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
+            Call { destination: None, cleanup: None, .. } => vec![],
+            Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
+            Drop { ref mut target, .. } => vec![target]
         }
     }
 }
@@ -424,8 +385,9 @@ impl<'tcx> Terminator<'tcx> {
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
-            Call { ref kind, ref func, ref args } => {
-                if let Some(destination) = kind.destination() {
+            Drop { ref value, .. } => write!(fmt, "drop({:?})", value),
+            Call { ref func, ref args, ref destination, .. } => {
+                if let Some((ref destination, _)) = *destination {
                     try!(write!(fmt, "{:?} = ", destination));
                 }
                 try!(write!(fmt, "{:?}(", func));
@@ -445,12 +407,12 @@ impl<'tcx> Terminator<'tcx> {
         use self::Terminator::*;
         match *self {
             Return | Resume => vec![],
-            Goto { .. } => vec!["".into_cow()],
-            If { .. } => vec!["true".into_cow(), "false".into_cow()],
+            Goto { .. } => vec!["".into()],
+            If { .. } => vec!["true".into(), "false".into()],
             Switch { ref adt_def, .. } => {
                 adt_def.variants
                        .iter()
-                       .map(|variant| variant.name.to_string().into_cow())
+                       .map(|variant| variant.name.to_string().into())
                        .collect()
             }
             SwitchInt { ref values, .. } => {
@@ -458,21 +420,18 @@ impl<'tcx> Terminator<'tcx> {
                       .map(|const_val| {
                           let mut buf = String::new();
                           fmt_const_val(&mut buf, const_val).unwrap();
-                          buf.into_cow()
+                          buf.into()
                       })
-                      .chain(iter::once(String::from("otherwise").into_cow()))
+                      .chain(iter::once(String::from("otherwise").into()))
                       .collect()
             }
-            Call { ref kind, .. } => match *kind {
-                CallKind::Diverging =>
-                    vec![],
-                CallKind::DivergingCleanup(..) =>
-                    vec!["unwind".into_cow()],
-                CallKind::Converging { .. } =>
-                    vec!["return".into_cow()],
-                CallKind::ConvergingCleanup { .. } =>
-                    vec!["return".into_cow(), "unwind".into_cow()],
-            },
+            Call { destination: Some(_), cleanup: Some(_), .. } =>
+                vec!["return".into_cow(), "unwind".into_cow()],
+            Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
+            Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
+            Call { destination: None, cleanup: None, .. } => vec![],
+            Drop { unwind: None, .. } => vec!["return".into_cow()],
+            Drop { .. } => vec!["return".into_cow(), "unwind".into_cow()],
         }
     }
 }
@@ -490,23 +449,13 @@ pub struct Statement<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum StatementKind<'tcx> {
     Assign(Lvalue<'tcx>, Rvalue<'tcx>),
-    Drop(DropKind, Lvalue<'tcx>),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub enum DropKind {
-    /// free a partially constructed box, should go away eventually
-    Free,
-    Deep
 }
 
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
-            Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv),
-            Drop(DropKind::Free, ref lv) => write!(fmt, "free {:?}", lv),
-            Drop(DropKind::Deep, ref lv) => write!(fmt, "drop {:?}", lv),
+            Assign(ref lv, ref rv) => write!(fmt, "{:?} = {:?}", lv, rv)
         }
     }
 }

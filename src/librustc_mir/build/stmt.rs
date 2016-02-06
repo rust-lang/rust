@@ -42,16 +42,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 None => {
                     let (extent, _) = stmt_lists.pop().unwrap();
                     if let Some(extent) = extent {
-                        this.pop_scope(extent, block);
+                        unpack!(block = this.pop_scope(extent, block));
                     }
                     continue
                 }
             };
 
-            let Stmt { span, kind } = this.hir.mirror(stmt);
+            let Stmt { span: _, kind } = this.hir.mirror(stmt);
             match kind {
                 StmtKind::Let { remainder_scope, init_scope, pattern, initializer, stmts } => {
-                    this.push_scope(remainder_scope, block);
+                    this.push_scope(remainder_scope);
                     stmt_lists.push((Some(remainder_scope), stmts.into_iter()));
                     unpack!(block = this.in_scope(init_scope, block, move |this| {
                         // FIXME #30046                              ^~~~
@@ -72,7 +72,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         let expr = this.hir.mirror(expr);
                         let temp = this.temp(expr.ty.clone());
                         unpack!(block = this.into(&temp, block, expr));
-                        this.cfg.push_drop(block, span, DropKind::Deep, &temp);
+                        unpack!(block = this.build_drop(block, temp));
                         block.unit()
                     }));
                 }

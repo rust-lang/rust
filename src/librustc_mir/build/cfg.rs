@@ -32,17 +32,15 @@ impl<'tcx> CFG<'tcx> {
         BasicBlock::new(node_index)
     }
 
+    pub fn start_new_cleanup_block(&mut self) -> BasicBlock {
+        let bb = self.start_new_block();
+        self.block_data_mut(bb).is_cleanup = true;
+        bb
+    }
+
     pub fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
         debug!("push({:?}, {:?})", block, statement);
         self.block_data_mut(block).statements.push(statement);
-    }
-
-    pub fn push_drop(&mut self, block: BasicBlock, span: Span,
-                     kind: DropKind, lvalue: &Lvalue<'tcx>) {
-        self.push(block, Statement {
-            span: span,
-            kind: StatementKind::Drop(kind, lvalue.clone())
-        });
     }
 
     pub fn push_assign(&mut self,
@@ -81,4 +79,3 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).terminator = Some(terminator);
     }
 }
-
