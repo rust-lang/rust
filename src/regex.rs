@@ -55,32 +55,40 @@ impl LateLintPass for RegexPass {
         ], {
             if let ExprLit(ref lit) = args[0].node {
                 if let LitStr(ref r, _) = lit.node {
-                    if let Err(e) = regex_syntax::Expr::parse(r) {
-                        span_lint(cx,
-                                  INVALID_REGEX,
-                                  str_span(args[0].span, &r, e.position()),
-                                  &format!("regex syntax error: {}",
-                                           e.description()));
-                    }
-                    else if let Some(repl) = is_trivial_regex(r) {
-                        span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
-                                           &"trivial regex",
-                                           &format!("consider using {}", repl));
+                    match regex_syntax::Expr::parse(r) {
+                        Ok(r) => {
+                            if let Some(repl) = is_trivial_regex(&r) {
+                                span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
+                                                   &"trivial regex",
+                                                   &format!("consider using {}", repl));
+                            }
+                        }
+                        Err(e) => {
+                            span_lint(cx,
+                                      INVALID_REGEX,
+                                      str_span(args[0].span, &r, e.position()),
+                                      &format!("regex syntax error: {}",
+                                               e.description()));
+                        }
                     }
                 }
             } else if let Some(r) = const_str(cx, &*args[0]) {
-                if let Err(e) = regex_syntax::Expr::parse(&r) {
-                    span_lint(cx,
-                              INVALID_REGEX,
-                              args[0].span,
-                              &format!("regex syntax error on position {}: {}",
-                                       e.position(),
-                                       e.description()));
-                }
-                else if let Some(repl) = is_trivial_regex(&r) {
-                    span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
-                                       &"trivial regex",
-                                       &format!("{}", repl));
+                match regex_syntax::Expr::parse(&r) {
+                    Ok(r) => {
+                        if let Some(repl) = is_trivial_regex(&r) {
+                            span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
+                                               &"trivial regex",
+                                               &format!("consider using {}", repl));
+                        }
+                    }
+                    Err(e) => {
+                        span_lint(cx,
+                                  INVALID_REGEX,
+                                  args[0].span,
+                                  &format!("regex syntax error on position {}: {}",
+                                           e.position(),
+                                           e.description()));
+                    }
                 }
             }
         }}
@@ -103,25 +111,31 @@ fn const_str(cx: &LateContext, e: &Expr) -> Option<InternedString> {
     }
 }
 
-fn is_trivial_regex(s: &str) -> Option<&'static str> {
-    // some unlikely but valid corner cases
-    match s {
-        "" | "^" | "$" => return Some("the regex is unlikely to be useful as it is"),
-        "^$" => return Some("consider using `str::is_empty`"),
-        _ => (),
-    }
+fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
+    use regex_syntax::Expr;
 
-    let (start, end, repl) = match (s.starts_with('^'), s.ends_with('$')) {
-        (true, true) => (1, s.len()-1, "consider using `==` on `str`s"),
-        (false, true) => (0, s.len()-1, "consider using `str::ends_with`"),
-        (true, false) => (1, s.len(), "consider using `str::starts_with`"),
-        (false, false) => (0, s.len(), "consider using `str::contains`"),
-    };
-
-    if !s.chars().take(end).skip(start).any(regex_syntax::is_punct) {
-        Some(repl)
-    }
-    else {
-        None
+    match *s {
+        Expr::Empty | Expr::StartText | Expr::EndText => Some("the regex is unlikely to be useful as it is"),
+        Expr::Literal {..} => Some("consider using `str::contains`"),
+        Expr::Concat(ref exprs) => {
+            match exprs.len() {
+                2 => match (&exprs[0], &exprs[1]) {
+                    (&Expr::StartText, &Expr::EndText) => Some("consider using `str::is_empty`"),
+                    (&Expr::StartText, &Expr::Literal {..}) => Some("consider using `str::starts_with`"),
+                    (&Expr::Literal {..}, &Expr::EndText) => Some("consider using `str::ends_with`"),
+                    _ => None,
+                },
+                3 => {
+                    if let (&Expr::StartText, &Expr::Literal {..}, &Expr::EndText) = (&exprs[0], &exprs[1], &exprs[2]) {
+                        Some("consider using `==` on `str`s")
+                    }
+                    else {
+                        None
+                    }
+                },
+                _ => None,
+            }
+        }
+        _ => None,
     }
 }
