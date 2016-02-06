@@ -25,13 +25,11 @@ macro_rules! test_literal {
         let x64: f64 = $x;
         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
         for input in inputs {
-            if input != "inf" {
-                assert_eq!(input.parse(), Ok(x64));
-                assert_eq!(input.parse(), Ok(x32));
-                let neg_input = &format!("-{}", input);
-                assert_eq!(neg_input.parse(), Ok(-x64));
-                assert_eq!(neg_input.parse(), Ok(-x32));
-            }
+            assert_eq!(input.parse(), Ok(x64));
+            assert_eq!(input.parse(), Ok(x32));
+            let neg_input = &format!("-{}", input);
+            assert_eq!(neg_input.parse(), Ok(-x64));
+            assert_eq!(neg_input.parse(), Ok(-x32));
         }
     })
 }
@@ -134,6 +132,17 @@ fn massive_exponent() {
     assert_eq!(format!("1e{}000", max).parse(), Ok(f64::INFINITY));
     assert_eq!(format!("1e-{}000", max).parse(), Ok(0.0));
     assert_eq!(format!("1e{}000", max).parse(), Ok(f64::INFINITY));
+}
+
+#[test]
+fn borderline_overflow() {
+    let mut s = "0.".to_string();
+    for _ in 0..375 {
+        s.push('3');
+    }
+    // At the time of this writing, this returns Err(..), but this is a bug that should be fixed.
+    // It makes no sense to enshrine that in a test, the important part is that it doesn't panic.
+    let _ = s.parse::<f64>();
 }
 
 #[bench]

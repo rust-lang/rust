@@ -21,8 +21,9 @@ random non-exhaustive tests for covering everything else.
 
 The actual tests (generating decimal strings and feeding them to dec2flt) is
 performed by a set of stand-along rust programs. This script compiles, runs,
-and supervises them. In particular, the programs report the strings they
-generate and the floating point numbers they converted those strings to.
+and supervises them. The programs report the strings they generate and the
+floating point numbers they converted those strings to, and this script
+checks that the results are correct.
 
 You can run specific tests rather than all of them by giving their names
 (without .rs extension) as command line parameters.
@@ -64,9 +65,9 @@ If a test binary writes *anything at all* to stderr or exits with an
 exit code that's not 0, the test fails.
 The output on stdout is treated as (f64, f32, decimal) record, encoded thusly:
 
-- The first eight bytes are a binary64 (native endianness).
-- The following four bytes are a binary32 (native endianness).
-- Then the corresponding string input follows, in ASCII (no newline).
+- First, the bits of the f64 encoded as an ASCII hex string.
+- Second, the bits of the f32 encoded as an ASCII hex string.
+- Then the corresponding string input, in ASCII
 - The record is terminated with a newline.
 
 Incomplete records are an error. Not-a-Number bit patterns are invalid too.

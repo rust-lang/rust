@@ -23,9 +23,9 @@ fn main() {
     let mut rnd = IsaacRng::from_seed(&SEED);
     let mut range = Range::new(0, 10);
     for _ in 0..5_000_000u64 {
-        let num_digits = rnd.gen_range(100, 300);
+        let num_digits = rnd.gen_range(100, 400);
         let digits = gen_digits(num_digits, &mut range, &mut rnd);
-        validate(digits);
+        validate(&digits);
     }
 }
 

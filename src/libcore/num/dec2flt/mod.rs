@@ -230,18 +230,15 @@ fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
     if let Some(x) = trivial_cases(&decimal) {
         return Ok(x);
     }
-    // AlgorithmM and AlgorithmR both compute approximately `f * 10^e`.
-    let max_digits = decimal.integral.len() + decimal.fractional.len() +
-                     decimal.exp.abs() as usize;
     // Remove/shift out the decimal point.
     let e = decimal.exp - decimal.fractional.len() as i64;
     if let Some(x) = algorithm::fast_path(decimal.integral, decimal.fractional, e) {
         return Ok(x);
     }
     // Big32x40 is limited to 1280 bits, which translates to about 385 decimal digits.
-    // If we exceed this, perhaps while calculating `f * 10^e` in Algorithm R or Algorithm M,
-    // we'll crash. So we error out before getting too close, with a generous safety margin.
-    if max_digits > 375 {
+    // If we exceed this, we'll crash, so we error out before getting too close (within 10^10).
+    let upper_bound = bound_intermediate_digits(&decimal, e);
+    if upper_bound > 375 {
         return Err(pfe_invalid());
     }
     let f = digits_to_big(decimal.integral, decimal.fractional);
@@ -251,7 +248,7 @@ fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
     // FIXME These bounds are rather conservative. A more careful analysis of the failure modes
     // of Bellerophon could allow using it in more cases for a massive speed up.
     let exponent_in_range = table::MIN_E <= e && e <= table::MAX_E;
-    let value_in_range = max_digits <= T::max_normal_digits();
+    let value_in_range = upper_bound <= T::max_normal_digits() as u64;
     if exponent_in_range && value_in_range {
         Ok(algorithm::bellerophon(&f, e))
     } else {
@@ -288,13 +285,36 @@ fn simplify(decimal: &mut Decimal) {
     }
 }
 
+/// Quick and dirty upper bound on the size (log10) of the largest value that Algorithm R and
+/// Algorithm M will compute while working on the given decimal.
+fn bound_intermediate_digits(decimal: &Decimal, e: i64) -> u64 {
+    // We don't need to worry too much about overflow here thanks to trivial_cases() and the
+    // parser, which filter out the most extreme inputs for us.
+    let f_len: u64 = decimal.integral.len() as u64 + decimal.fractional.len() as u64;
+    if e >= 0 {
+        // In the case e >= 0, both algorithms compute about `f * 10^e`. Algorithm R proceeds to
+        // do some complicated calculations with this but we can ignore that for the upper bound
+        // because it also reduces the fraction beforehand, so we have plenty of buffer there.
+        f_len + (e as u64)
+    } else {
+        // If e < 0, Algorithm R does roughly the same thing, but Algorithm M differs:
+        // It tries to find a positive number k such that `f << k / 10^e` is an in-range
+        // significand. This will result in about `2^53 * f * 10^e` < `10^17 * f * 10^e`.
+        // One input that triggers this is 0.33...33 (375 x 3).
+        f_len + (e.abs() as u64) + 17
+    }
+}
+
 /// Detect obvious overflows and underflows without even looking at the decimal digits.
 fn trivial_cases<T: RawFloat>(decimal: &Decimal) -> Option<T> {
     // There were zeros but they were stripped by simplify()
     if decimal.integral.is_empty() && decimal.fractional.is_empty() {
         return Some(T::zero());
     }
-    // This is a crude approximation of ceil(log10(the real value)).
+    // This is a crude approximation of ceil(log10(the real value)). We don't need to worry too
+    // much about overflow here because the input length is tiny (at least compared to 2^64) and
+    // the parser already handles exponents whose absolute value is greater than 10^18
+    // (which is still 10^19 short of 2^64).
     let max_place = decimal.exp + decimal.integral.len() as i64;
     if max_place > T::inf_cutoff() {
         return Some(T::infinity());
