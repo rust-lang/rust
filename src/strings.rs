@@ -10,7 +10,7 @@ use syntax::codemap::Spanned;
 use utils::{is_exp_equal, match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 use utils::STRING_PATH;
 
-/// **What it does:** This lint matches code of the form `x = x + y` (without `let`!). It is `Allow` by default.
+/// **What it does:** This lint matches code of the form `x = x + y` (without `let`!).
 ///
 /// **Why is this bad?** Because this expression needs another copy as opposed to `x.push_str(y)` (in practice LLVM will usually elide it, though). Despite [llogiq](https://github.com/llogiq)'s reservations, this lint also is `allow` by default, as some people opine that it's more readable.
 ///
@@ -28,7 +28,7 @@ declare_lint! {
     "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
-/// **What it does:** The `string_add` lint matches all instances of `x + _` where `x` is of type `String`, but only if [`string_add_assign`](#string_add_assign) does *not* match.  It is `Allow` by default.
+/// **What it does:** The `string_add` lint matches all instances of `x + _` where `x` is of type `String`, but only if [`string_add_assign`](#string_add_assign) does *not* match.
 ///
 /// **Why is this bad?** It's not bad in and of itself. However, this particular `Add` implementation is asymmetric (the other operand need not be `String`, but `x` does), while addition as mathematically defined is symmetric, also the `String::push_str(_)` function is a perfectly good replacement. Therefore some dislike it and wish not to have it in their code.
 ///
@@ -49,7 +49,7 @@ declare_lint! {
 }
 
 /// **What it does:** This lint matches the `as_bytes` method called on string
-/// literals that contain only ascii characters. It is `Warn` by default.
+/// literals that contain only ascii characters.
 ///
 /// **Why is this bad?** Byte string literals (e.g. `b"foo"`) can be used instead. They are shorter but less discoverable than `as_bytes()`.
 ///

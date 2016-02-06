@@ -4,16 +4,19 @@ use rustc::middle::ty::{TypeAndMut, TyRef};
 
 use utils::{in_external_macro, span_lint};
 
-/// **What it does:** This lint checks for instances of `mut mut` references. It is `Warn` by default.
+/// **What it does:** This lint checks for instances of `mut mut` references.
 ///
 /// **Why is this bad?** Multiple `mut`s don't add anything meaningful to the source.
 ///
 /// **Known problems:** None
 ///
 /// **Example:** `let x = &mut &mut y;`
-declare_lint!(pub MUT_MUT, Allow,
-              "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
-               or shows a fundamental misunderstanding of references)");
+declare_lint! {
+    pub MUT_MUT,
+    Allow,
+    "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
+     or shows a fundamental misunderstanding of references)"
+}
 
 #[derive(Copy,Clone)]
 pub struct MutMut;

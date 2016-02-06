@@ -8,16 +8,17 @@ use consts::{Constant, constant_simple};
 use utils::{match_def_path, span_lint};
 use self::MinMax::{Min, Max};
 
-/// **What it does:** This lint checks for expressions where `std::cmp::min` and `max` are used to clamp values, but switched so that the result is constant. It is `Warn` by default.
+/// **What it does:** This lint checks for expressions where `std::cmp::min` and `max` are used to clamp values, but switched so that the result is constant.
 ///
 /// **Why is this bad?** This is in all probability not the intended outcome. At the least it hurts readability of the code.
 ///
 /// **Known problems:** None
 ///
 /// **Example:** `min(0, max(100, x))` will always be equal to `0`. Probably the author meant to clamp the value between 0 and 100, but has erroneously swapped `min` and `max`.
-declare_lint!(pub MIN_MAX, Warn,
-    "`min(_, max(_, _))` (or vice versa) with bounds clamping the result \
-    to a constant");
+declare_lint! {
+    pub MIN_MAX, Warn,
+    "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct MinMaxPass;

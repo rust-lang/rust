@@ -6,7 +6,7 @@ use rustc_front::hir::{Stmt, StmtSemi};
 use utils::in_macro;
 use utils::span_lint;
 
-/// **What it does:** This lint `Warn`s on statements which have no effect.
+/// **What it does:** This lint checks for statements which have no effect.
 ///
 /// **Why is this bad?** Similar to dead code, these statements are actually executed. However, as they have no effect, all they do is make the code less readable.
 ///

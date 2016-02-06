@@ -4,7 +4,7 @@ use syntax::ast::*;
 
 use utils::{span_lint, snippet};
 
-/// **What it does:** This lint checks for operations where precedence may be unclear and `Warn`s about them by default, suggesting to add parentheses. Currently it catches the following:
+/// **What it does:** This lint checks for operations where precedence may be unclear and suggests to add parentheses. Currently it catches the following:
 /// * mixed usage of arithmetic and bit shifting/combining operators without parentheses
 /// * a "negative" numeric literal (which is really a unary `-` followed by a numeric literal) followed by a method call
 ///
@@ -15,9 +15,11 @@ use utils::{span_lint, snippet};
 /// **Examples:**
 /// * `1 << 2 + 3` equals 32, while `(1 << 2) + 3` equals 7
 /// * `-1i32.abs()` equals -1, while `(-1i32).abs()` equals 1
-declare_lint!(pub PRECEDENCE, Warn,
-              "catches operations where precedence may be unclear. See the wiki for a \
-               list of cases caught");
+declare_lint! {
+    pub PRECEDENCE, Warn,
+    "catches operations where precedence may be unclear. See the wiki for a \
+     list of cases caught"
+}
 
 #[derive(Copy,Clone)]
 pub struct Precedence;

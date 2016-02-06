@@ -4,16 +4,18 @@ use syntax::ast::Lit_::LitStr;
 
 use utils::{span_lint, in_external_macro, match_path, BEGIN_UNWIND};
 
-/// **What it does:** Warn about missing parameters in `panic!`.
+/// **What it does:** This lint checks for missing parameters in `panic!`.
 ///
 /// **Known problems:** Should you want to use curly brackets in `panic!` without any parameter,
 /// this lint will warn.
 ///
 /// **Example:**
 /// ```
-/// panic!("This panic! is probably missing a parameter there: {}");
+/// panic!("This `panic!` is probably missing a parameter there: {}");
 /// ```
-declare_lint!(pub PANIC_PARAMS, Warn, "missing parameters in `panic!`");
+declare_lint! {
+    pub PANIC_PARAMS, Warn, "missing parameters in `panic!`"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct PanicPass;

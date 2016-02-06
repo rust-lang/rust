@@ -10,7 +10,7 @@ use rustc::middle::ty;
 use utils::{span_lint, match_type};
 use utils::{STRING_PATH, VEC_PATH};
 
-/// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless the references are mutable. It is `Warn` by default.
+/// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless the references are mutable.
 ///
 /// **Why is this bad?** Requiring the argument to be of the specific size makes the function less useful for no benefit; slices in the form of `&[T]` or `&str` usually suffice and can be obtained from other types, too.
 ///

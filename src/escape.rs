@@ -14,7 +14,7 @@ use utils::span_lint;
 
 pub struct EscapePass;
 
-/// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine. It is `Warn` by default.
+/// **What it does:** This lint checks for usage of `Box<T>` where an unboxed `T` would work fine.
 ///
 /// **Why is this bad?** This is an unnecessary allocation, and bad for performance. It is only necessary to allocate if you wish to move the box into something.
 ///
@@ -29,7 +29,9 @@ pub struct EscapePass;
 ///     println!("{}", *x);
 /// }
 /// ```
-declare_lint!(pub BOXED_LOCAL, Warn, "using Box<T> where unnecessary");
+declare_lint! {
+    pub BOXED_LOCAL, Warn, "using Box<T> where unnecessary"
+}
 
 fn is_non_trait_box(ty: ty::Ty) -> bool {
     match ty.sty {

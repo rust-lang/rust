@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use utils;
 
-/// **What it does:** This lint checks for transmutes to the original type of the object. It is `Warn` by default.
+/// **What it does:** This lint checks for transmutes to the original type of the object.
 ///
 /// **Why is this bad?** Readability. The code tricks people into thinking that the original value was of some other type.
 ///

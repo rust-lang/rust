@@ -4,16 +4,18 @@ use utils::{CLONE_PATH, OPTION_PATH};
 use utils::{is_adjusted, match_path, match_trait_method, match_type, snippet, span_help_and_lint};
 use utils::{walk_ptrs_ty, walk_ptrs_ty_depth};
 
-/// **What it does:** This lint checks for mapping clone() over an iterator. It is `Warn` by default and suggests to use `.cloned()` instead.
+/// **What it does:** This lint checks for mapping clone() over an iterator.
 ///
 /// **Why is this bad?** It makes the code less readable.
 ///
 /// **Known problems:** None
 ///
 /// **Example:** `x.map(|e| e.clone());`
-declare_lint!(pub MAP_CLONE, Warn,
-              "using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends \
-              `.cloned()` instead)");
+declare_lint! {
+    pub MAP_CLONE, Warn,
+    "using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends \
+     `.cloned()` instead)"
+}
 
 #[derive(Copy, Clone)]
 pub struct MapClonePass;

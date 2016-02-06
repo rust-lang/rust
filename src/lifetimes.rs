@@ -8,26 +8,32 @@ use std::collections::{HashSet, HashMap};
 
 use utils::{in_external_macro, span_lint};
 
-/// **What it does:** This lint checks for lifetime annotations which can be removed by relying on lifetime elision. It is `Warn` by default.
+/// **What it does:** This lint checks for lifetime annotations which can be removed by relying on lifetime elision.
 ///
 /// **Why is this bad?** The additional lifetimes make the code look more complicated, while there is nothing out of the ordinary going on. Removing them leads to more readable code.
 ///
 /// **Known problems:** Potential false negatives: we bail out if the function has a `where` clause where lifetimes are mentioned.
 ///
 /// **Example:** `fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 { x }`
-declare_lint!(pub NEEDLESS_LIFETIMES, Warn,
-              "using explicit lifetimes for references in function arguments when elision rules \
-               would allow omitting them");
+declare_lint! {
+    pub NEEDLESS_LIFETIMES,
+    Warn,
+    "using explicit lifetimes for references in function arguments when elision rules \
+     would allow omitting them"
+}
 
-/// **What it does:** This lint checks for lifetimes in generics that are never used anywhere else. It is `Warn` by default.
+/// **What it does:** This lint checks for lifetimes in generics that are never used anywhere else.
 ///
 /// **Why is this bad?** The additional lifetimes make the code look more complicated, while there is nothing out of the ordinary going on. Removing them leads to more readable code.
 ///
 /// **Known problems:** None
 ///
 /// **Example:** `fn unused_lifetime<'a>(x: u8) { .. }`
-declare_lint!(pub UNUSED_LIFETIMES, Warn,
-              "unused lifetimes in function definitions");
+declare_lint! {
+    pub UNUSED_LIFETIMES,
+    Warn,
+    "unused lifetimes in function definitions"
+}
 
 #[derive(Copy,Clone)]
 pub struct LifetimePass;

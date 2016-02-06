@@ -4,7 +4,7 @@ use rustc_front::util as ast_util;
 
 use utils::{is_exp_equal, span_lint};
 
-/// **What it does:** This lint checks for equal operands to comparisons and bitwise binary operators (`&`, `|` and `^`). It is `Warn` by default.
+/// **What it does:** This lint checks for equal operands to comparisons and bitwise binary operators (`&`, `|` and `^`).
 ///
 /// **Why is this bad?** This is usually just a typo.
 ///

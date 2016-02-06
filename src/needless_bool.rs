@@ -9,7 +9,7 @@ use syntax::ast::Lit_::*;
 
 use utils::{span_lint, snippet};
 
-/// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly. It is `Warn` by default.
+/// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly.
 ///
 /// **Why is this bad?** Redundant code.
 ///

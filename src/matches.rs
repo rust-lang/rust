@@ -11,7 +11,7 @@ use syntax::codemap::Span;
 use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
 use utils::{match_type, snippet, span_lint, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 
-/// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice. It is `Warn` by default.
+/// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
@@ -24,11 +24,13 @@ use utils::{match_type, snippet, span_lint, span_note_and_lint, span_lint_and_th
 ///     _ => ()
 /// }
 /// ```
-declare_lint!(pub SINGLE_MATCH, Warn,
-              "a match statement with a single nontrivial arm (i.e, where the other arm \
-               is `_ => {}`) is used; recommends `if let` instead");
+declare_lint! {
+    pub SINGLE_MATCH, Warn,
+    "a match statement with a single nontrivial arm (i.e, where the other arm \
+     is `_ => {}`) is used; recommends `if let` instead"
+}
 
-/// **What it does:** This lint checks for matches with a two arms where an `if let` will usually suffice. It is `Allow` by default.
+/// **What it does:** This lint checks for matches with a two arms where an `if let` will usually suffice.
 ///
 /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
 ///
@@ -41,11 +43,13 @@ declare_lint!(pub SINGLE_MATCH, Warn,
 ///     _ => bar(other_ref),
 /// }
 /// ```
-declare_lint!(pub SINGLE_MATCH_ELSE, Allow,
-             "a match statement with a two arms where the second arm's pattern is a wildcard; \
-              recommends `if let` instead");
+declare_lint! {
+    pub SINGLE_MATCH_ELSE, Allow,
+    "a match statement with a two arms where the second arm's pattern is a wildcard; \
+     recommends `if let` instead"
+}
 
-/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It also checks for `if let &foo = bar` blocks. It is `Warn` by default.
+/// **What it does:** This lint checks for matches where all arms match a reference, suggesting to remove the reference and deref the matched expression instead. It also checks for `if let &foo = bar` blocks.
 ///
 /// **Why is this bad?** It just makes the code less readable. That reference destructuring adds nothing to the code.
 ///
@@ -60,11 +64,13 @@ declare_lint!(pub SINGLE_MATCH_ELSE, Allow,
 ///     _ => frob(&x),
 /// }
 /// ```
-declare_lint!(pub MATCH_REF_PATS, Warn,
-              "a match or `if let` has all arms prefixed with `&`; the match expression can be \
-               dereferenced instead");
+declare_lint! {
+    pub MATCH_REF_PATS, Warn,
+    "a match or `if let` has all arms prefixed with `&`; the match expression can be \
+     dereferenced instead"
+}
 
-/// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests to replace the expression with an `if...else` block. It is `Warn` by default.
+/// **What it does:** This lint checks for matches where match expression is a `bool`. It suggests to replace the expression with an `if...else` block.
 ///
 /// **Why is this bad?** It makes the code less readable.
 ///
@@ -79,10 +85,12 @@ declare_lint!(pub MATCH_REF_PATS, Warn,
 ///     false => bar(),
 /// }
 /// ```
-declare_lint!(pub MATCH_BOOL, Warn,
-              "a match on boolean expression; recommends `if..else` block instead");
+declare_lint! {
+    pub MATCH_BOOL, Warn,
+    "a match on boolean expression; recommends `if..else` block instead"
+}
 
-/// **What it does:** This lint checks for overlapping match arms. It is `Warn` by default.
+/// **What it does:** This lint checks for overlapping match arms.
 ///
 /// **Why is this bad?** It is likely to be an error and if not, makes the code less obvious.
 ///
@@ -98,8 +106,9 @@ declare_lint!(pub MATCH_BOOL, Warn,
 ///     _ => (),
 /// }
 /// ```
-declare_lint!(pub MATCH_OVERLAPPING_ARM, Warn,
-              "a match has overlapping arms");
+declare_lint! {
+    pub MATCH_OVERLAPPING_ARM, Warn, "a match has overlapping arms"
+}
 
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
