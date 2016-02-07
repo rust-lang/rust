@@ -794,7 +794,7 @@ pub struct ModuleS<'a> {
     is_public: bool,
     is_extern_crate: bool,
 
-    children: RefCell<HashMap<(Name, Namespace), NameBinding<'a>>>,
+    children: RefCell<HashMap<(Name, Namespace), &'a NameBinding<'a>>>,
     imports: RefCell<Vec<ImportDirective>>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
@@ -855,21 +855,21 @@ impl<'a> ModuleS<'a> {
         }
     }
 
-    fn get_child(&self, name: Name, ns: Namespace) -> Option<NameBinding<'a>> {
+    fn get_child(&self, name: Name, ns: Namespace) -> Option<&'a NameBinding<'a>> {
         self.children.borrow().get(&(name, ns)).cloned()
     }
 
     // If the name is not yet defined, define the name and return None.
     // Otherwise, return the existing definition.
-    fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
-                        -> Option<NameBinding<'a>> {
+    fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
+                        -> Option<&'a NameBinding<'a>> {
         match self.children.borrow_mut().entry((name, ns)) {
             hash_map::Entry::Vacant(entry) => { entry.insert(binding); None }
-            hash_map::Entry::Occupied(entry) => { Some(entry.get().clone()) },
+            hash_map::Entry::Occupied(entry) => { Some(entry.get()) },
         }
     }
 
-    fn for_each_local_child<F: FnMut(Name, Namespace, &NameBinding<'a>)>(&self, mut f: F) {
+    fn for_each_local_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
         for (&(name, ns), name_binding) in self.children.borrow().iter() {
             if !name_binding.is_extern_crate() {
                 f(name, ns, name_binding)
@@ -1112,6 +1112,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
 pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
+    name_bindings: arena::TypedArena<NameBinding<'a>>,
 }
 
 #[derive(PartialEq)]
@@ -1177,6 +1178,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn arenas() -> ResolverArenas<'a> {
         ResolverArenas {
             modules: arena::TypedArena::new(),
+            name_bindings: arena::TypedArena::new(),
         }
     }
 
@@ -1186,6 +1188,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                   external: bool,
                   is_public: bool) -> Module<'a> {
         self.arenas.modules.alloc(ModuleS::new(parent_link, def, external, is_public))
+    }
+
+    fn new_name_binding(&self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
+        self.arenas.name_bindings.alloc(name_binding)
     }
 
     fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def) -> Module<'a> {
@@ -1234,7 +1240,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      -> ResolveResult<(Module<'a>, LastPrivate)> {
         fn search_parent_externals<'a>(needle: Name, module: Module<'a>) -> Option<Module<'a>> {
             match module.get_child(needle, TypeNS) {
-                Some(ref binding) if binding.is_extern_crate() => Some(module),
+                Some(binding) if binding.is_extern_crate() => Some(module),
                 _ => match module.parent_link {
                     ModuleParentLink(ref parent, _) => {
                         search_parent_externals(needle, parent)
@@ -1424,7 +1430,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      name: Name,
                                      namespace: Namespace,
                                      record_used: bool)
-                                     -> ResolveResult<(NameBinding<'a>, bool)> {
+                                     -> ResolveResult<(&'a NameBinding<'a>, bool)> {
         debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
                name,
                namespace,
@@ -1554,7 +1560,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               namespace: Namespace,
                               allow_private_imports: bool,
                               record_used: bool)
-                              -> ResolveResult<(NameBinding<'a>, bool)> {
+                              -> ResolveResult<(&'a NameBinding<'a>, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
                name,
                module_to_string(&*module_));
@@ -1580,7 +1586,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     debug!("(resolving name in module) import unresolved; bailing out");
                     return Indeterminate;
                 }
-                if let Some(binding) = import_resolution.binding.clone() {
+                if let Some(binding) = import_resolution.binding {
                     debug!("(resolving name in module) resolved to import");
                     if record_used {
                         self.record_import_use(name, namespace, &import_resolution);
@@ -2619,7 +2625,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success((binding, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
                        name,
-                       &binding);
+                       binding);
                 match binding.def() {
                     None => {
                         panic!("resolved name in the value namespace to a set of name bindings \
@@ -3058,7 +3064,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 match this.primitive_type_table.primitive_types.get(last_name) {
                     Some(_) => None,
                     None => this.current_module.get_child(*last_name, TypeNS)
-                                               .as_ref()
                                                .and_then(NameBinding::module)
                 }
             } else {
@@ -3456,7 +3461,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             for (&(_, ns), import) in search_module.import_resolutions.borrow().iter() {
                 if ns != TypeNS { continue }
                 let binding = match import.binding {
-                    Some(ref binding) => binding,
+                    Some(binding) => binding,
                     None => continue,
                 };
                 let did = match binding.def() {

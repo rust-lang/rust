@@ -101,14 +101,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
         where T: ToNameBinding<'b>
     {
-        parent.try_define_child(name, ns, def.to_name_binding());
+        parent.try_define_child(name, ns, self.new_name_binding(def.to_name_binding()));
     }
 
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
-        let binding = def.to_name_binding();
-        let old_binding = match parent.try_define_child(name, ns, binding.clone()) {
+        let binding = self.new_name_binding(def.to_name_binding());
+        let old_binding = match parent.try_define_child(name, ns, binding) {
             Some(old_binding) => old_binding,
             None => return,
         };
