@@ -421,7 +421,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
         }
     }, ArgVals(&llargs[(self_idx + 1)..]), dest).bcx;
 
-    fcx.pop_custom_cleanup_scope(self_scope);
+    fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
 
