@@ -688,7 +688,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Rc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> fmt::Pointer for Rc<T> {
+impl<T: ?Sized> fmt::Pointer for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Pointer::fmt(&*self._ptr, f)
     }
