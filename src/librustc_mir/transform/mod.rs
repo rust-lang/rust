@@ -10,4 +10,5 @@
 
 pub mod simplify_cfg;
 pub mod erase_regions;
+pub mod print;
 mod util;

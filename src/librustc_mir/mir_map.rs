@@ -8,24 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An experimental pass that scources for `#[rustc_mir]` attributes,
-//! builds the resulting MIR, and dumps it out into a file for inspection.
-//!
-//! The attribute formats that are currently accepted are:
-//!
-//! - `#[rustc_mir(graphviz="file.gv")]`
-//! - `#[rustc_mir(pretty="file.mir")]`
+//! An pass that builds the MIR for each item and stores it into the map.
 
 extern crate syntax;
 extern crate rustc_front;
 
 use build;
-use graphviz;
-use pretty;
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
-use std::fs::File;
 
 use rustc::mir::mir_map::MirMap;
 use rustc::middle::infer;
@@ -133,55 +124,14 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                 body: &'tcx hir::Block,
                 span: Span,
                 id: ast::NodeId) {
-        let (prefix, implicit_arg_tys) = match fk {
-            intravisit::FnKind::Closure =>
-                (format!("{}-", id), vec![closure_self_ty(&self.tcx, id, body.id)]),
-            _ =>
-                (format!(""), vec![]),
+        let implicit_arg_tys = match fk {
+            intravisit::FnKind::Closure => vec![closure_self_ty(&self.tcx, id, body.id)],
+            _ => vec![],
         };
-
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-
         let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env));
-
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
-            Ok(mir) => {
-                let meta_item_list = self.attr
-                                         .iter()
-                                         .flat_map(|a| a.meta_item_list())
-                                         .flat_map(|l| l.iter());
-                for item in meta_item_list {
-                    if item.check_name("graphviz") || item.check_name("pretty") {
-                        match item.value_str() {
-                            Some(s) => {
-                                let filename = format!("{}{}", prefix, s);
-                                let result = File::create(&filename).and_then(|ref mut output| {
-                                    if item.check_name("graphviz") {
-                                        graphviz::write_mir_graphviz(&mir, output)
-                                    } else {
-                                        pretty::write_mir_pretty(&mir, output)
-                                    }
-                                });
-
-                                if let Err(e) = result {
-                                    self.tcx.sess.span_fatal(
-                                        item.span,
-                                        &format!("Error writing MIR {} results to `{}`: {}",
-                                                 item.name(), filename, e));
-                                }
-                            }
-                            None => {
-                                self.tcx.sess.span_err(
-                                    item.span,
-                                    &format!("{} attribute requires a path", item.name()));
-                            }
-                        }
-                    }
-                }
-
-                let previous = self.map.map.insert(id, mir);
-                assert!(previous.is_none());
-            }
+            Ok(mir) => assert!(self.map.map.insert(id, mir).is_none()),
             Err(ErrorReported) => {}
         }
 
