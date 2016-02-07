@@ -65,7 +65,7 @@ fn for_loop_over_option_and_result() {
         break;
     }
 
-    // while let false positive for Option
+    // while let false positive for Result
     while let Ok(x) = result {
         println!("{}", x);
         break;
@@ -85,8 +85,10 @@ impl Unrelated {
 
 #[deny(needless_range_loop, explicit_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop)]
 #[deny(unused_collect)]
-#[allow(linkedlist,shadow_unrelated,unnecessary_mut_passed, cyclomatic_complexity)]
+#[allow(linkedlist, shadow_unrelated, unnecessary_mut_passed, cyclomatic_complexity)]
 fn main() {
+    const MAX_LEN: usize = 42;
+
     let mut vec = vec![1, 2, 3, 4];
     let vec2 = vec![1, 2, 3, 4];
     for i in 0..vec.len() {
@@ -111,6 +113,11 @@ fn main() {
         println!("{}", vec[i]);
     }
 
+    for i in 0..MAX_LEN {
+        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(MAX_LEN)`
+        println!("{}", vec[i]);
+    }
+
     for i in 5..10 {
         //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(10).skip(5)`
         println!("{}", vec[i]);
@@ -126,7 +133,16 @@ fn main() {
         println!("{} {}", vec[i], i);
     }
 
-    for i in 10..0 { //~ERROR this range is empty so this for loop will never run
+    for i in 10..0 {
+        //~^ERROR this range is empty so this for loop will never run
+        //~|HELP consider
+        //~|SUGGESTION (0..10).rev()
+        println!("{}", i);
+    }
+
+    for i in MAX_LEN..0 { //~ERROR this range is empty so this for loop will never run
+        //~|HELP consider
+        //~|SUGGESTION (0..MAX_LEN).rev()
         println!("{}", i);
     }
 

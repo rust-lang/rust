@@ -1,11 +1,12 @@
-use rustc::lint::*;
-use rustc_front::hir::*;
 use reexport::*;
-use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
-use rustc::middle::ty;
-use rustc::middle::def::Def;
-use consts::{constant_simple, Constant};
 use rustc::front::map::Node::NodeBlock;
+use rustc::lint::*;
+use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc::middle::const_eval::{ConstVal, eval_const_expr_partial};
+use rustc::middle::def::Def;
+use rustc::middle::ty;
+use rustc_front::hir::*;
+use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use std::borrow::Cow;
 use std::collections::{HashSet, HashMap};
 
@@ -421,22 +422,36 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
     if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
         // ...and both sides are compile-time constant integers...
-        if let Some(start_idx @ Constant::Int(..)) = constant_simple(start_expr) {
-            if let Some(stop_idx @ Constant::Int(..)) = constant_simple(stop_expr) {
+        if let Ok(start_idx) = eval_const_expr_partial(&cx.tcx, start_expr, ExprTypeChecked, None) {
+            if let Ok(stop_idx) = eval_const_expr_partial(&cx.tcx, stop_expr, ExprTypeChecked, None) {
                 // ...and the start index is greater than the stop index,
                 // this loop will never run. This is often confusing for developers
                 // who think that this will iterate from the larger value to the
                 // smaller value.
-                if start_idx > stop_idx {
-                    span_help_and_lint(cx,
+                let (sup, eq) = match (start_idx, stop_idx) {
+                    (ConstVal::Int(start_idx), ConstVal::Int(stop_idx)) => (start_idx > stop_idx, start_idx == stop_idx),
+                    (ConstVal::Uint(start_idx), ConstVal::Uint(stop_idx)) => (start_idx > stop_idx, start_idx == stop_idx),
+                    _ => (false, false),
+                };
+
+                if sup {
+                    let start_snippet = snippet(cx, start_expr.span, "_");
+                    let stop_snippet = snippet(cx, stop_expr.span, "_");
+
+                    span_lint_and_then(cx,
                                        REVERSE_RANGE_LOOP,
                                        expr.span,
                                        "this range is empty so this for loop will never run",
-                                       &format!("Consider using `({}..{}).rev()` if you are attempting to iterate \
-                                                 over this range in reverse",
-                                                stop_idx,
-                                                start_idx));
-                } else if start_idx == stop_idx {
+                                       |db| {
+                                           db.span_suggestion(expr.span,
+                                                              "consider using the following if \
+                                                               you are attempting to iterate \
+                                                               over this range in reverse",
+                                                               format!("({}..{}).rev()` ",
+                                                                       stop_snippet,
+                                                                       start_snippet));
+                                       });
+                } else if eq {
                     // if they are equal, it's also problematic - this loop
                     // will never run.
                     span_lint(cx,
