@@ -589,29 +589,183 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
     }
 }
 
-pub fn is_exp_equal(cx: &LateContext, left: &Expr, right: &Expr) -> bool {
+/// Check whether two statements are the same.
+/// See also `is_exp_equal`.
+pub fn is_stmt_equal(cx: &LateContext, left: &Stmt, right: &Stmt, ignore_fn: bool) -> bool {
+    match (&left.node, &right.node) {
+        (&StmtDecl(ref l, _), &StmtDecl(ref r, _)) => {
+            if let (&DeclLocal(ref l), &DeclLocal(ref r)) = (&l.node, &r.node) {
+                // TODO: tys
+                l.ty.is_none() && r.ty.is_none() &&
+                    both(&l.init, &r.init, |l, r| is_exp_equal(cx, l, r, ignore_fn))
+            }
+            else {
+                false
+            }
+        }
+        (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) => is_exp_equal(cx, l, r, ignore_fn),
+        (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => is_exp_equal(cx, l, r, ignore_fn),
+        _ => false,
+    }
+}
+
+/// Check whether two blocks are the same.
+/// See also `is_exp_equal`.
+pub fn is_block_equal(cx: &LateContext, left: &Block, right: &Block, ignore_fn: bool) -> bool {
+    over(&left.stmts, &right.stmts, |l, r| is_stmt_equal(cx, l, r, ignore_fn)) &&
+        both(&left.expr, &right.expr, |l, r| is_exp_equal(cx, l, r, ignore_fn))
+}
+
+/// Check whether two pattern are the same.
+/// See also `is_exp_equal`.
+pub fn is_pat_equal(cx: &LateContext, left: &Pat, right: &Pat, ignore_fn: bool) -> bool {
+    match (&left.node, &right.node) {
+        (&PatBox(ref l), &PatBox(ref r)) => {
+            is_pat_equal(cx, l, r, ignore_fn)
+        }
+        (&PatEnum(ref lp, ref la), &PatEnum(ref rp, ref ra)) => {
+            is_path_equal(lp, rp) &&
+                both(la, ra, |l, r| {
+                    over(l, r, |l, r| is_pat_equal(cx, l, r, ignore_fn))
+                })
+        }
+        (&PatIdent(ref lb, ref li, ref lp), &PatIdent(ref rb, ref ri, ref rp)) => {
+            lb == rb && li.node.name.as_str() == ri.node.name.as_str() &&
+                both(lp, rp, |l, r| is_pat_equal(cx, l, r, ignore_fn))
+        }
+        (&PatLit(ref l), &PatLit(ref r)) => {
+            is_exp_equal(cx, l, r, ignore_fn)
+        }
+        (&PatQPath(ref ls, ref lp), &PatQPath(ref rs, ref rp)) => {
+            is_qself_equal(ls, rs) && is_path_equal(lp, rp)
+        }
+        (&PatTup(ref l), &PatTup(ref r)) => {
+            over(l, r, |l, r| is_pat_equal(cx, l, r, ignore_fn))
+        }
+        (&PatRange(ref ls, ref le), &PatRange(ref rs, ref re)) => {
+            is_exp_equal(cx, ls, rs, ignore_fn) &&
+                is_exp_equal(cx, le, re, ignore_fn)
+        }
+        (&PatRegion(ref le, ref lm), &PatRegion(ref re, ref rm)) => {
+            lm == rm && is_pat_equal(cx, le, re, ignore_fn)
+        }
+        (&PatVec(ref ls, ref li, ref le), &PatVec(ref rs, ref ri, ref re)) => {
+            over(ls, rs, |l, r| is_pat_equal(cx, l, r, ignore_fn)) &&
+                over(le, re, |l, r| is_pat_equal(cx, l, r, ignore_fn)) &&
+                both(li, ri, |l, r| is_pat_equal(cx, l, r, ignore_fn))
+        }
+        (&PatWild, &PatWild) => true,
+        _ => false,
+    }
+}
+
+/// Check whether two expressions are the same. This is different from the operator `==` on
+/// expression as this operator would compare true equality with ID and span.
+/// If `ignore_fn` is true, never consider as equal fonction calls.
+///
+/// Note that some expression kinds are not considered but could be added.
+#[allow(cyclomatic_complexity)] // ok, it’s a big function, but mostly one big match with simples cases
+pub fn is_exp_equal(cx: &LateContext, left: &Expr, right: &Expr, ignore_fn: bool) -> bool {
     if let (Some(l), Some(r)) = (constant(cx, left), constant(cx, right)) {
         if l == r {
             return true;
         }
     }
+
     match (&left.node, &right.node) {
+        (&ExprAddrOf(ref lmut, ref le), &ExprAddrOf(ref rmut, ref re)) => {
+            lmut == rmut && is_exp_equal(cx, le, re, ignore_fn)
+        }
+        (&ExprAgain(li), &ExprAgain(ri)) => {
+            both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str())
+        }
+        (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => {
+            is_exp_equal(cx, ll, rl, ignore_fn) && is_exp_equal(cx, lr, rr, ignore_fn)
+        }
+        (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
+            lo.node == ro.node && is_exp_equal(cx, ll, rl, ignore_fn) && is_exp_equal(cx, lr, rr, ignore_fn)
+        }
+        (&ExprBlock(ref l), &ExprBlock(ref r)) => {
+            is_block_equal(cx, l, r, ignore_fn)
+        }
+        (&ExprBinary(lop, ref ll, ref lr), &ExprBinary(rop, ref rl, ref rr)) => {
+            lop.node == rop.node && is_exp_equal(cx, ll, rl, ignore_fn) && is_exp_equal(cx, lr, rr, ignore_fn)
+        }
+        (&ExprBreak(li), &ExprBreak(ri)) => {
+            both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str())
+        }
+        (&ExprBox(ref l), &ExprBox(ref r)) => {
+            is_exp_equal(cx, l, r, ignore_fn)
+        }
+        (&ExprCall(ref lfun, ref largs), &ExprCall(ref rfun, ref rargs)) => {
+            !ignore_fn &&
+                is_exp_equal(cx, lfun, rfun, ignore_fn) &&
+                is_exps_equal(cx, largs, rargs, ignore_fn)
+        }
+        (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => {
+            is_exp_equal(cx, lx, rx, ignore_fn) && is_cast_ty_equal(lt, rt)
+        }
         (&ExprField(ref lfexp, ref lfident), &ExprField(ref rfexp, ref rfident)) => {
-            lfident.node == rfident.node && is_exp_equal(cx, lfexp, rfexp)
+            lfident.node == rfident.node && is_exp_equal(cx, lfexp, rfexp, ignore_fn)
+        }
+        (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => {
+            is_exp_equal(cx, la, ra, ignore_fn) && is_exp_equal(cx, li, ri, ignore_fn)
+        }
+        (&ExprIf(ref lc, ref lt, ref le), &ExprIf(ref rc, ref rt, ref re)) => {
+            is_exp_equal(cx, lc, rc, ignore_fn) &&
+                is_block_equal(cx, lt, rt, ignore_fn) &&
+                both(le, re, |l, r| is_exp_equal(cx, l, r, ignore_fn))
         }
         (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
+        (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
+            ls == rs &&
+                is_exp_equal(cx, le, re, ignore_fn) &&
+                over(la, ra, |l, r| {
+                    is_exp_equal(cx, &l.body, &r.body, ignore_fn) &&
+                        both(&l.guard, &r.guard, |l, r| is_exp_equal(cx, l, r, ignore_fn)) &&
+                        over(&l.pats, &r.pats, |l, r| is_pat_equal(cx, l, r, ignore_fn))
+                })
+        }
+        (&ExprMethodCall(ref lname, ref ltys, ref largs), &ExprMethodCall(ref rname, ref rtys, ref rargs)) => {
+            // TODO: tys
+            !ignore_fn &&
+                lname.node == rname.node &&
+                ltys.is_empty() &&
+                rtys.is_empty() &&
+                is_exps_equal(cx, largs, rargs, ignore_fn)
+        }
+        (&ExprRange(ref lb, ref le), &ExprRange(ref rb, ref re)) => {
+            both(lb, rb, |l, r| is_exp_equal(cx, l, r, ignore_fn)) &&
+            both(le, re, |l, r| is_exp_equal(cx, l, r, ignore_fn))
+        }
+        (&ExprRepeat(ref le, ref ll), &ExprRepeat(ref re, ref rl)) => {
+            is_exp_equal(cx, le, re, ignore_fn) && is_exp_equal(cx, ll, rl, ignore_fn)
+        }
+        (&ExprRet(ref l), &ExprRet(ref r)) => {
+            both(l, r, |l, r| is_exp_equal(cx, l, r, ignore_fn))
+        }
         (&ExprPath(ref lqself, ref lsubpath), &ExprPath(ref rqself, ref rsubpath)) => {
             both(lqself, rqself, is_qself_equal) && is_path_equal(lsubpath, rsubpath)
         }
-        (&ExprTup(ref ltup), &ExprTup(ref rtup)) => is_exps_equal(cx, ltup, rtup),
-        (&ExprVec(ref l), &ExprVec(ref r)) => is_exps_equal(cx, l, r),
-        (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => is_exp_equal(cx, lx, rx) && is_cast_ty_equal(lt, rt),
+        (&ExprTup(ref ltup), &ExprTup(ref rtup)) => is_exps_equal(cx, ltup, rtup, ignore_fn),
+        (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => {
+            li.node == ri.node && is_exp_equal(cx, le, re, ignore_fn)
+        }
+        (&ExprUnary(lop, ref le), &ExprUnary(rop, ref re)) => {
+            lop == rop && is_exp_equal(cx, le, re, ignore_fn)
+        }
+        (&ExprVec(ref l), &ExprVec(ref r)) => is_exps_equal(cx, l, r, ignore_fn),
+        (&ExprWhile(ref lc, ref lb, ref ll), &ExprWhile(ref rc, ref rb, ref rl)) => {
+            is_exp_equal(cx, lc, rc, ignore_fn) &&
+                is_block_equal(cx, lb, rb, ignore_fn) &&
+                both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
+        }
         _ => false,
     }
 }
 
-fn is_exps_equal(cx: &LateContext, left: &[P<Expr>], right: &[P<Expr>]) -> bool {
-    over(left, right, |l, r| is_exp_equal(cx, l, r))
+fn is_exps_equal(cx: &LateContext, left: &[P<Expr>], right: &[P<Expr>], ignore_fn: bool) -> bool {
+    over(left, right, |l, r| is_exp_equal(cx, l, r, ignore_fn))
 }
 
 fn is_path_equal(left: &Path, right: &Path) -> bool {
@@ -620,20 +774,22 @@ fn is_path_equal(left: &Path, right: &Path) -> bool {
     left.global == right.global &&
     over(&left.segments,
          &right.segments,
-         |l, r| l.identifier.name == r.identifier.name && l.parameters == r.parameters)
+         |l, r| l.identifier.name.as_str() == r.identifier.name.as_str() && l.parameters == r.parameters)
 }
 
 fn is_qself_equal(left: &QSelf, right: &QSelf) -> bool {
     left.ty.node == right.ty.node && left.position == right.position
 }
 
-fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
+/// Check if two slices are equal as per `eq_fn`.
+pub fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
     where F: FnMut(&X, &X) -> bool
 {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
 
-fn both<X, F>(l: &Option<X>, r: &Option<X>, mut eq_fn: F) -> bool
+/// Check if the two `Option`s are both `None` or some equal values as per `eq_fn`.
+pub fn both<X, F>(l: &Option<X>, r: &Option<X>, mut eq_fn: F) -> bool
     where F: FnMut(&X, &X) -> bool
 {
     l.as_ref().map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))

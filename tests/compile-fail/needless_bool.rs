@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#[allow(if_same_then_else)]
 #[deny(needless_bool)]
 fn main() {
     let x = true;

@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 114 lints included in this crate:
+There are 116 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -47,6 +47,8 @@ name                                                                            
 [for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                   | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
 [for_loop_over_result](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result)                   | warn    | for-looping over a `Result`, which is more clearly expressed as an `if let`
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                     | warn    | using identity operations, e.g. `x + 0` or `y / 1`
+[if_same_then_else](https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else)                         | warn    | if with the same *then* and *else* blocks
+[ifs_same_cond](https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond)                                 | warn    | consecutive `ifs` with the same condition
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                   | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                 | warn    | `#[inline(always)]` is a bad idea in most cases
 [invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                 | deny    | finds invalid regular expressions in `Regex::new(_)` invocations
