@@ -178,13 +178,13 @@ fn main_with_result(format: OutputFormat) -> Result<(), Box<Error>> {
     let metadata_dir = get_metadata_dir(&build_arch);
     let err_map = try!(load_all_errors(&metadata_dir));
     match format {
-        OutputFormat::Unknown(s)    => panic!("Unknown output format: {}", s),
-        OutputFormat::HTML(h)       => try!(render_error_page(&err_map,
-                                                              Path::new("doc/error-index.html"),
-                                                              h)),
-        OutputFormat::Markdown(m)   => try!(render_error_page(&err_map,
-                                                              Path::new("doc/error-index.html"),
-                                                              m)),
+        OutputFormat::Unknown(s)  => panic!("Unknown output format: {}", s),
+        OutputFormat::HTML(h)     => try!(render_error_page(&err_map,
+                                                            Path::new("doc/error-index.html"),
+                                                            h)),
+        OutputFormat::Markdown(m) => try!(render_error_page(&err_map,
+                                                            Path::new("doc/error-index.md"),
+                                                            m)),
     }
     Ok(())
 }

@@ -16,28 +16,27 @@ E0445: r##"
 A private trait was used on a public type parameter bound. Erroneous code
 examples:
 
-```
+```compile_fail
 trait Foo {
     fn dummy(&self) { }
 }
 
 pub trait Bar : Foo {} // error: private trait in public interface
-pub struct Bar<T: Foo>(pub T); // same error
+pub struct Bar2<T: Foo>(pub T); // same error
 pub fn foo<T: Foo> (t: T) {} // same error
 ```
 
 To solve this error, please ensure that the trait is also public. The trait
 can be made inaccessible if necessary by placing it into a private inner module,
-but it still has to be marked with `pub`.
-Example:
+but it still has to be marked with `pub`. Example:
 
-```
+```ignore
 pub trait Foo { // we set the Foo trait public
     fn dummy(&self) { }
 }
 
 pub trait Bar : Foo {} // ok!
-pub struct Bar<T: Foo>(pub T); // ok!
+pub struct Bar2<T: Foo>(pub T); // ok!
 pub fn foo<T: Foo> (t: T) {} // ok!
 ```
 "##,
@@ -45,7 +44,7 @@ pub fn foo<T: Foo> (t: T) {} // ok!
 E0446: r##"
 A private type was used in a public type signature. Erroneous code example:
 
-```
+```compile_fail
 mod Foo {
     struct Bar(u32);
 
@@ -74,7 +73,7 @@ mod Foo {
 E0447: r##"
 The `pub` keyword was used inside a function. Erroneous code example:
 
-```
+```compile_fail
 fn foo() {
     pub struct Bar; // error: visibility has no effect inside functions
 }
@@ -88,7 +87,7 @@ is invalid.
 E0448: r##"
 The `pub` keyword was used inside a public enum. Erroneous code example:
 
-```
+```compile_fail
 pub enum Foo {
     pub Bar, // error: unnecessary `pub` visibility
 }
@@ -97,13 +96,15 @@ pub enum Foo {
 Since the enum is already public, adding `pub` on one its elements is
 unnecessary. Example:
 
-```
+```compile_fail
 enum Foo {
-    pub Bar, // ok!
+    pub Bar, // not ok!
 }
+```
 
-// or:
+This is the correct syntax:
 
+```ignore
 pub enum Foo {
     Bar, // ok!
 }
@@ -114,7 +115,7 @@ E0449: r##"
 A visibility qualifier was used when it was unnecessary. Erroneous code
 examples:
 
-```
+```compile_fail
 struct Bar;
 
 trait Foo {
@@ -131,7 +132,7 @@ pub impl Foo for Bar { // error: unnecessary visibility qualifier
 To fix this error, please remove the visibility qualifier when it is not
 required. Example:
 
-```
+```ignore
 struct Bar;
 
 trait Foo {
@@ -154,7 +155,7 @@ E0450: r##"
 A tuple constructor was invoked while some of its fields are private. Erroneous
 code example:
 
-```
+```compile_fail
 mod Bar {
     pub struct Foo(isize);
 }
@@ -179,7 +180,7 @@ mod bar {
     pub struct Foo(isize);
 
     impl Foo {
-        pub fn new(x: isize) {
+        pub fn new(x: isize) -> Foo {
             Foo(x)
         }
     }
@@ -192,7 +193,7 @@ let f = bar::Foo::new(1);
 E0451: r##"
 A struct constructor with private fields was invoked. Erroneous code example:
 
-```
+```compile_fail
 mod Bar {
     pub struct Foo {
         pub a: isize,
@@ -216,8 +217,11 @@ mod Bar {
 }
 
 let f = Bar::Foo{ a: 0, b: 0 }; // ok!
+```
 
-// or:
+Or:
+
+```
 mod Bar {
     pub struct Foo {
         pub a: isize,
