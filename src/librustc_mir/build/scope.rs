@@ -236,7 +236,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.diverge_cleanup();
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.extent, extent);
-        build_scope_drops(block, &scope, &self.scopes[..], &mut self.cfg)
+        build_scope_drops(&mut self.cfg, &scope, &self.scopes[..], block)
     }
 
 
@@ -254,8 +254,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             self.hir.span_bug(span, &format!("extent {:?} does not enclose", extent))
         });
 
+        let tmp = self.get_unit_temp();
         for (idx, ref scope) in self.scopes.iter().enumerate().rev().take(scope_count) {
-            unpack!(block = build_scope_drops(block, scope, &self.scopes[..idx], &mut self.cfg));
+            unpack!(block = build_scope_drops(&mut self.cfg,
+                                              scope,
+                                              &self.scopes[..idx],
+                                              block));
+            if let Some(ref free_data) = scope.free {
+                let next = self.cfg.start_new_block();
+                let free = build_free(self.hir.tcx(), tmp.clone(), free_data, next);
+                self.cfg.terminate(block, free);
+                block = next;
+            }
         }
         self.cfg.terminate(block, Terminator::Goto { target: target });
     }
@@ -508,10 +518,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 }
 
 /// Builds drops for pop_scope and exit_scope.
-fn build_scope_drops<'tcx>(mut block: BasicBlock,
+fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            scope: &Scope<'tcx>,
                            earlier_scopes: &[Scope<'tcx>],
-                           cfg: &mut CFG<'tcx>)
+                           mut block: BasicBlock)
                            -> BlockAnd<()> {
     let mut iter = scope.drops.iter().rev().peekable();
     while let Some(drop_data) = iter.next() {
@@ -586,9 +596,10 @@ fn build_diverge_scope<'tcx>(tcx: &ty::ctxt<'tcx>,
         target = if let Some(cached_block) = free_data.cached_block {
             cached_block
         } else {
-            let t = build_free(tcx, cfg, unit_temp, free_data, target);
-            free_data.cached_block = Some(t);
-            t
+            let into = cfg.start_new_cleanup_block();
+            cfg.terminate(into, build_free(tcx, unit_temp, free_data, target));
+            free_data.cached_block = Some(into);
+            into
         }
     };
 
@@ -608,19 +619,16 @@ fn build_diverge_scope<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn build_free<'tcx>(tcx: &ty::ctxt<'tcx>,
-                    cfg: &mut CFG<'tcx>,
                     unit_temp: Lvalue<'tcx>,
                     data: &FreeData<'tcx>,
-                    target: BasicBlock)
-                    -> BasicBlock {
+                    target: BasicBlock) -> Terminator<'tcx> {
     let free_func = tcx.lang_items.box_free_fn()
                        .expect("box_free language item is missing");
     let substs = tcx.mk_substs(Substs::new(
         VecPerParamSpace::new(vec![], vec![], vec![data.item_ty]),
         VecPerParamSpace::new(vec![], vec![], vec![])
     ));
-    let block = cfg.start_new_cleanup_block();
-    cfg.terminate(block, Terminator::Call {
+    Terminator::Call {
         func: Operand::Constant(Constant {
             span: data.span,
             ty: tcx.lookup_item_type(free_func).ty.subst(tcx, substs),
@@ -633,6 +641,5 @@ fn build_free<'tcx>(tcx: &ty::ctxt<'tcx>,
         args: vec![Operand::Consume(data.value.clone())],
         destination: Some((unit_temp, target)),
         cleanup: None
-    });
-    block
+    }
 }
