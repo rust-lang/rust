@@ -79,7 +79,7 @@ errors of missing symbols.
 """
 
 
-template = """# `%s`
+template = """\n# `%s`
 
 **Default level:** %s
 
