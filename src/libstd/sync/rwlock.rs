@@ -454,10 +454,11 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// assert_eq!(*y, 1);
     /// ```
     #[unstable(feature = "guard_map",
-               reason = "recently added, needs RFC for stabilization",
+               reason = "recently added, needs RFC for stabilization,
+                         questionable interaction with Condvar",
                issue = "27746")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockReadGuard<'rwlock, U>
-        where F: FnOnce(&'rwlock T) -> &'rwlock U
+        where F: FnOnce(&T) -> &U
     {
         let new = RwLockReadGuard {
             __lock: this.__lock,
@@ -504,10 +505,11 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// assert_eq!(&**x.read().unwrap(), &[10, 2]);
     /// ```
     #[unstable(feature = "guard_map",
-               reason = "recently added, needs RFC for stabilization",
+               reason = "recently added, needs RFC for stabilization,
+                         questionable interaction with Condvar",
                issue = "27746")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockWriteGuard<'rwlock, U>
-        where F: FnOnce(&'rwlock mut T) -> &'rwlock mut U
+        where F: FnOnce(&mut T) -> &mut U
     {
         // Compute the new data while still owning the original lock
         // in order to correctly poison if the callback panics.
