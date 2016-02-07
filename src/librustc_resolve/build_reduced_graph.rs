@@ -19,7 +19,7 @@ use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
 use resolve_imports::ImportResolution;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
-use {NameBinding, DefOrModule};
+use {NameBinding, NameBindingKind};
 use {names_to_string, module_to_string};
 use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
@@ -82,8 +82,8 @@ impl<'a> ToNameBinding<'a> for (Module<'a>, Span) {
 
 impl<'a> ToNameBinding<'a> for (Def, Span, DefModifiers) {
     fn to_name_binding(self) -> NameBinding<'a> {
-        let def = DefOrModule::Def(self.0);
-        NameBinding { modifiers: self.2, def_or_module: def, span: Some(self.1) }
+        let kind = NameBindingKind::Def(self.0);
+        NameBinding { modifiers: self.2, kind: kind, span: Some(self.1) }
     }
 }
 
