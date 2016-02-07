@@ -148,7 +148,15 @@ ifeq ($$(CFG_WINDOWSY_$(1)),1)
 else ifeq ($(OSTYPE_$(1)), apple-ios)
   JEMALLOC_ARGS_$(1) := --disable-tls
 else ifeq ($(findstring android, $(OSTYPE_$(1))), android)
-  JEMALLOC_ARGS_$(1) := --disable-tls
+  # We force android to have prefixed symbols because apparently replacement of
+  # the libc allocator doesn't quite work. When this was tested (unprefixed
+  # symbols), it was found that the `realpath` function in libc would allocate
+  # with libc malloc (not jemalloc malloc), and then the standard library would
+  # free with jemalloc free, causing a segfault.
+  #
+  # If the test suite passes, however, without symbol prefixes then we should be
+  # good to go!
+  JEMALLOC_ARGS_$(1) := --disable-tls --with-jemalloc-prefix=je_
 endif
 
 ifdef CFG_ENABLE_DEBUG_JEMALLOC
@@ -186,7 +194,7 @@ JEMALLOC_LOCAL_$(1) := $$(JEMALLOC_BUILD_DIR_$(1))/lib/$$(JEMALLOC_REAL_NAME_$(1
 $$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, make: jemalloc)
 	cd "$$(JEMALLOC_BUILD_DIR_$(1))"; "$(S)src/jemalloc/configure" \
-		$$(JEMALLOC_ARGS_$(1)) --with-jemalloc-prefix=je_ $(CFG_JEMALLOC_FLAGS) \
+		$$(JEMALLOC_ARGS_$(1)) $(CFG_JEMALLOC_FLAGS) \
 		--build=$$(CFG_GNU_TRIPLE_$(CFG_BUILD)) --host=$$(CFG_GNU_TRIPLE_$(1)) \
 		CC="$$(CC_$(1)) $$(CFG_JEMALLOC_CFLAGS_$(1))" \
 		AR="$$(AR_$(1))" \
