@@ -471,28 +471,19 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
         }
 
-        let value_def_and_priv = {
-            module_.decrement_outstanding_references_for(target, ValueNS);
+        // Record what this import resolves to for later uses in documentation,
+        // this may resolve to either a value or a type, but for documentation
+        // purposes it's good enough to just favor one over the other.
+        module_.decrement_outstanding_references_for(target, ValueNS);
+        module_.decrement_outstanding_references_for(target, TypeNS);
 
-            // Record what this import resolves to for later uses in documentation,
-            // this may resolve to either a value or a type, but for documentation
-            // purposes it's good enough to just favor one over the other.
-            value_result.success().map(|binding| {
-                let def = binding.def().unwrap();
-                let last_private = if binding.is_public() { lp } else { DependsOn(def.def_id()) };
-                (def, last_private)
-            })
+        let def_and_priv = |binding: &NameBinding| {
+            let def = binding.def().unwrap();
+            let last_private = if binding.is_public() { lp } else { DependsOn(def.def_id()) };
+            (def, last_private)
         };
-
-        let type_def_and_priv = {
-            module_.decrement_outstanding_references_for(target, TypeNS);
-
-            type_result.success().map(|binding| {
-                let def = binding.def().unwrap();
-                let last_private = if binding.is_public() { lp } else { DependsOn(def.def_id()) };
-                (def, last_private)
-            })
-        };
+        let value_def_and_priv = value_result.success().map(&def_and_priv);
+        let type_def_and_priv = type_result.success().map(&def_and_priv);
 
         let import_lp = LastImport {
             value_priv: value_def_and_priv.map(|(_, p)| p),
@@ -501,22 +492,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             type_used: Used,
         };
 
-        if let Some((def, _)) = value_def_and_priv {
-            self.resolver.def_map.borrow_mut().insert(directive.id,
-                                                      PathResolution {
-                                                          base_def: def,
-                                                          last_private: import_lp,
-                                                          depth: 0,
-                                                      });
-        }
-        if let Some((def, _)) = type_def_and_priv {
-            self.resolver.def_map.borrow_mut().insert(directive.id,
-                                                      PathResolution {
-                                                          base_def: def,
-                                                          last_private: import_lp,
-                                                          depth: 0,
-                                                      });
-        }
+        let write_path_resolution = |(def, _)| {
+            let path_resolution =
+                PathResolution { base_def: def, last_private: import_lp, depth: 0 };
+            self.resolver.def_map.borrow_mut().insert(directive.id, path_resolution);
+        };
+        value_def_and_priv.map(&write_path_resolution);
+        type_def_and_priv.map(&write_path_resolution);
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());
@@ -575,19 +557,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         return Success(());
     }
 
-    fn add_export(&mut self, module: Module<'b>, name: Name, binding: &NameBinding<'b>) {
-        if !binding.is_public() { return }
-        let node_id = match module.def_id() {
-            Some(def_id) => self.resolver.ast_map.as_local_node_id(def_id).unwrap(),
-            None => return,
-        };
-        let export = match binding.def() {
-            Some(def) => Export { name: name, def_id: def.def_id() },
-            None => return,
-        };
-        self.resolver.export_map.entry(node_id).or_insert(Vec::new()).push(export);
-    }
-
     fn define(&mut self,
               parent: Module<'b>,
               name: Name,
@@ -596,8 +565,12 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         let binding = self.resolver.new_name_binding(binding);
         if let Err(old_binding) = parent.try_define_child(name, ns, binding) {
             self.report_conflict(name, ns, binding, old_binding);
-        } else if binding.is_public() {
-            self.add_export(parent, name, binding);
+        } else if binding.is_public() { // Add to the export map
+            if let (Some(parent_def_id), Some(def)) = (parent.def_id(), binding.def()) {
+                let parent_node_id = self.resolver.ast_map.as_local_node_id(parent_def_id).unwrap();
+                let export = Export { name: name, def_id: def.def_id() };
+                self.resolver.export_map.entry(parent_node_id).or_insert(Vec::new()).push(export);
+            }
         }
     }
 
