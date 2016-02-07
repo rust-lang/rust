@@ -14,7 +14,8 @@
  */
 
 use mir::repr::*;
-use middle::subst::Substs;
+use middle::const_eval::ConstVal;
+use middle::subst::{Subst, Substs};
 use middle::ty::{self, AdtDef, Ty};
 use rustc_front::hir;
 
@@ -148,6 +149,73 @@ impl<'tcx> Mir<'tcx> {
                 LvalueTy::Ty { ty: self.return_ty.unwrap() },
             Lvalue::Projection(ref proj) =>
                 self.lvalue_ty(tcx, &proj.base).projection_ty(tcx, &proj.elem)
+        }
+    }
+
+    pub fn rvalue_ty(&self,
+                     tcx: &ty::ctxt<'tcx>,
+                     rvalue: &Rvalue<'tcx>)
+                     -> Option<Ty<'tcx>>
+    {
+        match *rvalue {
+            Rvalue::Use(ref operand) => Some(self.operand_ty(tcx, operand)),
+            Rvalue::Repeat(ref operand, ref count) => {
+                if let ConstVal::Uint(u) = count.value {
+                    let op_ty = self.operand_ty(tcx, operand);
+                    Some(tcx.mk_array(op_ty, u as usize))
+                } else {
+                    None
+                }
+            }
+            Rvalue::Ref(reg, bk, ref lv) => {
+                let lv_ty = self.lvalue_ty(tcx, lv).to_ty(tcx);
+                Some(tcx.mk_ref(
+                    tcx.mk_region(reg),
+                    ty::TypeAndMut {
+                        ty: lv_ty,
+                        mutbl: bk.to_mutbl_lossy()
+                    }
+                ))
+            }
+            Rvalue::Len(..) => Some(tcx.types.usize),
+            Rvalue::Cast(_, _, ty) => Some(ty),
+            Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+                let lhs_ty = self.operand_ty(tcx, lhs);
+                let rhs_ty = self.operand_ty(tcx, rhs);
+                Some(self.binop_ty(tcx, op, lhs_ty, rhs_ty))
+            }
+            Rvalue::UnaryOp(_, ref operand) => {
+                Some(self.operand_ty(tcx, operand))
+            }
+            Rvalue::Box(t) => {
+                Some(tcx.mk_box(t))
+            }
+            Rvalue::Aggregate(ref ak, ref ops) => {
+                match *ak {
+                    AggregateKind::Vec => {
+                        if let Some(operand) = ops.get(0) {
+                            let ty = self.operand_ty(tcx, operand);
+                            Some(tcx.mk_array(ty, ops.len()))
+                        } else {
+                            None
+                        }
+                    }
+                    AggregateKind::Tuple => {
+                        Some(tcx.mk_tup(
+                            ops.iter().map(|op| self.operand_ty(tcx, op)).collect()
+                        ))
+                    }
+                    AggregateKind::Adt(def, _, substs) => {
+                        Some(def.type_scheme(tcx).ty.subst(tcx, substs))
+                    }
+                    AggregateKind::Closure(did, substs) => {
+                        Some(tcx.mk_closure_from_closure_substs(
+                            did, Box::new(substs.clone())))
+                    }
+                }
+            }
+            Rvalue::Slice { .. } => None,
+            Rvalue::InlineAsm(..) => None
         }
     }
 }

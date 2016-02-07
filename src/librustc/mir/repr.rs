@@ -45,6 +45,9 @@ pub struct Mir<'tcx> {
     /// values in that it is possible to borrow them and mutate them
     /// through the resulting reference.
     pub temp_decls: Vec<TempDecl<'tcx>>,
+
+    /// A span representing this MIR, for error reporting
+    pub span: Span,
 }
 
 /// where execution begins
@@ -145,7 +148,7 @@ pub enum BorrowKind {
 
 /// A "variable" is a binding declared by the user as part of the fn
 /// decl, a let, etc.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VarDecl<'tcx> {
     pub mutability: Mutability,
     pub name: Name,
@@ -154,7 +157,7 @@ pub struct VarDecl<'tcx> {
 
 /// A "temp" is a temporary that we place on the stack. They are
 /// anonymous, always mutable, and have only a type.
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct TempDecl<'tcx> {
     pub ty: Ty<'tcx>,
 }
@@ -170,7 +173,7 @@ pub struct TempDecl<'tcx> {
 ///
 /// there is only one argument, of type `(i32, u32)`, but two bindings
 /// (`x` and `y`).
-#[derive(Clone, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ArgDecl<'tcx> {
     pub ty: Ty<'tcx>,
 }
