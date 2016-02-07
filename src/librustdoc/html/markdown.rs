@@ -579,7 +579,7 @@ mod tests {
         t("rust",                  false,        false,  false,  true,  false,        false);
         t("sh",                    false,        false,  false,  false, false,        false);
         t("ignore",                false,        false,  true,   true,  false,        false);
-        t("should_panic",          true,         false,  false,  true,  false,        false);
+        t("should_panic",          true,         true,   false,  true,  false,        false);
         t("no_run",                false,        true,   false,  true,  false,        false);
         t("test_harness",          false,        false,  false,  true,  true,         false);
         t("compile_fail",          false,        false,  false,  true,  false,        true);

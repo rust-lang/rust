@@ -1406,7 +1406,7 @@ fn main() {
 To solve this situation, constrain the type of the variable.
 Examples:
 
-```
+```no_run
 #![allow(unused_variables)]
 
 fn some_func(x: &u32) {
