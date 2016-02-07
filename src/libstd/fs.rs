@@ -1881,7 +1881,7 @@ mod tests {
         check!(fs::create_dir_all(&d2));
         check!(check!(File::create(&canary)).write(b"foo"));
         check!(symlink_junction(&d2, &dt.join("d2")));
-        check!(symlink_file(&canary, &d1.join("canary")));
+        let _ = symlink_file(&canary, &d1.join("canary"));
         check!(fs::remove_dir_all(&d1));
 
         assert!(!d1.is_dir());
