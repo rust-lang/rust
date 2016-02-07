@@ -4,7 +4,7 @@ use rustc::middle::def::{Def, PathResolution};
 use rustc_front::hir::*;
 use rustc_front::util::is_comparison_binop;
 use syntax::codemap::Span;
-use syntax::ast::Lit_::*;
+use syntax::ast::Lit_;
 
 use utils::span_lint;
 
@@ -254,7 +254,7 @@ fn check_ineffective_gt(cx: &LateContext, span: Span, m: u64, c: u64, op: &str) 
 fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u64> {
     match lit.node {
         ExprLit(ref lit_ptr) => {
-            if let LitInt(value, _) = lit_ptr.node {
+            if let Lit_::LitInt(value, _) = lit_ptr.node {
                 Some(value) //TODO: Handle sign
             } else {
                 None

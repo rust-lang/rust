@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 113 lints included in this crate:
+There are 114 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -34,6 +34,7 @@ name                                                                            
 [drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                           | warn    | call to `std::mem::drop` with a reference instead of an owned value, which will not call the `Drop::drop` method on the underlying value
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument) | warn    | Function arguments having names which only differ by an underscore
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                       | warn    | empty `loop {}` detected
+[enum_glob_use](https://github.com/Manishearth/rust-clippy/wiki#enum_glob_use)                                 | allow   | finds use items that import all variants of an enum
 [enum_variant_names](https://github.com/Manishearth/rust-clippy/wiki#enum_variant_names)                       | warn    | finds enums where all variants share a prefix/postfix
 [eq_op](https://github.com/Manishearth/rust-clippy/wiki#eq_op)                                                 | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
 [expl_impl_clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#expl_impl_clone_on_copy)             | warn    | implementing `Clone` explicitly on `Copy` types

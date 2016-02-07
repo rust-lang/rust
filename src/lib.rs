@@ -40,6 +40,7 @@ pub mod utils;
 pub mod consts;
 pub mod types;
 pub mod misc;
+pub mod enum_glob_use;
 pub mod eq_op;
 pub mod bit_mask;
 pub mod ptr_arg;
@@ -99,6 +100,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box misc::CmpNan);
     reg.register_late_lint_pass(box eq_op::EqOp);
     reg.register_early_lint_pass(box enum_variants::EnumVariantNames);
+    reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
     reg.register_late_lint_pass(box bit_mask::BitMask);
     reg.register_late_lint_pass(box ptr_arg::PtrArg);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
@@ -157,6 +159,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box regex::RegexPass);
 
     reg.register_lint_group("clippy_pedantic", vec![
+        enum_glob_use::ENUM_GLOB_USE,
         matches::SINGLE_MATCH_ELSE,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,

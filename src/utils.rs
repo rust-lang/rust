@@ -1,7 +1,7 @@
 use consts::constant;
 use reexport::*;
-use rustc::front::map::Node::*;
-use rustc::lint::*;
+use rustc::front::map::Node;
+use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::middle::def_id::DefId;
 use rustc::middle::{cstore, def, infer, ty, traits};
 use rustc::session::Session;
@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use syntax::ast::Lit_::*;
+use syntax::ast::Lit_;
 use syntax::ast;
 use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
 use syntax::errors::DiagnosticBuilder;
@@ -296,9 +296,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
     match cx.tcx.map.find(parent_id) {
-        Some(NodeItem(&Item{ ref name, .. })) |
-        Some(NodeTraitItem(&TraitItem{ ref name, .. })) |
-        Some(NodeImplItem(&ImplItem{ ref name, .. })) => Some(*name),
+        Some(Node::NodeItem(&Item{ ref name, .. })) |
+        Some(Node::NodeTraitItem(&TraitItem{ ref name, .. })) |
+        Some(Node::NodeImplItem(&ImplItem{ ref name, .. })) => Some(*name),
         _ => None,
     }
 }
@@ -408,7 +408,7 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
         return None;
     }
     map.find(parent_id).and_then(|node| {
-        if let NodeExpr(parent) = node {
+        if let Node::NodeExpr(parent) = node {
             Some(parent)
         } else {
             None
@@ -422,8 +422,8 @@ pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c 
                             .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
-            NodeBlock(ref block) => Some(block),
-            NodeItem(&Item{ node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
+            Node::NodeBlock(ref block) => Some(block),
+            Node::NodeItem(&Item{ node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
             _ => None,
         }
     } else {
@@ -529,7 +529,7 @@ pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
 pub fn is_integer_literal(expr: &Expr, value: u64) -> bool {
     // FIXME: use constant folding
     if let ExprLit(ref spanned) = expr.node {
-        if let LitInt(v, _) = spanned.node {
+        if let Lit_::LitInt(v, _) = spanned.node {
             return v == value;
         }
     }
@@ -575,7 +575,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
         }
         if let ast::MetaNameValue(ref key, ref value) = attr.value.node {
             if *key == name {
-                if let LitStr(ref s, _) = value.node {
+                if let Lit_::LitStr(ref s, _) = value.node {
                     if let Ok(value) = FromStr::from_str(s) {
                         f(value)
                     } else {
