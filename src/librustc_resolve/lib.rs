@@ -951,21 +951,26 @@ bitflags! {
         // We need to track them to prohibit reexports like `pub use PrivEnum::Variant`.
         const PRIVATE_VARIANT = 1 << 2,
         const PRELUDE = 1 << 3,
+        const GLOB_IMPORTED = 1 << 4,
     }
 }
 
 // Records a possibly-private value, type, or module definition.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct NameBinding<'a> {
-    modifiers: DefModifiers, // see note in ImportResolution about how to use this
-    def_or_module: DefOrModule<'a>,
+    modifiers: DefModifiers,
+    kind: NameBindingKind<'a>,
     span: Option<Span>,
 }
 
-#[derive(Clone, Debug)]
-enum DefOrModule<'a> {
+#[derive(Debug)]
+enum NameBindingKind<'a> {
     Def(Def),
     Module(Module<'a>),
+    Import {
+        binding: &'a NameBinding<'a>,
+        id: NodeId,
+    },
 }
 
 impl<'a> NameBinding<'a> {
@@ -976,20 +981,22 @@ impl<'a> NameBinding<'a> {
             DefModifiers::empty()
         } | DefModifiers::IMPORTABLE;
 
-        NameBinding { modifiers: modifiers, def_or_module: DefOrModule::Module(module), span: span }
+        NameBinding { modifiers: modifiers, kind: NameBindingKind::Module(module), span: span }
     }
 
     fn module(&self) -> Option<Module<'a>> {
-        match self.def_or_module {
-            DefOrModule::Module(ref module) => Some(module),
-            DefOrModule::Def(_) => None,
+        match self.kind {
+            NameBindingKind::Module(module) => Some(module),
+            NameBindingKind::Def(_) => None,
+            NameBindingKind::Import { binding, .. } => binding.module(),
         }
     }
 
     fn def(&self) -> Option<Def> {
-        match self.def_or_module {
-            DefOrModule::Def(def) => Some(def),
-            DefOrModule::Module(ref module) => module.def,
+        match self.kind {
+            NameBindingKind::Def(def) => Some(def),
+            NameBindingKind::Module(module) => module.def,
+            NameBindingKind::Import { binding, .. } => binding.def(),
         }
     }
 
@@ -1008,6 +1015,13 @@ impl<'a> NameBinding<'a> {
 
     fn is_extern_crate(&self) -> bool {
         self.module().map(|module| module.is_extern_crate).unwrap_or(false)
+    }
+
+    fn is_import(&self) -> bool {
+        match self.kind {
+            NameBindingKind::Import { .. } => true,
+            _ => false,
+        }
     }
 }
 

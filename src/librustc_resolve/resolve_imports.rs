@@ -11,10 +11,9 @@
 use self::ImportDirectiveSubclass::*;
 
 use DefModifiers;
-use DefOrModule;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
-use NameBinding;
+use {NameBinding, NameBindingKind};
 use ResolveResult;
 use ResolveResult::*;
 use Resolver;
@@ -82,11 +81,22 @@ impl ImportDirective {
     // Given the binding to which this directive resolves in a particular namespace,
     // this returns the binding for the name this directive defines in that namespace.
     fn import<'a>(&self, binding: &'a NameBinding<'a>) -> NameBinding<'a> {
-        let mut binding = binding.clone();
-        if self.shadowable == Shadowable::Always {
-            binding.modifiers = binding.modifiers | DefModifiers::PRELUDE;
+        let mut modifiers = match self.is_public {
+            true => DefModifiers::PUBLIC | DefModifiers::IMPORTABLE,
+            false => DefModifiers::empty(),
+        };
+        if let GlobImport = self.subclass {
+            modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
         }
-        binding
+        if self.shadowable == Shadowable::Always {
+            modifiers = modifiers | DefModifiers::PRELUDE;
+        }
+
+        NameBinding {
+            kind: NameBindingKind::Import { binding: binding, id: self.id },
+            span: Some(self.span),
+            modifiers: modifiers,
+        }
     }
 }
 
@@ -216,7 +226,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
                 let dummy_binding = self.resolver.new_name_binding(NameBinding {
                     modifiers: DefModifiers::IMPORTABLE,
-                    def_or_module: DefOrModule::Def(Def::Err),
+                    kind: NameBindingKind::Def(Def::Err),
                     span: None,
                 });
 
