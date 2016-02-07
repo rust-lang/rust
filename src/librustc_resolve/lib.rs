@@ -1202,10 +1202,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn record_import_use(&mut self, name: Name, ns: Namespace, resolution: &ImportResolution<'a>) {
         let import_id = resolution.id;
         self.used_imports.insert((import_id, ns));
-        match resolution.target.as_ref().and_then(|target| target.target_module.def_id()) {
-            Some(DefId { krate, .. }) => { self.used_crates.insert(krate); }
-            _ => {}
-        };
 
         if !self.make_glob_map {
             return;
@@ -1299,11 +1295,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     if let Some(module_def) = target.binding.module() {
-                        // track extern crates for unused_extern_crate lint
-                        if let Some(did) = module_def.def_id() {
-                            self.used_crates.insert(did.krate);
-                        }
-
                         search_module = module_def;
 
                         // Keep track of the closest private module used
@@ -1573,6 +1564,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if let Some(binding) = module_.get_child(name, namespace) {
             debug!("(resolving name in module) found node as child");
+            if binding.is_extern_crate() {
+                // track the extern crate as used.
+                if let Some(DefId { krate, .. }) = binding.module().unwrap().def_id() {
+                    self.used_crates.insert(krate);
+                }
+            }
             return Success((Target::new(module_, binding, Shadowable::Never), false));
         }
 
@@ -2923,9 +2920,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             _ => return None,
         };
-        if let Some(DefId{krate: kid, ..}) = containing_module.def_id() {
-            self.used_crates.insert(kid);
-        }
         return Some(def);
     }
 
