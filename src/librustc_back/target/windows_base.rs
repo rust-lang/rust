@@ -84,7 +84,6 @@ pub fn opts() -> TargetOptions {
             "rsend.o".to_string()
         ),
         custom_unwind_resume: true,
-        exe_allocation_crate: super::maybe_jemalloc(),
 
         .. Default::default()
     }
