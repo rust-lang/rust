@@ -125,14 +125,6 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
         let tcx = self.tcx();
         match stmt.kind {
             StatementKind::Assign(ref lv, ref rv) => {
-                match lv {
-                    &Lvalue::ReturnPointer if mir.return_ty == ty::FnDiverging => {
-                        // HACK: buggy writes
-                        return;
-                    }
-                    _ => {}
-                }
-
                 let lv_ty = mir.lvalue_ty(tcx, lv).to_ty(tcx);
                 let rv_ty = mir.rvalue_ty(tcx, rv);
                 if let Some(rv_ty) = rv_ty {
