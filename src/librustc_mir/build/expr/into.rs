@@ -63,7 +63,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 } else {
                     // Body of the `if` expression without an `else` clause must return `()`, thus
                     // we implicitly generate a `else {}` if it is not specified.
-                    this.cfg.push_assign_unit(else_block, expr_span, &Lvalue::ReturnPointer);
+                    this.cfg.push_assign_unit(else_block, expr_span, destination);
                     else_block
                 };
 
