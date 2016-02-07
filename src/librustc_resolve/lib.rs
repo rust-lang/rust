@@ -1311,7 +1311,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                            name);
                     return Indeterminate;
                 }
-                Success((binding, used_proxy)) => {
+                Success(binding) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     if let Some(module_def) = binding.module() {
@@ -1319,7 +1319,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         // Keep track of the closest private module used
                         // when resolving this import chain.
-                        if !used_proxy && !search_module.is_public {
+                        if !binding.is_public() {
                             if let Some(did) = search_module.def_id() {
                                 closest_private = LastMod(DependsOn(did));
                             }
@@ -1410,7 +1410,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 debug!("(resolving module path for import) indeterminate; bailing");
                                 return Indeterminate;
                             }
-                            Success((binding, _)) => match binding.module() {
+                            Success(binding) => match binding.module() {
                                 Some(containing_module) => {
                                     search_module = containing_module;
                                     start_index = 1;
@@ -1444,7 +1444,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      name: Name,
                                      namespace: Namespace,
                                      record_used: bool)
-                                     -> ResolveResult<(&'a NameBinding<'a>, bool)> {
+                                     -> ResolveResult<&'a NameBinding<'a>> {
         debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
                name,
                namespace,
@@ -1466,10 +1466,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     debug!("(resolving item in lexical scope) indeterminate higher scope; bailing");
                     return Indeterminate;
                 }
-                Success((binding, used_reexport)) => {
+                Success(binding) => {
                     // We found the module.
                     debug!("(resolving item in lexical scope) found name in module, done");
-                    return Success((binding, used_reexport));
+                    return Success(binding);
                 }
             }
 
@@ -1565,16 +1565,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Attempts to resolve the supplied name in the given module for the
     /// given namespace. If successful, returns the binding corresponding to
     /// the name.
-    ///
-    /// The boolean returned on success is an indicator of whether this lookup
-    /// passed through a public re-export proxy.
     fn resolve_name_in_module(&mut self,
                               module_: Module<'a>,
                               name: Name,
                               namespace: Namespace,
                               allow_private_imports: bool,
                               record_used: bool)
-                              -> ResolveResult<(&'a NameBinding<'a>, bool)> {
+                              -> ResolveResult<&'a NameBinding<'a>> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
                name,
                module_to_string(&*module_));
@@ -1590,7 +1587,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.used_crates.insert(krate);
                 }
             }
-            return Success((binding, false));
+            return Success(binding);
         }
 
         // Check the list of resolved imports.
@@ -1605,7 +1602,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if record_used {
                         self.record_import_use(name, namespace, &import_resolution);
                     }
-                    return Success((binding, true));
+                    return Success(binding);
                 }
             }
             Some(..) | None => {} // Continue.
@@ -2636,7 +2633,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        -> BareIdentifierPatternResolution {
         let module = self.current_module;
         match self.resolve_item_in_lexical_scope(module, name, ValueNS, true) {
-            Success((binding, _)) => {
+            Success(binding) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
                        name,
                        binding);
@@ -2796,7 +2793,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let module = self.current_module;
         let name = identifier.unhygienic_name;
         match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
-            Success((binding, _)) => binding.def().map(LocalDef::from_def),
+            Success(binding) => binding.def().map(LocalDef::from_def),
             Failed(Some((span, msg))) => {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
                 None
@@ -2934,7 +2931,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let name = segments.last().unwrap().identifier.name;
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
         let def = match result {
-            Success((binding, _)) => {
+            Success(binding) => {
                 let (def, lp) = binding.def_and_lp();
                 (def, last_private.or(lp))
             }
@@ -2990,7 +2987,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let name = segments.last().unwrap().identifier.name;
         match self.resolve_name_in_module(containing_module, name, namespace, false, true) {
-            Success((binding, _)) => {
+            Success(binding) => {
                 let (def, lp) = binding.def_and_lp();
                 Some((def, last_private.or(lp)))
             }
@@ -3028,11 +3025,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             if let AnonymousModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
-                if let Success((binding, _)) = self.resolve_name_in_module(module,
-                                                                           ident.unhygienic_name,
-                                                                           namespace,
-                                                                           true,
-                                                                           true) {
+                if let Success(binding) = self.resolve_name_in_module(module,
+                                                                      ident.unhygienic_name,
+                                                                      namespace,
+                                                                      true,
+                                                                      true) {
                     if let Some(def) = binding.def() {
                         return Some(LocalDef::from_def(def));
                     }
