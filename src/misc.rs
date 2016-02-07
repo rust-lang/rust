@@ -11,7 +11,7 @@ use rustc::middle::const_eval::eval_const_expr_partial;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 
 use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint};
-use utils::{span_help_and_lint, walk_ptrs_ty, is_integer_literal, implements_trait};
+use utils::{span_lint_and_then, walk_ptrs_ty, is_integer_literal, implements_trait};
 
 /// **What it does:** This lint checks for function arguments and let bindings denoted as `ref`.
 ///
@@ -62,16 +62,22 @@ impl LateLintPass for TopLevelRefPass {
             let Some(ref init) = l.init
             ], {
                 let tyopt = if let Some(ref ty) = l.ty {
-                    format!(": {:?} ", ty)
+                    format!(": {}", snippet(cx, ty.span, "_"))
                 } else {
                     "".to_owned()
                 };
-                span_help_and_lint(cx,
+                span_lint_and_then(cx,
                     TOPLEVEL_REF_ARG,
                     l.pat.span,
                     "`ref` on an entire `let` pattern is discouraged, take a reference with & instead",
-                    &format!("try `let {} {}= &{};`", snippet(cx, i.span, "_"),
-                             tyopt, snippet(cx, init.span, "_"))
+                    |db| {
+                        db.span_suggestion(s.span,
+                                           "try",
+                                           format!("let {}{} = &{};",
+                                                   snippet(cx, i.span, "_"),
+                                                   tyopt,
+                                                   snippet(cx, init.span, "_")));
+                    }
                 );
             }
         };
