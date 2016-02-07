@@ -25,7 +25,6 @@ use build_reduced_graph;
 
 use rustc::lint;
 use rustc::middle::def::*;
-use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::*;
 
 use syntax::ast::{NodeId, Name};
@@ -100,21 +99,12 @@ impl ImportDirective {
     }
 }
 
-#[derive(Debug)]
-/// An NameResolution records what we know about an imported name in a given namespace.
-/// More specifically, it records the number of unresolved `use` directives that import the name,
-/// the `use` directive importing the name in the namespace, and the `NameBinding` to which the
-/// name in the namespace resolves (if applicable).
-/// Different `use` directives may import the same name in different namespaces.
+#[derive(Clone, Copy)]
+/// Records information about the resolution of a name in a module.
 pub struct NameResolution<'a> {
-    // When outstanding_references reaches zero, outside modules can count on the targets being
-    // correct. Before then, all bets are off; future `use` directives could override the name.
-    // Since shadowing is forbidden, the only way outstanding_references > 1 in a legal program
-    // is if the name is imported by exactly two `use` directives, one of which resolves to a
-    // value and the other of which resolves to a type.
+    /// The number of unresolved single imports that could define the name.
     pub outstanding_references: usize,
-
-    /// Resolution of the name in the namespace
+    /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
 }
 
@@ -125,13 +115,41 @@ impl<'a> Default for NameResolution<'a> {
 }
 
 impl<'a> NameResolution<'a> {
-    pub fn shadowable(&self) -> Shadowable {
-        match self.binding {
-            Some(binding) if binding.defined_with(DefModifiers::PRELUDE) =>
-                Shadowable::Always,
-            Some(_) => Shadowable::Never,
-            None => Shadowable::Always,
+    pub fn result(&self, outstanding_globs: usize) -> ResolveResult<&'a NameBinding<'a>> {
+        // If no unresolved imports (single or glob) can define the name, self.binding is final.
+        if self.outstanding_references == 0 && outstanding_globs == 0 {
+            return self.binding.map(Success).unwrap_or(Failed(None));
         }
+
+        if let Some(binding) = self.binding {
+            // Single imports will never be shadowable by other single or glob imports.
+            if !binding.defined_with(DefModifiers::GLOB_IMPORTED) { return Success(binding); }
+            // Non-PRELUDE glob imports will never be shadowable by other glob imports.
+            if self.outstanding_references == 0 && !binding.defined_with(DefModifiers::PRELUDE) {
+                return Success(binding);
+            }
+        }
+
+        Indeterminate
+    }
+
+    // Define the name or return the existing binding if there is a collision.
+    pub fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
+        let is_prelude = |binding: &NameBinding| binding.defined_with(DefModifiers::PRELUDE);
+        let old_binding = match self.binding {
+            Some(old_binding) if is_prelude(binding) && !is_prelude(old_binding) => return Ok(()),
+            Some(old_binding) if is_prelude(old_binding) == is_prelude(binding) => old_binding,
+            _ => { self.binding = Some(binding); return Ok(()); }
+        };
+
+        // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
+        if !old_binding.is_import() && binding.defined_with(DefModifiers::GLOB_IMPORTED) {
+            if let NameBindingKind::Import { binding, .. } = binding.kind {
+                if binding.is_import() { return Ok(()); }
+            }
+        }
+
+        Err(old_binding)
     }
 }
 
@@ -201,27 +219,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // If it's a single failed import then create a "fake" import
         // resolution for it so that later resolve stages won't complain.
         if let SingleImport(target, _) = e.import_directive.subclass {
-            let mut import_resolutions = e.source_module.import_resolutions.borrow_mut();
-
-            let resolution = import_resolutions.entry((target, ValueNS)).or_insert_with(|| {
-                debug!("(resolving import error) adding import resolution for `{}`",
-                       target);
-
-                NameResolution::default()
+            let dummy_binding = self.resolver.new_name_binding(NameBinding {
+                modifiers: DefModifiers::PRELUDE,
+                kind: NameBindingKind::Def(Def::Err),
+                span: None,
             });
 
-            if resolution.binding.is_none() {
-                debug!("(resolving import error) adding fake target to import resolution of `{}`",
-                       target);
-
-                let dummy_binding = self.resolver.new_name_binding(NameBinding {
-                    modifiers: DefModifiers::IMPORTABLE,
-                    kind: NameBindingKind::Def(Def::Err),
-                    span: None,
-                });
-
-                resolution.binding = Some(dummy_binding);
-            }
+            let _ = e.source_module.try_define_child(target, ValueNS, dummy_binding);
+            let _ = e.source_module.try_define_child(target, TypeNS, dummy_binding);
         }
 
         let path = import_path_to_string(&e.import_directive.module_path,
@@ -360,68 +365,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             })
     }
 
-    /// Resolves the name in the namespace of the module because it is being imported by
-    /// importing_module. Returns the name bindings defining the name.
-    fn resolve_name_in_module(&mut self,
-                              module: Module<'b>, // Module containing the name
-                              name: Name,
-                              ns: Namespace,
-                              importing_module: Module<'b>) // Module importing the name
-                              -> ResolveResult<&'b NameBinding<'b>> {
-        build_reduced_graph::populate_module_if_necessary(self.resolver, module);
-        if let Some(name_binding) = module.get_child(name, ns) {
-            if name_binding.is_extern_crate() {
-                // track the extern crate as used.
-                if let Some(DefId { krate, .. }) = name_binding.module().unwrap().def_id() {
-                    self.resolver.used_crates.insert(krate);
-                }
-            }
-            return Success(name_binding);
-        }
-
-        // If there is an unresolved glob at this point in the containing module, bail out.
-        // We don't know enough to be able to resolve the name.
-        if module.pub_glob_count.get() > 0 {
-            return Indeterminate;
-        }
-
-        match module.import_resolutions.borrow().get(&(name, ns)) {
-            // The containing module definitely doesn't have an exported import with the
-            // name in question. We can therefore accurately report that names are unbound.
-            None => Failed(None),
-
-            // The name is an import which has been fully resolved, so we just follow it.
-            Some(resolution) if resolution.outstanding_references == 0 => {
-                if let Some(binding) = resolution.binding {
-                    // Import resolutions must be declared with "pub" in order to be exported.
-                    if !binding.is_public() {
-                        return Failed(None);
-                    }
-
-                    self.resolver.record_import_use(name, ns, binding);
-                    Success(binding)
-                } else {
-                    Failed(None)
-                }
-            }
-
-            // If module is the same module whose import we are resolving and
-            // it has an unresolved import with the same name as `name`, then the user
-            // is actually trying to import an item that is declared in the same scope
-            //
-            // e.g
-            // use self::submodule;
-            // pub mod submodule;
-            //
-            // In this case we continue as if we resolved the import and let
-            // check_for_conflicts_between_imports_and_items handle the conflict
-            Some(_) => match (importing_module.def_id(), module.def_id()) {
-                (Some(id1), Some(id2)) if id1 == id2 => Failed(None),
-                _ => Indeterminate
-            },
-        }
-    }
-
     fn resolve_single_import(&mut self,
                              module_: Module<'b>,
                              target_module: Module<'b>,
@@ -448,11 +391,23 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
         };
 
+        // If this is a circular import, we temporarily count it as determined so that
+        // it fails (as opposed to being indeterminate) when nothing else can define it.
+        if target_module.def_id() == module_.def_id() && source == target {
+            module_.decrement_outstanding_references_for(target, ValueNS);
+            module_.decrement_outstanding_references_for(target, TypeNS);
+        }
+
         // We need to resolve both namespaces for this to succeed.
         let value_result =
-            self.resolve_name_in_module(target_module, source, ValueNS, module_);
+            self.resolver.resolve_name_in_module(target_module, source, ValueNS, false, true);
         let type_result =
-            self.resolve_name_in_module(target_module, source, TypeNS, module_);
+            self.resolver.resolve_name_in_module(target_module, source, TypeNS, false, true);
+
+        if target_module.def_id() == module_.def_id() && source == target {
+            module_.increment_outstanding_references_for(target, ValueNS);
+            module_.increment_outstanding_references_for(target, TypeNS);
+        }
 
         match (&value_result, &type_result) {
             (&Success(name_binding), _) if !name_binding.is_import() &&
@@ -488,82 +443,32 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             _ => {}
         }
 
-        let mut lev_suggestion = "".to_owned();
         match (&value_result, &type_result) {
             (&Indeterminate, _) | (_, &Indeterminate) => return Indeterminate,
             (&Failed(_), &Failed(_)) => {
                 let children = target_module.children.borrow();
                 let names = children.keys().map(|&(ref name, _)| name);
-                if let Some(name) = find_best_match_for_name(names, &source.as_str(), None) {
-                    lev_suggestion = format!(". Did you mean to use `{}`?", name);
-                } else {
-                    let resolutions = target_module.import_resolutions.borrow();
-                    let names = resolutions.keys().map(|&(ref name, _)| name);
-                    if let Some(name) = find_best_match_for_name(names,
-                                                                 &source.as_str(),
-                                                                 None) {
-                        lev_suggestion =
-                            format!(". Did you mean to use the re-exported import `{}`?", name);
-                    }
-                }
+                let lev_suggestion = match find_best_match_for_name(names, &source.as_str(), None) {
+                    Some(name) => format!(". Did you mean to use `{}`?", name),
+                    None => "".to_owned(),
+                };
+                let msg = format!("There is no `{}` in `{}`{}",
+                                  source,
+                                  module_to_string(target_module), lev_suggestion);
+                return Failed(Some((directive.span, msg)));
             }
             _ => (),
         }
 
-        // We've successfully resolved the import. Write the results in.
-
-        {
-            let mut import_resolutions = module_.import_resolutions.borrow_mut();
-            let mut check_and_write_import = |namespace, result| {
-                let result: &ResolveResult<&NameBinding> = result;
-
-                let import_resolution = import_resolutions.get_mut(&(target, namespace)).unwrap();
-                let namespace_name = match namespace {
-                    TypeNS => "type",
-                    ValueNS => "value",
-                };
-
-                match *result {
-                    Success(name_binding) => {
-                        debug!("(resolving single import) found {:?} target: {:?}",
-                               namespace_name,
-                               name_binding.def());
-                        self.check_for_conflicting_import(&import_resolution,
-                                                          directive.span,
-                                                          target,
-                                                          namespace);
-
-                        self.check_that_import_is_importable(&name_binding,
-                                                             directive.span,
-                                                             target);
-
-                        import_resolution.binding =
-                            Some(self.resolver.new_name_binding(directive.import(name_binding)));
-
-                        self.add_export(module_, target, import_resolution.binding.unwrap());
-                    }
-                    Failed(_) => {
-                        // Continue.
-                    }
-                    Indeterminate => {
-                        panic!("{:?} result should be known at this point", namespace_name);
-                    }
+        for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
+            if let Success(binding) = *result {
+                if !binding.defined_with(DefModifiers::IMPORTABLE) {
+                    let msg = format!("`{}` is not directly importable", target);
+                    span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
                 }
 
-                self.check_for_conflicts_between_imports_and_items(module_,
-                                                                   import_resolution,
-                                                                   directive.span,
-                                                                   (target, namespace));
-            };
-            check_and_write_import(ValueNS, &value_result);
-            check_and_write_import(TypeNS, &type_result);
-        }
-
-        if let (&Failed(_), &Failed(_)) = (&value_result, &type_result) {
-            let msg = format!("There is no `{}` in `{}`{}",
-                              source,
-                              module_to_string(target_module), lev_suggestion);
-            return Failed(Some((directive.span, msg)));
+                self.define(module_, target, ns, directive.import(binding));
+            }
         }
 
         let value_def_and_priv = {
@@ -624,74 +529,41 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     fn resolve_glob_import(&mut self,
                            module_: Module<'b>,
                            target_module: Module<'b>,
-                           import_directive: &ImportDirective,
+                           directive: &ImportDirective,
                            lp: LastPrivate)
                            -> ResolveResult<()> {
-        let id = import_directive.id;
-
-        // This function works in a highly imperative manner; it eagerly adds
-        // everything it can to the list of import resolutions of the module
-        // node.
-        debug!("(resolving glob import) resolving glob import {}", id);
-
-        // We must bail out if the node has unresolved imports of any kind
-        // (including globs).
-        if (*target_module).pub_count.get() > 0 {
+        // We must bail out if the node has unresolved imports of any kind (including globs).
+        if target_module.pub_count.get() > 0 {
             debug!("(resolving glob import) target module has unresolved pub imports; bailing out");
-            return ResolveResult::Indeterminate;
+            return Indeterminate;
         }
 
-        // Add all resolved imports from the containing module.
-        let import_resolutions = target_module.import_resolutions.borrow();
-
-        if module_.import_resolutions.borrow_state() != ::std::cell::BorrowState::Unused {
-            // In this case, target_module == module_
-            // This means we are trying to glob import a module into itself,
-            // and it is a no-go
-            debug!("(resolving glob imports) target module is current module; giving up");
-            return ResolveResult::Failed(Some((import_directive.span,
-                                               "Cannot glob-import a module into itself.".into())));
-        }
-
-        for (&(name, ns), target_import_resolution) in import_resolutions.iter() {
-            debug!("(resolving glob import) writing module resolution {} into `{}`",
-                   name,
-                   module_to_string(module_));
-
-            // Here we merge two import resolutions.
-            let mut import_resolutions = module_.import_resolutions.borrow_mut();
-            let mut dest_import_resolution =
-                import_resolutions.entry((name, ns))
-                                  .or_insert_with(|| NameResolution::default());
-
-            match target_import_resolution.binding {
-                Some(binding) if binding.is_public() => {
-                    self.check_for_conflicting_import(&dest_import_resolution,
-                                                      import_directive.span,
-                                                      name,
-                                                      ns);
-                    dest_import_resolution.binding =
-                        Some(self.resolver.new_name_binding(import_directive.import(binding)));
-                    self.add_export(module_, name, dest_import_resolution.binding.unwrap());
-                }
-                _ => {}
-            }
+        if module_.def_id() == target_module.def_id() {
+            // This means we are trying to glob import a module into itself, and it is a no-go
+            let msg = "Cannot glob-import a module into itself.".into();
+            return Failed(Some((directive.span, msg)));
         }
 
         // Add all children from the containing module.
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
+        target_module.for_each_child(|name, ns, binding| {
+            if !binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) { return }
+            self.define(module_, name, ns, directive.import(binding));
 
-        target_module.for_each_local_child(|name, ns, name_binding| {
-            self.merge_import_resolution(module_,
-                                         target_module,
-                                         import_directive,
-                                         (name, ns),
-                                         name_binding);
+            if ns == TypeNS && directive.is_public &&
+               binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
+                let msg = format!("variant `{}` is private, and cannot be reexported (error \
+                                   E0364), consider declaring its enum as `pub`", name);
+                self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                               directive.id,
+                                               directive.span,
+                                               msg);
+            }
         });
 
         // Record the destination of this import
         if let Some(did) = target_module.def_id() {
-            self.resolver.def_map.borrow_mut().insert(id,
+            self.resolver.def_map.borrow_mut().insert(directive.id,
                                                       PathResolution {
                                                           base_def: Def::Mod(did),
                                                           last_private: lp,
@@ -700,61 +572,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         debug!("(resolving glob import) successfully resolved import");
-        return ResolveResult::Success(());
-    }
-
-    fn merge_import_resolution(&mut self,
-                               module_: Module<'b>,
-                               containing_module: Module<'b>,
-                               import_directive: &ImportDirective,
-                               (name, ns): (Name, Namespace),
-                               name_binding: &'b NameBinding<'b>) {
-        let is_public = import_directive.is_public;
-
-        let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let dest_import_resolution = import_resolutions.entry((name, ns)).or_insert_with(|| {
-            NameResolution::default()
-        });
-
-        debug!("(resolving glob import) writing resolution `{}` in `{}` to `{}`",
-               name,
-               module_to_string(&*containing_module),
-               module_to_string(module_));
-
-        // Merge the child item into the import resolution.
-        let modifier = DefModifiers::IMPORTABLE | DefModifiers::PUBLIC;
-
-        if ns == TypeNS && is_public && name_binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
-            let msg = format!("variant `{}` is private, and cannot be reexported (error \
-                               E0364), consider declaring its enum as `pub`", name);
-            self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                           import_directive.id,
-                                           import_directive.span,
-                                           msg);
-        }
-
-        if name_binding.defined_with(modifier) {
-            let namespace_name = match ns {
-                TypeNS => "type",
-                ValueNS => "value",
-            };
-            debug!("(resolving glob import) ... for {} target", namespace_name);
-            if dest_import_resolution.shadowable() == Shadowable::Never {
-                let msg = format!("a {} named `{}` has already been imported in this module",
-                                 namespace_name,
-                                 name);
-                span_err!(self.resolver.session, import_directive.span, E0251, "{}", msg);
-            } else {
-                dest_import_resolution.binding =
-                    Some(self.resolver.new_name_binding(import_directive.import(name_binding)));
-                self.add_export(module_, name, dest_import_resolution.binding.unwrap());
-            }
-        }
-
-        self.check_for_conflicts_between_imports_and_items(module_,
-                                                           dest_import_resolution,
-                                                           import_directive.span,
-                                                           (name, ns));
+        return Success(());
     }
 
     fn add_export(&mut self, module: Module<'b>, name: Name, binding: &NameBinding<'b>) {
@@ -770,119 +588,70 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         self.resolver.export_map.entry(node_id).or_insert(Vec::new()).push(export);
     }
 
-    /// Checks that imported names and items don't have the same name.
-    fn check_for_conflicting_import(&mut self,
-                                    import_resolution: &NameResolution,
-                                    import_span: Span,
-                                    name: Name,
-                                    namespace: Namespace) {
-        let binding = &import_resolution.binding;
-        debug!("check_for_conflicting_import: {}; target exists: {}",
-               name,
-               binding.is_some());
-
-        match *binding {
-            Some(binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
-                let ns_word = match namespace {
-                    TypeNS => {
-                        match binding.module() {
-                            Some(ref module) if module.is_normal() => "module",
-                            Some(ref module) if module.is_trait() => "trait",
-                            _ => "type",
-                        }
-                    }
-                    ValueNS => "value",
-                };
-                let mut err = struct_span_err!(self.resolver.session,
-                                               import_span,
-                                               E0252,
-                                               "a {} named `{}` has already been imported \
-                                                in this module",
-                                               ns_word,
-                                               name);
-                span_note!(&mut err,
-                           binding.span.unwrap(),
-                           "previous import of `{}` here",
-                           name);
-                err.emit();
-            }
-            Some(_) | None => {}
+    fn define(&mut self,
+              parent: Module<'b>,
+              name: Name,
+              ns: Namespace,
+              binding: NameBinding<'b>) {
+        let binding = self.resolver.new_name_binding(binding);
+        if let Err(old_binding) = parent.try_define_child(name, ns, binding) {
+            self.report_conflict(name, ns, binding, old_binding);
+        } else if binding.is_public() {
+            self.add_export(parent, name, binding);
         }
     }
 
-    /// Checks that an import is actually importable
-    fn check_that_import_is_importable(&mut self,
-                                       name_binding: &NameBinding,
-                                       import_span: Span,
-                                       name: Name) {
-        if !name_binding.defined_with(DefModifiers::IMPORTABLE) {
-            let msg = format!("`{}` is not directly importable", name);
-            span_err!(self.resolver.session, import_span, E0253, "{}", &msg[..]);
-        }
-    }
-
-    /// Checks that imported names and items don't have the same name.
-    fn check_for_conflicts_between_imports_and_items(&mut self,
-                                                     module: Module<'b>,
-                                                     import: &NameResolution<'b>,
-                                                     import_span: Span,
-                                                     (name, ns): (Name, Namespace)) {
-        // Check for item conflicts.
-        let name_binding = match module.get_child(name, ns) {
-            None => {
-                // There can't be any conflicts.
-                return;
-            }
-            Some(name_binding) => name_binding,
-        };
-
-        if ns == ValueNS {
-            match import.binding {
-                Some(binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
-                    let mut err = struct_span_err!(self.resolver.session,
-                                                   import_span,
-                                                   E0255,
-                                                   "import `{}` conflicts with \
-                                                    value in this module",
-                                                   name);
-                    if let Some(span) = name_binding.span {
-                        err.span_note(span, "conflicting value here");
-                    }
-                    err.emit();
-                }
-                Some(_) | None => {}
-            }
-        } else {
-            match import.binding {
-                Some(binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
-                    if name_binding.is_extern_crate() {
-                        let msg = format!("import `{0}` conflicts with imported crate \
-                                           in this module (maybe you meant `use {0}::*`?)",
-                                          name);
-                        span_err!(self.resolver.session, import_span, E0254, "{}", &msg[..]);
-                        return;
-                    }
-
-                    let (what, note) = match name_binding.module() {
-                        Some(ref module) if module.is_normal() =>
-                            ("existing submodule", "note conflicting module here"),
-                        Some(ref module) if module.is_trait() =>
-                            ("trait in this module", "note conflicting trait here"),
-                        _ => ("type in this module", "note conflicting type here"),
-                    };
-                    let mut err = struct_span_err!(self.resolver.session,
-                                                   import_span,
-                                                   E0256,
-                                                   "import `{}` conflicts with {}",
-                                                   name,
-                                                   what);
-                    if let Some(span) = name_binding.span {
-                        err.span_note(span, note);
-                    }
-                    err.emit();
-                }
-                Some(_) | None => {}
-            }
+    fn report_conflict(&mut self,
+                       name: Name,
+                       ns: Namespace,
+                       binding: &'b NameBinding<'b>,
+                       old_binding: &'b NameBinding<'b>) {
+        if old_binding.is_extern_crate() {
+            let msg = format!("import `{0}` conflicts with imported crate \
+                               in this module (maybe you meant `use {0}::*`?)",
+                              name);
+            span_err!(self.resolver.session, binding.span.unwrap(), E0254, "{}", &msg);
+        } else if old_binding.is_import() {
+            let ns_word = match (ns, old_binding.module()) {
+                (ValueNS, _) => "value",
+                (TypeNS, Some(module)) if module.is_normal() => "module",
+                (TypeNS, Some(module)) if module.is_trait() => "trait",
+                (TypeNS, _) => "type",
+            };
+            let mut err = struct_span_err!(self.resolver.session,
+                                           binding.span.unwrap(),
+                                           E0252,
+                                           "a {} named `{}` has already been imported \
+                                            in this module",
+                                           ns_word,
+                                           name);
+            err.span_note(old_binding.span.unwrap(),
+                          &format!("previous import of `{}` here", name));
+            err.emit();
+        } else if ns == ValueNS { // Check for item conflicts in the value namespace
+            let mut err = struct_span_err!(self.resolver.session,
+                                           binding.span.unwrap(),
+                                           E0255,
+                                           "import `{}` conflicts with value in this module",
+                                           name);
+            err.span_note(old_binding.span.unwrap(), "conflicting value here");
+            err.emit();
+        } else { // Check for item conflicts in the type namespace
+            let (what, note) = match old_binding.module() {
+                Some(ref module) if module.is_normal() =>
+                    ("existing submodule", "note conflicting module here"),
+                Some(ref module) if module.is_trait() =>
+                    ("trait in this module", "note conflicting trait here"),
+                _ => ("type in this module", "note conflicting type here"),
+            };
+            let mut err = struct_span_err!(self.resolver.session,
+                                           binding.span.unwrap(),
+                                           E0256,
+                                           "import `{}` conflicts with {}",
+                                           name,
+                                           what);
+            err.span_note(old_binding.span.unwrap(), note);
+            err.emit();
         }
     }
 }

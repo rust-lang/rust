@@ -14,9 +14,9 @@ use foo::bar; //~ ERROR unresolved import `foo::bar`. Maybe a missing `extern cr
 
 use bar::Baz as x; //~ ERROR unresolved import `bar::Baz`. There is no `Baz` in `bar`. Did you mean to use `Bar`?
 
-use food::baz; //~ ERROR unresolved import `food::baz`. There is no `baz` in `food`. Did you mean to use the re-exported import `bag`?
+use food::baz; //~ ERROR unresolved import `food::baz`. There is no `baz` in `food`. Did you mean to use `bag`?
 
-use food::{beens as Foo}; //~ ERROR unresolved import `food::beens`. There is no `beens` in `food`. Did you mean to use the re-exported import `beans`?
+use food::{beens as Foo}; //~ ERROR unresolved import `food::beens`. There is no `beens` in `food`. Did you mean to use `beans`?
 
 mod bar {
     pub struct Bar;
