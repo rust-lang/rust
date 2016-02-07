@@ -16,7 +16,6 @@
 use DefModifiers;
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
-use resolve_imports::NameResolution;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind};
@@ -699,15 +698,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 debug!("(building import directive) building import directive: {}::{}",
                        names_to_string(&module_.imports.borrow().last().unwrap().module_path),
                        target);
-
-                let mut import_resolutions = module_.import_resolutions.borrow_mut();
-                for &ns in [TypeNS, ValueNS].iter() {
-                    let mut resolution = import_resolutions.entry((target, ns)).or_insert(
-                        NameResolution::default()
-                    );
-
-                    resolution.outstanding_references += 1;
-                }
+                module_.increment_outstanding_references_for(target, ValueNS);
+                module_.increment_outstanding_references_for(target, TypeNS);
             }
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the

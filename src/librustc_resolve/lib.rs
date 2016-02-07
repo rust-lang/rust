@@ -670,6 +670,13 @@ impl<T> ResolveResult<T> {
             Success(t) => f(t),
         }
     }
+
+    fn success(self) -> Option<T> {
+        match self {
+            Success(t) => Some(t),
+            _ => None,
+        }
+    }
 }
 
 enum FallbackSuggestion {
@@ -867,6 +874,19 @@ impl<'a> ModuleS<'a> {
         match self.children.borrow_mut().entry((name, ns)) {
             hash_map::Entry::Vacant(entry) => { entry.insert(binding); None }
             hash_map::Entry::Occupied(entry) => { Some(entry.get()) },
+        }
+    }
+
+    fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
+        let mut resolutions = self.import_resolutions.borrow_mut();
+        resolutions.entry((name, ns)).or_insert_with(Default::default).outstanding_references += 1;
+    }
+
+    fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace) {
+        match self.import_resolutions.borrow_mut().get_mut(&(name, ns)).unwrap()
+                                                                       .outstanding_references {
+            0 => panic!("No more outstanding references!"),
+            ref mut outstanding_references => { *outstanding_references -= 1; }
         }
     }
 

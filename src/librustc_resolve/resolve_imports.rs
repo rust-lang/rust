@@ -511,9 +511,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         // We've successfully resolved the import. Write the results in.
-        let mut import_resolutions = module_.import_resolutions.borrow_mut();
 
         {
+            let mut import_resolutions = module_.import_resolutions.borrow_mut();
             let mut check_and_write_import = |namespace, result| {
                 let result: &ResolveResult<&NameBinding> = result;
 
@@ -567,14 +567,12 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         let value_def_and_priv = {
-            let import_resolution_value = import_resolutions.get_mut(&(target, ValueNS)).unwrap();
-            assert!(import_resolution_value.outstanding_references >= 1);
-            import_resolution_value.outstanding_references -= 1;
+            module_.decrement_outstanding_references_for(target, ValueNS);
 
             // Record what this import resolves to for later uses in documentation,
             // this may resolve to either a value or a type, but for documentation
             // purposes it's good enough to just favor one over the other.
-            import_resolution_value.binding.as_ref().map(|binding| {
+            value_result.success().map(|binding| {
                 let def = binding.def().unwrap();
                 let last_private = if binding.is_public() { lp } else { DependsOn(def.def_id()) };
                 (def, last_private)
@@ -582,11 +580,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         };
 
         let type_def_and_priv = {
-            let import_resolution_type = import_resolutions.get_mut(&(target, TypeNS)).unwrap();
-            assert!(import_resolution_type.outstanding_references >= 1);
-            import_resolution_type.outstanding_references -= 1;
+            module_.decrement_outstanding_references_for(target, TypeNS);
 
-            import_resolution_type.binding.as_ref().map(|binding| {
+            type_result.success().map(|binding| {
                 let def = binding.def().unwrap();
                 let last_private = if binding.is_public() { lp } else { DependsOn(def.def_id()) };
                 (def, last_private)
