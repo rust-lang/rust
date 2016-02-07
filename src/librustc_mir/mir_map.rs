@@ -148,10 +148,11 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
             Ok(mut mir) => {
-                simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir, self.tcx);
                 type_check::TypeckMir::new(&infcx).run_on_mir(&mut mir, self.tcx);
                 no_landing_pads::NoLandingPads.run_on_mir(&mut mir, self.tcx);
-
+                if self.tcx.sess.opts.mir_opt_level > 0 {
+                    simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir, self.tcx);
+                }
                 let meta_item_list = self.attr
                                          .iter()
                                          .flat_map(|a| a.meta_item_list())
