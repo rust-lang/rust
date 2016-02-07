@@ -131,8 +131,8 @@ String to be moved into a variable called `s`.
 let x = Some("s".to_string());
 
 match x {
-    op_string @ Some(s) => {}
-    None => {}
+    op_string @ Some(s) => {},
+    None => {},
 }
 ```
 
@@ -145,10 +145,10 @@ name is bound by move in a pattern, it should also be moved to wherever it is
 referenced in the pattern guard code. Doing so however would prevent the name
 from being available in the body of the match arm. Consider the following:
 
-```
+```compile_fail
 match Some("hi".to_string()) {
-    Some(s) if s.len() == 0 => // use s.
-    _ => {}
+    Some(s) if s.len() == 0 => {}, // use s.
+    _ => {},
 }
 ```
 
@@ -159,11 +159,11 @@ therefore become unavailable in the body of the arm. Although this example seems
 innocuous, the problem is most clear when considering functions that take their
 argument by value.
 
-```
+```compile_fail
 match Some("hi".to_string()) {
     Some(s) if { drop(s); false } => (),
-    Some(s) => // use s.
-    _ => {}
+    Some(s) => {}, // use s.
+    _ => {},
 }
 ```
 
@@ -1645,7 +1645,7 @@ let x: i32 = "I am not a number!";
 Another situation in which this occurs is when you attempt to use the `try!`
 macro inside a function that does not return a `Result<T, E>`:
 
-```
+```compile_fail
 use std::fs::File;
 
 fn main() {
