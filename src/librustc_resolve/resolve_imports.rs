@@ -81,7 +81,8 @@ impl ImportDirective {
 
     // Given the binding to which this directive resolves in a particular namespace,
     // this returns the binding for the name this directive defines in that namespace.
-    fn import<'a>(&self, mut binding: NameBinding<'a>) -> NameBinding<'a> {
+    fn import<'a>(&self, binding: &'a NameBinding<'a>) -> NameBinding<'a> {
+        let mut binding = binding.clone();
         if self.shadowable == Shadowable::Always {
             binding.modifiers = binding.modifiers | DefModifiers::PRELUDE;
         }
@@ -107,7 +108,7 @@ pub struct ImportResolution<'a> {
     pub is_public: bool,
 
     /// Resolution of the name in the namespace
-    pub binding: Option<NameBinding<'a>>,
+    pub binding: Option<&'a NameBinding<'a>>,
 
     /// The source node of the `use` directive
     pub id: NodeId,
@@ -125,7 +126,7 @@ impl<'a> ImportResolution<'a> {
 
     pub fn shadowable(&self) -> Shadowable {
         match self.binding {
-            Some(ref binding) if binding.defined_with(DefModifiers::PRELUDE) =>
+            Some(binding) if binding.defined_with(DefModifiers::PRELUDE) =>
                 Shadowable::Always,
             Some(_) => Shadowable::Never,
             None => Shadowable::Always,
@@ -195,7 +196,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
     /// Resolves an `ImportResolvingError` into the correct enum discriminant
     /// and passes that on to `resolve_error`.
-    fn import_resolving_error(&self, e: ImportResolvingError) {
+    fn import_resolving_error(&self, e: ImportResolvingError<'b>) {
         // If it's a single failed import then create a "fake" import
         // resolution for it so that later resolve stages won't complain.
         if let SingleImport(target, _) = e.import_directive.subclass {
@@ -213,11 +214,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 debug!("(resolving import error) adding fake target to import resolution of `{}`",
                        target);
 
-                let dummy_binding = NameBinding {
+                let dummy_binding = self.resolver.new_name_binding(NameBinding {
                     modifiers: DefModifiers::IMPORTABLE,
                     def_or_module: DefOrModule::Def(Def::Err),
                     span: None,
-                };
+                });
 
                 resolution.binding = Some(dummy_binding);
             }
@@ -367,7 +368,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                               name: Name,
                               ns: Namespace,
                               importing_module: Module<'b>) // Module importing the name
-                              -> (ResolveResult<NameBinding<'b>>, bool) {
+                              -> (ResolveResult<&'b NameBinding<'b>>, bool) {
         build_reduced_graph::populate_module_if_necessary(self.resolver, module);
         if let Some(name_binding) = module.get_child(name, ns) {
             if name_binding.is_extern_crate() {
@@ -397,7 +398,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     return (Failed(None), false);
                 }
 
-                if let Some(binding) = resolution.binding.clone() {
+                if let Some(binding) = resolution.binding {
                     self.resolver.record_import_use(name, ns, &resolution);
                     (Success(binding), true)
                 } else {
@@ -455,9 +456,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             self.resolve_name_in_module(target_module, source, TypeNS, module_);
 
         match (&value_result, &type_result) {
-            (&Success(ref name_binding), _) if !value_used_reexport &&
-                                               directive.is_public &&
-                                               !name_binding.is_public() => {
+            (&Success(name_binding), _) if !value_used_reexport &&
+                                           directive.is_public &&
+                                           !name_binding.is_public() => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
                 let note_msg = format!("Consider marking `{}` as `pub` in the imported module",
                                         source);
@@ -466,8 +467,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     .emit();
             }
 
-            (_, &Success(ref name_binding)) if !type_used_reexport &&
-                                               directive.is_public => {
+            (_, &Success(name_binding)) if !type_used_reexport && directive.is_public => {
                 if !name_binding.is_public() {
                     let msg = format!("`{}` is private, and cannot be reexported", source);
                     let note_msg =
@@ -519,7 +519,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         {
             let mut check_and_write_import = |namespace, result, used_public: &mut bool| {
-                let result: &ResolveResult<NameBinding> = result;
+                let result: &ResolveResult<&NameBinding> = result;
 
                 let import_resolution = import_resolutions.get_mut(&(target, namespace)).unwrap();
                 let namespace_name = match namespace {
@@ -528,7 +528,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 };
 
                 match *result {
-                    Success(ref name_binding) => {
+                    Success(name_binding) => {
                         debug!("(resolving single import) found {:?} target: {:?}",
                                namespace_name,
                                name_binding.def());
@@ -541,7 +541,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                              directive.span,
                                                              target);
 
-                        import_resolution.binding = Some(directive.import(name_binding.clone()));
+                        import_resolution.binding =
+                            Some(self.resolver.new_name_binding(directive.import(name_binding)));
                         import_resolution.id = directive.id;
                         import_resolution.is_public = directive.is_public;
 
@@ -679,14 +680,15 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                   .or_insert_with(|| ImportResolution::new(id, is_public));
 
             match target_import_resolution.binding {
-                Some(ref binding) if target_import_resolution.is_public => {
+                Some(binding) if target_import_resolution.is_public => {
                     self.check_for_conflicting_import(&dest_import_resolution,
                                                       import_directive.span,
                                                       name,
                                                       ns);
                     dest_import_resolution.id = id;
                     dest_import_resolution.is_public = is_public;
-                    dest_import_resolution.binding = Some(import_directive.import(binding.clone()));
+                    dest_import_resolution.binding =
+                        Some(self.resolver.new_name_binding(import_directive.import(binding)));
                     self.add_export(module_, name, &dest_import_resolution);
                 }
                 _ => {}
@@ -701,7 +703,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                          target_module,
                                          import_directive,
                                          (name, ns),
-                                         name_binding.clone());
+                                         name_binding);
         });
 
         // Record the destination of this import
@@ -723,7 +725,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                containing_module: Module<'b>,
                                import_directive: &ImportDirective,
                                (name, ns): (Name, Namespace),
-                               name_binding: NameBinding<'b>) {
+                               name_binding: &'b NameBinding<'b>) {
         let id = import_directive.id;
         let is_public = import_directive.is_public;
 
@@ -761,7 +763,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                  name);
                 span_err!(self.resolver.session, import_directive.span, E0251, "{}", msg);
             } else {
-                dest_import_resolution.binding = Some(import_directive.import(name_binding.clone()));
+                dest_import_resolution.binding =
+                    Some(self.resolver.new_name_binding(import_directive.import(name_binding)));
                 dest_import_resolution.id = id;
                 dest_import_resolution.is_public = is_public;
                 self.add_export(module_, name, &dest_import_resolution);
@@ -799,7 +802,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                binding.is_some());
 
         match *binding {
-            Some(ref binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
+            Some(binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
                 let ns_word = match namespace {
                     TypeNS => {
                         match binding.module() {
@@ -857,7 +860,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         if ns == ValueNS {
             match import.binding {
-                Some(ref binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
+                Some(binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
                     let mut err = struct_span_err!(self.resolver.session,
                                                    import_span,
                                                    E0255,
@@ -873,7 +876,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
         } else {
             match import.binding {
-                Some(ref binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
+                Some(binding) if !binding.defined_with(DefModifiers::PRELUDE) => {
                     if name_binding.is_extern_crate() {
                         let msg = format!("import `{0}` conflicts with imported crate \
                                            in this module (maybe you meant `use {0}::*`?)",
