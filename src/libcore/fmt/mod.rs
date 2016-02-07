@@ -1384,7 +1384,7 @@ impl Display for char {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Pointer for *const T {
+impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let old_width = f.width;
         let old_flags = f.flags;
@@ -1402,7 +1402,7 @@ impl<T> Pointer for *const T {
         }
         f.flags |= 1 << (FlagV1::Alternate as u32);
 
-        let ret = LowerHex::fmt(&(*self as usize), f);
+        let ret = LowerHex::fmt(&(*self as *const () as usize), f);
 
         f.width = old_width;
         f.flags = old_flags;
@@ -1412,7 +1412,7 @@ impl<T> Pointer for *const T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Pointer for *mut T {
+impl<T: ?Sized> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         // FIXME(#23542) Replace with type ascription.
         #![allow(trivial_casts)]
@@ -1421,7 +1421,7 @@ impl<T> Pointer for *mut T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Pointer for &'a T {
+impl<'a, T: ?Sized> Pointer for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         // FIXME(#23542) Replace with type ascription.
         #![allow(trivial_casts)]
@@ -1430,7 +1430,7 @@ impl<'a, T> Pointer for &'a T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Pointer for &'a mut T {
+impl<'a, T: ?Sized> Pointer for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         // FIXME(#23542) Replace with type ascription.
         #![allow(trivial_casts)]
