@@ -169,6 +169,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         mut_mut::MUT_MUT,
         mutex_atomic::MUTEX_INTEGER,
         print::PRINT_STDOUT,
+        print::USE_DEBUG,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,
