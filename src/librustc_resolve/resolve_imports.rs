@@ -101,12 +101,12 @@ impl ImportDirective {
 }
 
 #[derive(Debug)]
-/// An ImportResolution records what we know about an imported name in a given namespace.
+/// An NameResolution records what we know about an imported name in a given namespace.
 /// More specifically, it records the number of unresolved `use` directives that import the name,
 /// the `use` directive importing the name in the namespace, and the `NameBinding` to which the
 /// name in the namespace resolves (if applicable).
 /// Different `use` directives may import the same name in different namespaces.
-pub struct ImportResolution<'a> {
+pub struct NameResolution<'a> {
     // When outstanding_references reaches zero, outside modules can count on the targets being
     // correct. Before then, all bets are off; future `use` directives could override the name.
     // Since shadowing is forbidden, the only way outstanding_references > 1 in a legal program
@@ -114,26 +114,17 @@ pub struct ImportResolution<'a> {
     // value and the other of which resolves to a type.
     pub outstanding_references: usize,
 
-    /// Whether this resolution came from a `use` or a `pub use`.
-    pub is_public: bool,
-
     /// Resolution of the name in the namespace
     pub binding: Option<&'a NameBinding<'a>>,
-
-    /// The source node of the `use` directive
-    pub id: NodeId,
 }
 
-impl<'a> ImportResolution<'a> {
-    pub fn new(id: NodeId, is_public: bool) -> Self {
-        ImportResolution {
-            outstanding_references: 0,
-            id: id,
-            binding: None,
-            is_public: is_public,
-        }
+impl<'a> Default for NameResolution<'a> {
+    fn default() -> Self {
+        NameResolution { outstanding_references: 0, binding: None }
     }
+}
 
+impl<'a> NameResolution<'a> {
     pub fn shadowable(&self) -> Shadowable {
         match self.binding {
             Some(binding) if binding.defined_with(DefModifiers::PRELUDE) =>
@@ -216,8 +207,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 debug!("(resolving import error) adding import resolution for `{}`",
                        target);
 
-                ImportResolution::new(e.import_directive.id,
-                                      e.import_directive.is_public)
+                NameResolution::default()
             });
 
             if resolution.binding.is_none() {
@@ -402,13 +392,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
             // The name is an import which has been fully resolved, so we just follow it.
             Some(resolution) if resolution.outstanding_references == 0 => {
-                // Import resolutions must be declared with "pub" in order to be exported.
-                if !resolution.is_public {
-                    return Failed(None);
-                }
-
                 if let Some(binding) = resolution.binding {
-                    self.resolver.record_import_use(name, ns, &resolution);
+                    // Import resolutions must be declared with "pub" in order to be exported.
+                    if !binding.is_public() {
+                        return Failed(None);
+                    }
+
+                    self.resolver.record_import_use(name, ns, binding);
                     Success(binding)
                 } else {
                     Failed(None)
@@ -549,10 +539,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
                         import_resolution.binding =
                             Some(self.resolver.new_name_binding(directive.import(name_binding)));
-                        import_resolution.id = directive.id;
-                        import_resolution.is_public = directive.is_public;
 
-                        self.add_export(module_, target, &import_resolution);
+                        self.add_export(module_, target, import_resolution.binding.unwrap());
                     }
                     Failed(_) => {
                         // Continue.
@@ -644,7 +632,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                            lp: LastPrivate)
                            -> ResolveResult<()> {
         let id = import_directive.id;
-        let is_public = import_directive.is_public;
 
         // This function works in a highly imperative manner; it eagerly adds
         // everything it can to the list of import resolutions of the module
@@ -679,19 +666,17 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             let mut import_resolutions = module_.import_resolutions.borrow_mut();
             let mut dest_import_resolution =
                 import_resolutions.entry((name, ns))
-                                  .or_insert_with(|| ImportResolution::new(id, is_public));
+                                  .or_insert_with(|| NameResolution::default());
 
             match target_import_resolution.binding {
-                Some(binding) if target_import_resolution.is_public => {
+                Some(binding) if binding.is_public() => {
                     self.check_for_conflicting_import(&dest_import_resolution,
                                                       import_directive.span,
                                                       name,
                                                       ns);
-                    dest_import_resolution.id = id;
-                    dest_import_resolution.is_public = is_public;
                     dest_import_resolution.binding =
                         Some(self.resolver.new_name_binding(import_directive.import(binding)));
-                    self.add_export(module_, name, &dest_import_resolution);
+                    self.add_export(module_, name, dest_import_resolution.binding.unwrap());
                 }
                 _ => {}
             }
@@ -728,12 +713,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                import_directive: &ImportDirective,
                                (name, ns): (Name, Namespace),
                                name_binding: &'b NameBinding<'b>) {
-        let id = import_directive.id;
         let is_public = import_directive.is_public;
 
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
         let dest_import_resolution = import_resolutions.entry((name, ns)).or_insert_with(|| {
-            ImportResolution::new(id, is_public)
+            NameResolution::default()
         });
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` to `{}`",
@@ -767,9 +751,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             } else {
                 dest_import_resolution.binding =
                     Some(self.resolver.new_name_binding(import_directive.import(name_binding)));
-                dest_import_resolution.id = id;
-                dest_import_resolution.is_public = is_public;
-                self.add_export(module_, name, &dest_import_resolution);
+                self.add_export(module_, name, dest_import_resolution.binding.unwrap());
             }
         }
 
@@ -779,13 +761,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                            (name, ns));
     }
 
-    fn add_export(&mut self, module: Module<'b>, name: Name, resolution: &ImportResolution<'b>) {
-        if !resolution.is_public { return }
+    fn add_export(&mut self, module: Module<'b>, name: Name, binding: &NameBinding<'b>) {
+        if !binding.is_public() { return }
         let node_id = match module.def_id() {
             Some(def_id) => self.resolver.ast_map.as_local_node_id(def_id).unwrap(),
             None => return,
         };
-        let export = match resolution.binding.as_ref().unwrap().def() {
+        let export = match binding.def() {
             Some(def) => Export { name: name, def_id: def.def_id() },
             None => return,
         };
@@ -794,7 +776,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
     /// Checks that imported names and items don't have the same name.
     fn check_for_conflicting_import(&mut self,
-                                    import_resolution: &ImportResolution,
+                                    import_resolution: &NameResolution,
                                     import_span: Span,
                                     name: Name,
                                     namespace: Namespace) {
@@ -815,8 +797,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     }
                     ValueNS => "value",
                 };
-                let use_id = import_resolution.id;
-                let item = self.resolver.ast_map.expect_item(use_id);
                 let mut err = struct_span_err!(self.resolver.session,
                                                import_span,
                                                E0252,
@@ -825,7 +805,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                ns_word,
                                                name);
                 span_note!(&mut err,
-                           item.span,
+                           binding.span.unwrap(),
                            "previous import of `{}` here",
                            name);
                 err.emit();
@@ -848,7 +828,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     /// Checks that imported names and items don't have the same name.
     fn check_for_conflicts_between_imports_and_items(&mut self,
                                                      module: Module<'b>,
-                                                     import: &ImportResolution<'b>,
+                                                     import: &NameResolution<'b>,
                                                      import_span: Span,
                                                      (name, ns): (Name, Namespace)) {
         // Check for item conflicts.

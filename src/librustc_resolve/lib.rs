@@ -92,7 +92,7 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::mem::replace;
 
-use resolve_imports::{ImportDirective, ImportResolution};
+use resolve_imports::{ImportDirective, NameResolution};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -346,8 +346,9 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                              .import_resolutions
                                              .borrow()
                                              .get(&(name, ValueNS)) {
-                let item = resolver.ast_map.expect_item(directive.id);
-                err.span_note(item.span, "constant imported here");
+                if let Some(binding) = directive.binding {
+                    err.span_note(binding.span.unwrap(), "constant imported here");
+                }
             }
             err
         }
@@ -814,7 +815,7 @@ pub struct ModuleS<'a> {
     anonymous_children: RefCell<NodeMap<Module<'a>>>,
 
     // The status of resolving each import in this module.
-    import_resolutions: RefCell<HashMap<(Name, Namespace), ImportResolution<'a>>>,
+    import_resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
 
     // The number of unresolved globs that this module exports.
     glob_count: Cell<usize>,
@@ -1219,8 +1220,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     #[inline]
-    fn record_import_use(&mut self, name: Name, ns: Namespace, resolution: &ImportResolution<'a>) {
-        let import_id = resolution.id;
+    fn record_import_use(&mut self, name: Name, ns: Namespace, binding: &NameBinding<'a>) {
+        let import_id = match binding.kind {
+            NameBindingKind::Import { id, .. } => id,
+            _ => return,
+        };
+
         self.used_imports.insert((import_id, ns));
 
         if !self.make_glob_map {
@@ -1592,20 +1597,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Check the list of resolved imports.
         match module_.import_resolutions.borrow().get(&(name, namespace)) {
-            Some(import_resolution) if allow_private_imports || import_resolution.is_public => {
-                if import_resolution.is_public && import_resolution.outstanding_references != 0 {
-                    debug!("(resolving name in module) import unresolved; bailing out");
-                    return Indeterminate;
-                }
+            Some(import_resolution) => {
                 if let Some(binding) = import_resolution.binding {
+                    if !allow_private_imports && binding.is_public() { return Failed(None) }
+                    if binding.is_public() && import_resolution.outstanding_references != 0 {
+                        debug!("(resolving name in module) import unresolved; bailing out");
+                        return Indeterminate;
+                    }
+
                     debug!("(resolving name in module) resolved to import");
                     if record_used {
-                        self.record_import_use(name, namespace, &import_resolution);
+                        self.record_import_use(name, namespace, binding);
                     }
                     return Success(binding);
                 }
             }
-            Some(..) | None => {} // Continue.
+            None => {}
         }
 
         // We're out of luck.
@@ -3482,7 +3489,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if self.trait_item_map.contains_key(&(name, did)) {
                     add_trait_info(&mut found_traits, did, name);
                     let trait_name = self.get_trait_name(did);
-                    self.record_import_use(trait_name, TypeNS, &import);
+                    self.record_import_use(trait_name, TypeNS, binding);
                 }
             }
 

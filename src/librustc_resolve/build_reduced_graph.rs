@@ -16,7 +16,7 @@
 use DefModifiers;
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
-use resolve_imports::ImportResolution;
+use resolve_imports::NameResolution;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind};
@@ -703,13 +703,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let mut import_resolutions = module_.import_resolutions.borrow_mut();
                 for &ns in [TypeNS, ValueNS].iter() {
                     let mut resolution = import_resolutions.entry((target, ns)).or_insert(
-                        ImportResolution::new(id, is_public)
+                        NameResolution::default()
                     );
 
                     resolution.outstanding_references += 1;
-                    // the source of this name is different now
-                    resolution.id = id;
-                    resolution.is_public = is_public;
                 }
             }
             GlobImport => {
