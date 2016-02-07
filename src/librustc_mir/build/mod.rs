@@ -80,7 +80,7 @@ macro_rules! unpack {
 /// the main entry point for building MIR for a function
 
 pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
-                          _span: Span,
+                          span: Span,
                           implicit_arguments: Vec<Ty<'tcx>>,
                           explicit_arguments: Vec<(Ty<'tcx>, &'tcx hir::Pat)>,
                           argument_extent: CodeExtent,
@@ -97,7 +97,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         temp_decls: vec![],
         var_decls: vec![],
         var_indices: FnvHashMap(),
-        unit_temp: None
+        unit_temp: None,
     };
 
     assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -119,6 +119,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         arg_decls: arg_decls,
         temp_decls: builder.temp_decls,
         return_ty: return_ty,
+        span: span
     }
 }
 

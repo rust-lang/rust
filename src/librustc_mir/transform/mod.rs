@@ -11,4 +11,5 @@
 pub mod simplify_cfg;
 pub mod erase_regions;
 pub mod no_landing_pads;
+pub mod type_check;
 mod util;
