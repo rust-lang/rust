@@ -18,7 +18,7 @@ for the entire lifetime of a program. Creating a boxed value allocates memory on
 the heap at runtime, and therefore cannot be done at compile time. Erroneous
 code example:
 
-```
+```compile_fail
 #![feature(box_syntax)]
 
 const CON : Box<i32> = box 0;
@@ -30,9 +30,9 @@ Initializers for constants and statics are evaluated at compile time.
 User-defined operators rely on user-defined functions, which cannot be evaluated
 at compile time.
 
-Bad example:
+Erroneous code example:
 
-```
+```compile_fail
 use std::ops::Index;
 
 struct Foo { a: u8 }
@@ -53,16 +53,16 @@ Example:
 
 ```
 const a: &'static [i32] = &[1, 2, 3];
-const b: i32 = a[0]; // Good!
+const b: i32 = a[0]; // Ok!
 ```
 "##,
 
 E0013: r##"
 Static and const variables can refer to other const variables. But a const
-variable cannot refer to a static variable. For example, `Y` cannot refer to `X`
-here:
+variable cannot refer to a static variable. For example, `Y` cannot refer to
+`X` here:
 
-```
+```compile_fail
 static X: i32 = 42;
 const Y: i32 = X;
 ```
@@ -80,9 +80,9 @@ E0014: r##"
 Constants can only be initialized by a constant value or, in a future
 version of Rust, a call to a const function. This error indicates the use
 of a path (like a::b, or x) denoting something other than one of these
-allowed items. Example:
+allowed items. Erroneous code xample:
 
-```
+```compile_fail
 const FOO: i32 = { let x = 0; x }; // 'x' isn't a constant nor a function!
 ```
 
@@ -91,7 +91,7 @@ To avoid it, you have to replace the non-constant value:
 ```
 const FOO: i32 = { const X : i32 = 0; X };
 // or even:
-const FOO: i32 = { 0 }; // but brackets are useless here
+const FOO2: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
 
@@ -115,9 +115,9 @@ See [RFC 911] for more details on the design of `const fn`s.
 
 E0016: r##"
 Blocks in constants may only contain items (such as constant, function
-definition, etc...) and a tail expression. Example:
+definition, etc...) and a tail expression. Erroneous code example:
 
-```
+```compile_fail
 const FOO: i32 = { let x = 0; x }; // 'x' isn't an item!
 ```
 
@@ -129,9 +129,10 @@ const FOO: i32 = { const X : i32 = 0; X };
 "##,
 
 E0017: r##"
-References in statics and constants may only refer to immutable values. Example:
+References in statics and constants may only refer to immutable values.
+Erroneous code example:
 
-```
+```compile_fail
 static X: i32 = 1;
 const C: i32 = 2;
 
@@ -156,7 +157,8 @@ can't cast a pointer to an integer because the address of a pointer can
 vary.
 
 For example, if you write:
-```
+
+```compile_fail
 static MY_STATIC: u32 = 42;
 static MY_STATIC_ADDR: usize = &MY_STATIC as *const _ as usize;
 static WHAT: usize = (MY_STATIC_ADDR^17) + MY_STATIC_ADDR;
@@ -184,10 +186,10 @@ accessed directly.
 
 E0019: r##"
 A function call isn't allowed in the const's initialization expression
-because the expression's value must be known at compile-time. Example of
-erroneous code:
+because the expression's value must be known at compile-time. Erroneous code
+example:
 
-```
+```compile_fail
 enum Test {
     V1
 }
@@ -222,13 +224,13 @@ E0022: r##"
 Constant functions are not allowed to mutate anything. Thus, binding to an
 argument with a mutable pattern is not allowed. For example,
 
-```
+```compile_fail
 const fn foo(mut x: u8) {
     // do stuff
 }
 ```
 
-is bad because the function body may not mutate `x`.
+Is incorrect because the function body may not mutate `x`.
 
 Remove any mutable bindings from the argument list to fix this error. In case
 you need to mutate the argument, try lazily initializing a global variable
@@ -244,12 +246,12 @@ range.
 
 For example:
 
-```
+```compile_fail
 match 5u32 {
     // This range is ok, albeit pointless.
-    1 ... 1 => ...
+    1 ... 1 => {}
     // This range is empty, and the compiler can tell.
-    1000 ... 5 => ...
+    1000 ... 5 => {}
 }
 ```
 "##,
@@ -268,11 +270,11 @@ All statics and constants need to resolve to a value in an acyclic manner.
 
 For example, neither of the following can be sensibly compiled:
 
-```
+```compile_fail
 const X: u32 = X;
 ```
 
-```
+```compile_fail
 const X: u32 = Y;
 const Y: u32 = X;
 ```
@@ -282,7 +284,7 @@ E0267: r##"
 This error indicates the use of a loop keyword (`break` or `continue`) inside a
 closure but outside of any loop. Erroneous code example:
 
-```
+```compile_fail
 let w = || { break; }; // error: `break` inside of a closure
 ```
 
@@ -306,7 +308,7 @@ This error indicates the use of a loop keyword (`break` or `continue`) outside
 of a loop. Without a loop to break out of or continue in, no sensible action can
 be taken. Erroneous code example:
 
-```
+```compile_fail
 fn some_func() {
     break; // error: `break` outside of loop
 }
@@ -329,7 +331,7 @@ in statics, constants, and constant functions.
 
 For example:
 
-```
+```compile_fail
 const BAZ: i32 = Foo(25).bar(); // error, `bar` isn't `const`
 
 struct Foo(i32);
@@ -362,9 +364,9 @@ E0395: r##"
 The value assigned to a constant scalar must be known at compile time,
 which is not the case when comparing raw pointers.
 
-
 Erroneous code example:
-```
+
+```compile_fail
 static FOO: i32 = 42;
 static BAR: i32 = 42;
 
@@ -391,10 +393,9 @@ let baz: bool = { (&FOO as *const i32) == (&BAR as *const i32) };
 E0396: r##"
 The value behind a raw pointer can't be determined at compile-time
 (or even link-time), which means it can't be used in a constant
-expression.
+expression. Erroneous code example:
 
-For example:
-```
+```compile_fail
 const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
 
 const VALUE: u8 = unsafe { *REG_ADDR };
@@ -416,7 +417,7 @@ E0397: r##"
 It is not allowed for a mutable static to allocate or have destructors. For
 example:
 
-```
+```compile_fail
 // error: mutable statics are not allowed to have boxes
 static mut FOO: Option<Box<usize>> = None;
 
@@ -429,7 +430,7 @@ E0400: r##"
 A user-defined dereference was attempted in an invalid context. Erroneous
 code example:
 
-```
+```compile_fail
 use std::ops::Deref;
 
 struct A;
@@ -473,7 +474,7 @@ E0492: r##"
 A borrow of a constant containing interior mutability was attempted. Erroneous
 code example:
 
-```
+```compile_fail
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 
 const A: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -500,7 +501,7 @@ static B: &'static AtomicUsize = &A; // ok!
 
 You can also have this error while using a cell type:
 
-```
+```compile_fail
 #![feature(const_fn)]
 
 use std::cell::Cell;
@@ -552,7 +553,7 @@ E0493: r##"
 A type with a destructor was assigned to an invalid type of variable. Erroneous
 code example:
 
-```
+```compile_fail
 struct Foo {
     a: u32
 }
@@ -575,7 +576,7 @@ E0494: r##"
 A reference of an interior static was assigned to another const/static.
 Erroneous code example:
 
-```
+```compile_fail
 struct Foo {
     a: u32
 }
