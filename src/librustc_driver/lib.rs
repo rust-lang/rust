@@ -348,10 +348,24 @@ fn handle_explain(code: &str,
     }
 }
 
+fn check_cfg(sopts: &config::Options,
+             output: ErrorOutputType) {
+    fn is_meta_list(item: &ast::MetaItem) -> bool {
+        match item.node {
+            ast::MetaItem_::MetaList(..) => true,
+            _ => false,
+        }
+    }
+
+    if sopts.cfg.iter().any(|item| is_meta_list(&*item)) {
+        early_error(output, "predicates are not allowed in --cfg");
+    }
+}
+
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
-                      _sopts: &config::Options,
+                      sopts: &config::Options,
                       descriptions: &diagnostics::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
@@ -360,6 +374,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             return Compilation::Stop;
         }
 
+        check_cfg(sopts, output);
         Compilation::Continue
     }
 
