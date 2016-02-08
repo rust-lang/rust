@@ -13,7 +13,7 @@ use llvm::{self, ValueRef};
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use trans::base;
-use trans::common::{self, Block, BlockAndBuilder, LandingPad};
+use trans::common::{self, Block, BlockAndBuilder};
 use trans::expr;
 use trans::type_of;
 
@@ -115,12 +115,7 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
         mir_blocks.iter()
                   .map(|&bb|{
                       // FIXME(#30941) this doesn't handle msvc-style exceptions
-                      let lpad = if mir.basic_block_data(bb).is_cleanup {
-                          Some(LandingPad::gnu())
-                      } else {
-                          None
-                      };
-                      fcx.new_block(&format!("{:?}", bb), None, lpad)
+                      fcx.new_block(&format!("{:?}", bb), None)
                   })
                   .collect();
 
@@ -175,11 +170,9 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                let lldata = llvm::get_param(fcx.llfn, idx);
                let llextra = llvm::get_param(fcx.llfn, idx + 1);
                idx += 2;
-               let lltemp = bcx.with_block(|bcx| {
-                   base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
-               });
-               let (dataptr, meta) = bcx.with_block(|bcx| {
-                   (expr::get_dataptr(bcx, lltemp), expr::get_meta(bcx, lltemp))
+               let (lltemp, dataptr, meta) = bcx.with_block(|bcx| {
+                   let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
+                   (lltemp, expr::get_dataptr(bcx, lltemp), expr::get_meta(bcx, lltemp))
                });
                bcx.store(lldata, dataptr);
                bcx.store(llextra, meta);
@@ -189,13 +182,11 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                // temporary and store it there
                let llarg = llvm::get_param(fcx.llfn, idx);
                idx += 1;
-               let lltemp = bcx.with_block(|bcx| {
-                   base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
-               });
                bcx.with_block(|bcx| {
-                   base::store_ty(bcx, llarg, lltemp, arg_ty)
-               });
-               lltemp
+                   let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
+                   base::store_ty(bcx, llarg, lltemp, arg_ty);
+                   lltemp
+               })
            };
            LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
        })
