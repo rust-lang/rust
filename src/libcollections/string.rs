@@ -479,16 +479,15 @@ impl String {
         }
     }
 
-    /// Converts a slice of bytes to a `String`, including invalid characters.
+    /// Converts a slice of bytes to a string, including invalid characters.
     ///
-    /// A string slice ([`&str`]) is made of bytes ([`u8`]), and a slice of
-    /// bytes ([`&[u8]`][byteslice]) is made of bytes, so this function converts between
-    /// the two. Not all byte slices are valid string slices, however: [`&str`]
-    /// requires that it is valid UTF-8. During this conversion,
+    /// Strings are made of bytes ([`u8`]), and a slice of bytes
+    /// ([`&[u8]`][byteslice]) is made of bytes, so this function converts
+    /// between the two. Not all byte slices are valid strings, however: strings
+    /// are required to be valid UTF-8. During this conversion,
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
     /// `U+FFFD REPLACEMENT CHARACTER`, which looks like this: �
     ///
-    /// [`&str`]: ../primitive.str.html
     /// [`u8`]: ../primitive.u8.html
     /// [byteslice]: ../primitive.slice.html
     ///
@@ -499,10 +498,13 @@ impl String {
     ///
     /// [`from_utf8_unchecked()`]: struct.String.html#method.from_utf8_unchecked
     ///
-    /// If you need a [`&str`] instead of a `String`, consider
-    /// [`str::from_utf8()`].
+    /// This function returns a [`Cow<'a, str>`]. If our byte slice is invalid
+    /// UTF-8, then we need to insert the replacement characters, which will
+    /// change the size of the string, and hence, require a `String`. But if
+    /// it's already valid UTF-8, we don't need a new allocation. This return
+    /// type allows us to handle both cases.
     ///
-    /// [`str::from_utf8()`]: ../str/fn.from_utf8.html
+    /// [`Cow<'a, str>`]: ../borrow/enum.Cow.html
     ///
     /// # Examples
     ///
@@ -512,8 +514,7 @@ impl String {
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
     ///
-    /// // We know these bytes are valid, so we'll use `unwrap()`.
-    /// let sparkle_heart = String::from_utf8(sparkle_heart).unwrap();
+    /// let sparkle_heart = String::from_utf8_lossy(&sparkle_heart);
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
