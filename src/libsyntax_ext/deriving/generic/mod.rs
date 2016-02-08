@@ -1266,7 +1266,7 @@ impl<'a> MethodDef<'a> {
                     stmts: vec![],
                     expr: Some(call),
                     id: ast::DUMMY_NODE_ID,
-                    rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                    rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
                     span: sp }));
 
                 let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name));
@@ -1302,7 +1302,7 @@ impl<'a> MethodDef<'a> {
                 stmts: vec![],
                 expr: Some(call),
                 id: ast::DUMMY_NODE_ID,
-                rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
                 span: sp }));
             match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], unreachable));
 

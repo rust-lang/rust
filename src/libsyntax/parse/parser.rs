@@ -18,7 +18,7 @@ use ast::{Mod, Arg, Arm, Attribute, BindingMode};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
-use ast::{Decl, DeclItem, DeclLocal, DefaultBlock};
+use ast::{Decl, DeclItem, DeclLocal};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
@@ -53,7 +53,7 @@ use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBounds, TyParen, TyPath, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec};
 use ast::TypeTraitItem;
-use ast::{UnnamedField, UnsafeBlock};
+use ast::UnnamedField;
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use attr::{ThinAttributes, ThinAttributesExt, AttributesExt};
@@ -2104,7 +2104,7 @@ impl<'a> Parser<'a> {
                 }
             },
             token::OpenDelim(token::Brace) => {
-                return self.parse_block_expr(lo, DefaultBlock, attrs);
+                return self.parse_block_expr(lo, BlockCheckMode::Default, attrs);
             },
             token::BinOp(token::Or) |  token::OrOr => {
                 let lo = self.span.lo;
@@ -2220,7 +2220,7 @@ impl<'a> Parser<'a> {
                 if self.eat_keyword(keywords::Unsafe) {
                     return self.parse_block_expr(
                         lo,
-                        UnsafeBlock(ast::UserProvided),
+                        BlockCheckMode::Unsafe(ast::UserProvided),
                         attrs);
                 }
                 if self.eat_keyword(keywords::Return) {
@@ -3062,7 +3062,7 @@ impl<'a> Parser<'a> {
                     stmts: vec![],
                     span: body_expr.span,
                     expr: Some(body_expr),
-                    rules: DefaultBlock,
+                    rules: BlockCheckMode::Default,
                 })
             }
             _ => {
@@ -3826,7 +3826,7 @@ impl<'a> Parser<'a> {
                                  "place this code inside a block"));
         }
 
-        self.parse_block_tail(lo, DefaultBlock)
+        self.parse_block_tail(lo, BlockCheckMode::Default)
     }
 
     /// Parse a block. Inner attrs are allowed.
@@ -3836,7 +3836,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         try!(self.expect(&token::OpenDelim(token::Brace)));
         Ok((try!(self.parse_inner_attributes()),
-         try!(self.parse_block_tail(lo, DefaultBlock))))
+         try!(self.parse_block_tail(lo, BlockCheckMode::Default))))
     }
 
     /// Parse the rest of a block expression or function body
