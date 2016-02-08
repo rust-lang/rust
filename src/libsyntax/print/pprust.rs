@@ -382,7 +382,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
                      unsafety: ast::Unsafety,
                      constness: ast::Constness,
                      name: ast::Ident,
-                     opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                     opt_explicit_self: Option<&ast::SelfKind>,
                      generics: &ast::Generics)
                      -> String {
     to_string(|s| {
@@ -416,7 +416,7 @@ pub fn lit_to_string(l: &ast::Lit) -> String {
     to_string(|s| s.print_literal(l))
 }
 
-pub fn explicit_self_to_string(explicit_self: &ast::ExplicitSelf_) -> String {
+pub fn explicit_self_to_string(explicit_self: &ast::SelfKind) -> String {
     to_string(|s| s.print_explicit_self(explicit_self, ast::MutImmutable).map(|_| {}))
 }
 
@@ -2625,21 +2625,21 @@ impl<'a> State<'a> {
 
     // Returns whether it printed anything
     fn print_explicit_self(&mut self,
-                           explicit_self: &ast::ExplicitSelf_,
+                           explicit_self: &ast::SelfKind,
                            mutbl: ast::Mutability) -> io::Result<bool> {
         try!(self.print_mutability(mutbl));
         match *explicit_self {
-            ast::SelfStatic => { return Ok(false); }
-            ast::SelfValue(_) => {
+            ast::SelfKind::Static => { return Ok(false); }
+            ast::SelfKind::Value(_) => {
                 try!(word(&mut self.s, "self"));
             }
-            ast::SelfRegion(ref lt, m, _) => {
+            ast::SelfKind::Region(ref lt, m, _) => {
                 try!(word(&mut self.s, "&"));
                 try!(self.print_opt_lifetime(lt));
                 try!(self.print_mutability(m));
                 try!(word(&mut self.s, "self"));
             }
-            ast::SelfExplicit(ref typ, _) => {
+            ast::SelfKind::Explicit(ref typ, _) => {
                 try!(word(&mut self.s, "self"));
                 try!(self.word_space(":"));
                 try!(self.print_type(&**typ));
@@ -2655,7 +2655,7 @@ impl<'a> State<'a> {
                     abi: abi::Abi,
                     name: Option<ast::Ident>,
                     generics: &ast::Generics,
-                    opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                    opt_explicit_self: Option<&ast::SelfKind>,
                     vis: ast::Visibility) -> io::Result<()> {
         try!(self.print_fn_header_info(unsafety, constness, abi, vis));
 
@@ -2669,7 +2669,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_args(&mut self, decl: &ast::FnDecl,
-                         opt_explicit_self: Option<&ast::ExplicitSelf_>,
+                         opt_explicit_self: Option<&ast::SelfKind>,
                          is_closure: bool) -> io::Result<()> {
         // It is unfortunate to duplicate the commasep logic, but we want the
         // self type and the args all in the same box.
@@ -2677,7 +2677,7 @@ impl<'a> State<'a> {
         let mut first = true;
         if let Some(explicit_self) = opt_explicit_self {
             let m = match *explicit_self {
-                ast::SelfStatic => ast::MutImmutable,
+                ast::SelfKind::Static => ast::MutImmutable,
                 _ => match decl.inputs[0].pat.node {
                     ast::PatIdent(ast::BindingMode::ByValue(m), _, _) => m,
                     _ => ast::MutImmutable
@@ -2702,7 +2702,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_args_and_ret(&mut self, decl: &ast::FnDecl,
-                                 opt_explicit_self: Option<&ast::ExplicitSelf_>)
+                                 opt_explicit_self: Option<&ast::SelfKind>)
         -> io::Result<()> {
         try!(self.popen());
         try!(self.print_fn_args(decl, opt_explicit_self, false));
@@ -3016,7 +3016,7 @@ impl<'a> State<'a> {
                        decl: &ast::FnDecl,
                        name: Option<ast::Ident>,
                        generics: &ast::Generics,
-                       opt_explicit_self: Option<&ast::ExplicitSelf_>)
+                       opt_explicit_self: Option<&ast::SelfKind>)
                        -> io::Result<()> {
         try!(self.ibox(INDENT_UNIT));
         if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {

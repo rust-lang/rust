@@ -408,17 +408,17 @@ pub fn lower_local(lctx: &LoweringContext, l: &Local) -> P<hir::Local> {
 }
 
 pub fn lower_explicit_self_underscore(lctx: &LoweringContext,
-                                      es: &ExplicitSelf_)
+                                      es: &SelfKind)
                                       -> hir::ExplicitSelf_ {
     match *es {
-        SelfStatic => hir::SelfStatic,
-        SelfValue(v) => hir::SelfValue(v.name),
-        SelfRegion(ref lifetime, m, ident) => {
+        SelfKind::Static => hir::SelfStatic,
+        SelfKind::Value(v) => hir::SelfValue(v.name),
+        SelfKind::Region(ref lifetime, m, ident) => {
             hir::SelfRegion(lower_opt_lifetime(lctx, lifetime),
                             lower_mutability(lctx, m),
                             ident.name)
         }
-        SelfExplicit(ref typ, ident) => {
+        SelfKind::Explicit(ref typ, ident) => {
             hir::SelfExplicit(lower_ty(lctx, typ), ident.name)
         }
     }
