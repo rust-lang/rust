@@ -123,7 +123,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         debug!("current path: {}",
                ast_util::path_name_i(&self.cx.path));
 
-        let i = if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
+        let i = if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
             match i.node {
                 ast::ItemKind::Fn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
@@ -134,9 +134,9 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     let test = Test {
                         span: i.span,
                         path: self.cx.path.clone(),
-                        bench: is_bench_fn(&self.cx, &*i),
-                        ignore: is_ignored(&*i),
-                        should_panic: should_panic(&*i)
+                        bench: is_bench_fn(&self.cx, &i),
+                        ignore: is_ignored(&i),
+                        should_panic: should_panic(&i)
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
@@ -205,7 +205,7 @@ impl fold::Folder for EntryPointCleaner {
         // Remove any #[main] or #[start] from the AST so it doesn't
         // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
-        let folded = match entry::entry_point_type(&*folded, self.depth) {
+        let folded = match entry::entry_point_type(&folded, self.depth) {
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>
@@ -556,7 +556,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         })
     });
 
-    debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&*item));
+    debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&item));
 
     (item, reexport)
 }
