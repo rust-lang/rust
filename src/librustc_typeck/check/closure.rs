@@ -16,7 +16,7 @@ use astconv;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
-use syntax::abi;
+use syntax::abi::Abi;
 use rustc_front::hir;
 
 pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
@@ -54,7 +54,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let mut fn_ty = astconv::ty_of_closure(fcx,
                                            hir::Unsafety::Normal,
                                            decl,
-                                           abi::RustCall,
+                                           Abi::RustCall,
                                            expected_sig);
 
     // Create type variables (for now) to represent the transformed

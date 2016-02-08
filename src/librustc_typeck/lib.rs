@@ -111,7 +111,8 @@ use util::common::time;
 use rustc_front::hir;
 
 use syntax::codemap::Span;
-use syntax::{ast, abi};
+use syntax::ast;
+use syntax::abi::Abi;
 
 use std::cell::RefCell;
 
@@ -175,9 +176,9 @@ fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> Def {
 
 fn require_c_abi_if_variadic(tcx: &ty::ctxt,
                              decl: &hir::FnDecl,
-                             abi: abi::Abi,
+                             abi: Abi,
                              span: Span) {
-    if decl.variadic && abi != abi::C {
+    if decl.variadic && abi != Abi::C {
         span_err!(tcx.sess, span, E0045,
                   "variadic function must have C calling convention");
     }
@@ -238,7 +239,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             let main_def_id = tcx.map.local_def_id(main_id);
             let se_ty = tcx.mk_fn(Some(main_def_id), tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
-                abi: abi::Rust,
+                abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: Vec::new(),
                     output: ty::FnConverging(tcx.mk_nil()),
@@ -285,7 +286,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             let se_ty = tcx.mk_fn(Some(ccx.tcx.map.local_def_id(start_id)),
                                   tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
-                abi: abi::Rust,
+                abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: vec!(
                         tcx.types.isize,

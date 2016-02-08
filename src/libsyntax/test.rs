@@ -499,7 +499,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main = ast::ItemFn(ecx.fn_decl(vec![], main_ret_ty),
                            ast::Unsafety::Normal,
                            ast::Constness::NotConst,
-                           ::abi::Rust, ast::Generics::default(), main_body);
+                           ::abi::Abi::Rust, ast::Generics::default(), main_body);
     let main = P(ast::Item {
         ident: token::str_to_ident("main"),
         attrs: vec![main_attr],

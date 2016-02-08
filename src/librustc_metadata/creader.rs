@@ -31,7 +31,7 @@ use std::rc::Rc;
 use std::fs;
 
 use syntax::ast;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::attr;
@@ -784,7 +784,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
     }
 
     fn process_foreign_mod(&mut self, i: &hir::Item, fm: &hir::ForeignMod) {
-        if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic || fm.abi == abi::PlatformIntrinsic {
+        if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
             return;
         }
 
