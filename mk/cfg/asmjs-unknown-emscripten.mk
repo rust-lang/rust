@@ -21,3 +21,4 @@ CFG_LDPATH_asmjs-unknown-emscripten :=
 CFG_RUN_asmjs-unknown-emscripten=$(2)
 CFG_RUN_TARG_asmjs-unknown-emscripten=$(call CFG_RUN_asmjs-unknown-emscripten,,$(2))
 CFG_GNU_TRIPLE_asmjs-unknown-emscripten := asmjs-unknown-emscripten
+CFG_DISABLE_JEMALLOC_asmjs-unknown-emscripten := 1

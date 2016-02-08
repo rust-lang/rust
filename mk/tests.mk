@@ -135,7 +135,7 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(foreach target,$(CFG_TARGET), \
   $(if $(findstring android, $(target)), \
    $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/$(target)) \
-   $(foreach crate,$(TARGET_CRATES), \
+   $(foreach crate,$(TARGET_CRATES_$(target)), \
     $(shell $(CFG_ADB) push $(TLIB2_T_$(target)_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_$(target),$(crate)) \
                     $(CFG_ADB_TEST_DIR)/$(target))), \
  )))
@@ -364,7 +364,7 @@ define TEST_RUNNER
 # parent crates.
 ifeq ($(NO_REBUILD),)
 TESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
-			    $$(foreach crate,$$(TARGET_CRATES), \
+			    $$(foreach crate,$$(TARGET_CRATES_$(2)), \
 				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
 				$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))
 

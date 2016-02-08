@@ -21,7 +21,7 @@ define CP_HOST_STAGE_N_CRATE
 ifeq ($$(ONLY_RLIB_$(5)),)
 $$(HLIB$(2)_H_$(4))/stamp.$(5): \
 	$$(TLIB$(1)_T_$(3)_H_$(4))/stamp.$(5) \
-	$$(RUST_DEPS_$(5):%=$$(HLIB$(2)_H_$(4))/stamp.%) \
+	$$(RUST_DEPS_$(5)_T_$(3):%=$$(HLIB$(2)_H_$(4))/stamp.%) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$(@D)/lib$(5))
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
