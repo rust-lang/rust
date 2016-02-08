@@ -103,10 +103,10 @@ impl LateLintPass for TypeLimits {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
                 if let hir::ExprLit(ref lit) = expr.node {
                     match lit.node {
-                        ast::LitInt(_, ast::UnsignedIntLit(_)) => {
+                        ast::LitKind::Int(_, ast::UnsignedIntLit(_)) => {
                             forbid_unsigned_negation(cx, e.span);
                         },
-                        ast::LitInt(_, ast::UnsuffixedIntLit) => {
+                        ast::LitKind::Int(_, ast::UnsuffixedIntLit) => {
                             if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
                                 forbid_unsigned_negation(cx, e.span);
                             }
@@ -139,7 +139,7 @@ impl LateLintPass for TypeLimits {
 
                     if let Some(bits) = opt_ty_bits {
                         let exceeding = if let hir::ExprLit(ref lit) = r.node {
-                            if let ast::LitInt(shift, _) = lit.node { shift >= bits }
+                            if let ast::LitKind::Int(shift, _) = lit.node { shift >= bits }
                             else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked, None) {
@@ -159,8 +159,8 @@ impl LateLintPass for TypeLimits {
                 match cx.tcx.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
-                            ast::LitInt(v, ast::SignedIntLit(_)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit) => {
+                            ast::LitKind::Int(v, ast::SignedIntLit(_)) |
+                            ast::LitKind::Int(v, ast::UnsuffixedIntLit) => {
                                 let int_type = if let ast::IntTy::Is = t {
                                     cx.sess().target.int_type
                                 } else {
@@ -189,8 +189,9 @@ impl LateLintPass for TypeLimits {
                         };
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
-                            ast::LitByte(_v) => return,  // _v is u8, within range by definition
-                            ast::LitInt(v, _) => v,
+                            // _v is u8, within range by definition
+                            ast::LitKind::Byte(_v) => return,
+                            ast::LitKind::Int(v, _) => v,
                             _ => panic!()
                         };
                         if lit_val < min || lit_val > max {
@@ -201,8 +202,8 @@ impl LateLintPass for TypeLimits {
                     ty::TyFloat(t) => {
                         let (min, max) = float_ty_range(t);
                         let lit_val: f64 = match lit.node {
-                            ast::LitFloat(ref v, _) |
-                            ast::LitFloatUnsuffixed(ref v) => {
+                            ast::LitKind::Float(ref v, _) |
+                            ast::LitKind::FloatUnsuffixed(ref v) => {
                                 match v.parse() {
                                     Ok(f) => f,
                                     Err(_) => return
@@ -311,8 +312,8 @@ impl LateLintPass for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            ast::LitInt(v, ast::SignedIntLit(_)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit) => v as i64,
+                            ast::LitKind::Int(v, ast::SignedIntLit(_)) |
+                            ast::LitKind::Int(v, ast::UnsuffixedIntLit) => v as i64,
                             _ => return true
                         },
                         _ => panic!()
@@ -323,7 +324,7 @@ impl LateLintPass for TypeLimits {
                     let (min, max): (u64, u64) = uint_ty_range(uint_ty);
                     let lit_val: u64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            ast::LitInt(v, _) => v,
+                            ast::LitKind::Int(v, _) => v,
                             _ => return true
                         },
                         _ => panic!()

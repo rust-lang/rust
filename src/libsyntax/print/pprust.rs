@@ -630,20 +630,20 @@ pub trait PrintState<'a> {
             _ => ()
         }
         match lit.node {
-            ast::LitStr(ref st, style) => self.print_string(&st, style),
-            ast::LitByte(byte) => {
+            ast::LitKind::Str(ref st, style) => self.print_string(&st, style),
+            ast::LitKind::Byte(byte) => {
                 let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));
                 res.push('\'');
                 word(self.writer(), &res[..])
             }
-            ast::LitChar(ch) => {
+            ast::LitKind::Char(ch) => {
                 let mut res = String::from("'");
                 res.extend(ch.escape_default());
                 res.push('\'');
                 word(self.writer(), &res[..])
             }
-            ast::LitInt(i, t) => {
+            ast::LitKind::Int(i, t) => {
                 match t {
                     ast::SignedIntLit(st) => {
                         word(self.writer(),
@@ -657,18 +657,18 @@ pub trait PrintState<'a> {
                     }
                 }
             }
-            ast::LitFloat(ref f, t) => {
+            ast::LitKind::Float(ref f, t) => {
                 word(self.writer(),
                      &format!(
                          "{}{}",
                          &f,
                          t.ty_to_string()))
             }
-            ast::LitFloatUnsuffixed(ref f) => word(self.writer(), &f[..]),
-            ast::LitBool(val) => {
+            ast::LitKind::FloatUnsuffixed(ref f) => word(self.writer(), &f[..]),
+            ast::LitKind::Bool(val) => {
                 if val { word(self.writer(), "true") } else { word(self.writer(), "false") }
             }
-            ast::LitByteStr(ref v) => {
+            ast::LitKind::ByteStr(ref v) => {
                 let mut escaped: String = String::new();
                 for &ch in v.iter() {
                     escaped.extend(ascii::escape_default(ch)

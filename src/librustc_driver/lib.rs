@@ -563,7 +563,7 @@ impl RustcDefaultCalls {
                             ast::MetaWord(ref word) => println!("{}", word),
                             ast::MetaNameValue(ref name, ref value) => {
                                 println!("{}=\"{}\"", name, match value.node {
-                                    ast::LitStr(ref s, _) => s,
+                                    ast::LitKind::Str(ref s, _) => s,
                                     _ => continue,
                                 });
                             }

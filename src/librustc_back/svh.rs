@@ -232,7 +232,7 @@ mod svh_visitor {
         SawExprTup,
         SawExprBinary(hir::BinOp_),
         SawExprUnary(hir::UnOp),
-        SawExprLit(ast::Lit_),
+        SawExprLit(ast::LitKind),
         SawExprCast,
         SawExprType,
         SawExprIf,

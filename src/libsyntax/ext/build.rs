@@ -139,7 +139,7 @@ pub trait AstBuilder {
     fn expr_struct_ident(&self, span: Span, id: ast::Ident,
                          fields: Vec<ast::Field>) -> P<ast::Expr>;
 
-    fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr>;
+    fn expr_lit(&self, sp: Span, lit: ast::LitKind) -> P<ast::Expr>;
 
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr>;
     fn expr_isize(&self, sp: Span, i: isize) -> P<ast::Expr>;
@@ -285,7 +285,7 @@ pub trait AstBuilder {
     fn meta_name_value(&self,
                        sp: Span,
                        name: InternedString,
-                       value: ast::Lit_)
+                       value: ast::LitKind)
                        -> P<ast::MetaItem>;
 
     fn item_use(&self, sp: Span,
@@ -676,29 +676,30 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
 
-    fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr> {
+    fn expr_lit(&self, sp: Span, lit: ast::LitKind) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Lit(P(respan(sp, lit))))
     }
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
-        self.expr_lit(span, ast::LitInt(i as u64, ast::UnsignedIntLit(ast::UintTy::Us)))
+        self.expr_lit(span, ast::LitKind::Int(i as u64, ast::UnsignedIntLit(ast::UintTy::Us)))
     }
     fn expr_isize(&self, sp: Span, i: isize) -> P<ast::Expr> {
         if i < 0 {
             let i = (-i) as u64;
-            let lit = self.expr_lit(sp, ast::LitInt(i, ast::SignedIntLit(ast::IntTy::Is)));
+            let lit_ty = ast::LitIntType::Signed(ast::IntTy::Is);
+            let lit = self.expr_lit(sp, ast::LitKind::Int(i, lit_ty));
             self.expr_unary(sp, ast::UnOp::Neg, lit)
         } else {
-            self.expr_lit(sp, ast::LitInt(i as u64, ast::SignedIntLit(ast::IntTy::Is)))
+            self.expr_lit(sp, ast::LitKind::Int(i as u64, ast::SignedIntLit(ast::IntTy::Is)))
         }
     }
     fn expr_u32(&self, sp: Span, u: u32) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitInt(u as u64, ast::UnsignedIntLit(ast::UintTy::U32)))
+        self.expr_lit(sp, ast::LitKind::Int(u as u64, ast::UnsignedIntLit(ast::UintTy::U32)))
     }
     fn expr_u8(&self, sp: Span, u: u8) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitInt(u as u64, ast::UnsignedIntLit(ast::UintTy::U8)))
+        self.expr_lit(sp, ast::LitKind::Int(u as u64, ast::UnsignedIntLit(ast::UintTy::U8)))
     }
     fn expr_bool(&self, sp: Span, value: bool) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitBool(value))
+        self.expr_lit(sp, ast::LitKind::Bool(value))
     }
 
     fn expr_vec(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
@@ -712,7 +713,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_addr_of(sp, self.expr_vec(sp, exprs))
     }
     fn expr_str(&self, sp: Span, s: InternedString) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitStr(s, ast::CookedStr))
+        self.expr_lit(sp, ast::LitKind::Str(s, ast::CookedStr))
     }
 
     fn expr_cast(&self, sp: Span, expr: P<ast::Expr>, ty: P<ast::Ty>) -> P<ast::Expr> {
@@ -1113,7 +1114,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn meta_name_value(&self,
                        sp: Span,
                        name: InternedString,
-                       value: ast::Lit_)
+                       value: ast::LitKind)
                        -> P<ast::MetaItem> {
         P(respan(sp, ast::MetaNameValue(name, respan(sp, value))))
     }

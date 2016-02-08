@@ -349,7 +349,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitBool(false)))),
+            node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitKind::Bool(false)))),
             span: sp,
             attrs: None,
         })
@@ -774,7 +774,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
     let expr = cx.expander().fold_expr(expr);
     match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
-            ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
+            ast::LitKind::Str(ref s, style) => return Some(((*s).clone(), style)),
             _ => cx.span_err(l.span, err_msg)
         },
         _ => cx.span_err(expr.span, err_msg)

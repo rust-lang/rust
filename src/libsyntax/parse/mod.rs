@@ -449,11 +449,11 @@ fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
 }
 
 fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
-                      sd: &Handler, sp: Span) -> ast::Lit_ {
+                      sd: &Handler, sp: Span) -> ast::LitKind {
     debug!("filtered_float_lit: {}, {:?}", data, suffix);
     match suffix.as_ref().map(|s| &**s) {
-        Some("f32") => ast::LitFloat(data, ast::FloatTy::F32),
-        Some("f64") => ast::LitFloat(data, ast::FloatTy::F64),
+        Some("f32") => ast::LitKind::Float(data, ast::FloatTy::F32),
+        Some("f64") => ast::LitKind::Float(data, ast::FloatTy::F64),
         Some(suf) => {
             if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
                 // if it looks like a width, lets try to be helpful.
@@ -466,13 +466,13 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
                   .emit();
             }
 
-            ast::LitFloatUnsuffixed(data)
+            ast::LitKind::FloatUnsuffixed(data)
         }
-        None => ast::LitFloatUnsuffixed(data)
+        None => ast::LitKind::FloatUnsuffixed(data)
     }
 }
 pub fn float_lit(s: &str, suffix: Option<InternedString>,
-                 sd: &Handler, sp: Span) -> ast::Lit_ {
+                 sd: &Handler, sp: Span) -> ast::LitKind {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
     let s = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -576,7 +576,7 @@ pub fn integer_lit(s: &str,
                    suffix: Option<InternedString>,
                    sd: &Handler,
                    sp: Span)
-                   -> ast::Lit_ {
+                   -> ast::LitKind {
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
@@ -652,7 +652,7 @@ pub fn integer_lit(s: &str,
            string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
 
     match u64::from_str_radix(s, base) {
-        Ok(r) => ast::LitInt(r, ty),
+        Ok(r) => ast::LitKind::Int(r, ty),
         Err(_) => {
             // small bases are lexed as if they were base 10, e.g, the string
             // might be `0b10201`. This will cause the conversion above to fail,
@@ -665,7 +665,7 @@ pub fn integer_lit(s: &str,
             if !already_errored {
                 sd.span_err(sp, "int literal is too large");
             }
-            ast::LitInt(0, ty)
+            ast::LitKind::Int(0, ty)
         }
     }
 }

@@ -175,7 +175,7 @@ impl<'a> Parser<'a> {
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
                 match lit.node {
-                    ast::LitStr(..) => {}
+                    ast::LitKind::Str(..) => {}
                     _ => {
                         self.span_err(lit.span,
                                       "non-string literals are not allowed in meta-items");

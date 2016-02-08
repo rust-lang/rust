@@ -1322,22 +1322,22 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: Ty) -> CastResult {
 
 fn lit_to_const(sess: &Session, span: Span, lit: &ast::Lit, ty_hint: Option<Ty>) -> ConstVal {
     match lit.node {
-        ast::LitStr(ref s, _) => Str((*s).clone()),
-        ast::LitByteStr(ref data) => {
+        ast::LitKind::Str(ref s, _) => Str((*s).clone()),
+        ast::LitKind::ByteStr(ref data) => {
             ByteStr(data.clone())
         }
-        ast::LitByte(n) => Uint(n as u64),
-        ast::LitChar(n) => Uint(n as u64),
-        ast::LitInt(n, ast::SignedIntLit(_)) => Int(n as i64),
-        ast::LitInt(n, ast::UnsuffixedIntLit) => {
+        ast::LitKind::Byte(n) => Uint(n as u64),
+        ast::LitKind::Char(n) => Uint(n as u64),
+        ast::LitKind::Int(n, ast::SignedIntLit(_)) => Int(n as i64),
+        ast::LitKind::Int(n, ast::UnsuffixedIntLit) => {
             match ty_hint.map(|ty| &ty.sty) {
                 Some(&ty::TyUint(_)) => Uint(n),
                 _ => Int(n as i64)
             }
         }
-        ast::LitInt(n, ast::UnsignedIntLit(_)) => Uint(n),
-        ast::LitFloat(ref n, _) |
-        ast::LitFloatUnsuffixed(ref n) => {
+        ast::LitKind::Int(n, ast::UnsignedIntLit(_)) => Uint(n),
+        ast::LitKind::Float(ref n, _) |
+        ast::LitKind::FloatUnsuffixed(ref n) => {
             if let Ok(x) = n.parse::<f64>() {
                 Float(x)
             } else {
@@ -1345,7 +1345,7 @@ fn lit_to_const(sess: &Session, span: Span, lit: &ast::Lit, ty_hint: Option<Ty>)
                 sess.span_bug(span, "could not evaluate float literal (see issue #31407)");
             }
         }
-        ast::LitBool(b) => Bool(b)
+        ast::LitKind::Bool(b) => Bool(b)
     }
 }
 
