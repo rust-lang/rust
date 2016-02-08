@@ -13,13 +13,13 @@ pub use self::PathParsingMode::*;
 use abi;
 use ast::BareFnTy;
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{Public, Unsafety};
+use ast::{Public, Unsafety, UnOp};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindingMode};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
 use ast::{Decl, DeclItem, DeclLocal, DefaultBlock, DefaultReturn};
-use ast::{UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
+use ast::{BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast, ExprInPlace};
@@ -39,7 +39,7 @@ use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, BiMul, Mutability};
-use ast::{NamedField, UnNeg, NoReturn, UnNot};
+use ast::{NamedField, NoReturn};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
 use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild};
 use ast::{PolyTraitRef, QSelf};
@@ -1608,7 +1608,7 @@ impl<'a> Parser<'a> {
 
         if minus_present {
             let minus_hi = self.last_span.hi;
-            let unary = self.mk_unary(UnNeg, expr);
+            let unary = self.mk_unary(UnOp::Neg, expr);
             Ok(self.mk_expr(minus_lo, minus_hi, unary, None))
         } else {
             Ok(expr)
@@ -2740,21 +2740,21 @@ impl<'a> Parser<'a> {
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
-                self.mk_unary(UnNot, e)
+                self.mk_unary(UnOp::Not, e)
             }
             token::BinOp(token::Minus) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
-                self.mk_unary(UnNeg, e)
+                self.mk_unary(UnOp::Neg, e)
             }
             token::BinOp(token::Star) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
-                self.mk_unary(UnDeref, e)
+                self.mk_unary(UnOp::Deref, e)
             }
             token::BinOp(token::And) | token::AndAnd => {
                 try!(self.expect_and());

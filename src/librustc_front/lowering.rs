@@ -876,9 +876,9 @@ pub fn lower_constness(_lctx: &LoweringContext, c: Constness) -> hir::Constness 
 
 pub fn lower_unop(_lctx: &LoweringContext, u: UnOp) -> hir::UnOp {
     match u {
-        UnDeref => hir::UnDeref,
-        UnNot => hir::UnNot,
-        UnNeg => hir::UnNeg,
+        UnOp::Deref => hir::UnDeref,
+        UnOp::Not => hir::UnNot,
+        UnOp::Neg => hir::UnNeg,
     }
 }
 
