@@ -108,7 +108,7 @@ pub trait AstBuilder {
                  expr: Option<P<ast::Expr>>) -> P<ast::Block>;
 
     // expressions
-    fn expr(&self, span: Span, node: ast::Expr_) -> P<ast::Expr>;
+    fn expr(&self, span: Span, node: ast::ExprKind) -> P<ast::Expr>;
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr>;
     fn expr_qpath(&self, span: Span, qself: ast::QSelf, path: ast::Path) -> P<ast::Expr>;
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr>;
@@ -578,7 +578,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             })
     }
 
-    fn expr(&self, span: Span, node: ast::Expr_) -> P<ast::Expr> {
+    fn expr(&self, span: Span, node: ast::ExprKind) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
             node: node,
@@ -588,12 +588,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr> {
-        self.expr(path.span, ast::ExprPath(None, path))
+        self.expr(path.span, ast::ExprKind::Path(None, path))
     }
 
     /// Constructs a QPath expression.
     fn expr_qpath(&self, span: Span, qself: ast::QSelf, path: ast::Path) -> P<ast::Expr> {
-        self.expr(span, ast::ExprPath(Some(qself), path))
+        self.expr(span, ast::ExprKind::Path(Some(qself), path))
     }
 
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr> {
@@ -605,14 +605,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
                    lhs: P<ast::Expr>, rhs: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprBinary(Spanned { node: op, span: sp }, lhs, rhs))
+        self.expr(sp, ast::ExprKind::Binary(Spanned { node: op, span: sp }, lhs, rhs))
     }
 
     fn expr_deref(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr_unary(sp, UnOp::Deref, e)
     }
     fn expr_unary(&self, sp: Span, op: ast::UnOp, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprUnary(op, e))
+        self.expr(sp, ast::ExprKind::Unary(op, e))
     }
 
     fn expr_field_access(&self, sp: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
@@ -623,7 +623,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         };
 
         let id = Spanned { node: ident, span: field_span };
-        self.expr(sp, ast::ExprField(expr, id))
+        self.expr(sp, ast::ExprKind::Field(expr, id))
     }
     fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: usize) -> P<ast::Expr> {
         let field_span = Span {
@@ -633,21 +633,21 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         };
 
         let id = Spanned { node: idx, span: field_span };
-        self.expr(sp, ast::ExprTupField(expr, id))
+        self.expr(sp, ast::ExprKind::TupField(expr, id))
     }
     fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprAddrOf(ast::MutImmutable, e))
+        self.expr(sp, ast::ExprKind::AddrOf(ast::MutImmutable, e))
     }
     fn expr_mut_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprAddrOf(ast::MutMutable, e))
+        self.expr(sp, ast::ExprKind::AddrOf(ast::MutMutable, e))
     }
 
     fn expr_call(&self, span: Span, expr: P<ast::Expr>, args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
-        self.expr(span, ast::ExprCall(expr, args))
+        self.expr(span, ast::ExprKind::Call(expr, args))
     }
     fn expr_call_ident(&self, span: Span, id: ast::Ident,
                        args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
-        self.expr(span, ast::ExprCall(self.expr_ident(span, id), args))
+        self.expr(span, ast::ExprKind::Call(self.expr_ident(span, id), args))
     }
     fn expr_call_global(&self, sp: Span, fn_path: Vec<ast::Ident> ,
                       args: Vec<P<ast::Expr>> ) -> P<ast::Expr> {
@@ -660,16 +660,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                         mut args: Vec<P<ast::Expr>> ) -> P<ast::Expr> {
         let id = Spanned { node: ident, span: span };
         args.insert(0, expr);
-        self.expr(span, ast::ExprMethodCall(id, Vec::new(), args))
+        self.expr(span, ast::ExprKind::MethodCall(id, Vec::new(), args))
     }
     fn expr_block(&self, b: P<ast::Block>) -> P<ast::Expr> {
-        self.expr(b.span, ast::ExprBlock(b))
+        self.expr(b.span, ast::ExprKind::Block(b))
     }
     fn field_imm(&self, span: Span, name: Ident, e: P<ast::Expr>) -> ast::Field {
         ast::Field { ident: respan(span, name), expr: e, span: span }
     }
     fn expr_struct(&self, span: Span, path: ast::Path, fields: Vec<ast::Field>) -> P<ast::Expr> {
-        self.expr(span, ast::ExprStruct(path, fields, None))
+        self.expr(span, ast::ExprKind::Struct(path, fields, None))
     }
     fn expr_struct_ident(&self, span: Span,
                          id: ast::Ident, fields: Vec<ast::Field>) -> P<ast::Expr> {
@@ -677,7 +677,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprLit(P(respan(sp, lit))))
+        self.expr(sp, ast::ExprKind::Lit(P(respan(sp, lit))))
     }
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitInt(i as u64, ast::UnsignedIntLit(ast::TyUs)))
@@ -697,7 +697,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_vec(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprVec(exprs))
+        self.expr(sp, ast::ExprKind::Vec(exprs))
     }
     fn expr_vec_ng(&self, sp: Span) -> P<ast::Expr> {
         self.expr_call_global(sp, self.std_path(&["vec", "Vec", "new"]),
@@ -711,7 +711,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_cast(&self, sp: Span, expr: P<ast::Expr>, ty: P<ast::Ty>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprCast(expr, ty))
+        self.expr(sp, ast::ExprKind::Cast(expr, ty))
     }
 
 
@@ -728,12 +728,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
 
     fn expr_break(&self, sp: Span) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprBreak(None))
+        self.expr(sp, ast::ExprKind::Break(None))
     }
 
 
     fn expr_tuple(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprTup(exprs))
+        self.expr(sp, ast::ExprKind::Tup(exprs))
     }
 
     fn expr_fail(&self, span: Span, msg: InternedString) -> P<ast::Expr> {
@@ -785,7 +785,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let err_inner_expr = self.expr_call(sp, self.expr_path(err_path),
                                             vec!(binding_expr.clone()));
         // return Err(__try_var)
-        let err_expr = self.expr(sp, ast::ExprRet(Some(err_inner_expr)));
+        let err_expr = self.expr(sp, ast::ExprKind::Ret(Some(err_inner_expr)));
 
         // Ok(__try_var) => __try_var
         let ok_arm = self.arm(sp, vec!(ok_pat), binding_expr);
@@ -868,29 +868,29 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {
-        self.expr(span, ast::ExprMatch(arg, arms))
+        self.expr(span, ast::ExprKind::Match(arg, arms))
     }
 
     fn expr_if(&self, span: Span, cond: P<ast::Expr>,
                then: P<ast::Expr>, els: Option<P<ast::Expr>>) -> P<ast::Expr> {
         let els = els.map(|x| self.expr_block(self.block_expr(x)));
-        self.expr(span, ast::ExprIf(cond, self.block_expr(then), els))
+        self.expr(span, ast::ExprKind::If(cond, self.block_expr(then), els))
     }
 
     fn expr_loop(&self, span: Span, block: P<ast::Block>) -> P<ast::Expr> {
-        self.expr(span, ast::ExprLoop(block, None))
+        self.expr(span, ast::ExprKind::Loop(block, None))
     }
 
     fn lambda_fn_decl(&self, span: Span,
                       fn_decl: P<ast::FnDecl>, blk: P<ast::Block>) -> P<ast::Expr> {
-        self.expr(span, ast::ExprClosure(ast::CaptureBy::Ref, fn_decl, blk))
+        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref, fn_decl, blk))
     }
     fn lambda(&self, span: Span, ids: Vec<ast::Ident>, blk: P<ast::Block>) -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
             self.ty_infer(span));
 
-        self.expr(span, ast::ExprClosure(ast::CaptureBy::Ref, fn_decl, blk))
+        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref, fn_decl, blk))
     }
     fn lambda0(&self, span: Span, blk: P<ast::Block>) -> P<ast::Expr> {
         self.lambda(span, Vec::new(), blk)

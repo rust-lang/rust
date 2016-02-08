@@ -703,7 +703,7 @@ mod tests {
         assert!(string_to_expr("a".to_string()) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
-                    node: ast::ExprPath(None, ast::Path {
+                    node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 1),
                         global: false,
                         segments: vec!(
@@ -722,7 +722,7 @@ mod tests {
         assert!(string_to_expr("::a::b".to_string()) ==
                    P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
-                    node: ast::ExprPath(None, ast::Path {
+                    node: ast::ExprKind::Path(None, ast::Path {
                             span: sp(0, 6),
                             global: true,
                             segments: vec!(
@@ -852,9 +852,9 @@ mod tests {
         assert!(string_to_expr("return d".to_string()) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
-                    node:ast::ExprRet(Some(P(ast::Expr{
+                    node:ast::ExprKind::Ret(Some(P(ast::Expr{
                         id: ast::DUMMY_NODE_ID,
-                        node:ast::ExprPath(None, ast::Path{
+                        node:ast::ExprKind::Path(None, ast::Path{
                             span: sp(7, 8),
                             global: false,
                             segments: vec!(
@@ -877,7 +877,7 @@ mod tests {
                    Some(P(Spanned{
                        node: ast::StmtExpr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
-                           node: ast::ExprPath(None, ast::Path {
+                           node: ast::ExprKind::Path(None, ast::Path {
                                span:sp(0,1),
                                global:false,
                                segments: vec!(
@@ -968,7 +968,7 @@ mod tests {
                                         stmts: vec!(P(Spanned{
                                             node: ast::StmtSemi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
-                                                node: ast::ExprPath(None,
+                                                node: ast::ExprKind::Path(None,
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,
@@ -1110,7 +1110,7 @@ mod tests {
             "foo!( fn main() { body } )".to_string(), vec![], &sess);
 
         let tts = match expr.node {
-            ast::ExprMac(ref mac) => mac.node.tts.clone(),
+            ast::ExprKind::Mac(ref mac) => mac.node.tts.clone(),
             _ => panic!("not a macro"),
         };
 

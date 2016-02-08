@@ -32,8 +32,8 @@ struct CheckNoAsm<'a> {
 impl<'a, 'v> Visitor<'v> for CheckNoAsm<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprInlineAsm(_) => span_err!(self.sess, e.span, E0472,
-                                               "asm! is unsupported on this target"),
+            ast::ExprKind::InlineAsm(_) => span_err!(self.sess, e.span, E0472,
+                                                     "asm! is unsupported on this target"),
             _ => {},
         }
         visit::walk_expr(self, e)

@@ -651,21 +651,21 @@ pub fn walk_mac<'v, V: Visitor<'v>>(_: &mut V, _: &'v Mac) {
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
     match expression.node {
-        ExprBox(ref subexpression) => {
+        ExprKind::Box(ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprInPlace(ref place, ref subexpression) => {
+        ExprKind::InPlace(ref place, ref subexpression) => {
             visitor.visit_expr(place);
             visitor.visit_expr(subexpression)
         }
-        ExprVec(ref subexpressions) => {
+        ExprKind::Vec(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprRepeat(ref element, ref count) => {
+        ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
             visitor.visit_expr(count)
         }
-        ExprStruct(ref path, ref fields, ref optional_base) => {
+        ExprKind::Struct(ref path, ref fields, ref optional_base) => {
             visitor.visit_path(path, expression.id);
             for field in fields {
                 visitor.visit_ident(field.ident.span, field.ident.node);
@@ -673,116 +673,116 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             }
             walk_list!(visitor, visit_expr, optional_base);
         }
-        ExprTup(ref subexpressions) => {
+        ExprKind::Tup(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprCall(ref callee_expression, ref arguments) => {
+        ExprKind::Call(ref callee_expression, ref arguments) => {
             walk_list!(visitor, visit_expr, arguments);
             visitor.visit_expr(callee_expression)
         }
-        ExprMethodCall(ref ident, ref types, ref arguments) => {
+        ExprKind::MethodCall(ref ident, ref types, ref arguments) => {
             visitor.visit_ident(ident.span, ident.node);
             walk_list!(visitor, visit_expr, arguments);
             walk_list!(visitor, visit_ty, types);
         }
-        ExprBinary(_, ref left_expression, ref right_expression) => {
+        ExprKind::Binary(_, ref left_expression, ref right_expression) => {
             visitor.visit_expr(left_expression);
             visitor.visit_expr(right_expression)
         }
-        ExprAddrOf(_, ref subexpression) | ExprUnary(_, ref subexpression) => {
+        ExprKind::AddrOf(_, ref subexpression) | ExprKind::Unary(_, ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprLit(_) => {}
-        ExprCast(ref subexpression, ref typ) | ExprType(ref subexpression, ref typ) => {
+        ExprKind::Lit(_) => {}
+        ExprKind::Cast(ref subexpression, ref typ) | ExprKind::Type(ref subexpression, ref typ) => {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
-        ExprIf(ref head_expression, ref if_block, ref optional_else) => {
+        ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprWhile(ref subexpression, ref block, opt_ident) => {
+        ExprKind::While(ref subexpression, ref block, opt_ident) => {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprIfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
+        ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprWhileLet(ref pattern, ref subexpression, ref block, opt_ident) => {
+        ExprKind::WhileLet(ref pattern, ref subexpression, ref block, opt_ident) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprForLoop(ref pattern, ref subexpression, ref block, opt_ident) => {
+        ExprKind::ForLoop(ref pattern, ref subexpression, ref block, opt_ident) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprLoop(ref block, opt_ident) => {
+        ExprKind::Loop(ref block, opt_ident) => {
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprMatch(ref subexpression, ref arms) => {
+        ExprKind::Match(ref subexpression, ref arms) => {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprClosure(_, ref function_declaration, ref body) => {
+        ExprKind::Closure(_, ref function_declaration, ref body) => {
             visitor.visit_fn(FnKind::Closure,
                              function_declaration,
                              body,
                              expression.span,
                              expression.id)
         }
-        ExprBlock(ref block) => visitor.visit_block(block),
-        ExprAssign(ref left_hand_expression, ref right_hand_expression) => {
+        ExprKind::Block(ref block) => visitor.visit_block(block),
+        ExprKind::Assign(ref left_hand_expression, ref right_hand_expression) => {
             visitor.visit_expr(right_hand_expression);
             visitor.visit_expr(left_hand_expression)
         }
-        ExprAssignOp(_, ref left_expression, ref right_expression) => {
+        ExprKind::AssignOp(_, ref left_expression, ref right_expression) => {
             visitor.visit_expr(right_expression);
             visitor.visit_expr(left_expression)
         }
-        ExprField(ref subexpression, ref ident) => {
+        ExprKind::Field(ref subexpression, ref ident) => {
             visitor.visit_expr(subexpression);
             visitor.visit_ident(ident.span, ident.node);
         }
-        ExprTupField(ref subexpression, _) => {
+        ExprKind::TupField(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
         }
-        ExprIndex(ref main_expression, ref index_expression) => {
+        ExprKind::Index(ref main_expression, ref index_expression) => {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }
-        ExprRange(ref start, ref end) => {
+        ExprKind::Range(ref start, ref end) => {
             walk_list!(visitor, visit_expr, start);
             walk_list!(visitor, visit_expr, end);
         }
-        ExprPath(ref maybe_qself, ref path) => {
+        ExprKind::Path(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
             }
             visitor.visit_path(path, expression.id)
         }
-        ExprBreak(ref opt_sp_ident) | ExprAgain(ref opt_sp_ident) => {
+        ExprKind::Break(ref opt_sp_ident) | ExprKind::Again(ref opt_sp_ident) => {
             for sp_ident in opt_sp_ident {
                 visitor.visit_ident(sp_ident.span, sp_ident.node);
             }
         }
-        ExprRet(ref optional_expression) => {
+        ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
-        ExprMac(ref mac) => visitor.visit_mac(mac),
-        ExprParen(ref subexpression) => {
+        ExprKind::Mac(ref mac) => visitor.visit_mac(mac),
+        ExprKind::Paren(ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprInlineAsm(ref ia) => {
+        ExprKind::InlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
                 visitor.visit_expr(&input)
             }

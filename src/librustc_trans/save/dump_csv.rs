@@ -1083,23 +1083,23 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_expr(&mut self, ex: &ast::Expr) {
         self.process_macro_use(ex.span, ex.id);
         match ex.node {
-            ast::ExprCall(ref _f, ref _args) => {
+            ast::ExprKind::Call(ref _f, ref _args) => {
                 // Don't need to do anything for function calls,
                 // because just walking the callee path does what we want.
                 visit::walk_expr(self, ex);
             }
-            ast::ExprPath(_, ref path) => {
+            ast::ExprKind::Path(_, ref path) => {
                 self.process_path(ex.id, path, None);
                 visit::walk_expr(self, ex);
             }
-            ast::ExprStruct(ref path, ref fields, ref base) => {
+            ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = lower_expr(self.save_ctxt.lcx, ex);
                 let adt = self.tcx.expr_ty(&hir_expr).ty_adt_def().unwrap();
                 let def = self.tcx.resolve_expr(&hir_expr);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
-            ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
-            ast::ExprField(ref sub_ex, _) => {
+            ast::ExprKind::MethodCall(_, _, ref args) => self.process_method_call(ex, args),
+            ast::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 
                 if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
@@ -1111,7 +1111,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                      field_data.scope);
                 }
             }
-            ast::ExprTupField(ref sub_ex, idx) => {
+            ast::ExprKind::TupField(ref sub_ex, idx) => {
                 self.visit_expr(&**sub_ex);
 
                 let hir_node = lower_expr(self.save_ctxt.lcx, sub_ex);
@@ -1131,7 +1131,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                                      ty)),
                 }
             }
-            ast::ExprClosure(_, ref decl, ref body) => {
+            ast::ExprKind::Closure(_, ref decl, ref body) => {
                 let mut id = String::from("$");
                 id.push_str(&ex.id.to_string());
                 self.process_formals(&decl.inputs, &id);
@@ -1148,14 +1148,14 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 // walk the body
                 self.nest(ex.id, |v| v.visit_block(&**body));
             }
-            ast::ExprForLoop(ref pattern, ref subexpression, ref block, _) |
-            ast::ExprWhileLet(ref pattern, ref subexpression, ref block, _) => {
+            ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
+            ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {
                 let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
                 self.process_var_decl(pattern, value);
                 visit::walk_expr(self, subexpression);
                 visit::walk_block(self, block);
             }
-            ast::ExprIfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
+            ast::ExprKind::IfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
                 let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
                 self.process_var_decl(pattern, value);
                 visit::walk_expr(self, subexpression);

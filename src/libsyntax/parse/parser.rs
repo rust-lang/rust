@@ -20,14 +20,8 @@ use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
 use ast::{Decl, DeclKind};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
-use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
-use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
-use ast::{ExprBreak, ExprCall, ExprCast, ExprInPlace};
-use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
-use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
-use ast::{ExprMethodCall, ExprParen, ExprPath};
-use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprType, ExprUnary};
-use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
+use ast::{Expr, ExprKind};
+use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
@@ -140,7 +134,7 @@ macro_rules! maybe_whole_expr {
                         _ => unreachable!()
                     };
                     let span = $p.span;
-                    Some($p.mk_expr(span.lo, span.hi, ExprPath(None, pt), None))
+                    Some($p.mk_expr(span.lo, span.hi, ExprKind::Path(None, pt), None))
                 }
                 token::Interpolated(token::NtBlock(_)) => {
                     // FIXME: The following avoids an issue with lexical borrowck scopes,
@@ -150,7 +144,7 @@ macro_rules! maybe_whole_expr {
                         _ => unreachable!()
                     };
                     let span = $p.span;
-                    Some($p.mk_expr(span.lo, span.hi, ExprBlock(b), None))
+                    Some($p.mk_expr(span.lo, span.hi, ExprKind::Block(b), None))
                 }
                 _ => None
             };
@@ -508,7 +502,7 @@ impl<'a> Parser<'a> {
     pub fn commit_expr(&mut self, e: &Expr, edible: &[token::Token],
                        inedible: &[token::Token]) -> PResult<'a, ()> {
         debug!("commit_expr {:?}", e);
-        if let ExprPath(..) = e.node {
+        if let ExprKind::Path(..) = e.node {
             // might be unit-struct construction; check for recoverableinput error.
             let expected = edible.iter()
                 .cloned()
@@ -1529,7 +1523,7 @@ impl<'a> Parser<'a> {
         match *tok {
             token::Interpolated(token::NtExpr(ref v)) => {
                 match v.node {
-                    ExprLit(ref lit) => { Ok(lit.node.clone()) }
+                    ExprKind::Lit(ref lit) => { Ok(lit.node.clone()) }
                     _ => { return self.unexpected_last(tok); }
                 }
             }
@@ -1605,7 +1599,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let literal = P(try!(self.parse_lit()));
         let hi = self.last_span.hi;
-        let expr = self.mk_expr(lo, hi, ExprLit(literal), None);
+        let expr = self.mk_expr(lo, hi, ExprKind::Lit(literal), None);
 
         if minus_present {
             let minus_hi = self.last_span.hi;
@@ -1957,7 +1951,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn mk_expr(&mut self, lo: BytePos, hi: BytePos,
-                   node: Expr_, attrs: ThinAttributes) -> P<Expr> {
+                   node: ExprKind, attrs: ThinAttributes) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
             node: node,
@@ -1966,55 +1960,55 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub fn mk_unary(&mut self, unop: ast::UnOp, expr: P<Expr>) -> ast::Expr_ {
-        ExprUnary(unop, expr)
+    pub fn mk_unary(&mut self, unop: ast::UnOp, expr: P<Expr>) -> ast::ExprKind {
+        ExprKind::Unary(unop, expr)
     }
 
-    pub fn mk_binary(&mut self, binop: ast::BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ast::Expr_ {
-        ExprBinary(binop, lhs, rhs)
+    pub fn mk_binary(&mut self, binop: ast::BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprKind {
+        ExprKind::Binary(binop, lhs, rhs)
     }
 
-    pub fn mk_call(&mut self, f: P<Expr>, args: Vec<P<Expr>>) -> ast::Expr_ {
-        ExprCall(f, args)
+    pub fn mk_call(&mut self, f: P<Expr>, args: Vec<P<Expr>>) -> ast::ExprKind {
+        ExprKind::Call(f, args)
     }
 
     fn mk_method_call(&mut self,
                       ident: ast::SpannedIdent,
                       tps: Vec<P<Ty>>,
                       args: Vec<P<Expr>>)
-                      -> ast::Expr_ {
-        ExprMethodCall(ident, tps, args)
+                      -> ast::ExprKind {
+        ExprKind::MethodCall(ident, tps, args)
     }
 
-    pub fn mk_index(&mut self, expr: P<Expr>, idx: P<Expr>) -> ast::Expr_ {
-        ExprIndex(expr, idx)
+    pub fn mk_index(&mut self, expr: P<Expr>, idx: P<Expr>) -> ast::ExprKind {
+        ExprKind::Index(expr, idx)
     }
 
     pub fn mk_range(&mut self,
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>)
-                    -> ast::Expr_ {
-        ExprRange(start, end)
+                    -> ast::ExprKind {
+        ExprKind::Range(start, end)
     }
 
-    pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::Expr_ {
-        ExprField(expr, ident)
+    pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::ExprKind {
+        ExprKind::Field(expr, ident)
     }
 
-    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<usize>) -> ast::Expr_ {
-        ExprTupField(expr, idx)
+    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<usize>) -> ast::ExprKind {
+        ExprKind::TupField(expr, idx)
     }
 
     pub fn mk_assign_op(&mut self, binop: ast::BinOp,
-                        lhs: P<Expr>, rhs: P<Expr>) -> ast::Expr_ {
-        ExprAssignOp(binop, lhs, rhs)
+                        lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprKind {
+        ExprKind::AssignOp(binop, lhs, rhs)
     }
 
     pub fn mk_mac_expr(&mut self, lo: BytePos, hi: BytePos,
                        m: Mac_, attrs: ThinAttributes) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ExprMac(codemap::Spanned {node: m, span: mk_sp(lo, hi)}),
+            node: ExprKind::Mac(codemap::Spanned {node: m, span: mk_sp(lo, hi)}),
             span: mk_sp(lo, hi),
             attrs: attrs,
         })
@@ -2029,7 +2023,7 @@ impl<'a> Parser<'a> {
 
         P(Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ExprLit(lv_lit),
+            node: ExprKind::Lit(lv_lit),
             span: *span,
             attrs: attrs,
         })
@@ -2066,7 +2060,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
 
-        let ex: Expr_;
+        let ex: ExprKind;
 
         // Note: when adding new syntax here, don't forget to adjust Token::can_begin_expr().
         match self.token {
@@ -2098,9 +2092,9 @@ impl<'a> Parser<'a> {
 
                 hi = self.last_span.hi;
                 return if es.len() == 1 && !trailing_comma {
-                    Ok(self.mk_expr(lo, hi, ExprParen(es.into_iter().nth(0).unwrap()), attrs))
+                    Ok(self.mk_expr(lo, hi, ExprKind::Paren(es.into_iter().nth(0).unwrap()), attrs))
                 } else {
-                    Ok(self.mk_expr(lo, hi, ExprTup(es), attrs))
+                    Ok(self.mk_expr(lo, hi, ExprKind::Tup(es), attrs))
                 }
             },
             token::OpenDelim(token::Brace) => {
@@ -2116,7 +2110,7 @@ impl<'a> Parser<'a> {
                          }, token::Plain) => {
                 self.bump();
                 let path = ast_util::ident_to_path(mk_sp(lo, hi), id);
-                ex = ExprPath(None, path);
+                ex = ExprKind::Path(None, path);
                 hi = self.last_span.hi;
             }
             token::OpenDelim(token::Bracket) => {
@@ -2129,7 +2123,7 @@ impl<'a> Parser<'a> {
                 if self.check(&token::CloseDelim(token::Bracket)) {
                     // Empty vector.
                     self.bump();
-                    ex = ExprVec(Vec::new());
+                    ex = ExprKind::Vec(Vec::new());
                 } else {
                     // Nonempty vector.
                     let first_expr = try!(self.parse_expr());
@@ -2138,7 +2132,7 @@ impl<'a> Parser<'a> {
                         self.bump();
                         let count = try!(self.parse_expr());
                         try!(self.expect(&token::CloseDelim(token::Bracket)));
-                        ex = ExprRepeat(first_expr, count);
+                        ex = ExprKind::Repeat(first_expr, count);
                     } else if self.check(&token::Comma) {
                         // Vector with two or more elements.
                         self.bump();
@@ -2149,11 +2143,11 @@ impl<'a> Parser<'a> {
                                 ));
                         let mut exprs = vec!(first_expr);
                         exprs.extend(remaining_exprs);
-                        ex = ExprVec(exprs);
+                        ex = ExprKind::Vec(exprs);
                     } else {
                         // Vector with one element.
                         try!(self.expect(&token::CloseDelim(token::Bracket)));
-                        ex = ExprVec(vec!(first_expr));
+                        ex = ExprKind::Vec(vec!(first_expr));
                     }
                 }
                 hi = self.last_span.hi;
@@ -2163,7 +2157,7 @@ impl<'a> Parser<'a> {
                     let (qself, path) =
                         try!(self.parse_qualified_path(LifetimeAndTypesWithColons));
                     hi = path.span.hi;
-                    return Ok(self.mk_expr(lo, hi, ExprPath(Some(qself), path), attrs));
+                    return Ok(self.mk_expr(lo, hi, ExprKind::Path(Some(qself), path), attrs));
                 }
                 if self.eat_keyword(keywords::Move) {
                     let lo = self.last_span.lo;
@@ -2202,14 +2196,14 @@ impl<'a> Parser<'a> {
                 }
                 if self.eat_keyword(keywords::Continue) {
                     let ex = if self.token.is_lifetime() {
-                        let ex = ExprAgain(Some(Spanned{
+                        let ex = ExprKind::Again(Some(Spanned{
                             node: self.get_lifetime(),
                             span: self.span
                         }));
                         self.bump();
                         ex
                     } else {
-                        ExprAgain(None)
+                        ExprKind::Again(None)
                     };
                     let hi = self.last_span.hi;
                     return Ok(self.mk_expr(lo, hi, ex, attrs));
@@ -2227,19 +2221,19 @@ impl<'a> Parser<'a> {
                     if self.token.can_begin_expr() {
                         let e = try!(self.parse_expr());
                         hi = e.span.hi;
-                        ex = ExprRet(Some(e));
+                        ex = ExprKind::Ret(Some(e));
                     } else {
-                        ex = ExprRet(None);
+                        ex = ExprKind::Ret(None);
                     }
                 } else if self.eat_keyword(keywords::Break) {
                     if self.token.is_lifetime() {
-                        ex = ExprBreak(Some(Spanned {
+                        ex = ExprKind::Break(Some(Spanned {
                             node: self.get_lifetime(),
                             span: self.span
                         }));
                         self.bump();
                     } else {
-                        ex = ExprBreak(None);
+                        ex = ExprKind::Break(None);
                     }
                     hi = self.last_span.hi;
                 } else if self.token.is_keyword(keywords::Let) {
@@ -2302,18 +2296,18 @@ impl<'a> Parser<'a> {
 
                             hi = self.span.hi;
                             try!(self.expect(&token::CloseDelim(token::Brace)));
-                            ex = ExprStruct(pth, fields, base);
+                            ex = ExprKind::Struct(pth, fields, base);
                             return Ok(self.mk_expr(lo, hi, ex, attrs));
                         }
                     }
 
                     hi = pth.span.hi;
-                    ex = ExprPath(None, pth);
+                    ex = ExprKind::Path(None, pth);
                 } else {
                     // other literal expression
                     let lit = try!(self.parse_lit());
                     hi = lit.span.hi;
-                    ex = ExprLit(P(lit));
+                    ex = ExprKind::Lit(P(lit));
                 }
             }
         }
@@ -2343,7 +2337,7 @@ impl<'a> Parser<'a> {
         let attrs = outer_attrs.append(inner_attrs);
 
         let blk = try!(self.parse_block_tail(lo, blk_mode));
-        return Ok(self.mk_expr(blk.span.lo, blk.span.hi, ExprBlock(blk), attrs));
+        return Ok(self.mk_expr(blk.span.lo, blk.span.hi, ExprKind::Block(blk), attrs));
     }
 
     /// parse a.b or a(13) or a[4] or just a
@@ -2370,7 +2364,7 @@ impl<'a> Parser<'a> {
             expr.map(|mut expr| {
                 expr.attrs.update(|a| a.prepend(attrs));
                 match expr.node {
-                    ExprIf(..) | ExprIfLet(..) => {
+                    ExprKind::If(..) | ExprKind::IfLet(..) => {
                         if !expr.attrs.as_attr_slice().is_empty() {
                             // Just point to the first attribute in there...
                             let span = expr.attrs.as_attr_slice()[0].span;
@@ -2763,7 +2757,7 @@ impl<'a> Parser<'a> {
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
-                ExprAddrOf(m, e)
+                ExprKind::AddrOf(m, e)
             }
             token::Ident(..) if self.token.is_keyword(keywords::In) => {
                 self.bump();
@@ -2774,16 +2768,16 @@ impl<'a> Parser<'a> {
                 let blk = try!(self.parse_block());
                 let span = blk.span;
                 hi = span.hi;
-                let blk_expr = self.mk_expr(span.lo, span.hi, ExprBlock(blk),
+                let blk_expr = self.mk_expr(span.lo, span.hi, ExprKind::Block(blk),
                                             None);
-                ExprInPlace(place, blk_expr)
+                ExprKind::InPlace(place, blk_expr)
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = try!(self.interpolated_or_expr_span(e));
                 hi = span.hi;
-                ExprBox(e)
+                ExprKind::Box(e)
             }
             _ => return self.parse_dot_or_call_expr(Some(attrs))
         };
@@ -2850,12 +2844,12 @@ impl<'a> Parser<'a> {
             if op == AssocOp::As {
                 let rhs = try!(self.parse_ty());
                 lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
-                                   ExprCast(lhs, rhs), None);
+                                   ExprKind::Cast(lhs, rhs), None);
                 continue
             } else if op == AssocOp::Colon {
                 let rhs = try!(self.parse_ty());
                 lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
-                                   ExprType(lhs, rhs), None);
+                                   ExprKind::Type(lhs, rhs), None);
                 continue
             } else if op == AssocOp::DotDot {
                     // If we didn’t have to handle `x..`, it would be pretty easy to generalise
@@ -2921,9 +2915,9 @@ impl<'a> Parser<'a> {
                     self.mk_expr(lhs_span.lo, rhs_span.hi, binary, None)
                 }
                 AssocOp::Assign =>
-                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprAssign(lhs, rhs), None),
+                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprKind::Assign(lhs, rhs), None),
                 AssocOp::Inplace =>
-                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprInPlace(lhs, rhs), None),
+                    self.mk_expr(lhs_span.lo, rhs.span.hi, ExprKind::InPlace(lhs, rhs), None),
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
                         token::Plus =>    BinOpKind::Add,
@@ -2957,7 +2951,7 @@ impl<'a> Parser<'a> {
     fn check_no_chained_comparison(&mut self, lhs: &Expr, outer_op: &AssocOp) {
         debug_assert!(outer_op.is_comparison());
         match lhs.node {
-            ExprBinary(op, _, _) if op.node.is_comparison() => {
+            ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
                 // respan to include both operators
                 let op_span = mk_sp(op.span.lo, self.span.hi);
                 let mut err = self.diagnostic().struct_span_err(op_span,
@@ -3024,7 +3018,7 @@ impl<'a> Parser<'a> {
             hi = elexpr.span.hi;
             els = Some(elexpr);
         }
-        Ok(self.mk_expr(lo, hi, ExprIf(cond, thn, els), attrs))
+        Ok(self.mk_expr(lo, hi, ExprKind::If(cond, thn, els), attrs))
     }
 
     /// Parse an 'if let' expression ('if' token already eaten)
@@ -3042,7 +3036,7 @@ impl<'a> Parser<'a> {
         } else {
             (thn.span.hi, None)
         };
-        Ok(self.mk_expr(lo, hi, ExprIfLet(pat, expr, thn, els), attrs))
+        Ok(self.mk_expr(lo, hi, ExprKind::IfLet(pat, expr, thn, els), attrs))
     }
 
     // `|args| expr`
@@ -3075,7 +3069,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(
             lo,
             body.span.hi,
-            ExprClosure(capture_clause, decl, body), attrs))
+            ExprKind::Closure(capture_clause, decl, body), attrs))
     }
 
     // `else` token already eaten
@@ -3084,7 +3078,7 @@ impl<'a> Parser<'a> {
             return self.parse_if_expr(None);
         } else {
             let blk = try!(self.parse_block());
-            return Ok(self.mk_expr(blk.span.lo, blk.span.hi, ExprBlock(blk), None));
+            return Ok(self.mk_expr(blk.span.lo, blk.span.hi, ExprKind::Block(blk), None));
         }
     }
 
@@ -3103,7 +3097,7 @@ impl<'a> Parser<'a> {
         let hi = self.last_span.hi;
 
         Ok(self.mk_expr(span_lo, hi,
-                        ExprForLoop(pat, expr, loop_block, opt_ident),
+                        ExprKind::ForLoop(pat, expr, loop_block, opt_ident),
                         attrs))
     }
 
@@ -3118,7 +3112,7 @@ impl<'a> Parser<'a> {
         let (iattrs, body) = try!(self.parse_inner_attrs_and_block());
         let attrs = attrs.append(iattrs.into_thin_attrs());
         let hi = body.span.hi;
-        return Ok(self.mk_expr(span_lo, hi, ExprWhile(cond, body, opt_ident),
+        return Ok(self.mk_expr(span_lo, hi, ExprKind::While(cond, body, opt_ident),
                                attrs));
     }
 
@@ -3133,7 +3127,7 @@ impl<'a> Parser<'a> {
         let (iattrs, body) = try!(self.parse_inner_attrs_and_block());
         let attrs = attrs.append(iattrs.into_thin_attrs());
         let hi = body.span.hi;
-        return Ok(self.mk_expr(span_lo, hi, ExprWhileLet(pat, expr, body, opt_ident), attrs));
+        return Ok(self.mk_expr(span_lo, hi, ExprKind::WhileLet(pat, expr, body, opt_ident), attrs));
     }
 
     // parse `loop {...}`, `loop` token already eaten
@@ -3143,7 +3137,7 @@ impl<'a> Parser<'a> {
         let (iattrs, body) = try!(self.parse_inner_attrs_and_block());
         let attrs = attrs.append(iattrs.into_thin_attrs());
         let hi = body.span.hi;
-        Ok(self.mk_expr(span_lo, hi, ExprLoop(body, opt_ident), attrs))
+        Ok(self.mk_expr(span_lo, hi, ExprKind::Loop(body, opt_ident), attrs))
     }
 
     // `match` token already eaten
@@ -3167,7 +3161,7 @@ impl<'a> Parser<'a> {
         }
         let hi = self.span.hi;
         self.bump();
-        return Ok(self.mk_expr(lo, hi, ExprMatch(discriminant, arms), attrs));
+        return Ok(self.mk_expr(lo, hi, ExprKind::Match(discriminant, arms), attrs));
     }
 
     pub fn parse_arm(&mut self) -> PResult<'a, Arm> {
@@ -3407,7 +3401,7 @@ impl<'a> Parser<'a> {
                 (None, try!(self.parse_path(LifetimeAndTypesWithColons)))
             };
             let hi = self.last_span.hi;
-            Ok(self.mk_expr(lo, hi, ExprPath(qself, path), None))
+            Ok(self.mk_expr(lo, hi, ExprKind::Path(qself, path), None))
         } else {
             self.parse_pat_literal_maybe_minus()
         }
@@ -3509,7 +3503,7 @@ impl<'a> Parser<'a> {
                       token::DotDotDot => {
                         // Parse range
                         let hi = self.last_span.hi;
-                        let begin = self.mk_expr(lo, hi, ExprPath(qself, path), None);
+                        let begin = self.mk_expr(lo, hi, ExprKind::Path(qself, path), None);
                         self.bump();
                         let end = try!(self.parse_pat_range_end());
                         pat = PatRange(begin, end);

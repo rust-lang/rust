@@ -23,21 +23,21 @@ use ast::{self, BlockCheckMode};
 /// isn't parsed as (if true {...} else {...} | x) | 5
 pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     match e.node {
-        ast::ExprIf(..) |
-        ast::ExprIfLet(..) |
-        ast::ExprMatch(..) |
-        ast::ExprBlock(_) |
-        ast::ExprWhile(..) |
-        ast::ExprWhileLet(..) |
-        ast::ExprLoop(..) |
-        ast::ExprForLoop(..) => false,
+        ast::ExprKind::If(..) |
+        ast::ExprKind::IfLet(..) |
+        ast::ExprKind::Match(..) |
+        ast::ExprKind::Block(_) |
+        ast::ExprKind::While(..) |
+        ast::ExprKind::WhileLet(..) |
+        ast::ExprKind::Loop(..) |
+        ast::ExprKind::ForLoop(..) => false,
         _ => true,
     }
 }
 
 pub fn expr_is_simple_block(e: &ast::Expr) -> bool {
     match e.node {
-        ast::ExprBlock(ref block) => block.rules == BlockCheckMode::Default,
+        ast::ExprKind::Block(ref block) => block.rules == BlockCheckMode::Default,
         _ => false,
     }
 }
