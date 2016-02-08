@@ -625,11 +625,11 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
     match statement.node {
-        StmtDecl(ref declaration, _) => visitor.visit_decl(declaration),
-        StmtExpr(ref expression, _) | StmtSemi(ref expression, _) => {
+        StmtKind::Decl(ref declaration, _) => visitor.visit_decl(declaration),
+        StmtKind::Expr(ref expression, _) | StmtKind::Semi(ref expression, _) => {
             visitor.visit_expr(expression)
         }
-        StmtMac(ref mac, _, ref attrs) => {
+        StmtKind::Mac(ref mac, _, ref attrs) => {
             visitor.visit_mac(mac);
             for attr in attrs.as_attr_slice() {
                 visitor.visit_attribute(attr);

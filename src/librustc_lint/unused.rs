@@ -365,7 +365,7 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
         let (value, msg) = match s.node {
-            ast::StmtDecl(ref decl, _) => match decl.node {
+            ast::StmtKind::Decl(ref decl, _) => match decl.node {
                 ast::DeclKind::Local(ref local) => match local.init {
                     Some(ref value) => (value, "assigned value"),
                     None => return

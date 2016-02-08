@@ -1534,25 +1534,25 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
 pub fn lower_stmt(lctx: &LoweringContext, s: &Stmt) -> hir::Stmt {
     match s.node {
-        StmtDecl(ref d, id) => {
+        StmtKind::Decl(ref d, id) => {
             Spanned {
                 node: hir::StmtDecl(lower_decl(lctx, d), id),
                 span: s.span,
             }
         }
-        StmtExpr(ref e, id) => {
+        StmtKind::Expr(ref e, id) => {
             Spanned {
                 node: hir::StmtExpr(lower_expr(lctx, e), id),
                 span: s.span,
             }
         }
-        StmtSemi(ref e, id) => {
+        StmtKind::Semi(ref e, id) => {
             Spanned {
                 node: hir::StmtSemi(lower_expr(lctx, e), id),
                 span: s.span,
             }
         }
-        StmtMac(..) => panic!("Shouldn't exist here"),
+        StmtKind::Mac(..) => panic!("Shouldn't exist here"),
     }
 }
 

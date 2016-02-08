@@ -372,7 +372,7 @@ impl<'v, 'a, 'b> visit::Visitor<'v> for StmtExprAttrFeatureVisitor<'a, 'b> {
         let stmt_attrs = s.node.attrs();
         if stmt_attrs.len() > 0 {
             // attributes on items are fine
-            if let ast::StmtDecl(ref decl, _) = s.node {
+            if let ast::StmtKind::Decl(ref decl, _) = s.node {
                 if let ast::DeclKind::Item(_) = decl.node {
                     visit::walk_stmt(self, s);
                     return;

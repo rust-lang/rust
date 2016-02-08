@@ -18,7 +18,6 @@ pub use self::MetaItem_::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
-pub use self::Stmt_::*;
 pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
 pub use self::TraitItem_::*;
@@ -735,7 +734,7 @@ impl UnOp {
 }
 
 /// A statement
-pub type Stmt = Spanned<Stmt_>;
+pub type Stmt = Spanned<StmtKind>;
 
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -748,36 +747,36 @@ impl fmt::Debug for Stmt {
 
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
-pub enum Stmt_ {
+pub enum StmtKind {
     /// Could be an item or a local (let) binding:
-    StmtDecl(P<Decl>, NodeId),
+    Decl(P<Decl>, NodeId),
 
     /// Expr without trailing semi-colon (must have unit type):
-    StmtExpr(P<Expr>, NodeId),
+    Expr(P<Expr>, NodeId),
 
     /// Expr with trailing semi-colon (may have any type):
-    StmtSemi(P<Expr>, NodeId),
+    Semi(P<Expr>, NodeId),
 
-    StmtMac(P<Mac>, MacStmtStyle, ThinAttributes),
+    Mac(P<Mac>, MacStmtStyle, ThinAttributes),
 }
 
-impl Stmt_ {
+impl StmtKind {
     pub fn id(&self) -> Option<NodeId> {
         match *self {
-            StmtDecl(_, id) => Some(id),
-            StmtExpr(_, id) => Some(id),
-            StmtSemi(_, id) => Some(id),
-            StmtMac(..) => None,
+            StmtKind::Decl(_, id) => Some(id),
+            StmtKind::Expr(_, id) => Some(id),
+            StmtKind::Semi(_, id) => Some(id),
+            StmtKind::Mac(..) => None,
         }
     }
 
     pub fn attrs(&self) -> &[Attribute] {
         match *self {
-            StmtDecl(ref d, _) => d.attrs(),
-            StmtExpr(ref e, _) |
-            StmtSemi(ref e, _) => e.attrs(),
-            StmtMac(_, _, Some(ref b)) => b,
-            StmtMac(_, _, None) => &[],
+            StmtKind::Decl(ref d, _) => d.attrs(),
+            StmtKind::Expr(ref e, _) |
+            StmtKind::Semi(ref e, _) => e.attrs(),
+            StmtKind::Mac(_, _, Some(ref b)) => b,
+            StmtKind::Mac(_, _, None) => &[],
         }
     }
 }

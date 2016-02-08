@@ -57,7 +57,7 @@ fn check_block(sess: &Session, b: &ast::Block, kind: &'static str) {
     // Check all statements in the block
     for stmt in &b.stmts {
         let span = match stmt.node {
-            ast::StmtDecl(ref decl, _) => {
+            ast::StmtKind::Decl(ref decl, _) => {
                 match decl.node {
                     ast::DeclKind::Local(_) => decl.span,
 
@@ -65,9 +65,9 @@ fn check_block(sess: &Session, b: &ast::Block, kind: &'static str) {
                     ast::DeclKind::Item(_) => continue,
                 }
             }
-            ast::StmtExpr(ref expr, _) => expr.span,
-            ast::StmtSemi(ref semi, _) => semi.span,
-            ast::StmtMac(..) => unreachable!(),
+            ast::StmtKind::Expr(ref expr, _) => expr.span,
+            ast::StmtKind::Semi(ref semi, _) => semi.span,
+            ast::StmtKind::Mac(..) => unreachable!(),
         };
         span_err!(sess, span, E0016,
                   "blocks in {}s are limited to items and tail expressions", kind);
