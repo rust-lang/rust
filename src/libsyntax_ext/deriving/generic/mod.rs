@@ -194,8 +194,7 @@ use std::vec;
 
 use syntax::abi::Abi;
 use syntax::abi;
-use syntax::ast;
-use syntax::ast::{EnumDef, Expr, Ident, Generics, VariantData};
+use syntax::ast::{EnumDef, Expr, Ident, Generics, VariantData, BinOpKind, self};
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -1279,8 +1278,9 @@ impl<'a> MethodDef<'a> {
                     Some(first) => {
                         let first_expr = cx.expr_ident(sp, first);
                         let id = cx.expr_ident(sp, ident);
-                        let test = cx.expr_binary(sp, ast::BiEq, first_expr, id);
-                        discriminant_test = cx.expr_binary(sp, ast::BiAnd, discriminant_test, test)
+                        let test = cx.expr_binary(sp, BinOpKind::Eq, first_expr, id);
+                        discriminant_test = cx.expr_binary(sp, BinOpKind::And,
+                                                           discriminant_test, test)
                     }
                     None => {
                         first_ident = Some(ident);

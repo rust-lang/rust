@@ -13,13 +13,13 @@ pub use self::PathParsingMode::*;
 use abi;
 use ast::BareFnTy;
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{Public, Unsafety, UnOp};
-use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindingMode};
-use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, Block};
+use ast::{Public, Unsafety};
+use ast::{Mod, Arg, Arm, Attribute, BindingMode};
+use ast::Block;
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
 use ast::{Decl, DeclItem, DeclLocal, DefaultBlock, DefaultReturn};
-use ast::{BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
+use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast, ExprInPlace};
@@ -38,14 +38,14 @@ use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_};
-use ast::{MutTy, BiMul, Mutability};
+use ast::{MutTy, Mutability};
 use ast::{NamedField, NoReturn};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
 use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild};
 use ast::{PolyTraitRef, QSelf};
-use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
+use ast::{Return, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
-use ast::{BiSub, StrStyle};
+use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{Ty, Ty_, TypeBinding, TyMac};
@@ -57,6 +57,7 @@ use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use attr::{ThinAttributes, ThinAttributesExt, AttributesExt};
+use ast::{BinOpKind, UnOp};
 use ast;
 use ast_util::{self, ident_to_path};
 use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
@@ -2925,16 +2926,16 @@ impl<'a> Parser<'a> {
                     self.mk_expr(lhs_span.lo, rhs.span.hi, ExprInPlace(lhs, rhs), None),
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
-                        token::Plus =>    BiAdd,
-                        token::Minus =>   BiSub,
-                        token::Star =>    BiMul,
-                        token::Slash =>   BiDiv,
-                        token::Percent => BiRem,
-                        token::Caret =>   BiBitXor,
-                        token::And =>     BiBitAnd,
-                        token::Or =>      BiBitOr,
-                        token::Shl =>     BiShl,
-                        token::Shr =>     BiShr
+                        token::Plus =>    BinOpKind::Add,
+                        token::Minus =>   BinOpKind::Sub,
+                        token::Star =>    BinOpKind::Mul,
+                        token::Slash =>   BinOpKind::Div,
+                        token::Percent => BinOpKind::Rem,
+                        token::Caret =>   BinOpKind::BitXor,
+                        token::And =>     BinOpKind::BitAnd,
+                        token::Or =>      BinOpKind::BitOr,
+                        token::Shl =>     BinOpKind::Shl,
+                        token::Shr =>     BinOpKind::Shr,
                     };
                     let (lhs_span, rhs_span) = (lhs_span, rhs.span);
                     let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
@@ -2961,7 +2962,7 @@ impl<'a> Parser<'a> {
                 let op_span = mk_sp(op.span.lo, self.span.hi);
                 let mut err = self.diagnostic().struct_span_err(op_span,
                     "chained comparison operators require parentheses");
-                if op.node == BiLt && *outer_op == AssocOp::Greater {
+                if op.node == BinOpKind::Lt && *outer_op == AssocOp::Greater {
                     err.fileline_help(op_span,
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                 }
