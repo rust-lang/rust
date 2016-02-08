@@ -329,6 +329,25 @@ pub trait CompilerCalls<'a> {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
+fn handle_explain(code: &str,
+                  descriptions: &diagnostics::registry::Registry,
+                  output: ErrorOutputType) {
+    let normalised = if !code.starts_with("E") {
+        format!("E{0:0>4}", code)
+    } else {
+        code.to_string()
+    };
+    match descriptions.find_description(&normalised) {
+        Some(ref description) => {
+            // Slice off the leading newline and print.
+            print!("{}", &description[1..]);
+        }
+        None => {
+            early_error(output, &format!("no extended information for {}", code));
+        }
+    }
+}
+
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
@@ -336,28 +355,12 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                       descriptions: &diagnostics::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
-        match matches.opt_str("explain") {
-            Some(ref code) => {
-                let normalised = if !code.starts_with("E") {
-                    format!("E{0:0>4}", code)
-                } else {
-                    code.to_string()
-                };
-                match descriptions.find_description(&normalised) {
-                    Some(ref description) => {
-                        // Slice off the leading newline and print.
-                        print!("{}", &description[1..]);
-                    }
-                    None => {
-                        early_error(output, &format!("no extended information for {}", code));
-                    }
-                }
-                return Compilation::Stop;
-            }
-            None => (),
+        if let Some(ref code) = matches.opt_str("explain") {
+            handle_explain(code, descriptions, output);
+            return Compilation::Stop;
         }
 
-        return Compilation::Continue;
+        Compilation::Continue
     }
 
     fn no_input(&mut self,
