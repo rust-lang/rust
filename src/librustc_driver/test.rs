@@ -32,7 +32,8 @@ use rustc_metadata::cstore::CStore;
 use rustc::front::map as hir_map;
 use rustc::session::{self, config};
 use std::rc::Rc;
-use syntax::{abi, ast};
+use syntax::ast;
+use syntax::abi::Abi;
 use syntax::codemap::{MultiSpan, CodeMap, DUMMY_SP};
 use syntax::errors;
 use syntax::errors::emitter::Emitter;
@@ -263,7 +264,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         self.infcx.tcx.mk_fn(None,
                              self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
                                  unsafety: hir::Unsafety::Normal,
-                                 abi: abi::Rust,
+                                 abi: Abi::Rust,
                                  sig: ty::Binder(ty::FnSig {
                                      inputs: input_args,
                                      output: ty::FnConverging(output_ty),

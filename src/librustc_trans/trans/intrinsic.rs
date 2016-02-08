@@ -40,7 +40,7 @@ use trans::Disr;
 use middle::subst::Substs;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
-use syntax::abi::{self, RustIntrinsic};
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
@@ -365,7 +365,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              &mut llargs,
                              cleanup::CustomScope(cleanup_scope),
                              false,
-                             RustIntrinsic);
+                             Abi::RustIntrinsic);
 
     fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
@@ -1261,7 +1261,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
-        abi: abi::Rust,
+        abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![i8p],
             output: ty::FnOutput::FnConverging(tcx.mk_nil()),
@@ -1272,7 +1272,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
     let try_fn_ty  = tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
-        abi: abi::Rust,
+        abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![fn_ty, i8p, i8p],
             output: output,
@@ -1350,7 +1350,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // just do the same.
         let filter_fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
-            abi: abi::Rust,
+            abi: Abi::Rust,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![],
                 output: output,
@@ -1370,7 +1370,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // those along.
         let filter_fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
-            abi: abi::Rust,
+            abi: Abi::Rust,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![i8p, i8p],
                 output: output,

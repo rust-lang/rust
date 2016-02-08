@@ -30,7 +30,7 @@ use trans::Disr;
 use middle::ty;
 use session::config::FullDebugInfo;
 
-use syntax::abi::RustCall;
+use syntax::abi::Abi::RustCall;
 use syntax::ast;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
 

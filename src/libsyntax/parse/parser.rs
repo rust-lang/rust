@@ -10,7 +10,7 @@
 
 pub use self::PathParsingMode::*;
 
-use abi;
+use abi::{self, Abi};
 use ast::BareFnTy;
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{Public, Unsafety};
@@ -1118,9 +1118,9 @@ impl<'a> Parser<'a> {
 
         let unsafety = try!(self.parse_unsafety());
         let abi = if self.eat_keyword(keywords::Extern) {
-            try!(self.parse_opt_abi()).unwrap_or(abi::C)
+            try!(self.parse_opt_abi()).unwrap_or(Abi::C)
         } else {
-            abi::Rust
+            Abi::Rust
         };
 
         try!(self.expect_keyword(keywords::Fn));
@@ -4638,12 +4638,12 @@ impl<'a> Parser<'a> {
         let is_const_fn = self.eat_keyword(keywords::Const);
         let unsafety = try!(self.parse_unsafety());
         let (constness, unsafety, abi) = if is_const_fn {
-            (Constness::Const, unsafety, abi::Rust)
+            (Constness::Const, unsafety, Abi::Rust)
         } else {
             let abi = if self.eat_keyword(keywords::Extern) {
-                try!(self.parse_opt_abi()).unwrap_or(abi::C)
+                try!(self.parse_opt_abi()).unwrap_or(Abi::C)
             } else {
-                abi::Rust
+                Abi::Rust
             };
             (Constness::NotConst, unsafety, abi)
         };
@@ -5341,7 +5341,7 @@ impl<'a> Parser<'a> {
                               -> PResult<'a, P<Item>> {
         try!(self.expect(&token::OpenDelim(token::Brace)));
 
-        let abi = opt_abi.unwrap_or(abi::C);
+        let abi = opt_abi.unwrap_or(Abi::C);
 
         attrs.extend(try!(self.parse_inner_attributes()));
 
@@ -5513,7 +5513,7 @@ impl<'a> Parser<'a> {
 
             if self.eat_keyword(keywords::Fn) {
                 // EXTERN FUNCTION ITEM
-                let abi = opt_abi.unwrap_or(abi::C);
+                let abi = opt_abi.unwrap_or(Abi::C);
                 let (ident, item_, extra_attrs) =
                     try!(self.parse_item_fn(Unsafety::Normal, Constness::NotConst, abi));
                 let last_span = self.last_span;
@@ -5556,7 +5556,7 @@ impl<'a> Parser<'a> {
                 };
                 self.bump();
                 let (ident, item_, extra_attrs) =
-                    try!(self.parse_item_fn(unsafety, Constness::Const, abi::Rust));
+                    try!(self.parse_item_fn(unsafety, Constness::Const, Abi::Rust));
                 let last_span = self.last_span;
                 let item = self.mk_item(lo,
                                         last_span.hi,
@@ -5621,7 +5621,7 @@ impl<'a> Parser<'a> {
             // FUNCTION ITEM
             self.bump();
             let (ident, item_, extra_attrs) =
-                try!(self.parse_item_fn(Unsafety::Normal, Constness::NotConst, abi::Rust));
+                try!(self.parse_item_fn(Unsafety::Normal, Constness::NotConst, Abi::Rust));
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
@@ -5636,9 +5636,9 @@ impl<'a> Parser<'a> {
             // UNSAFE FUNCTION ITEM
             self.bump();
             let abi = if self.eat_keyword(keywords::Extern) {
-                try!(self.parse_opt_abi()).unwrap_or(abi::C)
+                try!(self.parse_opt_abi()).unwrap_or(Abi::C)
             } else {
-                abi::Rust
+                Abi::Rust
             };
             try!(self.expect_keyword(keywords::Fn));
             let (ident, item_, extra_attrs) =

@@ -25,7 +25,7 @@ pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
 
 use syntax;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
@@ -985,7 +985,7 @@ pub struct Method {
     pub unsafety: hir::Unsafety,
     pub constness: hir::Constness,
     pub decl: FnDecl,
-    pub abi: abi::Abi
+    pub abi: Abi,
 }
 
 impl Clean<Method> for hir::MethodSig {
@@ -1020,7 +1020,7 @@ pub struct TyMethod {
     pub decl: FnDecl,
     pub generics: Generics,
     pub self_: SelfTy,
-    pub abi: abi::Abi
+    pub abi: Abi,
 }
 
 impl Clean<TyMethod> for hir::MethodSig {
@@ -1074,7 +1074,7 @@ pub struct Function {
     pub generics: Generics,
     pub unsafety: hir::Unsafety,
     pub constness: hir::Constness,
-    pub abi: abi::Abi,
+    pub abi: Abi,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -2478,7 +2478,7 @@ impl Clean<Item> for hir::ForeignItem {
                     decl: decl.clean(cx),
                     generics: generics.clean(cx),
                     unsafety: hir::Unsafety::Unsafe,
-                    abi: abi::Rust,
+                    abi: Abi::Rust,
                     constness: hir::Constness::NotConst,
                 })
             }

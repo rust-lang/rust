@@ -17,7 +17,7 @@ use middle::ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
 
-use syntax::abi::RustIntrinsic;
+use syntax::abi::Abi::RustIntrinsic;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::intravisit::{self, Visitor, FnKind};
