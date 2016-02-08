@@ -268,16 +268,17 @@ pub fn lower_ty_binding(lctx: &LoweringContext, b: &TypeBinding) -> hir::TypeBin
 }
 
 pub fn lower_ty(lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
+    use syntax::ast::TyKind::*;
     P(hir::Ty {
         id: t.id,
         node: match t.node {
-            TyInfer => hir::TyInfer,
-            TyVec(ref ty) => hir::TyVec(lower_ty(lctx, ty)),
-            TyPtr(ref mt) => hir::TyPtr(lower_mt(lctx, mt)),
-            TyRptr(ref region, ref mt) => {
+            Infer => hir::TyInfer,
+            Vec(ref ty) => hir::TyVec(lower_ty(lctx, ty)),
+            Ptr(ref mt) => hir::TyPtr(lower_mt(lctx, mt)),
+            Rptr(ref region, ref mt) => {
                 hir::TyRptr(lower_opt_lifetime(lctx, region), lower_mt(lctx, mt))
             }
-            TyBareFn(ref f) => {
+            BareFn(ref f) => {
                 hir::TyBareFn(P(hir::BareFnTy {
                     lifetimes: lower_lifetime_defs(lctx, &f.lifetimes),
                     unsafety: lower_unsafety(lctx, f.unsafety),
@@ -285,11 +286,11 @@ pub fn lower_ty(lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
                     decl: lower_fn_decl(lctx, &f.decl),
                 }))
             }
-            TyTup(ref tys) => hir::TyTup(tys.iter().map(|ty| lower_ty(lctx, ty)).collect()),
-            TyParen(ref ty) => {
+            Tup(ref tys) => hir::TyTup(tys.iter().map(|ty| lower_ty(lctx, ty)).collect()),
+            Paren(ref ty) => {
                 return lower_ty(lctx, ty);
             }
-            TyPath(ref qself, ref path) => {
+            Path(ref qself, ref path) => {
                 let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                     hir::QSelf {
                         ty: lower_ty(lctx, ty),
@@ -298,19 +299,19 @@ pub fn lower_ty(lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
                 });
                 hir::TyPath(qself, lower_path(lctx, path))
             }
-            TyObjectSum(ref ty, ref bounds) => {
+            ObjectSum(ref ty, ref bounds) => {
                 hir::TyObjectSum(lower_ty(lctx, ty), lower_bounds(lctx, bounds))
             }
-            TyFixedLengthVec(ref ty, ref e) => {
+            FixedLengthVec(ref ty, ref e) => {
                 hir::TyFixedLengthVec(lower_ty(lctx, ty), lower_expr(lctx, e))
             }
-            TyTypeof(ref expr) => {
+            Typeof(ref expr) => {
                 hir::TyTypeof(lower_expr(lctx, expr))
             }
-            TyPolyTraitRef(ref bounds) => {
+            PolyTraitRef(ref bounds) => {
                 hir::TyPolyTraitRef(bounds.iter().map(|b| lower_ty_param_bound(lctx, b)).collect())
             }
-            TyMac(_) => panic!("TyMac should have been expanded by now."),
+            Mac(_) => panic!("TyMac should have been expanded by now."),
         },
         span: t.span,
     })

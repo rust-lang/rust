@@ -957,12 +957,12 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ty.span.lo));
         try!(self.ibox(0));
         match ty.node {
-            ast::TyVec(ref ty) => {
+            ast::TyKind::Vec(ref ty) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&**ty));
                 try!(word(&mut self.s, "]"));
             }
-            ast::TyPtr(ref mt) => {
+            ast::TyKind::Ptr(ref mt) => {
                 try!(word(&mut self.s, "*"));
                 match mt.mutbl {
                     ast::MutMutable => try!(self.word_nbsp("mut")),
@@ -970,12 +970,12 @@ impl<'a> State<'a> {
                 }
                 try!(self.print_type(&*mt.ty));
             }
-            ast::TyRptr(ref lifetime, ref mt) => {
+            ast::TyKind::Rptr(ref lifetime, ref mt) => {
                 try!(word(&mut self.s, "&"));
                 try!(self.print_opt_lifetime(lifetime));
                 try!(self.print_mt(mt));
             }
-            ast::TyTup(ref elts) => {
+            ast::TyKind::Tup(ref elts) => {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent, &elts[..],
                                    |s, ty| s.print_type(&**ty)));
@@ -984,12 +984,12 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
-            ast::TyParen(ref typ) => {
+            ast::TyKind::Paren(ref typ) => {
                 try!(self.popen());
                 try!(self.print_type(&**typ));
                 try!(self.pclose());
             }
-            ast::TyBareFn(ref f) => {
+            ast::TyKind::BareFn(ref f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
                     ty_params: P::empty(),
@@ -1005,35 +1005,35 @@ impl<'a> State<'a> {
                                       &generics,
                                       None));
             }
-            ast::TyPath(None, ref path) => {
+            ast::TyKind::Path(None, ref path) => {
                 try!(self.print_path(path, false, 0));
             }
-            ast::TyPath(Some(ref qself), ref path) => {
+            ast::TyKind::Path(Some(ref qself), ref path) => {
                 try!(self.print_qpath(path, qself, false))
             }
-            ast::TyObjectSum(ref ty, ref bounds) => {
+            ast::TyKind::ObjectSum(ref ty, ref bounds) => {
                 try!(self.print_type(&**ty));
                 try!(self.print_bounds("+", &bounds[..]));
             }
-            ast::TyPolyTraitRef(ref bounds) => {
+            ast::TyKind::PolyTraitRef(ref bounds) => {
                 try!(self.print_bounds("", &bounds[..]));
             }
-            ast::TyFixedLengthVec(ref ty, ref v) => {
+            ast::TyKind::FixedLengthVec(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
                 try!(self.print_type(&**ty));
                 try!(word(&mut self.s, "; "));
                 try!(self.print_expr(&**v));
                 try!(word(&mut self.s, "]"));
             }
-            ast::TyTypeof(ref e) => {
+            ast::TyKind::Typeof(ref e) => {
                 try!(word(&mut self.s, "typeof("));
                 try!(self.print_expr(&**e));
                 try!(word(&mut self.s, ")"));
             }
-            ast::TyInfer => {
+            ast::TyKind::Infer => {
                 try!(word(&mut self.s, "_"));
             }
-            ast::TyMac(ref m) => {
+            ast::TyKind::Mac(ref m) => {
                 try!(self.print_mac(m, token::Paren));
             }
         }
@@ -2959,7 +2959,7 @@ impl<'a> State<'a> {
     pub fn print_arg(&mut self, input: &ast::Arg, is_closure: bool) -> io::Result<()> {
         try!(self.ibox(INDENT_UNIT));
         match input.ty.node {
-            ast::TyInfer if is_closure => try!(self.print_pat(&*input.pat)),
+            ast::TyKind::Infer if is_closure => try!(self.print_pat(&*input.pat)),
             _ => {
                 match input.pat.node {
                     ast::PatIdent(_, ref path1, _) if

@@ -153,7 +153,7 @@ impl<'a> Ty<'a> {
                 cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
             }
             Tuple(ref fields) => {
-                let ty = ast::TyTup(fields.iter()
+                let ty = ast::TyKind::Tup(fields.iter()
                     .map(|f| f.to_ty(cx, span, self_ty, self_generics))
                     .collect());
                 cx.ty(span, ty)

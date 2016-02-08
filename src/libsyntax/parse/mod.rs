@@ -916,7 +916,7 @@ mod tests {
                             node: ast::ItemFn(P(ast::FnDecl {
                                 inputs: vec!(ast::Arg{
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                  node: ast::TyPath(None, ast::Path{
+                                                  node: ast::TyKind::Path(None, ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         segments: vec!(

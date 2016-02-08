@@ -52,7 +52,7 @@ pub trait AstBuilder {
     // types
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
-    fn ty(&self, span: Span, ty: ast::Ty_) -> P<ast::Ty>;
+    fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty>;
     fn ty_path(&self, ast::Path) -> P<ast::Ty>;
     fn ty_sum(&self, ast::Path, ast::TyParamBounds) -> P<ast::Ty>;
     fn ty_ident(&self, span: Span, idents: ast::Ident) -> P<ast::Ty>;
@@ -385,7 +385,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    fn ty(&self, span: Span, ty: ast::Ty_) -> P<ast::Ty> {
+    fn ty(&self, span: Span, ty: ast::TyKind) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
             span: span,
@@ -394,12 +394,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
-        self.ty(path.span, ast::TyPath(None, path))
+        self.ty(path.span, ast::TyKind::Path(None, path))
     }
 
     fn ty_sum(&self, path: ast::Path, bounds: ast::TyParamBounds) -> P<ast::Ty> {
         self.ty(path.span,
-                ast::TyObjectSum(self.ty_path(path),
+                ast::TyKind::ObjectSum(self.ty_path(path),
                                  bounds))
     }
 
@@ -417,7 +417,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                mutbl: ast::Mutability)
         -> P<ast::Ty> {
         self.ty(span,
-                ast::TyRptr(lifetime, self.ty_mt(ty, mutbl)))
+                ast::TyKind::Rptr(lifetime, self.ty_mt(ty, mutbl)))
     }
 
     fn ty_ptr(&self,
@@ -426,7 +426,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
               mutbl: ast::Mutability)
         -> P<ast::Ty> {
         self.ty(span,
-                ast::TyPtr(self.ty_mt(ty, mutbl)))
+                ast::TyKind::Ptr(self.ty_mt(ty, mutbl)))
     }
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty> {
@@ -440,7 +440,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn ty_infer(&self, span: Span) -> P<ast::Ty> {
-        self.ty(span, ast::TyInfer)
+        self.ty(span, ast::TyKind::Infer)
     }
 
     fn typaram(&self,

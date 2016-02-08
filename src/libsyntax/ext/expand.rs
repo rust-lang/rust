@@ -562,7 +562,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
             DeclKind::Local(local) => {
                 // take it apart:
                 let rewritten_local = local.map(|Local {id, pat, ty, init, span, attrs}| {
-                    // expand the ty since TyFixedLengthVec contains an Expr
+                    // expand the ty since TyKind::FixedLengthVec contains an Expr
                     // and thus may have a macro use
                     let expanded_ty = ty.map(|t| fld.fold_ty(t));
                     // expand the pat (it might contain macro uses):
@@ -1133,7 +1133,7 @@ fn expand_and_rename_method(sig: ast::MethodSig, body: P<ast::Block>,
 
 pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
     let t = match t.node.clone() {
-        ast::Ty_::TyMac(mac) => {
+        ast::TyKind::Mac(mac) => {
             if fld.cx.ecfg.features.unwrap().type_macros {
                 let expanded_ty = match expand_mac_invoc(mac, t.span,
                                                          |r| r.make_ty(),

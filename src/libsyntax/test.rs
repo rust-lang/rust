@@ -358,7 +358,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
           ast::ItemFn(ref decl, _, _, _, ref generics, _) => {
             let no_output = match decl.output {
                 ast::FunctionRetTy::Default(..) => true,
-                ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyTup(vec![]) => true,
+                ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
                 _ => false
             };
             if decl.inputs.is_empty()
@@ -395,7 +395,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                 let input_cnt = decl.inputs.len();
                 let no_output = match decl.output {
                     ast::FunctionRetTy::Default(..) => true,
-                    ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyTup(vec![]) => true,
+                    ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
                     _ => false
                 };
                 let tparm_cnt = generics.ty_params.len();
@@ -494,7 +494,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main_meta = ecx.meta_word(sp, token::intern_and_get_ident("main"));
     let main_attr = ecx.attribute(sp, main_meta);
     // pub fn main() { ... }
-    let main_ret_ty = ecx.ty(sp, ast::TyTup(vec![]));
+    let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
     let main_body = ecx.block_all(sp, vec![call_test_main], None);
     let main = ast::ItemFn(ecx.fn_decl(vec![], main_ret_ty),
                            ast::Unsafety::Normal,
@@ -591,7 +591,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let static_lt = ecx.lifetime(sp, token::special_idents::static_lifetime.name);
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,
-                                  ecx.ty(sp, ast::TyVec(struct_type)),
+                                  ecx.ty(sp, ast::TyKind::Vec(struct_type)),
                                   Some(static_lt),
                                   ast::MutImmutable);
     // static TESTS: $static_type = &[...];

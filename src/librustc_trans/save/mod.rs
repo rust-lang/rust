@@ -316,7 +316,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 match typ.node {
                     // Common case impl for a struct or something basic.
-                    ast::TyPath(None, ref path) => {
+                    ast::TyKind::Path(None, ref path) => {
                         sub_span = self.span_utils.sub_span_for_type_name(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
                         type_data = self.lookup_ref_id(typ.id).map(|id| {
