@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::CaptureClause::*;
 pub use self::Decl_::*;
 pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
@@ -973,7 +972,7 @@ pub enum Expr_ {
     /// A `match` block.
     ExprMatch(P<Expr>, Vec<Arm>),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
-    ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
+    ExprClosure(CaptureBy, P<FnDecl>, P<Block>),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1052,10 +1051,11 @@ pub struct QSelf {
     pub position: usize
 }
 
+/// A capture clause
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum CaptureClause {
-    CaptureByValue,
-    CaptureByRef,
+pub enum CaptureBy {
+    Value,
+    Ref,
 }
 
 /// A delimited sequence of token trees

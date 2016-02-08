@@ -1555,10 +1555,10 @@ pub fn lower_stmt(lctx: &LoweringContext, s: &Stmt) -> hir::Stmt {
     }
 }
 
-pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureClause) -> hir::CaptureClause {
+pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureBy) -> hir::CaptureClause {
     match c {
-        CaptureByValue => hir::CaptureByValue,
-        CaptureByRef => hir::CaptureByRef,
+        CaptureBy::Value => hir::CaptureByValue,
+        CaptureBy::Ref => hir::CaptureByRef,
     }
 }
 

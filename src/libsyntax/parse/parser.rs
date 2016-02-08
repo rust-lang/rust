@@ -16,7 +16,7 @@ use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{Public, Unsafety};
 use ast::{Mod, Arg, Arm, Attribute, BindingMode};
 use ast::Block;
-use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
+use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
 use ast::{Decl, DeclItem, DeclLocal};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
@@ -2108,7 +2108,7 @@ impl<'a> Parser<'a> {
             },
             token::BinOp(token::Or) |  token::OrOr => {
                 let lo = self.span.lo;
-                return self.parse_lambda_expr(lo, CaptureByRef, attrs);
+                return self.parse_lambda_expr(lo, CaptureBy::Ref, attrs);
             },
             token::Ident(id @ ast::Ident {
                             name: token::SELF_KEYWORD_NAME,
@@ -2167,7 +2167,7 @@ impl<'a> Parser<'a> {
                 }
                 if self.eat_keyword(keywords::Move) {
                     let lo = self.last_span.lo;
-                    return self.parse_lambda_expr(lo, CaptureByValue, attrs);
+                    return self.parse_lambda_expr(lo, CaptureBy::Value, attrs);
                 }
                 if self.eat_keyword(keywords::If) {
                     return self.parse_if_expr(attrs);
@@ -3047,7 +3047,7 @@ impl<'a> Parser<'a> {
 
     // `|args| expr`
     pub fn parse_lambda_expr(&mut self, lo: BytePos,
-                             capture_clause: CaptureClause,
+                             capture_clause: CaptureBy,
                              attrs: ThinAttributes)
                              -> PResult<'a, P<Expr>>
     {

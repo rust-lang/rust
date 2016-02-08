@@ -2741,11 +2741,11 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_capture_clause(&mut self, capture_clause: ast::CaptureClause)
+    pub fn print_capture_clause(&mut self, capture_clause: ast::CaptureBy)
                                 -> io::Result<()> {
         match capture_clause {
-            ast::CaptureByValue => self.word_space("move"),
-            ast::CaptureByRef => Ok(()),
+            ast::CaptureBy::Value => self.word_space("move"),
+            ast::CaptureBy::Ref => Ok(()),
         }
     }
 
