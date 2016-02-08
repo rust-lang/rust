@@ -196,15 +196,15 @@ pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
                                               explicit_self: &'v ExplicitSelf) {
     match explicit_self.node {
-        SelfStatic => {},
-        SelfValue(ident) => {
+        SelfKind::Static => {},
+        SelfKind::Value(ident) => {
             visitor.visit_ident(explicit_self.span, ident)
         }
-        SelfRegion(ref opt_lifetime, _, ident) => {
+        SelfKind::Region(ref opt_lifetime, _, ident) => {
             visitor.visit_ident(explicit_self.span, ident);
             walk_list!(visitor, visit_lifetime, opt_lifetime);
         }
-        SelfExplicit(ref typ, ident) => {
+        SelfKind::Explicit(ref typ, ident) => {
             visitor.visit_ident(explicit_self.span, ident);
             visitor.visit_ty(typ)
         }

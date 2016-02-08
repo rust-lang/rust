@@ -46,7 +46,7 @@ use ast::{PolyTraitRef, QSelf};
 use ast::{Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
 use ast::StrStyle;
-use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
+use ast::SelfKind;
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{Ty, Ty_, TypeBinding, TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
@@ -4411,7 +4411,7 @@ impl<'a> Parser<'a> {
         F: FnMut(&mut Parser<'a>) -> PResult<'a,  Arg>,
     {
         fn maybe_parse_borrowed_explicit_self<'b>(this: &mut Parser<'b>)
-                                                  -> PResult<'b,  ast::ExplicitSelf_> {
+                                                  -> PResult<'b, ast::SelfKind> {
             // The following things are possible to see here:
             //
             //     fn(&mut self)
@@ -4423,26 +4423,26 @@ impl<'a> Parser<'a> {
 
             if this.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
-                Ok(SelfRegion(None, MutImmutable, try!(this.expect_self_ident())))
+                Ok(SelfKind::Region(None, MutImmutable, try!(this.expect_self_ident())))
             } else if this.look_ahead(1, |t| t.is_mutability()) &&
                       this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 let mutability = try!(this.parse_mutability());
-                Ok(SelfRegion(None, mutability, try!(this.expect_self_ident())))
+                Ok(SelfKind::Region(None, mutability, try!(this.expect_self_ident())))
             } else if this.look_ahead(1, |t| t.is_lifetime()) &&
                       this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 let lifetime = try!(this.parse_lifetime());
-                Ok(SelfRegion(Some(lifetime), MutImmutable, try!(this.expect_self_ident())))
+                Ok(SelfKind::Region(Some(lifetime), MutImmutable, try!(this.expect_self_ident())))
             } else if this.look_ahead(1, |t| t.is_lifetime()) &&
                       this.look_ahead(2, |t| t.is_mutability()) &&
                       this.look_ahead(3, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 let lifetime = try!(this.parse_lifetime());
                 let mutability = try!(this.parse_mutability());
-                Ok(SelfRegion(Some(lifetime), mutability, try!(this.expect_self_ident())))
+                Ok(SelfKind::Region(Some(lifetime), mutability, try!(this.expect_self_ident())))
             } else {
-                Ok(SelfStatic)
+                Ok(SelfKind::Static)
             }
         }
 
@@ -4477,7 +4477,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                 }
                 // error case, making bogus self ident:
-                SelfValue(special_idents::self_)
+                SelfKind::Value(special_idents::self_)
             }
             token::Ident(..) => {
                 if self.is_self_ident() {
@@ -4486,9 +4486,9 @@ impl<'a> Parser<'a> {
                     // Determine whether this is the fully explicit form, `self:
                     // TYPE`.
                     if self.eat(&token::Colon) {
-                        SelfExplicit(try!(self.parse_ty_sum()), self_ident)
+                        SelfKind::Explicit(try!(self.parse_ty_sum()), self_ident)
                     } else {
-                        SelfValue(self_ident)
+                        SelfKind::Value(self_ident)
                     }
                 } else if self.token.is_mutability() &&
                         self.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
@@ -4498,15 +4498,15 @@ impl<'a> Parser<'a> {
                     // Determine whether this is the fully explicit form,
                     // `self: TYPE`.
                     if self.eat(&token::Colon) {
-                        SelfExplicit(try!(self.parse_ty_sum()), self_ident)
+                        SelfKind::Explicit(try!(self.parse_ty_sum()), self_ident)
                     } else {
-                        SelfValue(self_ident)
+                        SelfKind::Value(self_ident)
                     }
                 } else {
-                    SelfStatic
+                    SelfKind::Static
                 }
             }
-            _ => SelfStatic,
+            _ => SelfKind::Static,
         };
 
         let explicit_self_sp = mk_sp(self_ident_lo, self_ident_hi);
@@ -4542,14 +4542,14 @@ impl<'a> Parser<'a> {
         }
 
         let fn_inputs = match explicit_self {
-            SelfStatic =>  {
+            SelfKind::Static =>  {
                 let sep = seq_sep_trailing_allowed(token::Comma);
                 try!(self.parse_seq_to_before_end(&token::CloseDelim(token::Paren),
                                                   sep, parse_arg_fn))
             }
-            SelfValue(id) => parse_remaining_arguments!(id),
-            SelfRegion(_,_,id) => parse_remaining_arguments!(id),
-            SelfExplicit(_,id) => parse_remaining_arguments!(id),
+            SelfKind::Value(id) => parse_remaining_arguments!(id),
+            SelfKind::Region(_,_,id) => parse_remaining_arguments!(id),
+            SelfKind::Explicit(_,id) => parse_remaining_arguments!(id),
         };
 
 

@@ -184,8 +184,8 @@ pub trait Folder : Sized {
         noop_fold_explicit_self(es, self)
     }
 
-    fn fold_explicit_self_underscore(&mut self, es: ExplicitSelf_) -> ExplicitSelf_ {
-        noop_fold_explicit_self_underscore(es, self)
+    fn fold_explicit_self_kind(&mut self, es: SelfKind) -> SelfKind {
+        noop_fold_explicit_self_kind(es, self)
     }
 
     fn fold_lifetime(&mut self, l: Lifetime) -> Lifetime {
@@ -520,15 +520,15 @@ pub fn noop_fold_attribute<T: Folder>(at: Attribute, fld: &mut T) -> Option<Attr
     })
 }
 
-pub fn noop_fold_explicit_self_underscore<T: Folder>(es: ExplicitSelf_, fld: &mut T)
-                                                     -> ExplicitSelf_ {
+pub fn noop_fold_explicit_self_kind<T: Folder>(es: SelfKind, fld: &mut T)
+                                                     -> SelfKind {
     match es {
-        SelfStatic | SelfValue(_) => es,
-        SelfRegion(lifetime, m, ident) => {
-            SelfRegion(fld.fold_opt_lifetime(lifetime), m, ident)
+        SelfKind::Static | SelfKind::Value(_) => es,
+        SelfKind::Region(lifetime, m, ident) => {
+            SelfKind::Region(fld.fold_opt_lifetime(lifetime), m, ident)
         }
-        SelfExplicit(typ, ident) => {
-            SelfExplicit(fld.fold_ty(typ), ident)
+        SelfKind::Explicit(typ, ident) => {
+            SelfKind::Explicit(fld.fold_ty(typ), ident)
         }
     }
 }
@@ -536,7 +536,7 @@ pub fn noop_fold_explicit_self_underscore<T: Folder>(es: ExplicitSelf_, fld: &mu
 pub fn noop_fold_explicit_self<T: Folder>(Spanned {span, node}: ExplicitSelf, fld: &mut T)
                                           -> ExplicitSelf {
     Spanned {
-        node: fld.fold_explicit_self_underscore(node),
+        node: fld.fold_explicit_self_kind(node),
         span: fld.new_span(span)
     }
 }

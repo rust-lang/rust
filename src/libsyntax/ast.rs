@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
 pub use self::FloatTy::*;
 pub use self::ForeignItem_::*;
@@ -1747,18 +1746,18 @@ impl FunctionRetTy {
 
 /// Represents the kind of 'self' associated with a method
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ExplicitSelf_ {
+pub enum SelfKind {
     /// No self
-    SelfStatic,
+    Static,
     /// `self`
-    SelfValue(Ident),
+    Value(Ident),
     /// `&'lt self`, `&'lt mut self`
-    SelfRegion(Option<Lifetime>, Mutability, Ident),
+    Region(Option<Lifetime>, Mutability, Ident),
     /// `self: TYPE`
-    SelfExplicit(P<Ty>, Ident),
+    Explicit(P<Ty>, Ident),
 }
 
-pub type ExplicitSelf = Spanned<ExplicitSelf_>;
+pub type ExplicitSelf = Spanned<SelfKind>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mod {

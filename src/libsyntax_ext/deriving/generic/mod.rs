@@ -821,7 +821,7 @@ impl<'a> MethodDef<'a> {
 
                 explicit_self
             }
-            None => codemap::respan(trait_.span, ast::SelfStatic),
+            None => codemap::respan(trait_.span, ast::SelfKind::Static),
         };
 
         for (i, ty) in self.args.iter().enumerate() {
@@ -862,7 +862,7 @@ impl<'a> MethodDef<'a> {
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
         let self_arg = match explicit_self.node {
-            ast::SelfStatic => None,
+            ast::SelfKind::Static => None,
             // creating fresh self id
             _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable, special_idents::self_))
         };
