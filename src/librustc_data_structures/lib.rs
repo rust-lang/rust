@@ -44,6 +44,7 @@ pub mod transitive_relation;
 pub mod unify;
 pub mod fnv;
 pub mod tuple_slice;
+pub mod undoable;
 pub mod veccell;
 
 // See comments in src/librustc/lib.rs
