@@ -328,45 +328,45 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     match typ.node {
-        TyVec(ref ty) | TyParen(ref ty) => {
+        TyKind::Vec(ref ty) | TyKind::Paren(ref ty) => {
             visitor.visit_ty(ty)
         }
-        TyPtr(ref mutable_type) => {
+        TyKind::Ptr(ref mutable_type) => {
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyRptr(ref opt_lifetime, ref mutable_type) => {
+        TyKind::Rptr(ref opt_lifetime, ref mutable_type) => {
             walk_list!(visitor, visit_lifetime, opt_lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyTup(ref tuple_element_types) => {
+        TyKind::Tup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
-        TyBareFn(ref function_declaration) => {
+        TyKind::BareFn(ref function_declaration) => {
             walk_fn_decl(visitor, &function_declaration.decl);
             walk_list!(visitor, visit_lifetime_def, &function_declaration.lifetimes);
         }
-        TyPath(ref maybe_qself, ref path) => {
+        TyKind::Path(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
             }
             visitor.visit_path(path, typ.id);
         }
-        TyObjectSum(ref ty, ref bounds) => {
+        TyKind::ObjectSum(ref ty, ref bounds) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
-        TyFixedLengthVec(ref ty, ref expression) => {
+        TyKind::FixedLengthVec(ref ty, ref expression) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyPolyTraitRef(ref bounds) => {
+        TyKind::PolyTraitRef(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
-        TyTypeof(ref expression) => {
+        TyKind::Typeof(ref expression) => {
             visitor.visit_expr(expression)
         }
-        TyInfer => {}
-        TyMac(ref mac) => {
+        TyKind::Infer => {}
+        TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }
     }

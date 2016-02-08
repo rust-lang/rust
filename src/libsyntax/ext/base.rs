@@ -367,7 +367,7 @@ impl DummyResult {
     pub fn raw_ty(sp: Span) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: ast::TyInfer,
+            node: ast::TyKind::Infer,
             span: sp
         })
     }

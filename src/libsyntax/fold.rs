@@ -380,46 +380,46 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
     t.map(|Ty {id, node, span}| Ty {
         id: fld.new_id(id),
         node: match node {
-            TyInfer => node,
-            TyVec(ty) => TyVec(fld.fold_ty(ty)),
-            TyPtr(mt) => TyPtr(fld.fold_mt(mt)),
-            TyRptr(region, mt) => {
-                TyRptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
+            TyKind::Infer => node,
+            TyKind::Vec(ty) => TyKind::Vec(fld.fold_ty(ty)),
+            TyKind::Ptr(mt) => TyKind::Ptr(fld.fold_mt(mt)),
+            TyKind::Rptr(region, mt) => {
+                TyKind::Rptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
             }
-            TyBareFn(f) => {
-                TyBareFn(f.map(|BareFnTy {lifetimes, unsafety, abi, decl}| BareFnTy {
+            TyKind::BareFn(f) => {
+                TyKind::BareFn(f.map(|BareFnTy {lifetimes, unsafety, abi, decl}| BareFnTy {
                     lifetimes: fld.fold_lifetime_defs(lifetimes),
                     unsafety: unsafety,
                     abi: abi,
                     decl: fld.fold_fn_decl(decl)
                 }))
             }
-            TyTup(tys) => TyTup(tys.move_map(|ty| fld.fold_ty(ty))),
-            TyParen(ty) => TyParen(fld.fold_ty(ty)),
-            TyPath(qself, path) => {
+            TyKind::Tup(tys) => TyKind::Tup(tys.move_map(|ty| fld.fold_ty(ty))),
+            TyKind::Paren(ty) => TyKind::Paren(fld.fold_ty(ty)),
+            TyKind::Path(qself, path) => {
                 let qself = qself.map(|QSelf { ty, position }| {
                     QSelf {
                         ty: fld.fold_ty(ty),
                         position: position
                     }
                 });
-                TyPath(qself, fld.fold_path(path))
+                TyKind::Path(qself, fld.fold_path(path))
             }
-            TyObjectSum(ty, bounds) => {
-                TyObjectSum(fld.fold_ty(ty),
+            TyKind::ObjectSum(ty, bounds) => {
+                TyKind::ObjectSum(fld.fold_ty(ty),
                             fld.fold_bounds(bounds))
             }
-            TyFixedLengthVec(ty, e) => {
-                TyFixedLengthVec(fld.fold_ty(ty), fld.fold_expr(e))
+            TyKind::FixedLengthVec(ty, e) => {
+                TyKind::FixedLengthVec(fld.fold_ty(ty), fld.fold_expr(e))
             }
-            TyTypeof(expr) => {
-                TyTypeof(fld.fold_expr(expr))
+            TyKind::Typeof(expr) => {
+                TyKind::Typeof(fld.fold_expr(expr))
             }
-            TyPolyTraitRef(bounds) => {
-                TyPolyTraitRef(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
+            TyKind::PolyTraitRef(bounds) => {
+                TyKind::PolyTraitRef(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
             }
-            TyMac(mac) => {
-                TyMac(fld.fold_mac(mac))
+            TyKind::Mac(mac) => {
+                TyKind::Mac(fld.fold_mac(mac))
             }
         },
         span: fld.new_span(span)

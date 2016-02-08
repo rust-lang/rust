@@ -1063,7 +1063,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_ty(&mut self, t: &ast::Ty) {
         self.process_macro_use(t.span, t.id);
         match t.node {
-            ast::TyPath(_, ref path) => {
+            ast::TyKind::Path(_, ref path) => {
                 match self.lookup_type_ref(t.id) {
                     Some(id) => {
                         let sub_span = self.span.sub_span_for_type_name(t.span);

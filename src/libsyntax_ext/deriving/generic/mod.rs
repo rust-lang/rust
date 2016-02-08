@@ -354,7 +354,7 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
     impl<'a> visit::Visitor<'a> for Visitor<'a> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             match ty.node {
-                ast::TyPath(_, ref path) if !path.global => {
+                ast::TyKind::Path(_, ref path) if !path.global => {
                     match path.segments.first() {
                         Some(segment) => {
                             if self.ty_param_names.contains(&segment.identifier.name) {
@@ -557,7 +557,7 @@ impl<'a> TraitDef<'a> {
 
                 for ty in tys {
                     // if we have already handled this type, skip it
-                    if let ast::TyPath(_, ref p) = ty.node {
+                    if let ast::TyKind::Path(_, ref p) = ty.node {
                         if p.segments.len() == 1
                             && ty_param_names.contains(&p.segments[0].identifier.name)
                             || processed_field_types.contains(&p.segments) {

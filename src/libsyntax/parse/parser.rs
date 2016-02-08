@@ -42,10 +42,7 @@ use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
-use ast::{Ty, Ty_, TypeBinding, TyMac};
-use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
-use ast::{TyParam, TyParamBounds, TyParen, TyPath, TyPtr};
-use ast::{TyRptr, TyTup, TyVec};
+use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
 use ast::TypeTraitItem;
 use ast::UnnamedField;
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -1058,7 +1055,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_for_in_type(&mut self) -> PResult<'a, Ty_> {
+    pub fn parse_for_in_type(&mut self) -> PResult<'a, TyKind> {
         /*
         Parses whatever can come after a `for` keyword in a type.
         The `for` has already been consumed.
@@ -1097,16 +1094,17 @@ impl<'a> Parser<'a> {
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
                 .chain(other_bounds.into_vec())
                 .collect();
-            Ok(ast::TyPolyTraitRef(all_bounds))
+            Ok(ast::TyKind::PolyTraitRef(all_bounds))
         }
     }
 
-    pub fn parse_ty_path(&mut self) -> PResult<'a, Ty_> {
-        Ok(TyPath(None, try!(self.parse_path(LifetimeAndTypesWithoutColons))))
+    pub fn parse_ty_path(&mut self) -> PResult<'a, TyKind> {
+        Ok(TyKind::Path(None, try!(self.parse_path(LifetimeAndTypesWithoutColons))))
     }
 
-    /// parse a TyBareFn type:
-    pub fn parse_ty_bare_fn(&mut self, lifetime_defs: Vec<ast::LifetimeDef>) -> PResult<'a, Ty_> {
+    /// parse a TyKind::BareFn type:
+    pub fn parse_ty_bare_fn(&mut self, lifetime_defs: Vec<ast::LifetimeDef>)
+                            -> PResult<'a, TyKind> {
         /*
 
         [unsafe] [extern "ABI"] fn <'lt> (S) -> T
@@ -1134,7 +1132,7 @@ impl<'a> Parser<'a> {
             output: ret_ty,
             variadic: variadic
         });
-        Ok(TyBareFn(P(BareFnTy {
+        Ok(TyKind::BareFn(P(BareFnTy {
             abi: abi,
             unsafety: unsafety,
             lifetimes: lifetime_defs,
@@ -1308,7 +1306,7 @@ impl<'a> Parser<'a> {
         }
 
         let sp = mk_sp(lo, self.last_span.hi);
-        let sum = ast::TyObjectSum(lhs, bounds);
+        let sum = ast::TyKind::ObjectSum(lhs, bounds);
         Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: sum, span: sp}))
     }
 
@@ -1339,14 +1337,14 @@ impl<'a> Parser<'a> {
 
             try!(self.expect(&token::CloseDelim(token::Paren)));
             if ts.len() == 1 && !last_comma {
-                TyParen(ts.into_iter().nth(0).unwrap())
+                TyKind::Paren(ts.into_iter().nth(0).unwrap())
             } else {
-                TyTup(ts)
+                TyKind::Tup(ts)
             }
         } else if self.check(&token::BinOp(token::Star)) {
             // STAR POINTER (bare pointer?)
             self.bump();
-            TyPtr(try!(self.parse_ptr()))
+            TyKind::Ptr(try!(self.parse_ptr()))
         } else if self.check(&token::OpenDelim(token::Bracket)) {
             // VECTOR
             try!(self.expect(&token::OpenDelim(token::Bracket)));
@@ -1355,8 +1353,8 @@ impl<'a> Parser<'a> {
             // Parse the `; e` in `[ i32; e ]`
             // where `e` is a const expression
             let t = match try!(self.maybe_parse_fixed_length_of_vec()) {
-                None => TyVec(t),
-                Some(suffix) => TyFixedLengthVec(t, suffix)
+                None => TyKind::Vec(t),
+                Some(suffix) => TyKind::FixedLengthVec(t, suffix)
             };
             try!(self.expect(&token::CloseDelim(token::Bracket)));
             t
@@ -1376,13 +1374,13 @@ impl<'a> Parser<'a> {
             try!(self.expect(&token::OpenDelim(token::Paren)));
             let e = try!(self.parse_expr());
             try!(self.expect(&token::CloseDelim(token::Paren)));
-            TyTypeof(e)
+            TyKind::Typeof(e)
         } else if self.eat_lt() {
 
             let (qself, path) =
                  try!(self.parse_qualified_path(NoTypesAllowed));
 
-            TyPath(Some(qself), path)
+            TyKind::Path(Some(qself), path)
         } else if self.check(&token::ModSep) ||
                   self.token.is_ident() ||
                   self.token.is_path() {
@@ -1395,14 +1393,14 @@ impl<'a> Parser<'a> {
                                                      seq_sep_none(),
                                                      |p| p.parse_token_tree()));
                 let hi = self.span.hi;
-                TyMac(spanned(lo, hi, Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT }))
+                TyKind::Mac(spanned(lo, hi, Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT }))
             } else {
                 // NAMED TYPE
-                TyPath(None, path)
+                TyKind::Path(None, path)
             }
         } else if self.eat(&token::Underscore) {
             // TYPE TO BE INFERRED
-            TyInfer
+            TyKind::Infer
         } else {
             let this_token_str = self.this_token_to_string();
             let msg = format!("expected type, found `{}`", this_token_str);
@@ -1413,12 +1411,12 @@ impl<'a> Parser<'a> {
         Ok(P(Ty {id: ast::DUMMY_NODE_ID, node: t, span: sp}))
     }
 
-    pub fn parse_borrowed_pointee(&mut self) -> PResult<'a, Ty_> {
+    pub fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = try!(self.parse_opt_lifetime());
 
         let mt = try!(self.parse_mt());
-        return Ok(TyRptr(opt_lifetime, mt));
+        return Ok(TyKind::Rptr(opt_lifetime, mt));
     }
 
     pub fn parse_ptr(&mut self) -> PResult<'a, MutTy> {
@@ -1498,7 +1496,7 @@ impl<'a> Parser<'a> {
         } else {
             P(Ty {
                 id: ast::DUMMY_NODE_ID,
-                node: TyInfer,
+                node: TyKind::Infer,
                 span: mk_sp(self.span.lo, self.span.hi),
             })
         };
@@ -4809,7 +4807,7 @@ impl<'a> Parser<'a> {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             match ty.node {
-                TyPath(None, ref path) => {
+                TyKind::Path(None, ref path) => {
                     Some(TraitRef {
                         path: (*path).clone(),
                         ref_id: ty.id,

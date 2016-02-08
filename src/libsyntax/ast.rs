@@ -24,7 +24,6 @@ pub use self::Stmt_::*;
 pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
 pub use self::TraitItem_::*;
-pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
@@ -1523,7 +1522,7 @@ pub struct TypeBinding {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Ty {
     pub id: NodeId,
-    pub node: Ty_,
+    pub node: TyKind,
     pub span: Span,
 }
 
@@ -1543,36 +1542,36 @@ pub struct BareFnTy {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// The different kinds of types recognized by the compiler
-pub enum Ty_ {
-    TyVec(P<Ty>),
+pub enum TyKind {
+    Vec(P<Ty>),
     /// A fixed length array (`[T; n]`)
-    TyFixedLengthVec(P<Ty>, P<Expr>),
+    FixedLengthVec(P<Ty>, P<Expr>),
     /// A raw pointer (`*const T` or `*mut T`)
-    TyPtr(MutTy),
+    Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
-    TyRptr(Option<Lifetime>, MutTy),
+    Rptr(Option<Lifetime>, MutTy),
     /// A bare function (e.g. `fn(usize) -> bool`)
-    TyBareFn(P<BareFnTy>),
+    BareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)
-    TyTup(Vec<P<Ty>> ),
+    Tup(Vec<P<Ty>> ),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g. `<Vec<T> as SomeTrait>::SomeType`.
     ///
     /// Type parameters are stored in the Path itself
-    TyPath(Option<QSelf>, Path),
+    Path(Option<QSelf>, Path),
     /// Something like `A+B`. Note that `B` must always be a path.
-    TyObjectSum(P<Ty>, TyParamBounds),
+    ObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
-    TyPolyTraitRef(TyParamBounds),
+    PolyTraitRef(TyParamBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
-    TyParen(P<Ty>),
+    Paren(P<Ty>),
     /// Unused for now
-    TyTypeof(P<Expr>),
-    /// TyInfer means the type should be inferred instead of it having been
+    Typeof(P<Expr>),
+    /// TyKind::Infer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
-    TyInfer,
+    Infer,
     // A macro in the type position.
-    TyMac(Mac)
+    Mac(Mac),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1617,7 +1616,7 @@ impl Arg {
             // HACK(eddyb) fake type for the self argument.
             ty: P(Ty {
                 id: DUMMY_NODE_ID,
-                node: TyInfer,
+                node: TyKind::Infer,
                 span: DUMMY_SP,
             }),
             pat: P(Pat {
