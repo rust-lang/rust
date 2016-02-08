@@ -96,7 +96,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// let _ = thread::spawn(move || -> () {
 ///     // This thread will acquire the mutex first, unwrapping the result of
 ///     // `lock` because the lock has not been poisoned.
-///     let _lock = lock2.lock().unwrap();
+///     let _guard = lock2.lock().unwrap();
 ///
 ///     // This panic while holding the lock (`_guard` is in scope) will poison
 ///     // the mutex.
