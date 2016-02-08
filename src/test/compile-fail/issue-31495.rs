@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // compile-flags: --cfg foo(bar)
-// error-pattern: predicates are not allowed in --cfg
+// error-pattern: invalid predicate in --cfg command line argument: `foo`
 fn main() {}
