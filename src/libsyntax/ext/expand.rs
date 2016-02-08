@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, DeclLocal, PatMac};
+use ast::{Block, Crate, DeclKind, PatMac};
 use ast::{Local, Ident, Mac_, Name};
 use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtDecl, StmtMac};
 use ast::{StmtExpr, StmtSemi};
@@ -559,7 +559,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
     // is it a let?
     match node {
         StmtDecl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
-            DeclLocal(local) => {
+            DeclKind::Local(local) => {
                 // take it apart:
                 let rewritten_local = local.map(|Local {id, pat, ty, init, span, attrs}| {
                     // expand the ty since TyFixedLengthVec contains an Expr
@@ -597,7 +597,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                 });
                 SmallVector::one(P(Spanned {
                     node: StmtDecl(P(Spanned {
-                            node: DeclLocal(rewritten_local),
+                            node: DeclKind::Local(rewritten_local),
                             span: span
                         }),
                         node_id),

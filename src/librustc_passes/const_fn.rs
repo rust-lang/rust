@@ -59,10 +59,10 @@ fn check_block(sess: &Session, b: &ast::Block, kind: &'static str) {
         let span = match stmt.node {
             ast::StmtDecl(ref decl, _) => {
                 match decl.node {
-                    ast::DeclLocal(_) => decl.span,
+                    ast::DeclKind::Local(_) => decl.span,
 
                     // Item statements are allowed
-                    ast::DeclItem(_) => continue,
+                    ast::DeclKind::Item(_) => continue,
                 }
             }
             ast::StmtExpr(ref expr, _) => expr.span,

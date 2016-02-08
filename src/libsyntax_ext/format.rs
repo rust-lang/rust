@@ -457,7 +457,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         let name = ecx.ident_of(name);
         let item = ecx.item(sp, name, vec![], st);
-        let decl = respan(sp, ast::DeclItem(item));
+        let decl = respan(sp, ast::DeclKind::Item(item));
 
         // Wrap the declaration in a block so that it forms a single expression.
         ecx.expr_block(ecx.block(sp,

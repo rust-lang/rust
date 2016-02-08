@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::Decl_::*;
 pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
 pub use self::FloatTy::*;
@@ -829,21 +828,21 @@ impl Local {
     }
 }
 
-pub type Decl = Spanned<Decl_>;
+pub type Decl = Spanned<DeclKind>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Decl_ {
+pub enum DeclKind {
     /// A local (let) binding:
-    DeclLocal(P<Local>),
+    Local(P<Local>),
     /// An item binding:
-    DeclItem(P<Item>),
+    Item(P<Item>),
 }
 
 impl Decl {
     pub fn attrs(&self) -> &[Attribute] {
         match self.node {
-            DeclLocal(ref l) => l.attrs(),
-            DeclItem(ref i) => i.attrs(),
+            DeclKind::Local(ref l) => l.attrs(),
+            DeclKind::Item(ref i) => i.attrs(),
         }
     }
 }

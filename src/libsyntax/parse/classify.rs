@@ -49,8 +49,8 @@ pub fn stmt_ends_with_semi(stmt: &ast::Stmt_) -> bool {
     match *stmt {
         ast::StmtDecl(ref d, _) => {
             match d.node {
-                ast::DeclLocal(_) => true,
-                ast::DeclItem(_) => false,
+                ast::DeclKind::Local(_) => true,
+                ast::DeclKind::Item(_) => false,
             }
         }
         ast::StmtExpr(ref e, _) => expr_requires_semi_to_be_stmt(e),

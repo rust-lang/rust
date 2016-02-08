@@ -524,7 +524,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             span: sp,
             attrs: None,
         });
-        let decl = respan(sp, ast::DeclLocal(local));
+        let decl = respan(sp, ast::DeclKind::Local(local));
         P(respan(sp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))
     }
 
@@ -548,7 +548,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             span: sp,
             attrs: None,
         });
-        let decl = respan(sp, ast::DeclLocal(local));
+        let decl = respan(sp, ast::DeclKind::Local(local));
         P(respan(sp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))
     }
 
@@ -558,7 +558,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> P<ast::Stmt> {
-        let decl = respan(sp, ast::DeclItem(item));
+        let decl = respan(sp, ast::DeclKind::Item(item));
         P(respan(sp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))
     }
 

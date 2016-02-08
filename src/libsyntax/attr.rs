@@ -16,7 +16,7 @@ pub use self::IntType::*;
 
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
-use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclItem, DeclLocal};
+use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclKind};
 use ast::{Expr, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
@@ -933,8 +933,8 @@ impl WithAttrs for P<Decl> {
             Spanned {
                 span: span,
                 node: match node {
-                    DeclLocal(local) => DeclLocal(local.with_attrs(attrs)),
-                    DeclItem(item) => DeclItem(item.with_attrs(attrs)),
+                    DeclKind::Local(local) => DeclKind::Local(local.with_attrs(attrs)),
+                    DeclKind::Item(item) => DeclKind::Item(item.with_attrs(attrs)),
                 }
             }
         })
