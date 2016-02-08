@@ -524,7 +524,7 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
 }
 
 pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy) {
-    if let Return(ref output_ty) = *ret_ty {
+    if let FunctionRetTy::Ty(ref output_ty) = *ret_ty {
         visitor.visit_ty(output_ty)
     }
 }

@@ -950,7 +950,7 @@ mod tests {
                                     }),
                                         id: ast::DUMMY_NODE_ID
                                     }),
-                                output: ast::DefaultReturn(sp(15, 15)),
+                                output: ast::FunctionRetTy::Default(sp(15, 15)),
                                 variadic: false
                             }),
                                     ast::Unsafety::Normal,

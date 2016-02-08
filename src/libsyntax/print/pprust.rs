@@ -2108,7 +2108,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
 
                 let default_return = match decl.output {
-                    ast::DefaultReturn(..) => true,
+                    ast::FunctionRetTy::Default(..) => true,
                     _ => false
                 };
 
@@ -2722,19 +2722,19 @@ impl<'a> State<'a> {
         try!(self.print_fn_args(decl, None, true));
         try!(word(&mut self.s, "|"));
 
-        if let ast::DefaultReturn(..) = decl.output {
+        if let ast::FunctionRetTy::Default(..) = decl.output {
             return Ok(());
         }
 
         try!(self.space_if_not_bol());
         try!(self.word_space("->"));
         match decl.output {
-            ast::Return(ref ty) => {
+            ast::FunctionRetTy::Ty(ref ty) => {
                 try!(self.print_type(&**ty));
                 self.maybe_print_comment(ty.span.lo)
             }
-            ast::DefaultReturn(..) => unreachable!(),
-            ast::NoReturn(span) => {
+            ast::FunctionRetTy::Default(..) => unreachable!(),
+            ast::FunctionRetTy::None(span) => {
                 try!(self.word_nbsp("!"));
                 self.maybe_print_comment(span.lo)
             }
@@ -2988,7 +2988,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_output(&mut self, decl: &ast::FnDecl) -> io::Result<()> {
-        if let ast::DefaultReturn(..) = decl.output {
+        if let ast::FunctionRetTy::Default(..) = decl.output {
             return Ok(());
         }
 
@@ -2996,16 +2996,16 @@ impl<'a> State<'a> {
         try!(self.ibox(INDENT_UNIT));
         try!(self.word_space("->"));
         match decl.output {
-            ast::NoReturn(_) =>
+            ast::FunctionRetTy::None(_) =>
                 try!(self.word_nbsp("!")),
-            ast::DefaultReturn(..) => unreachable!(),
-            ast::Return(ref ty) =>
+            ast::FunctionRetTy::Default(..) => unreachable!(),
+            ast::FunctionRetTy::Ty(ref ty) =>
                 try!(self.print_type(&**ty))
         }
         try!(self.end());
 
         match decl.output {
-            ast::Return(ref output) => self.maybe_print_comment(output.span.lo),
+            ast::FunctionRetTy::Ty(ref output) => self.maybe_print_comment(output.span.lo),
             _ => Ok(())
         }
     }
@@ -3155,7 +3155,7 @@ mod tests {
 
         let decl = ast::FnDecl {
             inputs: Vec::new(),
-            output: ast::DefaultReturn(codemap::DUMMY_SP),
+            output: ast::FunctionRetTy::Default(codemap::DUMMY_SP),
             variadic: false
         };
         let generics = ast::Generics::default();

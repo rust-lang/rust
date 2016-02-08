@@ -450,9 +450,9 @@ pub fn lower_fn_decl(lctx: &LoweringContext, decl: &FnDecl) -> P<hir::FnDecl> {
     P(hir::FnDecl {
         inputs: decl.inputs.iter().map(|x| lower_arg(lctx, x)).collect(),
         output: match decl.output {
-            Return(ref ty) => hir::Return(lower_ty(lctx, ty)),
-            DefaultReturn(span) => hir::DefaultReturn(span),
-            NoReturn(span) => hir::NoReturn(span),
+            FunctionRetTy::Ty(ref ty) => hir::Return(lower_ty(lctx, ty)),
+            FunctionRetTy::Default(span) => hir::DefaultReturn(span),
+            FunctionRetTy::None(span) => hir::NoReturn(span),
         },
         variadic: decl.variadic,
     })

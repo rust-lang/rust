@@ -685,9 +685,9 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
     decl.map(|FnDecl {inputs, output, variadic}| FnDecl {
         inputs: inputs.move_map(|x| fld.fold_arg(x)),
         output: match output {
-            Return(ty) => Return(fld.fold_ty(ty)),
-            DefaultReturn(span) => DefaultReturn(span),
-            NoReturn(span) => NoReturn(span)
+            FunctionRetTy::Ty(ty) => FunctionRetTy::Ty(fld.fold_ty(ty)),
+            FunctionRetTy::Default(span) => FunctionRetTy::Default(span),
+            FunctionRetTy::None(span) => FunctionRetTy::None(span),
         },
         variadic: variadic
     })
