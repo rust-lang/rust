@@ -92,7 +92,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Handle the "..." case (returns a slice since strings are always unsized):
     if let hir::ExprLit(ref lit) = content_expr.node {
-        if let ast::LitStr(ref s, _) = lit.node {
+        if let ast::LitKind::Str(ref s, _) = lit.node {
             let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
             bcx = trans_lit_str(bcx,
                                 content_expr,
@@ -180,7 +180,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match content_expr.node {
         hir::ExprLit(ref lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => {
+                ast::LitKind::Str(ref s, _) => {
                     match dest {
                         Ignore => return bcx,
                         SaveIn(lldest) => {
@@ -276,7 +276,7 @@ fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
     match content_expr.node {
         hir::ExprLit(ref lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => s.len(),
+                ast::LitKind::Str(ref s, _) => s.len(),
                 _ => {
                     bcx.tcx().sess.span_bug(content_expr.span,
                                             "unexpected evec content")

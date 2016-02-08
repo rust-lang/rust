@@ -2531,9 +2531,9 @@ impl ToSource for syntax::codemap::Span {
 
 fn lit_to_string(lit: &ast::Lit) -> String {
     match lit.node {
-        ast::LitStr(ref st, _) => st.to_string(),
-        ast::LitByteStr(ref data) => format!("{:?}", data),
-        ast::LitByte(b) => {
+        ast::LitKind::Str(ref st, _) => st.to_string(),
+        ast::LitKind::ByteStr(ref data) => format!("{:?}", data),
+        ast::LitKind::Byte(b) => {
             let mut res = String::from("b'");
             for c in (b as char).escape_default() {
                 res.push(c);
@@ -2541,11 +2541,11 @@ fn lit_to_string(lit: &ast::Lit) -> String {
             res.push('\'');
             res
         },
-        ast::LitChar(c) => format!("'{}'", c),
-        ast::LitInt(i, _t) => i.to_string(),
-        ast::LitFloat(ref f, _t) => f.to_string(),
-        ast::LitFloatUnsuffixed(ref f) => f.to_string(),
-        ast::LitBool(b) => b.to_string(),
+        ast::LitKind::Char(c) => format!("'{}'", c),
+        ast::LitKind::Int(i, _t) => i.to_string(),
+        ast::LitKind::Float(ref f, _t) => f.to_string(),
+        ast::LitKind::FloatUnsuffixed(ref f) => f.to_string(),
+        ast::LitKind::Bool(b) => b.to_string(),
     }
 }
 

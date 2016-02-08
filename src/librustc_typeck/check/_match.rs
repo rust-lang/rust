@@ -57,7 +57,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // They can denote both statically and dynamically sized byte arrays
             let mut pat_ty = expr_ty;
             if let hir::ExprLit(ref lt) = lt.node {
-                if let ast::LitByteStr(_) = lt.node {
+                if let ast::LitKind::ByteStr(_) = lt.node {
                     let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
                     if let ty::TyRef(_, mt) = expected_ty.sty {
                         if let ty::TySlice(_) = mt.ty.sty {

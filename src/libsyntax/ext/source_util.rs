@@ -187,7 +187,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             let filename = format!("{}", file.display());
             cx.codemap().new_filemap_and_lines(&filename, "");
 
-            base::MacEager::expr(cx.expr_lit(sp, ast::LitByteStr(Rc::new(bytes))))
+            base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Rc::new(bytes))))
         }
     }
 }

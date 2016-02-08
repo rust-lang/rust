@@ -218,7 +218,7 @@ pub mod rt {
 
     impl ToTokens for str {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            let lit = ast::LitStr(
+            let lit = ast::LitKind::Str(
                 token::intern_and_get_ident(self), ast::CookedStr);
             dummy_spanned(lit).to_tokens(cx)
         }
@@ -249,13 +249,13 @@ pub mod rt {
 
     impl ToTokens for bool {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            dummy_spanned(ast::LitBool(*self)).to_tokens(cx)
+            dummy_spanned(ast::LitKind::Bool(*self)).to_tokens(cx)
         }
     }
 
     impl ToTokens for char {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            dummy_spanned(ast::LitChar(*self)).to_tokens(cx)
+            dummy_spanned(ast::LitKind::Char(*self)).to_tokens(cx)
         }
     }
 
@@ -268,7 +268,7 @@ pub mod rt {
                     } else {
                         *self
                     };
-                    let lit = ast::LitInt(val as u64, ast::SignedIntLit($tag));
+                    let lit = ast::LitKind::Int(val as u64, ast::SignedIntLit($tag));
                     let lit = P(ast::Expr {
                         id: ast::DUMMY_NODE_ID,
                         node: ast::ExprKind::Lit(P(dummy_spanned(lit))),
@@ -290,7 +290,7 @@ pub mod rt {
         (unsigned, $t:ty, $tag:expr) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-                    let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit($tag));
+                    let lit = ast::LitKind::Int(*self as u64, ast::UnsignedIntLit($tag));
                     dummy_spanned(lit).to_tokens(cx)
                 }
             }

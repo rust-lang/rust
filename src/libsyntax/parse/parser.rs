@@ -27,9 +27,8 @@ use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
-use ast::{Lit, Lit_, UintTy};
-use ast::{LitBool, LitChar, LitByte, LitByteStr};
-use ast::{LitStr, LitInt, Local};
+use ast::{Lit, LitKind, UintTy};
+use ast::Local;
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, Mutability};
@@ -1517,7 +1516,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches token_lit = LIT_INTEGER | ...
-    pub fn lit_from_token(&self, tok: &token::Token) -> PResult<'a, Lit_> {
+    pub fn lit_from_token(&self, tok: &token::Token) -> PResult<'a, LitKind> {
         match *tok {
             token::Interpolated(token::NtExpr(ref v)) => {
                 match v.node {
@@ -1527,8 +1526,8 @@ impl<'a> Parser<'a> {
             }
             token::Literal(lit, suf) => {
                 let (suffix_illegal, out) = match lit {
-                    token::Byte(i) => (true, LitByte(parse::byte_lit(&i.as_str()).0)),
-                    token::Char(i) => (true, LitChar(parse::char_lit(&i.as_str()).0)),
+                    token::Byte(i) => (true, LitKind::Byte(parse::byte_lit(&i.as_str()).0)),
+                    token::Char(i) => (true, LitKind::Char(parse::char_lit(&i.as_str()).0)),
 
                     // there are some valid suffixes for integer and
                     // float literals, so all the handling is done
@@ -1548,20 +1547,20 @@ impl<'a> Parser<'a> {
 
                     token::Str_(s) => {
                         (true,
-                         LitStr(token::intern_and_get_ident(&parse::str_lit(&s.as_str())),
-                                ast::CookedStr))
+                         LitKind::Str(token::intern_and_get_ident(&parse::str_lit(&s.as_str())),
+                                      ast::CookedStr))
                     }
                     token::StrRaw(s, n) => {
                         (true,
-                         LitStr(
+                         LitKind::Str(
                             token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
                             ast::RawStr(n)))
                     }
                     token::ByteStr(i) =>
-                        (true, LitByteStr(parse::byte_str_lit(&i.as_str()))),
+                        (true, LitKind::ByteStr(parse::byte_str_lit(&i.as_str()))),
                     token::ByteStrRaw(i, _) =>
                         (true,
-                         LitByteStr(Rc::new(i.to_string().into_bytes()))),
+                         LitKind::ByteStr(Rc::new(i.to_string().into_bytes()))),
                 };
 
                 if suffix_illegal {
@@ -1579,9 +1578,9 @@ impl<'a> Parser<'a> {
     pub fn parse_lit(&mut self) -> PResult<'a, Lit> {
         let lo = self.span.lo;
         let lit = if self.eat_keyword(keywords::True) {
-            LitBool(true)
+            LitKind::Bool(true)
         } else if self.eat_keyword(keywords::False) {
-            LitBool(false)
+            LitKind::Bool(false)
         } else {
             let token = self.bump_and_get();
             let lit = try!(self.lit_from_token(&token));
@@ -2015,7 +2014,7 @@ impl<'a> Parser<'a> {
     pub fn mk_lit_u32(&mut self, i: u32, attrs: ThinAttributes) -> P<Expr> {
         let span = &self.span;
         let lv_lit = P(codemap::Spanned {
-            node: LitInt(i as u64, ast::UnsignedIntLit(UintTy::U32)),
+            node: LitKind::Int(i as u64, ast::UnsignedIntLit(UintTy::U32)),
             span: *span
         });
 

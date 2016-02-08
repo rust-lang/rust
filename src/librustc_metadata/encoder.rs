@@ -1548,7 +1548,7 @@ fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
       }
       ast::MetaNameValue(ref name, ref value) => {
         match value.node {
-          ast::LitStr(ref value, _) => {
+          ast::LitKind::Str(ref value, _) => {
             rbml_w.start_tag(tag_meta_item_name_value);
             rbml_w.wr_tagged_str(tag_meta_item_name, name);
             rbml_w.wr_tagged_str(tag_meta_item_value, value);

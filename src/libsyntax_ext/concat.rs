@@ -29,24 +29,24 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
         match e.node {
             ast::ExprKind::Lit(ref lit) => {
                 match lit.node {
-                    ast::LitStr(ref s, _) |
-                    ast::LitFloat(ref s, _) |
-                    ast::LitFloatUnsuffixed(ref s) => {
+                    ast::LitKind::Str(ref s, _) |
+                    ast::LitKind::Float(ref s, _) |
+                    ast::LitKind::FloatUnsuffixed(ref s) => {
                         accumulator.push_str(&s);
                     }
-                    ast::LitChar(c) => {
+                    ast::LitKind::Char(c) => {
                         accumulator.push(c);
                     }
-                    ast::LitInt(i, ast::UnsignedIntLit(_)) |
-                    ast::LitInt(i, ast::SignedIntLit(_)) |
-                    ast::LitInt(i, ast::UnsuffixedIntLit) => {
+                    ast::LitKind::Int(i, ast::UnsignedIntLit(_)) |
+                    ast::LitKind::Int(i, ast::SignedIntLit(_)) |
+                    ast::LitKind::Int(i, ast::UnsuffixedIntLit) => {
                         accumulator.push_str(&format!("{}", i));
                     }
-                    ast::LitBool(b) => {
+                    ast::LitKind::Bool(b) => {
                         accumulator.push_str(&format!("{}", b));
                     }
-                    ast::LitByte(..) |
-                    ast::LitByteStr(..) => {
+                    ast::LitKind::Byte(..) |
+                    ast::LitKind::ByteStr(..) => {
                         cx.span_err(e.span, "cannot concatenate a byte string literal");
                     }
                 }

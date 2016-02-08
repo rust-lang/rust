@@ -13,7 +13,6 @@
 pub use self::ForeignItem_::*;
 pub use self::Item_::*;
 pub use self::KleeneOp::*;
-pub use self::Lit_::*;
 pub use self::LitIntType::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
@@ -1264,7 +1263,7 @@ pub enum StrStyle {
 }
 
 /// A literal
-pub type Lit = Spanned<Lit_>;
+pub type Lit = Spanned<LitKind>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum LitIntType {
@@ -1274,30 +1273,30 @@ pub enum LitIntType {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Lit_ {
+pub enum LitKind {
     /// A string literal (`"foo"`)
-    LitStr(InternedString, StrStyle),
+    Str(InternedString, StrStyle),
     /// A byte string (`b"foo"`)
-    LitByteStr(Rc<Vec<u8>>),
+    ByteStr(Rc<Vec<u8>>),
     /// A byte char (`b'f'`)
-    LitByte(u8),
+    Byte(u8),
     /// A character literal (`'a'`)
-    LitChar(char),
+    Char(char),
     /// An integer literal (`1u8`)
-    LitInt(u64, LitIntType),
+    Int(u64, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
-    LitFloat(InternedString, FloatTy),
+    Float(InternedString, FloatTy),
     /// A float literal without a suffix (`1.0 or 1.0E10`)
-    LitFloatUnsuffixed(InternedString),
+    FloatUnsuffixed(InternedString),
     /// A boolean literal
-    LitBool(bool),
+    Bool(bool),
 }
 
-impl Lit_ {
+impl LitKind {
     /// Returns true if this literal is a string and false otherwise.
     pub fn is_str(&self) -> bool {
         match *self {
-            LitStr(..) => true,
+            LitKind::Str(..) => true,
             _ => false,
         }
     }

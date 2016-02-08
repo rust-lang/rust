@@ -409,7 +409,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
 
                 // Translate the format
-                let fill = self.ecx.expr_lit(sp, ast::LitChar(fill));
+                let fill = self.ecx.expr_lit(sp, ast::LitKind::Char(fill));
                 let align = |name| {
                     let mut p = Context::rtpath(self.ecx, "Alignment");
                     p.push(self.ecx.ident_of(name));
