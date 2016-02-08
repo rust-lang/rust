@@ -380,9 +380,9 @@ impl<T: ?Sized> Deref for Arc<T> {
 }
 
 impl<T: Clone> Arc<T> {
-    /// Make a mutable reference into the given `Arc<T>` by cloning the inner
-    /// data if the `Arc<T>` doesn't have one strong reference and no weak
-    /// references.
+    /// Make a mutable reference into the given `Arc<T>`.
+    /// If the `Arc<T>` has more than one strong reference, or any weak
+    /// references, the inner data is cloned.
     ///
     /// This is also referred to as a copy-on-write.
     ///
