@@ -740,7 +740,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                     UnwindExit(val) => {
                         // Generate a block that will resume unwinding to the
                         // calling function
-                        let bcx = self.new_block("resume", None, None);
+                        let bcx = self.new_block("resume", None);
                         match val {
                             UnwindKind::LandingPad => {
                                 let addr = self.landingpad_alloca.get()
@@ -830,7 +830,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
 
-                let bcx_in = self.new_block(&name[..], None, None);
+                let bcx_in = self.new_block(&name[..], None);
                 let exit_label = label.start(bcx_in);
                 let mut bcx_out = bcx_in;
                 let len = scope.cleanups.len();
@@ -873,7 +873,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 Some(llbb) => return llbb,
                 None => {
                     let name = last_scope.block_name("unwind");
-                    pad_bcx = self.new_block(&name[..], None, None);
+                    pad_bcx = self.new_block(&name[..], None);
                     last_scope.cached_landing_pad = Some(pad_bcx.llbb);
                 }
             }

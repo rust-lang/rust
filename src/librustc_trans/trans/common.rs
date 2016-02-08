@@ -434,19 +434,14 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 
     pub fn new_block(&'a self,
                      name: &str,
-                     opt_node_id: Option<ast::NodeId>,
-                     landing_pad: Option<LandingPad>)
+                     opt_node_id: Option<ast::NodeId>)
                      -> Block<'a, 'tcx> {
         unsafe {
             let name = CString::new(name).unwrap();
             let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
                                                            self.llfn,
                                                            name.as_ptr());
-            let block = BlockS::new(llbb, opt_node_id, self);
-            if let Some(landing_pad) = landing_pad {
-                block.lpad.set(Some(self.lpad_arena.alloc(landing_pad)));
-            }
-            block
+            BlockS::new(llbb, opt_node_id, self)
         }
     }
 
@@ -454,13 +449,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                         name: &str,
                         node_id: ast::NodeId)
                         -> Block<'a, 'tcx> {
-        self.new_block(name, Some(node_id), None)
+        self.new_block(name, Some(node_id))
     }
 
     pub fn new_temp_block(&'a self,
                           name: &str)
                           -> Block<'a, 'tcx> {
-        self.new_block(name, None, None)
+        self.new_block(name, None)
     }
 
     pub fn join_blocks(&'a self,
@@ -757,10 +752,6 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     pub fn llbb(&self) -> BasicBlockRef {
         self.bcx.llbb
-    }
-
-    pub fn lpad(&self) -> Option<&'blk LandingPad> {
-        self.bcx.lpad()
     }
 
     pub fn mir(&self) -> &'blk Mir<'tcx> {
