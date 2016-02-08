@@ -10,6 +10,7 @@
 
 use abi;
 use ast::{Ident, Generics, Expr};
+use ast::UnOp;
 use ast;
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
@@ -610,7 +611,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_deref(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr_unary(sp, ast::UnDeref, e)
+        self.expr_unary(sp, UnOp::Deref, e)
     }
     fn expr_unary(&self, sp: Span, op: ast::UnOp, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprUnary(op, e))

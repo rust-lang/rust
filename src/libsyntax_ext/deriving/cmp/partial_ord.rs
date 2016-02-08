@@ -211,7 +211,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
 
             let cmp = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
 
-            let not_cmp = cx.expr_unary(span, ast::UnNot,
+            let not_cmp = cx.expr_unary(span, ast::UnOp::Not,
                                         cx.expr_binary(span, op, other_f.clone(), self_f));
 
             let and = cx.expr_binary(span, ast::BiAnd, not_cmp, subexpr);

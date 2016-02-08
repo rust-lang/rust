@@ -38,7 +38,6 @@ pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UintTy::*;
-pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::Visibility::*;
@@ -723,27 +722,27 @@ pub type BinOp = Spanned<BinOp_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum UnOp {
     /// The `*` operator for dereferencing
-    UnDeref,
+    Deref,
     /// The `!` operator for logical inversion
-    UnNot,
+    Not,
     /// The `-` operator for negation
-    UnNeg
+    Neg,
 }
 
 impl UnOp {
     /// Returns `true` if the unary operator takes its argument by value
     pub fn is_by_value(u: UnOp) -> bool {
         match u {
-            UnNeg | UnNot => true,
+            UnOp::Neg | UnOp::Not => true,
             _ => false,
         }
     }
 
     pub fn to_string(op: UnOp) -> &'static str {
         match op {
-            UnDeref => "*",
-            UnNot => "!",
-            UnNeg => "-",
+            UnOp::Deref => "*",
+            UnOp::Not => "!",
+            UnOp::Neg => "-",
         }
     }
 }
