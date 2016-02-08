@@ -350,15 +350,30 @@ fn handle_explain(code: &str,
 
 fn check_cfg(sopts: &config::Options,
              output: ErrorOutputType) {
-    fn is_meta_list(item: &ast::MetaItem) -> bool {
+    let mut emitter: Box<Emitter> = match output {
+        config::ErrorOutputType::HumanReadable(color_config) => {
+            Box::new(errors::emitter::BasicEmitter::stderr(color_config))
+        }
+        config::ErrorOutputType::Json => Box::new(errors::json::JsonEmitter::basic()),
+    };
+
+    let mut saw_invalid_predicate = false;
+    for item in sopts.cfg.iter() {
         match item.node {
-            ast::MetaItem_::MetaList(..) => true,
-            _ => false,
+            ast::MetaList(ref pred, _) => {
+                saw_invalid_predicate = true;
+                emitter.emit(None,
+                             &format!("invalid predicate in --cfg command line argument: `{}`",
+                                      pred),
+                             None,
+                             errors::Level::Fatal);
+            }
+            _ => {},
         }
     }
 
-    if sopts.cfg.iter().any(|item| is_meta_list(&*item)) {
-        early_error(output, "predicates are not allowed in --cfg");
+    if saw_invalid_predicate {
+        panic!(errors::FatalError);
     }
 }
 
