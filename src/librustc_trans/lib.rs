@@ -37,8 +37,6 @@
 #![feature(staged_api)]
 #![feature(unicode)]
 
-#![allow(trivial_casts)]
-
 extern crate arena;
 extern crate flate;
 extern crate getopts;

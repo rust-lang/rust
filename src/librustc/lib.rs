@@ -43,8 +43,6 @@
 #![feature(time2)]
 #![cfg_attr(test, feature(test))]
 
-#![allow(trivial_casts)]
-
 extern crate arena;
 extern crate core;
 extern crate flate;
