@@ -644,7 +644,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn opaque_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
                           -> &'tcx ty::BareFnTy<'tcx> {
     let mut inputs = method_ty.sig.0.inputs.clone();
-    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(ast::TyI8));
+    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(ast::IntTy::I8));
 
     tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: method_ty.unsafety,

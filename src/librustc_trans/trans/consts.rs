@@ -64,7 +64,7 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
     let _icx = push_ctxt("trans_lit");
     debug!("const_lit: {:?}", lit);
     match lit.node {
-        ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::TyU8), b as u64, false),
+        ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::UintTy::U8), b as u64, false),
         ast::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
         ast::LitInt(i, ast::SignedIntLit(t, _)) => {
             C_integral(Type::int_from_ty(cx, t), i, true)

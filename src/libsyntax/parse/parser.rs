@@ -27,7 +27,7 @@ use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
-use ast::{Lit, Lit_};
+use ast::{Lit, Lit_, UintTy};
 use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
@@ -45,7 +45,7 @@ use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{Ty, Ty_, TypeBinding, TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBounds, TyParen, TyPath, TyPtr};
-use ast::{TyRptr, TyTup, TyU32, TyVec};
+use ast::{TyRptr, TyTup, TyVec};
 use ast::TypeTraitItem;
 use ast::UnnamedField;
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -2017,7 +2017,7 @@ impl<'a> Parser<'a> {
     pub fn mk_lit_u32(&mut self, i: u32, attrs: ThinAttributes) -> P<Expr> {
         let span = &self.span;
         let lv_lit = P(codemap::Spanned {
-            node: LitInt(i as u64, ast::UnsignedIntLit(TyU32)),
+            node: LitInt(i as u64, ast::UnsignedIntLit(UintTy::U32)),
             span: *span
         });
 

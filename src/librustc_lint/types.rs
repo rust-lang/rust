@@ -161,7 +161,7 @@ impl LateLintPass for TypeLimits {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
-                                let int_type = if let ast::TyIs = t {
+                                let int_type = if let ast::IntTy::Is = t {
                                     cx.sess().target.int_type
                                 } else {
                                     t
@@ -182,7 +182,7 @@ impl LateLintPass for TypeLimits {
                         };
                     },
                     ty::TyUint(t) => {
-                        let uint_type = if let ast::TyUs = t {
+                        let uint_type = if let ast::UintTy::Us = t {
                             cx.sess().target.uint_type
                         } else {
                             t
@@ -247,21 +247,21 @@ impl LateLintPass for TypeLimits {
         // warnings are consistent between 32- and 64-bit platforms
         fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
             match int_ty {
-                ast::TyIs => (i64::MIN,        i64::MAX),
-                ast::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
-                ast::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
-                ast::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
-                ast::TyI64 =>   (i64::MIN,        i64::MAX)
+                ast::IntTy::Is => (i64::MIN,        i64::MAX),
+                ast::IntTy::I8 =>    (i8::MIN  as i64, i8::MAX  as i64),
+                ast::IntTy::I16 =>   (i16::MIN as i64, i16::MAX as i64),
+                ast::IntTy::I32 =>   (i32::MIN as i64, i32::MAX as i64),
+                ast::IntTy::I64 =>   (i64::MIN,        i64::MAX)
             }
         }
 
         fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
             match uint_ty {
-                ast::TyUs => (u64::MIN,         u64::MAX),
-                ast::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
-                ast::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
-                ast::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
-                ast::TyU64 =>   (u64::MIN,         u64::MAX)
+                ast::UintTy::Us => (u64::MIN,         u64::MAX),
+                ast::UintTy::U8 =>    (u8::MIN   as u64, u8::MAX   as u64),
+                ast::UintTy::U16 =>   (u16::MIN  as u64, u16::MAX  as u64),
+                ast::UintTy::U32 =>   (u32::MIN  as u64, u32::MAX  as u64),
+                ast::UintTy::U64 =>   (u64::MIN,         u64::MAX)
             }
         }
 
@@ -274,21 +274,21 @@ impl LateLintPass for TypeLimits {
 
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::TyIs => int_ty_bits(target_int_ty, target_int_ty),
-                ast::TyI8 => 8,
-                ast::TyI16 => 16 as u64,
-                ast::TyI32 => 32,
-                ast::TyI64 => 64,
+                ast::IntTy::Is => int_ty_bits(target_int_ty, target_int_ty),
+                ast::IntTy::I8 => 8,
+                ast::IntTy::I16 => 16 as u64,
+                ast::IntTy::I32 => 32,
+                ast::IntTy::I64 => 64,
             }
         }
 
         fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
-                ast::TyU8 => 8,
-                ast::TyU16 => 16,
-                ast::TyU32 => 32,
-                ast::TyU64 => 64,
+                ast::UintTy::Us => uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::UintTy::U8 => 8,
+                ast::UintTy::U16 => 16,
+                ast::UintTy::U32 => 32,
+                ast::UintTy::U64 => 64,
             }
         }
 

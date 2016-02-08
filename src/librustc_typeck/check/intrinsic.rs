@@ -429,14 +429,14 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
         },
         // (The width we pass to LLVM doesn't concern the type checker.)
         Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
-            (true,  8,  &ty::TyInt(ast::IntTy::TyI8)) |
-            (false, 8,  &ty::TyUint(ast::UintTy::TyU8)) |
-            (true,  16, &ty::TyInt(ast::IntTy::TyI16)) |
-            (false, 16, &ty::TyUint(ast::UintTy::TyU16)) |
-            (true,  32, &ty::TyInt(ast::IntTy::TyI32)) |
-            (false, 32, &ty::TyUint(ast::UintTy::TyU32)) |
-            (true,  64, &ty::TyInt(ast::IntTy::TyI64)) |
-            (false, 64, &ty::TyUint(ast::UintTy::TyU64)) => {},
+            (true,  8,  &ty::TyInt(ast::IntTy::I8)) |
+            (false, 8,  &ty::TyUint(ast::UintTy::U8)) |
+            (true,  16, &ty::TyInt(ast::IntTy::I16)) |
+            (false, 16, &ty::TyUint(ast::UintTy::U16)) |
+            (true,  32, &ty::TyInt(ast::IntTy::I32)) |
+            (false, 32, &ty::TyUint(ast::UintTy::U32)) |
+            (true,  64, &ty::TyInt(ast::IntTy::I64)) |
+            (false, 64, &ty::TyUint(ast::UintTy::U64)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`{}{n}`",
                                        if signed {"i"} else {"u"},

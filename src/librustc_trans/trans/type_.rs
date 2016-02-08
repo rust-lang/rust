@@ -127,21 +127,21 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::TyIs => ccx.int_type(),
-            ast::TyI8 => Type::i8(ccx),
-            ast::TyI16 => Type::i16(ccx),
-            ast::TyI32 => Type::i32(ccx),
-            ast::TyI64 => Type::i64(ccx)
+            ast::IntTy::Is => ccx.int_type(),
+            ast::IntTy::I8 => Type::i8(ccx),
+            ast::IntTy::I16 => Type::i16(ccx),
+            ast::IntTy::I32 => Type::i32(ccx),
+            ast::IntTy::I64 => Type::i64(ccx)
         }
     }
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::TyUs => ccx.int_type(),
-            ast::TyU8 => Type::i8(ccx),
-            ast::TyU16 => Type::i16(ccx),
-            ast::TyU32 => Type::i32(ccx),
-            ast::TyU64 => Type::i64(ccx)
+            ast::UintTy::Us => ccx.int_type(),
+            ast::UintTy::U8 => Type::i8(ccx),
+            ast::UintTy::U16 => Type::i16(ccx),
+            ast::UintTy::U32 => Type::i32(ccx),
+            ast::UintTy::U64 => Type::i64(ccx)
         }
     }
 

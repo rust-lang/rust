@@ -1664,30 +1664,30 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
     use rustc::middle::ty::{TyInt, TyUint};
     match *sty {
         TyInt(t) => Some((match t {
-            ast::TyIs => {
+            ast::IntTy::Is => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "32" => 32,
                     "64" => 64,
                     tws => panic!("Unsupported target word size for isize: {}", tws),
                 }
             },
-            ast::TyI8 => 8,
-            ast::TyI16 => 16,
-            ast::TyI32 => 32,
-            ast::TyI64 => 64,
+            ast::IntTy::I8 => 8,
+            ast::IntTy::I16 => 16,
+            ast::IntTy::I32 => 32,
+            ast::IntTy::I64 => 64,
         }, true)),
         TyUint(t) => Some((match t {
-            ast::TyUs => {
+            ast::UintTy::Us => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "32" => 32,
                     "64" => 64,
                     tws => panic!("Unsupported target word size for usize: {}", tws),
                 }
             },
-            ast::TyU8 => 8,
-            ast::TyU16 => 16,
-            ast::TyU32 => 32,
-            ast::TyU64 => 64,
+            ast::UintTy::U8 => 8,
+            ast::UintTy::U16 => 16,
+            ast::UintTy::U32 => 32,
+            ast::UintTy::U64 => 64,
         }, false)),
         _ => None,
     }
