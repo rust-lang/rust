@@ -1,8 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::ptr::P;
-use std::cmp::PartialOrd;
-use std::cmp::Ordering::*;
+use std::cmp::{PartialOrd, Ordering};
 
 use consts::{Constant, constant_simple};
 use utils::{match_def_path, span_lint};
@@ -37,7 +36,7 @@ impl LateLintPass for MinMaxPass {
                     return;
                 }
                 match (outer_max, outer_c.partial_cmp(&inner_c)) {
-                    (_, None) | (Max, Some(Less)) | (Min, Some(Greater)) => (),
+                    (_, None) | (Max, Some(Ordering::Less)) | (Min, Some(Ordering::Greater)) => (),
                     _ => {
                         span_lint(cx, MIN_MAX, expr.span, "this min/max combination leads to constant result");
                     }

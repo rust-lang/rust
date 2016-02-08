@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 113 lints included in this crate:
+There are 117 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -34,6 +34,7 @@ name                                                                            
 [drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                           | warn    | call to `std::mem::drop` with a reference instead of an owned value, which will not call the `Drop::drop` method on the underlying value
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument) | warn    | Function arguments having names which only differ by an underscore
 [empty_loop](https://github.com/Manishearth/rust-clippy/wiki#empty_loop)                                       | warn    | empty `loop {}` detected
+[enum_glob_use](https://github.com/Manishearth/rust-clippy/wiki#enum_glob_use)                                 | allow   | finds use items that import all variants of an enum
 [enum_variant_names](https://github.com/Manishearth/rust-clippy/wiki#enum_variant_names)                       | warn    | finds enums where all variants share a prefix/postfix
 [eq_op](https://github.com/Manishearth/rust-clippy/wiki#eq_op)                                                 | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
 [expl_impl_clone_on_copy](https://github.com/Manishearth/rust-clippy/wiki#expl_impl_clone_on_copy)             | warn    | implementing `Clone` explicitly on `Copy` types
@@ -46,6 +47,8 @@ name                                                                            
 [for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                   | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
 [for_loop_over_result](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result)                   | warn    | for-looping over a `Result`, which is more clearly expressed as an `if let`
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                     | warn    | using identity operations, e.g. `x + 0` or `y / 1`
+[if_same_then_else](https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else)                         | warn    | if with the same *then* and *else* blocks
+[ifs_same_cond](https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond)                                 | warn    | consecutive `ifs` with the same condition
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                   | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                 | warn    | `#[inline(always)]` is a bad idea in most cases
 [invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                 | deny    | finds invalid regular expressions in `Regex::new(_)` invocations
@@ -88,6 +91,7 @@ name                                                                            
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                       | warn    | zipping iterator with a range when enumerate() would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                         | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 [redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                         | warn    | using `name @ _` in a pattern
+[regex_macro](https://github.com/Manishearth/rust-clippy/wiki#regex_macro)                                     | warn    | finds use of `regex!(_)`, suggests `Regex::new(_)` instead
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)                       | allow   | using `Result.unwrap()`, which might be better handled
 [reverse_range_loop](https://github.com/Manishearth/rust-clippy/wiki#reverse_range_loop)                       | warn    | Iterating over an empty range, such as `10..0` or `5..5`
 [search_is_some](https://github.com/Manishearth/rust-clippy/wiki#search_is_some)                               | warn    | using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`

@@ -12,14 +12,10 @@ use std::cmp::Ordering::{self, Greater, Less, Equal};
 use std::rc::Rc;
 use std::ops::Deref;
 use std::fmt;
-use self::FloatWidth::*;
 
-use syntax::ast::Lit_::*;
 use syntax::ast::Lit_;
-use syntax::ast::LitIntType::*;
 use syntax::ast::LitIntType;
 use syntax::ast::{UintTy, FloatTy, StrStyle};
-use syntax::ast::FloatTy::*;
 use syntax::ast::Sign::{self, Plus, Minus};
 
 
@@ -33,8 +29,8 @@ pub enum FloatWidth {
 impl From<FloatTy> for FloatWidth {
     fn from(ty: FloatTy) -> FloatWidth {
         match ty {
-            TyF32 => Fw32,
-            TyF64 => Fw64,
+            FloatTy::TyF32 => FloatWidth::Fw32,
+            FloatTy::TyF64 => FloatWidth::Fw64,
         }
     }
 }
@@ -107,6 +103,7 @@ impl PartialEq for Constant {
                 lv == rv && (is_negative(lty) & (lv != 0)) == (is_negative(rty) & (rv != 0))
             }
             (&Constant::Float(ref ls, lw), &Constant::Float(ref rs, rw)) => {
+                use self::FloatWidth::*;
                 if match (lw, rw) {
                     (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
                     _ => false,
@@ -149,6 +146,7 @@ impl PartialOrd for Constant {
                 })
             }
             (&Constant::Float(ref ls, lw), &Constant::Float(ref rs, rw)) => {
+                use self::FloatWidth::*;
                 if match (lw, rw) {
                     (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
                     _ => false,
@@ -261,76 +259,51 @@ impl fmt::Display for Constant {
 
 fn lit_to_constant(lit: &Lit_) -> Constant {
     match *lit {
-        LitStr(ref is, style) => Constant::Str(is.to_string(), style),
-        LitByte(b) => Constant::Byte(b),
-        LitByteStr(ref s) => Constant::Binary(s.clone()),
-        LitChar(c) => Constant::Char(c),
-        LitInt(value, ty) => Constant::Int(value, ty),
-        LitFloat(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
-        LitFloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FwAny),
-        LitBool(b) => Constant::Bool(b),
+        Lit_::LitStr(ref is, style) => Constant::Str(is.to_string(), style),
+        Lit_::LitByte(b) => Constant::Byte(b),
+        Lit_::LitByteStr(ref s) => Constant::Binary(s.clone()),
+        Lit_::LitChar(c) => Constant::Char(c),
+        Lit_::LitInt(value, ty) => Constant::Int(value, ty),
+        Lit_::LitFloat(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
+        Lit_::LitFloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::FwAny),
+        Lit_::LitBool(b) => Constant::Bool(b),
     }
 }
 
 fn constant_not(o: Constant) -> Option<Constant> {
-    Some(match o {
-        Constant::Bool(b) => Constant::Bool(!b),
-        Constant::Int(value, ty) => {
-            let (nvalue, nty) = match ty {
-                SignedIntLit(ity, Plus) => {
-                    if value == ::std::u64::MAX {
-                        return None;
-                    }
-                    (value + 1, SignedIntLit(ity, Minus))
-                }
-                SignedIntLit(ity, Minus) => {
-                    if value == 0 {
-                        (1, SignedIntLit(ity, Minus))
-                    } else {
-                        (value - 1, SignedIntLit(ity, Plus))
-                    }
-                }
-                UnsignedIntLit(ity) => {
-                    let mask = match ity {
-                        UintTy::TyU8 => ::std::u8::MAX as u64,
-                        UintTy::TyU16 => ::std::u16::MAX as u64,
-                        UintTy::TyU32 => ::std::u32::MAX as u64,
-                        UintTy::TyU64 => ::std::u64::MAX,
-                        UintTy::TyUs => {
-                            return None;
-                        }  // refuse to guess
-                    };
-                    (!value & mask, UnsignedIntLit(ity))
-                }
-                UnsuffixedIntLit(_) => {
+    use syntax::ast::LitIntType::*;
+    use self::Constant::*;
+    match o {
+        Bool(b) => Some(Bool(!b)),
+        Int(::std::u64::MAX, SignedIntLit(_, Plus)) => None,
+        Int(value, SignedIntLit(ity, Plus)) => Some(Int(value + 1, SignedIntLit(ity, Minus))),
+        Int(0, SignedIntLit(ity, Minus)) => Some(Int(1, SignedIntLit(ity, Minus))),
+        Int(value, SignedIntLit(ity, Minus)) => Some(Int(value - 1, SignedIntLit(ity, Plus))),
+        Int(value, UnsignedIntLit(ity)) => {
+            let mask = match ity {
+                UintTy::TyU8 => ::std::u8::MAX as u64,
+                UintTy::TyU16 => ::std::u16::MAX as u64,
+                UintTy::TyU32 => ::std::u32::MAX as u64,
+                UintTy::TyU64 => ::std::u64::MAX,
+                UintTy::TyUs => {
                     return None;
                 }  // refuse to guess
             };
-            Constant::Int(nvalue, nty)
-        }
-        _ => {
-            return None;
-        }
-    })
+            Some(Int(!value & mask, UnsignedIntLit(ity)))
+        },
+        _ => None,
+    }
 }
 
 fn constant_negate(o: Constant) -> Option<Constant> {
-    Some(match o {
-        Constant::Int(value, ty) => {
-            Constant::Int(value,
-                        match ty {
-                            SignedIntLit(ity, sign) => SignedIntLit(ity, neg_sign(sign)),
-                            UnsuffixedIntLit(sign) => UnsuffixedIntLit(neg_sign(sign)),
-                            _ => {
-                                return None;
-                            }
-                        })
-        }
-        Constant::Float(is, ty) => Constant::Float(neg_float_str(is), ty),
-        _ => {
-            return None;
-        }
-    })
+    use syntax::ast::LitIntType::*;
+    use self::Constant::*;
+    match o {
+        Int(value, SignedIntLit(ity, sign)) => Some(Int(value, SignedIntLit(ity, neg_sign(sign)))),
+        Int(value, UnsuffixedIntLit(sign)) => Some(Int(value, UnsuffixedIntLit(neg_sign(sign)))),
+        Float(is, ty) => Some(Float(neg_float_str(is), ty)),
+        _ => None,
+    }
 }
 
 fn neg_sign(s: Sign) -> Sign {
@@ -357,12 +330,13 @@ fn neg_float_str(s: String) -> String {
 /// ```
 pub fn is_negative(ty: LitIntType) -> bool {
     match ty {
-        SignedIntLit(_, sign) | UnsuffixedIntLit(sign) => sign == Minus,
-        UnsignedIntLit(_) => false,
+        LitIntType::SignedIntLit(_, sign) | LitIntType::UnsuffixedIntLit(sign) => sign == Minus,
+        LitIntType::UnsignedIntLit(_) => false,
     }
 }
 
 fn unify_int_type(l: LitIntType, r: LitIntType, s: Sign) -> Option<LitIntType> {
+    use syntax::ast::LitIntType::*;
     match (l, r) {
         (SignedIntLit(lty, _), SignedIntLit(rty, _)) => {
             if lty == rty {

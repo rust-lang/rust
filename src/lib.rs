@@ -37,9 +37,11 @@ use rustc_plugin::Registry;
 
 #[macro_use]
 pub mod utils;
+pub mod copies;
 pub mod consts;
 pub mod types;
 pub mod misc;
+pub mod enum_glob_use;
 pub mod eq_op;
 pub mod bit_mask;
 pub mod ptr_arg;
@@ -99,6 +101,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box misc::CmpNan);
     reg.register_late_lint_pass(box eq_op::EqOp);
     reg.register_early_lint_pass(box enum_variants::EnumVariantNames);
+    reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
     reg.register_late_lint_pass(box bit_mask::BitMask);
     reg.register_late_lint_pass(box ptr_arg::PtrArg);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
@@ -155,8 +158,10 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box drop_ref::DropRefPass);
     reg.register_late_lint_pass(box types::AbsurdUnsignedComparisons);
     reg.register_late_lint_pass(box regex::RegexPass);
+    reg.register_late_lint_pass(box copies::CopyAndPaste);
 
     reg.register_lint_group("clippy_pedantic", vec![
+        enum_glob_use::ENUM_GLOB_USE,
         matches::SINGLE_MATCH_ELSE,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
@@ -187,6 +192,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
+        copies::IF_SAME_THEN_ELSE,
+        copies::IFS_SAME_COND,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_NOT_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,

@@ -89,7 +89,7 @@ fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: 
             params.len() == 3,
             name.node.as_str() == "insert",
             get_item_name(cx, map) == get_item_name(cx, &*params[0]),
-            is_exp_equal(cx, key, &params[1])
+            is_exp_equal(cx, key, &params[1], false)
         ], {
             let help = if sole_expr {
                 format!("{}.entry({}).or_insert({})",
