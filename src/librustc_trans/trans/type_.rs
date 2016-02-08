@@ -147,8 +147,8 @@ impl Type {
 
     pub fn float_from_ty(ccx: &CrateContext, t: ast::FloatTy) -> Type {
         match t {
-            ast::TyF32 => Type::f32(ccx),
-            ast::TyF64 => Type::f64(ccx),
+            ast::FloatTy::F32 => Type::f32(ccx),
+            ast::FloatTy::F64 => Type::f64(ccx),
         }
     }
 

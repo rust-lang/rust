@@ -452,8 +452,8 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
                       sd: &Handler, sp: Span) -> ast::Lit_ {
     debug!("filtered_float_lit: {}, {:?}", data, suffix);
     match suffix.as_ref().map(|s| &**s) {
-        Some("f32") => ast::LitFloat(data, ast::TyF32),
-        Some("f64") => ast::LitFloat(data, ast::TyF64),
+        Some("f32") => ast::LitFloat(data, ast::FloatTy::F32),
+        Some("f64") => ast::LitFloat(data, ast::FloatTy::F64),
         Some(suf) => {
             if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
                 // if it looks like a width, lets try to be helpful.

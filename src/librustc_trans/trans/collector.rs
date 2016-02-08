@@ -1230,8 +1230,8 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyUint(ast::TyU16)  => output.push_str("u16"),
         ty::TyUint(ast::TyU32)  => output.push_str("u32"),
         ty::TyUint(ast::TyU64)  => output.push_str("u64"),
-        ty::TyFloat(ast::TyF32) => output.push_str("f32"),
-        ty::TyFloat(ast::TyF64) => output.push_str("f64"),
+        ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
+        ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
         ty::TyStruct(adt_def, substs) |
         ty::TyEnum(adt_def, substs) => {
             push_item_name(cx, adt_def.did, output);

@@ -94,8 +94,8 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         }
         ty::TyFloat(t) => {
             match t {
-                ast::TyF32 => write!(w, "Mf"),
-                ast::TyF64 => write!(w, "MF"),
+                ast::FloatTy::F32 => write!(w, "Mf"),
+                ast::FloatTy::F64 => write!(w, "MF"),
             };
         }
         ty::TyEnum(def, substs) => {

@@ -2556,7 +2556,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let arg_ty = structurally_resolved_type(fcx, arg.span,
                                                     fcx.expr_ty(&**arg));
             match arg_ty.sty {
-                ty::TyFloat(ast::TyF32) => {
+                ty::TyFloat(ast::FloatTy::F32) => {
                     fcx.type_error_message(arg.span,
                                            |t| {
                         format!("can't pass an {} to variadic \
