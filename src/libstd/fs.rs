@@ -1940,10 +1940,44 @@ mod tests {
         check!(fs::create_dir_all(&d2));
         check!(check!(File::create(&canary)).write(b"foo"));
         check!(symlink_junction(&d2, &dt.join("d2")));
+        let _ = symlink_file(&canary, &d1.join("canary"));
         check!(fs::remove_dir_all(&d1));
 
         assert!(!d1.is_dir());
         assert!(canary.exists());
+    }
+
+    #[test]
+    fn recursive_rmdir_of_symlink() {
+        // test we do not recursively delete a symlink but only dirs.
+        let tmpdir = tmpdir();
+        let link = tmpdir.join("d1");
+        let dir = tmpdir.join("d2");
+        let canary = dir.join("do_not_delete");
+        check!(fs::create_dir_all(&dir));
+        check!(check!(File::create(&canary)).write(b"foo"));
+        check!(symlink_junction(&dir, &link));
+        check!(fs::remove_dir_all(&link));
+
+        assert!(!link.is_dir());
+        assert!(canary.exists());
+    }
+
+    #[test]
+    // only Windows makes a distinction between file and directory symlinks.
+    #[cfg(windows)]
+    fn recursive_rmdir_of_file_symlink() {
+        let tmpdir = tmpdir();
+        if !got_symlink_permission(&tmpdir) { return };
+
+        let f1 = tmpdir.join("f1");
+        let f2 = tmpdir.join("f2");
+        check!(check!(File::create(&f1)).write(b"foo"));
+        check!(symlink_file(&f1, &f2));
+        match fs::remove_dir_all(&f2) {
+            Ok(..) => panic!("wanted a failure"),
+            Err(..) => {}
+        }
     }
 
     #[test]

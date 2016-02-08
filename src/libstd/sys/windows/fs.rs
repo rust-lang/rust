@@ -552,11 +552,22 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
+    let filetype = try!(lstat(path)).file_type();
+    if filetype.is_symlink() {
+        // On Windows symlinks to files and directories are removed differently.
+        // rmdir only deletes dir symlinks and junctions, not file symlinks.
+        rmdir(path)
+    } else {
+        remove_dir_all_recursive(path)
+    }
+}
+
+fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     for child in try!(readdir(path)) {
         let child = try!(child);
         let child_type = try!(child.file_type());
         if child_type.is_dir() {
-            try!(remove_dir_all(&child.path()));
+            try!(remove_dir_all_recursive(&child.path()));
         } else if child_type.is_symlink_dir() {
             try!(rmdir(&child.path()));
         } else {
