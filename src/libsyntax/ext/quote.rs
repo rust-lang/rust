@@ -240,7 +240,7 @@ pub mod rt {
             // FIXME: This is wrong
             P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::ExprLit(P(self.clone())),
+                node: ast::ExprKind::Lit(P(self.clone())),
                 span: DUMMY_SP,
                 attrs: None,
             }).to_tokens(cx)

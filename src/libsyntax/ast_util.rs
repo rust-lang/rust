@@ -27,7 +27,7 @@ pub fn path_name_i(idents: &[Ident]) -> String {
 }
 
 pub fn is_path(e: P<Expr>) -> bool {
-    match e.node { ExprPath(..) => true, _ => false }
+    match e.node { ExprKind::Path(..) => true, _ => false }
 }
 
 

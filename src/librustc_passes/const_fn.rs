@@ -38,7 +38,7 @@ impl<'a, 'v> Visitor<'v> for CheckBlock<'a> {
         CheckConstFn{ sess: self.sess}.visit_block(block);
     }
     fn visit_expr(&mut self, e: &'v ast::Expr) {
-        if let ast::ExprClosure(..) = e.node {
+        if let ast::ExprKind::Closure(..) = e.node {
             CheckConstFn{ sess: self.sess}.visit_expr(e);
         } else {
             visit::walk_expr(self, e);

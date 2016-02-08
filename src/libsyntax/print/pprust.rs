@@ -441,10 +441,10 @@ pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
 
 fn needs_parentheses(expr: &ast::Expr) -> bool {
     match expr.node {
-        ast::ExprAssign(..) | ast::ExprBinary(..) |
-        ast::ExprClosure(..) |
-        ast::ExprAssignOp(..) | ast::ExprCast(..) |
-        ast::ExprInPlace(..) | ast::ExprType(..) => true,
+        ast::ExprKind::Assign(..) | ast::ExprKind::Binary(..) |
+        ast::ExprKind::Closure(..) |
+        ast::ExprKind::AssignOp(..) | ast::ExprKind::Cast(..) |
+        ast::ExprKind::InPlace(..) | ast::ExprKind::Type(..) => true,
         _ => false,
     }
 }
@@ -1713,7 +1713,7 @@ impl<'a> State<'a> {
             Some(_else) => {
                 match _else.node {
                     // "another else-if"
-                    ast::ExprIf(ref i, ref then, ref e) => {
+                    ast::ExprKind::If(ref i, ref then, ref e) => {
                         try!(self.cbox(INDENT_UNIT - 1));
                         try!(self.ibox(0));
                         try!(word(&mut self.s, " else if "));
@@ -1723,7 +1723,7 @@ impl<'a> State<'a> {
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
                     // "another else-if-let"
-                    ast::ExprIfLet(ref pat, ref expr, ref then, ref e) => {
+                    ast::ExprKind::IfLet(ref pat, ref expr, ref then, ref e) => {
                         try!(self.cbox(INDENT_UNIT - 1));
                         try!(self.ibox(0));
                         try!(word(&mut self.s, " else if let "));
@@ -1736,7 +1736,7 @@ impl<'a> State<'a> {
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
                     // "final else"
-                    ast::ExprBlock(ref b) => {
+                    ast::ExprKind::Block(ref b) => {
                         try!(self.cbox(INDENT_UNIT - 1));
                         try!(self.ibox(0));
                         try!(word(&mut self.s, " else "));
@@ -1803,7 +1803,7 @@ impl<'a> State<'a> {
     pub fn check_expr_bin_needs_paren(&mut self, sub_expr: &ast::Expr,
                                       binop: ast::BinOp) -> bool {
         match sub_expr.node {
-            ast::ExprBinary(ref sub_op, _, _) => {
+            ast::ExprKind::Binary(ref sub_op, _, _) => {
                 if AssocOp::from_ast_binop(sub_op.node).precedence() <
                     AssocOp::from_ast_binop(binop.node).precedence() {
                     true
@@ -1985,45 +1985,45 @@ impl<'a> State<'a> {
         try!(self.ibox(INDENT_UNIT));
         try!(self.ann.pre(self, NodeExpr(expr)));
         match expr.node {
-            ast::ExprBox(ref expr) => {
+            ast::ExprKind::Box(ref expr) => {
                 try!(self.word_space("box"));
                 try!(self.print_expr(expr));
             }
-            ast::ExprInPlace(ref place, ref expr) => {
+            ast::ExprKind::InPlace(ref place, ref expr) => {
                 try!(self.print_expr_in_place(place, expr));
             }
-            ast::ExprVec(ref exprs) => {
+            ast::ExprKind::Vec(ref exprs) => {
                 try!(self.print_expr_vec(&exprs[..], attrs));
             }
-            ast::ExprRepeat(ref element, ref count) => {
+            ast::ExprKind::Repeat(ref element, ref count) => {
                 try!(self.print_expr_repeat(&**element, &**count, attrs));
             }
-            ast::ExprStruct(ref path, ref fields, ref wth) => {
+            ast::ExprKind::Struct(ref path, ref fields, ref wth) => {
                 try!(self.print_expr_struct(path, &fields[..], wth, attrs));
             }
-            ast::ExprTup(ref exprs) => {
+            ast::ExprKind::Tup(ref exprs) => {
                 try!(self.print_expr_tup(&exprs[..], attrs));
             }
-            ast::ExprCall(ref func, ref args) => {
+            ast::ExprKind::Call(ref func, ref args) => {
                 try!(self.print_expr_call(&**func, &args[..]));
             }
-            ast::ExprMethodCall(ident, ref tys, ref args) => {
+            ast::ExprKind::MethodCall(ident, ref tys, ref args) => {
                 try!(self.print_expr_method_call(ident, &tys[..], &args[..]));
             }
-            ast::ExprBinary(op, ref lhs, ref rhs) => {
+            ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 try!(self.print_expr_binary(op, &**lhs, &**rhs));
             }
-            ast::ExprUnary(op, ref expr) => {
+            ast::ExprKind::Unary(op, ref expr) => {
                 try!(self.print_expr_unary(op, &**expr));
             }
-            ast::ExprAddrOf(m, ref expr) => {
+            ast::ExprKind::AddrOf(m, ref expr) => {
                 try!(self.print_expr_addr_of(m, &**expr));
             }
-            ast::ExprLit(ref lit) => {
+            ast::ExprKind::Lit(ref lit) => {
                 try!(self.print_literal(&**lit));
             }
-            ast::ExprCast(ref expr, ref ty) => {
-                if let ast::ExprCast(..) = expr.node {
+            ast::ExprKind::Cast(ref expr, ref ty) => {
+                if let ast::ExprKind::Cast(..) = expr.node {
                     try!(self.print_expr(&**expr));
                 } else {
                     try!(self.print_expr_maybe_paren(&**expr));
@@ -2032,18 +2032,18 @@ impl<'a> State<'a> {
                 try!(self.word_space("as"));
                 try!(self.print_type(&**ty));
             }
-            ast::ExprType(ref expr, ref ty) => {
+            ast::ExprKind::Type(ref expr, ref ty) => {
                 try!(self.print_expr(&**expr));
                 try!(self.word_space(":"));
                 try!(self.print_type(&**ty));
             }
-            ast::ExprIf(ref test, ref blk, ref elseopt) => {
+            ast::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 try!(self.print_if(&**test, &**blk, elseopt.as_ref().map(|e| &**e)));
             }
-            ast::ExprIfLet(ref pat, ref expr, ref blk, ref elseopt) => {
+            ast::ExprKind::IfLet(ref pat, ref expr, ref blk, ref elseopt) => {
                 try!(self.print_if_let(&**pat, &**expr, &** blk, elseopt.as_ref().map(|e| &**e)));
             }
-            ast::ExprWhile(ref test, ref blk, opt_ident) => {
+            ast::ExprKind::While(ref test, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident));
                     try!(self.word_space(":"));
@@ -2053,7 +2053,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block_with_attrs(&**blk, attrs));
             }
-            ast::ExprWhileLet(ref pat, ref expr, ref blk, opt_ident) => {
+            ast::ExprKind::WhileLet(ref pat, ref expr, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident));
                     try!(self.word_space(":"));
@@ -2066,7 +2066,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block_with_attrs(&**blk, attrs));
             }
-            ast::ExprForLoop(ref pat, ref iter, ref blk, opt_ident) => {
+            ast::ExprKind::ForLoop(ref pat, ref iter, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident));
                     try!(self.word_space(":"));
@@ -2079,7 +2079,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block_with_attrs(&**blk, attrs));
             }
-            ast::ExprLoop(ref blk, opt_ident) => {
+            ast::ExprKind::Loop(ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident));
                     try!(self.word_space(":"));
@@ -2088,7 +2088,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block_with_attrs(&**blk, attrs));
             }
-            ast::ExprMatch(ref expr, ref arms) => {
+            ast::ExprKind::Match(ref expr, ref arms) => {
                 try!(self.cbox(INDENT_UNIT));
                 try!(self.ibox(4));
                 try!(self.word_nbsp("match"));
@@ -2101,7 +2101,7 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose_(expr.span, INDENT_UNIT));
             }
-            ast::ExprClosure(capture_clause, ref decl, ref body) => {
+            ast::ExprKind::Closure(capture_clause, ref decl, ref body) => {
                 try!(self.print_capture_clause(capture_clause));
 
                 try!(self.print_fn_block_args(&**decl));
@@ -2118,7 +2118,7 @@ impl<'a> State<'a> {
                     // we extract the block, so as not to create another set of boxes
                     let i_expr = body.expr.as_ref().unwrap();
                     match i_expr.node {
-                        ast::ExprBlock(ref blk) => {
+                        ast::ExprKind::Block(ref blk) => {
                             try!(self.print_block_unclosed_with_attrs(
                                 &**blk,
                                 i_expr.attrs.as_attr_slice()));
@@ -2135,43 +2135,43 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 try!(self.ibox(0));
             }
-            ast::ExprBlock(ref blk) => {
+            ast::ExprKind::Block(ref blk) => {
                 // containing cbox, will be closed by print-block at }
                 try!(self.cbox(INDENT_UNIT));
                 // head-box, will be closed by print-block after {
                 try!(self.ibox(0));
                 try!(self.print_block_with_attrs(&**blk, attrs));
             }
-            ast::ExprAssign(ref lhs, ref rhs) => {
+            ast::ExprKind::Assign(ref lhs, ref rhs) => {
                 try!(self.print_expr(&**lhs));
                 try!(space(&mut self.s));
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }
-            ast::ExprAssignOp(op, ref lhs, ref rhs) => {
+            ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                 try!(self.print_expr(&**lhs));
                 try!(space(&mut self.s));
                 try!(word(&mut self.s, op.node.to_string()));
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }
-            ast::ExprField(ref expr, id) => {
+            ast::ExprKind::Field(ref expr, id) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
                 try!(self.print_ident(id.node));
             }
-            ast::ExprTupField(ref expr, id) => {
+            ast::ExprKind::TupField(ref expr, id) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
                 try!(self.print_usize(id.node));
             }
-            ast::ExprIndex(ref expr, ref index) => {
+            ast::ExprKind::Index(ref expr, ref index) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "["));
                 try!(self.print_expr(&**index));
                 try!(word(&mut self.s, "]"));
             }
-            ast::ExprRange(ref start, ref end) => {
+            ast::ExprKind::Range(ref start, ref end) => {
                 if let &Some(ref e) = start {
                     try!(self.print_expr(&**e));
                 }
@@ -2180,13 +2180,13 @@ impl<'a> State<'a> {
                     try!(self.print_expr(&**e));
                 }
             }
-            ast::ExprPath(None, ref path) => {
+            ast::ExprKind::Path(None, ref path) => {
                 try!(self.print_path(path, true, 0))
             }
-            ast::ExprPath(Some(ref qself), ref path) => {
+            ast::ExprKind::Path(Some(ref qself), ref path) => {
                 try!(self.print_qpath(path, qself, true))
             }
-            ast::ExprBreak(opt_ident) => {
+            ast::ExprKind::Break(opt_ident) => {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
@@ -2194,7 +2194,7 @@ impl<'a> State<'a> {
                     try!(space(&mut self.s));
                 }
             }
-            ast::ExprAgain(opt_ident) => {
+            ast::ExprKind::Again(opt_ident) => {
                 try!(word(&mut self.s, "continue"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
@@ -2202,7 +2202,7 @@ impl<'a> State<'a> {
                     try!(space(&mut self.s))
                 }
             }
-            ast::ExprRet(ref result) => {
+            ast::ExprKind::Ret(ref result) => {
                 try!(word(&mut self.s, "return"));
                 match *result {
                     Some(ref expr) => {
@@ -2212,7 +2212,7 @@ impl<'a> State<'a> {
                     _ => ()
                 }
             }
-            ast::ExprInlineAsm(ref a) => {
+            ast::ExprKind::InlineAsm(ref a) => {
                 try!(word(&mut self.s, "asm!"));
                 try!(self.popen());
                 try!(self.print_string(&a.asm, a.asm_str_style));
@@ -2275,8 +2275,8 @@ impl<'a> State<'a> {
 
                 try!(self.pclose());
             }
-            ast::ExprMac(ref m) => try!(self.print_mac(m, token::Paren)),
-            ast::ExprParen(ref e) => {
+            ast::ExprKind::Mac(ref m) => try!(self.print_mac(m, token::Paren)),
+            ast::ExprKind::Paren(ref e) => {
                 try!(self.popen());
                 try!(self.print_inner_attributes_inline(attrs));
                 try!(self.print_expr(&**e));
@@ -2605,7 +2605,7 @@ impl<'a> State<'a> {
         try!(self.word_space("=>"));
 
         match arm.body.node {
-            ast::ExprBlock(ref blk) => {
+            ast::ExprKind::Block(ref blk) => {
                 // the block will close the pattern's ibox
                 try!(self.print_block_unclosed_indent(&**blk, INDENT_UNIT));
 

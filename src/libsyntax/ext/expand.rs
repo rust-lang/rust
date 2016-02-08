@@ -42,7 +42,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
-        ast::ExprMac(mac) => {
+        ast::ExprKind::Mac(mac) => {
 
             // Assert that we drop any macro attributes on the floor here
             drop(attrs);
@@ -69,7 +69,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             })
         }
 
-        ast::ExprInPlace(placer, value_expr) => {
+        ast::ExprKind::InPlace(placer, value_expr) => {
             // Ensure feature-gate is enabled
             feature_gate::check_for_placement_in(
                 fld.cx.ecfg.features,
@@ -78,18 +78,18 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let placer = fld.fold_expr(placer);
             let value_expr = fld.fold_expr(value_expr);
-            fld.cx.expr(span, ast::ExprInPlace(placer, value_expr))
+            fld.cx.expr(span, ast::ExprKind::InPlace(placer, value_expr))
                 .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprWhile(cond, body, opt_ident) => {
+        ast::ExprKind::While(cond, body, opt_ident) => {
             let cond = fld.fold_expr(cond);
             let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
-            fld.cx.expr(span, ast::ExprWhile(cond, body, opt_ident))
+            fld.cx.expr(span, ast::ExprKind::While(cond, body, opt_ident))
                 .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprWhileLet(pat, expr, body, opt_ident) => {
+        ast::ExprKind::WhileLet(pat, expr, body, opt_ident) => {
             let pat = fld.fold_pat(pat);
             let expr = fld.fold_expr(expr);
 
@@ -103,17 +103,17 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             });
             assert!(rewritten_pats.len() == 1);
 
-            fld.cx.expr(span, ast::ExprWhileLet(rewritten_pats.remove(0), expr, body, opt_ident))
-                .with_attrs(fold_thin_attrs(attrs, fld))
+            let wl = ast::ExprKind::WhileLet(rewritten_pats.remove(0), expr, body, opt_ident);
+            fld.cx.expr(span, wl).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprLoop(loop_block, opt_ident) => {
+        ast::ExprKind::Loop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
-            fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident))
+            fld.cx.expr(span, ast::ExprKind::Loop(loop_block, opt_ident))
                 .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprForLoop(pat, head, body, opt_ident) => {
+        ast::ExprKind::ForLoop(pat, head, body, opt_ident) => {
             let pat = fld.fold_pat(pat);
 
             // Hygienic renaming of the for loop body (for loop binds its pattern).
@@ -127,11 +127,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             assert!(rewritten_pats.len() == 1);
 
             let head = fld.fold_expr(head);
-            fld.cx.expr(span, ast::ExprForLoop(rewritten_pats.remove(0), head, body, opt_ident))
-                .with_attrs(fold_thin_attrs(attrs, fld))
+            let fl = ast::ExprKind::ForLoop(rewritten_pats.remove(0), head, body, opt_ident);
+            fld.cx.expr(span, fl).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprIfLet(pat, sub_expr, body, else_opt) => {
+        ast::ExprKind::IfLet(pat, sub_expr, body, else_opt) => {
             let pat = fld.fold_pat(pat);
 
             // Hygienic renaming of the body.
@@ -146,14 +146,14 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let else_opt = else_opt.map(|else_opt| fld.fold_expr(else_opt));
             let sub_expr = fld.fold_expr(sub_expr);
-            fld.cx.expr(span, ast::ExprIfLet(rewritten_pats.remove(0), sub_expr, body, else_opt))
-                .with_attrs(fold_thin_attrs(attrs, fld))
+            let il = ast::ExprKind::IfLet(rewritten_pats.remove(0), sub_expr, body, else_opt);
+            fld.cx.expr(span, il).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprClosure(capture_clause, fn_decl, block) => {
+        ast::ExprKind::Closure(capture_clause, fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
-            let new_node = ast::ExprClosure(capture_clause,
+            let new_node = ast::ExprKind::Closure(capture_clause,
                                             rewritten_fn_decl,
                                             rewritten_block);
             P(ast::Expr{id:id, node: new_node, span: fld.new_span(span),
@@ -1427,7 +1427,7 @@ mod tests {
 
     impl<'v> Visitor<'v> for PathExprFinderContext {
         fn visit_expr(&mut self, expr: &ast::Expr) {
-            if let ast::ExprPath(None, ref p) = expr.node {
+            if let ast::ExprKind::Path(None, ref p) = expr.node {
                 self.path_accumulator.push(p.clone());
             }
             visit::walk_expr(self, expr);
@@ -1694,7 +1694,7 @@ mod tests {
             0)
     }
 
-    // closure arg hygiene (ExprClosure)
+    // closure arg hygiene (ExprKind::Closure)
     // expands to fn f(){(|x_1 : i32| {(x_2 + x_1)})(3);}
     #[test]
     fn closure_arg_hygiene(){

@@ -986,12 +986,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
             // }
             //
             // But for now there are type-inference issues doing that.
-            ExprBox(ref e) => {
+            ExprKind::Box(ref e) => {
                 hir::ExprBox(lower_expr(lctx, e))
             }
 
             // Desugar ExprBox: `in (PLACE) EXPR`
-            ExprInPlace(ref placer, ref value_expr) => {
+            ExprKind::InPlace(ref placer, ref value_expr) => {
                 // to:
                 //
                 // let p = PLACE;
@@ -1099,57 +1099,57 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 });
             }
 
-            ExprVec(ref exprs) => {
+            ExprKind::Vec(ref exprs) => {
                 hir::ExprVec(exprs.iter().map(|x| lower_expr(lctx, x)).collect())
             }
-            ExprRepeat(ref expr, ref count) => {
+            ExprKind::Repeat(ref expr, ref count) => {
                 let expr = lower_expr(lctx, expr);
                 let count = lower_expr(lctx, count);
                 hir::ExprRepeat(expr, count)
             }
-            ExprTup(ref elts) => {
+            ExprKind::Tup(ref elts) => {
                 hir::ExprTup(elts.iter().map(|x| lower_expr(lctx, x)).collect())
             }
-            ExprCall(ref f, ref args) => {
+            ExprKind::Call(ref f, ref args) => {
                 let f = lower_expr(lctx, f);
                 hir::ExprCall(f, args.iter().map(|x| lower_expr(lctx, x)).collect())
             }
-            ExprMethodCall(i, ref tps, ref args) => {
+            ExprKind::MethodCall(i, ref tps, ref args) => {
                 let tps = tps.iter().map(|x| lower_ty(lctx, x)).collect();
                 let args = args.iter().map(|x| lower_expr(lctx, x)).collect();
                 hir::ExprMethodCall(respan(i.span, i.node.name), tps, args)
             }
-            ExprBinary(binop, ref lhs, ref rhs) => {
+            ExprKind::Binary(binop, ref lhs, ref rhs) => {
                 let binop = lower_binop(lctx, binop);
                 let lhs = lower_expr(lctx, lhs);
                 let rhs = lower_expr(lctx, rhs);
                 hir::ExprBinary(binop, lhs, rhs)
             }
-            ExprUnary(op, ref ohs) => {
+            ExprKind::Unary(op, ref ohs) => {
                 let op = lower_unop(lctx, op);
                 let ohs = lower_expr(lctx, ohs);
                 hir::ExprUnary(op, ohs)
             }
-            ExprLit(ref l) => hir::ExprLit(P((**l).clone())),
-            ExprCast(ref expr, ref ty) => {
+            ExprKind::Lit(ref l) => hir::ExprLit(P((**l).clone())),
+            ExprKind::Cast(ref expr, ref ty) => {
                 let expr = lower_expr(lctx, expr);
                 hir::ExprCast(expr, lower_ty(lctx, ty))
             }
-            ExprType(ref expr, ref ty) => {
+            ExprKind::Type(ref expr, ref ty) => {
                 let expr = lower_expr(lctx, expr);
                 hir::ExprType(expr, lower_ty(lctx, ty))
             }
-            ExprAddrOf(m, ref ohs) => {
+            ExprKind::AddrOf(m, ref ohs) => {
                 let m = lower_mutability(lctx, m);
                 let ohs = lower_expr(lctx, ohs);
                 hir::ExprAddrOf(m, ohs)
             }
             // More complicated than you might expect because the else branch
             // might be `if let`.
-            ExprIf(ref cond, ref blk, ref else_opt) => {
+            ExprKind::If(ref cond, ref blk, ref else_opt) => {
                 let else_opt = else_opt.as_ref().map(|els| {
                     match els.node {
-                        ExprIfLet(..) => {
+                        ExprKind::IfLet(..) => {
                             cache_ids(lctx, e.id, |lctx| {
                                 // wrap the if-let expr in a block
                                 let span = els.span;
@@ -1171,47 +1171,47 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                 hir::ExprIf(lower_expr(lctx, cond), lower_block(lctx, blk), else_opt)
             }
-            ExprWhile(ref cond, ref body, opt_ident) => {
+            ExprKind::While(ref cond, ref body, opt_ident) => {
                 hir::ExprWhile(lower_expr(lctx, cond), lower_block(lctx, body),
                                opt_ident.map(|ident| lower_ident(lctx, ident)))
             }
-            ExprLoop(ref body, opt_ident) => {
+            ExprKind::Loop(ref body, opt_ident) => {
                 hir::ExprLoop(lower_block(lctx, body),
                               opt_ident.map(|ident| lower_ident(lctx, ident)))
             }
-            ExprMatch(ref expr, ref arms) => {
+            ExprKind::Match(ref expr, ref arms) => {
                 hir::ExprMatch(lower_expr(lctx, expr),
                                arms.iter().map(|x| lower_arm(lctx, x)).collect(),
                                hir::MatchSource::Normal)
             }
-            ExprClosure(capture_clause, ref decl, ref body) => {
+            ExprKind::Closure(capture_clause, ref decl, ref body) => {
                 hir::ExprClosure(lower_capture_clause(lctx, capture_clause),
                                  lower_fn_decl(lctx, decl),
                                  lower_block(lctx, body))
             }
-            ExprBlock(ref blk) => hir::ExprBlock(lower_block(lctx, blk)),
-            ExprAssign(ref el, ref er) => {
+            ExprKind::Block(ref blk) => hir::ExprBlock(lower_block(lctx, blk)),
+            ExprKind::Assign(ref el, ref er) => {
                 hir::ExprAssign(lower_expr(lctx, el), lower_expr(lctx, er))
             }
-            ExprAssignOp(op, ref el, ref er) => {
+            ExprKind::AssignOp(op, ref el, ref er) => {
                 hir::ExprAssignOp(lower_binop(lctx, op),
                                   lower_expr(lctx, el),
                                   lower_expr(lctx, er))
             }
-            ExprField(ref el, ident) => {
+            ExprKind::Field(ref el, ident) => {
                 hir::ExprField(lower_expr(lctx, el), respan(ident.span, ident.node.name))
             }
-            ExprTupField(ref el, ident) => {
+            ExprKind::TupField(ref el, ident) => {
                 hir::ExprTupField(lower_expr(lctx, el), ident)
             }
-            ExprIndex(ref el, ref er) => {
+            ExprKind::Index(ref el, ref er) => {
                 hir::ExprIndex(lower_expr(lctx, el), lower_expr(lctx, er))
             }
-            ExprRange(ref e1, ref e2) => {
+            ExprKind::Range(ref e1, ref e2) => {
                 hir::ExprRange(e1.as_ref().map(|x| lower_expr(lctx, x)),
                                e2.as_ref().map(|x| lower_expr(lctx, x)))
             }
-            ExprPath(ref qself, ref path) => {
+            ExprKind::Path(ref qself, ref path) => {
                 let hir_qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                     hir::QSelf {
                         ty: lower_ty(lctx, ty),
@@ -1220,14 +1220,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 });
                 hir::ExprPath(hir_qself, lower_path_full(lctx, path, qself.is_none()))
             }
-            ExprBreak(opt_ident) => hir::ExprBreak(opt_ident.map(|sp_ident| {
+            ExprKind::Break(opt_ident) => hir::ExprBreak(opt_ident.map(|sp_ident| {
                 respan(sp_ident.span, lower_ident(lctx, sp_ident.node))
             })),
-            ExprAgain(opt_ident) => hir::ExprAgain(opt_ident.map(|sp_ident| {
+            ExprKind::Again(opt_ident) => hir::ExprAgain(opt_ident.map(|sp_ident| {
                 respan(sp_ident.span, lower_ident(lctx, sp_ident.node))
             })),
-            ExprRet(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(lctx, x))),
-            ExprInlineAsm(InlineAsm {
+            ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(lctx, x))),
+            ExprKind::InlineAsm(InlineAsm {
                     ref inputs,
                     ref outputs,
                     ref asm,
@@ -1259,12 +1259,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 dialect: dialect,
                 expn_id: expn_id,
             }),
-            ExprStruct(ref path, ref fields, ref maybe_expr) => {
+            ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                 hir::ExprStruct(lower_path(lctx, path),
                                 fields.iter().map(|x| lower_field(lctx, x)).collect(),
                                 maybe_expr.as_ref().map(|x| lower_expr(lctx, x)))
             }
-            ExprParen(ref ex) => {
+            ExprKind::Paren(ref ex) => {
                 // merge attributes into the inner expression.
                 return lower_expr(lctx, ex).map(|mut ex| {
                     ex.attrs.update(|attrs| {
@@ -1276,7 +1276,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
             // Desugar ExprIfLet
             // From: `if let <pat> = <sub_expr> <body> [<else_opt>]`
-            ExprIfLet(ref pat, ref sub_expr, ref body, ref else_opt) => {
+            ExprKind::IfLet(ref pat, ref sub_expr, ref body, ref else_opt) => {
                 // to:
                 //
                 //   match <sub_expr> {
@@ -1364,7 +1364,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
             // Desugar ExprWhileLet
             // From: `[opt_ident]: while let <pat> = <sub_expr> <body>`
-            ExprWhileLet(ref pat, ref sub_expr, ref body, opt_ident) => {
+            ExprKind::WhileLet(ref pat, ref sub_expr, ref body, opt_ident) => {
                 // to:
                 //
                 //   [opt_ident]: loop {
@@ -1410,7 +1410,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
             // Desugar ExprForLoop
             // From: `[opt_ident]: for <pat> in <head> <body>`
-            ExprForLoop(ref pat, ref head, ref body, opt_ident) => {
+            ExprKind::ForLoop(ref pat, ref head, ref body, opt_ident) => {
                 // to:
                 //
                 //   {
@@ -1524,7 +1524,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 });
             }
 
-            ExprMac(_) => panic!("Shouldn't exist here"),
+            ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         },
         span: e.span,
         attrs: e.attrs.clone(),

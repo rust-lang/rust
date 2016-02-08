@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::Expr_::*;
 pub use self::FloatTy::*;
 pub use self::ForeignItem_::*;
 pub use self::IntTy::*;
@@ -880,7 +879,7 @@ pub enum UnsafeSource {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash,)]
 pub struct Expr {
     pub id: NodeId,
-    pub node: Expr_,
+    pub node: ExprKind,
     pub span: Span,
     pub attrs: ThinAttributes
 }
@@ -901,18 +900,18 @@ impl fmt::Debug for Expr {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Expr_ {
+pub enum ExprKind {
     /// A `box x` expression.
-    ExprBox(P<Expr>),
+    Box(P<Expr>),
     /// First expr is the place; second expr is the value.
-    ExprInPlace(P<Expr>, P<Expr>),
+    InPlace(P<Expr>, P<Expr>),
     /// An array (`[a, b, c, d]`)
-    ExprVec(Vec<P<Expr>>),
+    Vec(Vec<P<Expr>>),
     /// A function call
     ///
     /// The first field resolves to the function itself,
     /// and the second field is the list of arguments
-    ExprCall(P<Expr>, Vec<P<Expr>>),
+    Call(P<Expr>, Vec<P<Expr>>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
     ///
     /// The `SpannedIdent` is the identifier for the method name.
@@ -924,109 +923,109 @@ pub enum Expr_ {
     /// and the remaining elements are the rest of the arguments.
     ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
+    /// `ExprKind::MethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
+    MethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
     /// A tuple (`(a, b, c ,d)`)
-    ExprTup(Vec<P<Expr>>),
+    Tup(Vec<P<Expr>>),
     /// A binary operation (For example: `a + b`, `a * b`)
-    ExprBinary(BinOp, P<Expr>, P<Expr>),
+    Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
-    ExprUnary(UnOp, P<Expr>),
+    Unary(UnOp, P<Expr>),
     /// A literal (For example: `1u8`, `"foo"`)
-    ExprLit(P<Lit>),
+    Lit(P<Lit>),
     /// A cast (`foo as f64`)
-    ExprCast(P<Expr>, P<Ty>),
-    ExprType(P<Expr>, P<Ty>),
+    Cast(P<Expr>, P<Ty>),
+    Type(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
     /// `if expr { block } else { expr }`
-    ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    If(P<Expr>, P<Block>, Option<P<Expr>>),
     /// An `if let` expression with an optional else block
     ///
     /// `if let pat = expr { block } else { expr }`
     ///
     /// This is desugared to a `match` expression.
-    ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
+    IfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
-    ExprWhile(P<Expr>, P<Block>, Option<Ident>),
+    While(P<Expr>, P<Block>, Option<Ident>),
     /// A while-let loop, with an optional label
     ///
     /// `'label: while let pat = expr { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ExprWhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
+    WhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     /// A for loop, with an optional label
     ///
     /// `'label: for pat in expr { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ExprForLoop(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
+    ForLoop(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     /// Conditionless loop (can be exited with break, continue, or return)
     ///
     /// `'label: loop { block }`
-    ExprLoop(P<Block>, Option<Ident>),
+    Loop(P<Block>, Option<Ident>),
     /// A `match` block.
-    ExprMatch(P<Expr>, Vec<Arm>),
+    Match(P<Expr>, Vec<Arm>),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
-    ExprClosure(CaptureBy, P<FnDecl>, P<Block>),
+    Closure(CaptureBy, P<FnDecl>, P<Block>),
     /// A block (`{ ... }`)
-    ExprBlock(P<Block>),
+    Block(P<Block>),
 
     /// An assignment (`a = foo()`)
-    ExprAssign(P<Expr>, P<Expr>),
+    Assign(P<Expr>, P<Expr>),
     /// An assignment with an operator
     ///
     /// For example, `a += 1`.
-    ExprAssignOp(BinOp, P<Expr>, P<Expr>),
+    AssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named struct field (`obj.foo`)
-    ExprField(P<Expr>, SpannedIdent),
+    Field(P<Expr>, SpannedIdent),
     /// Access of an unnamed field of a struct or tuple-struct
     ///
     /// For example, `foo.0`.
-    ExprTupField(P<Expr>, Spanned<usize>),
+    TupField(P<Expr>, Spanned<usize>),
     /// An indexing operation (`foo[2]`)
-    ExprIndex(P<Expr>, P<Expr>),
+    Index(P<Expr>, P<Expr>),
     /// A range (`1..2`, `1..`, or `..2`)
-    ExprRange(Option<P<Expr>>, Option<P<Expr>>),
+    Range(Option<P<Expr>>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or type
     /// parameters, e.g. foo::bar::<baz>.
     ///
     /// Optionally "qualified",
     /// e.g. `<Vec<T> as SomeTrait>::SomeType`.
-    ExprPath(Option<QSelf>, Path),
+    Path(Option<QSelf>, Path),
 
     /// A referencing operation (`&a` or `&mut a`)
-    ExprAddrOf(Mutability, P<Expr>),
+    AddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<SpannedIdent>),
+    Break(Option<SpannedIdent>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<SpannedIdent>),
+    Again(Option<SpannedIdent>),
     /// A `return`, with an optional value to be returned
-    ExprRet(Option<P<Expr>>),
+    Ret(Option<P<Expr>>),
 
     /// Output of the `asm!()` macro
-    ExprInlineAsm(InlineAsm),
+    InlineAsm(InlineAsm),
 
     /// A macro invocation; pre-expansion
-    ExprMac(Mac),
+    Mac(Mac),
 
     /// A struct literal expression.
     ///
     /// For example, `Foo {x: 1, y: 2}`, or
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
-    ExprStruct(Path, Vec<Field>, Option<P<Expr>>),
+    Struct(Path, Vec<Field>, Option<P<Expr>>),
 
     /// An array literal constructed from one repeated element.
     ///
     /// For example, `[1u8; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    ExprRepeat(P<Expr>, P<Expr>),
+    Repeat(P<Expr>, P<Expr>),
 
     /// No-op: used solely so we can pretty-print faithfully
-    ExprParen(P<Expr>)
+    Paren(P<Expr>),
 }
 
 /// The explicit Self type in a "qualified path". The actual

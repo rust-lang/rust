@@ -487,7 +487,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             return None;
         }
         match expr.node {
-            ast::ExprField(ref sub_ex, ident) => {
+            ast::ExprKind::Field(ref sub_ex, ident) => {
                 let hir_node = lowering::lower_expr(self.lcx, sub_ex);
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
@@ -507,7 +507,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprStruct(ref path, _, _) => {
+            ast::ExprKind::Struct(ref path, _, _) => {
                 let hir_node = lowering::lower_expr(self.lcx, expr);
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
@@ -527,7 +527,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprMethodCall(..) => {
+            ast::ExprKind::MethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let method_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
                 let (def_id, decl_id) = match self.tcx.impl_or_trait_item(method_id).container() {
@@ -544,7 +544,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     decl_id: decl_id,
                 }))
             }
-            ast::ExprPath(_, ref path) => {
+            ast::ExprKind::Path(_, ref path) => {
                 self.get_path_data(expr.id, path)
             }
             _ => {

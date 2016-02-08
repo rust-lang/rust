@@ -1311,7 +1311,7 @@ impl<'a> MethodDef<'a> {
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
 
             //Lastly we create an expression which branches on all discriminants being equal
             //  if discriminant_test {
@@ -1389,7 +1389,7 @@ impl<'a> MethodDef<'a> {
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
             cx.expr_match(sp, match_arg, match_arms)
         }
     }
@@ -1509,8 +1509,8 @@ impl<'a> TraitDef<'a> {
             };
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned{span: sp, node: ident});
-            let val = cx.expr(
-                sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
+            let val = cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)));
+            let val = cx.expr(sp, ast::ExprKind::Paren(val));
             ident_expr.push((sp, opt_id, val, &struct_field.node.attrs[..]));
         }
 

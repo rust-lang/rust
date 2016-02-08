@@ -1168,131 +1168,131 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
     Expr {
         id: folder.new_id(id),
         node: match node {
-            ExprBox(e) => {
-                ExprBox(folder.fold_expr(e))
+            ExprKind::Box(e) => {
+                ExprKind::Box(folder.fold_expr(e))
             }
-            ExprInPlace(p, e) => {
-                ExprInPlace(folder.fold_expr(p), folder.fold_expr(e))
+            ExprKind::InPlace(p, e) => {
+                ExprKind::InPlace(folder.fold_expr(p), folder.fold_expr(e))
             }
-            ExprVec(exprs) => {
-                ExprVec(folder.fold_exprs(exprs))
+            ExprKind::Vec(exprs) => {
+                ExprKind::Vec(folder.fold_exprs(exprs))
             }
-            ExprRepeat(expr, count) => {
-                ExprRepeat(folder.fold_expr(expr), folder.fold_expr(count))
+            ExprKind::Repeat(expr, count) => {
+                ExprKind::Repeat(folder.fold_expr(expr), folder.fold_expr(count))
             }
-            ExprTup(exprs) => ExprTup(folder.fold_exprs(exprs)),
-            ExprCall(f, args) => {
-                ExprCall(folder.fold_expr(f),
+            ExprKind::Tup(exprs) => ExprKind::Tup(folder.fold_exprs(exprs)),
+            ExprKind::Call(f, args) => {
+                ExprKind::Call(folder.fold_expr(f),
                          folder.fold_exprs(args))
             }
-            ExprMethodCall(i, tps, args) => {
-                ExprMethodCall(
+            ExprKind::MethodCall(i, tps, args) => {
+                ExprKind::MethodCall(
                     respan(folder.new_span(i.span), folder.fold_ident(i.node)),
                     tps.move_map(|x| folder.fold_ty(x)),
                     folder.fold_exprs(args))
             }
-            ExprBinary(binop, lhs, rhs) => {
-                ExprBinary(binop,
+            ExprKind::Binary(binop, lhs, rhs) => {
+                ExprKind::Binary(binop,
                         folder.fold_expr(lhs),
                         folder.fold_expr(rhs))
             }
-            ExprUnary(binop, ohs) => {
-                ExprUnary(binop, folder.fold_expr(ohs))
+            ExprKind::Unary(binop, ohs) => {
+                ExprKind::Unary(binop, folder.fold_expr(ohs))
             }
-            ExprLit(l) => ExprLit(l),
-            ExprCast(expr, ty) => {
-                ExprCast(folder.fold_expr(expr), folder.fold_ty(ty))
+            ExprKind::Lit(l) => ExprKind::Lit(l),
+            ExprKind::Cast(expr, ty) => {
+                ExprKind::Cast(folder.fold_expr(expr), folder.fold_ty(ty))
             }
-            ExprType(expr, ty) => {
-                ExprType(folder.fold_expr(expr), folder.fold_ty(ty))
+            ExprKind::Type(expr, ty) => {
+                ExprKind::Type(folder.fold_expr(expr), folder.fold_ty(ty))
             }
-            ExprAddrOf(m, ohs) => ExprAddrOf(m, folder.fold_expr(ohs)),
-            ExprIf(cond, tr, fl) => {
-                ExprIf(folder.fold_expr(cond),
+            ExprKind::AddrOf(m, ohs) => ExprKind::AddrOf(m, folder.fold_expr(ohs)),
+            ExprKind::If(cond, tr, fl) => {
+                ExprKind::If(folder.fold_expr(cond),
                        folder.fold_block(tr),
                        fl.map(|x| folder.fold_expr(x)))
             }
-            ExprIfLet(pat, expr, tr, fl) => {
-                ExprIfLet(folder.fold_pat(pat),
+            ExprKind::IfLet(pat, expr, tr, fl) => {
+                ExprKind::IfLet(folder.fold_pat(pat),
                           folder.fold_expr(expr),
                           folder.fold_block(tr),
                           fl.map(|x| folder.fold_expr(x)))
             }
-            ExprWhile(cond, body, opt_ident) => {
-                ExprWhile(folder.fold_expr(cond),
+            ExprKind::While(cond, body, opt_ident) => {
+                ExprKind::While(folder.fold_expr(cond),
                           folder.fold_block(body),
                           opt_ident.map(|i| folder.fold_ident(i)))
             }
-            ExprWhileLet(pat, expr, body, opt_ident) => {
-                ExprWhileLet(folder.fold_pat(pat),
+            ExprKind::WhileLet(pat, expr, body, opt_ident) => {
+                ExprKind::WhileLet(folder.fold_pat(pat),
                              folder.fold_expr(expr),
                              folder.fold_block(body),
                              opt_ident.map(|i| folder.fold_ident(i)))
             }
-            ExprForLoop(pat, iter, body, opt_ident) => {
-                ExprForLoop(folder.fold_pat(pat),
+            ExprKind::ForLoop(pat, iter, body, opt_ident) => {
+                ExprKind::ForLoop(folder.fold_pat(pat),
                             folder.fold_expr(iter),
                             folder.fold_block(body),
                             opt_ident.map(|i| folder.fold_ident(i)))
             }
-            ExprLoop(body, opt_ident) => {
-                ExprLoop(folder.fold_block(body),
+            ExprKind::Loop(body, opt_ident) => {
+                ExprKind::Loop(folder.fold_block(body),
                         opt_ident.map(|i| folder.fold_ident(i)))
             }
-            ExprMatch(expr, arms) => {
-                ExprMatch(folder.fold_expr(expr),
+            ExprKind::Match(expr, arms) => {
+                ExprKind::Match(folder.fold_expr(expr),
                           arms.move_map(|x| folder.fold_arm(x)))
             }
-            ExprClosure(capture_clause, decl, body) => {
-                ExprClosure(capture_clause,
+            ExprKind::Closure(capture_clause, decl, body) => {
+                ExprKind::Closure(capture_clause,
                             folder.fold_fn_decl(decl),
                             folder.fold_block(body))
             }
-            ExprBlock(blk) => ExprBlock(folder.fold_block(blk)),
-            ExprAssign(el, er) => {
-                ExprAssign(folder.fold_expr(el), folder.fold_expr(er))
+            ExprKind::Block(blk) => ExprKind::Block(folder.fold_block(blk)),
+            ExprKind::Assign(el, er) => {
+                ExprKind::Assign(folder.fold_expr(el), folder.fold_expr(er))
             }
-            ExprAssignOp(op, el, er) => {
-                ExprAssignOp(op,
+            ExprKind::AssignOp(op, el, er) => {
+                ExprKind::AssignOp(op,
                             folder.fold_expr(el),
                             folder.fold_expr(er))
             }
-            ExprField(el, ident) => {
-                ExprField(folder.fold_expr(el),
+            ExprKind::Field(el, ident) => {
+                ExprKind::Field(folder.fold_expr(el),
                           respan(folder.new_span(ident.span),
                                  folder.fold_ident(ident.node)))
             }
-            ExprTupField(el, ident) => {
-                ExprTupField(folder.fold_expr(el),
+            ExprKind::TupField(el, ident) => {
+                ExprKind::TupField(folder.fold_expr(el),
                              respan(folder.new_span(ident.span),
                                     folder.fold_usize(ident.node)))
             }
-            ExprIndex(el, er) => {
-                ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
+            ExprKind::Index(el, er) => {
+                ExprKind::Index(folder.fold_expr(el), folder.fold_expr(er))
             }
-            ExprRange(e1, e2) => {
-                ExprRange(e1.map(|x| folder.fold_expr(x)),
+            ExprKind::Range(e1, e2) => {
+                ExprKind::Range(e1.map(|x| folder.fold_expr(x)),
                           e2.map(|x| folder.fold_expr(x)))
             }
-            ExprPath(qself, path) => {
+            ExprKind::Path(qself, path) => {
                 let qself = qself.map(|QSelf { ty, position }| {
                     QSelf {
                         ty: folder.fold_ty(ty),
                         position: position
                     }
                 });
-                ExprPath(qself, folder.fold_path(path))
+                ExprKind::Path(qself, folder.fold_path(path))
             }
-            ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|label|
+            ExprKind::Break(opt_ident) => ExprKind::Break(opt_ident.map(|label|
                 respan(folder.new_span(label.span),
                        folder.fold_ident(label.node)))
             ),
-            ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|label|
+            ExprKind::Again(opt_ident) => ExprKind::Again(opt_ident.map(|label|
                 respan(folder.new_span(label.span),
                        folder.fold_ident(label.node)))
             ),
-            ExprRet(e) => ExprRet(e.map(|x| folder.fold_expr(x))),
-            ExprInlineAsm(InlineAsm {
+            ExprKind::Ret(e) => ExprKind::Ret(e.map(|x| folder.fold_expr(x))),
+            ExprKind::InlineAsm(InlineAsm {
                 inputs,
                 outputs,
                 asm,
@@ -1302,7 +1302,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 alignstack,
                 dialect,
                 expn_id,
-            }) => ExprInlineAsm(InlineAsm {
+            }) => ExprKind::InlineAsm(InlineAsm {
                 inputs: inputs.move_map(|(c, input)| {
                     (c, folder.fold_expr(input))
                 }),
@@ -1322,13 +1322,13 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 dialect: dialect,
                 expn_id: expn_id,
             }),
-            ExprMac(mac) => ExprMac(folder.fold_mac(mac)),
-            ExprStruct(path, fields, maybe_expr) => {
-                ExprStruct(folder.fold_path(path),
+            ExprKind::Mac(mac) => ExprKind::Mac(folder.fold_mac(mac)),
+            ExprKind::Struct(path, fields, maybe_expr) => {
+                ExprKind::Struct(folder.fold_path(path),
                         fields.move_map(|x| folder.fold_field(x)),
                         maybe_expr.map(|x| folder.fold_expr(x)))
             },
-            ExprParen(ex) => ExprParen(folder.fold_expr(ex))
+            ExprKind::Paren(ex) => ExprKind::Paren(folder.fold_expr(ex))
         },
         span: folder.new_span(span),
         attrs: attrs.map_thin_attrs(|v| fold_attrs(v, folder)),

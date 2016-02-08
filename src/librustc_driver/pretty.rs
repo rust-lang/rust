@@ -653,7 +653,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
             let empty_block = expr_to_block(BlockCheckMode::Default, None);
             let loop_expr = P(ast::Expr {
-                node: ast::ExprLoop(empty_block, None),
+                node: ast::ExprKind::Loop(empty_block, None),
                 id: ast::DUMMY_NODE_ID,
                 span: codemap::DUMMY_SP,
                 attrs: None,

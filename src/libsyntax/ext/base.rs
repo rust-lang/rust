@@ -303,7 +303,7 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprLit(_) = e.node {
+            if let ast::ExprKind::Lit(_) = e.node {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
@@ -349,7 +349,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprLit(P(codemap::respan(sp, ast::LitBool(false)))),
+            node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitBool(false)))),
             span: sp,
             attrs: None,
         })
@@ -773,7 +773,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
     // we want to be able to handle e.g. concat("foo", "bar")
     let expr = cx.expander().fold_expr(expr);
     match expr.node {
-        ast::ExprLit(ref l) => match l.node {
+        ast::ExprKind::Lit(ref l) => match l.node {
             ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
             _ => cx.span_err(l.span, err_msg)
         },

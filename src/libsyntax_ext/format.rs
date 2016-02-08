@@ -559,7 +559,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // as series of let's; the first approach does.
         let pat = self.ecx.pat_tuple(self.fmtsp, pats);
         let arm = self.ecx.arm(self.fmtsp, vec!(pat), args_array);
-        let head = self.ecx.expr(self.fmtsp, ast::ExprTup(heads));
+        let head = self.ecx.expr(self.fmtsp, ast::ExprKind::Tup(heads));
         let result = self.ecx.expr_match(self.fmtsp, head, vec!(arm));
 
         let args_slice = self.ecx.expr_addr_of(self.fmtsp, result);
