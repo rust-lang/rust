@@ -10,8 +10,7 @@
 
 use ast::{Block, Crate, DeclKind, PatMac};
 use ast::{Local, Ident, Mac_, Name};
-use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtDecl, StmtMac};
-use ast::{StmtExpr, StmtSemi};
+use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtKind};
 use ast::TokenTree;
 use ast;
 use ext::mtwt;
@@ -507,7 +506,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
 fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     let stmt = stmt.and_then(|stmt| stmt);
     let (mac, style, attrs) = match stmt.node {
-        StmtMac(mac, style, attrs) => (mac, style, attrs),
+        StmtKind::Mac(mac, style, attrs) => (mac, style, attrs),
         _ => return expand_non_macro_stmt(stmt, fld)
     };
 
@@ -539,7 +538,7 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
             let new_stmt = stmt.map(|Spanned {node, span}| {
                 Spanned {
                     node: match node {
-                        StmtExpr(e, stmt_id) => StmtSemi(e, stmt_id),
+                        StmtKind::Expr(e, stmt_id) => StmtKind::Semi(e, stmt_id),
                         _ => node /* might already have a semi */
                     },
                     span: span
@@ -558,7 +557,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                          -> SmallVector<P<Stmt>> {
     // is it a let?
     match node {
-        StmtDecl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
+        StmtKind::Decl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
             DeclKind::Local(local) => {
                 // take it apart:
                 let rewritten_local = local.map(|Local {id, pat, ty, init, span, attrs}| {
@@ -596,7 +595,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                     }
                 });
                 SmallVector::one(P(Spanned {
-                    node: StmtDecl(P(Spanned {
+                    node: StmtKind::Decl(P(Spanned {
                             node: DeclKind::Local(rewritten_local),
                             span: span
                         }),
@@ -606,7 +605,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
             }
             _ => {
                 noop_fold_stmt(Spanned {
-                    node: StmtDecl(P(Spanned {
+                    node: StmtKind::Decl(P(Spanned {
                             node: decl,
                             span: span
                         }),

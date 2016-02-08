@@ -36,8 +36,8 @@ use ast::NamedField;
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
 use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild};
 use ast::{PolyTraitRef, QSelf};
-use ast::{Stmt, StmtDecl};
-use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
+use ast::{Stmt, StmtKind};
+use ast::{VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
@@ -3678,7 +3678,7 @@ impl<'a> Parser<'a> {
             try!(self.expect_keyword(keywords::Let));
             let decl = try!(self.parse_let(attrs.into_thin_attrs()));
             let hi = decl.span.hi;
-            let stmt = StmtDecl(decl, ast::DUMMY_NODE_ID);
+            let stmt = StmtKind::Decl(decl, ast::DUMMY_NODE_ID);
             spanned(lo, hi, stmt)
         } else if self.token.is_ident()
             && !self.token.is_any_keyword()
@@ -3730,11 +3730,8 @@ impl<'a> Parser<'a> {
             };
 
             if id.name == token::special_idents::invalid.name {
-                let stmt = StmtMac(P(spanned(lo,
-                                             hi,
-                                             Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
-                                   style,
-                                   attrs.into_thin_attrs());
+                let mac = P(spanned(lo, hi, Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT }));
+                let stmt = StmtKind::Mac(mac, style, attrs.into_thin_attrs());
                 spanned(lo, hi, stmt)
             } else {
                 // if it has a special ident, it's definitely an item
@@ -3749,7 +3746,7 @@ impl<'a> Parser<'a> {
                                        followed by a semicolon");
                     }
                 }
-                spanned(lo, hi, StmtDecl(
+                spanned(lo, hi, StmtKind::Decl(
                     P(spanned(lo, hi, DeclKind::Item(
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
@@ -3764,7 +3761,7 @@ impl<'a> Parser<'a> {
                 Some(i) => {
                     let hi = i.span.hi;
                     let decl = P(spanned(lo, hi, DeclKind::Item(i)));
-                    spanned(lo, hi, StmtDecl(decl, ast::DUMMY_NODE_ID))
+                    spanned(lo, hi, StmtKind::Decl(decl, ast::DUMMY_NODE_ID))
                 }
                 None => {
                     let unused_attrs = |attrs: &[_], s: &mut Self| {
@@ -3790,7 +3787,7 @@ impl<'a> Parser<'a> {
                     let e = try!(self.parse_expr_res(
                         Restrictions::RESTRICTION_STMT_EXPR, Some(attrs.into_thin_attrs())));
                     let hi = e.span.hi;
-                    let stmt = StmtExpr(e, ast::DUMMY_NODE_ID);
+                    let stmt = StmtKind::Expr(e, ast::DUMMY_NODE_ID);
                     spanned(lo, hi, stmt)
                 }
             }
@@ -3844,16 +3841,16 @@ impl<'a> Parser<'a> {
                 continue;
             };
             match node {
-                StmtExpr(e, _) => {
+                StmtKind::Expr(e, _) => {
                     try!(self.handle_expression_like_statement(e, span, &mut stmts, &mut expr));
                 }
-                StmtMac(mac, MacStmtWithoutBraces, attrs) => {
+                StmtKind::Mac(mac, MacStmtWithoutBraces, attrs) => {
                     // statement macro without braces; might be an
                     // expr depending on whether a semicolon follows
                     match self.token {
                         token::Semi => {
                             stmts.push(P(Spanned {
-                                node: StmtMac(mac, MacStmtWithSemicolon, attrs),
+                                node: StmtKind::Mac(mac, MacStmtWithSemicolon, attrs),
                                 span: mk_sp(span.lo, self.span.hi),
                             }));
                             self.bump();
@@ -3873,12 +3870,12 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
-                StmtMac(m, style, attrs) => {
+                StmtKind::Mac(m, style, attrs) => {
                     // statement macro; might be an expr
                     match self.token {
                         token::Semi => {
                             stmts.push(P(Spanned {
-                                node: StmtMac(m, MacStmtWithSemicolon, attrs),
+                                node: StmtKind::Mac(m, MacStmtWithSemicolon, attrs),
                                 span: mk_sp(span.lo, self.span.hi),
                             }));
                             self.bump();
@@ -3892,7 +3889,7 @@ impl<'a> Parser<'a> {
                         }
                         _ => {
                             stmts.push(P(Spanned {
-                                node: StmtMac(m, style, attrs),
+                                node: StmtKind::Mac(m, style, attrs),
                                 span: span
                             }));
                         }
@@ -3944,14 +3941,14 @@ impl<'a> Parser<'a> {
                     expn_id: span.expn_id,
                 };
                 stmts.push(P(Spanned {
-                    node: StmtSemi(e, ast::DUMMY_NODE_ID),
+                    node: StmtKind::Semi(e, ast::DUMMY_NODE_ID),
                     span: span_with_semi,
                 }));
             }
             token::CloseDelim(token::Brace) => *last_block_expr = Some(e),
             _ => {
                 stmts.push(P(Spanned {
-                    node: StmtExpr(e, ast::DUMMY_NODE_ID),
+                    node: StmtKind::Expr(e, ast::DUMMY_NODE_ID),
                     span: span
                 }));
             }

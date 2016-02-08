@@ -1613,19 +1613,19 @@ impl<'a> State<'a> {
     pub fn print_stmt(&mut self, st: &ast::Stmt) -> io::Result<()> {
         try!(self.maybe_print_comment(st.span.lo));
         match st.node {
-            ast::StmtDecl(ref decl, _) => {
+            ast::StmtKind::Decl(ref decl, _) => {
                 try!(self.print_decl(&**decl));
             }
-            ast::StmtExpr(ref expr, _) => {
+            ast::StmtKind::Expr(ref expr, _) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&**expr, false));
             }
-            ast::StmtSemi(ref expr, _) => {
+            ast::StmtKind::Semi(ref expr, _) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_expr_outer_attr_style(&**expr, false));
                 try!(word(&mut self.s, ";"));
             }
-            ast::StmtMac(ref mac, style, ref attrs) => {
+            ast::StmtKind::Mac(ref mac, style, ref attrs) => {
                 try!(self.space_if_not_bol());
                 try!(self.print_outer_attributes(attrs.as_attr_slice()));
                 let delim = match style {

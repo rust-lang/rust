@@ -205,7 +205,7 @@ macro_rules! make_stmts_default {
     ($me:expr) => {
         $me.make_expr().map(|e| {
             SmallVector::one(P(codemap::respan(
-                e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID))))
+                e.span, ast::StmtKind::Expr(e, ast::DUMMY_NODE_ID))))
         })
     }
 }
@@ -402,8 +402,8 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Stmt>>> {
         Some(SmallVector::one(P(
             codemap::respan(self.span,
-                            ast::StmtExpr(DummyResult::raw_expr(self.span),
-                                          ast::DUMMY_NODE_ID)))))
+                            ast::StmtKind::Expr(DummyResult::raw_expr(self.span),
+                                                ast::DUMMY_NODE_ID)))))
     }
 }
 

@@ -16,7 +16,7 @@ pub use self::IntType::*;
 
 use ast;
 use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
-use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclKind};
+use ast::{Stmt, StmtKind, DeclKind};
 use ast::{Expr, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
@@ -947,12 +947,12 @@ impl WithAttrs for P<Stmt> {
             Spanned {
                 span: span,
                 node: match node {
-                    StmtDecl(decl, id) => StmtDecl(decl.with_attrs(attrs), id),
-                    StmtExpr(expr, id) => StmtExpr(expr.with_attrs(attrs), id),
-                    StmtSemi(expr, id) => StmtSemi(expr.with_attrs(attrs), id),
-                    StmtMac(mac, style, mut ats) => {
+                    StmtKind::Decl(decl, id) => StmtKind::Decl(decl.with_attrs(attrs), id),
+                    StmtKind::Expr(expr, id) => StmtKind::Expr(expr.with_attrs(attrs), id),
+                    StmtKind::Semi(expr, id) => StmtKind::Semi(expr.with_attrs(attrs), id),
+                    StmtKind::Mac(mac, style, mut ats) => {
                         ats.update(|a| a.append(attrs));
-                        StmtMac(mac, style, ats)
+                        StmtKind::Mac(mac, style, ats)
                     }
                 },
             }
