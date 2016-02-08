@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 #[test]
 #[deny(mut_mut)]
+#[allow(regex_macro)]
 fn test_regex() {
     let pattern = regex!(r"^(?P<level>[#]+)\s(?P<title>.+)$");
     assert!(pattern.is_match("# headline"));

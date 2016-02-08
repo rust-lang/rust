@@ -257,6 +257,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
         regex::INVALID_REGEX,
+        regex::REGEX_MACRO,
         regex::TRIVIAL_REGEX,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,

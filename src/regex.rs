@@ -1,11 +1,11 @@
 use regex_syntax;
 use std::error::Error;
+use std::collections::HashSet;
 use syntax::ast::Lit_::LitStr;
-use syntax::ast::NodeId;
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
 use rustc_front::hir::*;
-use rustc_front::intravisit::{Visitor, walk_block, FnKind};
+use rustc_front::intravisit::{Visitor, walk_expr};
 use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::lint::*;
@@ -48,7 +48,7 @@ declare_lint! {
 /// **Example:** `regex!("foo|bar")`
 declare_lint! {
     pub REGEX_MACRO,
-    Allow,
+    Warn,
     "finds use of `regex!(_)`, suggests `Regex::new(_)` instead"
 }
 
@@ -62,15 +62,9 @@ impl LintPass for RegexPass {
 }
 
 impl LateLintPass for RegexPass {
-    fn check_fn(&mut self, 
-                cx: &LateContext, 
-                _: FnKind, 
-                _: &FnDecl, 
-                block: &Block, 
-                _: Span, 
-                _: NodeId) {
-        let mut visitor = RegexVisitor { cx: cx, last: BytePos(0) };
-        visitor.visit_block(block);
+    fn check_crate(&mut self, cx: &LateContext, krate: &Crate) {
+        let mut visitor = RegexVisitor { cx: cx, spans: HashSet::new() };
+        krate.visit_all_items(&mut visitor);
     }
 
 
@@ -169,25 +163,23 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
 
 struct RegexVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>,
-    last: BytePos
+    spans: HashSet<Span>,
 }
 
 impl<'v, 't: 'v> Visitor<'v> for RegexVisitor<'v, 't> {
-    fn visit_block(&mut self, block: &'v Block) {
-        if let Some(ref expr) = block.expr {
-            if let Some(span) = is_expn_of(self.cx, expr.span, "regex") {
-                if span.lo == BytePos(0) || span.lo == self.last {
-                    return;
-                }
-                span_lint(self.cx, 
-                          REGEX_MACRO, 
-                          span,
-                          &format!("regex!(_): {:?}, {:?}", self.last, span.lo));
-                          //"`regex!(_)` found. Use `Regex::new(_)`, which is faster for now.");
-                self.last = span.lo;
+    fn visit_expr(&mut self, expr: &'v Expr) {
+        if let Some(span) = is_expn_of(self.cx, expr.span, "regex") {
+            if self.spans.contains(&span) {
                 return;
             }
+            span_lint(self.cx, 
+                      REGEX_MACRO, 
+                      span,
+                      "`regex!(_)` found. \
+                      Please use `Regex::new(_)`, which is faster for now.");
+            self.spans.insert(span);
+            return;
         }
-        walk_block(self, block);
+        walk_expr(self, expr);
     }
 }
