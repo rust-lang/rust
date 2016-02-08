@@ -30,7 +30,7 @@ use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
-use syntax::ast;
+use syntax::ast::{self, BlockCheckMode};
 use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};
@@ -651,7 +651,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
         if !self.within_static_or_const {
 
-            let empty_block = expr_to_block(ast::DefaultBlock, None);
+            let empty_block = expr_to_block(BlockCheckMode::Default, None);
             let loop_expr = P(ast::Expr {
                 node: ast::ExprLoop(empty_block, None),
                 id: ast::DUMMY_NODE_ID,

@@ -1571,8 +1571,8 @@ pub fn lower_visibility(_lctx: &LoweringContext, v: Visibility) -> hir::Visibili
 
 pub fn lower_block_check_mode(lctx: &LoweringContext, b: &BlockCheckMode) -> hir::BlockCheckMode {
     match *b {
-        DefaultBlock => hir::DefaultBlock,
-        UnsafeBlock(u) => hir::UnsafeBlock(lower_unsafe_source(lctx, u)),
+        BlockCheckMode::Default => hir::DefaultBlock,
+        BlockCheckMode::Unsafe(u) => hir::UnsafeBlock(lower_unsafe_source(lctx, u)),
     }
 }
 

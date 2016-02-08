@@ -988,7 +988,7 @@ mod tests {
                                             span: sp(17,19)})),
                                         expr: None,
                                         id: ast::DUMMY_NODE_ID,
-                                        rules: ast::DefaultBlock, // no idea
+                                        rules: ast::BlockCheckMode::Default, // no idea
                                         span: sp(15,21),
                                     })),
                             vis: ast::Inherited,
