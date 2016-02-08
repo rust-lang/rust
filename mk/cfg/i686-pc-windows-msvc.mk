@@ -22,3 +22,7 @@ CFG_LDPATH_i686-pc-windows-msvc :=
 CFG_RUN_i686-pc-windows-msvc=$(2)
 CFG_RUN_TARG_i686-pc-windows-msvc=$(call CFG_RUN_i686-pc-windows-msvc,,$(2))
 CFG_GNU_TRIPLE_i686-pc-windows-msvc := i686-pc-win32
+
+# Currently the build system is not configured to build jemalloc
+# with MSVC, so we omit this optional dependency.
+CFG_DISABLE_JEMALLOC_i686-pc-windows-msvc := 1

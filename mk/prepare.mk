@@ -122,7 +122,7 @@ prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): \
 	PREPARE_WORKING_DEST_LIB_DIR=$$(PREPARE_DEST_DIR)/$$(call PREPARE_TAR_LIB_DIR,$$(HLIB_RELATIVE$(2)_H_$(3)))
 prepare-host-lib-$(1)-$(2)-$(3)-$(4): prepare-maybe-clean-$(4) \
-                                 $$(foreach dep,$$(RUST_DEPS_$(1)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
+                                 $$(foreach dep,$$(RUST_DEPS_$(1)_T_$(3)),prepare-host-lib-$$(dep)-$(2)-$(3)-$(4)) \
                                  $$(HLIB$(2)_H_$(3))/stamp.$(1) \
                                  prepare-host-dirs-$(4)
 	$$(if $$(findstring $(2), $$(PREPARE_STAGE)), \
@@ -147,7 +147,7 @@ prepare-target-$(2)-host-$(3)-$(1)-$(4): \
 prepare-target-$(2)-host-$(3)-$(1)-$(4): \
 	PREPARE_DEST_BIN_DIR=$$(PREPARE_DEST_LIB_DIR)/rustlib/$(3)/bin
 prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
-        $$(foreach crate,$$(TARGET_CRATES), \
+        $$(foreach crate,$$(TARGET_CRATES_$(2)), \
           $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate)) \
         $$(if $$(findstring $(2),$$(CFG_HOST)), \
           $$(foreach crate,$$(HOST_CRATES), \
@@ -161,7 +161,7 @@ prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
         $$(if $$(findstring $(3), $$(PREPARE_HOST)), \
           $$(call PREPARE_DIR,$$(PREPARE_WORKING_DEST_LIB_DIR)) \
           $$(call PREPARE_DIR,$$(PREPARE_DEST_BIN_DIR)) \
-          $$(foreach crate,$$(TARGET_CRATES), \
+          $$(foreach crate,$$(TARGET_CRATES_$(2)), \
 	    $$(if $$(or $$(findstring 1, $$(ONLY_RLIB_$$(crate))),$$(findstring 1,$$(CFG_INSTALL_ONLY_RLIB_$(2)))),, \
               $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))) \
             $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate)))) \

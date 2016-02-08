@@ -118,6 +118,18 @@ endef
 $(foreach target,$(CFG_TARGET), \
   $(eval $(call DEFINE_LINKER,$(target))))
 
+define ADD_JEMALLOC_DEP
+  ifndef CFG_DISABLE_JEMALLOC_$(1)
+    ifndef CFG_DISABLE_JEMALLOC
+      RUST_DEPS_std_T_$(1) += alloc_jemalloc
+      TARGET_CRATES_$(1) += alloc_jemalloc
+    endif
+  endif
+endef
+
+$(foreach target,$(CFG_TARGET), \
+  $(eval $(call ADD_JEMALLOC_DEP,$(target))))
+
 # The -Qunused-arguments sidesteps spurious warnings from clang
 define FILTER_FLAGS
   ifeq ($$(CFG_USING_CLANG),1)
