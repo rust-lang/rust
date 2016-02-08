@@ -79,6 +79,8 @@ S(.., subpatN-1, subpatN)
 S(subpat1, .., subpatN)
 // **NEW**: Tuple struct patterns, any position with a sublist binding.
 // The binding has a tuple type.
+// By ref bindings are not allowed, because layouts of S(A, B, C, D) and (B, C) are not necessarily
+// compatible (e.g. field reordering is possible).
 S(subpat1, binding.., subpatN)
 
 // **NEW**: Tuple patterns, any position.
@@ -87,6 +89,8 @@ S(subpat1, binding.., subpatN)
 (subpat1, .., subpatN)
 // **NEW**: Tuple patterns, any position with a sublist binding.
 // The binding has a tuple type.
+// By ref bindings are not allowed, because layouts of (A, B, C, D) and (B, C) are not necessarily
+// compatible (e.g. field reordering is possible).
 (subpat1, binding.., subpatN)
 
 // Slice patterns, the last position.
@@ -96,6 +100,7 @@ S(subpat1, binding.., subpatN)
 // Slice patterns, any other position.
 [subpat1, .., subpatN]
 // Slice patterns, any of the above with a subslice binding.
+// By ref bindings are allowed, slices and subslices always have compatible layouts.
 [subpat1, binding.., subpatN]
 ```
 
@@ -113,7 +118,7 @@ None.
 # Alternatives
 [alternatives]: #alternatives
 
-None.
+Do not permit sublist bindings in tuples and tuple structs at all.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
