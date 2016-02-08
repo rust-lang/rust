@@ -247,11 +247,11 @@ pub fn lower_arm(lctx: &LoweringContext, arm: &Arm) -> hir::Arm {
 
 pub fn lower_decl(lctx: &LoweringContext, d: &Decl) -> P<hir::Decl> {
     match d.node {
-        DeclLocal(ref l) => P(Spanned {
+        DeclKind::Local(ref l) => P(Spanned {
             node: hir::DeclLocal(lower_local(lctx, l)),
             span: d.span,
         }),
-        DeclItem(ref it) => P(Spanned {
+        DeclKind::Item(ref it) => P(Spanned {
             node: hir::DeclItem(lower_item_id(lctx, it)),
             span: d.span,
         }),

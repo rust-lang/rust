@@ -356,12 +356,12 @@ pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm, fld: &mut T
 
 pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> SmallVector<P<Decl>> {
     d.and_then(|Spanned {node, span}| match node {
-        DeclLocal(l) => SmallVector::one(P(Spanned {
-            node: DeclLocal(fld.fold_local(l)),
+        DeclKind::Local(l) => SmallVector::one(P(Spanned {
+            node: DeclKind::Local(fld.fold_local(l)),
             span: fld.new_span(span)
         })),
-        DeclItem(it) => fld.fold_item(it).into_iter().map(|i| P(Spanned {
-            node: DeclItem(i),
+        DeclKind::Item(it) => fld.fold_item(it).into_iter().map(|i| P(Spanned {
+            node: DeclKind::Item(i),
             span: fld.new_span(span)
         })).collect()
     })

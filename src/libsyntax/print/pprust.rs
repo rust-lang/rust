@@ -2299,7 +2299,7 @@ impl<'a> State<'a> {
     pub fn print_decl(&mut self, decl: &ast::Decl) -> io::Result<()> {
         try!(self.maybe_print_comment(decl.span.lo));
         match decl.node {
-            ast::DeclLocal(ref loc) => {
+            ast::DeclKind::Local(ref loc) => {
                 try!(self.print_outer_attributes(loc.attrs.as_attr_slice()));
                 try!(self.space_if_not_bol());
                 try!(self.ibox(INDENT_UNIT));
@@ -2315,7 +2315,7 @@ impl<'a> State<'a> {
                 }
                 self.end()
             }
-            ast::DeclItem(ref item) => self.print_item(&**item)
+            ast::DeclKind::Item(ref item) => self.print_item(&**item)
         }
     }
 

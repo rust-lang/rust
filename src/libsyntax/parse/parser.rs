@@ -18,7 +18,7 @@ use ast::{Mod, Arg, Arm, Attribute, BindingMode};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
-use ast::{Decl, DeclItem, DeclLocal};
+use ast::{Decl, DeclKind};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
@@ -3636,7 +3636,7 @@ impl<'a> Parser<'a> {
     fn parse_let(&mut self, attrs: ThinAttributes) -> PResult<'a, P<Decl>> {
         let lo = self.span.lo;
         let local = try!(self.parse_local(attrs));
-        Ok(P(spanned(lo, self.last_span.hi, DeclLocal(local))))
+        Ok(P(spanned(lo, self.last_span.hi, DeclKind::Local(local))))
     }
 
     /// Parse a structure field
@@ -3759,7 +3759,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 spanned(lo, hi, StmtDecl(
-                    P(spanned(lo, hi, DeclItem(
+                    P(spanned(lo, hi, DeclKind::Item(
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
                             ItemMac(spanned(lo, hi,
@@ -3772,7 +3772,7 @@ impl<'a> Parser<'a> {
             match try!(self.parse_item_(attrs.clone(), false, true)) {
                 Some(i) => {
                     let hi = i.span.hi;
-                    let decl = P(spanned(lo, hi, DeclItem(i)));
+                    let decl = P(spanned(lo, hi, DeclKind::Item(i)));
                     spanned(lo, hi, StmtDecl(decl, ast::DUMMY_NODE_ID))
                 }
                 None => {
