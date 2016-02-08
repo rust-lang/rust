@@ -2613,9 +2613,9 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         ast::LitKind::Byte(_) => tcx.types.u8,
         ast::LitKind::Char(_) => tcx.types.char,
-        ast::LitKind::Int(_, ast::SignedIntLit(t)) => tcx.mk_mach_int(t),
-        ast::LitKind::Int(_, ast::UnsignedIntLit(t)) => tcx.mk_mach_uint(t),
-        ast::LitKind::Int(_, ast::UnsuffixedIntLit) => {
+        ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
+        ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
+        ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::TyInt(_) | ty::TyUint(_) => Some(ty),

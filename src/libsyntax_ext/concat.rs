@@ -37,9 +37,9 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                     ast::LitKind::Char(c) => {
                         accumulator.push(c);
                     }
-                    ast::LitKind::Int(i, ast::UnsignedIntLit(_)) |
-                    ast::LitKind::Int(i, ast::SignedIntLit(_)) |
-                    ast::LitKind::Int(i, ast::UnsuffixedIntLit) => {
+                    ast::LitKind::Int(i, ast::LitIntType::Unsigned(_)) |
+                    ast::LitKind::Int(i, ast::LitIntType::Signed(_)) |
+                    ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                         accumulator.push_str(&format!("{}", i));
                     }
                     ast::LitKind::Bool(b) => {

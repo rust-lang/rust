@@ -13,7 +13,6 @@
 pub use self::ForeignItem_::*;
 pub use self::Item_::*;
 pub use self::KleeneOp::*;
-pub use self::LitIntType::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
 pub use self::Mutability::*;
@@ -1267,9 +1266,9 @@ pub type Lit = Spanned<LitKind>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum LitIntType {
-    SignedIntLit(IntTy),
-    UnsignedIntLit(UintTy),
-    UnsuffixedIntLit,
+    Signed(IntTy),
+    Unsigned(UintTy),
+    Unsuffixed,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
