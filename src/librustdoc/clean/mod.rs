@@ -1650,8 +1650,8 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyUint(ast::TyU16) => Primitive(U16),
             ty::TyUint(ast::TyU32) => Primitive(U32),
             ty::TyUint(ast::TyU64) => Primitive(U64),
-            ty::TyFloat(ast::TyF32) => Primitive(F32),
-            ty::TyFloat(ast::TyF64) => Primitive(F64),
+            ty::TyFloat(ast::FloatTy::F32) => Primitive(F32),
+            ty::TyFloat(ast::FloatTy::F64) => Primitive(F64),
             ty::TyStr => Primitive(Str),
             ty::TyBox(t) => {
                 let box_did = cx.tcx_opt().and_then(|tcx| {
@@ -2629,8 +2629,8 @@ fn resolve_type(cx: &DocContext,
             hir::TyUint(ast::TyU16) => return Primitive(U16),
             hir::TyUint(ast::TyU32) => return Primitive(U32),
             hir::TyUint(ast::TyU64) => return Primitive(U64),
-            hir::TyFloat(ast::TyF32) => return Primitive(F32),
-            hir::TyFloat(ast::TyF64) => return Primitive(F64),
+            hir::TyFloat(ast::FloatTy::F32) => return Primitive(F32),
+            hir::TyFloat(ast::FloatTy::F64) => return Primitive(F64),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(special_idents::type_self.name.to_string());

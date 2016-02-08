@@ -443,8 +443,8 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                                        n = bits)),
         },
         Float(bits) => match (bits, &t.sty) {
-            (32, &ty::TyFloat(ast::FloatTy::TyF32)) |
-            (64, &ty::TyFloat(ast::FloatTy::TyF64)) => {},
+            (32, &ty::TyFloat(ast::FloatTy::F32)) |
+            (64, &ty::TyFloat(ast::FloatTy::F64)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`f{n}`", n = bits)),
         },

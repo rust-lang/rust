@@ -191,14 +191,14 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "usize",
                                                   item.span);
                     }
-                    ty::TyFloat(ast::TyF32) => {
+                    ty::TyFloat(ast::FloatTy::F32) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.f32_impl(),
                                                   "f32",
                                                   "f32",
                                                   item.span);
                     }
-                    ty::TyFloat(ast::TyF64) => {
+                    ty::TyFloat(ast::FloatTy::F64) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.f64_impl(),
                                                   "f64",

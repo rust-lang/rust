@@ -1314,8 +1314,8 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: Ty) -> CastResult {
         ty::TyUint(ast::TyU32) => convert_val!(u32, Uint, u64),
         ty::TyUint(ast::TyU64) => convert_val!(u64, Uint, u64),
 
-        ty::TyFloat(ast::TyF32) => convert_val!(f32, Float, f64),
-        ty::TyFloat(ast::TyF64) => convert_val!(f64, Float, f64),
+        ty::TyFloat(ast::FloatTy::F32) => convert_val!(f32, Float, f64),
+        ty::TyFloat(ast::FloatTy::F64) => convert_val!(f64, Float, f64),
         _ => Err(ErrKind::CannotCast),
     }
 }

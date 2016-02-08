@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::FloatTy::*;
 pub use self::ForeignItem_::*;
 pub use self::IntTy::*;
 pub use self::Item_::*;
@@ -1509,8 +1508,8 @@ impl fmt::Display for UintTy {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum FloatTy {
-    TyF32,
-    TyF64,
+    F32,
+    F64,
 }
 
 impl fmt::Debug for FloatTy {
@@ -1528,15 +1527,15 @@ impl fmt::Display for FloatTy {
 impl FloatTy {
     pub fn ty_to_string(&self) -> &'static str {
         match *self {
-            TyF32 => "f32",
-            TyF64 => "f64",
+            FloatTy::F32 => "f32",
+            FloatTy::F64 => "f64",
         }
     }
 
     pub fn bit_width(&self) -> usize {
         match *self {
-            TyF32 => 32,
-            TyF64 => 64,
+            FloatTy::F32 => 32,
+            FloatTy::F64 => 64,
         }
     }
 }

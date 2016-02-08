@@ -60,9 +60,9 @@ use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
-use syntax::ast;
+use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
-use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
+use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64};
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Pos};
 use syntax::errors::DiagnosticBuilder;
@@ -1074,8 +1074,8 @@ impl PrimitiveTypeTable {
 
         table.intern("bool", TyBool);
         table.intern("char", TyChar);
-        table.intern("f32", TyFloat(TyF32));
-        table.intern("f64", TyFloat(TyF64));
+        table.intern("f32", TyFloat(FloatTy::F32));
+        table.intern("f64", TyFloat(FloatTy::F64));
         table.intern("isize", TyInt(TyIs));
         table.intern("i8", TyInt(TyI8));
         table.intern("i16", TyInt(TyI16));

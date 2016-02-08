@@ -202,8 +202,8 @@ impl<'tcx> CommonTypes<'tcx> {
             u16: mk(TyUint(ast::TyU16)),
             u32: mk(TyUint(ast::TyU32)),
             u64: mk(TyUint(ast::TyU64)),
-            f32: mk(TyFloat(ast::TyF32)),
-            f64: mk(TyFloat(ast::TyF64)),
+            f32: mk(TyFloat(ast::FloatTy::F32)),
+            f64: mk(TyFloat(ast::FloatTy::F64)),
         }
     }
 }
@@ -860,8 +860,8 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn mk_mach_float(&self, tm: ast::FloatTy) -> Ty<'tcx> {
         match tm {
-            ast::TyF32  => self.types.f32,
-            ast::TyF64  => self.types.f64,
+            ast::FloatTy::F32  => self.types.f32,
+            ast::FloatTy::F64  => self.types.f64,
         }
     }
 

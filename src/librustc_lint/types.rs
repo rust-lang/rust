@@ -267,8 +267,8 @@ impl LateLintPass for TypeLimits {
 
         fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
             match float_ty {
-                ast::TyF32 => (f32::MIN as f64, f32::MAX as f64),
-                ast::TyF64 => (f64::MIN,        f64::MAX)
+                ast::FloatTy::F32 => (f32::MIN as f64, f32::MAX as f64),
+                ast::FloatTy::F64 => (f64::MIN,        f64::MAX)
             }
         }
 

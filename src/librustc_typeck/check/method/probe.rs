@@ -357,11 +357,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 let lang_def_id = self.tcx().lang_items.usize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyFloat(ast::TyF32) => {
+            ty::TyFloat(ast::FloatTy::F32) => {
                 let lang_def_id = self.tcx().lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyFloat(ast::TyF64) => {
+            ty::TyFloat(ast::FloatTy::F64) => {
                 let lang_def_id = self.tcx().lang_items.f64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
