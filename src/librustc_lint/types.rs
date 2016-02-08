@@ -103,10 +103,10 @@ impl LateLintPass for TypeLimits {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
                 if let hir::ExprLit(ref lit) = expr.node {
                     match lit.node {
-                        ast::LitKind::Int(_, ast::UnsignedIntLit(_)) => {
+                        ast::LitKind::Int(_, ast::LitIntType::Unsigned(_)) => {
                             forbid_unsigned_negation(cx, e.span);
                         },
-                        ast::LitKind::Int(_, ast::UnsuffixedIntLit) => {
+                        ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                             if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
                                 forbid_unsigned_negation(cx, e.span);
                             }
@@ -159,8 +159,8 @@ impl LateLintPass for TypeLimits {
                 match cx.tcx.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
-                            ast::LitKind::Int(v, ast::SignedIntLit(_)) |
-                            ast::LitKind::Int(v, ast::UnsuffixedIntLit) => {
+                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
+                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
                                 let int_type = if let ast::IntTy::Is = t {
                                     cx.sess().target.int_type
                                 } else {
@@ -312,8 +312,8 @@ impl LateLintPass for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            ast::LitKind::Int(v, ast::SignedIntLit(_)) |
-                            ast::LitKind::Int(v, ast::UnsuffixedIntLit) => v as i64,
+                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
+                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i64,
                             _ => return true
                         },
                         _ => panic!()

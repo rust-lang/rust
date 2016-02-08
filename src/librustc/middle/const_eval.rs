@@ -1328,14 +1328,14 @@ fn lit_to_const(sess: &Session, span: Span, lit: &ast::Lit, ty_hint: Option<Ty>)
         }
         ast::LitKind::Byte(n) => Uint(n as u64),
         ast::LitKind::Char(n) => Uint(n as u64),
-        ast::LitKind::Int(n, ast::SignedIntLit(_)) => Int(n as i64),
-        ast::LitKind::Int(n, ast::UnsuffixedIntLit) => {
+        ast::LitKind::Int(n, ast::LitIntType::Signed(_)) => Int(n as i64),
+        ast::LitKind::Int(n, ast::LitIntType::Unsuffixed) => {
             match ty_hint.map(|ty| &ty.sty) {
                 Some(&ty::TyUint(_)) => Uint(n),
                 _ => Int(n as i64)
             }
         }
-        ast::LitKind::Int(n, ast::UnsignedIntLit(_)) => Uint(n),
+        ast::LitKind::Int(n, ast::LitIntType::Unsigned(_)) => Uint(n),
         ast::LitKind::Float(ref n, _) |
         ast::LitKind::FloatUnsuffixed(ref n) => {
             if let Ok(x) = n.parse::<f64>() {

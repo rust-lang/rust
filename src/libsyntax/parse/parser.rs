@@ -2014,7 +2014,7 @@ impl<'a> Parser<'a> {
     pub fn mk_lit_u32(&mut self, i: u32, attrs: ThinAttributes) -> P<Expr> {
         let span = &self.span;
         let lv_lit = P(codemap::Spanned {
-            node: LitKind::Int(i as u64, ast::UnsignedIntLit(UintTy::U32)),
+            node: LitKind::Int(i as u64, ast::LitIntType::Unsigned(UintTy::U32)),
             span: *span
         });
 

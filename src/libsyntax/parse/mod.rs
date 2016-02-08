@@ -586,7 +586,7 @@ pub fn integer_lit(s: &str,
 
     let mut base = 10;
     let orig = s;
-    let mut ty = ast::UnsuffixedIntLit;
+    let mut ty = ast::LitIntType::Unsuffixed;
 
     if char_at(s, 0) == '0' && s.len() > 1 {
         match char_at(s, 1) {
@@ -618,16 +618,16 @@ pub fn integer_lit(s: &str,
     if let Some(ref suf) = suffix {
         if suf.is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
         ty = match &**suf {
-            "isize" => ast::SignedIntLit(ast::IntTy::Is),
-            "i8"  => ast::SignedIntLit(ast::IntTy::I8),
-            "i16" => ast::SignedIntLit(ast::IntTy::I16),
-            "i32" => ast::SignedIntLit(ast::IntTy::I32),
-            "i64" => ast::SignedIntLit(ast::IntTy::I64),
-            "usize" => ast::UnsignedIntLit(ast::UintTy::Us),
-            "u8"  => ast::UnsignedIntLit(ast::UintTy::U8),
-            "u16" => ast::UnsignedIntLit(ast::UintTy::U16),
-            "u32" => ast::UnsignedIntLit(ast::UintTy::U32),
-            "u64" => ast::UnsignedIntLit(ast::UintTy::U64),
+            "isize" => ast::LitIntType::Signed(ast::IntTy::Is),
+            "i8"  => ast::LitIntType::Signed(ast::IntTy::I8),
+            "i16" => ast::LitIntType::Signed(ast::IntTy::I16),
+            "i32" => ast::LitIntType::Signed(ast::IntTy::I32),
+            "i64" => ast::LitIntType::Signed(ast::IntTy::I64),
+            "usize" => ast::LitIntType::Unsigned(ast::UintTy::Us),
+            "u8"  => ast::LitIntType::Unsigned(ast::UintTy::U8),
+            "u16" => ast::LitIntType::Unsigned(ast::UintTy::U16),
+            "u32" => ast::LitIntType::Unsigned(ast::UintTy::U32),
+            "u64" => ast::LitIntType::Unsigned(ast::UintTy::U64),
             _ => {
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
