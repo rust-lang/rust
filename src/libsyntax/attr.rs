@@ -746,16 +746,16 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
 
 fn int_type_of_word(s: &str) -> Option<IntType> {
     match s {
-        "i8" => Some(SignedInt(ast::TyI8)),
-        "u8" => Some(UnsignedInt(ast::TyU8)),
-        "i16" => Some(SignedInt(ast::TyI16)),
-        "u16" => Some(UnsignedInt(ast::TyU16)),
-        "i32" => Some(SignedInt(ast::TyI32)),
-        "u32" => Some(UnsignedInt(ast::TyU32)),
-        "i64" => Some(SignedInt(ast::TyI64)),
-        "u64" => Some(UnsignedInt(ast::TyU64)),
-        "isize" => Some(SignedInt(ast::TyIs)),
-        "usize" => Some(UnsignedInt(ast::TyUs)),
+        "i8" => Some(SignedInt(ast::IntTy::I8)),
+        "u8" => Some(UnsignedInt(ast::UintTy::U8)),
+        "i16" => Some(SignedInt(ast::IntTy::I16)),
+        "u16" => Some(UnsignedInt(ast::UintTy::U16)),
+        "i32" => Some(SignedInt(ast::IntTy::I32)),
+        "u32" => Some(UnsignedInt(ast::UintTy::U32)),
+        "i64" => Some(SignedInt(ast::IntTy::I64)),
+        "u64" => Some(UnsignedInt(ast::UintTy::U64)),
+        "isize" => Some(SignedInt(ast::IntTy::Is)),
+        "usize" => Some(UnsignedInt(ast::UintTy::Us)),
         _ => None
     }
 }
@@ -797,11 +797,11 @@ impl IntType {
     }
     fn is_ffi_safe(self) -> bool {
         match self {
-            SignedInt(ast::TyI8) | UnsignedInt(ast::TyU8) |
-            SignedInt(ast::TyI16) | UnsignedInt(ast::TyU16) |
-            SignedInt(ast::TyI32) | UnsignedInt(ast::TyU32) |
-            SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
-            SignedInt(ast::TyIs) | UnsignedInt(ast::TyUs) => false
+            SignedInt(ast::IntTy::I8) | UnsignedInt(ast::UintTy::U8) |
+            SignedInt(ast::IntTy::I16) | UnsignedInt(ast::UintTy::U16) |
+            SignedInt(ast::IntTy::I32) | UnsignedInt(ast::UintTy::U32) |
+            SignedInt(ast::IntTy::I64) | UnsignedInt(ast::UintTy::U64) => true,
+            SignedInt(ast::IntTy::Is) | UnsignedInt(ast::UintTy::Us) => false
         }
     }
 }

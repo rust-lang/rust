@@ -816,12 +816,12 @@ pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         ty::TyInt(t) => {
             let llty = Type::int_from_ty(cx.ccx(), t);
             let min = match t {
-                ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
-                ast::TyIs => i64::MIN as u64,
-                ast::TyI8 => i8::MIN as u64,
-                ast::TyI16 => i16::MIN as u64,
-                ast::TyI32 => i32::MIN as u64,
-                ast::TyI64 => i64::MIN as u64,
+                ast::IntTy::Is if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
+                ast::IntTy::Is => i64::MIN as u64,
+                ast::IntTy::I8 => i8::MIN as u64,
+                ast::IntTy::I16 => i16::MIN as u64,
+                ast::IntTy::I32 => i32::MIN as u64,
+                ast::IntTy::I64 => i64::MIN as u64,
             };
             (llty, min)
         }

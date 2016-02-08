@@ -728,8 +728,8 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
-        "32" => (ast::TyI32, ast::TyU32),
-        "64" => (ast::TyI64, ast::TyU64),
+        "32" => (ast::IntTy::I32, ast::UintTy::U32),
+        "64" => (ast::IntTy::I64, ast::UintTy::U64),
         w    => panic!(sp.fatal(&format!("target specification was invalid: \
                                           unrecognized target-pointer-width {}", w))),
     };

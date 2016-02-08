@@ -279,17 +279,17 @@ pub mod rt {
         );
     }
 
-    impl_to_tokens_int! { signed, isize, ast::TyIs }
-    impl_to_tokens_int! { signed, i8,  ast::TyI8 }
-    impl_to_tokens_int! { signed, i16, ast::TyI16 }
-    impl_to_tokens_int! { signed, i32, ast::TyI32 }
-    impl_to_tokens_int! { signed, i64, ast::TyI64 }
+    impl_to_tokens_int! { signed, isize, ast::IntTy::Is }
+    impl_to_tokens_int! { signed, i8,  ast::IntTy::I8 }
+    impl_to_tokens_int! { signed, i16, ast::IntTy::I16 }
+    impl_to_tokens_int! { signed, i32, ast::IntTy::I32 }
+    impl_to_tokens_int! { signed, i64, ast::IntTy::I64 }
 
-    impl_to_tokens_int! { unsigned, usize, ast::TyUs }
-    impl_to_tokens_int! { unsigned, u8,   ast::TyU8 }
-    impl_to_tokens_int! { unsigned, u16,  ast::TyU16 }
-    impl_to_tokens_int! { unsigned, u32,  ast::TyU32 }
-    impl_to_tokens_int! { unsigned, u64,  ast::TyU64 }
+    impl_to_tokens_int! { unsigned, usize, ast::UintTy::Us }
+    impl_to_tokens_int! { unsigned, u8,   ast::UintTy::U8 }
+    impl_to_tokens_int! { unsigned, u16,  ast::UintTy::U16 }
+    impl_to_tokens_int! { unsigned, u32,  ast::UintTy::U32 }
+    impl_to_tokens_int! { unsigned, u64,  ast::UintTy::U64 }
 
     pub trait ExtParseUtils {
         fn parse_item(&self, s: String) -> P<ast::Item>;

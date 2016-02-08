@@ -11,7 +11,6 @@
 // The Rust abstract syntax tree.
 
 pub use self::ForeignItem_::*;
-pub use self::IntTy::*;
 pub use self::Item_::*;
 pub use self::KleeneOp::*;
 pub use self::Lit_::*;
@@ -29,7 +28,6 @@ pub use self::StructFieldKind::*;
 pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
-pub use self::UintTy::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::Visibility::*;
@@ -1393,11 +1391,11 @@ pub enum ImplItemKind {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum IntTy {
-    TyIs,
-    TyI8,
-    TyI16,
-    TyI32,
-    TyI64,
+    Is,
+    I8,
+    I16,
+    I32,
+    I64,
 }
 
 impl fmt::Debug for IntTy {
@@ -1415,11 +1413,11 @@ impl fmt::Display for IntTy {
 impl IntTy {
     pub fn ty_to_string(&self) -> &'static str {
         match *self {
-            TyIs => "isize",
-            TyI8 => "i8",
-            TyI16 => "i16",
-            TyI32 => "i32",
-            TyI64 => "i64"
+            IntTy::Is => "isize",
+            IntTy::I8 => "i8",
+            IntTy::I16 => "i16",
+            IntTy::I32 => "i32",
+            IntTy::I64 => "i64"
         }
     }
 
@@ -1432,41 +1430,41 @@ impl IntTy {
 
     pub fn ty_max(&self) -> u64 {
         match *self {
-            TyI8 => 0x80,
-            TyI16 => 0x8000,
-            TyIs | TyI32 => 0x80000000, // actually ni about TyIs
-            TyI64 => 0x8000000000000000
+            IntTy::I8 => 0x80,
+            IntTy::I16 => 0x8000,
+            IntTy::Is | IntTy::I32 => 0x80000000, // FIXME: actually ni about Is
+            IntTy::I64 => 0x8000000000000000
         }
     }
 
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
-            TyIs => return None,
-            TyI8 => 8,
-            TyI16 => 16,
-            TyI32 => 32,
-            TyI64 => 64,
+            IntTy::Is => return None,
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
         })
     }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum UintTy {
-    TyUs,
-    TyU8,
-    TyU16,
-    TyU32,
-    TyU64,
+    Us,
+    U8,
+    U16,
+    U32,
+    U64,
 }
 
 impl UintTy {
     pub fn ty_to_string(&self) -> &'static str {
         match *self {
-            TyUs => "usize",
-            TyU8 => "u8",
-            TyU16 => "u16",
-            TyU32 => "u32",
-            TyU64 => "u64"
+            UintTy::Us => "usize",
+            UintTy::U8 => "u8",
+            UintTy::U16 => "u16",
+            UintTy::U32 => "u32",
+            UintTy::U64 => "u64"
         }
     }
 
@@ -1476,20 +1474,20 @@ impl UintTy {
 
     pub fn ty_max(&self) -> u64 {
         match *self {
-            TyU8 => 0xff,
-            TyU16 => 0xffff,
-            TyUs | TyU32 => 0xffffffff, // actually ni about TyUs
-            TyU64 => 0xffffffffffffffff
+            UintTy::U8 => 0xff,
+            UintTy::U16 => 0xffff,
+            UintTy::Us | UintTy::U32 => 0xffffffff, // FIXME: actually ni about Us
+            UintTy::U64 => 0xffffffffffffffff
         }
     }
 
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
-            TyUs => return None,
-            TyU8 => 8,
-            TyU16 => 16,
-            TyU32 => 32,
-            TyU64 => 64,
+            UintTy::Us => return None,
+            UintTy::U8 => 8,
+            UintTy::U16 => 16,
+            UintTy::U32 => 32,
+            UintTy::U64 => 64,
         })
     }
 }

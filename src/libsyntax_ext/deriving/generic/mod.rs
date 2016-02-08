@@ -748,17 +748,17 @@ fn find_repr_type_name(diagnostic: &Handler,
                 attr::ReprAny | attr::ReprPacked | attr::ReprSimd => continue,
                 attr::ReprExtern => "i32",
 
-                attr::ReprInt(_, attr::SignedInt(ast::TyIs)) => "isize",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI8)) => "i8",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI16)) => "i16",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI32)) => "i32",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI64)) => "i64",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::Is)) => "isize",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I8)) => "i8",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I16)) => "i16",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I32)) => "i32",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I64)) => "i64",
 
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyUs)) => "usize",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU8)) => "u8",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU16)) => "u16",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU32)) => "u32",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU64)) => "u64",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::Us)) => "usize",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U8)) => "u8",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U16)) => "u16",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U32)) => "u32",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U64)) => "u64",
             }
         }
     }
