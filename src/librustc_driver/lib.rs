@@ -164,7 +164,11 @@ pub fn run_compiler<'a>(args: &[String],
 
     let descriptions = diagnostics_registry();
 
-    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.error_format), None);
+    do_or_return!(callbacks.early_callback(&matches,
+                                           &sopts,
+                                           &descriptions,
+                                           sopts.error_format),
+                                           None);
 
     let (odir, ofile) = make_output(&matches);
     let (input, input_file_path) = match make_input(&matches.free) {
@@ -251,6 +255,7 @@ pub trait CompilerCalls<'a> {
     // else (e.g., selecting input and output).
     fn early_callback(&mut self,
                       _: &getopts::Matches,
+                      _: &config::Options,
                       _: &diagnostics::registry::Registry,
                       _: ErrorOutputType)
                       -> Compilation {
@@ -327,6 +332,7 @@ pub struct RustcDefaultCalls;
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
+                      _sopts: &config::Options,
                       descriptions: &diagnostics::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
