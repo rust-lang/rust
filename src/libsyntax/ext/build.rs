@@ -116,7 +116,7 @@ pub trait AstBuilder {
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr>;
 
     fn expr_self(&self, span: Span) -> P<ast::Expr>;
-    fn expr_binary(&self, sp: Span, op: ast::BinOp_,
+    fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
                    lhs: P<ast::Expr>, rhs: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_deref(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_unary(&self, sp: Span, op: ast::UnOp, e: P<ast::Expr>) -> P<ast::Expr>;
@@ -605,7 +605,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_ident(span, special_idents::self_)
     }
 
-    fn expr_binary(&self, sp: Span, op: ast::BinOp_,
+    fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
                    lhs: P<ast::Expr>, rhs: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprBinary(Spanned { node: op, span: sp }, lhs, rhs))
     }

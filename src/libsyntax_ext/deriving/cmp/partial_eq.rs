@@ -11,7 +11,7 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, self};
+use syntax::ast::{MetaItem, Expr, BinOpKind};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -35,9 +35,9 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                     _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
                 };
 
-                let eq = cx.expr_binary(span, ast::BiEq, self_f, other_f.clone());
+                let eq = cx.expr_binary(span, BinOpKind::Eq, self_f, other_f.clone());
 
-                cx.expr_binary(span, ast::BiAnd, subexpr, eq)
+                cx.expr_binary(span, BinOpKind::And, subexpr, eq)
             },
             cx.expr_bool(span, true),
             Box::new(|cx, span, _, _| cx.expr_bool(span, false)),
@@ -52,9 +52,9 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                     _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
                 };
 
-                let eq = cx.expr_binary(span, ast::BiNe, self_f, other_f.clone());
+                let eq = cx.expr_binary(span, BinOpKind::Ne, self_f, other_f.clone());
 
-                cx.expr_binary(span, ast::BiOr, subexpr, eq)
+                cx.expr_binary(span, BinOpKind::Or, subexpr, eq)
             },
             cx.expr_bool(span, false),
             Box::new(|cx, span, _, _| cx.expr_bool(span, true)),

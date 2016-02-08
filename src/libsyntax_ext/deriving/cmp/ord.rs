@@ -11,8 +11,7 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast;
-use syntax::ast::{MetaItem, Expr};
+use syntax::ast::{MetaItem, Expr, BinOpKind, self};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -116,7 +115,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
 
             let assign = cx.stmt_let(span, false, test_id, new);
 
-            let cond = cx.expr_binary(span, ast::BiEq,
+            let cond = cx.expr_binary(span, BinOpKind::Eq,
                                       cx.expr_ident(span, test_id),
                                       cx.expr_path(equals_path.clone()));
             let if_ = cx.expr_if(span,

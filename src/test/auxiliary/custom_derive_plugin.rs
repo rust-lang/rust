@@ -62,7 +62,7 @@ fn expand(cx: &mut ExtCtxt,
                     let zero = cx.expr_isize(span, 0);
                     cs_fold(false,
                             |cx, span, subexpr, field, _| {
-                                cx.expr_binary(span, ast::BiAdd, subexpr,
+                                cx.expr_binary(span, ast::BinOpKind::Add, subexpr,
                                     cx.expr_method_call(span, field,
                                         token::str_to_ident("total_sum"), vec![]))
                             },

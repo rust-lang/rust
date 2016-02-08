@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use parse::token::{Token, BinOpToken, keywords};
-use ast;
+use ast::BinOpKind;
 
 /// Associative operator with precedence.
 ///
@@ -108,28 +108,28 @@ impl AssocOp {
         }
     }
 
-    /// Create a new AssocOp from ast::BinOp_.
-    pub fn from_ast_binop(op: ast::BinOp_) -> Self {
+    /// Create a new AssocOp from ast::BinOpKind.
+    pub fn from_ast_binop(op: BinOpKind) -> Self {
         use self::AssocOp::*;
         match op {
-            ast::BiLt => Less,
-            ast::BiGt => Greater,
-            ast::BiLe => LessEqual,
-            ast::BiGe => GreaterEqual,
-            ast::BiEq => Equal,
-            ast::BiNe => NotEqual,
-            ast::BiMul => Multiply,
-            ast::BiDiv => Divide,
-            ast::BiRem => Modulus,
-            ast::BiAdd => Add,
-            ast::BiSub => Subtract,
-            ast::BiShl => ShiftLeft,
-            ast::BiShr => ShiftRight,
-            ast::BiBitAnd => BitAnd,
-            ast::BiBitXor => BitXor,
-            ast::BiBitOr => BitOr,
-            ast::BiAnd => LAnd,
-            ast::BiOr => LOr
+            BinOpKind::Lt => Less,
+            BinOpKind::Gt => Greater,
+            BinOpKind::Le => LessEqual,
+            BinOpKind::Ge => GreaterEqual,
+            BinOpKind::Eq => Equal,
+            BinOpKind::Ne => NotEqual,
+            BinOpKind::Mul => Multiply,
+            BinOpKind::Div => Divide,
+            BinOpKind::Rem => Modulus,
+            BinOpKind::Add => Add,
+            BinOpKind::Sub => Subtract,
+            BinOpKind::Shl => ShiftLeft,
+            BinOpKind::Shr => ShiftRight,
+            BinOpKind::BitAnd => BitAnd,
+            BinOpKind::BitXor => BitXor,
+            BinOpKind::BitOr => BitOr,
+            BinOpKind::And => LAnd,
+            BinOpKind::Or => LOr
         }
     }
 
@@ -185,27 +185,27 @@ impl AssocOp {
         }
     }
 
-    pub fn to_ast_binop(&self) -> Option<ast::BinOp_> {
+    pub fn to_ast_binop(&self) -> Option<BinOpKind> {
         use self::AssocOp::*;
         match *self {
-            Less => Some(ast::BiLt),
-            Greater => Some(ast::BiGt),
-            LessEqual => Some(ast::BiLe),
-            GreaterEqual => Some(ast::BiGe),
-            Equal => Some(ast::BiEq),
-            NotEqual => Some(ast::BiNe),
-            Multiply => Some(ast::BiMul),
-            Divide => Some(ast::BiDiv),
-            Modulus => Some(ast::BiRem),
-            Add => Some(ast::BiAdd),
-            Subtract => Some(ast::BiSub),
-            ShiftLeft => Some(ast::BiShl),
-            ShiftRight => Some(ast::BiShr),
-            BitAnd => Some(ast::BiBitAnd),
-            BitXor => Some(ast::BiBitXor),
-            BitOr => Some(ast::BiBitOr),
-            LAnd => Some(ast::BiAnd),
-            LOr => Some(ast::BiOr),
+            Less => Some(BinOpKind::Lt),
+            Greater => Some(BinOpKind::Gt),
+            LessEqual => Some(BinOpKind::Le),
+            GreaterEqual => Some(BinOpKind::Ge),
+            Equal => Some(BinOpKind::Eq),
+            NotEqual => Some(BinOpKind::Ne),
+            Multiply => Some(BinOpKind::Mul),
+            Divide => Some(BinOpKind::Div),
+            Modulus => Some(BinOpKind::Rem),
+            Add => Some(BinOpKind::Add),
+            Subtract => Some(BinOpKind::Sub),
+            ShiftLeft => Some(BinOpKind::Shl),
+            ShiftRight => Some(BinOpKind::Shr),
+            BitAnd => Some(BinOpKind::BitAnd),
+            BitXor => Some(BinOpKind::BitXor),
+            BitOr => Some(BinOpKind::BitOr),
+            LAnd => Some(BinOpKind::And),
+            LOr => Some(BinOpKind::Or),
             Inplace | Assign | AssignOp(_) | As | DotDot | Colon => None
         }
     }
