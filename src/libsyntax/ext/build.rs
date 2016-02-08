@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use abi;
-use ast::{Ident, Generics, Expr};
-use ast;
+use ast::{self, Ident, Generics, Expr, BlockCheckMode};
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
 use ext::base::ExtCtxt;
@@ -574,7 +573,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                stmts: stmts,
                expr: expr,
                id: ast::DUMMY_NODE_ID,
-               rules: ast::DefaultBlock,
+               rules: BlockCheckMode::Default,
                span: span,
             })
     }

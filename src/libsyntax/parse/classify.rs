@@ -12,7 +12,7 @@
 
 // Predicates on exprs and stmts that the pretty-printer and parser use
 
-use ast;
+use ast::{self, BlockCheckMode};
 
 /// Does this expression require a semicolon to be treated
 /// as a statement? The negation of this: 'can this expression
@@ -37,7 +37,7 @@ pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
 
 pub fn expr_is_simple_block(e: &ast::Expr) -> bool {
     match e.node {
-        ast::ExprBlock(ref block) => block.rules == ast::DefaultBlock,
+        ast::ExprBlock(ref block) => block.rules == BlockCheckMode::Default,
         _ => false,
     }
 }

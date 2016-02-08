@@ -11,7 +11,7 @@
 pub use self::AnnNode::*;
 
 use abi;
-use ast::{self, TokenTree};
+use ast::{self, TokenTree, BlockCheckMode};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use attr::ThinAttributesExt;
@@ -1684,8 +1684,8 @@ impl<'a> State<'a> {
                                       attrs: &[ast::Attribute],
                                       close_box: bool) -> io::Result<()> {
         match blk.rules {
-            ast::UnsafeBlock(..) => try!(self.word_space("unsafe")),
-            ast::DefaultBlock => ()
+            BlockCheckMode::Unsafe(..) => try!(self.word_space("unsafe")),
+            BlockCheckMode::Default => ()
         }
         try!(self.maybe_print_comment(blk.span.lo));
         try!(self.ann.pre(self, NodeBlock(blk)));
@@ -2610,7 +2610,7 @@ impl<'a> State<'a> {
                 try!(self.print_block_unclosed_indent(&**blk, INDENT_UNIT));
 
                 // If it is a user-provided unsafe block, print a comma after it
-                if let ast::UnsafeBlock(ast::UserProvided) = blk.rules {
+                if let BlockCheckMode::Unsafe(ast::UserProvided) = blk.rules {
                     try!(word(&mut self.s, ","));
                 }
             }
