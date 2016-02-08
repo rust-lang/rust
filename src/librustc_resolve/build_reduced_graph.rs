@@ -100,7 +100,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
         where T: ToNameBinding<'b>
     {
-        parent.try_define_child(name, ns, self.new_name_binding(def.to_name_binding()));
+        let _ = parent.try_define_child(name, ns, self.new_name_binding(def.to_name_binding()));
     }
 
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
@@ -108,8 +108,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
         let binding = self.new_name_binding(def.to_name_binding());
         let old_binding = match parent.try_define_child(name, ns, binding) {
-            Some(old_binding) => old_binding,
-            None => return,
+            Ok(()) => return,
+            Err(old_binding) => old_binding,
         };
 
         let span = binding.span.unwrap_or(DUMMY_SP);

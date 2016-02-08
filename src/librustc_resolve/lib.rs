@@ -870,10 +870,10 @@ impl<'a> ModuleS<'a> {
     // If the name is not yet defined, define the name and return None.
     // Otherwise, return the existing definition.
     fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
-                        -> Option<&'a NameBinding<'a>> {
+                        -> Result<(), &'a NameBinding<'a>> {
         match self.children.borrow_mut().entry((name, ns)) {
-            hash_map::Entry::Vacant(entry) => { entry.insert(binding); None }
-            hash_map::Entry::Occupied(entry) => { Some(entry.get()) },
+            hash_map::Entry::Vacant(entry) => { entry.insert(binding); Ok(()) }
+            hash_map::Entry::Occupied(entry) => { Err(entry.get()) },
         }
     }
 
