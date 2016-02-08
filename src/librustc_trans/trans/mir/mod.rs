@@ -114,12 +114,13 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
     let block_bcxs: Vec<Block<'bcx,'tcx>> =
         mir_blocks.iter()
                   .map(|&bb|{
-                      let bcx = fcx.new_block(&format!("{:?}", bb), None);
                       // FIXME(#30941) this doesn't handle msvc-style exceptions
-                      if mir.basic_block_data(bb).is_cleanup {
-                          *bcx.lpad.borrow_mut() = Some(LandingPad::gnu())
-                      }
-                      bcx
+                      let lpad = if mir.basic_block_data(bb).is_cleanup {
+                          Some(LandingPad::gnu())
+                      } else {
+                          None
+                      };
+                      fcx.new_block(&format!("{:?}", bb), None, lpad)
                   })
                   .collect();
 

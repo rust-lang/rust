@@ -497,10 +497,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if input_ty == tcx.types.f32 {
                         let lllhs = bcx.fpext(lhs, f64t);
                         let llrhs = bcx.fpext(rhs, f64t);
-                        let llres = bcx.call(llfn, &[lllhs, llrhs], None);
+                        let bundle = bcx.lpad().and_then(|b| b.bundle());
+                        let llres = bcx.call(llfn, &[lllhs, llrhs], bundle, None);
                         bcx.fptrunc(llres, Type::f32(bcx.ccx()))
                     } else {
-                        bcx.call(llfn, &[lhs, rhs], None)
+                        let bundle = bcx.lpad().and_then(|b| b.bundle());
+                        bcx.call(llfn, &[lhs, rhs], bundle, None)
                     }
                 } else {
                     bcx.frem(lhs, rhs)

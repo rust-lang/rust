@@ -119,13 +119,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 if let Some(unwind) = unwind {
                     let uwbcx = self.bcx(unwind);
                     let unwind = self.make_landing_pad(uwbcx);
+                    let bundle = bcx.lpad().and_then(|b| b.bundle());
                     bcx.invoke(drop_fn,
                                &[llvalue],
                                self.llblock(target),
                                unwind.llbb(),
+                               bundle,
                                None);
                 } else {
-                    bcx.call(drop_fn, &[llvalue], None);
+                    let bundle = bcx.lpad().and_then(|b| b.bundle());
+                    bcx.call(drop_fn, &[llvalue], bundle, None);
                     bcx.br(self.llblock(target));
                 }
             }
@@ -187,24 +190,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
+                        let bundle = bcx.lpad().and_then(|b| b.bundle());
                         bcx.invoke(callee.immediate(),
                                    &llargs[..],
                                    unreachable_blk.llbb,
                                    landingpad.llbb(),
+                                   bundle,
                                    Some(attrs));
                     },
                     (false, false, &Some(cleanup), &Some((_, success))) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let (target, postinvoke) = if must_copy_dest {
-                            (bcx.fcx().new_block("", None), Some(self.bcx(success)))
+                            (bcx.fcx().new_block("", None, None).build(), Some(self.bcx(success)))
                         } else {
                             (self.bcx(success), None)
                         };
+                        let bundle = bcx.lpad().and_then(|b| b.bundle());
                         let invokeret = bcx.invoke(callee.immediate(),
                                                    &llargs[..],
                                                    target.llbb(),
                                                    landingpad.llbb(),
+                                                   bundle,
                                                    Some(attrs));
                         if let Some(postinvoketarget) = postinvoke {
                             // We translate the copy into a temporary block. The temporary block is
@@ -240,7 +247,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     },
                     (false, _, _, &None) => {
-                        bcx.call(callee.immediate(), &llargs[..], Some(attrs));
+                        let bundle = bcx.lpad().and_then(|b| b.bundle());
+                        bcx.call(callee.immediate(), &llargs[..], bundle, Some(attrs));
                         bcx.unreachable();
                     }
                     (false, _, _, &Some((_, target))) => {
@@ -301,12 +309,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         cleanup: BlockAndBuilder<'bcx, 'tcx>)
                         -> BlockAndBuilder<'bcx, 'tcx>
     {
+        let cleanup_llbb = cleanup.llbb();
         let bcx = cleanup.map_block(|cleanup| {
-            cleanup.fcx.new_block("cleanup", None)
+            // FIXME(#30941) this doesn't handle msvc-style exceptions
+            cleanup.fcx.new_block("cleanup", None, Some(LandingPad::gnu()))
         });
-        // FIXME(#30941) this doesn't handle msvc-style exceptions
-        *bcx.lpad.borrow_mut() = Some(LandingPad::gnu());
-        let bcx = bcx.build();
         let ccx = bcx.ccx();
         let llpersonality = bcx.fcx().eh_personality();
         let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
@@ -314,13 +321,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         bcx.set_cleanup(llretval);
         let slot = self.get_personality_slot(&bcx);
         bcx.store(llretval, slot);
-        bcx.br(cleanup.llbb());
+        bcx.br(cleanup_llbb);
         bcx
     }
 
     fn unreachable_block(&mut self) -> Block<'bcx, 'tcx> {
         self.unreachable_block.unwrap_or_else(|| {
-            let bl = self.fcx.new_block("unreachable", None);
+            let bl = self.fcx.new_block("unreachable", None, None);
             bl.build().unreachable();
             self.unreachable_block = Some(bl);
             bl

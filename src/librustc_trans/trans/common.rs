@@ -367,6 +367,9 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // The arena that blocks are allocated from.
     pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
 
+    // The arena that landing pads are allocated from.
+    pub lpad_arena: TypedArena<LandingPad>,
+
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -431,14 +434,19 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 
     pub fn new_block(&'a self,
                      name: &str,
-                     opt_node_id: Option<ast::NodeId>)
+                     opt_node_id: Option<ast::NodeId>,
+                     landing_pad: Option<LandingPad>)
                      -> Block<'a, 'tcx> {
         unsafe {
             let name = CString::new(name).unwrap();
             let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
                                                            self.llfn,
                                                            name.as_ptr());
-            BlockS::new(llbb, opt_node_id, self)
+            let block = BlockS::new(llbb, opt_node_id, self);
+            if let Some(landing_pad) = landing_pad {
+                block.lpad.set(Some(self.lpad_arena.alloc(landing_pad)));
+            }
+            block
         }
     }
 
@@ -446,13 +454,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                         name: &str,
                         node_id: ast::NodeId)
                         -> Block<'a, 'tcx> {
-        self.new_block(name, Some(node_id))
+        self.new_block(name, Some(node_id), None)
     }
 
     pub fn new_temp_block(&'a self,
                           name: &str)
                           -> Block<'a, 'tcx> {
-        self.new_block(name, None)
+        self.new_block(name, None, None)
     }
 
     pub fn join_blocks(&'a self,
@@ -584,7 +592,7 @@ pub struct BlockS<'blk, 'tcx: 'blk> {
 
     // If this block part of a landing pad, then this is `Some` indicating what
     // kind of landing pad its in, otherwise this is none.
-    pub lpad: RefCell<Option<LandingPad>>,
+    pub lpad: Cell<Option<&'blk LandingPad>>,
 
     // AST node-id associated with this block, if any. Used for
     // debugging purposes only.
@@ -606,7 +614,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             llbb: llbb,
             terminated: Cell::new(false),
             unreachable: Cell::new(false),
-            lpad: RefCell::new(None),
+            lpad: Cell::new(None),
             opt_node_id: opt_node_id,
             fcx: fcx
         })
@@ -622,6 +630,10 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.fcx.ccx.tcx()
     }
     pub fn sess(&self) -> &'blk Session { self.fcx.ccx.sess() }
+
+    pub fn lpad(&self) -> Option<&'blk LandingPad> {
+        self.lpad.get()
+    }
 
     pub fn mir(&self) -> &'blk Mir<'tcx> {
         self.fcx.mir()
@@ -745,6 +757,10 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     pub fn llbb(&self) -> BasicBlockRef {
         self.bcx.llbb
+    }
+
+    pub fn lpad(&self) -> Option<&'blk LandingPad> {
+        self.bcx.lpad()
     }
 
     pub fn mir(&self) -> &'blk Mir<'tcx> {

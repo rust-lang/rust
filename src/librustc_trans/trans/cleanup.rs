@@ -740,7 +740,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                     UnwindExit(val) => {
                         // Generate a block that will resume unwinding to the
                         // calling function
-                        let bcx = self.new_block("resume", None);
+                        let bcx = self.new_block("resume", None, None);
                         match val {
                             UnwindKind::LandingPad => {
                                 let addr = self.landingpad_alloca.get()
@@ -830,7 +830,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
 
-                let bcx_in = self.new_block(&name[..], None);
+                let bcx_in = self.new_block(&name[..], None, None);
                 let exit_label = label.start(bcx_in);
                 let mut bcx_out = bcx_in;
                 let len = scope.cleanups.len();
@@ -873,7 +873,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 Some(llbb) => return llbb,
                 None => {
                     let name = last_scope.block_name("unwind");
-                    pad_bcx = self.new_block(&name[..], None);
+                    pad_bcx = self.new_block(&name[..], None, None);
                     last_scope.cached_landing_pad = Some(pad_bcx.llbb);
                 }
             }
@@ -1054,11 +1054,11 @@ impl EarlyExitLabel {
         match *self {
             UnwindExit(UnwindKind::CleanupPad(..)) => {
                 let pad = build::CleanupPad(bcx, None, &[]);
-                *bcx.lpad.borrow_mut() = Some(LandingPad::msvc(pad));
+                bcx.lpad.set(Some(bcx.fcx.lpad_arena.alloc(LandingPad::msvc(pad))));
                 UnwindExit(UnwindKind::CleanupPad(pad))
             }
             UnwindExit(UnwindKind::LandingPad) => {
-                *bcx.lpad.borrow_mut() = Some(LandingPad::gnu());
+                bcx.lpad.set(Some(bcx.fcx.lpad_arena.alloc(LandingPad::gnu())));
                 *self
             }
             label => label,
