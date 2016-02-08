@@ -1018,7 +1018,7 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
 
-    Registry::new(&*all_errors)
+    Registry::new(&all_errors)
 }
 
 pub fn main() {

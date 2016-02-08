@@ -567,7 +567,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
-        super::describe_lints(&*sess.lint_store.borrow(), true);
+        super::describe_lints(&sess.lint_store.borrow(), true);
         return Err(0);
     }
     try!(sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess)));
