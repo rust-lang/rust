@@ -21,7 +21,6 @@ pub fn opts() -> TargetOptions {
             // Always enable NX protection when it is available
             "-Wl,-z,noexecstack".to_string(),
         ],
-        archive_format: "gnu".to_string(),
         exe_allocation_crate: super::maybe_jemalloc(),
 
         .. Default::default()

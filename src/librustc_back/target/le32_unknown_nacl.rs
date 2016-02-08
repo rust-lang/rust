@@ -25,7 +25,6 @@ pub fn target() -> Target {
         no_compiler_rt: false,
         linker_is_gnu: true,
         allow_asm: false,
-        archive_format: "gnu".to_string(),
         .. Default::default()
     };
     Target {

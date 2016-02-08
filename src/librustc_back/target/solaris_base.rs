@@ -18,7 +18,6 @@ pub fn opts() -> TargetOptions {
         executables: true,
         has_rpath: true,
         is_like_solaris: true,
-        archive_format: "gnu".to_string(),
         exe_allocation_crate: super::maybe_jemalloc(),
 
         .. Default::default()

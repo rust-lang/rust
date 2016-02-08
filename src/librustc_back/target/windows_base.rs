@@ -25,7 +25,6 @@ pub fn opts() -> TargetOptions {
         staticlib_suffix: ".lib".to_string(),
         no_default_libraries: true,
         is_like_windows: true,
-        archive_format: "gnu".to_string(),
         pre_link_args: vec!(
             // And here, we see obscure linker flags #45. On windows, it has been
             // found to be necessary to have this flag to compile liblibc.
