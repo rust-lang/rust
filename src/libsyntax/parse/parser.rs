@@ -18,7 +18,7 @@ use ast::{Mod, Arg, Arm, Attribute, BindingMode};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
-use ast::{Decl, DeclItem, DeclLocal, DefaultBlock, DefaultReturn};
+use ast::{Decl, DeclItem, DeclLocal, DefaultBlock};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
@@ -39,11 +39,11 @@ use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, Mutability};
-use ast::{NamedField, NoReturn};
+use ast::NamedField;
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
 use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild};
 use ast::{PolyTraitRef, QSelf};
-use ast::{Return, Stmt, StmtDecl};
+use ast::{Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, VariantData, StructField};
 use ast::StrStyle;
 use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
@@ -1283,13 +1283,13 @@ impl<'a> Parser<'a> {
     pub fn parse_ret_ty(&mut self) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
             if self.eat(&token::Not) {
-                Ok(NoReturn(self.last_span))
+                Ok(FunctionRetTy::None(self.last_span))
             } else {
-                Ok(Return(try!(self.parse_ty())))
+                Ok(FunctionRetTy::Ty(try!(self.parse_ty())))
             }
         } else {
             let pos = self.span.lo;
-            Ok(DefaultReturn(mk_sp(pos, pos)))
+            Ok(FunctionRetTy::Default(mk_sp(pos, pos)))
         }
     }
 
@@ -3053,7 +3053,7 @@ impl<'a> Parser<'a> {
     {
         let decl = try!(self.parse_fn_block_decl());
         let body = match decl.output {
-            DefaultReturn(_) => {
+            FunctionRetTy::Default(_) => {
                 // If no explicit return type is given, parse any
                 // expr and wrap it up in a dummy block:
                 let body_expr = try!(self.parse_expr());

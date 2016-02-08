@@ -16,7 +16,6 @@ pub use self::Decl_::*;
 pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
 pub use self::FloatTy::*;
-pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
 pub use self::IntTy::*;
 pub use self::Item_::*;
@@ -1727,23 +1726,23 @@ impl fmt::Debug for ImplPolarity {
 pub enum FunctionRetTy {
     /// Functions with return type `!`that always
     /// raise an error or exit (i.e. never return to the caller)
-    NoReturn(Span),
+    None(Span),
     /// Return type is not specified.
     ///
     /// Functions default to `()` and
     /// closures default to inference. Span points to where return
     /// type would be inserted.
-    DefaultReturn(Span),
+    Default(Span),
     /// Everything else
-    Return(P<Ty>),
+    Ty(P<Ty>),
 }
 
 impl FunctionRetTy {
     pub fn span(&self) -> Span {
         match *self {
-            NoReturn(span) => span,
-            DefaultReturn(span) => span,
-            Return(ref ty) => ty.span
+            FunctionRetTy::None(span) => span,
+            FunctionRetTy::Default(span) => span,
+            FunctionRetTy::Ty(ref ty) => ty.span,
         }
     }
 }

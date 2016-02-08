@@ -350,7 +350,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             self.visit_ty(&arg.ty);
         }
 
-        if let ast::Return(ref ret_ty) = sig.decl.output {
+        if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
             self.visit_ty(ret_ty);
         }
 
@@ -429,7 +429,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             self.visit_ty(&arg.ty);
         }
 
-        if let ast::Return(ref ret_ty) = decl.output {
+        if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
             self.visit_ty(&ret_ty);
         }
 
@@ -1141,7 +1141,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     self.visit_ty(&*arg.ty);
                 }
 
-                if let ast::Return(ref ret_ty) = decl.output {
+                if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
                     self.visit_ty(&**ret_ty);
                 }
 

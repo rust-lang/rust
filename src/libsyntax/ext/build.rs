@@ -941,7 +941,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn fn_decl(&self, inputs: Vec<ast::Arg>, output: P<ast::Ty>) -> P<ast::FnDecl> {
         P(ast::FnDecl {
             inputs: inputs,
-            output: ast::Return(output),
+            output: ast::FunctionRetTy::Ty(output),
             variadic: false
         })
     }
