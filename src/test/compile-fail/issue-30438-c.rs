@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Simplfied regression test for #30438, inspired by arielb1.
+// Simplified regression test for #30438, inspired by arielb1.
 
 trait Trait { type Out; }
 

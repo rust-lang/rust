@@ -265,7 +265,7 @@ fn map<F, T, A>(option: Option<T>, f: F) -> Option<A> where F: FnOnce(T) -> A {
 ```
 
 Indeed, `map` is [defined as a method][2] on `Option<T>` in the standard library.
-As a method, it has a slighly different signature: methods take `self`, `&self`,
+As a method, it has a slightly different signature: methods take `self`, `&self`,
 or `&mut self` as their first argument.
 
 Armed with our new combinator, we can rewrite our `extension_explicit` method
