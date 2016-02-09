@@ -156,7 +156,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box print::PrintLint);
     reg.register_late_lint_pass(box vec::UselessVec);
     reg.register_late_lint_pass(box drop_ref::DropRefPass);
-    reg.register_late_lint_pass(box types::AbsurdUnsignedComparisons);
+    reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
     reg.register_late_lint_pass(box regex::RegexPass);
     reg.register_late_lint_pass(box copies::CopyAndPaste);
 
@@ -271,7 +271,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         strings::STRING_LIT_AS_BYTES,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::USELESS_TRANSMUTE,
-        types::ABSURD_UNSIGNED_COMPARISONS,
+        types::ABSURD_EXTREME_COMPARISONS,
         types::BOX_VEC,
         types::CHAR_LIT_AS_U8,
         types::LET_UNIT_VALUE,
