@@ -12,7 +12,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::front;
 use rustc::front::map as hir_map;
 use rustc_mir as mir;
-use rustc_mir::mir_map::MirMap;
+use rustc::mir::mir_map::MirMap;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
@@ -545,7 +545,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     });
 
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
-                   llvm_passes, attributes, .. } = registry;
+                   llvm_passes, attributes, mir_passes, .. } = registry;
 
     try!(sess.track_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
@@ -561,6 +561,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
+        *sess.plugin_mir_passes.borrow_mut() = mir_passes;
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
     }));
 
@@ -843,10 +844,14 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "match checking",
              || middle::check_match::check_crate(tcx));
 
-        let mir_map =
+        let mut mir_map =
             time(time_passes,
                  "MIR dump",
                  || mir::mir_map::build_mir_for_crate(tcx));
+
+        time(time_passes,
+             "MIR passes",
+             || mir_map.run_passes(&mut sess.plugin_mir_passes.borrow_mut(), tcx));
 
         time(time_passes,
              "liveness checking",

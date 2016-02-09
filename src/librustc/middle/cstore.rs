@@ -29,6 +29,7 @@ use middle::lang_items;
 use middle::ty::{self, Ty, VariantKind};
 use middle::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
+use mir::mir_map::MirMap;
 use session::Session;
 use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
@@ -244,7 +245,7 @@ pub trait CrateStore<'tcx> : Any {
                        item_symbols: &RefCell<NodeMap<String>>,
                        link_meta: &LinkMeta,
                        reachable: &NodeSet,
-                       mir_map: &NodeMap<Mir<'tcx>>,
+                       mir_map: &MirMap<'tcx>,
                        krate: &hir::Crate) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
 }
@@ -428,7 +429,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
                        item_symbols: &RefCell<NodeMap<String>>,
                        link_meta: &LinkMeta,
                        reachable: &NodeSet,
-                       mir_map: &NodeMap<Mir<'tcx>>,
+                       mir_map: &MirMap<'tcx>,
                        krate: &hir::Crate) -> Vec<u8> { vec![] }
     fn metadata_encoding_version(&self) -> &[u8] { unimplemented!() }
 }

@@ -30,7 +30,7 @@ use middle::ty::{self, Ty};
 use rustc::back::svh::Svh;
 use rustc::front::map::{LinkedPath, PathElem, PathElems};
 use rustc::front::map as ast_map;
-use rustc::mir::repr::Mir;
+use rustc::mir::mir_map::MirMap;
 use rustc::session::config;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
@@ -66,7 +66,7 @@ pub struct EncodeParams<'a, 'tcx: 'a> {
     pub cstore: &'a cstore::CStore,
     pub encode_inlined_item: EncodeInlinedItem<'a>,
     pub reachable: &'a NodeSet,
-    pub mir_map: &'a NodeMap<Mir<'tcx>>,
+    pub mir_map: &'a MirMap<'tcx>,
 }
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
@@ -79,7 +79,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub encode_inlined_item: RefCell<EncodeInlinedItem<'a>>,
     pub type_abbrevs: tyencode::abbrev_map<'tcx>,
     pub reachable: &'a NodeSet,
-    pub mir_map: &'a NodeMap<Mir<'tcx>>,
+    pub mir_map: &'a MirMap<'tcx>,
 }
 
 impl<'a, 'tcx> EncodeContext<'a,'tcx> {
@@ -824,7 +824,7 @@ fn encode_inlined_item(ecx: &EncodeContext,
 }
 
 fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, node_id: NodeId) {
-    if let Some(mir) = ecx.mir_map.get(&node_id) {
+    if let Some(mir) = ecx.mir_map.map.get(&node_id) {
         rbml_w.start_tag(tag_mir as usize);
         rbml_w.emit_opaque(|opaque_encoder| {
             tls::enter_encoding_context(ecx, opaque_encoder, |_, opaque_encoder| {
@@ -1447,7 +1447,7 @@ fn my_visit_expr(expr: &hir::Expr,
 
             ecx.tcx.map.with_path(expr.id, |path| encode_path(rbml_w, path));
 
-            assert!(ecx.mir_map.contains_key(&expr.id));
+            assert!(ecx.mir_map.map.contains_key(&expr.id));
             encode_mir(ecx, rbml_w, expr.id);
 
             rbml_w.end_tag();

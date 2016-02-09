@@ -15,7 +15,7 @@ use middle::cstore::LinkMeta;
 use middle::def::ExportMap;
 use middle::def_id::DefId;
 use middle::traits;
-use rustc_mir::mir_map::MirMap;
+use rustc::mir::mir_map::MirMap;
 use trans::adt;
 use trans::base;
 use trans::builder::Builder;

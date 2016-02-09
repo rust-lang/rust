@@ -11,7 +11,7 @@
 use rustc::middle::const_eval::ConstVal;
 use rustc::mir::repr::*;
 use transform::util;
-use transform::MirPass;
+use rustc::mir::transform::MirPass;
 
 pub struct SimplifyCfg;
 
@@ -118,8 +118,8 @@ impl SimplifyCfg {
     }
 }
 
-impl<'tcx> MirPass<'tcx> for SimplifyCfg {
-    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>) {
+impl MirPass for SimplifyCfg {
+    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &::rustc::middle::ty::ctxt<'tcx>) {
         let mut changed = true;
         while changed {
             changed = self.simplify_branches(mir);

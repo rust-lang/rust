@@ -8,6 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod simplify_cfg;
-pub mod erase_regions;
-mod util;
+// aux-build:dummy_mir_pass.rs
+// ignore-stage1
+
+#![feature(plugin, rustc_attrs)]
+#![plugin(dummy_mir_pass)]
+
+#[rustc_mir]
+fn math() -> i32 {
+    11
+}
+
+pub fn main() {
+    assert_eq!(math(), 42);
+}
