@@ -521,7 +521,7 @@ impl OpenOptions {
     /// No file is allowed to exist at the target location, also no (dangling)
     /// symlink.
     ///
-    /// This option is usefull because it as atomic. Otherwise between checking
+    /// This option is useful because it as atomic. Otherwise between checking
     /// whether a file exists and creating a new one, the file may have been
     /// created by another process (a TOCTOU race condition / attack).
     ///

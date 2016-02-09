@@ -2236,7 +2236,7 @@ impl<'tcx> ctxt<'tcx> {
     /// Given the did of an ADT, return a reference to its definition.
     pub fn lookup_adt_def(&self, did: DefId) -> AdtDef<'tcx> {
         // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
-        // woud be needed here.
+        // would be needed here.
         self.lookup_adt_def_master(did)
     }
 

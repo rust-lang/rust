@@ -265,7 +265,7 @@ fn map<F, T, A>(option: Option<T>, f: F) -> Option<A> where F: FnOnce(T) -> A {
 ```
 
 Indeed, `map` is [defined as a method][2] on `Option<T>` in the standard library.
-As a method, it has a slighly different signature: methods take `self`, `&self`,
+As a method, it has a slightly different signature: methods take `self`, `&self`,
 or `&mut self` as their first argument.
 
 Armed with our new combinator, we can rewrite our `extension_explicit` method
@@ -1592,7 +1592,7 @@ fn print_usage(program: &str, opts: Options) {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let program = args[0].clone();
+    let program = &args[0];
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "Show this usage message.");
@@ -1605,10 +1605,10 @@ fn main() {
         print_usage(&program, opts);
         return;
     }
-    let data_path = args[1].clone();
-    let city = args[2].clone();
+    let data_path = &args[1];
+    let city = &args[2];
 
-	// Do stuff with information
+    // Do stuff with information
 }
 ```
 
@@ -1640,7 +1640,6 @@ sure to add `extern crate csv;` to the top of your file.)
 
 ```rust,ignore
 use std::fs::File;
-use std::path::Path;
 
 // This struct represents the data in each row of the CSV file.
 // Type based decoding absolves us of a lot of the nitty gritty error
@@ -1666,7 +1665,7 @@ fn print_usage(program: &str, opts: Options) {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let program = args[0].clone();
+    let program = &args[0];
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "Show this usage message.");
@@ -1678,25 +1677,24 @@ fn main() {
 
     if matches.opt_present("h") {
         print_usage(&program, opts);
-		return;
-	}
+        return;
+    }
 
-	let data_file = args[1].clone();
-	let data_path = Path::new(&data_file);
-	let city = args[2].clone();
+    let data_path = &args[1];
+    let city: &str = &args[2];
 
-	let file = File::open(data_path).unwrap();
-	let mut rdr = csv::Reader::from_reader(file);
+    let file = File::open(data_path).unwrap();
+    let mut rdr = csv::Reader::from_reader(file);
 
-	for row in rdr.decode::<Row>() {
-		let row = row.unwrap();
+    for row in rdr.decode::<Row>() {
+        let row = row.unwrap();
 
-		if row.city == city {
-			println!("{}, {}: {:?}",
-				row.city, row.country,
-				row.population.expect("population count"));
-		}
-	}
+        if row.city == city {
+            println!("{}, {}: {:?}",
+                row.city, row.country,
+                row.population.expect("population count"));
+        }
+    }
 }
 ```
 
@@ -1745,6 +1743,8 @@ Note that we opt to handle the possibility of a missing population count by
 simply ignoring that row.
 
 ```rust,ignore
+use std::path::Path;
+
 struct Row {
     // unchanged
 }
@@ -1782,27 +1782,26 @@ fn search<P: AsRef<Path>>(file_path: P, city: &str) -> Vec<PopulationCount> {
 }
 
 fn main() {
-	let args: Vec<String> = env::args().collect();
-	let program = args[0].clone();
+    let args: Vec<String> = env::args().collect();
+    let program = &args[0];
 
-	let mut opts = Options::new();
-	opts.optflag("h", "help", "Show this usage message.");
+    let mut opts = Options::new();
+    opts.optflag("h", "help", "Show this usage message.");
 
-	let matches = match opts.parse(&args[1..]) {
-		Ok(m)  => { m }
-		Err(e) => { panic!(e.to_string()) }
-	};
-	if matches.opt_present("h") {
-		print_usage(&program, opts);
-		return;
-	}
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m)  => { m }
+        Err(e) => { panic!(e.to_string()) }
+    };
+    if matches.opt_present("h") {
+        print_usage(&program, opts);
+        return;
+    }
 
-	let data_file = args[1].clone();
-	let data_path = Path::new(&data_file);
-	let city = args[2].clone();
-	for pop in search(&data_path, &city) {
-		println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
-	}
+    let data_path = &args[1];
+    let city = &args[2];
+    for pop in search(data_path, city) {
+        println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
+    }
 }
 
 ```
@@ -1912,7 +1911,7 @@ First, here's the new usage:
 
 ```rust,ignore
 fn print_usage(program: &str, opts: Options) {
-	println!("{}", opts.usage(&format!("Usage: {} [options] <city>", program)));
+    println!("{}", opts.usage(&format!("Usage: {} [options] <city>", program)));
 }
 ```
 The next part is going to be only a little harder:
@@ -1924,16 +1923,16 @@ opts.optopt("f", "file", "Choose an input file, instead of using STDIN.", "NAME"
 opts.optflag("h", "help", "Show this usage message.");
 ...
 let file = matches.opt_str("f");
-let data_file = file.as_ref().map(Path::new);
+let data_file = &file.as_ref().map(Path::new);
 
 let city = if !matches.free.is_empty() {
-	matches.free[0].clone()
+    &matches.free[0]
 } else {
-	print_usage(&program, opts);
-	return;
+    print_usage(&program, opts);
+    return;
 };
 
-match search(&data_file, &city) {
+match search(data_file, city) {
     Ok(pops) => {
         for pop in pops {
             println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
