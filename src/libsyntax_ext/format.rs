@@ -453,7 +453,7 @@ impl<'a, 'b> Context<'a, 'b> {
             ast::MutImmutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
         // static instead of const to speed up codegen by not requiring this to be inlined
-        let st = ast::ItemStatic(ty, ast::MutImmutable, slice);
+        let st = ast::ItemKind::Static(ty, ast::MutImmutable, slice);
 
         let name = ecx.ident_of(name);
         let item = ecx.item(sp, name, vec![], st);

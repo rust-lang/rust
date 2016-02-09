@@ -120,7 +120,7 @@ impl<F> MultiItemDecorator for F
     }
 }
 
-// A more flexible ItemModifier (ItemModifier should go away, eventually, FIXME).
+// A more flexible ItemKind::Modifier (ItemKind::Modifier should go away, eventually, FIXME).
 // meta_item is the annotation, item is the item being modified, parent_item
 // is the impl or trait item is declared in if item is part of such a thing.
 // FIXME Decorators should follow the same pattern too.

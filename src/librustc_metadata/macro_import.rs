@@ -56,7 +56,7 @@ pub fn read_macro_defs(sess: &Session, cstore: &CStore, krate: &ast::Crate)
     // crate root, because `$crate` won't work properly. Identify these by
     // spans, because the crate map isn't set up yet.
     for item in &krate.module.items {
-        if let ast::ItemExternCrate(_) = item.node {
+        if let ast::ItemKind::ExternCrate(_) = item.node {
             loader.span_whitelist.insert(item.span);
         }
     }
@@ -73,7 +73,7 @@ impl<'a, 'v> Visitor<'v> for MacroLoader<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
         // We're only interested in `extern crate`.
         match item.node {
-            ast::ItemExternCrate(_) => {}
+            ast::ItemKind::ExternCrate(_) => {}
             _ => {
                 visit::walk_item(self, item);
                 return;

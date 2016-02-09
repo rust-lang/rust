@@ -654,21 +654,21 @@ pub fn lower_block(lctx: &LoweringContext, b: &Block) -> P<hir::Block> {
     })
 }
 
-pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
+pub fn lower_item_kind(lctx: &LoweringContext, i: &ItemKind) -> hir::Item_ {
     match *i {
-        ItemExternCrate(string) => hir::ItemExternCrate(string),
-        ItemUse(ref view_path) => {
+        ItemKind::ExternCrate(string) => hir::ItemExternCrate(string),
+        ItemKind::Use(ref view_path) => {
             hir::ItemUse(lower_view_path(lctx, view_path))
         }
-        ItemStatic(ref t, m, ref e) => {
+        ItemKind::Static(ref t, m, ref e) => {
             hir::ItemStatic(lower_ty(lctx, t),
                             lower_mutability(lctx, m),
                             lower_expr(lctx, e))
         }
-        ItemConst(ref t, ref e) => {
+        ItemKind::Const(ref t, ref e) => {
             hir::ItemConst(lower_ty(lctx, t), lower_expr(lctx, e))
         }
-        ItemFn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+        ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
             hir::ItemFn(lower_fn_decl(lctx, decl),
                         lower_unsafety(lctx, unsafety),
                         lower_constness(lctx, constness),
@@ -676,12 +676,12 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                         lower_generics(lctx, generics),
                         lower_block(lctx, body))
         }
-        ItemMod(ref m) => hir::ItemMod(lower_mod(lctx, m)),
-        ItemForeignMod(ref nm) => hir::ItemForeignMod(lower_foreign_mod(lctx, nm)),
-        ItemTy(ref t, ref generics) => {
+        ItemKind::Mod(ref m) => hir::ItemMod(lower_mod(lctx, m)),
+        ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(lower_foreign_mod(lctx, nm)),
+        ItemKind::Ty(ref t, ref generics) => {
             hir::ItemTy(lower_ty(lctx, t), lower_generics(lctx, generics))
         }
-        ItemEnum(ref enum_definition, ref generics) => {
+        ItemKind::Enum(ref enum_definition, ref generics) => {
             hir::ItemEnum(hir::EnumDef {
                               variants: enum_definition.variants
                                                        .iter()
@@ -690,15 +690,15 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                           },
                           lower_generics(lctx, generics))
         }
-        ItemStruct(ref struct_def, ref generics) => {
+        ItemKind::Struct(ref struct_def, ref generics) => {
             let struct_def = lower_variant_data(lctx, struct_def);
             hir::ItemStruct(struct_def, lower_generics(lctx, generics))
         }
-        ItemDefaultImpl(unsafety, ref trait_ref) => {
+        ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
             hir::ItemDefaultImpl(lower_unsafety(lctx, unsafety),
                                  lower_trait_ref(lctx, trait_ref))
         }
-        ItemImpl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
+        ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
             let new_impl_items = impl_items.iter()
                                            .map(|item| lower_impl_item(lctx, item))
                                            .collect();
@@ -710,7 +710,7 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                           lower_ty(lctx, ty),
                           new_impl_items)
         }
-        ItemTrait(unsafety, ref generics, ref bounds, ref items) => {
+        ItemKind::Trait(unsafety, ref generics, ref bounds, ref items) => {
             let bounds = lower_bounds(lctx, bounds);
             let items = items.iter().map(|item| lower_trait_item(lctx, item)).collect();
             hir::ItemTrait(lower_unsafety(lctx, unsafety),
@@ -718,7 +718,7 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                            bounds,
                            items)
         }
-        ItemMac(_) => panic!("Shouldn't still be around"),
+        ItemKind::Mac(_) => panic!("Shouldn't still be around"),
     }
 }
 
@@ -820,7 +820,7 @@ pub fn lower_item_id(_lctx: &LoweringContext, i: &Item) -> hir::ItemId {
 }
 
 pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
-    let node = lower_item_underscore(lctx, &i.node);
+    let node = lower_item_kind(lctx, &i.node);
 
     hir::Item {
         id: i.id,

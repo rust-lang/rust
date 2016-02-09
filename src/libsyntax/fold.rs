@@ -71,8 +71,8 @@ pub trait Folder : Sized {
         noop_fold_struct_field(sf, self)
     }
 
-    fn fold_item_underscore(&mut self, i: Item_) -> Item_ {
-        noop_fold_item_underscore(i, self)
+    fn fold_item_kind(&mut self, i: ItemKind) -> ItemKind {
+        noop_fold_item_kind(i, self)
     }
 
     fn fold_trait_item(&mut self, i: P<TraitItem>) -> SmallVector<P<TraitItem>> {
@@ -890,20 +890,20 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     })
 }
 
-pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
+pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
     match i {
-        ItemExternCrate(string) => ItemExternCrate(string),
-        ItemUse(view_path) => {
-            ItemUse(folder.fold_view_path(view_path))
+        ItemKind::ExternCrate(string) => ItemKind::ExternCrate(string),
+        ItemKind::Use(view_path) => {
+            ItemKind::Use(folder.fold_view_path(view_path))
         }
-        ItemStatic(t, m, e) => {
-            ItemStatic(folder.fold_ty(t), m, folder.fold_expr(e))
+        ItemKind::Static(t, m, e) => {
+            ItemKind::Static(folder.fold_ty(t), m, folder.fold_expr(e))
         }
-        ItemConst(t, e) => {
-            ItemConst(folder.fold_ty(t), folder.fold_expr(e))
+        ItemKind::Const(t, e) => {
+            ItemKind::Const(folder.fold_ty(t), folder.fold_expr(e))
         }
-        ItemFn(decl, unsafety, constness, abi, generics, body) => {
-            ItemFn(
+        ItemKind::Fn(decl, unsafety, constness, abi, generics, body) => {
+            ItemKind::Fn(
                 folder.fold_fn_decl(decl),
                 unsafety,
                 constness,
@@ -912,26 +912,26 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                 folder.fold_block(body)
             )
         }
-        ItemMod(m) => ItemMod(folder.fold_mod(m)),
-        ItemForeignMod(nm) => ItemForeignMod(folder.fold_foreign_mod(nm)),
-        ItemTy(t, generics) => {
-            ItemTy(folder.fold_ty(t), folder.fold_generics(generics))
+        ItemKind::Mod(m) => ItemKind::Mod(folder.fold_mod(m)),
+        ItemKind::ForeignMod(nm) => ItemKind::ForeignMod(folder.fold_foreign_mod(nm)),
+        ItemKind::Ty(t, generics) => {
+            ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics))
         }
-        ItemEnum(enum_definition, generics) => {
-            ItemEnum(
+        ItemKind::Enum(enum_definition, generics) => {
+            ItemKind::Enum(
                 ast::EnumDef {
                     variants: enum_definition.variants.move_map(|x| folder.fold_variant(x)),
                 },
                 folder.fold_generics(generics))
         }
-        ItemStruct(struct_def, generics) => {
+        ItemKind::Struct(struct_def, generics) => {
             let struct_def = folder.fold_variant_data(struct_def);
-            ItemStruct(struct_def, folder.fold_generics(generics))
+            ItemKind::Struct(struct_def, folder.fold_generics(generics))
         }
-        ItemDefaultImpl(unsafety, ref trait_ref) => {
-            ItemDefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
+        ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+            ItemKind::DefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
         }
-        ItemImpl(unsafety, polarity, generics, ifce, ty, impl_items) => {
+        ItemKind::Impl(unsafety, polarity, generics, ifce, ty, impl_items) => {
             let new_impl_items = impl_items.move_flat_map(|item| {
                 folder.fold_impl_item(item)
             });
@@ -941,24 +941,24 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                     Some(folder.fold_trait_ref((*trait_ref).clone()))
                 }
             };
-            ItemImpl(unsafety,
+            ItemKind::Impl(unsafety,
                      polarity,
                      folder.fold_generics(generics),
                      ifce,
                      folder.fold_ty(ty),
                      new_impl_items)
         }
-        ItemTrait(unsafety, generics, bounds, items) => {
+        ItemKind::Trait(unsafety, generics, bounds, items) => {
             let bounds = folder.fold_bounds(bounds);
             let items = items.move_flat_map(|item| {
                 folder.fold_trait_item(item)
             });
-            ItemTrait(unsafety,
+            ItemKind::Trait(unsafety,
                       folder.fold_generics(generics),
                       bounds,
                       items)
         }
-        ItemMac(m) => ItemMac(folder.fold_mac(m)),
+        ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
     }
 }
 
@@ -1025,7 +1025,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
         id: ast::DUMMY_NODE_ID,
         vis: ast::Public,
         span: span,
-        node: ast::ItemMod(module),
+        node: ast::ItemKind::Mod(module),
     })).into_iter();
 
     let (module, attrs, span) = match items.next() {
@@ -1034,7 +1034,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
                     "a crate cannot expand to more than one item");
             item.and_then(|ast::Item { attrs, span, node, .. }| {
                 match node {
-                    ast::ItemMod(m) => (m, attrs, span),
+                    ast::ItemKind::Mod(m) => (m, attrs, span),
                     _ => panic!("fold converted a module to not a module"),
                 }
             })
@@ -1067,10 +1067,10 @@ pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVector<P<It
 pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}: Item,
                                         folder: &mut T) -> Item {
     let id = folder.new_id(id);
-    let node = folder.fold_item_underscore(node);
+    let node = folder.fold_item_kind(node);
     let ident = match node {
         // The node may have changed, recompute the "pretty" impl name.
-        ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
+        ItemKind::Impl(_, _, _, ref maybe_trait, ref ty, _) => {
             ast_util::impl_pretty_name(maybe_trait, Some(&**ty))
         }
         _ => ident

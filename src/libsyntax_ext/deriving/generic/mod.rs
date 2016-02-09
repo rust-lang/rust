@@ -391,13 +391,13 @@ impl<'a> TraitDef<'a> {
         match *item {
             Annotatable::Item(ref item) => {
                 let newitem = match item.node {
-                    ast::ItemStruct(ref struct_def, ref generics) => {
+                    ast::ItemKind::Struct(ref struct_def, ref generics) => {
                         self.expand_struct_def(cx,
                                                &struct_def,
                                                item.ident,
                                                generics)
                     }
-                    ast::ItemEnum(ref enum_def, ref generics) => {
+                    ast::ItemKind::Enum(ref enum_def, ref generics) => {
                         self.expand_enum_def(cx,
                                              enum_def,
                                              &item.attrs,
@@ -637,12 +637,12 @@ impl<'a> TraitDef<'a> {
             self.span,
             ident,
             a,
-            ast::ItemImpl(unsafety,
-                          ast::ImplPolarity::Positive,
-                          trait_generics,
-                          opt_trait_ref,
-                          self_type,
-                          methods.into_iter().chain(associated_types).collect()))
+            ast::ItemKind::Impl(unsafety,
+                                ast::ImplPolarity::Positive,
+                                trait_generics,
+                                opt_trait_ref,
+                                self_type,
+                                methods.into_iter().chain(associated_types).collect()))
     }
 
     fn expand_struct_def(&self,

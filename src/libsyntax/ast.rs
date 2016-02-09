@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::Item_::*;
 pub use self::KleeneOp::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
@@ -1828,7 +1827,7 @@ pub struct Attribute_ {
 ///
 /// resolve maps each TraitRef's ref_id to its defining trait; that's all
 /// that the ref_id is for. The impl_id maps to the "self type" of this impl.
-/// If this impl is an ItemImpl, the impl_id is redundant (it could be the
+/// If this impl is an ItemKind::Impl, the impl_id is redundant (it could be the
 /// same as the impl's node id).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitRef {
@@ -1956,7 +1955,7 @@ pub struct Item {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
-    pub node: Item_,
+    pub node: ItemKind,
     pub vis: Visibility,
     pub span: Span,
 }
@@ -1968,32 +1967,32 @@ impl Item {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Item_ {
+pub enum ItemKind {
     /// An`extern crate` item, with optional original crate name,
     ///
     /// e.g. `extern crate foo` or `extern crate foo_bar as foo`
-    ItemExternCrate(Option<Name>),
+    ExternCrate(Option<Name>),
     /// A `use` or `pub use` item
-    ItemUse(P<ViewPath>),
+    Use(P<ViewPath>),
 
     /// A `static` item
-    ItemStatic(P<Ty>, Mutability, P<Expr>),
+    Static(P<Ty>, Mutability, P<Expr>),
     /// A `const` item
-    ItemConst(P<Ty>, P<Expr>),
+    Const(P<Ty>, P<Expr>),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
+    Fn(P<FnDecl>, Unsafety, Constness, Abi, Generics, P<Block>),
     /// A module
-    ItemMod(Mod),
+    Mod(Mod),
     /// An external module
-    ItemForeignMod(ForeignMod),
+    ForeignMod(ForeignMod),
     /// A type alias, e.g. `type Foo = Bar<u8>`
-    ItemTy(P<Ty>, Generics),
+    Ty(P<Ty>, Generics),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
-    ItemEnum(EnumDef, Generics),
+    Enum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
-    ItemStruct(VariantData, Generics),
+    Struct(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(Unsafety,
+    Trait(Unsafety,
               Generics,
               TyParamBounds,
               Vec<P<TraitItem>>),
@@ -2001,35 +2000,35 @@ pub enum Item_ {
     // Default trait implementations
     ///
     // `impl Trait for .. {}`
-    ItemDefaultImpl(Unsafety, TraitRef),
+    DefaultImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
-    ItemImpl(Unsafety,
+    Impl(Unsafety,
              ImplPolarity,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<P<ImplItem>>),
     /// A macro invocation (which includes macro definition)
-    ItemMac(Mac),
+    Mac(Mac),
 }
 
-impl Item_ {
+impl ItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
-            ItemExternCrate(..) => "extern crate",
-            ItemUse(..) => "use",
-            ItemStatic(..) => "static item",
-            ItemConst(..) => "constant item",
-            ItemFn(..) => "function",
-            ItemMod(..) => "module",
-            ItemForeignMod(..) => "foreign module",
-            ItemTy(..) => "type alias",
-            ItemEnum(..) => "enum",
-            ItemStruct(..) => "struct",
-            ItemTrait(..) => "trait",
-            ItemMac(..) |
-            ItemImpl(..) |
-            ItemDefaultImpl(..) => "item"
+            ItemKind::ExternCrate(..) => "extern crate",
+            ItemKind::Use(..) => "use",
+            ItemKind::Static(..) => "static item",
+            ItemKind::Const(..) => "constant item",
+            ItemKind::Fn(..) => "function",
+            ItemKind::Mod(..) => "module",
+            ItemKind::ForeignMod(..) => "foreign module",
+            ItemKind::Ty(..) => "type alias",
+            ItemKind::Enum(..) => "enum",
+            ItemKind::Struct(..) => "struct",
+            ItemKind::Trait(..) => "trait",
+            ItemKind::Mac(..) |
+            ItemKind::Impl(..) |
+            ItemKind::DefaultImpl(..) => "item"
         }
     }
 }

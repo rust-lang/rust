@@ -226,7 +226,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             ident: name.clone(),
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
-            node: ast::ItemConst(
+            node: ast::ItemKind::Const(
                 ty,
                 expr,
             ),

@@ -864,9 +864,10 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
 impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
+        use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);
         match item.node {
-            ast::ItemUse(ref use_item) => {
+            Use(ref use_item) => {
                 match use_item.node {
                     ast::ViewPathSimple(ident, ref path) => {
                         let sub_span = self.span.span_for_last_ident(path.span);
@@ -950,7 +951,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     }
                 }
             }
-            ast::ItemExternCrate(ref s) => {
+            ExternCrate(ref s) => {
                 let location = match *s {
                     Some(s) => s.to_string(),
                     None => item.ident.to_string(),
@@ -968,28 +969,28 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                           &location,
                                           self.cur_scope);
             }
-            ast::ItemFn(ref decl, _, _, _, ref ty_params, ref body) =>
+            Fn(ref decl, _, _, _, ref ty_params, ref body) =>
                 self.process_fn(item, &**decl, ty_params, &**body),
-            ast::ItemStatic(ref typ, _, ref expr) =>
+            Static(ref typ, _, ref expr) =>
                 self.process_static_or_const_item(item, typ, expr),
-            ast::ItemConst(ref typ, ref expr) =>
+            Const(ref typ, ref expr) =>
                 self.process_static_or_const_item(item, &typ, &expr),
-            ast::ItemStruct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
-            ast::ItemEnum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            ast::ItemImpl(_, _,
+            Struct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
+            Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
+            Impl(_, _,
                           ref ty_params,
                           ref trait_ref,
                           ref typ,
                           ref impl_items) => {
                 self.process_impl(item, ty_params, trait_ref, &typ, impl_items)
             }
-            ast::ItemTrait(_, ref generics, ref trait_refs, ref methods) =>
+            Trait(_, ref generics, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
-            ast::ItemMod(ref m) => {
+            Mod(ref m) => {
                 self.process_mod(item);
                 self.nest(item.id, |v| visit::walk_mod(v, m));
             }
-            ast::ItemTy(ref ty, ref ty_params) => {
+            Ty(ref ty, ref ty_params) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let value = ty_to_string(&**ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
@@ -998,7 +999,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 self.visit_ty(&**ty);
                 self.process_generic_params(ty_params, item.span, &qualname, item.id);
             }
-            ast::ItemMac(_) => (),
+            Mac(_) => (),
             _ => visit::walk_item(self, item),
         }
     }

@@ -855,7 +855,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_item(&mut self, i: &ast::Item) {
         match i.node {
-            ast::ItemExternCrate(_) => {
+            ast::ItemKind::ExternCrate(_) => {
                 if attr::contains_name(&i.attrs[..], "macro_reexport") {
                     self.gate_feature("macro_reexport", i.span,
                                       "macros reexports are experimental \
@@ -863,7 +863,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemForeignMod(ref foreign_module) => {
+            ast::ItemKind::ForeignMod(ref foreign_module) => {
                 if attr::contains_name(&i.attrs[..], "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
@@ -888,7 +888,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemFn(..) => {
+            ast::ItemKind::Fn(..) => {
                 if attr::contains_name(&i.attrs[..], "plugin_registrar") {
                     self.gate_feature("plugin_registrar", i.span,
                                       "compiler plugins are experimental and possibly buggy");
@@ -907,7 +907,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemStruct(..) => {
+            ast::ItemKind::Struct(..) => {
                 if attr::contains_name(&i.attrs[..], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
@@ -928,14 +928,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemDefaultImpl(..) => {
+            ast::ItemKind::DefaultImpl(..) => {
                 self.gate_feature("optin_builtin_traits",
                                   i.span,
                                   "default trait implementations are experimental \
                                    and possibly buggy");
             }
 
-            ast::ItemImpl(_, polarity, _, _, _, _) => {
+            ast::ItemKind::Impl(_, polarity, _, _, _, _) => {
                 match polarity {
                     ast::ImplPolarity::Negative => {
                         self.gate_feature("optin_builtin_traits",
