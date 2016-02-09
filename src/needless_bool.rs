@@ -6,6 +6,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 
 use syntax::ast::Lit_;
+use syntax::codemap::Spanned;
 
 use utils::{span_lint, snippet};
 
@@ -21,6 +22,20 @@ declare_lint! {
     Warn,
     "if-statements with plain booleans in the then- and else-clause, e.g. \
      `if p { true } else { false }`"
+}
+
+/// **What it does:** This lint checks for expressions of the form `x == true` (or vice versa) and suggest using the variable directly.
+///
+/// **Why is this bad?** Unnecessary code.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `if x == true { }` could be `if x { }`
+declare_lint! {
+    pub BOOL_COMPARISON,
+    Warn,
+    "comparing a variable to a boolean, e.g. \
+     `if x == true`"
 }
 
 #[derive(Copy,Clone)]
@@ -71,6 +86,57 @@ impl LateLintPass for NeedlessBool {
                               NEEDLESS_BOOL,
                               e.span,
                               &format!("you can reduce this if-then-else expression to just {}", hint));
+                }
+                _ => (),
+            }
+        }
+    }
+}
+
+#[derive(Copy,Clone)]
+pub struct BoolComparison;
+
+impl LintPass for BoolComparison {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(BOOL_COMPARISON)
+    }
+}
+
+impl LateLintPass for BoolComparison {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+        if let ExprBinary(Spanned{ node: BiEq, .. }, ref left_side, ref right_side) = e.node {
+            match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
+                (Some(true), None) => {
+                    let side_snip = snippet(cx, right_side.span, "..");
+                    let hint = format!("`{}`", side_snip);
+                    span_lint(cx,
+                              BOOL_COMPARISON,
+                              e.span,
+                              &format!("you can simplify this boolean comparison to {}", hint));
+                }
+                (None, Some(true)) => {
+                    let side_snip = snippet(cx, left_side.span, "..");
+                    let hint = format!("`{}`", side_snip);
+                    span_lint(cx,
+                              BOOL_COMPARISON,
+                              e.span,
+                              &format!("you can simplify this boolean comparison to {}", hint));
+                }
+                (Some(false), None) => {
+                    let side_snip = snippet(cx, right_side.span, "..");
+                    let hint = format!("`!{}`", side_snip);
+                    span_lint(cx,
+                              BOOL_COMPARISON,
+                              e.span,
+                              &format!("you can simplify this boolean comparison to {}", hint));
+                }
+                (None, Some(false)) => {
+                    let side_snip = snippet(cx, left_side.span, "..");
+                    let hint = format!("`!{}`", side_snip);
+                    span_lint(cx,
+                              BOOL_COMPARISON,
+                              e.span,
+                              &format!("you can simplify this boolean comparison to {}", hint));
                 }
                 _ => (),
             }
