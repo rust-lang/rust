@@ -1046,7 +1046,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(item.span.lo));
         try!(self.print_outer_attributes(&item.attrs));
         match item.node {
-            ast::ForeignItemFn(ref decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 try!(self.head(""));
                 try!(self.print_fn(decl, ast::Unsafety::Normal,
                                    ast::Constness::NotConst,
@@ -1056,7 +1056,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 self.end() // end the outer fn box
             }
-            ast::ForeignItemStatic(ref t, m) => {
+            ast::ForeignItemKind::Static(ref t, m) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "static")));
                 if m {

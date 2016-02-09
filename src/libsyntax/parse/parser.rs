@@ -22,7 +22,7 @@ use ast::{Decl, DeclKind};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, ExprKind};
 use ast::{Field, FnDecl};
-use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, FunctionRetTy};
+use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
@@ -5256,7 +5256,7 @@ impl<'a> Parser<'a> {
         Ok(P(ast::ForeignItem {
             ident: ident,
             attrs: attrs,
-            node: ForeignItemFn(decl, generics),
+            node: ForeignItemKind::Fn(decl, generics),
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
             vis: vis
@@ -5277,7 +5277,7 @@ impl<'a> Parser<'a> {
         Ok(P(ForeignItem {
             ident: ident,
             attrs: attrs,
-            node: ForeignItemStatic(ty, mutbl),
+            node: ForeignItemKind::Static(ty, mutbl),
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
             vis: vis
