@@ -3,7 +3,7 @@ use rustc_front::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use utils::{SpanlessEq, SpanlessHash};
-use utils::{get_parent_expr, in_macro, span_lint, span_note_and_lint};
+use utils::{get_parent_expr, in_macro, span_note_and_lint};
 
 /// **What it does:** This lint checks for consecutive `ifs` with the same condition. This lint is
 /// `Warn` by default.
@@ -56,26 +56,40 @@ impl LateLintPass for CopyAndPaste {
             }
 
             let (conds, blocks) = if_sequence(expr);
-            lint_same_then_else(cx, expr);
+            lint_same_then_else(cx, &blocks);
             lint_same_cond(cx, &conds);
         }
     }
 }
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
-fn lint_same_then_else(cx: &LateContext, expr: &Expr) {
-    if let ExprIf(_, ref then_block, Some(ref else_expr)) = expr.node {
-        if let ExprBlock(ref else_block) = else_expr.node {
-            if SpanlessEq::new(cx).eq_block(&then_block, &else_block) {
-                span_lint(cx, IF_SAME_THEN_ELSE, expr.span, "this if has the same then and else blocks");
-            }
-        }
+fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
+    let hash = |block| -> u64 {
+        let mut h = SpanlessHash::new(cx);
+        h.hash_block(block);
+        h.finish()
+    };
+    let eq = |lhs, rhs| -> bool {
+        SpanlessEq::new(cx).eq_block(lhs, rhs)
+    };
+
+    if let Some((i, j)) = search_same(blocks, hash, eq) {
+        span_note_and_lint(cx, IF_SAME_THEN_ELSE, j.span, "this if has identical blocks", i.span, "same as this");
     }
 }
 
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
-    if let Some((i, j)) = search_same(cx, conds) {
+    let hash = |expr| -> u64 {
+        let mut h = SpanlessHash::new(cx);
+        h.hash_expr(expr);
+        h.finish()
+    };
+    let eq = |lhs, rhs| -> bool {
+        SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs)
+    };
+
+    if let Some((i, j)) = search_same(conds, hash, eq) {
         span_note_and_lint(cx, IFS_SAME_COND, j.span, "this if has the same condition as a previous if", i.span, "same as this");
     }
 }
@@ -109,13 +123,17 @@ fn if_sequence(mut expr: &Expr) -> (Vec<&Expr>, Vec<&Block>) {
     (conds, blocks)
 }
 
-fn search_same<'a>(cx: &LateContext, exprs: &[&'a Expr]) -> Option<(&'a Expr, &'a Expr)> {
+fn search_same<'a, T, Hash, Eq>(exprs: &[&'a T],
+                                hash: Hash,
+                                eq: Eq) -> Option<(&'a T, &'a T)>
+where Hash: Fn(&'a T) -> u64,
+      Eq: Fn(&'a T, &'a T) -> bool {
     // common cases
     if exprs.len() < 2 {
         return None;
     }
     else if exprs.len() == 2 {
-        return if SpanlessEq::new(cx).ignore_fn().eq_expr(&exprs[0], &exprs[1]) {
+        return if eq(&exprs[0], &exprs[1]) {
             Some((&exprs[0], &exprs[1]))
         }
         else {
@@ -126,14 +144,10 @@ fn search_same<'a>(cx: &LateContext, exprs: &[&'a Expr]) -> Option<(&'a Expr, &'
     let mut map : HashMap<_, Vec<&'a _>> = HashMap::with_capacity(exprs.len());
 
     for &expr in exprs {
-        let mut h = SpanlessHash::new(cx);
-        h.hash_expr(expr);
-        let h = h.finish();
-
-        match map.entry(h) {
+        match map.entry(hash(expr)) {
             Entry::Occupied(o) => {
                 for o in o.get() {
-                    if SpanlessEq::new(cx).ignore_fn().eq_expr(o, expr) {
+                    if eq(o, expr) {
                         return Some((o, expr))
                     }
                 }

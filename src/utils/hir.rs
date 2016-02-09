@@ -246,6 +246,10 @@ fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
 }
 
 
+/// Type used to hash an ast element. This is different from the `Hash` trait on ast types as this
+/// trait would consider IDs and spans.
+///
+/// All expressions kind are hashed, but some might have a weaker hash.
 pub struct SpanlessHash<'a, 'tcx: 'a> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,

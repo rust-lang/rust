@@ -5,16 +5,15 @@
 #![allow(let_and_return)]
 #![allow(needless_return)]
 #![allow(unused_variables)]
-#![deny(if_same_then_else)]
-#![deny(ifs_same_cond)]
 
 fn foo() -> bool { unimplemented!() }
 
+#[deny(if_same_then_else)]
 fn if_same_then_else() -> &'static str {
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
         foo();
     }
-    else {
+    else { //~ERROR this if has identical blocks
         foo();
     }
 
@@ -26,11 +25,11 @@ fn if_same_then_else() -> &'static str {
         foo();
     }
 
-    let _ = if true { //~ERROR this if has the same then and else blocks
+    let _ = if true {
         foo();
         42
     }
-    else {
+    else { //~ERROR this if has identical blocks
         foo();
         42
     };
@@ -39,14 +38,14 @@ fn if_same_then_else() -> &'static str {
         foo();
     }
 
-    let _ = if true { //~ERROR this if has the same then and else blocks
+    let _ = if true {
         42
     }
-    else {
+    else { //~ERROR this if has identical blocks
         42
     };
 
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
         let bar = if true {
             42
         }
@@ -57,7 +56,7 @@ fn if_same_then_else() -> &'static str {
         while foo() { break; }
         bar + 1;
     }
-    else {
+    else { //~ERROR this if has identical blocks
         let bar = if true {
             42
         }
@@ -69,7 +68,7 @@ fn if_same_then_else() -> &'static str {
         bar + 1;
     }
 
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
         match 42 {
             42 => (),
             a if a > 0 => (),
@@ -77,7 +76,10 @@ fn if_same_then_else() -> &'static str {
             _ => (),
         }
     }
-    else {
+    else if false {
+        foo();
+    }
+    else if foo() { //~ERROR this if has identical blocks
         match 42 {
             42 => (),
             a if a > 0 => (),
@@ -86,23 +88,36 @@ fn if_same_then_else() -> &'static str {
         }
     }
 
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
         if let Some(a) = Some(42) {}
     }
-    else {
+    else { //~ERROR this if has identical blocks
         if let Some(a) = Some(42) {}
     }
 
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
+        if let Some(a) = Some(42) {}
+    }
+    else {
+        if let Some(a) = Some(43) {}
+    }
+
+    if true {
         let foo = "";
         return &foo[0..];
     }
-    else {
+    else if false {
+        let foo = "bar";
+        return &foo[0..];
+    }
+    else { //~ERROR this if has identical blocks
         let foo = "";
         return &foo[0..];
     }
 }
 
+#[deny(ifs_same_cond)]
+#[allow(if_same_then_else)] // all empty blocks
 fn ifs_same_cond() {
     let a = 0;
     let b = false;
