@@ -2599,11 +2599,11 @@ impl<'a> Parser<'a> {
             match parser.token {
                 token::BinOp(token::Star) => {
                     parser.bump();
-                    Ok(Some(ast::ZeroOrMore))
+                    Ok(Some(ast::KleeneOp::ZeroOrMore))
                 },
                 token::BinOp(token::Plus) => {
                     parser.bump();
-                    Ok(Some(ast::OneOrMore))
+                    Ok(Some(ast::KleeneOp::OneOrMore))
                 },
                 _ => Ok(None)
             }

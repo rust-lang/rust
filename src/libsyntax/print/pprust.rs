@@ -1489,8 +1489,8 @@ impl<'a> State<'a> {
                     None => {},
                 }
                 match seq.op {
-                    ast::ZeroOrMore => word(&mut self.s, "*"),
-                    ast::OneOrMore => word(&mut self.s, "+"),
+                    ast::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
+                    ast::KleeneOp::OneOrMore => word(&mut self.s, "+"),
                 }
             }
         }

@@ -542,11 +542,6 @@ fn mk_tt_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
     cx.expr_path(cx.path_global(sp, idents))
 }
 
-fn mk_ast_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
-    let idents = vec!(id_ext("syntax"), id_ext("ast"), id_ext(name));
-    cx.expr_path(cx.path_global(sp, idents))
-}
-
 fn mk_token_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
     let idents = vec!(id_ext("syntax"), id_ext("parse"), id_ext("token"), id_ext(name));
     cx.expr_path(cx.path_global(sp, idents))
@@ -779,9 +774,16 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<P<ast::S
                 None => cx.expr_none(sp),
             };
             let e_op = match seq.op {
-                ast::ZeroOrMore => mk_ast_path(cx, sp, "ZeroOrMore"),
-                ast::OneOrMore => mk_ast_path(cx, sp, "OneOrMore"),
+                ast::KleeneOp::ZeroOrMore => "ZeroOrMore",
+                ast::KleeneOp::OneOrMore => "OneOrMore",
             };
+            let e_op_idents = vec![
+                id_ext("syntax"),
+                id_ext("ast"),
+                id_ext("KleeneOp"),
+                id_ext(e_op),
+            ];
+            let e_op = cx.expr_path(cx.path_global(sp, e_op_idents));
             let fields = vec![cx.field_imm(sp, id_ext("tts"), e_tts),
                               cx.field_imm(sp, id_ext("separator"), e_separator),
                               cx.field_imm(sp, id_ext("op"), e_op),
