@@ -1,6 +1,8 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use utils::SpanlessEq;
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use utils::{SpanlessEq, SpanlessHash};
 use utils::{get_parent_expr, in_macro, span_lint, span_note_and_lint};
 
 /// **What it does:** This lint checks for consecutive `ifs` with the same condition. This lint is
@@ -46,8 +48,16 @@ impl LintPass for CopyAndPaste {
 impl LateLintPass for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if !in_macro(cx, expr.span) {
+            // skip ifs directly in else, it will be checked in the parent if
+            if let Some(&Expr{node: ExprIf(_, _, Some(ref else_expr)), ..}) = get_parent_expr(cx, expr) {
+                if else_expr.id == expr.id {
+                    return;
+                }
+            }
+
+            let (conds, blocks) = if_sequence(expr);
             lint_same_then_else(cx, expr);
-            lint_same_cond(cx, expr);
+            lint_same_cond(cx, &conds);
         }
     }
 }
@@ -64,32 +74,22 @@ fn lint_same_then_else(cx: &LateContext, expr: &Expr) {
 }
 
 /// Implementation of `IFS_SAME_COND`.
-fn lint_same_cond(cx: &LateContext, expr: &Expr) {
-    // skip ifs directly in else, it will be checked in the parent if
-    if let Some(&Expr{node: ExprIf(_, _, Some(ref else_expr)), ..}) = get_parent_expr(cx, expr) {
-        if else_expr.id == expr.id {
-            return;
-        }
-    }
-
-    let conds = condition_sequence(expr);
-
-    for (n, i) in conds.iter().enumerate() {
-        for j in conds.iter().skip(n+1) {
-            if SpanlessEq::new(cx).ignore_fn().eq_expr(i, j) {
-                span_note_and_lint(cx, IFS_SAME_COND, j.span, "this if has the same condition as a previous if", i.span, "same as this");
-            }
-        }
+fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
+    if let Some((i, j)) = search_same(cx, conds) {
+        span_note_and_lint(cx, IFS_SAME_COND, j.span, "this if has the same condition as a previous if", i.span, "same as this");
     }
 }
 
-/// Return the list of condition expressions in a sequence of `if/else`.
-/// Eg. would return `[a, b]` for the expression `if a {..} else if b {..}`.
-fn condition_sequence(mut expr: &Expr) -> Vec<&Expr> {
-    let mut result = vec![];
+/// Return the list of condition expressions and the list of blocks in a sequence of `if/else`.
+/// Eg. would return `([a, b], [c, d, e])` for the expression
+/// `if a { c } else if b { d } else { e }`.
+fn if_sequence(mut expr: &Expr) -> (Vec<&Expr>, Vec<&Block>) {
+    let mut conds = vec![];
+    let mut blocks = vec![];
 
-    while let ExprIf(ref cond, _, ref else_expr) = expr.node {
-        result.push(&**cond);
+    while let ExprIf(ref cond, ref then_block, ref else_expr) = expr.node {
+        conds.push(&**cond);
+        blocks.push(&**then_block);
 
         if let Some(ref else_expr) = *else_expr {
             expr = else_expr;
@@ -99,5 +99,48 @@ fn condition_sequence(mut expr: &Expr) -> Vec<&Expr> {
         }
     }
 
-    result
+    // final `else {..}`
+    if !blocks.is_empty() {
+        if let ExprBlock(ref block) = expr.node {
+            blocks.push(&**block);
+        }
+    }
+
+    (conds, blocks)
+}
+
+fn search_same<'a>(cx: &LateContext, exprs: &[&'a Expr]) -> Option<(&'a Expr, &'a Expr)> {
+    // common cases
+    if exprs.len() < 2 {
+        return None;
+    }
+    else if exprs.len() == 2 {
+        return if SpanlessEq::new(cx).ignore_fn().eq_expr(&exprs[0], &exprs[1]) {
+            Some((&exprs[0], &exprs[1]))
+        }
+        else {
+            None
+        }
+    }
+
+    let mut map : HashMap<_, Vec<&'a _>> = HashMap::with_capacity(exprs.len());
+
+    for &expr in exprs {
+        let mut h = SpanlessHash::new(cx);
+        h.hash_expr(expr);
+        let h = h.finish();
+
+        match map.entry(h) {
+            Entry::Occupied(o) => {
+                for o in o.get() {
+                    if SpanlessEq::new(cx).ignore_fn().eq_expr(o, expr) {
+                        return Some((o, expr))
+                    }
+                }
+            }
+            Entry::Vacant(v) => { v.insert(vec![expr]); }
+        }
+    }
+
+    None
 }

@@ -1,6 +1,8 @@
 use consts::constant;
 use rustc::lint::*;
 use rustc_front::hir::*;
+use std::hash::{Hash, Hasher, SipHasher};
+use syntax::ast::Name;
 use syntax::ptr::P;
 
 /// Type used to check whether two ast are the same. This is different from the operator
@@ -241,4 +243,289 @@ fn over<X, F>(left: &[X], right: &[X], mut eq_fn: F) -> bool
     where F: FnMut(&X, &X) -> bool
 {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
+}
+
+
+pub struct SpanlessHash<'a, 'tcx: 'a> {
+    /// Context used to evaluate constant expressions.
+    cx: &'a LateContext<'a, 'tcx>,
+    s: SipHasher,
+}
+
+impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
+    pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+        SpanlessHash { cx: cx, s: SipHasher::new() }
+    }
+
+    pub fn finish(&self) -> u64 {
+        self.s.finish()
+    }
+
+    pub fn hash_block(&mut self, b: &Block) {
+        for s in &b.stmts {
+            self.hash_stmt(s);
+        }
+
+        if let Some(ref e) = b.expr {
+            self.hash_expr(e);
+        }
+
+        b.rules.hash(&mut self.s);
+    }
+
+    pub fn hash_expr(&mut self, e: &Expr) {
+        if let Some(e) = constant(self.cx, e) {
+            return e.hash(&mut self.s);
+        }
+
+        match e.node {
+            ExprAddrOf(m, ref e) => {
+                let c: fn(_, _) -> _ = ExprAddrOf;
+                c.hash(&mut self.s);
+                m.hash(&mut self.s);
+                self.hash_expr(e);
+            }
+            ExprAgain(i) => {
+                let c: fn(_) -> _ = ExprAgain;
+                c.hash(&mut self.s);
+                if let Some(i) = i {
+                    self.hash_name(&i.node.name);
+                }
+            }
+            ExprAssign(ref l, ref r) => {
+                let c: fn(_, _) -> _ = ExprAssign;
+                c.hash(&mut self.s);
+                self.hash_expr(l);
+                self.hash_expr(r);
+            }
+            ExprAssignOp(ref o, ref l, ref r) => {
+                let c: fn(_, _, _) -> _ = ExprAssignOp;
+                c.hash(&mut self.s);
+                o.hash(&mut self.s);
+                self.hash_expr(l);
+                self.hash_expr(r);
+            }
+            ExprBlock(ref b) => {
+                let c: fn(_) -> _ = ExprBlock;
+                c.hash(&mut self.s);
+                self.hash_block(b);
+            }
+            ExprBinary(op, ref l, ref r) => {
+                let c: fn(_, _, _) -> _ = ExprBinary;
+                c.hash(&mut self.s);
+                op.node.hash(&mut self.s);
+                self.hash_expr(l);
+                self.hash_expr(r);
+            }
+            ExprBreak(i) => {
+                let c: fn(_) -> _ = ExprBreak;
+                c.hash(&mut self.s);
+                if let Some(i) = i {
+                    self.hash_name(&i.node.name);
+                }
+            }
+            ExprBox(ref e) => {
+                let c: fn(_) -> _ = ExprBox;
+                c.hash(&mut self.s);
+                self.hash_expr(e);
+            }
+            ExprCall(ref fun, ref args) => {
+                let c: fn(_, _) -> _ = ExprCall;
+                c.hash(&mut self.s);
+                self.hash_expr(fun);
+                self.hash_exprs(args);
+            }
+            ExprCast(ref e, ref _ty) => {
+                let c: fn(_, _) -> _ = ExprCast;
+                c.hash(&mut self.s);
+                self.hash_expr(e);
+                // TODO: _ty
+            }
+            ExprClosure(cap, _, ref b) => {
+                let c: fn(_, _, _) -> _ = ExprClosure;
+                c.hash(&mut self.s);
+                cap.hash(&mut self.s);
+                self.hash_block(b);
+            }
+            ExprField(ref e, ref f) => {
+                let c: fn(_, _) -> _ = ExprField;
+                c.hash(&mut self.s);
+                self.hash_expr(e);
+                self.hash_name(&f.node);
+            }
+            ExprIndex(ref a, ref i) => {
+                let c: fn(_, _) -> _ = ExprIndex;
+                c.hash(&mut self.s);
+                self.hash_expr(a);
+                self.hash_expr(i);
+            }
+            ExprInlineAsm(_) => {
+                let c: fn(_) -> _ = ExprInlineAsm;
+                c.hash(&mut self.s);
+            }
+            ExprIf(ref cond, ref t, ref e) => {
+                let c: fn(_, _, _) -> _ = ExprIf;
+                c.hash(&mut self.s);
+                self.hash_expr(cond);
+                self.hash_block(t);
+                if let Some(ref e) = *e {
+                    self.hash_expr(e);
+                }
+            }
+            ExprLit(ref l) => {
+                let c: fn(_) -> _ = ExprLit;
+                c.hash(&mut self.s);
+                l.hash(&mut self.s);
+            },
+            ExprLoop(ref b, ref i) => {
+                let c: fn(_, _) -> _ = ExprLoop;
+                c.hash(&mut self.s);
+                self.hash_block(b);
+                if let Some(i) = *i {
+                    self.hash_name(&i.name);
+                }
+            }
+            ExprMatch(ref e, ref arms, ref s) => {
+                let c: fn(_, _, _) -> _ = ExprMatch;
+                c.hash(&mut self.s);
+                self.hash_expr(e);
+
+                for arm in arms {
+                    // TODO: arm.pat?
+                    if let Some(ref e) = arm.guard {
+                        self.hash_expr(e);
+                    }
+                    self.hash_expr(&arm.body);
+                }
+
+                s.hash(&mut self.s);
+            }
+            ExprMethodCall(ref name, ref _tys, ref args) => {
+                let c: fn(_, _, _) -> _ = ExprMethodCall;
+                c.hash(&mut self.s);
+                self.hash_name(&name.node);
+                self.hash_exprs(args);
+            }
+            ExprRange(ref b, ref e) => {
+                let c: fn(_, _) -> _ = ExprRange;
+                c.hash(&mut self.s);
+                if let Some(ref b) = *b {
+                    self.hash_expr(b);
+                }
+                if let Some(ref e) = *e {
+                    self.hash_expr(e);
+                }
+            }
+            ExprRepeat(ref e, ref l) => {
+                let c: fn(_, _) -> _ = ExprRepeat;
+                c.hash(&mut self.s);
+                self.hash_expr(e);
+                self.hash_expr(l);
+            }
+            ExprRet(ref e) => {
+                let c: fn(_) -> _ = ExprRet;
+                c.hash(&mut self.s);
+                if let Some(ref e) = *e {
+                    self.hash_expr(e);
+                }
+            }
+            ExprPath(ref _qself, ref subpath) => {
+                let c: fn(_, _) -> _ = ExprPath;
+                c.hash(&mut self.s);
+                self.hash_path(subpath);
+            }
+            ExprStruct(ref path, ref fields, ref expr) => {
+                let c: fn(_, _, _) -> _ = ExprStruct;
+                c.hash(&mut self.s);
+
+                self.hash_path(path);
+
+                for f in fields {
+                    self.hash_name(&f.name.node);
+                    self.hash_expr(&f.expr);
+                }
+
+                if let Some(ref e) = *expr {
+                    self.hash_expr(e);
+                }
+            }
+            ExprTup(ref tup) => {
+                let c: fn(_) -> _ = ExprTup;
+                c.hash(&mut self.s);
+                self.hash_exprs(tup);
+            },
+            ExprTupField(ref le, li) => {
+                let c: fn(_, _) -> _ = ExprTupField;
+                c.hash(&mut self.s);
+
+                self.hash_expr(le);
+                li.node.hash(&mut self.s);
+            }
+            ExprType(_, _) => {
+                let c: fn(_, _) -> _ = ExprType;
+                c.hash(&mut self.s);
+                // what’s an ExprType anyway?
+            }
+            ExprUnary(lop, ref le) => {
+                let c: fn(_, _) -> _ = ExprUnary;
+                c.hash(&mut self.s);
+
+                lop.hash(&mut self.s);
+                self.hash_expr(le);
+            }
+            ExprVec(ref v) => {
+                let c: fn(_) -> _ = ExprVec;
+                c.hash(&mut self.s);
+
+                self.hash_exprs(v);
+            },
+            ExprWhile(ref cond, ref b, l) => {
+                let c: fn(_, _, _) -> _ = ExprWhile;
+                c.hash(&mut self.s);
+
+                self.hash_expr(cond);
+                self.hash_block(b);
+                if let Some(l) = l {
+                    self.hash_name(&l.name);
+                }
+            }
+        }
+    }
+
+    pub fn hash_exprs(&mut self, e: &[P<Expr>]) {
+        for e in e {
+            self.hash_expr(e);
+        }
+    }
+
+    pub fn hash_name(&mut self, n: &Name) {
+        n.as_str().hash(&mut self.s);
+    }
+
+    pub fn hash_path(&mut self, p: &Path) {
+        p.global.hash(&mut self.s);
+        for p in &p.segments {
+            self.hash_name(&p.identifier.name);
+        }
+    }
+
+    pub fn hash_stmt(&mut self, b: &Stmt) {
+        match b.node {
+            StmtDecl(ref _decl, _) => {
+                let c: fn(_, _) -> _ = StmtDecl;
+                c.hash(&mut self.s);
+                // TODO: decl
+            }
+            StmtExpr(ref expr, _) => {
+                let c: fn(_, _) -> _ = StmtExpr;
+                c.hash(&mut self.s);
+                self.hash_expr(expr);
+            }
+            StmtSemi(ref expr, _) => {
+                let c: fn(_, _) -> _ = StmtSemi;
+                c.hash(&mut self.s);
+                self.hash_expr(expr);
+            }
+        }
+    }
 }

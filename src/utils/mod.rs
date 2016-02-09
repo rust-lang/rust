@@ -16,7 +16,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 
 mod hir;
-pub use self::hir::SpanlessEq;
+pub use self::hir::{SpanlessEq, SpanlessHash};
 pub type MethodArgs = HirVec<P<Expr>>;
 
 // module DefPaths for certain structs/enums we check for

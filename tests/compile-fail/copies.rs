@@ -105,6 +105,12 @@ fn if_same_then_else() -> &'static str {
 
 fn ifs_same_cond() {
     let a = 0;
+    let b = false;
+
+    if b {
+    }
+    else if b { //~ERROR this if has the same condition as a previous if
+    }
 
     if a == 1 {
     }

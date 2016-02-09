@@ -17,7 +17,7 @@ use syntax::ast::{UintTy, FloatTy, StrStyle};
 use syntax::ast::Sign::{self, Plus, Minus};
 
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Hash)]
 pub enum FloatWidth {
     Fw32,
     Fw64,
@@ -34,7 +34,7 @@ impl From<FloatTy> for FloatWidth {
 }
 
 /// a Lit_-like enum to fold constant `Expr`s into
-#[derive(Eq, Debug, Clone)]
+#[derive(Eq, Debug, Clone, Hash)]
 pub enum Constant {
     /// a String "abc"
     Str(String, StrStyle),
