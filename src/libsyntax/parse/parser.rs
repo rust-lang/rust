@@ -26,7 +26,7 @@ use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, ItemKind};
 use ast::{Lit, LitKind, UintTy};
 use ast::Local;
-use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
+use ast::MacStmtStyle;
 use ast::{MutImmutable, MutMutable, Mac_};
 use ast::{MutTy, Mutability};
 use ast::NamedField;
@@ -3721,9 +3721,9 @@ impl<'a> Parser<'a> {
             let hi = self.last_span.hi;
 
             let style = if delim == token::Brace {
-                MacStmtWithBraces
+                MacStmtStyle::Braces
             } else {
-                MacStmtWithoutBraces
+                MacStmtStyle::NoBraces
             };
 
             if id.name == token::special_idents::invalid.name {
@@ -3734,7 +3734,7 @@ impl<'a> Parser<'a> {
                 // if it has a special ident, it's definitely an item
                 //
                 // Require a semicolon or braces.
-                if style != MacStmtWithBraces {
+                if style != MacStmtStyle::Braces {
                     if !self.eat(&token::Semi) {
                         let last_span = self.last_span;
                         self.span_err(last_span,
@@ -3841,13 +3841,13 @@ impl<'a> Parser<'a> {
                 StmtKind::Expr(e, _) => {
                     try!(self.handle_expression_like_statement(e, span, &mut stmts, &mut expr));
                 }
-                StmtKind::Mac(mac, MacStmtWithoutBraces, attrs) => {
+                StmtKind::Mac(mac, MacStmtStyle::NoBraces, attrs) => {
                     // statement macro without braces; might be an
                     // expr depending on whether a semicolon follows
                     match self.token {
                         token::Semi => {
                             stmts.push(P(Spanned {
-                                node: StmtKind::Mac(mac, MacStmtWithSemicolon, attrs),
+                                node: StmtKind::Mac(mac, MacStmtStyle::Semicolon, attrs),
                                 span: mk_sp(span.lo, self.span.hi),
                             }));
                             self.bump();
@@ -3872,7 +3872,7 @@ impl<'a> Parser<'a> {
                     match self.token {
                         token::Semi => {
                             stmts.push(P(Spanned {
-                                node: StmtKind::Mac(m, MacStmtWithSemicolon, attrs),
+                                node: StmtKind::Mac(m, MacStmtStyle::Semicolon, attrs),
                                 span: mk_sp(span.lo, self.span.hi),
                             }));
                             self.bump();

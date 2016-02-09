@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
@@ -782,13 +781,13 @@ impl StmtKind {
 pub enum MacStmtStyle {
     /// The macro statement had a trailing semicolon, e.g. `foo! { ... };`
     /// `foo!(...);`, `foo![...];`
-    MacStmtWithSemicolon,
+    Semicolon,
     /// The macro statement had braces; e.g. foo! { ... }
-    MacStmtWithBraces,
+    Braces,
     /// The macro statement had parentheses or brackets and no semicolon; e.g.
     /// `foo!(...)`. All of these will end up being converted into macro
     /// expressions.
-    MacStmtWithoutBraces,
+    NoBraces,
 }
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
