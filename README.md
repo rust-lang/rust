@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 116 lints included in this crate:
+There are 117 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -91,6 +91,7 @@ name                                                                            
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                       | warn    | zipping iterator with a range when enumerate() would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                         | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 [redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                         | warn    | using `name @ _` in a pattern
+[regex_macro](https://github.com/Manishearth/rust-clippy/wiki#regex_macro)                                     | warn    | finds use of `regex!(_)`, suggests `Regex::new(_)` instead
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)                       | allow   | using `Result.unwrap()`, which might be better handled
 [reverse_range_loop](https://github.com/Manishearth/rust-clippy/wiki#reverse_range_loop)                       | warn    | Iterating over an empty range, such as `10..0` or `5..5`
 [search_is_some](https://github.com/Manishearth/rust-clippy/wiki#search_is_some)                               | warn    | using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`

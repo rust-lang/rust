@@ -1,14 +1,16 @@
 use regex_syntax;
 use std::error::Error;
+use std::collections::HashSet;
 use syntax::ast::Lit_::LitStr;
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
 use rustc_front::hir::*;
+use rustc_front::intravisit::{Visitor, walk_block};
 use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::lint::*;
 
-use utils::{match_path, REGEX_NEW_PATH, span_lint, span_help_and_lint};
+use utils::{is_expn_of, match_path, match_type, REGEX_NEW_PATH, span_lint, span_help_and_lint};
 
 /// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.
 ///
@@ -37,16 +39,35 @@ declare_lint! {
     "finds trivial regular expressions in `Regex::new(_)` invocations"
 }
 
+/// **What it does:** This lint checks for usage of `regex!(_)` which as of now is usually slower than `Regex::new(_)` unless called in a loop (which is a bad idea anyway).
+///
+/// **Why is this bad?** Performance, at least for now. The macro version is likely to catch up long-term, but for now the dynamic version is faster.
+///
+/// **Known problems:** None
+///
+/// **Example:** `regex!("foo|bar")`
+declare_lint! {
+    pub REGEX_MACRO,
+    Warn,
+    "finds use of `regex!(_)`, suggests `Regex::new(_)` instead"
+}
+
 #[derive(Copy,Clone)]
 pub struct RegexPass;
 
 impl LintPass for RegexPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(INVALID_REGEX, TRIVIAL_REGEX)
+        lint_array!(INVALID_REGEX, REGEX_MACRO, TRIVIAL_REGEX)
     }
 }
 
 impl LateLintPass for RegexPass {
+    fn check_crate(&mut self, cx: &LateContext, krate: &Crate) {
+        let mut visitor = RegexVisitor { cx: cx, spans: HashSet::new() };
+        krate.visit_all_items(&mut visitor);
+    }
+
+
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
@@ -137,5 +158,32 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
             }
         }
         _ => None,
+    }
+}
+
+struct RegexVisitor<'v, 't: 'v> {
+    cx: &'v LateContext<'v, 't>,
+    spans: HashSet<Span>,
+}
+
+impl<'v, 't: 'v> Visitor<'v> for RegexVisitor<'v, 't> {
+    fn visit_block(&mut self, block: &'v Block) {
+        if_let_chain!{[
+            let Some(ref expr) = block.expr,
+            match_type(self.cx, self.cx.tcx.expr_ty(expr), &["regex", "re", "Regex"]),
+            let Some(span) = is_expn_of(self.cx, expr.span, "regex")
+        ], {
+                if self.spans.contains(&span) {
+                    return;
+                }
+                span_lint(self.cx, 
+                          REGEX_MACRO, 
+                          span,
+                          "`regex!(_)` found. \
+                          Please use `Regex::new(_)`, which is faster for now.");
+                self.spans.insert(span);
+                return;
+        }}
+        walk_block(self, block);
     }
 }
