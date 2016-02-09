@@ -183,17 +183,17 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                                 .contains(&attr::ReprExtern)
                         });
 
-                        intravisit::walk_item(self, &*item);
+                        intravisit::walk_item(self, &item);
                     }
                     hir::ItemEnum(..) => {
                         self.inherited_pub_visibility = item.vis == hir::Public;
-                        intravisit::walk_item(self, &*item);
+                        intravisit::walk_item(self, &item);
                     }
                     hir::ItemFn(..)
                     | hir::ItemTy(..)
                     | hir::ItemStatic(..)
                     | hir::ItemConst(..) => {
-                        intravisit::walk_item(self, &*item);
+                        intravisit::walk_item(self, &item);
                     }
                     _ => ()
                 }
@@ -205,7 +205,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 intravisit::walk_impl_item(self, impl_item);
             }
             ast_map::NodeForeignItem(foreign_item) => {
-                intravisit::walk_foreign_item(self, &*foreign_item);
+                intravisit::walk_foreign_item(self, &foreign_item);
             }
             _ => ()
         }
@@ -237,10 +237,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
                 self.lookup_and_handle_method(expr.id);
             }
             hir::ExprField(ref lhs, ref name) => {
-                self.handle_field_access(&**lhs, name.node);
+                self.handle_field_access(&lhs, name.node);
             }
             hir::ExprTupField(ref lhs, idx) => {
-                self.handle_tup_field_access(&**lhs, idx.node);
+                self.handle_tup_field_access(&lhs, idx.node);
             }
             _ => ()
         }
@@ -257,7 +257,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             // necessary for the pattern to match. Those construction sites
             // can't be reached unless the variant is constructed elsewhere.
             let len = self.ignore_variant_stack.len();
-            self.ignore_variant_stack.extend_from_slice(&*variants);
+            self.ignore_variant_stack.extend_from_slice(&variants);
             intravisit::walk_arm(self, arm);
             self.ignore_variant_stack.truncate(len);
         } else {

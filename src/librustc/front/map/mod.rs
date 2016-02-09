@@ -795,7 +795,7 @@ impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
             loop {
                 match map.find(id) {
                     None => return None,
-                    Some(NodeItem(item)) if item_is_mod(&*item) =>
+                    Some(NodeItem(item)) if item_is_mod(&item) =>
                         return Some((id, item.name)),
                     _ => {}
                 }
@@ -967,16 +967,16 @@ pub trait NodePrinter {
 impl<'a> NodePrinter for pprust::State<'a> {
     fn print_node(&mut self, node: &Node) -> io::Result<()> {
         match *node {
-            NodeItem(a)        => self.print_item(&*a),
-            NodeForeignItem(a) => self.print_foreign_item(&*a),
+            NodeItem(a)        => self.print_item(&a),
+            NodeForeignItem(a) => self.print_foreign_item(&a),
             NodeTraitItem(a)   => self.print_trait_item(a),
             NodeImplItem(a)    => self.print_impl_item(a),
-            NodeVariant(a)     => self.print_variant(&*a),
-            NodeExpr(a)        => self.print_expr(&*a),
-            NodeStmt(a)        => self.print_stmt(&*a),
-            NodePat(a)         => self.print_pat(&*a),
-            NodeBlock(a)       => self.print_block(&*a),
-            NodeLifetime(a)    => self.print_lifetime(&*a),
+            NodeVariant(a)     => self.print_variant(&a),
+            NodeExpr(a)        => self.print_expr(&a),
+            NodeStmt(a)        => self.print_stmt(&a),
+            NodePat(a)         => self.print_pat(&a),
+            NodeBlock(a)       => self.print_block(&a),
+            NodeLifetime(a)    => self.print_lifetime(&a),
             NodeTyParam(_)     => panic!("cannot print TyParam"),
             // these cases do not carry enough information in the
             // ast_map to reconstruct their full structure for pretty
@@ -1055,26 +1055,26 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                     map.path_to_string(id), id_str)
         }
         Some(NodeExpr(ref expr)) => {
-            format!("expr {}{}", pprust::expr_to_string(&**expr), id_str)
+            format!("expr {}{}", pprust::expr_to_string(&expr), id_str)
         }
         Some(NodeStmt(ref stmt)) => {
-            format!("stmt {}{}", pprust::stmt_to_string(&**stmt), id_str)
+            format!("stmt {}{}", pprust::stmt_to_string(&stmt), id_str)
         }
         Some(NodeLocal(ref pat)) => {
-            format!("local {}{}", pprust::pat_to_string(&**pat), id_str)
+            format!("local {}{}", pprust::pat_to_string(&pat), id_str)
         }
         Some(NodePat(ref pat)) => {
-            format!("pat {}{}", pprust::pat_to_string(&**pat), id_str)
+            format!("pat {}{}", pprust::pat_to_string(&pat), id_str)
         }
         Some(NodeBlock(ref block)) => {
-            format!("block {}{}", pprust::block_to_string(&**block), id_str)
+            format!("block {}{}", pprust::block_to_string(&block), id_str)
         }
         Some(NodeStructCtor(_)) => {
             format!("struct_ctor {}{}", map.path_to_string(id), id_str)
         }
         Some(NodeLifetime(ref l)) => {
             format!("lifetime {}{}",
-                    pprust::lifetime_to_string(&**l), id_str)
+                    pprust::lifetime_to_string(&l), id_str)
         }
         Some(NodeTyParam(ref ty_param)) => {
             format!("typaram {:?}{}", ty_param, id_str)
