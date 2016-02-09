@@ -264,7 +264,7 @@ impl<'a> CrateReader<'a> {
                          incompatible with this version of rustc",
                         name,
                         crate_rustc_version
-                            .as_ref().map(|s|&**s)
+                            .as_ref().map(|s| &**s)
                             .unwrap_or("an old version of rustc")
             );
         }
@@ -494,7 +494,7 @@ impl<'a> CrateReader<'a> {
         let source_name = format!("<{} macros>", item.ident);
         let mut macros = vec![];
         decoder::each_exported_macro(ekrate.metadata.as_slice(),
-                                     &*self.cstore.intr,
+                                     &self.cstore.intr,
             |name, attrs, span, body| {
                 // NB: Don't use parse::parse_tts_from_source_str because it parses with
                 // quote_depth > 0.

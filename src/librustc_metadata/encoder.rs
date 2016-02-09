@@ -964,7 +964,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
-        encode_method_argument_names(rbml_w, &**decl);
+        encode_method_argument_names(rbml_w, &decl);
         rbml_w.end_tag();
       }
       hir::ItemMod(ref m) => {
@@ -1173,7 +1173,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                     encode_info_for_associated_const(ecx,
                                                      rbml_w,
                                                      index,
-                                                     &*associated_const,
+                                                     &associated_const,
                                                      path.clone(),
                                                      item.id,
                                                      ast_item)
@@ -1182,7 +1182,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                     encode_info_for_method(ecx,
                                            rbml_w,
                                            index,
-                                           &**method_type,
+                                           &method_type,
                                            path.clone(),
                                            false,
                                            item.id,
@@ -1192,7 +1192,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                     encode_info_for_associated_type(ecx,
                                                     rbml_w,
                                                     index,
-                                                    &**associated_type,
+                                                    &associated_type,
                                                     path.clone(),
                                                     item.id,
                                                     ast_item)
@@ -1290,7 +1290,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                 ty::MethodTraitItem(method_ty) => {
                     let method_def_id = item_def_id.def_id();
 
-                    encode_method_ty_fields(ecx, rbml_w, index, &*method_ty);
+                    encode_method_ty_fields(ecx, rbml_w, index, &method_ty);
 
                     let elem = ast_map::PathName(method_ty.name);
                     encode_path(rbml_w,
@@ -1396,13 +1396,13 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
         }
-        encode_attributes(rbml_w, &*nitem.attrs);
+        encode_attributes(rbml_w, &nitem.attrs);
         let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
         encode_symbol(ecx, rbml_w, nitem.id);
-        encode_method_argument_names(rbml_w, &*fndecl);
+        encode_method_argument_names(rbml_w, &fndecl);
       }
       hir::ForeignItemStatic(_, mutbl) => {
         if mutbl {
@@ -1411,7 +1411,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             encode_family(rbml_w, 'c');
         }
         encode_bounds_and_type_for_item(rbml_w, ecx, index, nitem.id);
-        encode_attributes(rbml_w, &*nitem.attrs);
+        encode_attributes(rbml_w, &nitem.attrs);
         let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
@@ -1561,7 +1561,7 @@ fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
         rbml_w.start_tag(tag_meta_item_list);
         rbml_w.wr_tagged_str(tag_meta_item_name, name);
         for inner_item in items {
-            encode_meta_item(rbml_w, &**inner_item);
+            encode_meta_item(rbml_w, &inner_item);
         }
         rbml_w.end_tag();
       }
@@ -1573,7 +1573,7 @@ fn encode_attributes(rbml_w: &mut Encoder, attrs: &[ast::Attribute]) {
     for attr in attrs {
         rbml_w.start_tag(tag_attribute);
         rbml_w.wr_tagged_u8(tag_attribute_is_sugared_doc, attr.node.is_sugared_doc as u8);
-        encode_meta_item(rbml_w, &*attr.node.value);
+        encode_meta_item(rbml_w, &attr.node.value);
         rbml_w.end_tag();
     }
     rbml_w.end_tag();
