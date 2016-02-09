@@ -107,47 +107,43 @@ impl LateLintPass for BoolComparison {
         if let ExprBinary(Spanned{ node: BiEq, .. }, ref left_side, ref right_side) = e.node {
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Some(true), None) => {
-                    let side_snip = snippet(cx, right_side.span, "..");
-                    let hint = format!("`{}`", side_snip);
+                    let hint = format!("{}", snippet(cx, right_side.span, ".."));
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
-                                       "equality checks against booleans are unnecesary",
+                                       "equality checks against true are unnecesary",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
                 }
                 (None, Some(true)) => {
-                    let side_snip = snippet(cx, left_side.span, "..");
-                    let hint = format!("`{}`", side_snip);
+                    let hint = format!("{}", snippet(cx, left_side.span, ".."));
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
-                                       "equality checks against booleans are unnecesary",
+                                       "equality checks against true are unnecesary",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
                 }
                 (Some(false), None) => {
-                    let side_snip = snippet(cx, right_side.span, "..");
-                    let hint = format!("`!{}`", side_snip);
+                    let hint = format!("!{}", snippet(cx, right_side.span, ".."));
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
-                                       "equality checks against booleans are unnecesary",
+                                       "equality checks against false can be replaced by a negation",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
                 }
                 (None, Some(false)) => {
-                    let side_snip = snippet(cx, left_side.span, "..");
-                    let hint = format!("`!{}`", side_snip);
+                    let hint = format!("!{}", snippet(cx, left_side.span, ".."));
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
-                                       "equality checks against booleans are unnecesary",
+                                       "equality checks against false can be replaced by a negation",
                                        |db| {
-                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
                 }
                 _ => (),
