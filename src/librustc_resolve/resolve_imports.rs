@@ -99,19 +99,13 @@ impl ImportDirective {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Default)]
 /// Records information about the resolution of a name in a module.
 pub struct NameResolution<'a> {
     /// The number of unresolved single imports that could define the name.
     pub outstanding_references: usize,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
-}
-
-impl<'a> Default for NameResolution<'a> {
-    fn default() -> Self {
-        NameResolution { outstanding_references: 0, binding: None }
-    }
 }
 
 impl<'a> NameResolution<'a> {
@@ -137,8 +131,8 @@ impl<'a> NameResolution<'a> {
     pub fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
         let is_prelude = |binding: &NameBinding| binding.defined_with(DefModifiers::PRELUDE);
         let old_binding = match self.binding {
-            Some(old_binding) if is_prelude(binding) && !is_prelude(old_binding) => return Ok(()),
-            Some(old_binding) if is_prelude(old_binding) == is_prelude(binding) => old_binding,
+            Some(_) if is_prelude(binding) => return Ok(()),
+            Some(old_binding) if !is_prelude(old_binding) => old_binding,
             _ => { self.binding = Some(binding); return Ok(()); }
         };
 
