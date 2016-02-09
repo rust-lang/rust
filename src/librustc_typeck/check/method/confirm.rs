@@ -269,7 +269,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             probe::WhereClausePick(ref poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                self.replace_late_bound_regions_with_fresh_var(&*poly_trait_ref).substs.clone()
+                self.replace_late_bound_regions_with_fresh_var(&poly_trait_ref).substs.clone()
             }
         }
     }
@@ -290,7 +290,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                               NoPreference,
                                               |ty, _| {
             match ty.sty {
-                ty::TyTrait(ref data) => Some(closure(self, ty, &**data)),
+                ty::TyTrait(ref data) => Some(closure(self, ty, &data)),
                 _ => None,
             }
         });
@@ -478,7 +478,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 hir::ExprField(ref expr, _) |
                 hir::ExprTupField(ref expr, _) |
                 hir::ExprIndex(ref expr, _) |
-                hir::ExprUnary(hir::UnDeref, ref expr) => exprs.push(&**expr),
+                hir::ExprUnary(hir::UnDeref, ref expr) => exprs.push(&expr),
                 _ => break,
             }
         }
@@ -570,13 +570,13 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                     unsize: None
                                 }))), false)
                         };
-                        let index_expr_ty = self.fcx.expr_ty(&**index_expr);
+                        let index_expr_ty = self.fcx.expr_ty(&index_expr);
 
                         let result = check::try_index_step(
                             self.fcx,
                             ty::MethodCall::expr(expr.id),
                             expr,
-                            &**base_expr,
+                            &base_expr,
                             adjusted_base_ty,
                             autoderefs,
                             unsize,
@@ -586,7 +586,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         if let Some((input_ty, return_ty)) = result {
                             demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
 
-                            let expr_ty = self.fcx.expr_ty(&*expr);
+                            let expr_ty = self.fcx.expr_ty(&expr);
                             demand::suptype(self.fcx, expr.span, expr_ty, return_ty);
                         }
                     }
@@ -599,8 +599,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 self.fcx,
                                 expr.span,
                                 Some(method_call),
-                                Some(&**base_expr),
-                                self.fcx.expr_ty(&**base_expr),
+                                Some(&base_expr),
+                                self.fcx.expr_ty(&base_expr),
                                 PreferMutLvalue);
                         }
                     }
