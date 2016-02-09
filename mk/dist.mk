@@ -58,7 +58,6 @@ PKG_FILES := \
       libcoretest                              \
       libbacktrace                             \
       rt                                       \
-      rtstartup                                \
       rustllvm                                 \
       snapshots.txt                            \
       rust-installer                           \

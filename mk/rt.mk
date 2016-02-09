@@ -291,10 +291,8 @@ BACKTRACE_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),backtrace)
 BACKTRACE_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(BACKTRACE_NAME_$(1))
 BACKTRACE_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libbacktrace
 
-# We don't use this on platforms that aren't linux-based (with the exception of
-# msys2/mingw builds on windows, which use it to read the dwarf debug
-# information) so just make the file available, the compilation of libstd won't
-# actually build it.
+# We don't use this on platforms that aren't linux-based so just make the file
+# available, the compilation of libstd won't actually build it.
 ifeq ($$(findstring darwin,$$(OSTYPE_$(1))),darwin)
 # See comment above
 $$(BACKTRACE_LIB_$(1)):
@@ -307,7 +305,7 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
 
-ifeq ($$(findstring msvc,$(1)),msvc)
+ifeq ($$(findstring windows,$(1)),windows)
 # See comment above
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
@@ -382,10 +380,6 @@ endif # endif for darwin
 ifeq ($$(findstring musl,$(1)),musl)
 $$(RT_OUTPUT_DIR_$(1))/%: $$(CFG_MUSL_ROOT)/lib/%
 	cp $$^ $$@
-else
-# Ask gcc where it is
-$$(RT_OUTPUT_DIR_$(1))/%:
-	cp $$(shell $$(CC_$(1)) -print-file-name=$$(@F)) $$@
 endif
 
 endef

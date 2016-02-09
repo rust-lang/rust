@@ -10,7 +10,7 @@
 
 #![feature(rustc_attrs)]
 
-// ignore-msvc: FIXME(#30941)
+// ignore-windows: FIXME(#30941)
 // error-pattern:converging_fn called
 // error-pattern:0 dropped
 // error-pattern:exit

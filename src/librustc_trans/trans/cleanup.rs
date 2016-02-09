@@ -747,7 +747,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                                                .unwrap();
                                 let lp = build::Load(bcx, addr);
                                 base::call_lifetime_end(bcx, addr);
-                                base::trans_unwind_resume(bcx, lp);
+                                build::Resume(bcx, lp);
                             }
                             UnwindKind::CleanupPad(_) => {
                                 let pad = build::CleanupPad(bcx, None, &[]);

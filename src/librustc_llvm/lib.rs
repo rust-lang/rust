@@ -2489,3 +2489,17 @@ impl Drop for OperandBundleDef {
 mod llvmdeps {
     include! { env!("CFG_LLVM_LINKAGE_FILE") }
 }
+
+// Currenty when compiling LLVM for i686-pc-windows-gnu it will think that it's
+// got "ehtable support", and these two symbols here will be referenced from
+// RTDyldMemoryManager. This class is, however, only really used from jits, so
+// we don't really need it to work. For now just define two dummy symbols, but
+// ideally we'd upstream some patch or configure LLVM in such a way that it
+// doesn't even need these symbols defined.
+#[cfg(all(windows, target_env = "gnu", target_arch = "x86"))]
+pub mod __dummy_llvm_required_symbols {
+    #[no_mangle]
+    pub extern fn __register_frame(_ptr: *mut u8) {}
+    #[no_mangle]
+    pub extern fn __deregister_frame(_ptr: *mut u8) {}
+}

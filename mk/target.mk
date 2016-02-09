@@ -126,34 +126,6 @@ $$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
 
 endef
 
-# Macro for building runtime startup/shutdown object files;
-# these are Rust's equivalent of crti.o, crtn.o
-#
-# $(1) - stage
-# $(2) - target triple
-# $(3) - host triple
-# $(4) - object basename
-define TARGET_RUSTRT_STARTUP_OBJ
-
-$$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o: \
-		$(S)src/rtstartup/$(4).rs \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.core \
-		$$(HSREQ$(1)_T_$(2)_H_$(3)) \
-		| $$(TBIN$(1)_T_$(2)_H_$(3))/
-	@$$(call E, rustc: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) --emit=obj -o $$@ $$<
-
-ifeq ($$(CFG_RUSTRT_HAS_STARTUP_OBJS_$(2)), 1)
-# Add dependencies on Rust startup objects to all crates that depend on core.
-# This ensures that they are built after core (since they depend on it),
-# but before everything else (since they are needed for linking dylib crates).
-$$(foreach crate, $$(TARGET_CRATES), \
-	$$(if $$(findstring core,$$(DEPS_$$(crate))), \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate))) : $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o
-endif
-
-endef
-
 # Every recipe in RUST_TARGET_STAGE_N outputs to $$(TLIB$(1)_T_$(2)_H_$(3),
 # a directory that can be cleaned out during the middle of a run of
 # the get-snapshot.py script.  Therefore, every recipe needs to have
@@ -166,7 +138,10 @@ SNAPSHOT_RUSTC_POST_CLEANUP=$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD))
 
 define TARGET_HOST_RULES
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/:
+$$(TLIB$(1)_T_$(2)_H_$(3))/: | $$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	mkdir -p $$@
+
+$$(TBIN$(1)_T_$(2)_H_$(3))/: | $$(SNAPSHOT_RUSTC_POST_CLEANUP)
 	mkdir -p $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/%: $$(RT_OUTPUT_DIR_$(2))/% \
@@ -197,8 +172,33 @@ $(foreach host,$(CFG_HOST), \
    $(foreach tool,$(TOOLS), \
     $(eval $(call TARGET_TOOL,$(stage),$(target),$(host),$(tool)))))))
 
+# FIXME(stage0) - remove everything here after a snapshot
+#
+# The stage0 compiler requires the rsend.o, rsbegin.o, crt2.o, and dllcrt2.o
+# startup objects on the pc-windows-gnu targets, but that's no longer the case.
+# Hack in support to the makefiles to ensure that these objects all exist.
+#
+# Note that the rs*.o files can just be blank object files.
+define STARTUP_OBJS_COMPAT
+ifeq ($$(findstring pc-windows-gnu,$(2)),pc-windows-gnu)
+DUMMY_DEPS_$(2)_H_$(3) := \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.core \
+	$$(HSREQ$(1)_T_$(2)_H_$(3))/stamp.core
+$$(TLIB$(1)_T_$(2)_H_$(3))/rsend.o $$(TLIB$(1)_T_$(2)_H_$(3))/rsbegin.o: \
+		$$(DUMMY_DEPS_$(2)_H_$(3) \
+		| $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	$$(CC_$(2)) $$(CFG_GCCISH_CFLAGS_$(2)) -c -x c - -o $$@ < /dev/null
+$$(TLIB$(1)_T_$(2)_H_$(3))/dllcrt2.o $$(TLIB$(1)_T_$(2)_H_$(3))/crt2.o: \
+		$$(DUMMY_DEPS_$(2)_H_$(3) \
+		| $$(TLIB$(1)_T_$(2)_H_$(3))/ $$(SNAPSHOT_RUSTC_POST_CLEANUP)
+	cp $$(shell $$(CC_$(2)) -print-file-name=$$(@F)) $$@
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.std: \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/rsend.o \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/rsbegin.o \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/dllcrt2.o \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/crt2.o
+endif
+endef
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
-  $(foreach stage,$(STAGES), \
-   $(foreach obj,rsbegin rsend, \
-    $(eval $(call TARGET_RUSTRT_STARTUP_OBJ,$(stage),$(target),$(host),$(obj)))))))
+  $(eval $(call STARTUP_OBJS_COMPAT,0,$(target),$(host)))))

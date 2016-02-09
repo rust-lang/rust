@@ -191,11 +191,6 @@ pub struct TargetOptions {
     pub archive_format: String,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
-    /// Whether the target uses a custom unwind resumption routine.
-    /// By default LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
-    /// defined in libgcc.  If this option is enabled, the target must provide
-    /// `eh_unwind_resume` lang item.
-    pub custom_unwind_resume: bool,
 
     /// Default crate for allocation symbols to link against
     pub lib_allocation_crate: String,
@@ -250,7 +245,6 @@ impl Default for TargetOptions {
             post_link_objects: Vec::new(),
             late_link_args: Vec::new(),
             archive_format: String::new(),
-            custom_unwind_resume: false,
             lib_allocation_crate: "alloc_system".to_string(),
             exe_allocation_crate: "alloc_system".to_string(),
             allow_asm: true,
@@ -365,7 +359,6 @@ impl Target {
         key!(post_link_args, list);
         key!(archive_format);
         key!(allow_asm, bool);
-        key!(custom_unwind_resume, bool);
 
         base
     }

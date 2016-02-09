@@ -30,9 +30,7 @@ pub mod args;
 pub mod at_exit_imp;
 pub mod backtrace;
 pub mod condvar;
-pub mod dwarf;
 pub mod io;
-pub mod libunwind;
 pub mod mutex;
 pub mod net;
 pub mod poison;
@@ -44,10 +42,6 @@ pub mod thread_local;
 pub mod unwind;
 pub mod util;
 pub mod wtf8;
-
-#[cfg(any(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "emscripten"))),
-          all(windows, target_env = "gnu")))]
-pub mod gnu;
 
 // common error constructors
 

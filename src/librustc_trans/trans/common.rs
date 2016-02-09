@@ -534,35 +534,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             }
         }
     }
-
-    // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
-    // otherwise declares it as an external funtion.
-    pub fn eh_unwind_resume(&self) -> ValueRef {
-        use trans::attributes;
-        assert!(self.ccx.sess().target.target.options.custom_unwind_resume);
-        match self.ccx.tcx().lang_items.eh_unwind_resume() {
-            Some(def_id) => {
-                callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
-                                     self.param_substs).val
-            }
-            None => {
-                let mut unwresume = self.ccx.eh_unwind_resume().borrow_mut();
-                match *unwresume {
-                    Some(llfn) => llfn,
-                    None => {
-                        let fty = Type::func(&[Type::i8p(self.ccx)], &Type::void(self.ccx));
-                        let llfn = declare::declare_fn(self.ccx,
-                                                       "rust_eh_unwind_resume",
-                                                       llvm::CCallConv,
-                                                       fty, ty::FnDiverging);
-                        attributes::unwind(llfn, true);
-                        *unwresume = Some(llfn);
-                        llfn
-                    }
-                }
-            }
-        }
-    }
 }
 
 // Basic block context.  We create a block context for each basic block

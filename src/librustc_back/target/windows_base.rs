@@ -23,7 +23,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".to_string(),
         staticlib_prefix: "".to_string(),
         staticlib_suffix: ".lib".to_string(),
-        no_default_libraries: true,
+        no_default_libraries: false,
         is_like_windows: true,
         archive_format: "gnu".to_string(),
         pre_link_args: vec!(
@@ -60,30 +60,7 @@ pub fn opts() -> TargetOptions {
 
             // Always enable DEP (NX bit) when it is available
             "-Wl,--nxcompat".to_string(),
-
-            // Do not use the standard system startup files or libraries when linking
-            "-nostdlib".to_string(),
         ),
-        pre_link_objects_exe: vec!(
-            "crt2.o".to_string(),    // mingw C runtime initialization for executables
-            "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
-        ),
-        pre_link_objects_dll: vec!(
-            "dllcrt2.o".to_string(), // mingw C runtime initialization for dlls
-            "rsbegin.o".to_string(),
-        ),
-        late_link_args: vec!(
-            "-lmingwex".to_string(),
-            "-lmingw32".to_string(),
-            "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
-            "-lmsvcrt".to_string(),
-            "-luser32".to_string(),
-            "-lkernel32".to_string(),
-        ),
-        post_link_objects: vec!(
-            "rsend.o".to_string()
-        ),
-        custom_unwind_resume: true,
 
         .. Default::default()
     }
