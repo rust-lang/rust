@@ -13,11 +13,11 @@ pub use self::PathParsingMode::*;
 use abi::{self, Abi};
 use ast::BareFnTy;
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{Public, Unsafety};
-use ast::{Mod, Arg, Arm, Attribute, BindingMode};
+use ast::Unsafety;
+use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
-use ast::{Constness, ConstTraitItem, Crate, CrateConfig};
+use ast::{Constness, Crate, CrateConfig};
 use ast::{Decl, DeclKind};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, ExprKind};
@@ -39,7 +39,6 @@ use ast::StrStyle;
 use ast::SelfKind;
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
-use ast::TypeTraitItem;
 use ast::UnnamedField;
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
@@ -1188,7 +1187,7 @@ impl<'a> Parser<'a> {
             let (name, node) = if p.eat_keyword(keywords::Type) {
                 let TyParam {ident, bounds, default, ..} = try!(p.parse_ty_param());
                 try!(p.expect(&token::Semi));
-                (ident, TypeTraitItem(bounds, default))
+                (ident, TraitItemKind::Type(bounds, default))
             } else if p.is_const_item() {
                 try!(p.expect_keyword(keywords::Const));
                 let ident = try!(p.parse_ident());
@@ -1203,7 +1202,7 @@ impl<'a> Parser<'a> {
                     try!(p.expect(&token::Semi));
                     None
                 };
-                (ident, ConstTraitItem(ty, default))
+                (ident, TraitItemKind::Const(ty, default))
             } else {
                 let (constness, unsafety, abi) = try!(p.parse_fn_front_matter());
 
@@ -1247,7 +1246,7 @@ impl<'a> Parser<'a> {
                                        token_str)[..]))
                   }
                 };
-                (ident, ast::MethodTraitItem(sig, body))
+                (ident, ast::TraitItemKind::Method(sig, body))
             };
 
             Ok(P(TraitItem {

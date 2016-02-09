@@ -919,14 +919,14 @@ fn expand_annotatable(a: Annotatable,
         },
 
         Annotatable::TraitItem(it) => match it.node {
-            ast::MethodTraitItem(_, Some(_)) => SmallVector::one(it.map(|ti| ast::TraitItem {
+            ast::TraitItemKind::Method(_, Some(_)) => SmallVector::one(it.map(|ti| ast::TraitItem {
                 id: ti.id,
                 ident: ti.ident,
                 attrs: ti.attrs,
                 node: match ti.node  {
-                    ast::MethodTraitItem(sig, Some(body)) => {
+                    ast::TraitItemKind::Method(sig, Some(body)) => {
                         let (sig, body) = expand_and_rename_method(sig, body, fld);
-                        ast::MethodTraitItem(sig, Some(body))
+                        ast::TraitItemKind::Method(sig, Some(body))
                     }
                     _ => unreachable!()
                 },

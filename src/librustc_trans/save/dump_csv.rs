@@ -1020,22 +1020,22 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
         self.process_macro_use(trait_item.span, trait_item.id);
         match trait_item.node {
-            ast::ConstTraitItem(ref ty, Some(ref expr)) => {
+            ast::TraitItemKind::Const(ref ty, Some(ref expr)) => {
                 self.process_const(trait_item.id,
                                    trait_item.ident.name,
                                    trait_item.span,
                                    &*ty,
                                    &*expr);
             }
-            ast::MethodTraitItem(ref sig, ref body) => {
+            ast::TraitItemKind::Method(ref sig, ref body) => {
                 self.process_method(sig,
                                     body.as_ref().map(|x| &**x),
                                     trait_item.id,
                                     trait_item.ident.name,
                                     trait_item.span);
             }
-            ast::ConstTraitItem(_, None) |
-            ast::TypeTraitItem(..) => {}
+            ast::TraitItemKind::Const(_, None) |
+            ast::TraitItemKind::Type(..) => {}
         }
     }
 

@@ -565,20 +565,20 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
     visitor.visit_ident(trait_item.span, trait_item.ident);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
     match trait_item.node {
-        ConstTraitItem(ref ty, ref default) => {
+        TraitItemKind::Const(ref ty, ref default) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, default);
         }
-        MethodTraitItem(ref sig, None) => {
+        TraitItemKind::Method(ref sig, None) => {
             visitor.visit_explicit_self(&sig.explicit_self);
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }
-        MethodTraitItem(ref sig, Some(ref body)) => {
+        TraitItemKind::Method(ref sig, Some(ref body)) => {
             visitor.visit_fn(FnKind::Method(trait_item.ident, sig, None), &sig.decl,
                              body, trait_item.span, trait_item.id);
         }
-        TypeTraitItem(ref bounds, ref default) => {
+        TraitItemKind::Type(ref bounds, ref default) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }

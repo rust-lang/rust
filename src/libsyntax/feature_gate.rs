@@ -1071,17 +1071,17 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
         match ti.node {
-            ast::ConstTraitItem(..) => {
+            ast::TraitItemKind::Const(..) => {
                 self.gate_feature("associated_consts",
                                   ti.span,
                                   "associated constants are experimental")
             }
-            ast::MethodTraitItem(ref sig, _) => {
+            ast::TraitItemKind::Method(ref sig, _) => {
                 if sig.constness == ast::Constness::Const {
                     self.gate_feature("const_fn", ti.span, "const fn is unstable");
                 }
             }
-            ast::TypeTraitItem(_, Some(_)) => {
+            ast::TraitItemKind::Type(_, Some(_)) => {
                 self.gate_feature("associated_type_defaults", ti.span,
                                   "associated type defaults are unstable");
             }

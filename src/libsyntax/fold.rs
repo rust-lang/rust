@@ -969,16 +969,16 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
         node: match node {
-            ConstTraitItem(ty, default) => {
-                ConstTraitItem(folder.fold_ty(ty),
+            TraitItemKind::Const(ty, default) => {
+                TraitItemKind::Const(folder.fold_ty(ty),
                                default.map(|x| folder.fold_expr(x)))
             }
-            MethodTraitItem(sig, body) => {
-                MethodTraitItem(noop_fold_method_sig(sig, folder),
+            TraitItemKind::Method(sig, body) => {
+                TraitItemKind::Method(noop_fold_method_sig(sig, folder),
                                 body.map(|x| folder.fold_block(x)))
             }
-            TypeTraitItem(bounds, default) => {
-                TypeTraitItem(folder.fold_bounds(bounds),
+            TraitItemKind::Type(bounds, default) => {
+                TraitItemKind::Type(folder.fold_bounds(bounds),
                               default.map(|x| folder.fold_ty(x)))
             }
         },
