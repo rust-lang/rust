@@ -12,7 +12,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-#![allow(trivial_casts)]
 
 #![crate_name = "rustc_llvm"]
 #![unstable(feature = "rustc_private", issue = "27812")]
