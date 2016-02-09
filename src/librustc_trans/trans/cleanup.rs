@@ -1054,11 +1054,11 @@ impl EarlyExitLabel {
         match *self {
             UnwindExit(UnwindKind::CleanupPad(..)) => {
                 let pad = build::CleanupPad(bcx, None, &[]);
-                *bcx.lpad.borrow_mut() = Some(LandingPad::msvc(pad));
+                bcx.lpad.set(Some(bcx.fcx.lpad_arena.alloc(LandingPad::msvc(pad))));
                 UnwindExit(UnwindKind::CleanupPad(pad))
             }
             UnwindExit(UnwindKind::LandingPad) => {
-                *bcx.lpad.borrow_mut() = Some(LandingPad::gnu());
+                bcx.lpad.set(Some(bcx.fcx.lpad_arena.alloc(LandingPad::gnu())));
                 *self
             }
             label => label,

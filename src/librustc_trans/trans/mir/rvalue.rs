@@ -15,8 +15,7 @@ use rustc::mir::repr as mir;
 
 use trans::asm;
 use trans::base;
-use trans::build;
-use trans::common::{self, Block, Result};
+use trans::common::{self, BlockAndBuilder, Result};
 use trans::debuginfo::DebugLoc;
 use trans::declare;
 use trans::expr;
@@ -33,10 +32,10 @@ use super::lvalue::LvalueRef;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_rvalue(&mut self,
-                        bcx: Block<'bcx, 'tcx>,
+                        bcx: BlockAndBuilder<'bcx, 'tcx>,
                         dest: LvalueRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> Block<'bcx, 'tcx>
+                        -> BlockAndBuilder<'bcx, 'tcx>
     {
         debug!("trans_rvalue(dest.llval={}, rvalue={:?})",
                bcx.val_to_string(dest.llval),
@@ -44,7 +43,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
-                self.trans_operand_into(bcx, dest.llval, operand);
+                self.trans_operand_into(&bcx, dest.llval, operand);
                 bcx
             }
 
@@ -53,7 +52,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                    self.store_operand(bcx, dest.llval, temp);
+                    self.store_operand(&bcx, dest.llval, temp);
                     return bcx;
                 }
 
@@ -61,39 +60,43 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // this to be eliminated by MIR translation, but
                 // `CoerceUnsized` can be passed by a where-clause,
                 // so the (generic) MIR may not be able to expand it.
-                let operand = self.trans_operand(bcx, operand);
-                match operand.val {
-                    OperandValue::FatPtr(..) => unreachable!(),
-                    OperandValue::Immediate(llval) => {
-                        // unsize from an immediate structure. We don't
-                        // really need a temporary alloca here, but
-                        // avoiding it would require us to have
-                        // `coerce_unsized_into` use extractvalue to
-                        // index into the struct, and this case isn't
-                        // important enough for it.
-                        debug!("trans_rvalue: creating ugly alloca");
-                        let lltemp = base::alloc_ty(bcx, operand.ty, "__unsize_temp");
-                        base::store_ty(bcx, llval, lltemp, operand.ty);
-                        base::coerce_unsized_into(bcx,
-                                                  lltemp, operand.ty,
-                                                  dest.llval, cast_ty);
+                let operand = self.trans_operand(&bcx, operand);
+                bcx.with_block(|bcx| {
+                    match operand.val {
+                        OperandValue::FatPtr(..) => unreachable!(),
+                        OperandValue::Immediate(llval) => {
+                            // unsize from an immediate structure. We don't
+                            // really need a temporary alloca here, but
+                            // avoiding it would require us to have
+                            // `coerce_unsized_into` use extractvalue to
+                            // index into the struct, and this case isn't
+                            // important enough for it.
+                            debug!("trans_rvalue: creating ugly alloca");
+                            let lltemp = base::alloc_ty(bcx, operand.ty, "__unsize_temp");
+                            base::store_ty(bcx, llval, lltemp, operand.ty);
+                            base::coerce_unsized_into(bcx,
+                                                      lltemp, operand.ty,
+                                                      dest.llval, cast_ty);
+                        }
+                        OperandValue::Ref(llref) => {
+                            base::coerce_unsized_into(bcx,
+                                                      llref, operand.ty,
+                                                      dest.llval, cast_ty);
+                        }
                     }
-                    OperandValue::Ref(llref) => {
-                        base::coerce_unsized_into(bcx,
-                                                  llref, operand.ty,
-                                                  dest.llval, cast_ty);
-                    }
-                }
+                });
                 bcx
             }
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
-                let elem = self.trans_operand(bcx, elem);
-                let size = self.trans_constval(bcx, &count.value, count.ty).immediate();
-                let base = expr::get_dataptr(bcx, dest.llval);
-                tvec::iter_vec_raw(bcx, base, elem.ty, size, |bcx, llslot, _| {
-                    self.store_operand(bcx, llslot, elem);
-                    bcx
+                let elem = self.trans_operand(&bcx, elem);
+                let size = self.trans_constval(&bcx, &count.value, count.ty).immediate();
+                bcx.map_block(|block| {
+                    let base = expr::get_dataptr(block, dest.llval);
+                    tvec::iter_vec_raw(block, base, elem.ty, size, |block, llslot, _| {
+                        self.store_operand_direct(block, llslot, elem);
+                        block
+                    })
                 })
             }
 
@@ -102,27 +105,31 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::AggregateKind::Adt(adt_def, index, _) => {
                         let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
                         let disr = Disr::from(adt_def.variants[index].disr_val);
-                        adt::trans_set_discr(bcx, &*repr, dest.llval, Disr::from(disr));
+                        bcx.with_block(|bcx| {
+                            adt::trans_set_discr(bcx, &*repr, dest.llval, Disr::from(disr));
+                        });
                         for (i, operand) in operands.iter().enumerate() {
-                            let op = self.trans_operand(bcx, operand);
+                            let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx(), op.ty) {
                                 let val = adt::MaybeSizedValue::sized(dest.llval);
-                                let lldest_i = adt::trans_field_ptr(bcx, &*repr, val, disr, i);
-                                self.store_operand(bcx, lldest_i, op);
+                                let lldest_i = bcx.with_block(|bcx| {
+                                    adt::trans_field_ptr(bcx, &*repr, val, disr, i)
+                                });
+                                self.store_operand(&bcx, lldest_i, op);
                             }
                         }
                     },
                     _ => {
                         for (i, operand) in operands.iter().enumerate() {
-                            let op = self.trans_operand(bcx, operand);
+                            let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
                             if !common::type_is_zero_size(bcx.ccx(), op.ty) {
                                 // Note: perhaps this should be StructGep, but
                                 // note that in some cases the values here will
                                 // not be structs but arrays.
-                                let dest = build::GEPi(bcx, dest.llval, &[0, i]);
-                                self.store_operand(bcx, dest, op);
+                                let dest = bcx.gepi(dest.llval, &[0, i]);
+                                self.store_operand(&bcx, dest, op);
                             }
                         }
                     }
@@ -132,49 +139,54 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Slice { ref input, from_start, from_end } => {
                 let ccx = bcx.ccx();
-                let input = self.trans_lvalue(bcx, input);
-                let (llbase, lllen) = tvec::get_base_and_len(bcx,
-                                                             input.llval,
-                                                             input.ty.to_ty(bcx.tcx()));
-                let llbase1 = build::GEPi(bcx, llbase, &[from_start]);
+                let input = self.trans_lvalue(&bcx, input);
+                let (llbase, lllen) = bcx.with_block(|bcx| {
+                    tvec::get_base_and_len(bcx,
+                                           input.llval,
+                                           input.ty.to_ty(bcx.tcx()))
+                });
+                let llbase1 = bcx.gepi(llbase, &[from_start]);
                 let adj = common::C_uint(ccx, from_start + from_end);
-                let lllen1 = build::Sub(bcx, lllen, adj, DebugLoc::None);
-                let lladdrdest = expr::get_dataptr(bcx, dest.llval);
-                build::Store(bcx, llbase1, lladdrdest);
-                let llmetadest = expr::get_meta(bcx, dest.llval);
-                build::Store(bcx, lllen1, llmetadest);
+                let lllen1 = bcx.sub(lllen, adj);
+                let (lladdrdest, llmetadest) = bcx.with_block(|bcx| {
+                    (expr::get_dataptr(bcx, dest.llval), expr::get_meta(bcx, dest.llval))
+                });
+                bcx.store(llbase1, lladdrdest);
+                bcx.store(lllen1, llmetadest);
                 bcx
             }
 
             mir::Rvalue::InlineAsm(ref inline_asm) => {
-                asm::trans_inline_asm(bcx, inline_asm)
+                bcx.map_block(|bcx| {
+                    asm::trans_inline_asm(bcx, inline_asm)
+                })
             }
 
             _ => {
                 assert!(rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
-                self.store_operand(bcx, dest.llval, temp);
+                self.store_operand(&bcx, dest.llval, temp);
                 bcx
             }
         }
     }
 
     pub fn trans_rvalue_operand(&mut self,
-                                bcx: Block<'bcx, 'tcx>,
+                                bcx: BlockAndBuilder<'bcx, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (Block<'bcx, 'tcx>, OperandRef<'tcx>)
+                                -> (BlockAndBuilder<'bcx, 'tcx>, OperandRef<'tcx>)
     {
         assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
-                let operand = self.trans_operand(bcx, operand);
+                let operand = self.trans_operand(&bcx, operand);
                 (bcx, operand)
             }
 
             mir::Rvalue::Cast(ref kind, ref operand, cast_ty) => {
-                let operand = self.trans_operand(bcx, operand);
-                debug!("cast operand is {}", operand.repr(bcx));
+                let operand = self.trans_operand(&bcx, operand);
+                debug!("cast operand is {}", operand.repr(&bcx));
                 let cast_ty = bcx.monomorphize(&cast_ty);
 
                 let val = match *kind {
@@ -199,15 +211,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             }
                             OperandValue::Immediate(lldata) => {
                                 // "standard" unsize
-                                let (lldata, llextra) =
+                                let (lldata, llextra) = bcx.with_block(|bcx| {
                                     base::unsize_thin_ptr(bcx, lldata,
-                                                          operand.ty, cast_ty);
+                                                          operand.ty, cast_ty)
+                                });
                                 OperandValue::FatPtr(lldata, llextra)
                             }
                             OperandValue::Ref(_) => {
                                 bcx.sess().bug(
                                     &format!("by-ref operand {} in trans_rvalue_operand",
-                                             operand.repr(bcx)));
+                                             operand.repr(&bcx)));
                             }
                         }
                     }
@@ -220,8 +233,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let (llval, ll_t_in, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
                             let repr = adt::represent_type(bcx.ccx(), operand.ty);
                             let llval = operand.immediate();
-                            let discr = adt::trans_get_discr(bcx, &*repr, llval,
-                                                             None, true);
+                            let discr = bcx.with_block(|bcx| {
+                                adt::trans_get_discr(bcx, &*repr, llval, None, true)
+                            });
                             (discr, common::val_ty(discr), adt::is_discr_signed(&*repr))
                         } else {
                             (operand.immediate(), ll_t_in, operand.ty.is_signed())
@@ -232,22 +246,22 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 let srcsz = ll_t_in.int_width();
                                 let dstsz = ll_t_out.int_width();
                                 if srcsz == dstsz {
-                                    build::BitCast(bcx, llval, ll_t_out)
+                                    bcx.bitcast(llval, ll_t_out)
                                 } else if srcsz > dstsz {
-                                    build::Trunc(bcx, llval, ll_t_out)
+                                    bcx.trunc(llval, ll_t_out)
                                 } else if signed {
-                                    build::SExt(bcx, llval, ll_t_out)
+                                    bcx.sext(llval, ll_t_out)
                                 } else {
-                                    build::ZExt(bcx, llval, ll_t_out)
+                                    bcx.zext(llval, ll_t_out)
                                 }
                             }
                             (CastTy::Float, CastTy::Float) => {
                                 let srcsz = ll_t_in.float_width();
                                 let dstsz = ll_t_out.float_width();
                                 if dstsz > srcsz {
-                                    build::FPExt(bcx, llval, ll_t_out)
+                                    bcx.fpext(llval, ll_t_out)
                                 } else if srcsz > dstsz {
-                                    build::FPTrunc(bcx, llval, ll_t_out)
+                                    bcx.fptrunc(llval, ll_t_out)
                                 } else {
                                     llval
                                 }
@@ -255,20 +269,20 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             (CastTy::Ptr(_), CastTy::Ptr(_)) |
                             (CastTy::FnPtr, CastTy::Ptr(_)) |
                             (CastTy::RPtr(_), CastTy::Ptr(_)) =>
-                                build::PointerCast(bcx, llval, ll_t_out),
+                                bcx.pointercast(llval, ll_t_out),
                             (CastTy::Ptr(_), CastTy::Int(_)) |
                             (CastTy::FnPtr, CastTy::Int(_)) =>
-                                build::PtrToInt(bcx, llval, ll_t_out),
+                                bcx.ptrtoint(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Ptr(_)) =>
-                                build::IntToPtr(bcx, llval, ll_t_out),
+                                bcx.inttoptr(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Float) if signed =>
-                                build::SIToFP(bcx, llval, ll_t_out),
+                                bcx.sitofp(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Float) =>
-                                build::UIToFP(bcx, llval, ll_t_out),
+                                bcx.uitofp(llval, ll_t_out),
                             (CastTy::Float, CastTy::Int(IntTy::I)) =>
-                                build::FPToSI(bcx, llval, ll_t_out),
+                                bcx.fptosi(llval, ll_t_out),
                             (CastTy::Float, CastTy::Int(_)) =>
-                                build::FPToUI(bcx, llval, ll_t_out),
+                                bcx.fptoui(llval, ll_t_out),
                             _ => bcx.ccx().sess().bug(
                                 &format!("unsupported cast: {:?} to {:?}", operand.ty, cast_ty)
                             )
@@ -282,13 +296,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                                 let ll_cft = ll_cast_ty.field_types();
                                 let ll_fft = ll_from_ty.field_types();
-                                let data_cast = build::PointerCast(bcx, data_ptr, ll_cft[0]);
+                                let data_cast = bcx.pointercast(data_ptr, ll_cft[0]);
                                 assert_eq!(ll_cft[1].kind(), ll_fft[1].kind());
                                 OperandValue::FatPtr(data_cast, meta_ptr)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llval = build::PointerCast(bcx, data_ptr, ll_cast_ty);
+                                let llval = bcx.pointercast(data_ptr, ll_cast_ty);
                                 OperandValue::Immediate(llval)
                             }
                         } else {
@@ -296,14 +310,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
                 };
-                (bcx, OperandRef {
+                let operand = OperandRef {
                     val: val,
                     ty: cast_ty
-                })
+                };
+                (bcx, operand)
             }
 
             mir::Rvalue::Ref(_, bk, ref lvalue) => {
-                let tr_lvalue = self.trans_lvalue(bcx, lvalue);
+                let tr_lvalue = self.trans_lvalue(&bcx, lvalue);
 
                 let ty = tr_lvalue.ty.to_ty(bcx.tcx());
                 let ref_ty = bcx.tcx().mk_ref(
@@ -313,66 +328,70 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Note: lvalues are indirect, so storing the `llval` into the
                 // destination effectively creates a reference.
-                if common::type_is_sized(bcx.tcx(), ty) {
-                    (bcx, OperandRef {
+                let operand = if common::type_is_sized(bcx.tcx(), ty) {
+                    OperandRef {
                         val: OperandValue::Immediate(tr_lvalue.llval),
                         ty: ref_ty,
-                    })
+                    }
                 } else {
-                    (bcx, OperandRef {
+                    OperandRef {
                         val: OperandValue::FatPtr(tr_lvalue.llval,
                                                   tr_lvalue.llextra),
                         ty: ref_ty,
-                    })
-                }
+                    }
+                };
+                (bcx, operand)
             }
 
             mir::Rvalue::Len(ref lvalue) => {
-                let tr_lvalue = self.trans_lvalue(bcx, lvalue);
-                (bcx, OperandRef {
-                    val: OperandValue::Immediate(self.lvalue_len(bcx, tr_lvalue)),
+                let tr_lvalue = self.trans_lvalue(&bcx, lvalue);
+                let operand = OperandRef {
+                    val: OperandValue::Immediate(self.lvalue_len(&bcx, tr_lvalue)),
                     ty: bcx.tcx().types.usize,
-                })
+                };
+                (bcx, operand)
             }
 
             mir::Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
-                let lhs = self.trans_operand(bcx, lhs);
-                let rhs = self.trans_operand(bcx, rhs);
+                let lhs = self.trans_operand(&bcx, lhs);
+                let rhs = self.trans_operand(&bcx, rhs);
                 let llresult = if common::type_is_fat_ptr(bcx.tcx(), lhs.ty) {
                     match (lhs.val, rhs.val) {
                         (OperandValue::FatPtr(lhs_addr, lhs_extra),
                          OperandValue::FatPtr(rhs_addr, rhs_extra)) => {
-                            base::compare_fat_ptrs(bcx,
-                                                   lhs_addr, lhs_extra,
-                                                   rhs_addr, rhs_extra,
-                                                   lhs.ty, op.to_hir_binop(),
-                                                   DebugLoc::None)
+                            bcx.with_block(|bcx| {
+                                base::compare_fat_ptrs(bcx,
+                                                       lhs_addr, lhs_extra,
+                                                       rhs_addr, rhs_extra,
+                                                       lhs.ty, op.to_hir_binop(),
+                                                       DebugLoc::None)
+                            })
                         }
                         _ => unreachable!()
                     }
 
                 } else {
-                    self.trans_scalar_binop(bcx, op,
+                    self.trans_scalar_binop(&bcx, op,
                                             lhs.immediate(), rhs.immediate(),
-                                            lhs.ty, DebugLoc::None)
+                                            lhs.ty)
                 };
-                (bcx, OperandRef {
+                let operand = OperandRef {
                     val: OperandValue::Immediate(llresult),
                     ty: self.mir.binop_ty(bcx.tcx(), op, lhs.ty, rhs.ty),
-                })
+                };
+                (bcx, operand)
             }
 
             mir::Rvalue::UnaryOp(op, ref operand) => {
-                let operand = self.trans_operand(bcx, operand);
+                let operand = self.trans_operand(&bcx, operand);
                 let lloperand = operand.immediate();
                 let is_float = operand.ty.is_fp();
-                let debug_loc = DebugLoc::None;
                 let llval = match op {
-                    mir::UnOp::Not => build::Not(bcx, lloperand, debug_loc),
+                    mir::UnOp::Not => bcx.not(lloperand),
                     mir::UnOp::Neg => if is_float {
-                        build::FNeg(bcx, lloperand, debug_loc)
+                        bcx.fneg(lloperand)
                     } else {
-                        build::Neg(bcx, lloperand, debug_loc)
+                        bcx.neg(lloperand)
                     }
                 };
                 (bcx, OperandRef {
@@ -389,16 +408,22 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let llalign = common::C_uint(bcx.ccx(), align);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);
-                let Result { bcx, val: llval } = base::malloc_raw_dyn(bcx,
-                                                                      llty_ptr,
-                                                                      box_ty,
-                                                                      llsize,
-                                                                      llalign,
-                                                                      DebugLoc::None);
-                (bcx, OperandRef {
-                    val: OperandValue::Immediate(llval),
+                let mut llval = None;
+                let bcx = bcx.map_block(|bcx| {
+                    let Result { bcx, val } = base::malloc_raw_dyn(bcx,
+                                                                   llty_ptr,
+                                                                   box_ty,
+                                                                   llsize,
+                                                                   llalign,
+                                                                   DebugLoc::None);
+                    llval = Some(val);
+                    bcx
+                });
+                let operand = OperandRef {
+                    val: OperandValue::Immediate(llval.unwrap()),
                     ty: box_ty,
-                })
+                };
+                (bcx, operand)
             }
 
             mir::Rvalue::Repeat(..) |
@@ -411,36 +436,35 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_scalar_binop(&mut self,
-                              bcx: Block<'bcx, 'tcx>,
+                              bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               op: mir::BinOp,
                               lhs: ValueRef,
                               rhs: ValueRef,
-                              input_ty: Ty<'tcx>,
-                              debug_loc: DebugLoc) -> ValueRef {
+                              input_ty: Ty<'tcx>) -> ValueRef {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
         match op {
             mir::BinOp::Add => if is_float {
-                build::FAdd(bcx, lhs, rhs, debug_loc)
+                bcx.fadd(lhs, rhs)
             } else {
-                build::Add(bcx, lhs, rhs, debug_loc)
+                bcx.add(lhs, rhs)
             },
             mir::BinOp::Sub => if is_float {
-                build::FSub(bcx, lhs, rhs, debug_loc)
+                bcx.fsub(lhs, rhs)
             } else {
-                build::Sub(bcx, lhs, rhs, debug_loc)
+                bcx.sub(lhs, rhs)
             },
             mir::BinOp::Mul => if is_float {
-                build::FMul(bcx, lhs, rhs, debug_loc)
+                bcx.fmul(lhs, rhs)
             } else {
-                build::Mul(bcx, lhs, rhs, debug_loc)
+                bcx.mul(lhs, rhs)
             },
             mir::BinOp::Div => if is_float {
-                build::FDiv(bcx, lhs, rhs, debug_loc)
+                bcx.fdiv(lhs, rhs)
             } else if is_signed {
-                build::SDiv(bcx, lhs, rhs, debug_loc)
+                bcx.sdiv(lhs, rhs)
             } else {
-                build::UDiv(bcx, lhs, rhs, debug_loc)
+                bcx.udiv(lhs, rhs)
             },
             mir::BinOp::Rem => if is_float {
                 // LLVM currently always lowers the `frem` instructions appropriate
@@ -471,39 +495,47 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty,
                                                     tcx.types.f64);
                     if input_ty == tcx.types.f32 {
-                        let lllhs = build::FPExt(bcx, lhs, f64t);
-                        let llrhs = build::FPExt(bcx, rhs, f64t);
-                        let llres = build::Call(bcx, llfn, &[lllhs, llrhs],
-                                                None, debug_loc);
-                        build::FPTrunc(bcx, llres, Type::f32(bcx.ccx()))
+                        let lllhs = bcx.fpext(lhs, f64t);
+                        let llrhs = bcx.fpext(rhs, f64t);
+                        let llres = bcx.call(llfn, &[lllhs, llrhs], None, None);
+                        bcx.fptrunc(llres, Type::f32(bcx.ccx()))
                     } else {
-                        build::Call(bcx, llfn, &[lhs, rhs],
-                                    None, debug_loc)
+                        bcx.call(llfn, &[lhs, rhs], None, None)
                     }
                 } else {
-                    build::FRem(bcx, lhs, rhs, debug_loc)
+                    bcx.frem(lhs, rhs)
                 }
             } else if is_signed {
-                build::SRem(bcx, lhs, rhs, debug_loc)
+                bcx.srem(lhs, rhs)
             } else {
-                build::URem(bcx, lhs, rhs, debug_loc)
+                bcx.urem(lhs, rhs)
             },
-            mir::BinOp::BitOr => build::Or(bcx, lhs, rhs, debug_loc),
-            mir::BinOp::BitAnd => build::And(bcx, lhs, rhs, debug_loc),
-            mir::BinOp::BitXor => build::Xor(bcx, lhs, rhs, debug_loc),
-            mir::BinOp::Shl => common::build_unchecked_lshift(bcx,
-                                                              lhs,
-                                                              rhs,
-                                                              debug_loc),
-            mir::BinOp::Shr => common::build_unchecked_rshift(bcx,
-                                                              input_ty,
-                                                              lhs,
-                                                              rhs,
-                                                              debug_loc),
+            mir::BinOp::BitOr => bcx.or(lhs, rhs),
+            mir::BinOp::BitAnd => bcx.and(lhs, rhs),
+            mir::BinOp::BitXor => bcx.xor(lhs, rhs),
+            mir::BinOp::Shl => {
+                bcx.with_block(|bcx| {
+                    common::build_unchecked_lshift(bcx,
+                                                   lhs,
+                                                   rhs,
+                                                   DebugLoc::None)
+                })
+            }
+            mir::BinOp::Shr => {
+                bcx.with_block(|bcx| {
+                    common::build_unchecked_rshift(bcx,
+                                                   input_ty,
+                                                   lhs,
+                                                   rhs,
+                                                   DebugLoc::None)
+                })
+            }
             mir::BinOp::Eq | mir::BinOp::Lt | mir::BinOp::Gt |
             mir::BinOp::Ne | mir::BinOp::Le | mir::BinOp::Ge => {
-                base::compare_scalar_types(bcx, lhs, rhs, input_ty,
-                                           op.to_hir_binop(), debug_loc)
+                bcx.with_block(|bcx| {
+                    base::compare_scalar_types(bcx, lhs, rhs, input_ty,
+                                               op.to_hir_binop(), DebugLoc::None)
+                })
             }
         }
     }

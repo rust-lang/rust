@@ -12,7 +12,7 @@ use llvm::ValueRef;
 use rustc::middle::ty::{Ty, TypeFoldable};
 use rustc::mir::repr as mir;
 use trans::base;
-use trans::common::{self, Block};
+use trans::common::{self, Block, BlockAndBuilder};
 use trans::datum;
 
 use super::{MirContext, TempRef};
@@ -37,8 +37,9 @@ pub enum OperandValue {
 ///
 /// NOTE: unless you know a value's type exactly, you should not
 /// generate LLVM opcodes acting on it and instead act via methods,
-/// to avoid nasty edge cases. In particular, using `build::Store`
-/// directly is sure to cause problems - use `store_operand` instead.
+/// to avoid nasty edge cases. In particular, using `Builder.store`
+/// directly is sure to cause problems -- use `MirContext.store_operand`
+/// instead.
 #[derive(Copy, Clone)]
 pub struct OperandRef<'tcx> {
     // The value.
@@ -58,7 +59,7 @@ impl<'tcx> OperandRef<'tcx> {
         }
     }
 
-    pub fn repr<'bcx>(self, bcx: Block<'bcx, 'tcx>) -> String {
+    pub fn repr<'bcx>(self, bcx: &BlockAndBuilder<'bcx, 'tcx>) -> String {
         match self.val {
             OperandValue::Ref(r) => {
                 format!("OperandRef(Ref({}) @ {:?})",
@@ -90,7 +91,7 @@ impl<'tcx> OperandRef<'tcx> {
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_operand(&mut self,
-                         bcx: Block<'bcx, 'tcx>,
+                         bcx: &BlockAndBuilder<'bcx, 'tcx>,
                          operand: &mir::Operand<'tcx>)
                          -> OperandRef<'tcx>
     {
@@ -124,10 +125,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                        ty);
                 let val = match datum::appropriate_rvalue_mode(bcx.ccx(), ty) {
                     datum::ByValue => {
-                        OperandValue::Immediate(base::load_ty(bcx, tr_lvalue.llval, ty))
+                        bcx.with_block(|bcx| {
+                            OperandValue::Immediate(base::load_ty(bcx, tr_lvalue.llval, ty))
+                        })
                     }
                     datum::ByRef if common::type_is_fat_ptr(bcx.tcx(), ty) => {
-                        let (lldata, llextra) = base::load_fat_ptr(bcx, tr_lvalue.llval, ty);
+                        let (lldata, llextra) = bcx.with_block(|bcx| {
+                            base::load_fat_ptr(bcx, tr_lvalue.llval, ty)
+                        });
                         OperandValue::FatPtr(lldata, llextra)
                     }
                     datum::ByRef => OperandValue::Ref(tr_lvalue.llval)
@@ -148,7 +153,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_operand_into(&mut self,
-                              bcx: Block<'bcx, 'tcx>,
+                              bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               lldest: ValueRef,
                               operand: &mir::Operand<'tcx>)
     {
@@ -164,11 +169,21 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn store_operand(&mut self,
-                         bcx: Block<'bcx, 'tcx>,
+                         bcx: &BlockAndBuilder<'bcx, 'tcx>,
                          lldest: ValueRef,
                          operand: OperandRef<'tcx>)
     {
         debug!("store_operand: operand={}", operand.repr(bcx));
+        bcx.with_block(|bcx| {
+            self.store_operand_direct(bcx, lldest, operand)
+        })
+    }
+
+    pub fn store_operand_direct(&mut self,
+                                bcx: Block<'bcx, 'tcx>,
+                                lldest: ValueRef,
+                                operand: OperandRef<'tcx>)
+    {
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
         if common::type_is_zero_size(bcx.ccx(), operand.ty) {

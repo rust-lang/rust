@@ -150,8 +150,7 @@ pub fn Invoke(cx: Block,
            cx.val_to_string(fn_),
            args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().join(", "));
     debug_loc.apply(cx.fcx);
-    let lpad = cx.lpad.borrow();
-    let bundle = lpad.as_ref().and_then(|b| b.bundle());
+    let bundle = cx.lpad().and_then(|b| b.bundle());
     B(cx).invoke(fn_, args, then, catch, bundle, attributes)
 }
 
@@ -916,8 +915,7 @@ pub fn Call(cx: Block,
         return _UndefReturn(cx, fn_);
     }
     debug_loc.apply(cx.fcx);
-    let lpad = cx.lpad.borrow();
-    let bundle = lpad.as_ref().and_then(|b| b.bundle());
+    let bundle = cx.lpad.get().and_then(|b| b.bundle());
     B(cx).call(fn_, args, bundle, attributes)
 }
 
@@ -932,8 +930,7 @@ pub fn CallWithConv(cx: Block,
         return _UndefReturn(cx, fn_);
     }
     debug_loc.apply(cx.fcx);
-    let lpad = cx.lpad.borrow();
-    let bundle = lpad.as_ref().and_then(|b| b.bundle());
+    let bundle = cx.lpad.get().and_then(|b| b.bundle());
     B(cx).call_with_conv(fn_, args, conv, bundle, attributes)
 }
 
