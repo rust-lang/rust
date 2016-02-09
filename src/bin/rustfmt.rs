@@ -24,13 +24,14 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{self, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
 /// Rustfmt operations.
 enum Operation {
     /// Format files and their child modules.
-    Format(Vec<PathBuf>, WriteMode, Option<PathBuf>),
+    Format(Vec<PathBuf>, Option<PathBuf>),
     /// Print the help message.
     Help,
     // Print version information
@@ -40,7 +41,7 @@ enum Operation {
     /// Invalid program input, including reason.
     InvalidInput(String),
     /// No file specified, read from stdin
-    Stdin(String, WriteMode, Option<PathBuf>),
+    Stdin(String, Option<PathBuf>),
 }
 
 /// Try to find a project file in the given directory and its parents. Returns the path of a the
@@ -109,9 +110,19 @@ fn match_cli_path_or_file(config_path: Option<PathBuf>,
     resolve_config(input_file)
 }
 
-fn update_config(config: &mut Config, matches: &Matches) {
+fn update_config(config: &mut Config, matches: &Matches) -> Result<(), String> {
     config.verbose = matches.opt_present("verbose");
     config.skip_children = matches.opt_present("skip-children");
+
+    let write_mode = matches.opt_str("write-mode");
+    match matches.opt_str("write-mode").map(|wm| WriteMode::from_str(&wm)) {
+        None => Ok(()),
+        Some(Ok(write_mode)) => {
+            config.write_mode = write_mode;
+            Ok(())
+        }
+        Some(Err(_)) => Err(format!("Invalid write-mode: {}", write_mode.expect("cannot happen"))),
+    }
 }
 
 fn execute() -> i32 {
@@ -161,15 +172,18 @@ fn execute() -> i32 {
             Config::print_docs();
             0
         }
-        Operation::Stdin(input, write_mode, config_path) => {
+        Operation::Stdin(input, config_path) => {
             // try to read config from local directory
-            let (config, _) = match_cli_path_or_file(config_path, &env::current_dir().unwrap())
-                                  .expect("Error resolving config");
+            let (mut config, _) = match_cli_path_or_file(config_path, &env::current_dir().unwrap())
+                                      .expect("Error resolving config");
 
-            run_from_stdin(input, write_mode, &config);
+            // write_mode is always Plain for Stdin.
+            config.write_mode = WriteMode::Plain;
+
+            run_from_stdin(input, &config);
             0
         }
-        Operation::Format(files, write_mode, config_path) => {
+        Operation::Format(files, config_path) => {
             let mut config = Config::default();
             let mut path = None;
             // Load the config path file if provided
@@ -198,8 +212,11 @@ fn execute() -> i32 {
                     config = config_tmp;
                 }
 
-                update_config(&mut config, &matches);
-                run(&file, write_mode, &config);
+                if let Err(e) = update_config(&mut config, &matches) {
+                    print_usage(&opts, &e);
+                    return 1;
+                }
+                run(&file, &config);
             }
             0
         }
@@ -267,21 +284,10 @@ fn determine_operation(matches: &Matches) -> Operation {
             Err(e) => return Operation::InvalidInput(e.to_string()),
         }
 
-        // WriteMode is always plain for Stdin
-        return Operation::Stdin(buffer, WriteMode::Plain, config_path);
+        return Operation::Stdin(buffer, config_path);
     }
-
-    let write_mode = match matches.opt_str("write-mode") {
-        Some(mode) => {
-            match mode.parse() {
-                Ok(mode) => mode,
-                Err(..) => return Operation::InvalidInput("Unrecognized write mode".into()),
-            }
-        }
-        None => WriteMode::Default,
-    };
 
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
-    Operation::Format(files, write_mode, config_path)
+    Operation::Format(files, config_path)
 }

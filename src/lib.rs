@@ -39,7 +39,7 @@ use std::fmt;
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
 use visitor::FmtVisitor;
-use config::{Config, WriteMode};
+use config::Config;
 
 #[macro_use]
 mod utils;
@@ -264,8 +264,7 @@ impl fmt::Display for FormatReport {
 fn fmt_ast(krate: &ast::Crate,
            parse_session: &ParseSess,
            main_file: &Path,
-           config: &Config,
-           mode: WriteMode)
+           config: &Config)
            -> FileMap {
     let mut file_map = FileMap::new();
     for (path, module) in modules::list_files(krate, parse_session.codemap()) {
@@ -276,7 +275,7 @@ fn fmt_ast(krate: &ast::Crate,
         if config.verbose {
             println!("Formatting {}", path);
         }
-        let mut visitor = FmtVisitor::from_codemap(parse_session, config, Some(mode));
+        let mut visitor = FmtVisitor::from_codemap(parse_session, config);
         visitor.format_separate_mod(module);
         file_map.insert(path.to_owned(), visitor.buffer);
     }
@@ -366,7 +365,7 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
-pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap {
+pub fn format_string(input: String, config: &Config) -> FileMap {
     let path = "stdin";
     let mut parse_session = ParseSess::new();
     let krate = parse::parse_crate_from_source_str(path.to_owned(),
@@ -383,7 +382,7 @@ pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap
     let mut file_map = FileMap::new();
 
     // do the actual formatting
-    let mut visitor = FmtVisitor::from_codemap(&parse_session, config, Some(mode));
+    let mut visitor = FmtVisitor::from_codemap(&parse_session, config);
     visitor.format_separate_mod(&krate.module);
 
     // append final newline
@@ -393,7 +392,7 @@ pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap
     file_map
 }
 
-pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
+pub fn format(file: &Path, config: &Config) -> FileMap {
     let mut parse_session = ParseSess::new();
     let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
 
@@ -401,7 +400,7 @@ pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
     parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
 
-    let mut file_map = fmt_ast(&krate, &parse_session, file, config, mode);
+    let mut file_map = fmt_ast(&krate, &parse_session, file, config);
 
     // For some reason, the codemap does not include terminating
     // newlines so we must add one on for each file. This is sad.
@@ -410,25 +409,12 @@ pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     file_map
 }
 
-// Make sure that we are using the correct WriteMode,
-// preferring what is passed as an argument
-fn check_write_mode(arg: WriteMode, config: WriteMode) -> WriteMode {
-    match (arg, config) {
-        (WriteMode::Default, WriteMode::Default) => WriteMode::Replace,
-        (WriteMode::Default, mode) => mode,
-        (mode, _) => mode,
-    }
-}
-
-// write_mode determines what happens to the result of running rustfmt, see
-// WriteMode.
-pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
-    let mode = check_write_mode(write_mode, config.write_mode);
-    let mut result = format(file, config, mode);
+pub fn run(file: &Path, config: &Config) {
+    let mut result = format(file, config);
 
     print!("{}", fmt_lines(&mut result, config));
     let out = stdout();
-    let write_result = filemap::write_all_files(&result, out, mode, config);
+    let write_result = filemap::write_all_files(&result, out, config);
 
     if let Err(msg) = write_result {
         println!("Error writing files: {}", msg);
@@ -436,13 +422,12 @@ pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
 }
 
 // Similar to run, but takes an input String instead of a file to format
-pub fn run_from_stdin(input: String, write_mode: WriteMode, config: &Config) {
-    let mode = check_write_mode(write_mode, config.write_mode);
-    let mut result = format_string(input, config, mode);
+pub fn run_from_stdin(input: String, config: &Config) {
+    let mut result = format_string(input, config);
     fmt_lines(&mut result, config);
 
     let mut out = stdout();
-    let write_result = filemap::write_file(&result["stdin"], "stdin", &mut out, mode, config);
+    let write_result = filemap::write_file(&result["stdin"], "stdin", &mut out, config);
 
     if let Err(msg) = write_result {
         panic!("Error writing to stdout: {}", msg);
