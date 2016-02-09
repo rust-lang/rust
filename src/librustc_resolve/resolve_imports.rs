@@ -238,7 +238,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                           -> Vec<ImportResolvingError<'b>> {
         let mut errors = Vec::new();
         debug!("(resolving imports for module subtree) resolving {}",
-               module_to_string(&*module_));
+               module_to_string(&module_));
         let orig_module = replace(&mut self.resolver.current_module, module_);
         errors.extend(self.resolve_imports_for_module(module_));
         self.resolver.current_module = orig_module;
@@ -268,7 +268,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         if module.all_imports_resolved() {
             debug!("(resolving imports for module) all imports resolved for {}",
-                   module_to_string(&*module));
+                   module_to_string(&module));
             return errors;
         }
 
@@ -320,7 +320,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                  -> ResolveResult<()> {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                names_to_string(&import_directive.module_path),
-               module_to_string(&*module_));
+               module_to_string(&module_));
 
         self.resolver
             .resolve_module_path(module_,
@@ -370,7 +370,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         debug!("(resolving single import) resolving `{}` = `{}::{}` from `{}` id {}, last \
                 private {:?}",
                target,
-               module_to_string(&*target_module),
+               module_to_string(&target_module),
                source,
                module_to_string(module_),
                directive.id,
