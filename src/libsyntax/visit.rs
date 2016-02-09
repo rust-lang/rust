@@ -467,11 +467,11 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V,
     visitor.visit_ident(foreign_item.span, foreign_item.ident);
 
     match foreign_item.node {
-        ForeignItemFn(ref function_declaration, ref generics) => {
+        ForeignItemKind::Fn(ref function_declaration, ref generics) => {
             walk_fn_decl(visitor, function_declaration);
             visitor.visit_generics(generics)
         }
-        ForeignItemStatic(ref typ, _) => visitor.visit_ty(typ),
+        ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
     }
 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);

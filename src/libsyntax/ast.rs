@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::ForeignItem_::*;
 pub use self::Item_::*;
 pub use self::KleeneOp::*;
 pub use self::MacStmtStyle::*;
@@ -2039,7 +2038,7 @@ impl Item_ {
 pub struct ForeignItem {
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub node: ForeignItem_,
+    pub node: ForeignItemKind,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
@@ -2047,19 +2046,19 @@ pub struct ForeignItem {
 
 /// An item within an `extern` block
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ForeignItem_ {
+pub enum ForeignItemKind {
     /// A foreign function
-    ForeignItemFn(P<FnDecl>, Generics),
+    Fn(P<FnDecl>, Generics),
     /// A foreign static item (`static ext: u8`), with optional mutability
     /// (the boolean is true when mutable)
-    ForeignItemStatic(P<Ty>, bool),
+    Static(P<Ty>, bool),
 }
 
-impl ForeignItem_ {
+impl ForeignItemKind {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
-            ForeignItemFn(..) => "foreign function",
-            ForeignItemStatic(..) => "foreign static item"
+            ForeignItemKind::Fn(..) => "foreign function",
+            ForeignItemKind::Static(..) => "foreign static item"
         }
     }
 }

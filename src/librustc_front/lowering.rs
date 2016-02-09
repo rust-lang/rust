@@ -838,10 +838,10 @@ pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> hir::Forei
         name: i.ident.name,
         attrs: lower_attrs(lctx, &i.attrs),
         node: match i.node {
-            ForeignItemFn(ref fdec, ref generics) => {
+            ForeignItemKind::Fn(ref fdec, ref generics) => {
                 hir::ForeignItemFn(lower_fn_decl(lctx, fdec), lower_generics(lctx, generics))
             }
-            ForeignItemStatic(ref t, m) => {
+            ForeignItemKind::Static(ref t, m) => {
                 hir::ForeignItemStatic(lower_ty(lctx, t), m)
             }
         },

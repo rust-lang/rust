@@ -1092,11 +1092,11 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> 
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
         node: match node {
-            ForeignItemFn(fdec, generics) => {
-                ForeignItemFn(folder.fold_fn_decl(fdec), folder.fold_generics(generics))
+            ForeignItemKind::Fn(fdec, generics) => {
+                ForeignItemKind::Fn(folder.fold_fn_decl(fdec), folder.fold_generics(generics))
             }
-            ForeignItemStatic(t, m) => {
-                ForeignItemStatic(folder.fold_ty(t), m)
+            ForeignItemKind::Static(t, m) => {
+                ForeignItemKind::Static(folder.fold_ty(t), m)
             }
         },
         vis: vis,
