@@ -76,7 +76,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
 
     let output_path = {
         let output_template = match requested_output {
-            Ok(ref s) if &**s == "help" => {
+            Ok(ref s) if s == "help" => {
                 static PRINTED_YET: AtomicBool = AtomicBool::new(false);
                 if !PRINTED_YET.load(Ordering::SeqCst) {
                     print_help_message();

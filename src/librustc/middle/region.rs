@@ -933,13 +933,13 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
 
     match local.init {
         Some(ref expr) => {
-            record_rvalue_scope_if_borrow_expr(visitor, &**expr, blk_scope);
+            record_rvalue_scope_if_borrow_expr(visitor, &expr, blk_scope);
 
             let is_borrow =
-                if let Some(ref ty) = local.ty { is_borrowed_ty(&**ty) } else { false };
+                if let Some(ref ty) = local.ty { is_borrowed_ty(&ty) } else { false };
 
-            if is_binding_pat(&*local.pat) || is_borrow {
-                record_rvalue_scope(visitor, &**expr, blk_scope);
+            if is_binding_pat(&local.pat) || is_borrow {
+                record_rvalue_scope(visitor, &expr, blk_scope);
             }
         }
 
@@ -961,22 +961,22 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
             hir::PatIdent(hir::BindByRef(_), _, _) => true,
 
             hir::PatStruct(_, ref field_pats, _) => {
-                field_pats.iter().any(|fp| is_binding_pat(&*fp.node.pat))
+                field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))
             }
 
             hir::PatVec(ref pats1, ref pats2, ref pats3) => {
-                pats1.iter().any(|p| is_binding_pat(&**p)) ||
-                pats2.iter().any(|p| is_binding_pat(&**p)) ||
-                pats3.iter().any(|p| is_binding_pat(&**p))
+                pats1.iter().any(|p| is_binding_pat(&p)) ||
+                pats2.iter().any(|p| is_binding_pat(&p)) ||
+                pats3.iter().any(|p| is_binding_pat(&p))
             }
 
             hir::PatEnum(_, Some(ref subpats)) |
             hir::PatTup(ref subpats) => {
-                subpats.iter().any(|p| is_binding_pat(&**p))
+                subpats.iter().any(|p| is_binding_pat(&p))
             }
 
             hir::PatBox(ref subpat) => {
-                is_binding_pat(&**subpat)
+                is_binding_pat(&subpat)
             }
 
             _ => false,
@@ -1006,30 +1006,30 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
                                           blk_id: CodeExtent) {
         match expr.node {
             hir::ExprAddrOf(_, ref subexpr) => {
-                record_rvalue_scope_if_borrow_expr(visitor, &**subexpr, blk_id);
-                record_rvalue_scope(visitor, &**subexpr, blk_id);
+                record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
+                record_rvalue_scope(visitor, &subexpr, blk_id);
             }
             hir::ExprStruct(_, ref fields, _) => {
                 for field in fields {
                     record_rvalue_scope_if_borrow_expr(
-                        visitor, &*field.expr, blk_id);
+                        visitor, &field.expr, blk_id);
                 }
             }
             hir::ExprVec(ref subexprs) |
             hir::ExprTup(ref subexprs) => {
                 for subexpr in subexprs {
                     record_rvalue_scope_if_borrow_expr(
-                        visitor, &**subexpr, blk_id);
+                        visitor, &subexpr, blk_id);
                 }
             }
             hir::ExprCast(ref subexpr, _) => {
-                record_rvalue_scope_if_borrow_expr(visitor, &**subexpr, blk_id)
+                record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id)
             }
             hir::ExprBlock(ref block) => {
                 match block.expr {
                     Some(ref subexpr) => {
                         record_rvalue_scope_if_borrow_expr(
-                            visitor, &**subexpr, blk_id);
+                            visitor, &subexpr, blk_id);
                     }
                     None => { }
                 }
@@ -1072,7 +1072,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
                 hir::ExprField(ref subexpr, _) |
                 hir::ExprTupField(ref subexpr, _) |
                 hir::ExprIndex(ref subexpr, _) => {
-                    expr = &**subexpr;
+                    expr = &subexpr;
                 }
                 _ => {
                     return;

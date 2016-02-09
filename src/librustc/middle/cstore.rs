@@ -254,8 +254,8 @@ impl InlinedItem {
         where V: Visitor<'ast>
     {
         match *self {
-            InlinedItem::Item(ref i) => visitor.visit_item(&**i),
-            InlinedItem::Foreign(ref i) => visitor.visit_foreign_item(&**i),
+            InlinedItem::Item(ref i) => visitor.visit_item(&i),
+            InlinedItem::Foreign(ref i) => visitor.visit_foreign_item(&i),
             InlinedItem::TraitItem(_, ref ti) => visitor.visit_trait_item(ti),
             InlinedItem::ImplItem(_, ref ii) => visitor.visit_impl_item(ii),
         }

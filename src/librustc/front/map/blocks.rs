@@ -217,9 +217,9 @@ impl<'a> FnLikeNode<'a> {
                     item_fn(ItemFnParts {
                         id: i.id,
                         name: i.name,
-                        decl: &**decl,
+                        decl: &decl,
                         unsafety: unsafety,
-                        body: &**block,
+                        body: &block,
                         generics: generics,
                         abi: abi,
                         vis: i.vis,
@@ -246,7 +246,7 @@ impl<'a> FnLikeNode<'a> {
             }
             map::NodeExpr(e) => match e.node {
                 ast::ExprClosure(_, ref decl, ref block) =>
-                    closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
+                    closure(ClosureParts::new(&decl, &block, e.id, e.span)),
                 _ => panic!("expr FnLikeNode that is not fn-like"),
             },
             _ => panic!("other FnLikeNode that is not fn-like"),
