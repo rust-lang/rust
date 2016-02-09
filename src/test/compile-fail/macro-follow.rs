@@ -55,7 +55,7 @@ macro_rules! follow_expr {
     ($e:expr $m:meta) => {};  //~ERROR `$e:expr` is followed by `$m:meta`
 }
 // FOLLOW(ty) = {OpenDelim(Brace), Comma, FatArrow, Colon, Eq, Gt, Semi, Or,
-//               Ident(as), Ident(where), OpenDelim(Bracket)}
+//               Ident(as), Ident(where), OpenDelim(Bracket), Nonterminal(Block)}
 macro_rules! follow_ty {
     ($t:ty ()) => {};       //~WARN  `$t:ty` is followed by `(`
     ($t:ty []) => {};       // ok (RFC 1462)
@@ -67,7 +67,7 @@ macro_rules! follow_ty {
     ($t:ty $t:ty) => {};    //~ERROR `$t:ty` is followed by `$t:ty`
     ($t:ty $s:stmt) => {};  //~ERROR `$t:ty` is followed by `$s:stmt`
     ($t:ty $p:path) => {};  //~ERROR `$t:ty` is followed by `$p:path`
-    ($t:ty $b:block) => {}; //~ERROR `$t:ty` is followed by `$b:block`
+    ($t:ty $b:block) => {}; // ok (RFC 1494)
     ($t:ty $i:ident) => {}; //~ERROR `$t:ty` is followed by `$i:ident`
     ($t:ty $t:tt) => {};    //~ERROR `$t:ty` is followed by `$t:tt`
     ($t:ty $i:item) => {};  //~ERROR `$t:ty` is followed by `$i:item`
@@ -109,7 +109,7 @@ macro_rules! follow_path {
     ($p:path $t:ty) => {};    //~ERROR `$p:path` is followed by `$t:ty`
     ($p:path $s:stmt) => {};  //~ERROR `$p:path` is followed by `$s:stmt`
     ($p:path $p:path) => {};  //~ERROR `$p:path` is followed by `$p:path`
-    ($p:path $b:block) => {}; //~ERROR `$p:path` is followed by `$b:block`
+    ($p:path $b:block) => {}; // ok (RFC 1494)
     ($p:path $i:ident) => {}; //~ERROR `$p:path` is followed by `$i:ident`
     ($p:path $t:tt) => {};    //~ERROR `$p:path` is followed by `$t:tt`
     ($p:path $i:item) => {};  //~ERROR `$p:path` is followed by `$i:item`
