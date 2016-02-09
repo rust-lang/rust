@@ -645,23 +645,15 @@ pub trait PrintState<'a> {
             }
             ast::LitInt(i, t) => {
                 match t {
-                    ast::SignedIntLit(st, ast::Plus) => {
+                    ast::SignedIntLit(st) => {
                         word(self.writer(),
                              &st.val_to_string(i as i64))
-                    }
-                    ast::SignedIntLit(st, ast::Minus) => {
-                        let istr = st.val_to_string(-(i as i64));
-                        word(self.writer(),
-                             &format!("-{}", istr))
                     }
                     ast::UnsignedIntLit(ut) => {
                         word(self.writer(), &ut.val_to_string(i))
                     }
-                    ast::UnsuffixedIntLit(ast::Plus) => {
+                    ast::UnsuffixedIntLit => {
                         word(self.writer(), &format!("{}", i))
-                    }
-                    ast::UnsuffixedIntLit(ast::Minus) => {
-                        word(self.writer(), &format!("-{}", i))
                     }
                 }
             }
@@ -3180,13 +3172,5 @@ mod tests {
 
         let varstr = variant_to_string(&var);
         assert_eq!(varstr, "principal_skinner");
-    }
-
-    #[test]
-    fn test_signed_int_to_string() {
-        let pos_int = ast::LitInt(42, ast::SignedIntLit(ast::TyI32, ast::Plus));
-        let neg_int = ast::LitInt((!42 + 1) as u64, ast::SignedIntLit(ast::TyI32, ast::Minus));
-        assert_eq!(format!("-{}", lit_to_string(&codemap::dummy_spanned(pos_int))),
-                   lit_to_string(&codemap::dummy_spanned(neg_int)));
     }
 }
