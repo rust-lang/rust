@@ -149,6 +149,13 @@ from_str_float_impl!(f32);
 from_str_float_impl!(f64);
 
 /// An error which can be returned when parsing a float.
+///
+/// This error is used as the error type for the [`FromStr`] implementation
+/// for [`f32`] and [`f64`].
+///
+/// [`FromStr`]: ../str/trait.FromStr.html
+/// [`f32`]: ../primitive.f32.html
+/// [`f64`]: ../primitive.f64.html
 #[derive(Debug, Clone, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseFloatError {
