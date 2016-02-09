@@ -26,7 +26,6 @@
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
-#![allow(trivial_casts)]
 #![cfg_attr(test, allow(deprecated))] // rand
 #![cfg_attr(not(stage0), deny(warnings))]
 
