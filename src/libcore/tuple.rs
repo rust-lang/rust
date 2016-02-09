@@ -8,24 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A finite heterogeneous sequence, `(T, U, ..)`
-//!
-//! To access a single element of a tuple one can use the `.0`
-//! field access syntax.
-//!
-//! Indexing starts from zero, so `.0` returns first value, `.1`
-//! returns second value, and so on. In general, a tuple with *N*
-//! elements has field accessors from 0 to *N* - 1.
-//!
-//! If every type inside a tuple implements one of the following
-//! traits, then a tuple itself also implements it.
-//!
-//! * `Clone`
-//! * `PartialEq`
-//! * `Eq`
-//! * `PartialOrd`
-//! * `Ord`
-//! * `Default`
+// See src/libstd/primitive_docs.rs for documentation.
 
 use clone::Clone;
 use cmp::*;
