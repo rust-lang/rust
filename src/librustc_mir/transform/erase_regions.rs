@@ -15,24 +15,26 @@
 use rustc::middle::ty;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
-use mir_map::MirMap;
-use transform::MirPass;
+use rustc::mir::mir_map::MirMap;
+use rustc::mir::transform::MirPass;
 
 pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
-    let mut eraser = EraseRegions::new(tcx);
+    let mut eraser = EraseRegions;
 
-    for mir in mir_map.iter_mut().map(|(_, v)| v) {
-        eraser.run_on_mir(mir);
+    for (_, mir) in &mut mir_map.map {
+        eraser.run_on_mir(mir, tcx);
     }
 }
 
-pub struct EraseRegions<'a, 'tcx: 'a> {
+pub struct EraseRegions;
+
+struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
 }
 
-impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> EraseRegions<'a, 'tcx> {
-        EraseRegions {
+impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
+    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> Self {
+        EraseRegionsVisitor {
             tcx: tcx
         }
     }
@@ -56,13 +58,13 @@ impl<'a, 'tcx> EraseRegions<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MirPass<'tcx> for EraseRegions<'a, 'tcx> {
-    fn run_on_mir(&mut self, mir: &mut Mir<'tcx>) {
-        self.visit_mir(mir);
+impl MirPass for EraseRegions {
+    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, tcx: &ty::ctxt<'tcx>) {
+        EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegions<'a, 'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     fn visit_mir(&mut self, mir: &mut Mir<'tcx>) {
         self.erase_regions_return_ty(&mut mir.return_ty);
         self.erase_regions_tys(mir.var_decls.iter_mut().map(|d| &mut d.ty));

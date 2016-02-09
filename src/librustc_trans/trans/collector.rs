@@ -400,7 +400,7 @@ fn load_mir<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
 
     if def_id.is_local() {
         let node_id = ccx.tcx().map.as_local_node_id(def_id).unwrap();
-        let mir_opt = ccx.mir_map().get(&node_id);
+        let mir_opt = ccx.mir_map().map.get(&node_id);
         let mir = errors::expect(ccx.sess().diagnostic(),
                              mir_opt,
                              mir_not_found_error_message);

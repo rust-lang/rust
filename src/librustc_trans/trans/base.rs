@@ -48,7 +48,7 @@ use middle::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::util::common::time;
-use rustc_mir::mir_map::MirMap;
+use rustc::mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
@@ -1596,7 +1596,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         false
     };
 
-    let mir = ccx.mir_map().get(&id);
+    let mir = ccx.mir_map().map.get(&id);
 
     let mut fcx = FunctionContext {
         mir: mir,
