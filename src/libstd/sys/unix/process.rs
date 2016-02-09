@@ -519,30 +519,9 @@ impl fmt::Debug for Command {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct ExitStatus(c_int);
 
-#[cfg(any(target_os = "linux", target_os = "android",
-          target_os = "nacl"))]
-mod status_imp {
-    pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
-    pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
-    pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
-}
-
-#[cfg(any(target_os = "macos",
-          target_os = "ios",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "netbsd",
-          target_os = "openbsd"))]
-mod status_imp {
-    pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
-    pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
-    pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
-}
-
 impl ExitStatus {
     fn exited(&self) -> bool {
-        status_imp::WIFEXITED(self.0)
+        unsafe { libc::WIFEXITED(self.0) }
     }
 
     pub fn success(&self) -> bool {
@@ -551,7 +530,7 @@ impl ExitStatus {
 
     pub fn code(&self) -> Option<i32> {
         if self.exited() {
-            Some(status_imp::WEXITSTATUS(self.0))
+            Some(unsafe { libc::WEXITSTATUS(self.0) })
         } else {
             None
         }
@@ -559,7 +538,7 @@ impl ExitStatus {
 
     pub fn signal(&self) -> Option<i32> {
         if !self.exited() {
-            Some(status_imp::WTERMSIG(self.0))
+            Some(unsafe { libc::WTERMSIG(self.0) })
         } else {
             None
         }
