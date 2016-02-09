@@ -193,7 +193,7 @@ use boxed::Box;
 /// mem::forget(story);
 ///
 /// // We can re-build a String out of ptr, len, and capacity. This is all
-/// // unsafe becuase we are responsible for making sure the components are
+/// // unsafe because we are responsible for making sure the components are
 /// // valid:
 /// let s = unsafe { String::from_raw_parts(ptr as *mut _, len, capacity) } ;
 ///
@@ -1842,6 +1842,12 @@ impl fmt::Write for String {
 }
 
 /// A draining iterator for `String`.
+///
+/// This struct is created by the [`drain()`] method on [`String`]. See its
+/// documentation for more.
+///
+/// [`drain()`]: struct.String.html#method.drain
+/// [`String`]: struct.String.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a> {
     /// Will be used as &'a mut String in the destructor

@@ -113,7 +113,7 @@ fn test_fn_object(f: &Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
 fn test_fn_impl(f: &&Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
     // This call goes through the Fn implementation for &Fn provided in
     // core::ops::impls. It expands to a static Fn::call() that calls the
-    // Fn::call() implemenation of the object shim underneath.
+    // Fn::call() implementation of the object shim underneath.
     f(x, y)
 }
 

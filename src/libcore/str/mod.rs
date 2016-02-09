@@ -1740,7 +1740,7 @@ impl StrExt for str {
         let mut matcher = pat.into_searcher(self);
         if let Some((a, b)) = matcher.next_reject() {
             i = a;
-            j = b; // Rember earliest known match, correct it below if
+            j = b; // Remember earliest known match, correct it below if
                    // last match is different
         }
         if let Some((_, b)) = matcher.next_reject_back() {
