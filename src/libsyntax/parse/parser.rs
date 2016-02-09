@@ -23,7 +23,7 @@ use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, ExprKind};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
-use ast::{Ident, Inherited, ImplItem, Item, ItemKind};
+use ast::{Ident, ImplItem, Item, ItemKind};
 use ast::{Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
@@ -3631,8 +3631,8 @@ impl<'a> Parser<'a> {
     fn parse_name_and_ty(&mut self, pr: Visibility,
                          attrs: Vec<Attribute> ) -> PResult<'a, StructField> {
         let lo = match pr {
-            Inherited => self.span.lo,
-            Public => self.last_span.lo,
+            Visibility::Inherited => self.span.lo,
+            Visibility::Public => self.last_span.lo,
         };
         if !self.token.is_plain_ident() {
             return Err(self.fatal("expected ident"));
@@ -3749,7 +3749,7 @@ impl<'a> Parser<'a> {
                             lo, hi, id /*id is good here*/,
                             ItemKind::Mac(spanned(lo, hi,
                                             Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
-                            Inherited, attrs)))),
+                            Visibility::Inherited, attrs)))),
                     ast::DUMMY_NODE_ID))
             }
         } else {
@@ -4686,7 +4686,7 @@ impl<'a> Parser<'a> {
 
     fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
         match visa {
-            Public => {
+            Visibility::Public => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid, _) => sid.name == intern("macro_rules"),
                     _ => false,
@@ -4704,7 +4704,7 @@ impl<'a> Parser<'a> {
                                      .emit();
                 }
             }
-            Inherited => (),
+            Visibility::Inherited => (),
         }
     }
 
@@ -4974,7 +4974,7 @@ impl<'a> Parser<'a> {
                         if parse_pub == ParsePub::Yes {
                             try!(p.parse_visibility())
                         } else {
-                            Inherited
+                            Visibility::Inherited
                         }
                     ),
                     id: ast::DUMMY_NODE_ID,
@@ -5020,16 +5020,16 @@ impl<'a> Parser<'a> {
                 let span = self.last_span;
                 self.span_err(span, "`pub` is not allowed here");
             }
-            return self.parse_single_struct_field(Public, attrs);
+            return self.parse_single_struct_field(Visibility::Public, attrs);
         }
 
-        return self.parse_single_struct_field(Inherited, attrs);
+        return self.parse_single_struct_field(Visibility::Inherited, attrs);
     }
 
     /// Parse visibility: PUB or nothing
     fn parse_visibility(&mut self) -> PResult<'a, Visibility> {
-        if self.eat_keyword(keywords::Pub) { Ok(Public) }
-        else { Ok(Inherited) }
+        if self.eat_keyword(keywords::Pub) { Ok(Visibility::Public) }
+        else { Ok(Visibility::Inherited) }
     }
 
     /// Given a termination token, parse all of the items in a module
@@ -5304,7 +5304,7 @@ impl<'a> Parser<'a> {
 
         let last_span = self.last_span;
 
-        if visibility == ast::Public {
+        if visibility == ast::Visibility::Public {
             self.span_warn(mk_sp(lo, last_span.hi),
                            "`pub extern crate` does not work as expected and should not be used. \
                             Likely to become an error. Prefer `extern crate` and `pub use`.");
@@ -5819,8 +5819,8 @@ impl<'a> Parser<'a> {
 
         // FAILURE TO PARSE ITEM
         match visibility {
-            Inherited => {}
-            Public => {
+            Visibility::Inherited => {}
+            Visibility::Public => {
                 let last_span = self.last_span;
                 return Err(self.span_fatal(last_span, "unmatched visibility `pub`"));
             }

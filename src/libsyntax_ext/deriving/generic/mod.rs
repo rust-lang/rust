@@ -475,7 +475,7 @@ impl<'a> TraitDef<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident: ident,
-                vis: ast::Inherited,
+                vis: ast::Visibility::Inherited,
                 attrs: Vec::new(),
                 node: ast::ImplItemKind::Type(type_def.to_ty(cx,
                     self.span,
@@ -892,7 +892,7 @@ impl<'a> MethodDef<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span: trait_.span,
-            vis: ast::Inherited,
+            vis: ast::Visibility::Inherited,
             ident: method_ident,
             node: ast::ImplItemKind::Method(ast::MethodSig {
                 generics: fn_generics,

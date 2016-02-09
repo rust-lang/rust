@@ -147,7 +147,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     // the module (note that the tests are re-exported and must
                     // be made public themselves to avoid privacy errors).
                     i.map(|mut i| {
-                        i.vis = ast::Public;
+                        i.vis = ast::Visibility::Public;
                         i
                     })
                 }
@@ -245,11 +245,11 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
     let super_ = token::str_to_ident("super");
 
     let items = tests.into_iter().map(|r| {
-        cx.ext_cx.item_use_simple(DUMMY_SP, ast::Public,
+        cx.ext_cx.item_use_simple(DUMMY_SP, ast::Visibility::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
     }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
-        cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Public, r, path)
+        cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Visibility::Public, r, path)
     }));
 
     let reexport_mod = ast::Mod {
@@ -263,7 +263,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::Mod(reexport_mod),
-        vis: ast::Public,
+        vis: ast::Visibility::Public,
         span: DUMMY_SP,
     });
 
@@ -456,9 +456,9 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
                                          path_node(vec!(id_test)))))),
-         ast::Public, token::special_idents::invalid)
+         ast::Visibility::Public, token::special_idents::invalid)
     } else {
-        (ast::ItemKind::ExternCrate(None), ast::Inherited, id_test)
+        (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)
     };
     P(ast::Item {
         id: ast::DUMMY_NODE_ID,
@@ -505,7 +505,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
         node: main,
-        vis: ast::Public,
+        vis: ast::Visibility::Public,
         span: sp
     });
 
@@ -535,7 +535,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         ident: mod_ident,
         attrs: vec![],
         node: item_,
-        vis: ast::Public,
+        vis: ast::Visibility::Public,
         span: DUMMY_SP,
     });
     let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
@@ -551,7 +551,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
             ident: token::special_idents::invalid,
             attrs: vec![],
             node: ast::ItemKind::Use(P(use_path)),
-            vis: ast::Inherited,
+            vis: ast::Visibility::Inherited,
             span: DUMMY_SP
         })
     });
