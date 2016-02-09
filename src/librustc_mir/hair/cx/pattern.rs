@@ -90,7 +90,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                             Some(const_expr) => {
                                 let pat = const_eval::const_expr_to_pat(self.cx.tcx, const_expr,
                                                                         pat.span);
-                                return self.to_pattern(&*pat);
+                                return self.to_pattern(&pat);
                             }
                             None => {
                                 self.cx.tcx.sess.span_bug(
