@@ -5,12 +5,12 @@ use syntax::ast::Lit_::LitStr;
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
 use rustc_front::hir::*;
-use rustc_front::intravisit::{Visitor, walk_expr};
+use rustc_front::intravisit::{Visitor, walk_block};
 use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::lint::*;
 
-use utils::{is_expn_of, match_path, REGEX_NEW_PATH, span_lint, span_help_and_lint};
+use utils::{is_expn_of, match_path, match_type, REGEX_NEW_PATH, span_lint, span_help_and_lint};
 
 /// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.
 ///
@@ -167,19 +167,23 @@ struct RegexVisitor<'v, 't: 'v> {
 }
 
 impl<'v, 't: 'v> Visitor<'v> for RegexVisitor<'v, 't> {
-    fn visit_expr(&mut self, expr: &'v Expr) {
-        if let Some(span) = is_expn_of(self.cx, expr.span, "regex") {
-            if self.spans.contains(&span) {
+    fn visit_block(&mut self, block: &'v Block) {
+        if_let_chain!{[
+            let Some(ref expr) = block.expr,
+            match_type(self.cx, self.cx.tcx.expr_ty(expr), &["regex", "re", "Regex"]),
+            let Some(span) = is_expn_of(self.cx, expr.span, "regex")
+        ], {
+                if self.spans.contains(&span) {
+                    return;
+                }
+                span_lint(self.cx, 
+                          REGEX_MACRO, 
+                          span,
+                          "`regex!(_)` found. \
+                          Please use `Regex::new(_)`, which is faster for now.");
+                self.spans.insert(span);
                 return;
-            }
-            span_lint(self.cx, 
-                      REGEX_MACRO, 
-                      span,
-                      "`regex!(_)` found. \
-                      Please use `Regex::new(_)`, which is faster for now.");
-            self.spans.insert(span);
-            return;
-        }
-        walk_expr(self, expr);
+        }}
+        walk_block(self, block);
     }
 }
