@@ -71,8 +71,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
     // We want to make sure we have the expn_id set so that we can use unstable methods
     let span = Span { expn_id: cx.backtrace(), .. span };
-    let name = cx.expr_lit(span, ast::LitKind::Str(ident.name.as_str(),
-                                                         ast::StrStyle::CookedStr));
+    let name = cx.expr_lit(span, ast::LitKind::Str(ident.name.as_str(), ast::StrStyle::Cooked));
     let builder = token::str_to_ident("builder");
     let builder_expr = cx.expr_ident(span, builder.clone());
 
@@ -114,7 +113,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                 for field in fields {
                     let name = cx.expr_lit(field.span, ast::LitKind::Str(
                             field.name.unwrap().name.as_str(),
-                            ast::StrStyle::CookedStr));
+                            ast::StrStyle::Cooked));
 
                     // Use double indirection to make sure this works for unsized types
                     let field = cx.expr_addr_of(field.span, field.self_.clone());

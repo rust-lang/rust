@@ -219,7 +219,7 @@ pub mod rt {
     impl ToTokens for str {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
             let lit = ast::LitKind::Str(
-                token::intern_and_get_ident(self), ast::CookedStr);
+                token::intern_and_get_ident(self), ast::StrStyle::Cooked);
             dummy_spanned(lit).to_tokens(cx)
         }
     }

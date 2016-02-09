@@ -1544,13 +1544,13 @@ impl<'a> Parser<'a> {
                     token::Str_(s) => {
                         (true,
                          LitKind::Str(token::intern_and_get_ident(&parse::str_lit(&s.as_str())),
-                                      ast::CookedStr))
+                                      ast::StrStyle::Cooked))
                     }
                     token::StrRaw(s, n) => {
                         (true,
                          LitKind::Str(
                             token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
-                            ast::RawStr(n)))
+                            ast::StrStyle::Raw(n)))
                     }
                     token::ByteStr(i) =>
                         (true, LitKind::ByteStr(parse::byte_str_lit(&i.as_str()))),
@@ -5966,10 +5966,12 @@ impl<'a> Parser<'a> {
                                          Option<ast::Name>)> {
         let ret = match self.token {
             token::Literal(token::Str_(s), suf) => {
-                (self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)), ast::CookedStr, suf)
+                let s = self.id_to_interned_str(ast::Ident::with_empty_ctxt(s));
+                (s, ast::StrStyle::Cooked, suf)
             }
             token::Literal(token::StrRaw(s, n), suf) => {
-                (self.id_to_interned_str(ast::Ident::with_empty_ctxt(s)), ast::RawStr(n), suf)
+                let s = self.id_to_interned_str(ast::Ident::with_empty_ctxt(s));
+                (s, ast::StrStyle::Raw(n), suf)
             }
             _ => return None
         };

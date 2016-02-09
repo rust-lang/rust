@@ -173,7 +173,7 @@ impl AttributeMethods for Attribute {
 
 pub fn mk_name_value_item_str(name: InternedString, value: InternedString)
                               -> P<MetaItem> {
-    let value_lit = dummy_spanned(ast::LitKind::Str(value, ast::CookedStr));
+    let value_lit = dummy_spanned(ast::LitKind::Str(value, ast::StrStyle::Cooked));
     mk_name_value_item(name, value_lit)
 }
 
@@ -225,7 +225,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
                            hi: BytePos)
                            -> Attribute {
     let style = doc_comment_style(&text);
-    let lit = spanned(lo, hi, ast::LitKind::Str(text, ast::CookedStr));
+    let lit = spanned(lo, hi, ast::LitKind::Str(text, ast::StrStyle::Cooked));
     let attr = Attribute_ {
         id: id,
         style: style,
