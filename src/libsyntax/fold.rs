@@ -316,14 +316,14 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
                              path_list_idents.move_map(|path_list_ident| {
                                 Spanned {
                                     node: match path_list_ident.node {
-                                        PathListIdent { id, name, rename } =>
-                                            PathListIdent {
+                                        PathListItemKind::Ident { id, name, rename } =>
+                                            PathListItemKind::Ident {
                                                 id: fld.new_id(id),
                                                 rename: rename,
                                                 name: name
                                             },
-                                        PathListMod { id, rename } =>
-                                            PathListMod {
+                                        PathListItemKind::Mod { id, rename } =>
+                                            PathListItemKind::Mod {
                                                 id: fld.new_id(id),
                                                 rename: rename
                                             }

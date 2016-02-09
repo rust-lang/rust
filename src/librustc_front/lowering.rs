@@ -211,29 +211,29 @@ pub fn lower_view_path(lctx: &LoweringContext, view_path: &ViewPath) -> P<hir::V
             ViewPathList(ref path, ref path_list_idents) => {
                 hir::ViewPathList(lower_path(lctx, path),
                                   path_list_idents.iter()
-                                                  .map(|path_list_ident| {
-                                                      Spanned {
-                                                          node: match path_list_ident.node {
-                                                              PathListIdent { id, name, rename } =>
-                                                                  hir::PathListIdent {
-                                                                  id: id,
-                                                                  name: name.name,
-                                                                  rename: rename.map(|x| x.name),
-                                                              },
-                                                              PathListMod { id, rename } =>
-                                                                  hir::PathListMod {
-                                                                  id: id,
-                                                                  rename: rename.map(|x| x.name),
-                                                              },
-                                                          },
-                                                          span: path_list_ident.span,
-                                                      }
-                                                  })
+                                                  .map(lower_path_list_item)
                                                   .collect())
             }
         },
         span: view_path.span,
     })
+}
+
+fn lower_path_list_item(path_list_ident: &PathListItem) -> hir::PathListItem {
+    Spanned {
+        node: match path_list_ident.node {
+            PathListItemKind::Ident { id, name, rename } => hir::PathListIdent {
+                id: id,
+                name: name.name,
+                rename: rename.map(|x| x.name),
+            },
+            PathListItemKind::Mod { id, rename } => hir::PathListMod {
+                id: id,
+                rename: rename.map(|x| x.name),
+            },
+        },
+        span: path_list_ident.span,
+    }
 }
 
 pub fn lower_arm(lctx: &LoweringContext, arm: &Arm) -> hir::Arm {
