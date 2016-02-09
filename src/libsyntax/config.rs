@@ -270,7 +270,7 @@ fn in_cfg<T: CfgDiag>(cfg: &[P<ast::MetaItem>],
                       diag: &mut T) -> bool {
     attrs.iter().all(|attr| {
         let mis = match attr.node.value.node {
-            ast::MetaList(_, ref mis) if is_cfg(&attr) => mis,
+            ast::MetaItemKind::List(_, ref mis) if is_cfg(&attr) => mis,
             _ => return true
         };
 

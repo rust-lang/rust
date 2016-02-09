@@ -560,18 +560,18 @@ impl RustcDefaultCalls {
                 PrintRequest::Cfg => {
                     for cfg in config::build_configuration(sess) {
                         match cfg.node {
-                            ast::MetaWord(ref word) => println!("{}", word),
-                            ast::MetaNameValue(ref name, ref value) => {
+                            ast::MetaItemKind::Word(ref word) => println!("{}", word),
+                            ast::MetaItemKind::NameValue(ref name, ref value) => {
                                 println!("{}=\"{}\"", name, match value.node {
                                     ast::LitKind::Str(ref s, _) => s,
                                     _ => continue,
                                 });
                             }
                             // Right now there are not and should not be any
-                            // MetaList items in the configuration returned by
+                            // MetaItemKind::List items in the configuration returned by
                             // `build_configuration`.
-                            ast::MetaList(..) => {
-                                panic!("MetaList encountered in default cfg")
+                            ast::MetaItemKind::List(..) => {
+                                panic!("MetaItemKind::List encountered in default cfg")
                             }
                         }
                     }

@@ -101,8 +101,8 @@ fn expand_duplicate(cx: &mut ExtCtxt,
                     push: &mut FnMut(Annotatable))
 {
     let copy_name = match mi.node {
-        ast::MetaItem_::MetaList(_, ref xs) => {
-            if let ast::MetaItem_::MetaWord(ref w) = xs[0].node {
+        ast::MetaItemKind::List(_, ref xs) => {
+            if let ast::MetaItemKind::Word(ref w) = xs[0].node {
                 token::str_to_ident(&w)
             } else {
                 cx.span_err(mi.span, "Expected word");

@@ -1170,7 +1170,7 @@ fn get_meta_items(md: rbml::Doc) -> Vec<P<ast::MetaItem>> {
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
         let n = token::intern_and_get_ident(nd.as_str_slice());
         let v = token::intern_and_get_ident(vd.as_str_slice());
-        // FIXME (#623): Should be able to decode MetaNameValue variants,
+        // FIXME (#623): Should be able to decode MetaItemKind::NameValue variants,
         // but currently the encoder just drops them
         attr::mk_name_value_item_str(n, v)
     })).chain(reader::tagged_docs(md, tag_meta_item_list).map(|meta_item_doc| {

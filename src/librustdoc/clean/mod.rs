@@ -451,11 +451,11 @@ pub enum Attribute {
 impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self, cx: &DocContext) -> Attribute {
         match self.node {
-            ast::MetaWord(ref s) => Word(s.to_string()),
-            ast::MetaList(ref s, ref l) => {
+            ast::MetaItemKind::Word(ref s) => Word(s.to_string()),
+            ast::MetaItemKind::List(ref s, ref l) => {
                 List(s.to_string(), l.clean(cx))
             }
-            ast::MetaNameValue(ref s, ref v) => {
+            ast::MetaItemKind::NameValue(ref s, ref v) => {
                 NameValue(s.to_string(), lit_to_string(v))
             }
         }

@@ -766,15 +766,15 @@ pub trait PrintState<'a> {
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         try!(self.ibox(INDENT_UNIT));
         match item.node {
-            ast::MetaWord(ref name) => {
+            ast::MetaItemKind::Word(ref name) => {
                 try!(word(self.writer(), &name));
             }
-            ast::MetaNameValue(ref name, ref value) => {
+            ast::MetaItemKind::NameValue(ref name, ref value) => {
                 try!(self.word_space(&name[..]));
                 try!(self.word_space("="));
                 try!(self.print_literal(value));
             }
-            ast::MetaList(ref name, ref items) => {
+            ast::MetaItemKind::List(ref name, ref items) => {
                 try!(word(self.writer(), &name));
                 try!(self.popen());
                 try!(self.commasep(Consistent,

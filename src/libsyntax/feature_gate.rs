@@ -1138,7 +1138,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
             Some(list) => {
                 for mi in list {
                     let name = match mi.node {
-                        ast::MetaWord(ref word) => (*word).clone(),
+                        ast::MetaItemKind::Word(ref word) => (*word).clone(),
                         _ => {
                             span_handler.span_err(mi.span,
                                                   "malformed feature, expected just \
