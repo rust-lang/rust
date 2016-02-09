@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::KleeneOp::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
 pub use self::Mutability::*;
