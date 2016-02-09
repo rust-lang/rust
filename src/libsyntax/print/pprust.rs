@@ -1629,12 +1629,12 @@ impl<'a> State<'a> {
                 try!(self.space_if_not_bol());
                 try!(self.print_outer_attributes(attrs.as_attr_slice()));
                 let delim = match style {
-                    ast::MacStmtWithBraces => token::Brace,
+                    ast::MacStmtStyle::Braces => token::Brace,
                     _ => token::Paren
                 };
                 try!(self.print_mac(&**mac, delim));
                 match style {
-                    ast::MacStmtWithBraces => {}
+                    ast::MacStmtStyle::Braces => {}
                     _ => try!(word(&mut self.s, ";")),
                 }
             }
