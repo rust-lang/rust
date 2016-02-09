@@ -53,10 +53,10 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     wbcx.visit_block(blk);
     for arg in &decl.inputs {
         wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
-        wbcx.visit_pat(&*arg.pat);
+        wbcx.visit_pat(&arg.pat);
 
         // Privacy needs the type for the whole pattern, not just each binding
-        if !pat_util::pat_is_binding(&fcx.tcx().def_map.borrow(), &*arg.pat) {
+        if !pat_util::pat_is_binding(&fcx.tcx().def_map.borrow(), &arg.pat) {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
                                arg.pat.id);
         }
@@ -221,7 +221,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
     fn visit_ty(&mut self, t: &hir::Ty) {
         match t.node {
             hir::TyFixedLengthVec(ref ty, ref count_expr) => {
-                self.visit_ty(&**ty);
+                self.visit_ty(&ty);
                 write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.usize);
             }
             hir::TyBareFn(ref function_declaration) => {

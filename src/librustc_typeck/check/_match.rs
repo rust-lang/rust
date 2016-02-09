@@ -50,8 +50,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             fcx.write_ty(pat.id, expected);
         }
         hir::PatLit(ref lt) => {
-            check_expr(fcx, &**lt);
-            let expr_ty = fcx.expr_ty(&**lt);
+            check_expr(fcx, &lt);
+            let expr_ty = fcx.expr_ty(&lt);
 
             // Byte string patterns behave the same way as array patterns
             // They can denote both statically and dynamically sized byte arrays
@@ -198,7 +198,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 }
 
                 if let Some(ref p) = *sub {
-                    check_pat(pcx, &**p, expected);
+                    check_pat(pcx, &p, expected);
                 }
             }
         }
@@ -259,28 +259,28 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             fcx.write_ty(pat.id, pat_ty);
             demand::eqtype(fcx, pat.span, expected, pat_ty);
             for (element_pat, element_ty) in elements.iter().zip(element_tys) {
-                check_pat(pcx, &**element_pat, element_ty);
+                check_pat(pcx, &element_pat, element_ty);
             }
         }
         hir::PatBox(ref inner) => {
             let inner_ty = fcx.infcx().next_ty_var();
             let uniq_ty = tcx.mk_box(inner_ty);
 
-            if check_dereferencable(pcx, pat.span, expected, &**inner) {
+            if check_dereferencable(pcx, pat.span, expected, &inner) {
                 // Here, `demand::subtype` is good enough, but I don't
                 // think any errors can be introduced by using
                 // `demand::eqtype`.
                 demand::eqtype(fcx, pat.span, expected, uniq_ty);
                 fcx.write_ty(pat.id, uniq_ty);
-                check_pat(pcx, &**inner, inner_ty);
+                check_pat(pcx, &inner, inner_ty);
             } else {
                 fcx.write_error(pat.id);
-                check_pat(pcx, &**inner, tcx.types.err);
+                check_pat(pcx, &inner, tcx.types.err);
             }
         }
         hir::PatRegion(ref inner, mutbl) => {
             let expected = fcx.infcx().shallow_resolve(expected);
-            if check_dereferencable(pcx, pat.span, expected, &**inner) {
+            if check_dereferencable(pcx, pat.span, expected, &inner) {
                 // `demand::subtype` would be good enough, but using
                 // `eqtype` turns out to be equally general. See (*)
                 // below for details.
@@ -304,10 +304,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 };
 
                 fcx.write_ty(pat.id, rptr_ty);
-                check_pat(pcx, &**inner, inner_ty);
+                check_pat(pcx, &inner, inner_ty);
             } else {
                 fcx.write_error(pat.id);
-                check_pat(pcx, &**inner, tcx.types.err);
+                check_pat(pcx, &inner, tcx.types.err);
             }
         }
         hir::PatVec(ref before, ref slice, ref after) => {
@@ -339,7 +339,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             demand::eqtype(fcx, pat.span, expected, pat_ty);
 
             for elt in before {
-                check_pat(pcx, &**elt, inner_ty);
+                check_pat(pcx, &elt, inner_ty);
             }
             if let Some(ref slice) = *slice {
                 let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
@@ -350,10 +350,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     ty: tcx.mk_slice(inner_ty),
                     mutbl: mutbl
                 });
-                check_pat(pcx, &**slice, slice_ty);
+                check_pat(pcx, &slice, slice_ty);
             }
             for elt in after {
-                check_pat(pcx, &**elt, inner_ty);
+                check_pat(pcx, &elt, inner_ty);
             }
         }
     }
@@ -482,10 +482,10 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     for arm in arms {
         let mut pcx = pat_ctxt {
             fcx: fcx,
-            map: pat_id_map(&tcx.def_map, &*arm.pats[0]),
+            map: pat_id_map(&tcx.def_map, &arm.pats[0]),
         };
         for p in &arm.pats {
-            check_pat(&mut pcx, &**p, discrim_ty);
+            check_pat(&mut pcx, &p, discrim_ty);
         }
     }
 
@@ -507,17 +507,17 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // arm for inconsistent arms or to the whole match when a `()` type
             // is required).
             Expectation::ExpectHasType(ety) if ety != fcx.tcx().mk_nil() => {
-                check_expr_coercable_to_type(fcx, &*arm.body, ety);
+                check_expr_coercable_to_type(fcx, &arm.body, ety);
                 ety
             }
             _ => {
-                check_expr_with_expectation(fcx, &*arm.body, expected);
+                check_expr_with_expectation(fcx, &arm.body, expected);
                 fcx.node_ty(arm.body.id)
             }
         };
 
         if let Some(ref e) = arm.guard {
-            check_expr_has_type(fcx, &**e, tcx.types.bool);
+            check_expr_has_type(fcx, &e, tcx.types.bool);
         }
 
         if result_ty.references_error() || bty.references_error() {
@@ -622,7 +622,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             if let Some(subpats) = subpats {
                 for pat in subpats {
-                    check_pat(pcx, &**pat, tcx.types.err);
+                    check_pat(pcx, &pat, tcx.types.err);
                 }
             }
 
@@ -670,7 +670,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         fcx.write_error(pat.id);
         if let Some(subpats) = subpats {
             for pat in subpats {
-                check_pat(pcx, &**pat, tcx.types.err);
+                check_pat(pcx, &pat, tcx.types.err);
             }
         }
     };
@@ -742,7 +742,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     if let Some(subpats) = subpats {
         if subpats.len() == arg_tys.len() {
             for (subpat, arg_ty) in subpats.iter().zip(arg_tys) {
-                check_pat(pcx, &**subpat, arg_ty);
+                check_pat(pcx, &subpat, arg_ty);
             }
         } else if arg_tys.is_empty() {
             span_err!(tcx.sess, pat.span, E0024,
@@ -750,7 +750,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                       subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);
 
             for pat in subpats {
-                check_pat(pcx, &**pat, tcx.types.err);
+                check_pat(pcx, &pat, tcx.types.err);
             }
         } else {
             span_err!(tcx.sess, pat.span, E0023,
@@ -760,7 +760,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                       arg_tys.len(), if arg_tys.len() == 1 {""} else {"s"});
 
             for pat in subpats {
-                check_pat(pcx, &**pat, tcx.types.err);
+                check_pat(pcx, &pat, tcx.types.err);
             }
         }
     }
@@ -815,7 +815,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             }
         };
 
-        check_pat(pcx, &*field.pat, field_ty);
+        check_pat(pcx, &field.pat, field_ty);
     }
 
     // Report an error if not all the fields were specified.

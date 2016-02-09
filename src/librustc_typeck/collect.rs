@@ -273,7 +273,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                 _ => tcx.sess.bug(&format!("get_trait_def({:?}): not an item", trait_id))
             };
 
-            trait_def_of_item(self, &*item)
+            trait_def_of_item(self, &item)
         } else {
             tcx.lookup_trait_def(trait_id)
         }
@@ -577,7 +577,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            v: &hir::StructField,
                            ty_f: ty::FieldDefMaster<'tcx>)
 {
-    let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &*v.node.ty);
+    let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &v.node.ty);
     ty_f.fulfill_ty(tt);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
 
@@ -709,7 +709,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             debug!("convert: impl_bounds={:?}", ty_predicates);
 
-            let selfty = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, &**selfty);
+            let selfty = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, &selfty);
             write_ty_to_tcx(tcx, it.id, selfty);
 
             tcx.register_item_type(def_id,
@@ -768,7 +768,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
                 if let hir::ImplItemKind::Const(ref ty, _) = impl_item.node {
                     let ty = ccx.icx(&ty_predicates)
-                                .to_ty(&ExplicitRscope, &*ty);
+                                .to_ty(&ExplicitRscope, &ty);
                     tcx.register_item_type(ccx.tcx.map.local_def_id(impl_item.id),
                                            TypeScheme {
                                                generics: ty_generics.clone(),
@@ -1399,11 +1399,11 @@ fn type_scheme_of_def_id<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     if let Some(node_id) = ccx.tcx.map.as_local_node_id(def_id) {
         match ccx.tcx.map.find(node_id) {
             Some(hir_map::NodeItem(item)) => {
-                type_scheme_of_item(ccx, &*item)
+                type_scheme_of_item(ccx, &item)
             }
             Some(hir_map::NodeForeignItem(foreign_item)) => {
                 let abi = ccx.tcx.map.get_foreign_abi(node_id);
-                type_scheme_of_foreign_item(ccx, &*foreign_item, abi)
+                type_scheme_of_foreign_item(ccx, &foreign_item, abi)
             }
             x => {
                 ccx.tcx.sess.bug(&format!("unexpected sort of node \
@@ -1437,18 +1437,18 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let tcx = ccx.tcx;
     match it.node {
         hir::ItemStatic(ref t, _, _) | hir::ItemConst(ref t, _) => {
-            let ty = ccx.icx(&()).to_ty(&ExplicitRscope, &**t);
+            let ty = ccx.icx(&()).to_ty(&ExplicitRscope, &t);
             ty::TypeScheme { ty: ty, generics: ty::Generics::empty() }
         }
         hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
-            let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &**decl);
+            let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
             let ty = tcx.mk_fn(Some(ccx.tcx.map.local_def_id(it.id)), tcx.mk_bare_fn(tofd));
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         hir::ItemTy(ref t, ref generics) => {
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
-            let ty = ccx.icx(generics).to_ty(&ExplicitRscope, &**t);
+            let ty = ccx.icx(generics).to_ty(&ExplicitRscope, &t);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         hir::ItemEnum(ref ei, ref generics) => {
@@ -1777,7 +1777,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
                 let ty = ast_ty_to_ty(&ccx.icx(&(base_predicates, ast_generics)),
                                       &ExplicitRscope,
-                                      &*bound_pred.bounded_ty);
+                                      &bound_pred.bounded_ty);
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
@@ -2120,11 +2120,11 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     -> ty::TypeScheme<'tcx>
 {
     for i in &decl.inputs {
-        match (*i).pat.node {
+        match i.pat.node {
             hir::PatIdent(_, _, _) => (),
             hir::PatWild => (),
             _ => {
-                span_err!(ccx.tcx.sess, (*i).pat.span, E0130,
+                span_err!(ccx.tcx.sess, i.pat.span, E0130,
                           "patterns aren't allowed in foreign function declarations");
             }
         }
@@ -2140,7 +2140,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
 
     let output = match decl.output {
         hir::Return(ref ty) =>
-            ty::FnConverging(ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &**ty)),
+            ty::FnConverging(ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &ty)),
         hir::DefaultReturn(..) =>
             ty::FnConverging(ccx.tcx.mk_nil()),
         hir::NoReturn(..) =>
