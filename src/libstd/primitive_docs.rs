@@ -366,6 +366,9 @@ mod prim_str { }
 /// ("hello", 5, 'c');
 /// ```
 ///
+/// 'Length' is also sometimes called 'arity' here; each tuple of a different
+/// length is a different, distinct type.
+///
 /// Tuples are *heterogeneous*. This means that each element of the tuple can
 /// have a different type. In that tuple above, it has the type:
 ///
@@ -408,6 +411,9 @@ mod prim_str { }
 /// [`Debug`]: ../fmt/trait.Debug.html
 /// [`Default`]: ../default/trait.Default.html
 /// [`Hash`]: ../hash/trait.Hash.html
+///
+/// Due to a temporary restriction in Rust's type system, these traits are only
+/// implemented on tuples of arity 32 or less. In the future, this may change.
 ///
 /// # Examples
 ///
