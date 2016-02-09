@@ -14,7 +14,8 @@ use middle::subst::Substs;
 use middle::ty::{Ty, TypeFoldable};
 use rustc::middle::const_eval::ConstVal;
 use rustc::mir::repr as mir;
-use trans::common::{self, Block, C_bool, C_bytes, C_floating_f64, C_integral, C_str_slice};
+use trans::common::{self, BlockAndBuilder, C_bool, C_bytes, C_floating_f64, C_integral,
+                    C_str_slice};
 use trans::consts;
 use trans::expr;
 use trans::type_of;
@@ -25,13 +26,13 @@ use super::MirContext;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_constval(&mut self,
-                          bcx: Block<'bcx, 'tcx>,
+                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
                           cv: &ConstVal,
                           ty: Ty<'tcx>)
                           -> OperandRef<'tcx>
     {
         let ccx = bcx.ccx();
-        let val = self.trans_constval_inner(bcx, cv, ty, bcx.fcx.param_substs);
+        let val = self.trans_constval_inner(bcx, cv, ty, bcx.fcx().param_substs);
         let val = if common::type_is_immediate(ccx, ty) {
             OperandValue::Immediate(val)
         } else if common::type_is_fat_ptr(bcx.tcx(), ty) {
@@ -52,7 +53,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     /// Translate ConstVal into a bare LLVM ValueRef.
     fn trans_constval_inner(&mut self,
-                            bcx: common::Block<'bcx, 'tcx>,
+                            bcx: &BlockAndBuilder<'bcx, 'tcx>,
                             cv: &ConstVal,
                             ty: Ty<'tcx>,
                             param_substs: &'tcx Substs<'tcx>)
@@ -70,7 +71,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ConstVal::Struct(id) | ConstVal::Tuple(id) |
             ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
                 let expr = bcx.tcx().map.expect_expr(id);
-                expr::trans(bcx, expr).datum.val
+                bcx.with_block(|bcx| {
+                    expr::trans(bcx, expr).datum.val
+                })
             },
             ConstVal::Function(did) =>
                 self.trans_fn_ref(bcx, ty, param_substs, did).immediate()
@@ -78,7 +81,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 
     pub fn trans_constant(&mut self,
-                          bcx: Block<'bcx, 'tcx>,
+                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
                           constant: &mir::Constant<'tcx>)
                           -> OperandRef<'tcx>
     {

@@ -18,7 +18,7 @@ use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
 use rustc::middle::traits;
 use rustc::mir::repr::ItemKind;
-use trans::common::{Block, fulfill_obligation};
+use trans::common::{BlockAndBuilder, fulfill_obligation};
 use trans::base;
 use trans::closure;
 use trans::expr;
@@ -32,7 +32,7 @@ use super::operand::{OperandRef, OperandValue};
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     /// Translate reference to item.
     pub fn trans_item_ref(&mut self,
-                          bcx: Block<'bcx, 'tcx>,
+                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
                           ty: Ty<'tcx>,
                           kind: ItemKind,
                           substs: &'tcx Substs<'tcx>,
@@ -53,7 +53,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             .expect("def was const, but lookup_const_by_id failed");
                 // FIXME: this is falling back to translating from HIR. This is not easy to fix,
                 // because we would have somehow adapt const_eval to work on MIR rather than HIR.
-                let d = expr::trans(bcx, expr);
+                let d = bcx.with_block(|bcx| {
+                    expr::trans(bcx, expr)
+                });
                 OperandRef::from_rvalue_datum(d.datum.to_rvalue_datum(d.bcx, "").datum)
             }
         }
@@ -66,7 +68,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     ///
     /// This is an adaptation of callee::trans_fn_ref_with_substs.
     pub fn trans_fn_ref(&mut self,
-                        bcx: Block<'bcx, 'tcx>,
+                        bcx: &BlockAndBuilder<'bcx, 'tcx>,
                         ty: Ty<'tcx>,
                         substs: &'tcx Substs<'tcx>,
                         did: DefId)
@@ -101,7 +103,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     ///
     /// This is an adaptation of meth::trans_static_method_callee
     pub fn trans_trait_method(&mut self,
-                              bcx: Block<'bcx, 'tcx>,
+                              bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               ty: Ty<'tcx>,
                               method_id: DefId,
                               trait_id: DefId,

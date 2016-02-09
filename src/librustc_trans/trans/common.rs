@@ -26,6 +26,7 @@ use middle::lang_items::LangItem;
 use middle::subst::{self, Substs};
 use trans::base;
 use trans::build;
+use trans::builder::Builder;
 use trans::callee;
 use trans::cleanup;
 use trans::consts;
@@ -45,6 +46,7 @@ use util::nodemap::{FnvHashMap, NodeMap};
 
 use arena::TypedArena;
 use libc::{c_uint, c_char};
+use std::ops::Deref;
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 use std::vec::Vec;
@@ -365,6 +367,9 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // The arena that blocks are allocated from.
     pub block_arena: &'a TypedArena<BlockS<'a, 'tcx>>,
 
+    // The arena that landing pads are allocated from.
+    pub lpad_arena: TypedArena<LandingPad>,
+
     // This function's enclosing crate context.
     pub ccx: &'a CrateContext<'a, 'tcx>,
 
@@ -582,7 +587,7 @@ pub struct BlockS<'blk, 'tcx: 'blk> {
 
     // If this block part of a landing pad, then this is `Some` indicating what
     // kind of landing pad its in, otherwise this is none.
-    pub lpad: RefCell<Option<LandingPad>>,
+    pub lpad: Cell<Option<&'blk LandingPad>>,
 
     // AST node-id associated with this block, if any. Used for
     // debugging purposes only.
@@ -604,7 +609,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             llbb: llbb,
             terminated: Cell::new(false),
             unreachable: Cell::new(false),
-            lpad: RefCell::new(None),
+            lpad: Cell::new(None),
             opt_node_id: opt_node_id,
             fcx: fcx
         })
@@ -613,10 +618,17 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
         self.fcx.ccx
     }
+    pub fn fcx(&self) -> &'blk FunctionContext<'blk, 'tcx> {
+        self.fcx
+    }
     pub fn tcx(&self) -> &'blk ty::ctxt<'tcx> {
         self.fcx.ccx.tcx()
     }
     pub fn sess(&self) -> &'blk Session { self.fcx.ccx.sess() }
+
+    pub fn lpad(&self) -> Option<&'blk LandingPad> {
+        self.lpad.get()
+    }
 
     pub fn mir(&self) -> &'blk Mir<'tcx> {
         self.fcx.mir()
@@ -658,6 +670,109 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
                                          value)
+    }
+
+    pub fn build(&'blk self) -> BlockAndBuilder<'blk, 'tcx> {
+        BlockAndBuilder::new(self, OwnedBuilder::new_with_ccx(self.ccx()))
+    }
+}
+
+pub struct OwnedBuilder<'blk, 'tcx: 'blk> {
+    builder: Builder<'blk, 'tcx>
+}
+
+impl<'blk, 'tcx> OwnedBuilder<'blk, 'tcx> {
+    pub fn new_with_ccx(ccx: &'blk CrateContext<'blk, 'tcx>) -> Self {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe {
+            llvm::LLVMCreateBuilderInContext(ccx.llcx())
+        };
+        OwnedBuilder {
+            builder: Builder {
+                llbuilder: llbuilder,
+                ccx: ccx,
+            }
+        }
+    }
+}
+
+impl<'blk, 'tcx> Drop for OwnedBuilder<'blk, 'tcx> {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMDisposeBuilder(self.builder.llbuilder);
+        }
+    }
+}
+
+pub struct BlockAndBuilder<'blk, 'tcx: 'blk> {
+    bcx: Block<'blk, 'tcx>,
+    owned_builder: OwnedBuilder<'blk, 'tcx>,
+}
+
+impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
+    pub fn new(bcx: Block<'blk, 'tcx>, owned_builder: OwnedBuilder<'blk, 'tcx>) -> Self {
+        // Set the builder's position to this block's end.
+        owned_builder.builder.position_at_end(bcx.llbb);
+        BlockAndBuilder {
+            bcx: bcx,
+            owned_builder: owned_builder,
+        }
+    }
+
+    pub fn with_block<F, R>(&self, f: F) -> R
+        where F: FnOnce(Block<'blk, 'tcx>) -> R
+    {
+        let result = f(self.bcx);
+        self.position_at_end(self.bcx.llbb);
+        result
+    }
+
+    pub fn map_block<F>(self, f: F) -> Self
+        where F: FnOnce(Block<'blk, 'tcx>) -> Block<'blk, 'tcx>
+    {
+        let BlockAndBuilder { bcx, owned_builder } = self;
+        let bcx = f(bcx);
+        BlockAndBuilder::new(bcx, owned_builder)
+    }
+
+    // Methods delegated to bcx
+
+    pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
+        self.bcx.ccx()
+    }
+    pub fn fcx(&self) -> &'blk FunctionContext<'blk, 'tcx> {
+        self.bcx.fcx()
+    }
+    pub fn tcx(&self) -> &'blk ty::ctxt<'tcx> {
+        self.bcx.tcx()
+    }
+    pub fn sess(&self) -> &'blk Session {
+        self.bcx.sess()
+    }
+
+    pub fn llbb(&self) -> BasicBlockRef {
+        self.bcx.llbb
+    }
+
+    pub fn mir(&self) -> &'blk Mir<'tcx> {
+        self.bcx.mir()
+    }
+
+    pub fn val_to_string(&self, val: ValueRef) -> String {
+        self.bcx.val_to_string(val)
+    }
+
+    pub fn monomorphize<T>(&self, value: &T) -> T
+        where T: TypeFoldable<'tcx>
+    {
+        self.bcx.monomorphize(value)
+    }
+}
+
+impl<'blk, 'tcx> Deref for BlockAndBuilder<'blk, 'tcx> {
+    type Target = Builder<'blk, 'tcx>;
+    fn deref(&self) -> &Self::Target {
+        &self.owned_builder.builder
     }
 }
 

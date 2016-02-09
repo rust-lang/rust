@@ -9,16 +9,16 @@
 // except according to those terms.
 
 use rustc::mir::repr as mir;
-use trans::common::Block;
+use trans::common::BlockAndBuilder;
 
 use super::MirContext;
 use super::TempRef;
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_statement(&mut self,
-                           bcx: Block<'bcx, 'tcx>,
+                           bcx: BlockAndBuilder<'bcx, 'tcx>,
                            statement: &mir::Statement<'tcx>)
-                           -> Block<'bcx, 'tcx> {
+                           -> BlockAndBuilder<'bcx, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
         match statement.kind {
@@ -43,7 +43,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
                     _ => {
-                        let tr_dest = self.trans_lvalue(bcx, lvalue);
+                        let tr_dest = self.trans_lvalue(&bcx, lvalue);
                         self.trans_rvalue(bcx, tr_dest, rvalue)
                     }
                 }

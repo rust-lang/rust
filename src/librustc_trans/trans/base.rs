@@ -988,7 +988,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 }
 
 pub fn avoid_invoke(bcx: Block) -> bool {
-    bcx.sess().no_landing_pads() || bcx.lpad.borrow().is_some()
+    bcx.sess().no_landing_pads() || bcx.lpad().is_some()
 }
 
 pub fn need_invoke(bcx: Block) -> bool {
@@ -1616,6 +1616,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         param_substs: param_substs,
         span: sp,
         block_arena: block_arena,
+        lpad_arena: TypedArena::new(),
         ccx: ccx,
         debug_context: debug_context,
         scopes: RefCell::new(Vec::new()),
@@ -2003,7 +2004,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let mut bcx = init_function(&fcx, false, output_type);
 
     if attributes.iter().any(|item| item.check_name("rustc_mir")) {
-        mir::trans_mir(bcx);
+        mir::trans_mir(bcx.build());
         fcx.cleanup();
         return;
     }

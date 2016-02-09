@@ -16,7 +16,7 @@ use trans::adt;
 use trans::attributes;
 use trans::base;
 use trans::build;
-use trans::common::{self, Block, LandingPad};
+use trans::common::{self, Block, BlockAndBuilder};
 use trans::debuginfo::DebugLoc;
 use trans::Disr;
 use trans::foreign;
@@ -42,94 +42,98 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         match *data.terminator() {
             mir::Terminator::Goto { target } => {
-                build::Br(bcx, self.llblock(target), DebugLoc::None)
+                bcx.br(self.llblock(target));
             }
 
             mir::Terminator::If { ref cond, targets: (true_bb, false_bb) } => {
-                let cond = self.trans_operand(bcx, cond);
+                let cond = self.trans_operand(&bcx, cond);
                 let lltrue = self.llblock(true_bb);
                 let llfalse = self.llblock(false_bb);
-                build::CondBr(bcx, cond.immediate(), lltrue, llfalse, DebugLoc::None);
+                bcx.cond_br(cond.immediate(), lltrue, llfalse);
             }
 
             mir::Terminator::Switch { ref discr, ref adt_def, ref targets } => {
-                let discr_lvalue = self.trans_lvalue(bcx, discr);
+                let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
                 let repr = adt::represent_type(bcx.ccx(), ty);
-                let discr = adt::trans_get_discr(bcx, &repr, discr_lvalue.llval,
-                                                 None, true);
+                let discr = bcx.with_block(|bcx|
+                    adt::trans_get_discr(bcx, &repr, discr_lvalue.llval, None, true)
+                );
 
                 // The else branch of the Switch can't be hit, so branch to an unreachable
                 // instruction so LLVM knows that
                 let unreachable_blk = self.unreachable_block();
-                let switch = build::Switch(bcx, discr, unreachable_blk.llbb, targets.len());
+                let switch = bcx.switch(discr, unreachable_blk.llbb, targets.len());
                 assert_eq!(adt_def.variants.len(), targets.len());
                 for (adt_variant, target) in adt_def.variants.iter().zip(targets) {
-                    let llval = adt::trans_case(bcx, &*repr, Disr::from(adt_variant.disr_val));
+                    let llval = bcx.with_block(|bcx|
+                        adt::trans_case(bcx, &*repr, Disr::from(adt_variant.disr_val))
+                    );
                     let llbb = self.llblock(*target);
-
                     build::AddCase(switch, llval, llbb)
                 }
             }
 
             mir::Terminator::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
                 let (otherwise, targets) = targets.split_last().unwrap();
-                let discr = build::Load(bcx, self.trans_lvalue(bcx, discr).llval);
-                let switch = build::Switch(bcx, discr, self.llblock(*otherwise), values.len());
+                let discr = bcx.load(self.trans_lvalue(&bcx, discr).llval);
+                let switch = bcx.switch(discr, self.llblock(*otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
-                    let llval = self.trans_constval(bcx, value, switch_ty).immediate();
+                    let llval = self.trans_constval(&bcx, value, switch_ty).immediate();
                     let llbb = self.llblock(*target);
                     build::AddCase(switch, llval, llbb)
                 }
             }
 
             mir::Terminator::Resume => {
-                let ps = self.get_personality_slot(bcx);
-                let lp = build::Load(bcx, ps);
-                base::call_lifetime_end(bcx, ps);
-                base::trans_unwind_resume(bcx, lp);
+                let ps = self.get_personality_slot(&bcx);
+                let lp = bcx.load(ps);
+                bcx.with_block(|bcx| {
+                    base::call_lifetime_end(bcx, ps);
+                    base::trans_unwind_resume(bcx, lp);
+                });
             }
 
             mir::Terminator::Return => {
                 let return_ty = bcx.monomorphize(&self.mir.return_ty);
-                base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
+                bcx.with_block(|bcx| {
+                    base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
+                })
             }
 
             mir::Terminator::Drop { ref value, target, unwind } => {
-                let lvalue = self.trans_lvalue(bcx, value);
+                let lvalue = self.trans_lvalue(&bcx, value);
                 let ty = lvalue.ty.to_ty(bcx.tcx());
                 // Double check for necessity to drop
                 if !glue::type_needs_drop(bcx.tcx(), ty) {
-                    build::Br(bcx, self.llblock(target), DebugLoc::None);
+                    bcx.br(self.llblock(target));
                     return;
                 }
                 let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
                 let drop_ty = glue::get_drop_glue_type(bcx.ccx(), ty);
                 let llvalue = if drop_ty != ty {
-                    build::PointerCast(bcx, lvalue.llval,
-                                       type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
+                    bcx.pointercast(lvalue.llval, type_of::type_of(bcx.ccx(), drop_ty).ptr_to())
                 } else {
                     lvalue.llval
                 };
                 if let Some(unwind) = unwind {
                     let uwbcx = self.bcx(unwind);
                     let unwind = self.make_landing_pad(uwbcx);
-                    build::Invoke(bcx,
-                                  drop_fn,
-                                  &[llvalue],
-                                  self.llblock(target),
-                                  unwind.llbb,
-                                  None,
-                                  DebugLoc::None);
+                    bcx.invoke(drop_fn,
+                               &[llvalue],
+                               self.llblock(target),
+                               unwind.llbb(),
+                               None,
+                               None);
                 } else {
-                    build::Call(bcx, drop_fn, &[llvalue], None, DebugLoc::None);
-                    build::Br(bcx, self.llblock(target), DebugLoc::None);
+                    bcx.call(drop_fn, &[llvalue], None, None);
+                    bcx.br(self.llblock(target));
                 }
             }
 
             mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {
                 // Create the callee. This will always be a fn ptr and hence a kind of scalar.
-                let callee = self.trans_operand(bcx, func);
+                let callee = self.trans_operand(&bcx, func);
                 let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
                 let debugloc = DebugLoc::None;
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
@@ -149,7 +153,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Prepare the return value destination
                 let (ret_dest_ty, must_copy_dest) = if let Some((ref d, _)) = *destination {
-                    let dest = self.trans_lvalue(bcx, d);
+                    let dest = self.trans_lvalue(&bcx, d);
                     let ret_ty = dest.ty.to_ty(bcx.tcx());
                     if !is_foreign && type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
                         llargs.push(dest.llval);
@@ -163,7 +167,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 // Process the rest of the args.
                 for arg in args {
-                    let operand = self.trans_operand(bcx, arg);
+                    let operand = self.trans_operand(&bcx, arg);
                     match operand.val {
                         Ref(llval) | Immediate(llval) => llargs.push(llval),
                         FatPtr(b, e) => {
@@ -176,38 +180,37 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                 }
 
+                let avoid_invoke = bcx.with_block(|bcx| base::avoid_invoke(bcx));
                 // Many different ways to call a function handled here
-                match (is_foreign, base::avoid_invoke(bcx), cleanup, destination) {
+                match (is_foreign, avoid_invoke, cleanup, destination) {
                     // The two cases below are the only ones to use LLVM’s `invoke`.
                     (false, false, &Some(cleanup), &None) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
-                        build::Invoke(bcx,
-                                      callee.immediate(),
-                                      &llargs[..],
-                                      unreachable_blk.llbb,
-                                      landingpad.llbb,
-                                      Some(attrs),
-                                      debugloc);
+                        bcx.invoke(callee.immediate(),
+                                   &llargs[..],
+                                   unreachable_blk.llbb,
+                                   landingpad.llbb(),
+                                   None,
+                                   Some(attrs));
                     },
                     (false, false, &Some(cleanup), &Some((_, success))) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let (target, postinvoke) = if must_copy_dest {
-                            (bcx.fcx.new_block("", None), Some(self.bcx(success)))
+                            (bcx.fcx().new_block("", None).build(), Some(self.bcx(success)))
                         } else {
                             (self.bcx(success), None)
                         };
-                        let invokeret = build::Invoke(bcx,
-                                                      callee.immediate(),
-                                                      &llargs[..],
-                                                      target.llbb,
-                                                      landingpad.llbb,
-                                                      Some(attrs),
-                                                      debugloc);
+                        let invokeret = bcx.invoke(callee.immediate(),
+                                                   &llargs[..],
+                                                   target.llbb(),
+                                                   landingpad.llbb(),
+                                                   None,
+                                                   Some(attrs));
                         if let Some(postinvoketarget) = postinvoke {
-                            // We translate the copy into a temoprary block. The temporary block is
+                            // We translate the copy into a temporary block. The temporary block is
                             // necessary because the current block has already been terminated (by
                             // `invoke`) and we cannot really translate into the target block
                             // because:
@@ -233,40 +236,45 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             //                               ; immediate precedesors
                             let (ret_dest, ret_ty) = ret_dest_ty
                                 .expect("return destination and type not set");
-                            base::store_ty(target, invokeret, ret_dest.llval, ret_ty);
-                            build::Br(target, postinvoketarget.llbb, debugloc);
+                            target.with_block(|target| {
+                                base::store_ty(target, invokeret, ret_dest.llval, ret_ty);
+                            });
+                            target.br(postinvoketarget.llbb());
                         }
                     },
                     (false, _, _, &None) => {
-                        build::Call(bcx, callee.immediate(), &llargs[..], Some(attrs), debugloc);
-                        build::Unreachable(bcx);
+                        bcx.call(callee.immediate(), &llargs[..], None, Some(attrs));
+                        bcx.unreachable();
                     }
                     (false, _, _, &Some((_, target))) => {
-                        let llret = build::Call(bcx,
-                                                callee.immediate(),
-                                                &llargs[..],
-                                                Some(attrs),
-                                                debugloc);
+                        let llret = bcx.call(callee.immediate(),
+                                             &llargs[..],
+                                             None,
+                                             Some(attrs));
                         if must_copy_dest {
                             let (ret_dest, ret_ty) = ret_dest_ty
                                 .expect("return destination and type not set");
-                            base::store_ty(bcx, llret, ret_dest.llval, ret_ty);
+                            bcx.with_block(|bcx| {
+                                base::store_ty(bcx, llret, ret_dest.llval, ret_ty);
+                            });
                         }
-                        build::Br(bcx, self.llblock(target), debugloc);
+                        bcx.br(self.llblock(target));
                     }
                     // Foreign functions
                     (true, _, _, destination) => {
                         let (dest, _) = ret_dest_ty
                             .expect("return destination is not set");
-                        bcx = foreign::trans_native_call(bcx,
-                                                   callee.ty,
-                                                   callee.immediate(),
-                                                   dest.llval,
-                                                   &llargs[..],
-                                                   arg_tys,
-                                                   debugloc);
+                        bcx = bcx.map_block(|bcx| {
+                            foreign::trans_native_call(bcx,
+                                                       callee.ty,
+                                                       callee.immediate(),
+                                                       dest.llval,
+                                                       &llargs[..],
+                                                       arg_tys,
+                                                       debugloc)
+                        });
                         if let Some((_, target)) = *destination {
-                            build::Br(bcx, self.llblock(target), debugloc);
+                            bcx.br(self.llblock(target));
                         }
                     },
                 }
@@ -274,48 +282,49 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    fn get_personality_slot(&mut self, bcx: Block<'bcx, 'tcx>) -> ValueRef {
+    fn get_personality_slot(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>) -> ValueRef {
         let ccx = bcx.ccx();
         if let Some(slot) = self.llpersonalityslot {
             slot
         } else {
             let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-            let slot = base::alloca(bcx, llretty, "personalityslot");
-            self.llpersonalityslot = Some(slot);
-            base::call_lifetime_start(bcx, slot);
-            slot
+            bcx.with_block(|bcx| {
+                let slot = base::alloca(bcx, llretty, "personalityslot");
+                self.llpersonalityslot = Some(slot);
+                base::call_lifetime_start(bcx, slot);
+                slot
+            })
         }
     }
 
-    fn make_landing_pad(&mut self, cleanup: Block<'bcx, 'tcx>) -> Block<'bcx, 'tcx> {
-        let bcx = cleanup.fcx.new_block("cleanup", None);
+    fn make_landing_pad(&mut self,
+                        cleanup: BlockAndBuilder<'bcx, 'tcx>)
+                        -> BlockAndBuilder<'bcx, 'tcx>
+    {
         // FIXME(#30941) this doesn't handle msvc-style exceptions
-        *bcx.lpad.borrow_mut() = Some(LandingPad::gnu());
+        let bcx = self.fcx.new_block("cleanup", None).build();
         let ccx = bcx.ccx();
-        let llpersonality = bcx.fcx.eh_personality();
+        let llpersonality = self.fcx.eh_personality();
         let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-        let llretval = build::LandingPad(bcx, llretty, llpersonality, 1);
-        build::SetCleanup(bcx, llretval);
-        let slot = self.get_personality_slot(bcx);
-        build::Store(bcx, llretval, slot);
-        build::Br(bcx, cleanup.llbb, DebugLoc::None);
+        let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.fcx.llfn);
+        bcx.set_cleanup(llretval);
+        let slot = self.get_personality_slot(&bcx);
+        bcx.store(llretval, slot);
+        bcx.br(cleanup.llbb());
         bcx
     }
 
     fn unreachable_block(&mut self) -> Block<'bcx, 'tcx> {
-        match self.unreachable_block {
-            Some(b) => b,
-            None => {
-                let bl = self.fcx.new_block("unreachable", None);
-                build::Unreachable(bl);
-                self.unreachable_block = Some(bl);
-                bl
-            }
-        }
+        self.unreachable_block.unwrap_or_else(|| {
+            let bl = self.fcx.new_block("unreachable", None);
+            bl.build().unreachable();
+            self.unreachable_block = Some(bl);
+            bl
+        })
     }
 
-    fn bcx(&self, bb: mir::BasicBlock) -> Block<'bcx, 'tcx> {
-        self.blocks[bb.index()]
+    fn bcx(&self, bb: mir::BasicBlock) -> BlockAndBuilder<'bcx, 'tcx> {
+        self.blocks[bb.index()].build()
     }
 
     fn llblock(&self, bb: mir::BasicBlock) -> BasicBlockRef {
