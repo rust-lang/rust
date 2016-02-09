@@ -541,7 +541,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
-    // otherwise declares it as an external funtion.
+    // otherwise declares it as an external function.
     pub fn eh_unwind_resume(&self) -> ValueRef {
         use trans::attributes;
         assert!(self.ccx.sess().target.target.options.custom_unwind_resume);

@@ -107,7 +107,7 @@
 //!
 //! - `Opaque` (`17`): An opaque, custom-format tag.
 //!   Used to wrap ordinary custom tags or data in the auto-serialized context.
-//!   Rustc typically uses this to encode type informations.
+//!   Rustc typically uses this to encode type information.
 //!
 //! First 0x20 tags are reserved by RBML; custom tags start at 0x20.
 
