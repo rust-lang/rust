@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // OIBIT-based version of #29859, supertrait version. Test that using
-// a simple OIBIT `..` impl alone still doesn't allow arbitary bounds
+// a simple OIBIT `..` impl alone still doesn't allow arbitrary bounds
 // to be synthesized.
 
 #![feature(optin_builtin_traits)]
