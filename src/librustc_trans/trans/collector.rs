@@ -329,7 +329,7 @@ impl<'mir, 'tcx: 'mir> CachedMir<'mir, 'tcx> {
     fn get_ref<'a>(&'a self) -> &'a mir::Mir<'tcx> {
         match *self {
             CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => &**rc,
+            CachedMir::Owned(ref rc) => &rc,
         }
     }
 }

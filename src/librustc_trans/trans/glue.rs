@@ -298,7 +298,7 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     assert!(type_is_sized(bcx.tcx(), t), "Precondition: caller must ensure t is sized");
 
     let repr = adt::represent_type(bcx.ccx(), t);
-    let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &*repr, struct_data));
+    let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &repr, struct_data));
     let loaded = load_ty(bcx, drop_flag.val, bcx.tcx().dtor_type());
     let drop_flag_llty = type_of(bcx.fcx.ccx, bcx.tcx().dtor_type());
     let init_val = C_integral(drop_flag_llty, adt::DTOR_NEEDED as u64, false);
@@ -402,7 +402,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             // Don't use type_of::sizing_type_of because that expects t to be sized.
             assert!(!t.is_simd());
             let repr = adt::represent_type(ccx, t);
-            let sizing_type = adt::sizing_type_context_of(ccx, &*repr, true);
+            let sizing_type = adt::sizing_type_context_of(ccx, &repr, true);
             debug!("DST {} sizing_type: {}", t, sizing_type.to_string());
             let sized_size = llsize_of_alloc(ccx, sizing_type.prefix());
             let sized_align = llalign_of_min(ccx, sizing_type.prefix());

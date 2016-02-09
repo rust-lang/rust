@@ -57,13 +57,13 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     match s.node {
         hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => {
-            bcx = trans_stmt_semi(bcx, &**e);
+            bcx = trans_stmt_semi(bcx, &e);
         }
         hir::StmtDecl(ref d, _) => {
             match d.node {
                 hir::DeclLocal(ref local) => {
-                    bcx = init_local(bcx, &**local);
-                    debuginfo::create_local_var_metadata(bcx, &**local);
+                    bcx = init_local(bcx, &local);
+                    debuginfo::create_local_var_metadata(bcx, &local);
                 }
                 // Inner items are visited by `trans_item`/`trans_meth`.
                 hir::DeclItem(_) => {},
@@ -132,7 +132,7 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match b.expr {
         Some(ref e) => {
             if !bcx.unreachable.get() {
-                bcx = expr::trans_into(bcx, &**e, dest);
+                bcx = expr::trans_into(bcx, &e, dest);
             }
         }
         None => {
@@ -169,11 +169,11 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     if let Some(cv) = const_to_opt_uint(cond_val) {
         if cv == 1 {
             // if true { .. } [else { .. }]
-            bcx = trans_block(bcx, &*thn, dest);
+            bcx = trans_block(bcx, &thn, dest);
             trans::debuginfo::clear_source_location(bcx.fcx);
         } else {
             if let Some(elexpr) = els {
-                bcx = expr::trans_into(bcx, &*elexpr, dest);
+                bcx = expr::trans_into(bcx, &elexpr, dest);
                 trans::debuginfo::clear_source_location(bcx.fcx);
             }
         }
@@ -183,7 +183,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let name = format!("then-block-{}-", thn.id);
     let then_bcx_in = bcx.fcx.new_id_block(&name[..], thn.id);
-    let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
+    let then_bcx_out = trans_block(then_bcx_in, &thn, dest);
     trans::debuginfo::clear_source_location(bcx.fcx);
 
     let cond_source_loc = cond.debug_loc();
@@ -192,7 +192,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match els {
         Some(elexpr) => {
             let else_bcx_in = bcx.fcx.new_id_block("else-block", elexpr.id);
-            let else_bcx_out = expr::trans_into(else_bcx_in, &*elexpr, dest);
+            let else_bcx_out = expr::trans_into(else_bcx_in, &elexpr, dest);
             next_bcx = bcx.fcx.join_blocks(if_id,
                                            &[then_bcx_out, else_bcx_out]);
             CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb, cond_source_loc);
@@ -365,13 +365,13 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let dest = match (fcx.llretslotptr.get(), retval_expr) {
         (Some(_), Some(retval_expr)) => {
-            let ret_ty = expr_ty_adjusted(bcx, &*retval_expr);
+            let ret_ty = expr_ty_adjusted(bcx, &retval_expr);
             expr::SaveIn(fcx.get_ret_slot(bcx, ty::FnConverging(ret_ty), "ret_slot"))
         }
         _ => expr::Ignore,
     };
     if let Some(x) = retval_expr {
-        bcx = expr::trans_into(bcx, &*x, dest);
+        bcx = expr::trans_into(bcx, &x, dest);
         match dest {
             expr::SaveIn(slot) if fcx.needs_ret_allocas => {
                 Store(bcx, slot, fcx.llretslotptr.get().unwrap());

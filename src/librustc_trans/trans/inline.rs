@@ -120,7 +120,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
                 _ => ccx.sess().bug("instantiate_inline: item has a \
                                  non-enum, non-struct parent")
             }
-            trans_item(ccx, &**item);
+            trans_item(ccx, &item);
             my_id
         }
         FoundAst::FoundParent(_, _) => {

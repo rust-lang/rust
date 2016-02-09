@@ -389,7 +389,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     match item.node {
                         hir::ItemImpl(_, _, _, _, ref ty, _) => {
                             let mut result = String::from("<");
-                            result.push_str(&rustc_front::print::pprust::ty_to_string(&**ty));
+                            result.push_str(&rustc_front::print::pprust::ty_to_string(&ty));
 
                             match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                                 Some(def_id) => {
