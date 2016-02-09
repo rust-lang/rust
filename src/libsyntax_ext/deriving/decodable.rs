@@ -14,7 +14,7 @@ use deriving::generic::*;
 use deriving::generic::ty::*;
 
 use syntax::ast;
-use syntax::ast::{MetaItem, Expr, MutMutable};
+use syntax::ast::{MetaItem, Expr, Mutability};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -72,7 +72,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                 },
                 explicit_self: None,
                 args: vec!(Ptr(Box::new(Literal(Path::new_local("__D"))),
-                            Borrowed(None, MutMutable))),
+                            Borrowed(None, Mutability::Mutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,

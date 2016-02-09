@@ -91,7 +91,7 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, ExprKind, MutMutable};
+use syntax::ast::{MetaItem, Expr, ExprKind, Mutability};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt,Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -148,7 +148,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 },
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(Ptr(Box::new(Literal(Path::new_local("__S"))),
-                            Borrowed(None, MutMutable))),
+                            Borrowed(None, Mutability::Mutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,

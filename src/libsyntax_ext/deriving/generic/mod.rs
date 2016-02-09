@@ -864,7 +864,9 @@ impl<'a> MethodDef<'a> {
         let self_arg = match explicit_self.node {
             ast::SelfKind::Static => None,
             // creating fresh self id
-            _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable, special_idents::self_))
+            _ => Some(ast::Arg::new_self(trait_.span,
+                                         ast::Mutability::Immutable,
+                                         special_idents::self_))
         };
         let args = {
             let args = arg_types.into_iter().map(|(name, ty)| {
@@ -942,7 +944,7 @@ impl<'a> MethodDef<'a> {
                                              struct_def,
                                              &format!("__self_{}",
                                                      i),
-                                             ast::MutImmutable);
+                                             ast::Mutability::Immutable);
             patterns.push(pat);
             raw_fields.push(ident_expr);
         }
@@ -1135,11 +1137,12 @@ impl<'a> MethodDef<'a> {
         let mut match_arms: Vec<ast::Arm> = variants.iter().enumerate()
             .map(|(index, variant)| {
                 let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
-                    let (p, idents) = trait_.create_enum_variant_pattern(cx, type_ident,
-                                                                         &**variant,
-                                                                         self_arg_name,
-                                                                         ast::MutImmutable);
-                    (cx.pat(sp, ast::PatRegion(p, ast::MutImmutable)), idents)
+                    let (p, idents) = trait_.create_enum_variant_pattern(
+                        cx, type_ident,
+                        &**variant,
+                        self_arg_name,
+                        ast::Mutability::Immutable);
+                    (cx.pat(sp, ast::PatRegion(p, ast::Mutability::Immutable)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK

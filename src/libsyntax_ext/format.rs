@@ -450,10 +450,10 @@ impl<'a, 'b> Context<'a, 'b> {
         let ty = ecx.ty_rptr(sp,
             ecx.ty(sp, ast::TyKind::Vec(piece_ty)),
             Some(ecx.lifetime(sp, special_idents::static_lifetime.name)),
-            ast::MutImmutable);
+            ast::Mutability::Immutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
         // static instead of const to speed up codegen by not requiring this to be inlined
-        let st = ast::ItemKind::Static(ty, ast::MutImmutable, slice);
+        let st = ast::ItemKind::Static(ty, ast::Mutability::Immutable, slice);
 
         let name = ecx.ident_of(name);
         let item = ecx.item(sp, name, vec![], st);
@@ -480,7 +480,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.fmtsp,
                 self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                 Some(static_lifetime),
-                ast::MutImmutable);
+                ast::Mutability::Immutable);
         let pieces = Context::static_array(self.ecx,
                                            "__STATIC_FMTSTR",
                                            piece_ty,

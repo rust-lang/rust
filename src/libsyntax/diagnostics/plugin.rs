@@ -207,7 +207,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         span,
         ecx.ty_ident(span, ecx.ident_of("str")),
         Some(static_),
-        ast::MutImmutable,
+        ast::Mutability::Immutable,
     );
 
     let ty = ecx.ty(

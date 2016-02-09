@@ -27,7 +27,7 @@ use ast::{Ident, Inherited, ImplItem, Item, ItemKind};
 use ast::{Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
-use ast::{MutImmutable, MutMutable, Mac_};
+use ast::Mac_;
 use ast::{MutTy, Mutability};
 use ast::NamedField;
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
@@ -1417,16 +1417,16 @@ impl<'a> Parser<'a> {
 
     pub fn parse_ptr(&mut self) -> PResult<'a, MutTy> {
         let mutbl = if self.eat_keyword(keywords::Mut) {
-            MutMutable
+            Mutability::Mutable
         } else if self.eat_keyword(keywords::Const) {
-            MutImmutable
+            Mutability::Immutable
         } else {
             let span = self.last_span;
             self.span_err(span,
                           "bare raw pointers are no longer allowed, you should \
                            likely use `*mut T`, but otherwise `*T` is now \
                            known as `*const T`");
-            MutImmutable
+            Mutability::Immutable
         };
         let t = try!(self.parse_ty());
         Ok(MutTy { ty: t, mutbl: mutbl })
@@ -1924,9 +1924,9 @@ impl<'a> Parser<'a> {
     /// Parse mutability declaration (mut/const/imm)
     pub fn parse_mutability(&mut self) -> PResult<'a, Mutability> {
         if self.eat_keyword(keywords::Mut) {
-            Ok(MutMutable)
+            Ok(Mutability::Mutable)
         } else {
-            Ok(MutImmutable)
+            Ok(Mutability::Immutable)
         }
     }
 
@@ -3350,10 +3350,10 @@ impl<'a> Parser<'a> {
                 hi = self.last_span.hi;
 
                 let bind_type = match (is_ref, is_mut) {
-                    (true, true) => BindingMode::ByRef(MutMutable),
-                    (true, false) => BindingMode::ByRef(MutImmutable),
-                    (false, true) => BindingMode::ByValue(MutMutable),
-                    (false, false) => BindingMode::ByValue(MutImmutable),
+                    (true, true) => BindingMode::ByRef(Mutability::Mutable),
+                    (true, false) => BindingMode::ByRef(Mutability::Immutable),
+                    (false, true) => BindingMode::ByValue(Mutability::Mutable),
+                    (false, false) => BindingMode::ByValue(Mutability::Immutable),
                 };
                 let fieldpath = codemap::Spanned{span:self.last_span, node:fieldname};
                 let fieldpat = P(ast::Pat{
@@ -3448,7 +3448,7 @@ impl<'a> Parser<'a> {
             // At this point, token != _, &, &&, (, [
             if self.eat_keyword(keywords::Mut) {
                 // Parse mut ident @ pat
-                pat = try!(self.parse_pat_ident(BindingMode::ByValue(MutMutable)));
+                pat = try!(self.parse_pat_ident(BindingMode::ByValue(Mutability::Mutable)));
             } else if self.eat_keyword(keywords::Ref) {
                 // Parse ref ident @ pat / ref mut ident @ pat
                 let mutbl = try!(self.parse_mutability());
@@ -3481,7 +3481,8 @@ impl<'a> Parser<'a> {
                         // Parse ident @ pat
                         // This can give false positives and parse nullary enums,
                         // they are dealt with later in resolve
-                        pat = try!(self.parse_pat_ident(BindingMode::ByValue(MutImmutable)));
+                        let binding_mode = BindingMode::ByValue(Mutability::Immutable);
+                        pat = try!(self.parse_pat_ident(binding_mode));
                     }
                 } else {
                     let (qself, path) = if self.eat_lt() {
@@ -4408,7 +4409,7 @@ impl<'a> Parser<'a> {
 
             if this.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
-                Ok(SelfKind::Region(None, MutImmutable, try!(this.expect_self_ident())))
+                Ok(SelfKind::Region(None, Mutability::Immutable, try!(this.expect_self_ident())))
             } else if this.look_ahead(1, |t| t.is_mutability()) &&
                       this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
@@ -4418,7 +4419,8 @@ impl<'a> Parser<'a> {
                       this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 let lifetime = try!(this.parse_lifetime());
-                Ok(SelfKind::Region(Some(lifetime), MutImmutable, try!(this.expect_self_ident())))
+                let ident = try!(this.expect_self_ident());
+                Ok(SelfKind::Region(Some(lifetime), Mutability::Immutable, ident))
             } else if this.look_ahead(1, |t| t.is_lifetime()) &&
                       this.look_ahead(2, |t| t.is_mutability()) &&
                       this.look_ahead(3, |t| t.is_keyword(keywords::SelfValue)) {
@@ -4439,7 +4441,7 @@ impl<'a> Parser<'a> {
         let mut self_ident_lo = self.span.lo;
         let mut self_ident_hi = self.span.hi;
 
-        let mut mutbl_self = MutImmutable;
+        let mut mutbl_self = Mutability::Immutable;
         let explicit_self = match self.token {
             token::BinOp(token::And) => {
                 let eself = try!(maybe_parse_borrowed_explicit_self(self));
@@ -4454,7 +4456,7 @@ impl<'a> Parser<'a> {
                 let _mutability = if self.token.is_mutability() {
                     try!(self.parse_mutability())
                 } else {
-                    MutImmutable
+                    Mutability::Immutable
                 };
                 if self.is_self_ident() {
                     let span = self.span;
@@ -5527,7 +5529,11 @@ impl<'a> Parser<'a> {
 
         if self.eat_keyword(keywords::Static) {
             // STATIC ITEM
-            let m = if self.eat_keyword(keywords::Mut) {MutMutable} else {MutImmutable};
+            let m = if self.eat_keyword(keywords::Mut) {
+                Mutability::Mutable
+            } else {
+                Mutability::Immutable
+            };
             let (ident, item_, extra_attrs) = try!(self.parse_item_const(Some(m)));
             let last_span = self.last_span;
             let item = self.mk_item(lo,

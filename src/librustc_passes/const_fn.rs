@@ -105,7 +105,7 @@ impl<'a, 'v> Visitor<'v> for CheckConstFn<'a> {
         for arg in &fd.inputs {
             match arg.pat.node {
                 ast::PatWild => {}
-                ast::PatIdent(ast::BindingMode::ByValue(ast::MutImmutable), _, None) => {}
+                ast::PatIdent(ast::BindingMode::ByValue(ast::Mutability::Immutable), _, None) => {}
                 _ => {
                     span_err!(self.sess, arg.pat.span, E0022,
                               "arguments of constant functions can only \

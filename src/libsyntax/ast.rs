@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
 pub use self::StrStyle::*;
@@ -602,8 +601,8 @@ pub enum Pat_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum Mutability {
-    MutMutable,
-    MutImmutable,
+    Mutable,
+    Immutable,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
