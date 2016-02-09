@@ -8,7 +8,7 @@ use rustc_front::hir::*;
 use syntax::ast::Lit_;
 use syntax::codemap::Spanned;
 
-use utils::{span_lint, snippet};
+use utils::{span_lint, span_lint_and_then, snippet};
 
 /// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly.
 ///
@@ -109,34 +109,46 @@ impl LateLintPass for BoolComparison {
                 (Some(true), None) => {
                     let side_snip = snippet(cx, right_side.span, "..");
                     let hint = format!("`{}`", side_snip);
-                    span_lint(cx,
-                              BOOL_COMPARISON,
-                              e.span,
-                              &format!("you can simplify this boolean comparison to {}", hint));
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against booleans are unnecesary",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                       });
                 }
                 (None, Some(true)) => {
                     let side_snip = snippet(cx, left_side.span, "..");
                     let hint = format!("`{}`", side_snip);
-                    span_lint(cx,
-                              BOOL_COMPARISON,
-                              e.span,
-                              &format!("you can simplify this boolean comparison to {}", hint));
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against booleans are unnecesary",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                       });
                 }
                 (Some(false), None) => {
                     let side_snip = snippet(cx, right_side.span, "..");
                     let hint = format!("`!{}`", side_snip);
-                    span_lint(cx,
-                              BOOL_COMPARISON,
-                              e.span,
-                              &format!("you can simplify this boolean comparison to {}", hint));
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against booleans are unnecesary",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                       });
                 }
                 (None, Some(false)) => {
                     let side_snip = snippet(cx, left_side.span, "..");
                     let hint = format!("`!{}`", side_snip);
-                    span_lint(cx,
-                              BOOL_COMPARISON,
-                              e.span,
-                              &format!("you can simplify this boolean comparison to {}", hint));
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against booleans are unnecesary",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it:", hint);
+                                       });
                 }
                 _ => (),
             }
