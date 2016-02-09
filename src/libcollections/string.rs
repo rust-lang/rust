@@ -1842,6 +1842,12 @@ impl fmt::Write for String {
 }
 
 /// A draining iterator for `String`.
+///
+/// This struct is created by the [`drain()`] method on [`String`]. See its
+/// documentation for more.
+///
+/// [`drain()`]: struct.String.html#method.drain
+/// [`String`]: struct.String.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a> {
     /// Will be used as &'a mut String in the destructor
