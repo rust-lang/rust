@@ -218,6 +218,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     fn eq_ty(&self, left: &Ty, right: &Ty) -> bool {
         match (&left.node, &right.node) {
             (&TyVec(ref lvec), &TyVec(ref rvec)) => self.eq_ty(lvec, rvec),
+            (&TyFixedLengthVec(ref lt, ref ll), &TyFixedLengthVec(ref rt, ref rl)) => {
+                self.eq_ty(lt, rt) && self.eq_expr(ll, rl)
+            }
             (&TyPtr(ref lmut), &TyPtr(ref rmut)) => lmut.mutbl == rmut.mutbl && self.eq_ty(&*lmut.ty, &*rmut.ty),
             (&TyRptr(_, ref lrmut), &TyRptr(_, ref rrmut)) => {
                 lrmut.mutbl == rrmut.mutbl && self.eq_ty(&*lrmut.ty, &*rrmut.ty)
@@ -225,6 +228,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&TyPath(ref lq, ref lpath), &TyPath(ref rq, ref rpath)) => {
                 both(lq, rq, |l, r| self.eq_qself(l, r)) && self.eq_path(lpath, rpath)
             }
+            (&TyTup(ref l), &TyTup(ref r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyInfer, &TyInfer) => true,
             _ => false,
         }
