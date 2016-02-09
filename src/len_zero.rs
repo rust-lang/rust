@@ -140,9 +140,7 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
         }
     }
     match (&left.node, &right.node) {
-        (&ExprLit(ref lit), &ExprMethodCall(ref method, _, ref args)) => {
-            check_len_zero(cx, span, &method.node, args, lit, op)
-        }
+        (&ExprLit(ref lit), &ExprMethodCall(ref method, _, ref args)) |
         (&ExprMethodCall(ref method, _, ref args), &ExprLit(ref lit)) => {
             check_len_zero(cx, span, &method.node, args, lit, op)
         }

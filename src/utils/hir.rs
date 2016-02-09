@@ -38,8 +38,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     false
                 }
             }
-            (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) => self.eq_expr(l, r),
-            (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => self.eq_expr(l, r),
+            (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) |
+                (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => self.eq_expr(l, r),
             _ => false,
         }
     }

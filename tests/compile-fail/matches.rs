@@ -101,8 +101,8 @@ fn match_bool() {
     let test: bool = true;
 
     match test {  //~ ERROR you seem to be trying to match on a boolean expression
-        true => (),
-        false => (),
+        true => 0,
+        false => 42,
     };
 
     let option = 1;
@@ -128,9 +128,9 @@ fn match_bool() {
 
     // Not linted
     match option {
-        1 ... 10 => (),
-        11 ... 20 => (),
-        _ => (),
+        1 ... 10 => 1,
+        11 ... 20 => 2,
+        _ => 3,
     };
 }
 
