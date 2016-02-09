@@ -163,6 +163,7 @@ pub enum PrintRequest {
     FileNames,
     Sysroot,
     CrateName,
+    Cfg,
 }
 
 pub enum Input {
@@ -1105,6 +1106,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             "crate-name" => PrintRequest::CrateName,
             "file-names" => PrintRequest::FileNames,
             "sysroot" => PrintRequest::Sysroot,
+            "cfg" => PrintRequest::Cfg,
             req => {
                 early_error(error_format, &format!("unknown print request `{}`", req))
             }
