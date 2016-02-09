@@ -652,7 +652,7 @@ impl<'a> State<'a> {
                 if let Some(p) = *optional_path {
                     let val = p.as_str();
                     if val.contains("-") {
-                        try!(self.print_string(&val, ast::CookedStr));
+                        try!(self.print_string(&val, ast::StrStyle::Cooked));
                     } else {
                         try!(self.print_name(p));
                     }
@@ -1510,9 +1510,9 @@ impl<'a> State<'a> {
                 try!(self.commasep(Inconsistent, &a.outputs, |s, out| {
                     match out.constraint.slice_shift_char() {
                         Some(('=', operand)) if out.is_rw => {
-                            try!(s.print_string(&format!("+{}", operand), ast::CookedStr))
+                            try!(s.print_string(&format!("+{}", operand), ast::StrStyle::Cooked))
                         }
-                        _ => try!(s.print_string(&out.constraint, ast::CookedStr)),
+                        _ => try!(s.print_string(&out.constraint, ast::StrStyle::Cooked)),
                     }
                     try!(s.popen());
                     try!(s.print_expr(&*out.expr));
@@ -1523,7 +1523,7 @@ impl<'a> State<'a> {
                 try!(self.word_space(":"));
 
                 try!(self.commasep(Inconsistent, &a.inputs, |s, &(ref co, ref o)| {
-                    try!(s.print_string(&co, ast::CookedStr));
+                    try!(s.print_string(&co, ast::StrStyle::Cooked));
                     try!(s.popen());
                     try!(s.print_expr(&**o));
                     try!(s.pclose());
@@ -1533,7 +1533,7 @@ impl<'a> State<'a> {
                 try!(self.word_space(":"));
 
                 try!(self.commasep(Inconsistent, &a.clobbers, |s, co| {
-                    try!(s.print_string(&co, ast::CookedStr));
+                    try!(s.print_string(&co, ast::StrStyle::Cooked));
                     Ok(())
                 }));
 
@@ -1552,7 +1552,7 @@ impl<'a> State<'a> {
                     try!(space(&mut self.s));
                     try!(self.word_space(":"));
                     try!(self.commasep(Inconsistent, &*options, |s, &co| {
-                        try!(s.print_string(co, ast::CookedStr));
+                        try!(s.print_string(co, ast::StrStyle::Cooked));
                         Ok(())
                     }));
                 }

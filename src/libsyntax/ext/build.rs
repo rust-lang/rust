@@ -715,7 +715,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_addr_of(sp, self.expr_vec(sp, exprs))
     }
     fn expr_str(&self, sp: Span, s: InternedString) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitKind::Str(s, ast::CookedStr))
+        self.expr_lit(sp, ast::LitKind::Str(s, ast::StrStyle::Cooked))
     }
 
     fn expr_cast(&self, sp: Span, expr: P<ast::Expr>, ty: P<ast::Ty>) -> P<ast::Expr> {

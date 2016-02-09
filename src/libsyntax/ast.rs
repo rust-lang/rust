@@ -12,7 +12,6 @@
 
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
-pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
@@ -1246,11 +1245,11 @@ pub struct Mac_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`
-    CookedStr,
+    Cooked,
     /// A raw string, like `r##"foo"##`
     ///
     /// The uint is the number of `#` symbols used
-    RawStr(usize)
+    Raw(usize)
 }
 
 /// A literal
