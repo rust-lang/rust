@@ -388,7 +388,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
     to_string(|s| {
         try!(s.head(""));
         try!(s.print_fn(decl, unsafety, constness, Abi::Rust, Some(name),
-                        generics, opt_explicit_self, ast::Inherited));
+                        generics, opt_explicit_self, ast::Visibility::Inherited));
         try!(s.end()); // Close the head box
         s.end() // Close the outer box
     })
@@ -434,8 +434,8 @@ pub fn mac_to_string(arg: &ast::Mac) -> String {
 
 pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
     match vis {
-        ast::Public => format!("pub {}", s),
-        ast::Inherited => s.to_string()
+        ast::Visibility::Public => format!("pub {}", s),
+        ast::Visibility::Inherited => s.to_string()
     }
 }
 
@@ -1388,8 +1388,8 @@ impl<'a> State<'a> {
 
     pub fn print_visibility(&mut self, vis: ast::Visibility) -> io::Result<()> {
         match vis {
-            ast::Public => self.word_nbsp("pub"),
-            ast::Inherited => Ok(())
+            ast::Visibility::Public => self.word_nbsp("pub"),
+            ast::Visibility::Inherited => Ok(())
         }
     }
 
@@ -1555,13 +1555,13 @@ impl<'a> State<'a> {
             ast::TraitItemKind::Const(ref ty, ref default) => {
                 try!(self.print_associated_const(ti.ident, &ty,
                                                  default.as_ref().map(|expr| &**expr),
-                                                 ast::Inherited));
+                                                 ast::Visibility::Inherited));
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
                 if body.is_some() {
                     try!(self.head(""));
                 }
-                try!(self.print_method_sig(ti.ident, sig, ast::Inherited));
+                try!(self.print_method_sig(ti.ident, sig, ast::Visibility::Inherited));
                 if let Some(ref body) = *body {
                     try!(self.nbsp());
                     try!(self.print_block_with_attrs(body, &ti.attrs));
@@ -3030,7 +3030,7 @@ impl<'a> State<'a> {
                            name,
                            &generics,
                            opt_explicit_self,
-                           ast::Inherited));
+                           ast::Visibility::Inherited));
         self.end()
     }
 

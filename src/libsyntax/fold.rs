@@ -1023,7 +1023,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
         ident: token::special_idents::invalid,
         attrs: attrs,
         id: ast::DUMMY_NODE_ID,
-        vis: ast::Public,
+        vis: ast::Visibility::Public,
         span: span,
         node: ast::ItemKind::Mod(module),
     })).into_iter();

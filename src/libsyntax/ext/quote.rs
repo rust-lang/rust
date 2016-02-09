@@ -906,7 +906,7 @@ fn expand_wrapper(cx: &ExtCtxt,
     let stmts = imports.iter().map(|path| {
         // make item: `use ...;`
         let path = path.iter().map(|s| s.to_string()).collect();
-        cx.stmt_item(sp, cx.item_use_glob(sp, ast::Inherited, ids_ext(path)))
+        cx.stmt_item(sp, cx.item_use_glob(sp, ast::Visibility::Inherited, ids_ext(path)))
     }).chain(Some(stmt_let_ext_cx)).collect();
 
     cx.expr_block(cx.block_all(sp, stmts, Some(expr)))

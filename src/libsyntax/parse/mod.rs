@@ -983,7 +983,7 @@ mod tests {
                                         rules: ast::BlockCheckMode::Default, // no idea
                                         span: sp(15,21),
                                     })),
-                            vis: ast::Inherited,
+                            vis: ast::Visibility::Inherited,
                             span: sp(0,21)})));
     }
 

@@ -90,7 +90,7 @@ impl fold::Folder for CrateInjector {
                 attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_word_item(
                         InternedString::new("macro_use")))),
             node: ast::ItemKind::ExternCrate(Some(self.crate_name)),
-            vis: ast::Inherited,
+            vis: ast::Visibility::Inherited,
             span: DUMMY_SP
         }));
 
@@ -162,7 +162,7 @@ impl fold::Folder for PreludeInjector {
                     is_sugared_doc: false,
                 },
             }],
-            vis: ast::Inherited,
+            vis: ast::Visibility::Inherited,
             span: self.span,
         }));
 

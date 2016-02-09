@@ -1565,8 +1565,8 @@ pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureBy) -> hir::Captu
 
 pub fn lower_visibility(_lctx: &LoweringContext, v: Visibility) -> hir::Visibility {
     match v {
-        Public => hir::Public,
-        Inherited => hir::Inherited,
+        Visibility::Public => hir::Public,
+        Visibility::Inherited => hir::Inherited,
     }
 }
 

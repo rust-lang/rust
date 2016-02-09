@@ -17,7 +17,6 @@ pub use self::StructFieldKind::*;
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
-pub use self::Visibility::*;
 pub use self::PathParameters::*;
 
 use attr::ThinAttributes;
@@ -1851,8 +1850,8 @@ pub enum Visibility {
 impl Visibility {
     pub fn inherit_from(&self, parent_visibility: Visibility) -> Visibility {
         match *self {
-            Inherited => parent_visibility,
-            Public => *self
+            Visibility::Inherited => parent_visibility,
+            Visibility::Public => *self
         }
     }
 }

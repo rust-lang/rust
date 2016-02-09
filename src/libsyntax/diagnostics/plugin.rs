@@ -230,7 +230,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                 ty,
                 expr,
             ),
-            vis: ast::Public,
+            vis: ast::Visibility::Public,
             span: span,
         })
     ]))
