@@ -386,11 +386,11 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
-                let kill_scope = self.compute_kill_scope(loan_scope, &*loan_path);
+                let kill_scope = self.compute_kill_scope(loan_scope, &loan_path);
                 debug!("kill_scope = {:?}", kill_scope);
 
                 if req_kind == ty::MutBorrow {
-                    self.mark_loan_path_as_mutated(&*loan_path);
+                    self.mark_loan_path_as_mutated(&loan_path);
                 }
 
                 Loan {
@@ -452,7 +452,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             LpDowncast(ref base, _) |
             LpExtend(ref base, mc::McInherited, _) |
             LpExtend(ref base, mc::McDeclared, _) => {
-                self.mark_loan_path_as_mutated(&**base);
+                self.mark_loan_path_as_mutated(&base);
             }
             LpExtend(_, mc::McImmutable, _) => {
                 // Nothing to do.
@@ -527,7 +527,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
         if let hir::ExprAddrOf(mutbl, ref base) = ex.node {
             let infcx = infer::new_infer_ctxt(self.bccx.tcx, &self.bccx.tcx.tables, None);
             let mc = mc::MemCategorizationContext::new(&infcx);
-            let base_cmt = mc.cat_expr(&**base).unwrap();
+            let base_cmt = mc.cat_expr(&base).unwrap();
             let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
             // Check that we don't allow borrows of unsafe static items.
             if check_aliasability(self.bccx, ex.span,

@@ -207,7 +207,7 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
         }
         LpDowncast(ref lp_base, _) |
         LpExtend(ref lp_base, _, _) => {
-            loan_path_is_precise(&**lp_base)
+            loan_path_is_precise(&lp_base)
         }
     }
 }
@@ -587,7 +587,7 @@ impl<'tcx> MoveData<'tcx> {
         // assignment referring to another location.
 
         let loan_path = self.path_loan_path(path);
-        if loan_path_is_precise(&*loan_path) {
+        if loan_path_is_precise(&loan_path) {
             self.each_applicable_move(path, |move_index| {
                 debug!("kill_moves add_kill {:?} kill_id={} move_index={}",
                        kill_kind, kill_id, move_index.get());
@@ -700,7 +700,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
-                if !f(the_move, &*self.move_data.path_loan_path(moved_path)) {
+                if !f(the_move, &self.move_data.path_loan_path(moved_path)) {
                     ret = false;
                 }
             } else {
@@ -710,7 +710,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                             // Scenario 3: some extension of `loan_path`
                             // was moved
                             f(the_move,
-                              &*self.move_data.path_loan_path(moved_path))
+                              &self.move_data.path_loan_path(moved_path))
                         } else {
                             true
                         }
