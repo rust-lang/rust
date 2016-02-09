@@ -114,7 +114,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             }
 
             hir::ExprBlock(ref blk) => {
-                ExprKind::Block { body: &**blk }
+                ExprKind::Block { body: &blk }
             }
 
             hir::ExprAssign(ref lhs, ref rhs) => {
@@ -277,7 +277,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 });
                 ExprKind::Closure {
                     closure_id: def_id,
-                    substs: &**substs,
+                    substs: &substs,
                     upvars: upvars,
                 }
             }
