@@ -1552,12 +1552,12 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ti.span.lo));
         try!(self.print_outer_attributes(&ti.attrs));
         match ti.node {
-            ast::ConstTraitItem(ref ty, ref default) => {
+            ast::TraitItemKind::Const(ref ty, ref default) => {
                 try!(self.print_associated_const(ti.ident, &ty,
                                                  default.as_ref().map(|expr| &**expr),
                                                  ast::Inherited));
             }
-            ast::MethodTraitItem(ref sig, ref body) => {
+            ast::TraitItemKind::Method(ref sig, ref body) => {
                 if body.is_some() {
                     try!(self.head(""));
                 }
@@ -1569,7 +1569,7 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, ";"));
                 }
             }
-            ast::TypeTraitItem(ref bounds, ref default) => {
+            ast::TraitItemKind::Type(ref bounds, ref default) => {
                 try!(self.print_associated_type(ti.ident, Some(bounds),
                                                 default.as_ref().map(|ty| &**ty)));
             }

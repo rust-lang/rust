@@ -728,15 +728,15 @@ pub fn lower_trait_item(lctx: &LoweringContext, i: &TraitItem) -> hir::TraitItem
         name: i.ident.name,
         attrs: lower_attrs(lctx, &i.attrs),
         node: match i.node {
-            ConstTraitItem(ref ty, ref default) => {
+            TraitItemKind::Const(ref ty, ref default) => {
                 hir::ConstTraitItem(lower_ty(lctx, ty),
                                     default.as_ref().map(|x| lower_expr(lctx, x)))
             }
-            MethodTraitItem(ref sig, ref body) => {
+            TraitItemKind::Method(ref sig, ref body) => {
                 hir::MethodTraitItem(lower_method_sig(lctx, sig),
                                      body.as_ref().map(|x| lower_block(lctx, x)))
             }
-            TypeTraitItem(ref bounds, ref default) => {
+            TraitItemKind::Type(ref bounds, ref default) => {
                 hir::TypeTraitItem(lower_bounds(lctx, bounds),
                                    default.as_ref().map(|x| lower_ty(lctx, x)))
             }

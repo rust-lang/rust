@@ -14,7 +14,6 @@ pub use self::Pat_::*;
 pub use self::PathListItem_::*;
 pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
-pub use self::TraitItem_::*;
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
@@ -1324,15 +1323,15 @@ pub struct TraitItem {
     pub id: NodeId,
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub node: TraitItem_,
+    pub node: TraitItemKind,
     pub span: Span,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TraitItem_ {
-    ConstTraitItem(P<Ty>, Option<P<Expr>>),
-    MethodTraitItem(MethodSig, Option<P<Block>>),
-    TypeTraitItem(TyParamBounds, Option<P<Ty>>),
+pub enum TraitItemKind {
+    Const(P<Ty>, Option<P<Expr>>),
+    Method(MethodSig, Option<P<Block>>),
+    Type(TyParamBounds, Option<P<Ty>>),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
