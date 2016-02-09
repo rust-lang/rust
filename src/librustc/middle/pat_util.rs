@@ -153,7 +153,7 @@ pub fn pat_contains_bindings(dm: &DefMap, pat: &hir::Pat) -> bool {
 }
 
 /// Checks if the pattern contains any `ref` or `ref mut` bindings,
-/// and if yes wether its containing mutable ones or just immutables ones.
+/// and if yes whether its containing mutable ones or just immutables ones.
 pub fn pat_contains_ref_binding(dm: &RefCell<DefMap>, pat: &hir::Pat) -> Option<hir::Mutability> {
     let mut result = None;
     pat_bindings(dm, pat, |mode, _, _, _| {
@@ -172,7 +172,7 @@ pub fn pat_contains_ref_binding(dm: &RefCell<DefMap>, pat: &hir::Pat) -> Option<
 }
 
 /// Checks if the patterns for this arm contain any `ref` or `ref mut`
-/// bindings, and if yes wether its containing mutable ones or just immutables ones.
+/// bindings, and if yes whether its containing mutable ones or just immutables ones.
 pub fn arm_contains_ref_binding(dm: &RefCell<DefMap>, arm: &hir::Arm) -> Option<hir::Mutability> {
     arm.pats.iter()
             .filter_map(|pat| pat_contains_ref_binding(dm, pat))

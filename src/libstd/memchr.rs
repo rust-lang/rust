@@ -150,7 +150,7 @@ mod fallback {
         // Scan for a single byte value by reading two `usize` words at a time.
         //
         // Split `text` in three parts
-        // - unaligned inital part, before the first word aligned address in text
+        // - unaligned initial part, before the first word aligned address in text
         // - body, scan by 2 words at a time
         // - the last remaining part, < 2 word size
         let len = text.len();
