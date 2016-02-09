@@ -928,7 +928,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     ast::ViewPathList(ref path, ref list) => {
                         for plid in list {
                             match plid.node {
-                                ast::PathListIdent { id, .. } => {
+                                ast::PathListItemKind::Ident { id, .. } => {
                                     match self.lookup_type_ref(id) {
                                         Some(def_id) => match self.lookup_def_kind(id, plid.span) {
                                             Some(kind) => {
@@ -943,7 +943,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                         None => (),
                                     }
                                 }
-                                ast::PathListMod { .. } => (),
+                                ast::PathListItemKind::Mod { .. } => (),
                             }
                         }
 

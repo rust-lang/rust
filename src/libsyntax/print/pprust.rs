@@ -2918,7 +2918,7 @@ impl<'a> State<'a> {
                 }
                 try!(self.commasep(Inconsistent, &idents[..], |s, w| {
                     match w.node {
-                        ast::PathListIdent { name, rename, .. } => {
+                        ast::PathListItemKind::Ident { name, rename, .. } => {
                             try!(s.print_ident(name));
                             if let Some(ident) = rename {
                                 try!(space(&mut s.s));
@@ -2927,7 +2927,7 @@ impl<'a> State<'a> {
                             }
                             Ok(())
                         },
-                        ast::PathListMod { rename, .. } => {
+                        ast::PathListItemKind::Mod { rename, .. } => {
                             try!(word(&mut s.s, "self"));
                             if let Some(ident) = rename {
                                 try!(space(&mut s.s));

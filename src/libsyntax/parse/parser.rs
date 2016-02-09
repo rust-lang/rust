@@ -574,11 +574,11 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let node = if self.eat_keyword(keywords::SelfValue) {
             let rename = try!(self.parse_rename());
-            ast::PathListMod { id: ast::DUMMY_NODE_ID, rename: rename }
+            ast::PathListItemKind::Mod { id: ast::DUMMY_NODE_ID, rename: rename }
         } else {
             let ident = try!(self.parse_ident());
             let rename = try!(self.parse_rename());
-            ast::PathListIdent { name: ident, rename: rename, id: ast::DUMMY_NODE_ID }
+            ast::PathListItemKind::Ident { name: ident, rename: rename, id: ast::DUMMY_NODE_ID }
         };
         let hi = self.last_span.hi;
         Ok(spanned(lo, hi, node))

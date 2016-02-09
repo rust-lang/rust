@@ -11,7 +11,6 @@
 // The Rust abstract syntax tree.
 
 pub use self::Pat_::*;
-pub use self::PathListItem_::*;
 pub use self::StructFieldKind::*;
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
@@ -1737,42 +1736,42 @@ pub struct Variant_ {
 pub type Variant = Spanned<Variant_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum PathListItem_ {
-    PathListIdent {
+pub enum PathListItemKind {
+    Ident {
         name: Ident,
         /// renamed in list, eg `use foo::{bar as baz};`
         rename: Option<Ident>,
         id: NodeId
     },
-    PathListMod {
+    Mod {
         /// renamed in list, eg `use foo::{self as baz};`
         rename: Option<Ident>,
         id: NodeId
     }
 }
 
-impl PathListItem_ {
+impl PathListItemKind {
     pub fn id(&self) -> NodeId {
         match *self {
-            PathListIdent { id, .. } | PathListMod { id, .. } => id
+            PathListItemKind::Ident { id, .. } | PathListItemKind::Mod { id, .. } => id
         }
     }
 
     pub fn name(&self) -> Option<Ident> {
         match *self {
-            PathListIdent { name, .. } => Some(name),
-            PathListMod { .. } => None,
+            PathListItemKind::Ident { name, .. } => Some(name),
+            PathListItemKind::Mod { .. } => None,
         }
     }
 
     pub fn rename(&self) -> Option<Ident> {
         match *self {
-            PathListIdent { rename, .. } | PathListMod { rename, .. } => rename
+            PathListItemKind::Ident { rename, .. } | PathListItemKind::Mod { rename, .. } => rename
         }
     }
 }
 
-pub type PathListItem = Spanned<PathListItem_>;
+pub type PathListItem = Spanned<PathListItemKind>;
 
 pub type ViewPath = Spanned<ViewPath_>;
 
