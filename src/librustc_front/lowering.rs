@@ -427,8 +427,8 @@ pub fn lower_explicit_self_underscore(lctx: &LoweringContext,
 
 pub fn lower_mutability(_lctx: &LoweringContext, m: Mutability) -> hir::Mutability {
     match m {
-        MutMutable => hir::MutMutable,
-        MutImmutable => hir::MutImmutable,
+        Mutability::Mutable => hir::MutMutable,
+        Mutability::Immutable => hir::MutImmutable,
     }
 }
 

@@ -807,7 +807,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         self.visit_pat(&p);
 
         for &(id, ref p, immut, _) in &collector.collected_paths {
-            let value = if immut == ast::MutImmutable {
+            let value = if immut == ast::Mutability::Immutable {
                 value.to_string()
             } else {
                 "<mutable>".to_string()
@@ -1200,7 +1200,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             let def = def_map.get(&id).unwrap().full_def();
             match def {
                 Def::Local(_, id) => {
-                    let value = if immut == ast::MutImmutable {
+                    let value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {
                         "<mutable>".to_string()

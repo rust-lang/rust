@@ -27,7 +27,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
 {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(Box::new(Literal(path_std!(cx, core::fmt::Formatter))),
-                   Borrowed(None, ast::MutMutable));
+                   Borrowed(None, ast::Mutability::Mutable));
 
     let trait_def = TraitDef {
         span: span,

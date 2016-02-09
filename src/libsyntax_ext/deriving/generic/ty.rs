@@ -98,7 +98,7 @@ pub enum Ty<'a> {
 }
 
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
-    Borrowed(None, ast::MutImmutable)
+    Borrowed(None, ast::Mutability::Immutable)
 }
 pub fn borrowed<'r>(ty: Box<Ty<'r>>) -> Ty<'r> {
     Ptr(ty, borrowed_ptrty())

@@ -248,8 +248,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 // If the variable is immutable, save the initialising expression.
                 let (value, keyword) = match mt {
-                    ast::MutMutable => (String::from("<mutable>"), keywords::Mut),
-                    ast::MutImmutable => (self.span_utils.snippet(expr.span), keywords::Static),
+                    ast::Mutability::Mutable => (String::from("<mutable>"), keywords::Mut),
+                    ast::Mutability::Immutable => {
+                        (self.span_utils.snippet(expr.span), keywords::Static)
+                    },
                 };
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
@@ -758,12 +760,12 @@ impl<'v> Visitor<'v> for PathCollector {
         match p.node {
             ast::PatStruct(ref path, _, _) => {
                 self.collected_paths.push((p.id, path.clone(),
-                                           ast::MutMutable, recorder::TypeRef));
+                                           ast::Mutability::Mutable, recorder::TypeRef));
             }
             ast::PatEnum(ref path, _) |
             ast::PatQPath(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(),
-                                           ast::MutMutable, recorder::VarRef));
+                                           ast::Mutability::Mutable, recorder::VarRef));
             }
             ast::PatIdent(bm, ref path1, _) => {
                 debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
@@ -774,7 +776,7 @@ impl<'v> Visitor<'v> for PathCollector {
                     // Even if the ref is mut, you can't change the ref, only
                     // the data pointed at, so showing the initialising expression
                     // is still worthwhile.
-                    ast::BindingMode::ByRef(_) => ast::MutImmutable,
+                    ast::BindingMode::ByRef(_) => ast::Mutability::Immutable,
                     ast::BindingMode::ByValue(mt) => mt,
                 };
                 // collect path for either visit_local or visit_arm

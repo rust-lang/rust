@@ -417,7 +417,7 @@ pub fn lit_to_string(l: &ast::Lit) -> String {
 }
 
 pub fn explicit_self_to_string(explicit_self: &ast::SelfKind) -> String {
-    to_string(|s| s.print_explicit_self(explicit_self, ast::MutImmutable).map(|_| {}))
+    to_string(|s| s.print_explicit_self(explicit_self, ast::Mutability::Immutable).map(|_| {}))
 }
 
 pub fn variant_to_string(var: &ast::Variant) -> String {
@@ -965,8 +965,8 @@ impl<'a> State<'a> {
             ast::TyKind::Ptr(ref mt) => {
                 try!(word(&mut self.s, "*"));
                 match mt.mutbl {
-                    ast::MutMutable => try!(self.word_nbsp("mut")),
-                    ast::MutImmutable => try!(self.word_nbsp("const")),
+                    ast::Mutability::Mutable => try!(self.word_nbsp("mut")),
+                    ast::Mutability::Immutable => try!(self.word_nbsp("const")),
                 }
                 try!(self.print_type(&*mt.ty));
             }
@@ -1147,7 +1147,7 @@ impl<'a> State<'a> {
             ast::ItemKind::Static(ref ty, m, ref expr) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "static")));
-                if m == ast::MutMutable {
+                if m == ast::Mutability::Mutable {
                     try!(self.word_space("mut"));
                 }
                 try!(self.print_ident(item.ident));
@@ -2464,8 +2464,8 @@ impl<'a> State<'a> {
                         try!(self.word_nbsp("ref"));
                         try!(self.print_mutability(mutbl));
                     }
-                    ast::BindingMode::ByValue(ast::MutImmutable) => {}
-                    ast::BindingMode::ByValue(ast::MutMutable) => {
+                    ast::BindingMode::ByValue(ast::Mutability::Immutable) => {}
+                    ast::BindingMode::ByValue(ast::Mutability::Mutable) => {
                         try!(self.word_nbsp("mut"));
                     }
                 }
@@ -2534,7 +2534,7 @@ impl<'a> State<'a> {
             }
             ast::PatRegion(ref inner, mutbl) => {
                 try!(word(&mut self.s, "&"));
-                if mutbl == ast::MutMutable {
+                if mutbl == ast::Mutability::Mutable {
                     try!(word(&mut self.s, "mut "));
                 }
                 try!(self.print_pat(&**inner));
@@ -2669,10 +2669,10 @@ impl<'a> State<'a> {
         let mut first = true;
         if let Some(explicit_self) = opt_explicit_self {
             let m = match *explicit_self {
-                ast::SelfKind::Static => ast::MutImmutable,
+                ast::SelfKind::Static => ast::Mutability::Immutable,
                 _ => match decl.inputs[0].pat.node {
                     ast::PatIdent(ast::BindingMode::ByValue(m), _, _) => m,
-                    _ => ast::MutImmutable
+                    _ => ast::Mutability::Immutable
                 }
             };
             first = !try!(self.print_explicit_self(explicit_self, m));
@@ -2946,8 +2946,8 @@ impl<'a> State<'a> {
     pub fn print_mutability(&mut self,
                             mutbl: ast::Mutability) -> io::Result<()> {
         match mutbl {
-            ast::MutMutable => self.word_nbsp("mut"),
-            ast::MutImmutable => Ok(()),
+            ast::Mutability::Mutable => self.word_nbsp("mut"),
+            ast::Mutability::Immutable => Ok(()),
         }
     }
 

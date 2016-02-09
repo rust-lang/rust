@@ -512,7 +512,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident,
                 ex: P<ast::Expr>) -> P<ast::Stmt> {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, ast::BindingMode::ByValue(ast::MutMutable))
+            let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mutable);
+            self.pat_ident_binding_mode(sp, ident, binding_mode)
         } else {
             self.pat_ident(sp, ident)
         };
@@ -536,7 +537,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                       ex: P<ast::Expr>)
                       -> P<ast::Stmt> {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, ast::BindingMode::ByValue(ast::MutMutable))
+            let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mutable);
+            self.pat_ident_binding_mode(sp, ident, binding_mode)
         } else {
             self.pat_ident(sp, ident)
         };
@@ -636,10 +638,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::TupField(expr, id))
     }
     fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::AddrOf(ast::MutImmutable, e))
+        self.expr(sp, ast::ExprKind::AddrOf(ast::Mutability::Immutable, e))
     }
     fn expr_mut_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::AddrOf(ast::MutMutable, e))
+        self.expr(sp, ast::ExprKind::AddrOf(ast::Mutability::Mutable, e))
     }
 
     fn expr_call(&self, span: Span, expr: P<ast::Expr>, args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
@@ -813,7 +815,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.pat(span, ast::PatLit(expr))
     }
     fn pat_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Pat> {
-        self.pat_ident_binding_mode(span, ident, ast::BindingMode::ByValue(ast::MutImmutable))
+        let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Immutable);
+        self.pat_ident_binding_mode(span, ident, binding_mode)
     }
 
     fn pat_ident_binding_mode(&self,

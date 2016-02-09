@@ -593,7 +593,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let static_type = ecx.ty_rptr(sp,
                                   ecx.ty(sp, ast::TyKind::Vec(struct_type)),
                                   Some(static_lt),
-                                  ast::MutImmutable);
+                                  ast::Mutability::Immutable);
     // static TESTS: $static_type = &[...];
     ecx.item_const(sp,
                    ecx.ident_of("TESTS"),
@@ -613,7 +613,7 @@ fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {
 
     P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        node: ast::ExprKind::AddrOf(ast::MutImmutable,
+        node: ast::ExprKind::AddrOf(ast::Mutability::Immutable,
             P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ExprKind::Vec(cx.testfns.iter().map(|test| {
