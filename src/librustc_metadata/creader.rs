@@ -157,7 +157,7 @@ impl<'a> CrateReader<'a> {
 
     fn extract_crate_info(&self, i: &ast::Item) -> Option<CrateInfo> {
         match i.node {
-            ast::ItemExternCrate(ref path_opt) => {
+            ast::ItemKind::ExternCrate(ref path_opt) => {
                 debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
                        i.ident, path_opt);
                 let name = match *path_opt {

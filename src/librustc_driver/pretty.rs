@@ -600,16 +600,16 @@ impl ReplaceBodyWithLoop {
 }
 
 impl fold::Folder for ReplaceBodyWithLoop {
-    fn fold_item_underscore(&mut self, i: ast::Item_) -> ast::Item_ {
+    fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
         match i {
-            ast::ItemStatic(..) | ast::ItemConst(..) => {
+            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                 self.within_static_or_const = true;
-                let ret = fold::noop_fold_item_underscore(i, self);
+                let ret = fold::noop_fold_item_kind(i, self);
                 self.within_static_or_const = false;
                 return ret;
             }
             _ => {
-                fold::noop_fold_item_underscore(i, self)
+                fold::noop_fold_item_kind(i, self)
             }
         }
     }

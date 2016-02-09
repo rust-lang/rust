@@ -10,7 +10,7 @@
 
 use ast::{Block, Crate, DeclKind, PatMac};
 use ast::{Local, Ident, Mac_, Name};
-use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtKind};
+use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
 use ast::TokenTree;
 use ast;
 use ext::mtwt;
@@ -315,17 +315,17 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
         .into_iter().map(|i| i.expect_item()).collect()
 }
 
-/// Expand item_underscore
-fn expand_item_underscore(item: ast::Item_, fld: &mut MacroExpander) -> ast::Item_ {
+/// Expand item_kind
+fn expand_item_kind(item: ast::ItemKind, fld: &mut MacroExpander) -> ast::ItemKind {
     match item {
-        ast::ItemFn(decl, unsafety, constness, abi, generics, body) => {
+        ast::ItemKind::Fn(decl, unsafety, constness, abi, generics, body) => {
             let (rewritten_fn_decl, rewritten_body)
                 = expand_and_rename_fn_decl_and_block(decl, body, fld);
             let expanded_generics = fold::noop_fold_generics(generics,fld);
-            ast::ItemFn(rewritten_fn_decl, unsafety, constness, abi,
+            ast::ItemKind::Fn(rewritten_fn_decl, unsafety, constness, abi,
                         expanded_generics, rewritten_body)
         }
-        _ => noop_fold_item_underscore(item, fld)
+        _ => noop_fold_item_kind(item, fld)
     }
 }
 
@@ -362,7 +362,7 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
 pub fn expand_item_mac(it: P<ast::Item>,
                        fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
     let (extname, path_span, tts, span, attrs, ident) = it.and_then(|it| match it.node {
-        ItemMac(codemap::Spanned { node: Mac_ { path, tts, .. }, .. }) =>
+        ItemKind::Mac(codemap::Spanned { node: Mac_ { path, tts, .. }, .. }) =>
             (path.segments[0].identifier.name, path.span, tts, it.span, it.attrs, it.ident),
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     });
@@ -890,10 +890,10 @@ fn expand_annotatable(a: Annotatable,
 
     let mut new_items: SmallVector<Annotatable> = match a {
         Annotatable::Item(it) => match it.node {
-            ast::ItemMac(..) => {
+            ast::ItemKind::Mac(..) => {
                 expand_item_mac(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect()
             }
-            ast::ItemMod(_) | ast::ItemForeignMod(_) => {
+            ast::ItemKind::Mod(_) | ast::ItemKind::ForeignMod(_) => {
                 let valid_ident =
                     it.ident.name != parse::token::special_idents::invalid.name;
 
@@ -1048,7 +1048,7 @@ fn expand_item_multi_modifier(mut it: Annotatable,
         }
     }
 
-    // Expansion may have added new ItemModifiers.
+    // Expansion may have added new ItemKind::Modifiers.
     expand_item_multi_modifier(it, fld)
 }
 
@@ -1194,8 +1194,8 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_item(item, self)
     }
 
-    fn fold_item_underscore(&mut self, item: ast::Item_) -> ast::Item_ {
-        expand_item_underscore(item, self)
+    fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
+        expand_item_kind(item, self)
     }
 
     fn fold_stmt(&mut self, stmt: P<ast::Stmt>) -> SmallVector<P<ast::Stmt>> {

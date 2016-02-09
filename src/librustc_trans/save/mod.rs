@@ -229,7 +229,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
-            ast::ItemFn(..) => {
+            ast::ItemKind::Fn(..) => {
                 let name = self.tcx.map.path_to_string(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
@@ -243,7 +243,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                 }))
             }
-            ast::ItemStatic(ref typ, mt, ref expr) => {
+            ast::ItemKind::Static(ref typ, mt, ref expr) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
                 // If the variable is immutable, save the initialising expression.
@@ -264,7 +264,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                 }))
             }
-            ast::ItemConst(ref typ, ref expr) => {
+            ast::ItemKind::Const(ref typ, ref expr) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
                 filter!(self.span_utils, sub_span, item.span, None);
@@ -278,7 +278,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                 }))
             }
-            ast::ItemMod(ref m) => {
+            ast::ItemKind::Mod(ref m) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
                 let cm = self.tcx.sess.codemap();
@@ -295,7 +295,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     filename: filename,
                 }))
             }
-            ast::ItemEnum(..) => {
+            ast::ItemKind::Enum(..) => {
                 let enum_name = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let val = self.span_utils.snippet(item.span);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
@@ -308,7 +308,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                 }))
             }
-            ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
+            ast::ItemKind::Impl(_, _, _, ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
                 let sub_span;
 

@@ -1117,7 +1117,7 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(&item.attrs));
         try!(self.ann.pre(self, NodeItem(item)));
         match item.node {
-            ast::ItemExternCrate(ref optional_path) => {
+            ast::ItemKind::ExternCrate(ref optional_path) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                      "extern crate")));
                 if let Some(p) = *optional_path {
@@ -1136,7 +1136,7 @@ impl<'a> State<'a> {
                 try!(self.end()); // end inner head-block
                 try!(self.end()); // end outer head-block
             }
-            ast::ItemUse(ref vp) => {
+            ast::ItemKind::Use(ref vp) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                      "use")));
                 try!(self.print_view_path(&**vp));
@@ -1144,7 +1144,7 @@ impl<'a> State<'a> {
                 try!(self.end()); // end inner head-block
                 try!(self.end()); // end outer head-block
             }
-            ast::ItemStatic(ref ty, m, ref expr) => {
+            ast::ItemKind::Static(ref ty, m, ref expr) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "static")));
                 if m == ast::MutMutable {
@@ -1161,7 +1161,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer cbox
             }
-            ast::ItemConst(ref ty, ref expr) => {
+            ast::ItemKind::Const(ref ty, ref expr) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "const")));
                 try!(self.print_ident(item.ident));
@@ -1175,7 +1175,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer cbox
             }
-            ast::ItemFn(ref decl, unsafety, constness, abi, ref typarams, ref body) => {
+            ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref typarams, ref body) => {
                 try!(self.head(""));
                 try!(self.print_fn(
                     decl,
@@ -1190,7 +1190,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, " "));
                 try!(self.print_block_with_attrs(&**body, &item.attrs));
             }
-            ast::ItemMod(ref _mod) => {
+            ast::ItemKind::Mod(ref _mod) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "mod")));
                 try!(self.print_ident(item.ident));
@@ -1199,14 +1199,14 @@ impl<'a> State<'a> {
                 try!(self.print_mod(_mod, &item.attrs));
                 try!(self.bclose(item.span));
             }
-            ast::ItemForeignMod(ref nmod) => {
+            ast::ItemKind::ForeignMod(ref nmod) => {
                 try!(self.head("extern"));
                 try!(self.word_nbsp(&nmod.abi.to_string()));
                 try!(self.bopen());
                 try!(self.print_foreign_mod(nmod, &item.attrs));
                 try!(self.bclose(item.span));
             }
-            ast::ItemTy(ref ty, ref params) => {
+            ast::ItemKind::Ty(ref ty, ref params) => {
                 try!(self.ibox(INDENT_UNIT));
                 try!(self.ibox(0));
                 try!(self.word_nbsp(&visibility_qualified(item.vis, "type")));
@@ -1221,7 +1221,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer ibox
             }
-            ast::ItemEnum(ref enum_definition, ref params) => {
+            ast::ItemKind::Enum(ref enum_definition, ref params) => {
                 try!(self.print_enum_def(
                     enum_definition,
                     params,
@@ -1230,12 +1230,12 @@ impl<'a> State<'a> {
                     item.vis
                 ));
             }
-            ast::ItemStruct(ref struct_def, ref generics) => {
+            ast::ItemKind::Struct(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(item.vis,"struct")));
                 try!(self.print_struct(&struct_def, generics, item.ident, item.span, true));
             }
 
-            ast::ItemDefaultImpl(unsafety, ref trait_ref) => {
+            ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
                 try!(self.head(""));
                 try!(self.print_visibility(item.vis));
                 try!(self.print_unsafety(unsafety));
@@ -1247,7 +1247,7 @@ impl<'a> State<'a> {
                 try!(self.bopen());
                 try!(self.bclose(item.span));
             }
-            ast::ItemImpl(unsafety,
+            ast::ItemKind::Impl(unsafety,
                           polarity,
                           ref generics,
                           ref opt_trait,
@@ -1290,7 +1290,7 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemTrait(unsafety, ref generics, ref bounds, ref trait_items) => {
+            ast::ItemKind::Trait(unsafety, ref generics, ref bounds, ref trait_items) => {
                 try!(self.head(""));
                 try!(self.print_visibility(item.vis));
                 try!(self.print_unsafety(unsafety));
@@ -1316,7 +1316,7 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemMac(codemap::Spanned { ref node, .. }) => {
+            ast::ItemKind::Mac(codemap::Spanned { ref node, .. }) => {
                 try!(self.print_visibility(item.vis));
                 try!(self.print_path(&node.path, false, 0));
                 try!(word(&mut self.s, "! "));
@@ -1596,7 +1596,7 @@ impl<'a> State<'a> {
                 try!(self.print_associated_type(ii.ident, None, Some(ty)));
             }
             ast::ImplItemKind::Macro(codemap::Spanned { ref node, .. }) => {
-                // code copied from ItemMac:
+                // code copied from ItemKind::Mac:
                 try!(self.print_path(&node.path, false, 0));
                 try!(word(&mut self.s, "! "));
                 try!(self.cbox(INDENT_UNIT));

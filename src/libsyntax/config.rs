@@ -52,8 +52,8 @@ impl<'a, F> fold::Folder for Context<'a, F> where F: FnMut(&[ast::Attribute]) ->
     fn fold_foreign_mod(&mut self, foreign_mod: ast::ForeignMod) -> ast::ForeignMod {
         fold_foreign_mod(self, foreign_mod)
     }
-    fn fold_item_underscore(&mut self, item: ast::Item_) -> ast::Item_ {
-        fold_item_underscore(self, item)
+    fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
+        fold_item_kind(self, item)
     }
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         // If an expr is valid to cfg away it will have been removed by the
@@ -129,26 +129,26 @@ fn fold_item<F>(cx: &mut Context<F>, item: P<ast::Item>) -> SmallVector<P<ast::I
     }
 }
 
-fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ where
+fn fold_item_kind<F>(cx: &mut Context<F>, item: ast::ItemKind) -> ast::ItemKind where
     F: FnMut(&[ast::Attribute]) -> bool
 {
     let item = match item {
-        ast::ItemImpl(u, o, a, b, c, impl_items) => {
+        ast::ItemKind::Impl(u, o, a, b, c, impl_items) => {
             let impl_items = impl_items.into_iter()
                                        .filter(|ii| (cx.in_cfg)(&ii.attrs))
                                        .collect();
-            ast::ItemImpl(u, o, a, b, c, impl_items)
+            ast::ItemKind::Impl(u, o, a, b, c, impl_items)
         }
-        ast::ItemTrait(u, a, b, methods) => {
+        ast::ItemKind::Trait(u, a, b, methods) => {
             let methods = methods.into_iter()
                                  .filter(|ti| (cx.in_cfg)(&ti.attrs))
                                  .collect();
-            ast::ItemTrait(u, a, b, methods)
+            ast::ItemKind::Trait(u, a, b, methods)
         }
-        ast::ItemStruct(def, generics) => {
-            ast::ItemStruct(fold_struct(cx, def), generics)
+        ast::ItemKind::Struct(def, generics) => {
+            ast::ItemKind::Struct(fold_struct(cx, def), generics)
         }
-        ast::ItemEnum(def, generics) => {
+        ast::ItemKind::Enum(def, generics) => {
             let variants = def.variants.into_iter().filter_map(|v| {
                 if !(cx.in_cfg)(&v.node.attrs) {
                     None
@@ -167,14 +167,14 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
                     }))
                 }
             });
-            ast::ItemEnum(ast::EnumDef {
+            ast::ItemKind::Enum(ast::EnumDef {
                 variants: variants.collect(),
             }, generics)
         }
         item => item,
     };
 
-    fold::noop_fold_item_underscore(item, cx)
+    fold::noop_fold_item_kind(item, cx)
 }
 
 fn fold_struct<F>(cx: &mut Context<F>, vdata: ast::VariantData) -> ast::VariantData where

@@ -230,10 +230,10 @@ pub fn walk_trait_ref<'v,V>(visitor: &mut V,
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_ident(item.span, item.ident);
     match item.node {
-        ItemExternCrate(opt_name) => {
+        ItemKind::ExternCrate(opt_name) => {
             walk_opt_name(visitor, item.span, opt_name)
         }
-        ItemUse(ref vp) => {
+        ItemKind::Use(ref vp) => {
             match vp.node {
                 ViewPathSimple(ident, ref path) => {
                     visitor.visit_ident(vp.span, ident);
@@ -253,12 +253,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                 }
             }
         }
-        ItemStatic(ref typ, _, ref expr) |
-        ItemConst(ref typ, ref expr) => {
+        ItemKind::Static(ref typ, _, ref expr) |
+        ItemKind::Const(ref typ, ref expr) => {
             visitor.visit_ty(typ);
             visitor.visit_expr(expr);
         }
-        ItemFn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
+        ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
             visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
                                             constness, abi, item.vis),
                              declaration,
@@ -266,24 +266,24 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                              item.span,
                              item.id)
         }
-        ItemMod(ref module) => {
+        ItemKind::Mod(ref module) => {
             visitor.visit_mod(module, item.span, item.id)
         }
-        ItemForeignMod(ref foreign_module) => {
+        ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
-        ItemTy(ref typ, ref type_parameters) => {
+        ItemKind::Ty(ref typ, ref type_parameters) => {
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
         }
-        ItemEnum(ref enum_definition, ref type_parameters) => {
+        ItemKind::Enum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
             visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
         }
-        ItemDefaultImpl(_, ref trait_ref) => {
+        ItemKind::DefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(_, _,
+        ItemKind::Impl(_, _,
                  ref type_parameters,
                  ref opt_trait_reference,
                  ref typ,
@@ -293,17 +293,17 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_impl_item, impl_items);
         }
-        ItemStruct(ref struct_definition, ref generics) => {
+        ItemKind::Struct(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition, item.ident,
                                      generics, item.id, item.span);
         }
-        ItemTrait(_, ref generics, ref bounds, ref methods) => {
+        ItemKind::Trait(_, ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_trait_item, methods);
         }
-        ItemMac(ref mac) => visitor.visit_mac(mac),
+        ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }

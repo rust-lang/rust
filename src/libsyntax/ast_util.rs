@@ -173,7 +173,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
 
         self.operation.visit_id(item.id);
         match item.node {
-            ItemUse(ref view_path) => {
+            ItemKind::Use(ref view_path) => {
                 match view_path.node {
                     ViewPathSimple(_, _) |
                     ViewPathGlob(_) => {}

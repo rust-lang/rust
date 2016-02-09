@@ -78,10 +78,10 @@ impl<'a, 'v> Visitor<'v> for CheckConstFn<'a> {
     fn visit_item(&mut self, i: &'v ast::Item) {
         visit::walk_item(self, i);
         match i.node {
-            ast::ItemConst(_, ref e) => {
+            ast::ItemKind::Const(_, ref e) => {
                 CheckBlock{ sess: self.sess, kind: "constant"}.visit_expr(e)
             },
-            ast::ItemStatic(_, _, ref e) => {
+            ast::ItemKind::Static(_, _, ref e) => {
                 CheckBlock{ sess: self.sess, kind: "static"}.visit_expr(e)
             },
             _ => {},

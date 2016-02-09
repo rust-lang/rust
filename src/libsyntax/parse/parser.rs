@@ -23,10 +23,7 @@ use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, ExprKind};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
-use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
-use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
-use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
-use ast::{ItemExternCrate, ItemUse};
+use ast::{Ident, Inherited, ImplItem, Item, ItemKind};
 use ast::{Lit, LitKind, UintTy};
 use ast::Local;
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
@@ -80,7 +77,7 @@ bitflags! {
     }
 }
 
-type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
+type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute> >);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
@@ -3750,7 +3747,7 @@ impl<'a> Parser<'a> {
                     P(spanned(lo, hi, DeclKind::Item(
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
-                            ItemMac(spanned(lo, hi,
+                            ItemKind::Mac(spanned(lo, hi,
                                             Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
                             Inherited, attrs)))),
                     ast::DUMMY_NODE_ID))
@@ -4590,7 +4587,7 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_item(&mut self, lo: BytePos, hi: BytePos, ident: Ident,
-               node: Item_, vis: Visibility,
+               node: ItemKind, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
             ident: ident,
@@ -4612,7 +4609,7 @@ impl<'a> Parser<'a> {
         let decl = try!(self.parse_fn_decl(false));
         generics.where_clause = try!(self.parse_where_clause());
         let (inner_attrs, body) = try!(self.parse_inner_attrs_and_block());
-        Ok((ident, ItemFn(decl, unsafety, constness, abi, generics, body), Some(inner_attrs)))
+        Ok((ident, ItemKind::Fn(decl, unsafety, constness, abi, generics, body), Some(inner_attrs)))
     }
 
     /// true if we are looking at `const ID`, false for things like `const fn` etc
@@ -4772,7 +4769,7 @@ impl<'a> Parser<'a> {
         tps.where_clause = try!(self.parse_where_clause());
 
         let meths = try!(self.parse_trait_items());
-        Ok((ident, ItemTrait(unsafety, tps, bounds, meths), None))
+        Ok((ident, ItemKind::Trait(unsafety, tps, bounds, meths), None))
     }
 
     /// Parses items implementations variants
@@ -4835,7 +4832,7 @@ impl<'a> Parser<'a> {
             try!(self.expect(&token::OpenDelim(token::Brace)));
             try!(self.expect(&token::CloseDelim(token::Brace)));
             Ok((ast_util::impl_pretty_name(&opt_trait, None),
-             ItemDefaultImpl(unsafety, opt_trait.unwrap()), None))
+             ItemKind::DefaultImpl(unsafety, opt_trait.unwrap()), None))
         } else {
             if opt_trait.is_some() {
                 ty = try!(self.parse_ty_sum());
@@ -4851,7 +4848,7 @@ impl<'a> Parser<'a> {
             }
 
             Ok((ast_util::impl_pretty_name(&opt_trait, Some(&*ty)),
-             ItemImpl(unsafety, polarity, generics, opt_trait, ty, impl_items),
+             ItemKind::Impl(unsafety, polarity, generics, opt_trait, ty, impl_items),
              Some(attrs)))
         }
     }
@@ -4936,7 +4933,7 @@ impl<'a> Parser<'a> {
                                             name, found `{}`", token_str)))
         };
 
-        Ok((class_name, ItemStruct(vdata, generics), None))
+        Ok((class_name, ItemKind::Struct(vdata, generics), None))
     }
 
     pub fn parse_record_struct_body(&mut self,
@@ -5066,8 +5063,8 @@ impl<'a> Parser<'a> {
         let e = try!(self.parse_expr());
         try!(self.commit_expr_expecting(&*e, token::Semi));
         let item = match m {
-            Some(m) => ItemStatic(ty, m, e),
-            None => ItemConst(ty, e),
+            Some(m) => ItemKind::Static(ty, m, e),
+            None => ItemKind::Const(ty, e),
         };
         Ok((id, item, None))
     }
@@ -5091,7 +5088,7 @@ impl<'a> Parser<'a> {
             let m = try!(self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo));
             self.owns_directory = old_owns_directory;
             self.pop_mod_path();
-            Ok((id, ItemMod(m), Some(attrs)))
+            Ok((id, ItemKind::Mod(m), Some(attrs)))
         }
     }
 
@@ -5197,7 +5194,7 @@ impl<'a> Parser<'a> {
                     id: ast::Ident,
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
-                    -> PResult<'a, (ast::Item_, Vec<ast::Attribute> )> {
+                    -> PResult<'a, (ast::ItemKind, Vec<ast::Attribute> )> {
         let ModulePathSuccess { path, owns_directory } = try!(self.submod_path(id,
                                                                                outer_attrs,
                                                                                id_sp));
@@ -5212,7 +5209,7 @@ impl<'a> Parser<'a> {
                               path: PathBuf,
                               owns_directory: bool,
                               name: String,
-                              id_sp: Span) -> PResult<'a, (ast::Item_, Vec<ast::Attribute> )> {
+                              id_sp: Span) -> PResult<'a, (ast::ItemKind, Vec<ast::Attribute> )> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
             Some(i) => {
@@ -5240,7 +5237,7 @@ impl<'a> Parser<'a> {
         let mod_attrs = try!(p0.parse_inner_attributes());
         let m0 = try!(p0.parse_mod_items(&token::Eof, mod_inner_lo));
         self.sess.included_mod_stack.borrow_mut().pop();
-        Ok((ast::ItemMod(m0), mod_attrs))
+        Ok((ast::ItemKind::Mod(m0), mod_attrs))
     }
 
     /// Parse a function declaration from a foreign module
@@ -5315,7 +5312,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(lo,
                         last_span.hi,
                         ident,
-                        ItemExternCrate(maybe_path),
+                        ItemKind::ExternCrate(maybe_path),
                         visibility,
                         attrs))
     }
@@ -5356,7 +5353,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(lo,
                      last_span.hi,
                      special_idents::invalid,
-                     ItemForeignMod(m),
+                     ItemKind::ForeignMod(m),
                      visibility,
                      attrs))
     }
@@ -5369,7 +5366,7 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::Eq));
         let ty = try!(self.parse_ty_sum());
         try!(self.expect(&token::Semi));
-        Ok((ident, ItemTy(ty, tps), None))
+        Ok((ident, ItemKind::Ty(ty, tps), None))
     }
 
     /// Parse the part of an "enum" decl following the '{'
@@ -5430,7 +5427,7 @@ impl<'a> Parser<'a> {
         try!(self.expect(&token::OpenDelim(token::Brace)));
 
         let enum_definition = try!(self.parse_enum_def(&generics));
-        Ok((id, ItemEnum(enum_definition, generics), None))
+        Ok((id, ItemKind::Enum(enum_definition, generics), None))
     }
 
     /// Parses a string as an ABI spec on an extern type or module. Consumes
@@ -5488,7 +5485,7 @@ impl<'a> Parser<'a> {
 
         if self.eat_keyword(keywords::Use) {
             // USE ITEM
-            let item_ = ItemUse(try!(self.parse_view_path()));
+            let item_ = ItemKind::Use(try!(self.parse_view_path()));
             try!(self.expect(&token::Semi));
 
             let last_span = self.last_span;
@@ -5804,7 +5801,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let item_ = ItemMac(m);
+            let item_ = ItemKind::Mac(m);
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,

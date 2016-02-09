@@ -213,7 +213,7 @@ pub trait AstBuilder {
 
     // items
     fn item(&self, span: Span,
-            name: Ident, attrs: Vec<ast::Attribute> , node: ast::Item_) -> P<ast::Item>;
+            name: Ident, attrs: Vec<ast::Attribute> , node: ast::ItemKind) -> P<ast::Item>;
 
     fn arg(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::Arg;
     // FIXME unused self
@@ -951,7 +951,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item(&self, span: Span, name: Ident,
-            attrs: Vec<ast::Attribute>, node: ast::Item_) -> P<ast::Item> {
+            attrs: Vec<ast::Attribute>, node: ast::ItemKind) -> P<ast::Item> {
         // FIXME: Would be nice if our generated code didn't violate
         // Rust coding conventions
         P(ast::Item {
@@ -974,7 +974,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.item(span,
                   name,
                   Vec::new(),
-                  ast::ItemFn(self.fn_decl(inputs, output),
+                  ast::ItemKind::Fn(self.fn_decl(inputs, output),
                               ast::Unsafety::Normal,
                               ast::Constness::NotConst,
                               Abi::Rust,
@@ -1026,7 +1026,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn item_enum_poly(&self, span: Span, name: Ident,
                       enum_definition: ast::EnumDef,
                       generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemEnum(enum_definition, generics))
+        self.item(span, name, Vec::new(), ast::ItemKind::Enum(enum_definition, generics))
     }
 
     fn item_enum(&self, span: Span, name: Ident,
@@ -1047,7 +1047,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn item_struct_poly(&self, span: Span, name: Ident,
         struct_def: ast::VariantData, generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemStruct(struct_def, generics))
+        self.item(span, name, Vec::new(), ast::ItemKind::Struct(struct_def, generics))
     }
 
     fn item_mod(&self, span: Span, inner_span: Span, name: Ident,
@@ -1057,7 +1057,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             span,
             name,
             attrs,
-            ast::ItemMod(ast::Mod {
+            ast::ItemKind::Mod(ast::Mod {
                 inner: inner_span,
                 items: items,
             })
@@ -1071,7 +1071,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                    mutbl: ast::Mutability,
                    expr: P<ast::Expr>)
                    -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemStatic(ty, mutbl, expr))
+        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, expr))
     }
 
     fn item_const(&self,
@@ -1080,12 +1080,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   ty: P<ast::Ty>,
                   expr: P<ast::Expr>)
                   -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemConst(ty, expr))
+        self.item(span, name, Vec::new(), ast::ItemKind::Const(ty, expr))
     }
 
     fn item_ty_poly(&self, span: Span, name: Ident, ty: P<ast::Ty>,
                     generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemTy(ty, generics))
+        self.item(span, name, Vec::new(), ast::ItemKind::Ty(ty, generics))
     }
 
     fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item> {
@@ -1125,7 +1125,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             ident: special_idents::invalid,
             attrs: vec![],
-            node: ast::ItemUse(vp),
+            node: ast::ItemKind::Use(vp),
             vis: vis,
             span: sp
         })

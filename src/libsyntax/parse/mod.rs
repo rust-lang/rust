@@ -913,7 +913,7 @@ mod tests {
                       P(ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
-                            node: ast::ItemFn(P(ast::FnDecl {
+                            node: ast::ItemKind::Fn(P(ast::FnDecl {
                                 inputs: vec!(ast::Arg{
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                   node: ast::TyKind::Path(None, ast::Path{

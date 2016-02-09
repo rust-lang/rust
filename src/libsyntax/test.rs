@@ -125,7 +125,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         let i = if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
-                ast::ItemFn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
+                ast::ItemKind::Fn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
                     panic!(diag.span_fatal(i.span, "unsafe functions cannot be used for tests"));
                 }
@@ -159,7 +159,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
         let res = match i.node {
-            ast::ItemMod(..) => fold::noop_fold_item(i, self),
+            ast::ItemKind::Mod(..) => fold::noop_fold_item(i, self),
             _ => SmallVector::one(i),
         };
         if ident.name != token::special_idents::invalid.name {
@@ -262,7 +262,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
         ident: sym.clone(),
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
-        node: ast::ItemMod(reexport_mod),
+        node: ast::ItemKind::Mod(reexport_mod),
         vis: ast::Public,
         span: DUMMY_SP,
     });
@@ -355,7 +355,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
     fn has_test_signature(i: &ast::Item) -> HasTestSignature {
         match i.node {
-          ast::ItemFn(ref decl, _, _, _, ref generics, _) => {
+          ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
             let no_output = match decl.output {
                 ast::FunctionRetTy::Default(..) => true,
                 ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
@@ -391,7 +391,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
     fn has_test_signature(i: &ast::Item) -> bool {
         match i.node {
-            ast::ItemFn(ref decl, _, _, _, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
                 let input_cnt = decl.inputs.len();
                 let no_output = match decl.output {
                     ast::FunctionRetTy::Default(..) => true,
@@ -453,12 +453,12 @@ mod __test {
 fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let id_test = token::str_to_ident("test");
     let (vi, vis, ident) = if cx.is_test_crate {
-        (ast::ItemUse(
+        (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
                                          path_node(vec!(id_test)))))),
          ast::Public, token::special_idents::invalid)
     } else {
-        (ast::ItemExternCrate(None), ast::Inherited, id_test)
+        (ast::ItemKind::ExternCrate(None), ast::Inherited, id_test)
     };
     P(ast::Item {
         id: ast::DUMMY_NODE_ID,
@@ -496,7 +496,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
     let main_body = ecx.block_all(sp, vec![call_test_main], None);
-    let main = ast::ItemFn(ecx.fn_decl(vec![], main_ret_ty),
+    let main = ast::ItemKind::Fn(ecx.fn_decl(vec![], main_ret_ty),
                            ast::Unsafety::Normal,
                            ast::Constness::NotConst,
                            ::abi::Abi::Rust, ast::Generics::default(), main_body);
@@ -527,7 +527,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         inner: DUMMY_SP,
         items: vec![import, mainfn, tests],
     };
-    let item_ = ast::ItemMod(testmod);
+    let item_ = ast::ItemKind::Mod(testmod);
 
     let mod_ident = token::gensym_ident("__test");
     let item = P(ast::Item {
@@ -550,7 +550,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
             id: ast::DUMMY_NODE_ID,
             ident: token::special_idents::invalid,
             attrs: vec![],
-            node: ast::ItemUse(P(use_path)),
+            node: ast::ItemKind::Use(P(use_path)),
             vis: ast::Inherited,
             span: DUMMY_SP
         })
