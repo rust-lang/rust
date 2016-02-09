@@ -380,7 +380,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
             report_inline_asm(cgcx,
-                              &*llvm::twine_to_string(inline.message),
+                              &llvm::twine_to_string(inline.message),
                               inline.cookie);
         }
 

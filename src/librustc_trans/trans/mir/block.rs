@@ -67,7 +67,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 assert_eq!(adt_def.variants.len(), targets.len());
                 for (adt_variant, target) in adt_def.variants.iter().zip(targets) {
                     let llval = bcx.with_block(|bcx|
-                        adt::trans_case(bcx, &*repr, Disr::from(adt_variant.disr_val))
+                        adt::trans_case(bcx, &repr, Disr::from(adt_variant.disr_val))
                     );
                     let llbb = self.llblock(*target);
                     build::AddCase(switch, llval, llbb)

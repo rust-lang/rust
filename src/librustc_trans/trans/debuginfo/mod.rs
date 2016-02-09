@@ -399,7 +399,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let scope_map = create_scope_map::create_scope_map(cx,
                                                        &fn_decl.inputs,
-                                                       &*top_level_block,
+                                                       &top_level_block,
                                                        fn_metadata,
                                                        fn_ast_id);
 

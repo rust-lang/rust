@@ -226,7 +226,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
         ty::TyTuple(..) | ty::TyEnum(..) | ty::TyClosure(..) => {
             let repr = adt::represent_type(cx, t);
-            adt::sizing_type_of(cx, &*repr, false)
+            adt::sizing_type_of(cx, &repr, false)
         }
 
         ty::TyStruct(..) => {
@@ -243,7 +243,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
                 Type::vector(&llet, n)
             } else {
                 let repr = adt::represent_type(cx, t);
-                adt::sizing_type_of(cx, &*repr, false)
+                adt::sizing_type_of(cx, &repr, false)
             }
         }
 
@@ -359,7 +359,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           let repr = adt::represent_type(cx, t);
           let tps = substs.types.get_slice(subst::TypeSpace);
           let name = llvm_type_name(cx, def.did, tps);
-          adt::incomplete_type_of(cx, &*repr, &name[..])
+          adt::incomplete_type_of(cx, &repr, &name[..])
       }
       ty::TyClosure(..) => {
           // Only create the named struct, but don't fill it in. We
@@ -369,7 +369,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           // inherited from their environment, so we use entire
           // contents of the VecPerParamSpace to construct the llvm
           // name
-          adt::incomplete_type_of(cx, &*repr, "closure")
+          adt::incomplete_type_of(cx, &repr, "closure")
       }
 
       ty::TyBox(ty) |
@@ -423,7 +423,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),
       ty::TyTuple(..) => {
           let repr = adt::represent_type(cx, t);
-          adt::type_of(cx, &*repr)
+          adt::type_of(cx, &repr)
       }
       ty::TyStruct(def, ref substs) => {
           if t.is_simd() {
@@ -444,7 +444,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
               let repr = adt::represent_type(cx, t);
               let tps = substs.types.get_slice(subst::TypeSpace);
               let name = llvm_type_name(cx, def.did, tps);
-              adt::incomplete_type_of(cx, &*repr, &name[..])
+              adt::incomplete_type_of(cx, &repr, &name[..])
           }
       }
 
@@ -465,7 +465,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
         ty::TyEnum(..) | ty::TyStruct(..) | ty::TyClosure(..)
                 if !t.is_simd() => {
             let repr = adt::represent_type(cx, t);
-            adt::finish_type_of(cx, &*repr, &mut llty);
+            adt::finish_type_of(cx, &repr, &mut llty);
         }
         _ => ()
     }

@@ -755,7 +755,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         let mut llargs = Vec::new();
         let arg_tys = match args {
-            ArgExprs(a) => a.iter().map(|x| common::expr_ty_adjusted(bcx, &**x)).collect(),
+            ArgExprs(a) => a.iter().map(|x| common::expr_ty_adjusted(bcx, &x)).collect(),
             _ => panic!("expected arg exprs.")
         };
         bcx = trans_args(bcx,
@@ -835,7 +835,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
 
     // Translate the `self` argument first.
     if !ignore_self {
-        let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &*arg_exprs[0]));
+        let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &arg_exprs[0]));
         bcx = trans_arg_datum(bcx,
                               args[0],
                               arg_datum,
@@ -851,14 +851,14 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
     match tuple_type.sty {
         ty::TyTuple(ref field_types) => {
             let tuple_datum = unpack_datum!(bcx,
-                                            expr::trans(bcx, &**tuple_expr));
+                                            expr::trans(bcx, &tuple_expr));
             let tuple_lvalue_datum =
                 unpack_datum!(bcx,
                               tuple_datum.to_lvalue_datum(bcx,
                                                           "args",
                                                           tuple_expr.id));
             let repr = adt::represent_type(bcx.ccx(), tuple_type);
-            let repr_ptr = &*repr;
+            let repr_ptr = &repr;
             for (i, field_type) in field_types.iter().enumerate() {
                 let arg_datum = tuple_lvalue_datum.get_element(
                     bcx,
@@ -971,12 +971,12 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 }
                 let arg_ty = if i >= num_formal_args {
                     assert!(variadic);
-                    common::expr_ty_adjusted(cx, &**arg_expr)
+                    common::expr_ty_adjusted(cx, &arg_expr)
                 } else {
                     arg_tys[i]
                 };
 
-                let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &**arg_expr));
+                let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &arg_expr));
                 bcx = trans_arg_datum(bcx, arg_ty, arg_datum,
                                       arg_cleanup_scope,
                                       DontAutorefArg,
