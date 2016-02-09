@@ -34,6 +34,7 @@ use std::ffi::CString;
 use std::fmt;
 use std::slice;
 use std::str;
+use std::env;
 
 use html::render::derive_id;
 use html::toc::TocBuilder;
@@ -439,6 +440,18 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
+fn get_unstable_features_setting() -> bool {
+    // Check if we can activate compile_fail option or not.
+    //
+    // It is done to ensure that it won't be used out-of-tree
+    // because it's not ready yet for production.
+    match (option_env!("CFG_BOOTSTRAP_KEY"),
+           env::var("RUSTC_BOOTSTRAP_KEY").ok()) {
+        (Some(ref cfg), Some(ref r_key)) => cfg == r_key,
+        _ => false,
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Debug)]
 struct LangString {
     should_panic: bool,
@@ -465,6 +478,7 @@ impl LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
+        let allow_compile_fail = get_unstable_features_setting();
 
         let tokens = string.split(|c: char|
             !(c == '_' || c == '-' || c.is_alphanumeric())
@@ -473,13 +487,20 @@ impl LangString {
         for token in tokens {
             match token {
                 "" => {},
-                "should_panic" => { data.should_panic = true; seen_rust_tags = true; },
+                "should_panic" => {
+                    data.should_panic = true;
+                    seen_rust_tags = true;
+                    data.no_run = true;
+                },
                 "no_run" => { data.no_run = true; seen_rust_tags = true; },
                 "ignore" => { data.ignore = true; seen_rust_tags = true; },
                 "rust" => { data.rust = true; seen_rust_tags = true; },
                 "test_harness" => { data.test_harness = true; seen_rust_tags = true; },
-                "compile_fail" => { data.compile_fail = true; seen_rust_tags = true;
-                                    data.no_run = true; },
+                "compile_fail" if allow_compile_fail => {
+                    data.compile_fail = true;
+                    seen_rust_tags = true;
+                    data.no_run = true;
+                },
                 _ => { seen_other_tags = true }
             }
         }
