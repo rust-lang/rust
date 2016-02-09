@@ -218,6 +218,8 @@ impl Command {
 
     pub fn spawn(&mut self, default: Stdio)
                  -> io::Result<(Process, StdioPipes)> {
+        const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
+
         if self.saw_nul {
             return Err(io::Error::new(ErrorKind::InvalidInput,
                                       "nul byte found in provided data"));
@@ -561,8 +563,6 @@ pub struct Process {
     pid: pid_t,
     status: Option<ExitStatus>,
 }
-
-const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
     pub fn id(&self) -> u32 {
