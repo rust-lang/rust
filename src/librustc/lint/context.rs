@@ -374,7 +374,7 @@ pub fn gather_attr(attr: &ast::Attribute)
 
     let meta = &attr.node.value;
     let metas = match meta.node {
-        ast::MetaList(_, ref metas) => metas,
+        ast::MetaItemKind::List(_, ref metas) => metas,
         _ => {
             out.push(Err(meta.span));
             return out;
@@ -383,7 +383,7 @@ pub fn gather_attr(attr: &ast::Attribute)
 
     for meta in metas {
         out.push(match meta.node {
-            ast::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
+            ast::MetaItemKind::Word(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
             _ => Err(meta.span),
         });
     }

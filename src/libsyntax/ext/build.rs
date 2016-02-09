@@ -1102,21 +1102,21 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn meta_word(&self, sp: Span, w: InternedString) -> P<ast::MetaItem> {
-        P(respan(sp, ast::MetaWord(w)))
+        P(respan(sp, ast::MetaItemKind::Word(w)))
     }
     fn meta_list(&self,
                  sp: Span,
                  name: InternedString,
                  mis: Vec<P<ast::MetaItem>> )
                  -> P<ast::MetaItem> {
-        P(respan(sp, ast::MetaList(name, mis)))
+        P(respan(sp, ast::MetaItemKind::List(name, mis)))
     }
     fn meta_name_value(&self,
                        sp: Span,
                        name: InternedString,
                        value: ast::LitKind)
                        -> P<ast::MetaItem> {
-        P(respan(sp, ast::MetaNameValue(name, respan(sp, value))))
+        P(respan(sp, ast::MetaItemKind::NameValue(name, respan(sp, value))))
     }
 
     fn item_use(&self, sp: Span,

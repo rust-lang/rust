@@ -1541,12 +1541,12 @@ fn encode_item_index(rbml_w: &mut Encoder, index: IndexData) {
 
 fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
     match mi.node {
-      ast::MetaWord(ref name) => {
+      ast::MetaItemKind::Word(ref name) => {
         rbml_w.start_tag(tag_meta_item_word);
         rbml_w.wr_tagged_str(tag_meta_item_name, name);
         rbml_w.end_tag();
       }
-      ast::MetaNameValue(ref name, ref value) => {
+      ast::MetaItemKind::NameValue(ref name, ref value) => {
         match value.node {
           ast::LitKind::Str(ref value, _) => {
             rbml_w.start_tag(tag_meta_item_name_value);
@@ -1557,7 +1557,7 @@ fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
           _ => {/* FIXME (#623): encode other variants */ }
         }
       }
-      ast::MetaList(ref name, ref items) => {
+      ast::MetaItemKind::List(ref name, ref items) => {
         rbml_w.start_tag(tag_meta_item_list);
         rbml_w.wr_tagged_str(tag_meta_item_name, name);
         for inner_item in items {

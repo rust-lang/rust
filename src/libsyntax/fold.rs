@@ -556,11 +556,11 @@ pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
 pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaItem> {
     mi.map(|Spanned {node, span}| Spanned {
         node: match node {
-            MetaWord(id) => MetaWord(id),
-            MetaList(id, mis) => {
-                MetaList(id, mis.move_map(|e| fld.fold_meta_item(e)))
+            MetaItemKind::Word(id) => MetaItemKind::Word(id),
+            MetaItemKind::List(id, mis) => {
+                MetaItemKind::List(id, mis.move_map(|e| fld.fold_meta_item(e)))
             }
-            MetaNameValue(id, s) => MetaNameValue(id, s)
+            MetaItemKind::NameValue(id, s) => MetaItemKind::NameValue(id, s)
         },
         span: fld.new_span(span)
     })

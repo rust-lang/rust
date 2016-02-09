@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::MetaItem_::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
@@ -476,31 +475,32 @@ pub struct Crate {
     pub exported_macros: Vec<MacroDef>,
 }
 
-pub type MetaItem = Spanned<MetaItem_>;
+pub type MetaItem = Spanned<MetaItemKind>;
 
 #[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum MetaItem_ {
-    MetaWord(InternedString),
-    MetaList(InternedString, Vec<P<MetaItem>>),
-    MetaNameValue(InternedString, Lit),
+pub enum MetaItemKind {
+    Word(InternedString),
+    List(InternedString, Vec<P<MetaItem>>),
+    NameValue(InternedString, Lit),
 }
 
-// can't be derived because the MetaList requires an unordered comparison
-impl PartialEq for MetaItem_ {
-    fn eq(&self, other: &MetaItem_) -> bool {
+// can't be derived because the MetaItemKind::List requires an unordered comparison
+impl PartialEq for MetaItemKind {
+    fn eq(&self, other: &MetaItemKind) -> bool {
+        use self::MetaItemKind::*;
         match *self {
-            MetaWord(ref ns) => match *other {
-                MetaWord(ref no) => (*ns) == (*no),
+            Word(ref ns) => match *other {
+                Word(ref no) => (*ns) == (*no),
                 _ => false
             },
-            MetaNameValue(ref ns, ref vs) => match *other {
-                MetaNameValue(ref no, ref vo) => {
+            NameValue(ref ns, ref vs) => match *other {
+                NameValue(ref no, ref vo) => {
                     (*ns) == (*no) && vs.node == vo.node
                 }
                 _ => false
             },
-            MetaList(ref ns, ref miss) => match *other {
-                MetaList(ref no, ref miso) => {
+            List(ref ns, ref miss) => match *other {
+                List(ref no, ref miso) => {
                     ns == no &&
                         miss.iter().all(|mi| miso.iter().any(|x| x.node == mi.node))
                 }

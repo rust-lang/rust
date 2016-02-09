@@ -96,7 +96,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 let mut id = None;
                 for meta_item in attr.meta_item_list().unwrap_or_default() {
                     match meta_item.node {
-                        ast::MetaWord(ref s) if id.is_none() => id = Some(s.clone()),
+                        ast::MetaItemKind::Word(ref s) if id.is_none() => id = Some(s.clone()),
                         _ => {
                             self.tcx.sess.span_err(
                                 meta_item.span,
@@ -113,9 +113,9 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                 let mut id = None;
                 for meta_item in attr.meta_item_list().unwrap_or_default() {
                     match meta_item.node {
-                        ast::MetaWord(ref s) if dep_node_interned.is_none() =>
+                        ast::MetaItemKind::Word(ref s) if dep_node_interned.is_none() =>
                             dep_node_interned = Some(s.clone()),
-                        ast::MetaWord(ref s) if id.is_none() =>
+                        ast::MetaItemKind::Word(ref s) if id.is_none() =>
                             id = Some(s.clone()),
                         _ => {
                             self.tcx.sess.span_err(
