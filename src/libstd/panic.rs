@@ -84,7 +84,7 @@ pub use panicking::{take_handler, set_handler, PanicInfo, Location};
 /// recover safe. The general idea is that any mutable state which can be shared
 /// across `recover` is not recover safe by default. This is because it is very
 /// easy to witness a broken invariant outside of `recover` as the data is
-/// simply accesed as usual.
+/// simply accessed as usual.
 ///
 /// Types like `&Mutex<T>`, however, are recover safe because they implement
 /// poisoning by default. They still allow witnessing a broken invariant, but

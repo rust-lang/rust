@@ -28,7 +28,7 @@
 // }
 // ```
 //
-// Since Rust doesn't acutally have dependent types and polymorphic recursion,
+// Since Rust doesn't actually have dependent types and polymorphic recursion,
 // we make do with lots of unsafety.
 
 use alloc::heap;

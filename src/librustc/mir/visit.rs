@@ -92,7 +92,7 @@ macro_rules! make_mir_visitor {
             }
 
             // The `super_xxx` methods comprise the default behavior and are
-            // not meant to be overidden.
+            // not meant to be overridden.
 
             fn super_mir(&mut self,
                          mir: & $($mutability)* Mir<'tcx>) {

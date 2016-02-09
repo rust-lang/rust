@@ -19,7 +19,7 @@
 //!
 //! - Impl the `As*` traits for reference-to-reference conversions
 //! - Impl the `Into` trait when you want to consume the value in the conversion
-//! - The `From` trait is the most flexible, usefull for values _and_ references conversions
+//! - The `From` trait is the most flexible, useful for values _and_ references conversions
 //!
 //! As a library writer, you should prefer implementing `From<T>` rather than
 //! `Into<U>`, as `From` provides greater flexibility and offer the equivalent `Into`

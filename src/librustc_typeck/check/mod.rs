@@ -1809,7 +1809,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("select_all_obligations_and_apply_defaults: defaults={:?}", default_map);
 
             // We loop over the unsolved variables, resolving them and if they are
-            // and unconstrainted numberic type we add them to the set of unbound
+            // and unconstrainted numeric type we add them to the set of unbound
             // variables. We do this so we only apply literal fallback to type
             // variables without defaults.
             for ty in &unsolved_variables {
