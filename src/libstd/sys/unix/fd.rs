@@ -51,14 +51,14 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    #[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
+    #[cfg(not(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten")))]
     pub fn set_cloexec(&self) {
         unsafe {
             let ret = libc::ioctl(self.fd, libc::FIOCLEX);
             debug_assert_eq!(ret, 0);
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "solaris"))]
+    #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
     pub fn set_cloexec(&self) {
         unsafe {
             let previous = libc::fcntl(self.fd, libc::F_GETFD);
