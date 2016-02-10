@@ -339,6 +339,14 @@ impl Item {
             _ => String::new(),
         }
     }
+
+    pub fn stable_since(&self) -> Option<&str> {
+        if let Some(ref s) = self.stability {
+            return Some(&s.since[..]);
+        }
+
+        None
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

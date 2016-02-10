@@ -1913,6 +1913,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
            decl = f.decl));
+    try!(render_stability_since_raw(w, it.stable_since(), None));
     document(w, cx, it)
 }
 
@@ -1992,7 +1993,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Trait documentation
     try!(document(w, cx, it));
 
-    fn trait_item(w: &mut fmt::Formatter, cx: &Context, m: &clean::Item)
+    fn trait_item(w: &mut fmt::Formatter, cx: &Context, m: &clean::Item, t: &clean::Item)
                   -> fmt::Result {
         let name = m.name.as_ref().unwrap();
         let id = derive_id(format!("{}.{}", shortty(m), name));
@@ -2000,7 +2001,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                        id = id,
                        stab = m.stability_class()));
         try!(render_assoc_item(w, m, AssocItemLink::Anchor));
-        try!(write!(w, "</code></h3>"));
+        try!(write!(w, "</code>"));
+        try!(render_stability_since(w, m, t));
+        try!(write!(w, "</h3>"));
         try!(document(w, cx, m));
         Ok(())
     }
@@ -2011,7 +2014,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for t in &types {
-            try!(trait_item(w, cx, *t));
+            try!(trait_item(w, cx, *t, it));
         }
         try!(write!(w, "</div>"));
     }
@@ -2022,7 +2025,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for t in &consts {
-            try!(trait_item(w, cx, *t));
+            try!(trait_item(w, cx, *t, it));
         }
         try!(write!(w, "</div>"));
     }
@@ -2034,7 +2037,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for m in &required {
-            try!(trait_item(w, cx, *m));
+            try!(trait_item(w, cx, *m, it));
         }
         try!(write!(w, "</div>"));
     }
@@ -2044,13 +2047,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <div class='methods'>
         "));
         for m in &provided {
-            try!(trait_item(w, cx, *m));
+            try!(trait_item(w, cx, *m, it));
         }
         try!(write!(w, "</div>"));
     }
 
     // If there are methods directly on this trait object, render them here.
-    try!(render_assoc_items(w, cx, it.def_id, AssocItemRender::All));
+    try!(render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All));
 
     let cache = cache();
     try!(write!(w, "
@@ -2104,6 +2107,29 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
         try!(write!(w, " = {}", default));
     }
     Ok(())
+}
+
+fn render_stability_since_raw<'a>(w: &mut fmt::Formatter,
+                                  ver: Option<&'a str>,
+                                  containing_ver: Option<&'a str>) -> fmt::Result {
+    if containing_ver != ver {
+        match ver {
+            Some(v) =>
+                if v.len() > 0 {
+                        try!(write!(w, "<span class=\"since\">{}</span>",
+                                    v))
+                },
+            None => {}
+        }
+    }
+
+    Ok(())
+}
+
+fn render_stability_since(w: &mut fmt::Formatter,
+                          item: &clean::Item,
+                          containing_item: &clean::Item) -> fmt::Result {
+    render_stability_since_raw(w, item.stable_since(), containing_item.stable_since())
 }
 
 fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
@@ -2178,6 +2204,7 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                        "",
                        true));
     try!(write!(w, "</pre>"));
+    try!(render_stability_since_raw(w, it.stable_since(), None));
 
     try!(document(w, cx, it));
     let mut fields = s.fields.iter().filter(|f| {
@@ -2202,7 +2229,7 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             try!(write!(w, "</table>"));
         }
     }
-    render_assoc_items(w, cx, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
@@ -2257,10 +2284,11 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "}}"));
     }
     try!(write!(w, "</pre>"));
+    try!(render_stability_since_raw(w, it.stable_since(), None));
 
     try!(document(w, cx, it));
     if !e.variants.is_empty() {
-        try!(write!(w, "<h2 class='variants'>Variants</h2>\n<table>"));
+        try!(write!(w, "<h2 class='variants'>Variants</h2>\n<table class='variants_table'>"));
         for variant in &e.variants {
             try!(write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
                           name = variant.name.as_ref().unwrap()));
@@ -2296,12 +2324,14 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 }
                 _ => ()
             }
+            try!(write!(w, "</td><td>"));
+            try!(render_stability_since(w, variant, it));
             try!(write!(w, "</td></tr>"));
         }
         try!(write!(w, "</table>"));
 
     }
-    try!(render_assoc_items(w, cx, it.def_id, AssocItemRender::All));
+    try!(render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All));
     Ok(())
 }
 
@@ -2397,6 +2427,7 @@ enum AssocItemRender<'a> {
 
 fn render_assoc_items(w: &mut fmt::Formatter,
                       cx: &Context,
+                      containing_item: &clean::Item,
                       it: DefId,
                       what: AssocItemRender) -> fmt::Result {
     let c = cache();
@@ -2420,7 +2451,8 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             }
         };
         for i in &non_trait {
-            try!(render_impl(w, cx, i, AssocItemLink::Anchor, render_header));
+            try!(render_impl(w, cx, i, AssocItemLink::Anchor, render_header,
+                             containing_item.stable_since()));
         }
     }
     if let AssocItemRender::DerefFor { .. } = what {
@@ -2436,7 +2468,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             }
         });
         if let Some(impl_) = deref_impl {
-            try!(render_deref_methods(w, cx, impl_));
+            try!(render_deref_methods(w, cx, impl_, containing_item));
         }
         try!(write!(w, "<h2 id='implementations'>Trait \
                           Implementations</h2>"));
@@ -2445,7 +2477,8 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         });
         for i in &manual {
             let did = i.trait_did().unwrap();
-            try!(render_impl(w, cx, i, AssocItemLink::GotoSource(did), true));
+            try!(render_impl(w, cx, i, AssocItemLink::GotoSource(did), true,
+                             containing_item.stable_since()));
         }
         if !derived.is_empty() {
             try!(write!(w, "<h3 id='derived_implementations'>\
@@ -2453,14 +2486,16 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             </h3>"));
             for i in &derived {
                 let did = i.trait_did().unwrap();
-                try!(render_impl(w, cx, i, AssocItemLink::GotoSource(did), true));
+                try!(render_impl(w, cx, i, AssocItemLink::GotoSource(did), true,
+                                 containing_item.stable_since()));
             }
         }
     }
     Ok(())
 }
 
-fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl) -> fmt::Result {
+fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
+                        container_item: &clean::Item) -> fmt::Result {
     let deref_type = impl_.impl_.trait_.as_ref().unwrap();
     let target = impl_.impl_.items.iter().filter_map(|item| {
         match item.inner {
@@ -2470,12 +2505,12 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl) -> f
     }).next().expect("Expected associated type binding");
     let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target };
     match *target {
-        clean::ResolvedPath { did, .. } => render_assoc_items(w, cx, did, what),
+        clean::ResolvedPath { did, .. } => render_assoc_items(w, cx, container_item, did, what),
         _ => {
             if let Some(prim) = target.primitive_type() {
                 if let Some(c) = cache().primitive_locations.get(&prim) {
                     let did = DefId { krate: *c, index: prim.to_def_index() };
-                    try!(render_assoc_items(w, cx, did, what));
+                    try!(render_assoc_items(w, cx, container_item, did, what));
                 }
             }
             Ok(())
@@ -2487,24 +2522,30 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl) -> f
 // otherwise. If render_header is false, we will avoid rendering static
 // methods, since they are not accessible for the type implementing `Deref`
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
-               render_header: bool) -> fmt::Result {
+               render_header: bool, outer_version: Option<&str>) -> fmt::Result {
     if render_header {
-        try!(write!(w, "<h3 class='impl'><code>{}</code></h3>", i.impl_));
+        try!(write!(w, "<h3 class='impl'><code>{}</code>", i.impl_));
+        let since = i.stability.as_ref().map(|s| &s.since[..]);
+        try!(render_stability_since_raw(w, since, outer_version));
+        try!(write!(w, "</h3>"));
         if let Some(ref dox) = i.dox {
             try!(write!(w, "<div class='docblock'>{}</div>", Markdown(dox)));
         }
     }
 
     fn doctraititem(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
-                    link: AssocItemLink, render_static: bool) -> fmt::Result {
+                    link: AssocItemLink, render_static: bool,
+                    outer_version: Option<&str>) -> fmt::Result {
         let name = item.name.as_ref().unwrap();
         match item.inner {
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
                 // Only render when the method is not static or we allow static methods
                 if !is_static_method(item) || render_static {
                     let id = derive_id(format!("method.{}", name));
-                    try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
-                try!(render_assoc_item(w, item, link));
+                    try!(write!(w, "<h4 id='{}' class='{}'>", id, shortty(item)));
+                    try!(render_stability_since_raw(w, item.stable_since(), outer_version));
+                    try!(write!(w, "<code>"));
+                    try!(render_assoc_item(w, item, link));
                     try!(write!(w, "</code></h4>\n"));
                 }
             }
@@ -2556,7 +2597,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
     try!(write!(w, "<div class='impl-items'>"));
     for trait_item in &i.impl_.items {
-        try!(doctraititem(w, cx, trait_item, link, render_header));
+        try!(doctraititem(w, cx, trait_item, link, render_header, outer_version));
     }
 
     fn render_default_items(w: &mut fmt::Formatter,
@@ -2564,7 +2605,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                             did: DefId,
                             t: &clean::Trait,
                               i: &clean::Impl,
-                              render_static: bool) -> fmt::Result {
+                              render_static: bool,
+                              outer_version: Option<&str>) -> fmt::Result {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
             match i.items.iter().find(|m| { m.name == n }) {
@@ -2572,7 +2614,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 None => {}
             }
 
-            try!(doctraititem(w, cx, trait_item, AssocItemLink::GotoSource(did), render_static));
+            try!(doctraititem(w, cx, trait_item, AssocItemLink::GotoSource(did), render_static,
+                              outer_version));
         }
         Ok(())
     }
@@ -2583,7 +2626,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     // for them work.
     if let Some(clean::ResolvedPath { did, .. }) = i.impl_.trait_ {
         if let Some(t) = cache().traits.get(&did) {
-            try!(render_default_items(w, cx, did, t, &i.impl_, render_header));
+            try!(render_default_items(w, cx, did, t, &i.impl_, render_header, outer_version));
 
         }
     }
@@ -2675,6 +2718,7 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     try!(w.write_str(&highlight::highlight(&t.source,
                                           Some("macro"),
                                           None)));
+    try!(render_stability_since_raw(w, it.stable_since(), None));
     document(w, cx, it)
 }
 
@@ -2682,7 +2726,7 @@ fn item_primitive(w: &mut fmt::Formatter, cx: &Context,
                   it: &clean::Item,
                   _p: &clean::PrimitiveType) -> fmt::Result {
     try!(document(w, cx, it));
-    render_assoc_items(w, cx, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
 fn get_basic_keywords() -> &'static str {
