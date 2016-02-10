@@ -682,7 +682,7 @@ impl<'a> Parser<'a> {
             token::AndAnd => {
                 let span = self.span;
                 let lo = span.lo + BytePos(1);
-                Ok(self.replace_token(token::BinOp(token::And), lo, span.hi))
+                Ok(self.bump_with(token::BinOp(token::And), lo, span.hi))
             }
             _ => self.unexpected()
         }
@@ -717,7 +717,7 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Shl) => {
                 let span = self.span;
                 let lo = span.lo + BytePos(1);
-                self.replace_token(token::Lt, lo, span.hi);
+                self.bump_with(token::Lt, lo, span.hi);
                 true
             }
             _ => false,
@@ -745,17 +745,17 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Shr) => {
                 let span = self.span;
                 let lo = span.lo + BytePos(1);
-                Ok(self.replace_token(token::Gt, lo, span.hi))
+                Ok(self.bump_with(token::Gt, lo, span.hi))
             }
             token::BinOpEq(token::Shr) => {
                 let span = self.span;
                 let lo = span.lo + BytePos(1);
-                Ok(self.replace_token(token::Ge, lo, span.hi))
+                Ok(self.bump_with(token::Ge, lo, span.hi))
             }
             token::Ge => {
                 let span = self.span;
                 let lo = span.lo + BytePos(1);
-                Ok(self.replace_token(token::Eq, lo, span.hi))
+                Ok(self.bump_with(token::Eq, lo, span.hi))
             }
             _ => {
                 let gt_str = Parser::token_to_string(&token::Gt);
@@ -977,15 +977,23 @@ impl<'a> Parser<'a> {
         old_token
     }
 
-    /// EFFECT: replace the current token and span with the given one
-    pub fn replace_token(&mut self,
-                         next: token::Token,
-                         lo: BytePos,
-                         hi: BytePos) {
+    /// Advance the parser using provided token as a next one. Use this when
+    /// consuming a part of a token. For example a single `<` from `<<`.
+    pub fn bump_with(&mut self,
+                     next: token::Token,
+                     lo: BytePos,
+                     hi: BytePos) {
         self.last_span = mk_sp(self.span.lo, lo);
-        self.token = next;
+        // It would be incorrect to just stash current token, but fortunately
+        // for tokens currently using `bump_with`, last_token will be of no
+        // use anyway.
+        self.last_token = None;
+        self.last_token_interpolated = false;
         self.span = mk_sp(lo, hi);
+        self.token = next;
+        self.expected_tokens.clear();
     }
+
     pub fn buffer_length(&mut self) -> isize {
         if self.buffer_start <= self.buffer_end {
             return self.buffer_end - self.buffer_start;
