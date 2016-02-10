@@ -22,6 +22,7 @@ use session::search_paths::PathKind;
 use session::Session;
 use middle::cstore::{self, CrateStore, LinkMeta};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
+use middle::def_id::DefId;
 use middle::dependency_format::Linkage;
 use middle::ty::{Ty, TyCtxt};
 use rustc::front::map::DefPath;
@@ -200,6 +201,9 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
     output[.. 8].to_hex().to_string()
 }
 
+pub fn def_to_string(_tcx: &ty::ctxt, did: DefId) -> String {
+    format!("{}:{}", did.krate, did.index.as_usize())
+}
 
 // This calculates STH for a symbol, as defined above
 fn symbol_hash<'tcx>(tcx: &TyCtxt<'tcx>,
@@ -218,7 +222,7 @@ fn symbol_hash<'tcx>(tcx: &TyCtxt<'tcx>,
         symbol_hasher.input_str(&meta[..]);
     }
     symbol_hasher.input_str("-");
-    symbol_hasher.input(&tcx.sess.cstore.encode_type(tcx, t));
+    symbol_hasher.input(&tcx.sess.cstore.encode_type(tcx, t, def_to_string));
     // Prefix with 'h' so that it never blends into adjacent digits
     let mut hash = String::from("h");
     hash.push_str(&truncated_hash_result(symbol_hasher));
