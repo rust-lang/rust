@@ -12,6 +12,7 @@
 // ignore-windows no jemalloc on windows
 // ignore-bitrig no jemalloc on bitrig
 // ignore-openbsd no jemalloc on openbsd
+// ignore-emscripten no jemalloc on emscripten
 
 #![feature(alloc_jemalloc)]
 
