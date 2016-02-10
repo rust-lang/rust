@@ -31,7 +31,6 @@ pub fn opts() -> TargetOptions {
             "-Wl,-z,noexecstack".to_string(),
         ],
         position_independent_executables: true,
-        archive_format: "gnu".to_string(),
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: true,
         .. Default::default()

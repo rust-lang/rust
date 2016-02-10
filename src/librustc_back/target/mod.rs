@@ -249,7 +249,7 @@ impl Default for TargetOptions {
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
             late_link_args: Vec::new(),
-            archive_format: String::new(),
+            archive_format: "gnu".to_string(),
             custom_unwind_resume: false,
             lib_allocation_crate: "alloc_system".to_string(),
             exe_allocation_crate: "alloc_system".to_string(),
