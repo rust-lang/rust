@@ -8,89 +8,186 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_snake_case)]
-
 use prelude::v1::*;
 use os::unix::prelude::*;
 
-use collections::HashMap;
+use collections::hash_map::{HashMap, Entry};
 use env;
 use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
+use libc::{self, pid_t, c_int, gid_t, uid_t, c_char};
+use mem;
 use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
-use sys::pipe::AnonPipe;
+use sys::pipe::{self, AnonPipe};
 use sys::{self, cvt, cvt_r};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
 pub struct Command {
+    // Currently we try hard to ensure that the call to `.exec()` doesn't
+    // actually allocate any memory. While many platforms try to ensure that
+    // memory allocation works after a fork in a multithreaded process, it's
+    // been observed to be buggy and somewhat unreliable, so we do our best to
+    // just not do it at all!
+    //
+    // Along those lines, the `argv` and `envp` raw pointers here are exactly
+    // what's gonna get passed to `execvp`. The `argv` array starts with the
+    // `program` and ends with a NULL, and the `envp` pointer, if present, is
+    // also null-terminated.
+    //
+    // Right now we don't support removing arguments, so there's no much fancy
+    // support there, but we support adding and removing environment variables,
+    // so a side table is used to track where in the `envp` array each key is
+    // located. Whenever we add a key we update it in place if it's already
+    // present, and whenever we remove a key we update the locations of all
+    // other keys.
     program: CString,
     args: Vec<CString>,
-    env: Option<HashMap<OsString, OsString>>, // Guaranteed to have no NULs.
+    env: Option<HashMap<OsString, (usize, CString)>>,
+    argv: Vec<*const c_char>,
+    envp: Option<Vec<*const c_char>>,
+
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
     session_leader: bool,
     saw_nul: bool,
+    closures: Vec<Box<FnMut() -> io::Result<()> + Send + Sync>>,
+    stdin: Option<Stdio>,
+    stdout: Option<Stdio>,
+    stderr: Option<Stdio>,
+}
+
+// passed back to std::process with the pipes connected to the child, if any
+// were requested
+pub struct StdioPipes {
+    pub stdin: Option<AnonPipe>,
+    pub stdout: Option<AnonPipe>,
+    pub stderr: Option<AnonPipe>,
+}
+
+// passed to do_exec() with configuration of what the child stdio should look
+// like
+struct ChildPipes {
+    stdin: ChildStdio,
+    stdout: ChildStdio,
+    stderr: ChildStdio,
+}
+
+enum ChildStdio {
+    Inherit,
+    Explicit(c_int),
+    Owned(FileDesc),
+}
+
+pub enum Stdio {
+    Inherit,
+    Null,
+    MakePipe,
+    Fd(FileDesc),
 }
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
+        let program = os2c(program, &mut saw_nul);
         Command {
-            program: os2c(program, &mut saw_nul),
+            argv: vec![program.as_ptr(), 0 as *const _],
+            program: program,
             args: Vec::new(),
             env: None,
+            envp: None,
             cwd: None,
             uid: None,
             gid: None,
             session_leader: false,
             saw_nul: saw_nul,
+            closures: Vec::new(),
+            stdin: None,
+            stdout: None,
+            stderr: None,
         }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(os2c(arg, &mut self.saw_nul));
+        // Overwrite the trailing NULL pointer in `argv` and then add a new null
+        // pointer.
+        let arg = os2c(arg, &mut self.saw_nul);
+        self.argv[self.args.len() + 1] = arg.as_ptr();
+        self.argv.push(0 as *const _);
+
+        // Also make sure we keep track of the owned value to schedule a
+        // destructor for this memory.
+        self.args.push(arg);
     }
-    pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        let mut saw_nul = self.saw_nul;
-        self.args.extend(args.map(|arg| os2c(arg, &mut saw_nul)));
-        self.saw_nul = saw_nul;
-    }
-    fn init_env_map(&mut self) {
+
+    fn init_env_map(&mut self) -> (&mut HashMap<OsString, (usize, CString)>,
+                                   &mut Vec<*const c_char>) {
         if self.env.is_none() {
-            // Will not add NULs to env: preexisting environment will not contain any.
-            self.env = Some(env::vars_os().collect());
+            let mut map = HashMap::new();
+            let mut envp = Vec::new();
+            for (k, v) in env::vars_os() {
+                let s = pair_to_key(&k, &v, &mut self.saw_nul);
+                envp.push(s.as_ptr());
+                map.insert(k, (envp.len() - 1, s));
+            }
+            envp.push(0 as *const _);
+            self.env = Some(map);
+            self.envp = Some(envp);
         }
+        (self.env.as_mut().unwrap(), self.envp.as_mut().unwrap())
     }
+
     pub fn env(&mut self, key: &OsStr, val: &OsStr) {
-        let k = OsString::from_vec(os2c(key, &mut self.saw_nul).into_bytes());
-        let v = OsString::from_vec(os2c(val, &mut self.saw_nul).into_bytes());
+        let new_key = pair_to_key(key, val, &mut self.saw_nul);
+        let (map, envp) = self.init_env_map();
 
-        // Will not add NULs to env: return without inserting if any were seen.
-        if self.saw_nul {
-            return;
+        // If `key` is already present then we we just update `envp` in place
+        // (and store the owned value), but if it's not there we override the
+        // trailing NULL pointer, add a new NULL pointer, and store where we
+        // were located.
+        match map.entry(key.to_owned()) {
+            Entry::Occupied(mut e) => {
+                let (i, ref mut s) = *e.get_mut();
+                envp[i] = new_key.as_ptr();
+                *s = new_key;
+            }
+            Entry::Vacant(e) => {
+                let len = envp.len();
+                envp[len - 1] = new_key.as_ptr();
+                envp.push(0 as *const _);
+                e.insert((len - 1, new_key));
+            }
         }
+    }
 
-        self.init_env_map();
-        self.env.as_mut()
-            .unwrap()
-            .insert(k, v);
-    }
     pub fn env_remove(&mut self, key: &OsStr) {
-        self.init_env_map();
-        self.env.as_mut().unwrap().remove(key);
+        let (map, envp) = self.init_env_map();
+
+        // If we actually ended up removing a key, then we need to update the
+        // position of all keys that come after us in `envp` because they're all
+        // one element sooner now.
+        if let Some((i, _)) = map.remove(key) {
+            envp.remove(i);
+
+            for (_, &mut (ref mut j, _)) in map.iter_mut() {
+                if *j >= i {
+                    *j -= 1;
+                }
+            }
+        }
     }
+
     pub fn env_clear(&mut self) {
-        self.env = Some(HashMap::new())
+        self.env = Some(HashMap::new());
+        self.envp = Some(vec![0 as *const _]);
     }
+
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(os2c(dir, &mut self.saw_nul));
     }
@@ -103,147 +200,66 @@ impl Command {
     pub fn session_leader(&mut self, session_leader: bool) {
         self.session_leader = session_leader;
     }
-}
 
-fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
-    CString::new(s.as_bytes()).unwrap_or_else(|_e| {
-        *saw_nul = true;
-        CString::new("<string-with-nul>").unwrap()
-    })
-}
-
-impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{:?}", self.program));
-        for arg in &self.args {
-            try!(write!(f, " {:?}", arg));
-        }
-        Ok(())
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Processes
-////////////////////////////////////////////////////////////////////////////////
-
-/// Unix exit statuses
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatus(c_int);
-
-#[cfg(any(target_os = "linux", target_os = "android",
-          target_os = "nacl", target_os = "solaris",
-          target_os = "emscripten"))]
-mod status_imp {
-    pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
-    pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
-    pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
-}
-
-#[cfg(any(target_os = "macos",
-          target_os = "ios",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "netbsd",
-          target_os = "openbsd"))]
-mod status_imp {
-    pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
-    pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
-    pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
-}
-
-impl ExitStatus {
-    fn exited(&self) -> bool {
-        status_imp::WIFEXITED(self.0)
+    pub fn before_exec(&mut self,
+                       f: Box<FnMut() -> io::Result<()> + Send + Sync>) {
+        self.closures.push(f);
     }
 
-    pub fn success(&self) -> bool {
-        self.code() == Some(0)
+    pub fn stdin(&mut self, stdin: Stdio) {
+        self.stdin = Some(stdin);
+    }
+    pub fn stdout(&mut self, stdout: Stdio) {
+        self.stdout = Some(stdout);
+    }
+    pub fn stderr(&mut self, stderr: Stdio) {
+        self.stderr = Some(stderr);
     }
 
-    pub fn code(&self) -> Option<i32> {
-        if self.exited() {
-            Some(status_imp::WEXITSTATUS(self.0))
-        } else {
-            None
-        }
-    }
+    pub fn spawn(&mut self, default: Stdio)
+                 -> io::Result<(Process, StdioPipes)> {
+        const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
-    pub fn signal(&self) -> Option<i32> {
-        if !self.exited() {
-            Some(status_imp::WTERMSIG(self.0))
-        } else {
-            None
-        }
-    }
-}
-
-impl fmt::Display for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(code) = self.code() {
-            write!(f, "exit code: {}", code)
-        } else {
-            let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
-        }
-    }
-}
-
-/// The unique id of the process (this should never be negative).
-pub struct Process {
-    pid: pid_t
-}
-
-pub enum Stdio {
-    Inherit,
-    None,
-    Raw(c_int),
-}
-
-pub type RawStdio = FileDesc;
-
-const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
-
-impl Process {
-    pub unsafe fn kill(&self) -> io::Result<()> {
-        try!(cvt(libc::kill(self.pid, libc::SIGKILL)));
-        Ok(())
-    }
-
-    pub fn spawn(cfg: &Command,
-                 in_fd: Stdio,
-                 out_fd: Stdio,
-                 err_fd: Stdio) -> io::Result<Process> {
-        if cfg.saw_nul {
-            return Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"));
+        if self.saw_nul {
+            return Err(io::Error::new(ErrorKind::InvalidInput,
+                                      "nul byte found in provided data"));
         }
 
-        let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
-
-        let (envp, _a, _b) = make_envp(cfg.env.as_ref());
-        let (argv, _a) = make_argv(&cfg.program, &cfg.args);
+        let (ours, theirs) = try!(self.setup_io(default));
         let (input, output) = try!(sys::pipe::anon_pipe());
 
         let pid = unsafe {
-            match libc::fork() {
+            match try!(cvt(libc::fork())) {
                 0 => {
                     drop(input);
-                    Process::child_after_fork(cfg, output, argv, envp, dirp,
-                                              in_fd, out_fd, err_fd)
+                    let err = self.do_exec(theirs);
+                    let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
+                    let bytes = [
+                        (errno >> 24) as u8,
+                        (errno >> 16) as u8,
+                        (errno >>  8) as u8,
+                        (errno >>  0) as u8,
+                        CLOEXEC_MSG_FOOTER[0], CLOEXEC_MSG_FOOTER[1],
+                        CLOEXEC_MSG_FOOTER[2], CLOEXEC_MSG_FOOTER[3]
+                    ];
+                    // pipe I/O up to PIPE_BUF bytes should be atomic, and then
+                    // we want to be sure we *don't* run at_exit destructors as
+                    // we're being torn down regardless
+                    assert!(output.write(&bytes).is_ok());
+                    libc::_exit(1)
                 }
-                n if n < 0 => return Err(Error::last_os_error()),
                 n => n,
             }
         };
 
-        let p = Process{ pid: pid };
+        let mut p = Process { pid: pid, status: None };
         drop(output);
         let mut bytes = [0; 8];
 
         // loop to handle EINTR
         loop {
             match input.read(&mut bytes) {
-                Ok(0) => return Ok(p),
+                Ok(0) => return Ok((p, ours)),
                 Ok(8) => {
                     assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
                             "Validation on the CLOEXEC pipe failed: {:?}", bytes);
@@ -273,6 +289,18 @@ impl Process {
             let d = arr[3] as u32;
 
             ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
+        }
+    }
+
+    pub fn exec(&mut self, default: Stdio) -> io::Error {
+        if self.saw_nul {
+            return io::Error::new(ErrorKind::InvalidInput,
+                                  "nul byte found in provided data")
+        }
+
+        match self.setup_io(default) {
+            Ok((_, theirs)) => unsafe { self.do_exec(theirs) },
+            Err(e) => e,
         }
     }
 
@@ -306,98 +334,28 @@ impl Process {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
-    unsafe fn child_after_fork(cfg: &Command,
-                               mut output: AnonPipe,
-                               argv: *const *const libc::c_char,
-                               envp: *const libc::c_void,
-                               dirp: *const libc::c_char,
-                               in_fd: Stdio,
-                               out_fd: Stdio,
-                               err_fd: Stdio) -> ! {
-        fn fail(output: &mut AnonPipe) -> ! {
-            let errno = sys::os::errno() as u32;
-            let bytes = [
-                (errno >> 24) as u8,
-                (errno >> 16) as u8,
-                (errno >>  8) as u8,
-                (errno >>  0) as u8,
-                CLOEXEC_MSG_FOOTER[0], CLOEXEC_MSG_FOOTER[1],
-                CLOEXEC_MSG_FOOTER[2], CLOEXEC_MSG_FOOTER[3]
-            ];
-            // pipe I/O up to PIPE_BUF bytes should be atomic, and then we want
-            // to be sure we *don't* run at_exit destructors as we're being torn
-            // down regardless
-            assert!(output.write(&bytes).is_ok());
-            unsafe { libc::_exit(1) }
+    unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
+        macro_rules! try {
+            ($e:expr) => (match $e {
+                Ok(e) => e,
+                Err(e) => return e,
+            })
         }
 
-        // Make sure that the source descriptors are not an stdio descriptor,
-        // otherwise the order which we set the child's descriptors may blow
-        // away a descriptor which we are hoping to save. For example,
-        // suppose we want the child's stderr to be the parent's stdout, and
-        // the child's stdout to be the parent's stderr. No matter which we
-        // dup first, the second will get overwritten prematurely.
-        let maybe_migrate = |src: Stdio, output: &mut AnonPipe| {
-            match src {
-                Stdio::Raw(fd @ libc::STDIN_FILENO) |
-                Stdio::Raw(fd @ libc::STDOUT_FILENO) |
-                Stdio::Raw(fd @ libc::STDERR_FILENO) => {
-                    let fd = match cvt_r(|| libc::dup(fd)) {
-                        Ok(fd) => fd,
-                        Err(_) => fail(output),
-                    };
-                    let fd = FileDesc::new(fd);
-                    fd.set_cloexec();
-                    Stdio::Raw(fd.into_raw())
-                },
-
-                s @ Stdio::None |
-                s @ Stdio::Inherit |
-                s @ Stdio::Raw(_) => s,
-            }
-        };
-
-        let setup = |src: Stdio, dst: c_int| {
-            match src {
-                Stdio::Inherit => true,
-                Stdio::Raw(fd) => cvt_r(|| libc::dup2(fd, dst)).is_ok(),
-
-                // If a stdio file descriptor is set to be ignored, we open up
-                // /dev/null into that file descriptor. Otherwise, the first
-                // file descriptor opened up in the child would be numbered as
-                // one of the stdio file descriptors, which is likely to wreak
-                // havoc.
-                Stdio::None => {
-                    let mut opts = OpenOptions::new();
-                    opts.read(dst == libc::STDIN_FILENO);
-                    opts.write(dst != libc::STDIN_FILENO);
-                    let devnull = CStr::from_ptr(b"/dev/null\0".as_ptr()
-                                                    as *const _);
-                    if let Ok(f) = File::open_c(devnull, &opts) {
-                        cvt_r(|| libc::dup2(f.fd().raw(), dst)).is_ok()
-                    } else {
-                        false
-                    }
-                }
-            }
-        };
-
-        // Make sure we migrate all source descriptors before
-        // we start overwriting them
-        let in_fd = maybe_migrate(in_fd, &mut output);
-        let out_fd = maybe_migrate(out_fd, &mut output);
-        let err_fd = maybe_migrate(err_fd, &mut output);
-
-        if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
-        if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
-        if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
-
-        if let Some(u) = cfg.gid {
-            if libc::setgid(u as libc::gid_t) != 0 {
-                fail(&mut output);
-            }
+        if let Some(fd) = stdio.stdin.fd() {
+            try!(cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO)));
         }
-        if let Some(u) = cfg.uid {
+        if let Some(fd) = stdio.stdout.fd() {
+            try!(cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO)));
+        }
+        if let Some(fd) = stdio.stderr.fd() {
+            try!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
+        }
+
+        if let Some(u) = self.gid {
+            try!(cvt(libc::setgid(u as gid_t)));
+        }
+        if let Some(u) = self.uid {
             // When dropping privileges from root, the `setgroups` call
             // will remove any extraneous groups. If we don't call this,
             // then even though our uid has dropped, we may still have
@@ -407,26 +365,23 @@ impl Process {
             // privilege dropping function.
             let _ = libc::setgroups(0, ptr::null());
 
-            if libc::setuid(u as libc::uid_t) != 0 {
-                fail(&mut output);
-            }
+            try!(cvt(libc::setuid(u as uid_t)));
         }
-        if cfg.session_leader {
+        if self.session_leader {
             // Don't check the error of setsid because it fails if we're the
             // process leader already. We just forked so it shouldn't return
             // error, but ignore it anyway.
             let _ = libc::setsid();
         }
-        if !dirp.is_null() && libc::chdir(dirp) == -1 {
-            fail(&mut output);
+        if let Some(ref cwd) = self.cwd {
+            try!(cvt(libc::chdir(cwd.as_ptr())));
         }
-        if !envp.is_null() {
-            *sys::os::environ() = envp as *const _;
+        if let Some(ref envp) = self.envp {
+            *sys::os::environ() = envp.as_ptr();
         }
 
-        #[cfg(not(target_os = "nacl"))]
-        unsafe fn reset_signal_handling(output: &mut AnonPipe) {
-            use mem;
+        // NaCl has no signal support.
+        if cfg!(not(target_os = "nacl")) {
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -435,93 +390,205 @@ impl Process {
             // need to clean things up now to avoid confusing the program
             // we're about to run.
             let mut set: libc::sigset_t = mem::uninitialized();
-            if libc::sigemptyset(&mut set) != 0 ||
-                libc::pthread_sigmask(libc::SIG_SETMASK, &set, ptr::null_mut()) != 0 ||
-                libc::signal(
-                    libc::SIGPIPE, mem::transmute(libc::SIG_DFL)
-                        ) == mem::transmute(libc::SIG_ERR)
-            {
-                fail(output);
+            try!(cvt(libc::sigemptyset(&mut set)));
+            try!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
+                                           ptr::null_mut())));
+            let ret = libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+            if ret == libc::SIG_ERR {
+                return io::Error::last_os_error()
             }
         }
-        #[cfg(target_os = "nacl")]
-        unsafe fn reset_signal_handling(_output: &mut AnonPipe) {
-            // NaCl has no signal support.
-        }
-        reset_signal_handling(&mut output);
 
-        let _ = libc::execvp(*argv, argv);
-        fail(&mut output)
+        for callback in self.closures.iter_mut() {
+            try!(callback());
+        }
+
+        libc::execvp(self.argv[0], self.argv.as_ptr());
+        io::Error::last_os_error()
     }
 
+
+    fn setup_io(&self, default: Stdio) -> io::Result<(StdioPipes, ChildPipes)> {
+        let stdin = self.stdin.as_ref().unwrap_or(&default);
+        let stdout = self.stdout.as_ref().unwrap_or(&default);
+        let stderr = self.stderr.as_ref().unwrap_or(&default);
+        let (their_stdin, our_stdin) = try!(stdin.to_child_stdio(true));
+        let (their_stdout, our_stdout) = try!(stdout.to_child_stdio(false));
+        let (their_stderr, our_stderr) = try!(stderr.to_child_stdio(false));
+        let ours = StdioPipes {
+            stdin: our_stdin,
+            stdout: our_stdout,
+            stderr: our_stderr,
+        };
+        let theirs = ChildPipes {
+            stdin: their_stdin,
+            stdout: their_stdout,
+            stderr: their_stderr,
+        };
+        Ok((ours, theirs))
+    }
+}
+
+fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
+    CString::new(s.as_bytes()).unwrap_or_else(|_e| {
+        *saw_nul = true;
+        CString::new("<string-with-nul>").unwrap()
+    })
+}
+
+impl Stdio {
+    fn to_child_stdio(&self, readable: bool)
+                      -> io::Result<(ChildStdio, Option<AnonPipe>)> {
+        match *self {
+            Stdio::Inherit => Ok((ChildStdio::Inherit, None)),
+
+            // Make sure that the source descriptors are not an stdio
+            // descriptor, otherwise the order which we set the child's
+            // descriptors may blow away a descriptor which we are hoping to
+            // save. For example, suppose we want the child's stderr to be the
+            // parent's stdout, and the child's stdout to be the parent's
+            // stderr. No matter which we dup first, the second will get
+            // overwritten prematurely.
+            Stdio::Fd(ref fd) => {
+                if fd.raw() >= 0 && fd.raw() <= libc::STDERR_FILENO {
+                    Ok((ChildStdio::Owned(try!(fd.duplicate())), None))
+                } else {
+                    Ok((ChildStdio::Explicit(fd.raw()), None))
+                }
+            }
+
+            Stdio::MakePipe => {
+                let (reader, writer) = try!(pipe::anon_pipe());
+                let (ours, theirs) = if readable {
+                    (writer, reader)
+                } else {
+                    (reader, writer)
+                };
+                Ok((ChildStdio::Owned(theirs.into_fd()), Some(ours)))
+            }
+
+            Stdio::Null => {
+                let mut opts = OpenOptions::new();
+                opts.read(readable);
+                opts.write(!readable);
+                let path = unsafe {
+                    CStr::from_ptr("/dev/null\0".as_ptr() as *const _)
+                };
+                let fd = try!(File::open_c(&path, &opts));
+                Ok((ChildStdio::Owned(fd.into_fd()), None))
+            }
+        }
+    }
+}
+
+impl ChildStdio {
+    fn fd(&self) -> Option<c_int> {
+        match *self {
+            ChildStdio::Inherit => None,
+            ChildStdio::Explicit(fd) => Some(fd),
+            ChildStdio::Owned(ref fd) => Some(fd.raw()),
+        }
+    }
+}
+
+fn pair_to_key(key: &OsStr, value: &OsStr, saw_nul: &mut bool) -> CString {
+    let (key, value) = (key.as_bytes(), value.as_bytes());
+    let mut v = Vec::with_capacity(key.len() + value.len() + 1);
+    v.extend(key);
+    v.push(b'=');
+    v.extend(value);
+    CString::new(v).unwrap_or_else(|_e| {
+        *saw_nul = true;
+        CString::new("foo=bar").unwrap()
+    })
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "{:?}", self.program));
+        for arg in &self.args {
+            try!(write!(f, " {:?}", arg));
+        }
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Processes
+////////////////////////////////////////////////////////////////////////////////
+
+/// Unix exit statuses
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatus(c_int);
+
+impl ExitStatus {
+    fn exited(&self) -> bool {
+        unsafe { libc::WIFEXITED(self.0) }
+    }
+
+    pub fn success(&self) -> bool {
+        self.code() == Some(0)
+    }
+
+    pub fn code(&self) -> Option<i32> {
+        if self.exited() {
+            Some(unsafe { libc::WEXITSTATUS(self.0) })
+        } else {
+            None
+        }
+    }
+
+    pub fn signal(&self) -> Option<i32> {
+        if !self.exited() {
+            Some(unsafe { libc::WTERMSIG(self.0) })
+        } else {
+            None
+        }
+    }
+}
+
+impl fmt::Display for ExitStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(code) = self.code() {
+            write!(f, "exit code: {}", code)
+        } else {
+            let signal = self.signal().unwrap();
+            write!(f, "signal: {}", signal)
+        }
+    }
+}
+
+/// The unique id of the process (this should never be negative).
+pub struct Process {
+    pid: pid_t,
+    status: Option<ExitStatus>,
+}
+
+impl Process {
     pub fn id(&self) -> u32 {
         self.pid as u32
     }
 
-    pub fn wait(&self) -> io::Result<ExitStatus> {
+    pub fn kill(&mut self) -> io::Result<()> {
+        // If we've already waited on this process then the pid can be recycled
+        // and used for another process, and we probably shouldn't be killing
+        // random processes, so just return an error.
+        if self.status.is_some() {
+            Err(Error::new(ErrorKind::InvalidInput,
+                           "invalid argument: can't kill an exited process"))
+        } else {
+            cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(|_| ())
+        }
+    }
+
+    pub fn wait(&mut self) -> io::Result<ExitStatus> {
+        if let Some(status) = self.status {
+            return Ok(status)
+        }
         let mut status = 0 as c_int;
         try!(cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) }));
+        self.status = Some(ExitStatus(status));
         Ok(ExitStatus(status))
-    }
-
-    pub fn try_wait(&self) -> Option<ExitStatus> {
-        let mut status = 0 as c_int;
-        match cvt_r(|| unsafe {
-            libc::waitpid(self.pid, &mut status, libc::WNOHANG)
-        }) {
-            Ok(0) => None,
-            Ok(n) if n == self.pid => Some(ExitStatus(status)),
-            Ok(n) => panic!("unknown pid: {}", n),
-            Err(e) => panic!("unknown waitpid error: {}", e),
-        }
-    }
-}
-
-fn make_argv(prog: &CString, args: &[CString])
-             -> (*const *const libc::c_char, Vec<*const libc::c_char>)
-{
-    let mut ptrs: Vec<*const libc::c_char> = Vec::with_capacity(args.len()+1);
-
-    // Convert the CStrings into an array of pointers. Also return the
-    // vector that owns the raw pointers, to ensure they live long
-    // enough.
-    ptrs.push(prog.as_ptr());
-    ptrs.extend(args.iter().map(|tmp| tmp.as_ptr()));
-
-    // Add a terminating null pointer (required by libc).
-    ptrs.push(ptr::null());
-
-    (ptrs.as_ptr(), ptrs)
-}
-
-fn make_envp(env: Option<&HashMap<OsString, OsString>>)
-             -> (*const c_void, Vec<Vec<u8>>, Vec<*const libc::c_char>)
-{
-    // On posixy systems we can pass a char** for envp, which is a
-    // null-terminated array of "k=v\0" strings. As with make_argv, we
-    // return two vectors that own the data to ensure that they live
-    // long enough.
-    if let Some(env) = env {
-        let mut tmps = Vec::with_capacity(env.len());
-
-        for pair in env {
-            let mut kv = Vec::new();
-            kv.extend_from_slice(pair.0.as_bytes());
-            kv.push('=' as u8);
-            kv.extend_from_slice(pair.1.as_bytes());
-            kv.push(0); // terminating null
-            tmps.push(kv);
-        }
-
-        let mut ptrs: Vec<*const libc::c_char> =
-            tmps.iter()
-                .map(|tmp| tmp.as_ptr() as *const libc::c_char)
-                .collect();
-        ptrs.push(ptr::null());
-
-        (ptrs.as_ptr() as *const _, tmps, ptrs)
-    } else {
-        (ptr::null(), Vec::new(), Vec::new())
     }
 }
 
@@ -534,7 +601,7 @@ mod tests {
     use mem;
     use ptr;
     use libc;
-    use sys::{self, cvt};
+    use sys::cvt;
 
     macro_rules! t {
         ($e:expr) => {
@@ -570,9 +637,7 @@ mod tests {
     fn test_process_mask() {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.
-            let cmd = Command::new(OsStr::new("cat"));
-            let (stdin_read, stdin_write) = t!(sys::pipe::anon_pipe());
-            let (stdout_read, stdout_write) = t!(sys::pipe::anon_pipe());
+            let mut cmd = Command::new(OsStr::new("cat"));
 
             let mut set: libc::sigset_t = mem::uninitialized();
             let mut old_set: libc::sigset_t = mem::uninitialized();
@@ -580,11 +645,12 @@ mod tests {
             t!(cvt(sigaddset(&mut set, libc::SIGINT)));
             t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set, &mut old_set)));
 
-            let cat = t!(Process::spawn(&cmd, Stdio::Raw(stdin_read.raw()),
-                                              Stdio::Raw(stdout_write.raw()),
-                                              Stdio::None));
-            drop(stdin_read);
-            drop(stdout_write);
+            cmd.stdin(Stdio::MakePipe);
+            cmd.stdout(Stdio::MakePipe);
+
+            let (mut cat, mut pipes) = t!(cmd.spawn(Stdio::Null));
+            let stdin_write = pipes.stdin.take().unwrap();
+            let stdout_read = pipes.stdout.take().unwrap();
 
             t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &old_set,
                                          ptr::null_mut())));

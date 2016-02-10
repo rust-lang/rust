@@ -26,9 +26,9 @@ use path::Path;
 use ptr;
 use sync::StaticMutex;
 use sys::c;
-
 use sys::fs::{OpenOptions, File};
-use sys::handle::{Handle, RawHandle};
+use sys::handle::Handle;
+use sys::pipe::{self, AnonPipe};
 use sys::stdio;
 use sys::{self, cvt};
 use sys_common::{AsInner, FromInner};
@@ -51,13 +51,28 @@ fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     }
 }
 
-#[derive(Clone)]
 pub struct Command {
     program: OsString,
     args: Vec<OsString>,
     env: Option<HashMap<OsString, OsString>>,
     cwd: Option<OsString>,
     detach: bool, // not currently exposed in std::process
+    stdin: Option<Stdio>,
+    stdout: Option<Stdio>,
+    stderr: Option<Stdio>,
+}
+
+pub enum Stdio {
+    Inherit,
+    Null,
+    MakePipe,
+    Handle(Handle),
+}
+
+pub struct StdioPipes {
+    pub stdin: Option<AnonPipe>,
+    pub stdout: Option<AnonPipe>,
+    pub stderr: Option<AnonPipe>,
 }
 
 impl Command {
@@ -68,14 +83,14 @@ impl Command {
             env: None,
             cwd: None,
             detach: false,
+            stdin: None,
+            stdout: None,
+            stderr: None,
         }
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
         self.args.push(arg.to_os_string())
-    }
-    pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        self.args.extend(args.map(OsStr::to_os_string))
     }
     fn init_env_map(&mut self){
         if self.env.is_none() {
@@ -98,6 +113,103 @@ impl Command {
     pub fn cwd(&mut self, dir: &OsStr) {
         self.cwd = Some(dir.to_os_string())
     }
+    pub fn stdin(&mut self, stdin: Stdio) {
+        self.stdin = Some(stdin);
+    }
+    pub fn stdout(&mut self, stdout: Stdio) {
+        self.stdout = Some(stdout);
+    }
+    pub fn stderr(&mut self, stderr: Stdio) {
+        self.stderr = Some(stderr);
+    }
+
+    pub fn spawn(&mut self, default: Stdio)
+                 -> io::Result<(Process, StdioPipes)> {
+        // To have the spawning semantics of unix/windows stay the same, we need
+        // to read the *child's* PATH if one is provided. See #15149 for more
+        // details.
+        let program = self.env.as_ref().and_then(|env| {
+            for (key, v) in env {
+                if OsStr::new("PATH") != &**key { continue }
+
+                // Split the value and test each path to see if the
+                // program exists.
+                for path in split_paths(&v) {
+                    let path = path.join(self.program.to_str().unwrap())
+                                   .with_extension(env::consts::EXE_EXTENSION);
+                    if fs::metadata(&path).is_ok() {
+                        return Some(path.into_os_string())
+                    }
+                }
+                break
+            }
+            None
+        });
+
+        let mut si = zeroed_startupinfo();
+        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
+        si.dwFlags = c::STARTF_USESTDHANDLES;
+
+        let program = program.as_ref().unwrap_or(&self.program);
+        let mut cmd_str = try!(make_command_line(program, &self.args));
+        cmd_str.push(0); // add null terminator
+
+        // stolen from the libuv code.
+        let mut flags = c::CREATE_UNICODE_ENVIRONMENT;
+        if self.detach {
+            flags |= c::DETACHED_PROCESS | c::CREATE_NEW_PROCESS_GROUP;
+        }
+
+        let (envp, _data) = try!(make_envp(self.env.as_ref()));
+        let (dirp, _data) = try!(make_dirp(self.cwd.as_ref()));
+        let mut pi = zeroed_process_information();
+
+        // Prepare all stdio handles to be inherited by the child. This
+        // currently involves duplicating any existing ones with the ability to
+        // be inherited by child processes. Note, however, that once an
+        // inheritable handle is created, *any* spawned child will inherit that
+        // handle. We only want our own child to inherit this handle, so we wrap
+        // the remaining portion of this spawn in a mutex.
+        //
+        // For more information, msdn also has an article about this race:
+        // http://support.microsoft.com/kb/315939
+        static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
+        let _lock = CREATE_PROCESS_LOCK.lock();
+
+        let mut pipes = StdioPipes {
+            stdin: None,
+            stdout: None,
+            stderr: None,
+        };
+        let stdin = self.stdin.as_ref().unwrap_or(&default);
+        let stdout = self.stdout.as_ref().unwrap_or(&default);
+        let stderr = self.stderr.as_ref().unwrap_or(&default);
+        let stdin = try!(stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin));
+        let stdout = try!(stdout.to_handle(c::STD_OUTPUT_HANDLE,
+                                           &mut pipes.stdout));
+        let stderr = try!(stderr.to_handle(c::STD_ERROR_HANDLE,
+                                           &mut pipes.stderr));
+        si.hStdInput = stdin.raw();
+        si.hStdOutput = stdout.raw();
+        si.hStdError = stderr.raw();
+
+        try!(unsafe {
+            cvt(c::CreateProcessW(ptr::null(),
+                                  cmd_str.as_mut_ptr(),
+                                  ptr::null_mut(),
+                                  ptr::null_mut(),
+                                  c::TRUE, flags, envp, dirp,
+                                  &mut si, &mut pi))
+        });
+
+        // We close the thread handle because we don't care about keeping
+        // the thread id valid, and we aren't keeping the thread handle
+        // around to be able to close it later.
+        drop(Handle::new(pi.hThread));
+
+        Ok((Process { handle: Handle::new(pi.hProcess) }, pipes))
+    }
+
 }
 
 impl fmt::Debug for Command {
@@ -107,6 +219,63 @@ impl fmt::Debug for Command {
             try!(write!(f, " {:?}", arg));
         }
         Ok(())
+    }
+}
+
+impl Stdio {
+    fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>)
+                 -> io::Result<Handle> {
+        match *self {
+            // If no stdio handle is available, then inherit means that it
+            // should still be unavailable so propagate the
+            // INVALID_HANDLE_VALUE.
+            Stdio::Inherit => {
+                match stdio::get(stdio_id) {
+                    Ok(io) => io.handle().duplicate(0, true,
+                                                    c::DUPLICATE_SAME_ACCESS),
+                    Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
+                }
+            }
+
+            Stdio::MakePipe => {
+                let (reader, writer) = try!(pipe::anon_pipe());
+                let (ours, theirs) = if stdio_id == c::STD_INPUT_HANDLE {
+                    (writer, reader)
+                } else {
+                    (reader, writer)
+                };
+                *pipe = Some(ours);
+                try!(cvt(unsafe {
+                    c::SetHandleInformation(theirs.handle().raw(),
+                                            c::HANDLE_FLAG_INHERIT,
+                                            c::HANDLE_FLAG_INHERIT)
+                }));
+                Ok(theirs.into_handle())
+            }
+
+            Stdio::Handle(ref handle) => {
+                handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)
+            }
+
+            // Open up a reference to NUL with appropriate read/write
+            // permissions as well as the ability to be inherited to child
+            // processes (as this is about to be inherited).
+            Stdio::Null => {
+                let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
+                let mut sa = c::SECURITY_ATTRIBUTES {
+                    nLength: size as c::DWORD,
+                    lpSecurityDescriptor: ptr::null_mut(),
+                    bInheritHandle: 1,
+                };
+                let mut opts = OpenOptions::new();
+                opts.read(stdio_id == c::STD_INPUT_HANDLE);
+                opts.write(stdio_id != c::STD_INPUT_HANDLE);
+                opts.security_attributes(&mut sa);
+                File::open(Path::new("NUL"), &opts).map(|file| {
+                    file.into_handle()
+                })
+            }
+        }
     }
 }
 
@@ -123,90 +292,11 @@ pub struct Process {
     handle: Handle,
 }
 
-pub enum Stdio {
-    Inherit,
-    None,
-    Raw(c::HANDLE),
-}
-
-pub type RawStdio = Handle;
-
 impl Process {
-    pub fn spawn(cfg: &Command,
-                 in_handle: Stdio,
-                 out_handle: Stdio,
-                 err_handle: Stdio) -> io::Result<Process>
-    {
-        // To have the spawning semantics of unix/windows stay the same, we need
-        // to read the *child's* PATH if one is provided. See #15149 for more
-        // details.
-        let program = cfg.env.as_ref().and_then(|env| {
-            for (key, v) in env {
-                if OsStr::new("PATH") != &**key { continue }
-
-                // Split the value and test each path to see if the
-                // program exists.
-                for path in split_paths(&v) {
-                    let path = path.join(cfg.program.to_str().unwrap())
-                                   .with_extension(env::consts::EXE_EXTENSION);
-                    if fs::metadata(&path).is_ok() {
-                        return Some(path.into_os_string())
-                    }
-                }
-                break
-            }
-            None
-        });
-
-        let mut si = zeroed_startupinfo();
-        si.cb = mem::size_of::<c::STARTUPINFO>() as c::DWORD;
-        si.dwFlags = c::STARTF_USESTDHANDLES;
-
-        let stdin = try!(in_handle.to_handle(c::STD_INPUT_HANDLE));
-        let stdout = try!(out_handle.to_handle(c::STD_OUTPUT_HANDLE));
-        let stderr = try!(err_handle.to_handle(c::STD_ERROR_HANDLE));
-
-        si.hStdInput = stdin.raw();
-        si.hStdOutput = stdout.raw();
-        si.hStdError = stderr.raw();
-
-        let program = program.as_ref().unwrap_or(&cfg.program);
-        let mut cmd_str = try!(make_command_line(program, &cfg.args));
-        cmd_str.push(0); // add null terminator
-
-        // stolen from the libuv code.
-        let mut flags = c::CREATE_UNICODE_ENVIRONMENT;
-        if cfg.detach {
-            flags |= c::DETACHED_PROCESS | c::CREATE_NEW_PROCESS_GROUP;
-        }
-
-        let (envp, _data) = try!(make_envp(cfg.env.as_ref()));
-        let (dirp, _data) = try!(make_dirp(cfg.cwd.as_ref()));
-        let mut pi = zeroed_process_information();
-        try!(unsafe {
-            // `CreateProcess` is racy!
-            // http://support.microsoft.com/kb/315939
-            static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
-            let _lock = CREATE_PROCESS_LOCK.lock();
-
-            cvt(c::CreateProcessW(ptr::null(),
-                                  cmd_str.as_mut_ptr(),
-                                  ptr::null_mut(),
-                                  ptr::null_mut(),
-                                  c::TRUE, flags, envp, dirp,
-                                  &mut si, &mut pi))
-        });
-
-        // We close the thread handle because we don't care about keeping
-        // the thread id valid, and we aren't keeping the thread handle
-        // around to be able to close it later.
-        drop(Handle::new(pi.hThread));
-
-        Ok(Process { handle: Handle::new(pi.hProcess) })
-    }
-
-    pub unsafe fn kill(&self) -> io::Result<()> {
-        try!(cvt(c::TerminateProcess(self.handle.raw(), 1)));
+    pub fn kill(&mut self) -> io::Result<()> {
+        try!(cvt(unsafe {
+            c::TerminateProcess(self.handle.raw(), 1)
+        }));
         Ok(())
     }
 
@@ -216,7 +306,7 @@ impl Process {
         }
     }
 
-    pub fn wait(&self) -> io::Result<ExitStatus> {
+    pub fn wait(&mut self) -> io::Result<ExitStatus> {
         unsafe {
             let res = c::WaitForSingleObject(self.handle.raw(), c::INFINITE);
             if res != c::WAIT_OBJECT_0 {
@@ -367,46 +457,6 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
             Ok((dir_str.as_ptr(), dir_str))
         },
         None => Ok((ptr::null(), Vec::new()))
-    }
-}
-
-impl Stdio {
-    fn to_handle(&self, stdio_id: c::DWORD) -> io::Result<Handle> {
-        match *self {
-            // If no stdio handle is available, then inherit means that it
-            // should still be unavailable so propagate the
-            // INVALID_HANDLE_VALUE.
-            Stdio::Inherit => {
-                match stdio::get(stdio_id) {
-                    Ok(io) => io.handle().duplicate(0, true,
-                                                    c::DUPLICATE_SAME_ACCESS),
-                    Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
-                }
-            }
-            Stdio::Raw(handle) => {
-                RawHandle::new(handle).duplicate(0, true, c::DUPLICATE_SAME_ACCESS)
-            }
-
-            // Similarly to unix, we don't actually leave holes for the
-            // stdio file descriptors, but rather open up /dev/null
-            // equivalents. These equivalents are drawn from libuv's
-            // windows process spawning.
-            Stdio::None => {
-                let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
-                let mut sa = c::SECURITY_ATTRIBUTES {
-                    nLength: size as c::DWORD,
-                    lpSecurityDescriptor: ptr::null_mut(),
-                    bInheritHandle: 1,
-                };
-                let mut opts = OpenOptions::new();
-                opts.read(stdio_id == c::STD_INPUT_HANDLE);
-                opts.write(stdio_id != c::STD_INPUT_HANDLE);
-                opts.security_attributes(&mut sa);
-                File::open(Path::new("NUL"), &opts).map(|file| {
-                    file.into_handle()
-                })
-            }
-        }
     }
 }
 

@@ -61,7 +61,6 @@ impl AnonPipe {
         self.0.write(buf)
     }
 
-    pub fn raw(&self) -> libc::c_int { self.0.raw() }
     pub fn fd(&self) -> &FileDesc { &self.0 }
     pub fn into_fd(self) -> FileDesc { self.0 }
 }

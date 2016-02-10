@@ -21,7 +21,8 @@ use sys_common::{AsInner, FromInner, IntoInner};
 impl FromRawHandle for process::Stdio {
     unsafe fn from_raw_handle(handle: RawHandle) -> process::Stdio {
         let handle = sys::handle::Handle::new(handle as *mut _);
-        process::Stdio::from_inner(handle)
+        let io = sys::process::Stdio::Handle(handle);
+        process::Stdio::from_inner(io)
     }
 }
 
