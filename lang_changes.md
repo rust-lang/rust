@@ -1,6 +1,8 @@
 # RFC policy - language design
 
-Pretty much every change to the language needs an RFC.
+Pretty much every change to the language needs an RFC. Note that new
+lints (or major changes to an existing lint) are considered changes to
+the language.
 
 Language RFCs are managed by the language sub-team, and tagged `T-lang`. The
 language sub-team will do an initial triage of new PRs within a week of

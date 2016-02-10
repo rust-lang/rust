@@ -21,6 +21,7 @@ submitted later if there is scope for large changes to the language RFC.
 
 ## Changes which need an RFC
 
+* New lints (these fall under the lang team)
 * Large refactorings or redesigns of the compiler
 * Changing the API presented to syntax extensions or other compiler plugins in
   non-trivial ways
