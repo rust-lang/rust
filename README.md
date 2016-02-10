@@ -1,10 +1,12 @@
 # miri
 
 An experimental interpreter for [Rust][rust]'s [mid-level
-intermediate representation][mir] (MIR).
+intermediate representation][mir] (MIR). This project is part of my course work
+for an undergraduate research course at the [University of Saskatchewan][usask].
 
-[rust]: https://www.rust-lang.org
+[rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
+[usask]: https://www.usask.ca/
 
 ## License
 
