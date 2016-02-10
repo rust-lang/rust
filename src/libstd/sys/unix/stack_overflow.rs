@@ -106,7 +106,7 @@ mod imp {
                   target_os = "bitrig",
                   target_os = "openbsd",
                   target_os = "freebsd",
-                  target_os = "dragonfly"
+                  target_os = "dragonfly",
                   target_os = "netbsd")))]
     unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
         (*info).si_addr as usize
