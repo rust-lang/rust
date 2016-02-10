@@ -5,15 +5,18 @@
 #![allow(let_and_return)]
 #![allow(needless_return)]
 #![allow(unused_variables)]
+#![allow(cyclomatic_complexity)]
 
+fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
 
 #[deny(if_same_then_else)]
+#[deny(match_same_arms)]
 fn if_same_then_else() -> &'static str {
     if true {
         foo();
     }
-    else { //~ERROR this if has identical blocks
+    else { //~ERROR this `if` has identical blocks
         foo();
     }
 
@@ -29,7 +32,7 @@ fn if_same_then_else() -> &'static str {
         foo();
         42
     }
-    else { //~ERROR this if has identical blocks
+    else { //~ERROR this `if` has identical blocks
         foo();
         42
     };
@@ -41,7 +44,7 @@ fn if_same_then_else() -> &'static str {
     let _ = if true {
         42
     }
-    else { //~ERROR this if has identical blocks
+    else { //~ERROR this `if` has identical blocks
         42
     };
 
@@ -56,7 +59,7 @@ fn if_same_then_else() -> &'static str {
         while foo() { break; }
         bar + 1;
     }
-    else { //~ERROR this if has identical blocks
+    else { //~ERROR this `if` has identical blocks
         let bar = if true {
             42
         }
@@ -69,29 +72,29 @@ fn if_same_then_else() -> &'static str {
     }
 
     if true {
-        match 42 {
-            42 => (),
-            a if a > 0 => (),
-            10...15 => (),
-            _ => (),
-        }
+        let _ = match 42 {
+            42 => 1,
+            a if a > 0 => 2,
+            10...15 => 3,
+            _ => 4,
+        };
     }
     else if false {
         foo();
     }
-    else if foo() { //~ERROR this if has identical blocks
-        match 42 {
-            42 => (),
-            a if a > 0 => (),
-            10...15 => (),
-            _ => (),
-        }
+    else if foo() { //~ERROR this `if` has identical blocks
+        let _ = match 42 {
+            42 => 1,
+            a if a > 0 => 2,
+            10...15 => 3,
+            _ => 4,
+        };
     }
 
     if true {
         if let Some(a) = Some(42) {}
     }
-    else { //~ERROR this if has identical blocks
+    else { //~ERROR this `if` has identical blocks
         if let Some(a) = Some(42) {}
     }
 
@@ -102,6 +105,30 @@ fn if_same_then_else() -> &'static str {
         if let Some(a) = Some(43) {}
     }
 
+    let _ = match 42 {
+        42 => foo(),
+        51 => foo(), //~ERROR this `match` has identical arm bodies
+        _ => true,
+    };
+
+    let _ = match Some(42) {
+        Some(42) => 24,
+        Some(a) => 24, // bindings are different
+        None => 0,
+    };
+
+    match (Some(42), Some(42)) {
+        (Some(a), None) => bar(a),
+        (None, Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
+        _ => (),
+    }
+
+    match (Some(42), Some("")) {
+        (Some(a), None) => bar(a),
+        (None, Some(a)) => bar(a), // bindings have different types
+        _ => (),
+    }
+
     if true {
         let foo = "";
         return &foo[0..];
@@ -110,7 +137,7 @@ fn if_same_then_else() -> &'static str {
         let foo = "bar";
         return &foo[0..];
     }
-    else { //~ERROR this if has identical blocks
+    else { //~ERROR this `if` has identical blocks
         let foo = "";
         return &foo[0..];
     }
@@ -124,19 +151,19 @@ fn ifs_same_cond() {
 
     if b {
     }
-    else if b { //~ERROR this if has the same condition as a previous if
+    else if b { //~ERROR this `if` has the same condition as a previous if
     }
 
     if a == 1 {
     }
-    else if a == 1 { //~ERROR this if has the same condition as a previous if
+    else if a == 1 { //~ERROR this `if` has the same condition as a previous if
     }
 
     if 2*a == 1 {
     }
     else if 2*a == 2 {
     }
-    else if 2*a == 1 { //~ERROR this if has the same condition as a previous if
+    else if 2*a == 1 { //~ERROR this `if` has the same condition as a previous if
     }
     else if a == 1 {
     }

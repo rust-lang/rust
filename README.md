@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 119 lints included in this crate:
+There are 120 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -65,6 +65,7 @@ name                                                                            
 [match_bool](https://github.com/Manishearth/rust-clippy/wiki#match_bool)                                       | warn    | a match on boolean expression; recommends `if..else` block instead
 [match_overlapping_arm](https://github.com/Manishearth/rust-clippy/wiki#match_overlapping_arm)                 | warn    | a match has overlapping arms
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                               | warn    | a match or `if let` has all arms prefixed with `&`; the match expression can be dereferenced instead
+[match_same_arms](https://github.com/Manishearth/rust-clippy/wiki#match_same_arms)                             | warn    | `match` with identical arm bodies
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                             | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                       | warn    | taking a number modulo 1, which always returns 0
 [mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                             | allow   | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)

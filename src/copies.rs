@@ -1,7 +1,9 @@
 use rustc::lint::*;
+use rustc::middle::ty;
 use rustc_front::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use syntax::parse::token::InternedString;
 use utils::{SpanlessEq, SpanlessHash};
 use utils::{get_parent_expr, in_macro, span_note_and_lint};
 
@@ -33,6 +35,25 @@ declare_lint! {
     "if with the same *then* and *else* blocks"
 }
 
+/// **What it does:** This lint checks for `match` with identical arm bodies.
+///
+/// **Why is this bad?** This is probably a copy & paste error.
+///
+/// **Known problems:** Hopefully none.
+///
+/// **Example:**
+/// ```rust,ignore
+/// match foo {
+///     Bar => bar(),
+///     Quz => quz(),
+///     Baz => bar(), // <= oups
+/// ```
+declare_lint! {
+    pub MATCH_SAME_ARMS,
+    Warn,
+    "`match` with identical arm bodies"
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct CopyAndPaste;
 
@@ -40,7 +61,8 @@ impl LintPass for CopyAndPaste {
     fn get_lints(&self) -> LintArray {
         lint_array![
             IFS_SAME_COND,
-            IF_SAME_THEN_ELSE
+            IF_SAME_THEN_ELSE,
+            MATCH_SAME_ARMS
         ]
     }
 }
@@ -58,39 +80,63 @@ impl LateLintPass for CopyAndPaste {
             let (conds, blocks) = if_sequence(expr);
             lint_same_then_else(cx, &blocks);
             lint_same_cond(cx, &conds);
+            lint_match_arms(cx, expr);
         }
     }
 }
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
 fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
-    let hash = |block| -> u64 {
+    let hash : &Fn(&&Block) -> u64 = &|block| -> u64 {
         let mut h = SpanlessHash::new(cx);
         h.hash_block(block);
         h.finish()
     };
-    let eq = |lhs, rhs| -> bool {
+
+    let eq : &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool {
         SpanlessEq::new(cx).eq_block(lhs, rhs)
     };
 
     if let Some((i, j)) = search_same(blocks, hash, eq) {
-        span_note_and_lint(cx, IF_SAME_THEN_ELSE, j.span, "this if has identical blocks", i.span, "same as this");
+        span_note_and_lint(cx, IF_SAME_THEN_ELSE, j.span, "this `if` has identical blocks", i.span, "same as this");
     }
 }
 
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
-    let hash = |expr| -> u64 {
+    let hash : &Fn(&&Expr) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx);
         h.hash_expr(expr);
         h.finish()
     };
-    let eq = |lhs, rhs| -> bool {
+
+    let eq : &Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool {
         SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs)
     };
 
     if let Some((i, j)) = search_same(conds, hash, eq) {
-        span_note_and_lint(cx, IFS_SAME_COND, j.span, "this if has the same condition as a previous if", i.span, "same as this");
+        span_note_and_lint(cx, IFS_SAME_COND, j.span, "this `if` has the same condition as a previous if", i.span, "same as this");
+    }
+}
+
+/// Implementation if `MATCH_SAME_ARMS`.
+fn lint_match_arms(cx: &LateContext, expr: &Expr) {
+    let hash = |arm: &Arm| -> u64 {
+        let mut h = SpanlessHash::new(cx);
+        h.hash_expr(&arm.body);
+        h.finish()
+    };
+
+    let eq = |lhs: &Arm, rhs: &Arm| -> bool {
+        SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
+            // all patterns should have the same bindings
+            bindings(cx, &lhs.pats[0]) == bindings(cx, &rhs.pats[0])
+    };
+
+    if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
+        if let Some((i, j)) = search_same(&**arms, hash, eq) {
+            span_note_and_lint(cx, MATCH_SAME_ARMS, j.body.span, "this `match` has identical arm bodies", i.body.span, "same as this");
+        }
     }
 }
 
@@ -123,11 +169,59 @@ fn if_sequence(mut expr: &Expr) -> (Vec<&Expr>, Vec<&Block>) {
     (conds, blocks)
 }
 
-fn search_same<'a, T, Hash, Eq>(exprs: &[&'a T],
-                                hash: Hash,
-                                eq: Eq) -> Option<(&'a T, &'a T)>
-where Hash: Fn(&'a T) -> u64,
-      Eq: Fn(&'a T, &'a T) -> bool {
+/// Return the list of bindings in a pattern.
+fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, ty::Ty<'tcx>> {
+    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<InternedString, ty::Ty<'tcx>>) {
+        match pat.node {
+            PatBox(ref pat) | PatRegion(ref pat, _) => bindings_impl(cx, pat, map),
+            PatEnum(_, Some(ref pats)) => {
+                for pat in pats {
+                    bindings_impl(cx, pat, map);
+                }
+            }
+            PatIdent(_, ref ident, ref as_pat) => {
+                if let Entry::Vacant(v) = map.entry(ident.node.name.as_str()) {
+                    v.insert(cx.tcx.pat_ty(pat));
+                }
+                if let Some(ref as_pat) = *as_pat {
+                    bindings_impl(cx, as_pat, map);
+                }
+            },
+            PatStruct(_, ref fields, _) => {
+                for pat in fields {
+                    bindings_impl(cx, &pat.node.pat, map);
+                }
+            }
+            PatTup(ref fields) => {
+                for pat in fields {
+                    bindings_impl(cx, pat, map);
+                }
+            }
+            PatVec(ref lhs, ref mid, ref rhs) => {
+                for pat in lhs {
+                    bindings_impl(cx, pat, map);
+                }
+                if let Some(ref mid) = *mid {
+                    bindings_impl(cx, mid, map);
+                }
+                for pat in rhs {
+                    bindings_impl(cx, pat, map);
+                }
+            }
+            PatEnum(..) | PatLit(..) | PatQPath(..) | PatRange(..) | PatWild => (),
+        }
+    }
+
+    let mut result = HashMap::new();
+    bindings_impl(cx, pat, &mut result);
+    result
+}
+
+fn search_same<T, Hash, Eq>(exprs: &[T],
+                            hash: Hash,
+                            eq: Eq) -> Option<(&T, &T)>
+where Hash: Fn(&T) -> u64,
+      Eq: Fn(&T, &T) -> bool {
     // common cases
     if exprs.len() < 2 {
         return None;
@@ -141,14 +235,14 @@ where Hash: Fn(&'a T) -> u64,
         }
     }
 
-    let mut map : HashMap<_, Vec<&'a _>> = HashMap::with_capacity(exprs.len());
+    let mut map : HashMap<_, Vec<&_>> = HashMap::with_capacity(exprs.len());
 
-    for &expr in exprs {
+    for expr in exprs {
         match map.entry(hash(expr)) {
             Entry::Occupied(o) => {
                 for o in o.get() {
-                    if eq(o, expr) {
-                        return Some((o, expr))
+                    if eq(&o, expr) {
+                        return Some((&o, expr))
                     }
                 }
             }
