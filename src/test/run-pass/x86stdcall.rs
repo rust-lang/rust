@@ -38,5 +38,6 @@ pub fn main() {
           target_os = "netbsd",
           target_os = "openbsd",
           target_os = "android",
-          target_os = "solaris"))]
+          target_os = "solaris",
+          target_os = "emscripten"))]
 pub fn main() { }
