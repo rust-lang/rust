@@ -1229,11 +1229,13 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
             // for the test suite (otherwise including libstd statically in all
             // executables takes up quite a bit of space).
             //
-            // For targets like MUSL, however, there is no support for dynamic
-            // libraries so we just go back to building a normal library. Note,
-            // however, that if the library is built with `force_host` then it's
-            // ok to be a dylib as the host should always support dylibs.
-            if config.target.contains("musl") && !aux_props.force_host {
+            // For targets like MUSL or Emscripten, however, there is no support for
+            // dynamic libraries so we just go back to building a normal library. Note,
+            // however, that for MUSL if the library is built with `force_host` then
+            // it's ok to be a dylib as the host should always support dylibs.
+            if (config.target.contains("musl") && !aux_props.force_host) ||
+                config.target.contains("emscripten")
+            {
                 vec!("--crate-type=lib".to_owned())
             } else {
                 vec!("--crate-type=dylib".to_owned())
