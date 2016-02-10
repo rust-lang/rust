@@ -5096,11 +5096,8 @@ impl<'a> Parser<'a> {
             self.push_mod_path(id, outer_attrs);
             try!(self.expect(&token::OpenDelim(token::Brace)));
             let mod_inner_lo = self.span.lo;
-            let old_owns_directory = self.owns_directory;
-            self.owns_directory = true;
             let attrs = try!(self.parse_inner_attributes());
             let m = try!(self.parse_mod_items(&token::CloseDelim(token::Brace), mod_inner_lo));
-            self.owns_directory = old_owns_directory;
             self.pop_mod_path();
             Ok((id, ItemKind::Mod(m), Some(attrs)))
         }
