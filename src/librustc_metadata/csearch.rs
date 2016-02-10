@@ -478,9 +478,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         loader::meta_section_name(target)
     }
-    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
+    fn encode_type(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
+                   -> Vec<u8>
     {
-        encoder::encoded_ty(tcx, ty)
+        encoder::encoded_ty(tcx, ty, def_id_to_string)
     }
 
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>
