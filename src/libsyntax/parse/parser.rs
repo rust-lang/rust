@@ -105,6 +105,12 @@ pub enum ParsePub {
     No,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum SemiColonMode {
+    Break,
+    Ignore,
+}
+
 /// Possibly accept an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of
 /// macro expansion). Placement of these is not as complex as I feared it would
@@ -843,7 +849,10 @@ impl<'a> Parser<'a> {
     /// Eat and discard tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     pub fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
-        self.parse_seq_to_before_tokens(kets, seq_sep_none(), |p| p.parse_token_tree());
+        self.parse_seq_to_before_tokens(kets,
+                                        seq_sep_none(),
+                                        |p| p.parse_token_tree(),
+                                        |mut e| e.cancel());
     }
 
     /// Parse a sequence, including the closing delimiter. The function
@@ -871,15 +880,18 @@ impl<'a> Parser<'a> {
                                          -> Vec<T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
     {
-        self.parse_seq_to_before_tokens(&[ket], sep, f)
+        self.parse_seq_to_before_tokens(&[ket], sep, f, |mut e| e.emit())
     }
 
-    pub fn parse_seq_to_before_tokens<T, F>(&mut self,
+    // `fe` is an error handler.
+    fn parse_seq_to_before_tokens<T, F, Fe>(&mut self,
                                             kets: &[&token::Token],
                                             sep: SeqSep,
-                                            mut f: F)
+                                            mut f: F,
+                                            mut fe: Fe)
                                             -> Vec<T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>,
+              Fe: FnMut(DiagnosticBuilder)
     {
         let mut first: bool = true;
         let mut v = vec!();
@@ -889,8 +901,8 @@ impl<'a> Parser<'a> {
                     if first {
                         first = false;
                     } else {
-                        if let Err(mut e) = self.expect(t) {
-                            e.emit();
+                        if let Err(e) = self.expect(t) {
+                            fe(e);
                             break;
                         }
                     }
@@ -903,8 +915,8 @@ impl<'a> Parser<'a> {
 
             match f(self) {
                 Ok(t) => v.push(t),
-                Err(mut e) => {
-                    e.emit();
+                Err(e) => {
+                    fe(e);
                     break;
                 }
             }
@@ -1263,7 +1275,7 @@ impl<'a> Parser<'a> {
                                 break;
                             }
                         }
-                        
+
                         return Err(e);
                     }
                 };
@@ -2339,14 +2351,37 @@ impl<'a> Parser<'a> {
 
                             while self.token != token::CloseDelim(token::Brace) {
                                 if self.eat(&token::DotDot) {
-                                    base = Some(try!(self.parse_expr()));
+                                    match self.parse_expr() {
+                                        Ok(e) => {
+                                            base = Some(e);
+                                        }
+                                        Err(mut e) => {
+                                            e.emit();
+                                            self.recover_stmt();
+                                        }
+                                    }
                                     break;
                                 }
 
-                                fields.push(try!(self.parse_field()));
-                                try!(self.commit_expr(&fields.last().unwrap().expr,
-                                                 &[token::Comma],
-                                                 &[token::CloseDelim(token::Brace)]));
+                                match self.parse_field() {
+                                    Ok(f) => fields.push(f),
+                                    Err(mut e) => {
+                                        e.emit();
+                                        self.recover_stmt();
+                                        break;
+                                    }
+                                }
+
+                                match self.commit_expr(&fields.last().unwrap().expr,
+                                                       &[token::Comma],
+                                                       &[token::CloseDelim(token::Brace)]) {
+                                    Ok(()) => {}
+                                    Err(mut e) => {
+                                        e.emit();
+                                        self.recover_stmt();
+                                        break;
+                                    }
+                                }
                             }
 
                             hi = self.span.hi;
@@ -2748,6 +2783,7 @@ impl<'a> Parser<'a> {
                         if let Some(&sp) = self.open_braces.last() {
                             err.span_note(sp, "unclosed delimiter");
                         };
+
                         Err(err)
                     },
                     /* we ought to allow different depths of unquotation */
@@ -3195,8 +3231,8 @@ impl<'a> Parser<'a> {
     fn parse_match_expr(&mut self, attrs: ThinAttributes) -> PResult<'a, P<Expr>> {
         let match_span = self.last_span;
         let lo = self.last_span.lo;
-        let discriminant = try!(self.parse_expr_res(
-            Restrictions::RESTRICTION_NO_STRUCT_LITERAL, None));
+        let discriminant = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL,
+                                                    None));
         if let Err(mut e) = self.commit_expr_expecting(&discriminant,
                                                        token::OpenDelim(token::Brace)) {
             if self.token == token::Token::Semi {
@@ -3208,7 +3244,19 @@ impl<'a> Parser<'a> {
             try!(self.parse_inner_attributes()).into_thin_attrs());
         let mut arms: Vec<Arm> = Vec::new();
         while self.token != token::CloseDelim(token::Brace) {
-            arms.push(try!(self.parse_arm()));
+            match self.parse_arm() {
+                Ok(arm) => arms.push(arm),
+                Err(mut e) => {
+                    // Recover by skipping to the end of the block.
+                    e.emit();
+                    self.recover_stmt();
+                    let hi = self.span.hi;
+                    if self.token == token::CloseDelim(token::Brace) {
+                        self.bump();
+                    }
+                    return Ok(self.mk_expr(lo, hi, ExprMatch(discriminant, arms), attrs));
+                }
+            }
         }
         let hi = self.span.hi;
         self.bump();
@@ -3566,7 +3614,11 @@ impl<'a> Parser<'a> {
                         }
                         // Parse struct pattern
                         self.bump();
-                        let (fields, etc) = try!(self.parse_pat_fields());
+                        let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
+                            e.emit();
+                            self.recover_stmt();
+                            (vec![], false)
+                        });
                         self.bump();
                         pat = PatKind::Struct(path, fields, etc);
                       }
@@ -3720,10 +3772,72 @@ impl<'a> Parser<'a> {
 
     /// Parse a statement. may include decl.
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
-        Ok(try!(self.parse_stmt_()))
+        Ok(self.parse_stmt_().map(P))
     }
 
-    fn parse_stmt_(&mut self) -> PResult<'a, Option<Stmt>> {
+    // Eat tokens until we can be relatively sure we reached the end of the
+    // statement. This is something of a best-effort heuristic.
+    //
+    // We terminate when we find an unmatched `}` (without consuming it).
+    fn recover_stmt(&mut self) {
+        self.recover_stmt_(SemiColonMode::Ignore)
+    }
+    // If `break_on_semi` is `Break`, then we will stop consuming tokens after
+    // finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
+    // approximate - it can mean we break too early due to macros, but that
+    // shoud only lead to sub-optimal recovery, not inaccurate parsing).
+    fn recover_stmt_(&mut self, break_on_semi: SemiColonMode) {
+        let mut brace_depth = 0;
+        let mut bracket_depth = 0;
+        loop {
+            match self.token {
+                token::OpenDelim(token::DelimToken::Brace) => {
+                    brace_depth += 1;
+                    self.bump();
+                }
+                token::OpenDelim(token::DelimToken::Bracket) => {
+                    bracket_depth += 1;
+                    self.bump();
+                }
+                token::CloseDelim(token::DelimToken::Brace) => {
+                    if brace_depth == 0 {
+                        return;
+                    }
+                    brace_depth -= 1;
+                    self.bump();
+                }
+                token::CloseDelim(token::DelimToken::Bracket) => {
+                    bracket_depth -= 1;
+                    if bracket_depth < 0 {
+                        bracket_depth = 0;
+                    }
+                    self.bump();
+                }
+                token::Eof => return,
+                token::Semi => {
+                    self.bump();
+                    if break_on_semi == SemiColonMode::Break &&
+                       brace_depth == 0 &&
+                       bracket_depth == 0 {
+                        return;
+                    }
+                }
+                _ => {
+                    self.bump()
+                }
+            }
+        }
+    }
+
+    fn parse_stmt_(&mut self) -> Option<Stmt> {
+        self.parse_stmt_without_recovery().unwrap_or_else(|mut e| {
+            e.emit();
+            self.recover_stmt_(SemiColonMode::Break);
+            None
+        })
+    }
+
+    fn parse_stmt_without_recovery(&mut self) -> PResult<'a, Option<Stmt>> {
         maybe_whole!(Some deref self, NtStmt);
 
         let attrs = try!(self.parse_outer_attributes());
@@ -3879,7 +3993,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         try!(self.expect(&token::OpenDelim(token::Brace)));
         Ok((try!(self.parse_inner_attributes()),
-         try!(self.parse_block_tail(lo, BlockCheckMode::Default))))
+            try!(self.parse_block_tail(lo, BlockCheckMode::Default))))
     }
 
     /// Parse the rest of a block expression or function body
@@ -3889,7 +4003,7 @@ impl<'a> Parser<'a> {
         let mut expr = None;
 
         while !self.eat(&token::CloseDelim(token::Brace)) {
-            let Spanned {node, span} = if let Some(s) = try!(self.parse_stmt_()) {
+            let Spanned {node, span} = if let Some(s) = self.parse_stmt_() {
                 s
             } else {
                 // Found only `;` or `}`.
@@ -3974,17 +4088,21 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn handle_expression_like_statement(
-            &mut self,
-            e: P<Expr>,
-            span: Span,
-            stmts: &mut Vec<Stmt>,
-            last_block_expr: &mut Option<P<Expr>>) -> PResult<'a, ()> {
+    fn handle_expression_like_statement(&mut self,
+                                        e: P<Expr>,
+                                        span: Span,
+                                        stmts: &mut Vec<Stmt>,
+                                        last_block_expr: &mut Option<P<Expr>>)
+                                        -> PResult<'a, ()> {
         // expression without semicolon
         if classify::expr_requires_semi_to_be_stmt(&e) {
             // Just check for errors and recover; do not eat semicolon yet.
-            try!(self.commit_stmt(&[],
-                             &[token::Semi, token::CloseDelim(token::Brace)]));
+            if let Err(mut e) =
+                self.commit_stmt(&[], &[token::Semi, token::CloseDelim(token::Brace)])
+            {
+                e.emit();
+                self.recover_stmt();
+            }
         }
 
         match self.token {
@@ -4381,12 +4499,12 @@ impl<'a> Parser<'a> {
                 }
             ));
 
+        let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
+
         if variadic && args.is_empty() {
             self.span_err(sp,
                           "variadic function must be declared with at least one named argument");
         }
-
-        let args = args.into_iter().filter_map(|x| x).collect();
 
         Ok((args, variadic))
     }
