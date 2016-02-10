@@ -12,6 +12,7 @@
 
 // ignore-android
 // ignore-windows
+// ignore-emscripten
 // no-prefer-dynamic
 
 #![feature(convert)]
