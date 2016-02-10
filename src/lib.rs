@@ -105,6 +105,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box bit_mask::BitMask);
     reg.register_late_lint_pass(box ptr_arg::PtrArg);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
+    reg.register_late_lint_pass(box needless_bool::BoolComparison);
     reg.register_late_lint_pass(box approx_const::ApproxConstant);
     reg.register_late_lint_pass(box misc::FloatCmp);
     reg.register_early_lint_pass(box precedence::Precedence);
@@ -252,6 +253,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc_early::UNNEEDED_FIELD_PATTERN,
         mut_reference::UNNECESSARY_MUT_PASSED,
         mutex_atomic::MUTEX_ATOMIC,
+        needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
         needless_features::UNSTABLE_AS_MUT_SLICE,
         needless_features::UNSTABLE_AS_SLICE,

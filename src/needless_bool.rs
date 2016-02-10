@@ -6,8 +6,9 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 
 use syntax::ast::Lit_;
+use syntax::codemap::Spanned;
 
-use utils::{span_lint, snippet};
+use utils::{span_lint, span_lint_and_then, snippet};
 
 /// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly.
 ///
@@ -21,6 +22,20 @@ declare_lint! {
     Warn,
     "if-statements with plain booleans in the then- and else-clause, e.g. \
      `if p { true } else { false }`"
+}
+
+/// **What it does:** This lint checks for expressions of the form `x == true` (or vice versa) and suggest using the variable directly.
+///
+/// **Why is this bad?** Unnecessary code.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `if x == true { }` could be `if x { }`
+declare_lint! {
+    pub BOOL_COMPARISON,
+    Warn,
+    "comparing a variable to a boolean, e.g. \
+     `if x == true`"
 }
 
 #[derive(Copy,Clone)]
@@ -71,6 +86,65 @@ impl LateLintPass for NeedlessBool {
                               NEEDLESS_BOOL,
                               e.span,
                               &format!("you can reduce this if-then-else expression to just {}", hint));
+                }
+                _ => (),
+            }
+        }
+    }
+}
+
+#[derive(Copy,Clone)]
+pub struct BoolComparison;
+
+impl LintPass for BoolComparison {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(BOOL_COMPARISON)
+    }
+}
+
+impl LateLintPass for BoolComparison {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+        if let ExprBinary(Spanned{ node: BiEq, .. }, ref left_side, ref right_side) = e.node {
+            match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
+                (Some(true), None) => {
+                    let hint = snippet(cx, right_side.span, "..").into_owned();
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against true are unnecesary",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                                       });
+                }
+                (None, Some(true)) => {
+                    let hint = snippet(cx, left_side.span, "..").into_owned();
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against true are unnecesary",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                                       });
+                }
+                (Some(false), None) => {
+                    let hint = format!("!{}", snippet(cx, right_side.span, ".."));
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against false can be replaced by a negation",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                                       });
+                }
+                (None, Some(false)) => {
+                    let hint = format!("!{}", snippet(cx, left_side.span, ".."));
+                    span_lint_and_then(cx,
+                                       BOOL_COMPARISON,
+                                       e.span,
+                                       "equality checks against false can be replaced by a negation",
+                                       |db| {
+                                           db.span_suggestion(e.span, "try simplifying it as shown:", hint);
+                                       });
                 }
                 _ => (),
             }

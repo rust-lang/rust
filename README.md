@@ -6,7 +6,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 117 lints included in this crate:
+There are 118 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -15,6 +15,7 @@ name                                                                            
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                                   | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)       | warn    | braces can be eliminated in conditions that are expressions, e.g `if { true } ...`
 [block_in_if_condition_stmt](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt)       | warn    | avoid complex blocks in conditions, instead move the block higher and bind it with 'let'; e.g: `if { let x = true; x } ...`
+[bool_comparison](https://github.com/Manishearth/rust-clippy/wiki#bool_comparison)                             | warn    | comparing a variable to a boolean, e.g. `if x == true`
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                             | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
 [boxed_local](https://github.com/Manishearth/rust-clippy/wiki#boxed_local)                                     | warn    | using Box<T> where unnecessary
 [cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)           | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
