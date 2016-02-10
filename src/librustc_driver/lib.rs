@@ -164,7 +164,11 @@ pub fn run_compiler<'a>(args: &[String],
 
     let descriptions = diagnostics_registry();
 
-    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.error_format), None);
+    do_or_return!(callbacks.early_callback(&matches,
+                                           &sopts,
+                                           &descriptions,
+                                           sopts.error_format),
+                                           None);
 
     let (odir, ofile) = make_output(&matches);
     let (input, input_file_path) = match make_input(&matches.free) {
@@ -251,6 +255,7 @@ pub trait CompilerCalls<'a> {
     // else (e.g., selecting input and output).
     fn early_callback(&mut self,
                       _: &getopts::Matches,
+                      _: &config::Options,
                       _: &diagnostics::registry::Registry,
                       _: ErrorOutputType)
                       -> Compilation {
@@ -324,34 +329,68 @@ pub trait CompilerCalls<'a> {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
+fn handle_explain(code: &str,
+                  descriptions: &diagnostics::registry::Registry,
+                  output: ErrorOutputType) {
+    let normalised = if !code.starts_with("E") {
+        format!("E{0:0>4}", code)
+    } else {
+        code.to_string()
+    };
+    match descriptions.find_description(&normalised) {
+        Some(ref description) => {
+            // Slice off the leading newline and print.
+            print!("{}", &description[1..]);
+        }
+        None => {
+            early_error(output, &format!("no extended information for {}", code));
+        }
+    }
+}
+
+fn check_cfg(sopts: &config::Options,
+             output: ErrorOutputType) {
+    let mut emitter: Box<Emitter> = match output {
+        config::ErrorOutputType::HumanReadable(color_config) => {
+            Box::new(errors::emitter::BasicEmitter::stderr(color_config))
+        }
+        config::ErrorOutputType::Json => Box::new(errors::json::JsonEmitter::basic()),
+    };
+
+    let mut saw_invalid_predicate = false;
+    for item in sopts.cfg.iter() {
+        match item.node {
+            ast::MetaList(ref pred, _) => {
+                saw_invalid_predicate = true;
+                emitter.emit(None,
+                             &format!("invalid predicate in --cfg command line argument: `{}`",
+                                      pred),
+                             None,
+                             errors::Level::Fatal);
+            }
+            _ => {},
+        }
+    }
+
+    if saw_invalid_predicate {
+        panic!(errors::FatalError);
+    }
+}
+
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
+                      sopts: &config::Options,
                       descriptions: &diagnostics::registry::Registry,
                       output: ErrorOutputType)
                       -> Compilation {
-        match matches.opt_str("explain") {
-            Some(ref code) => {
-                let normalised = if !code.starts_with("E") {
-                    format!("E{0:0>4}", code)
-                } else {
-                    code.to_string()
-                };
-                match descriptions.find_description(&normalised) {
-                    Some(ref description) => {
-                        // Slice off the leading newline and print.
-                        print!("{}", &description[1..]);
-                    }
-                    None => {
-                        early_error(output, &format!("no extended information for {}", code));
-                    }
-                }
-                return Compilation::Stop;
-            }
-            None => (),
+        if let Some(ref code) = matches.opt_str("explain") {
+            handle_explain(code, descriptions, output);
+            return Compilation::Stop;
         }
 
-        return Compilation::Continue;
+        check_cfg(sopts, output);
+        Compilation::Continue
     }
 
     fn no_input(&mut self,

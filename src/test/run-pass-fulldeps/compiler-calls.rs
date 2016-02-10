@@ -34,6 +34,7 @@ struct TestCalls {
 impl<'a> CompilerCalls<'a> for TestCalls {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
+                      _: &config::Options,
                       _: &diagnostics::registry::Registry,
                       _: config::ErrorOutputType)
                       -> Compilation {
