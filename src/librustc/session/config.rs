@@ -28,6 +28,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::errors::{ColorConfig, Handler};
 use syntax::parse;
+use syntax::parse::lexer::Reader;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -906,10 +907,19 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
-        parse::parse_meta_from_source_str("cfgspec".to_string(),
-                                          s.to_string(),
-                                          Vec::new(),
-                                          &parse::ParseSess::new())
+        let sess = parse::ParseSess::new();
+        let mut parser = parse::new_parser_from_source_str(&sess,
+                                                           Vec::new(),
+                                                           "cfgspec".to_string(),
+                                                           s.to_string());
+        let meta_item = panictry!(parser.parse_meta_item());
+
+        if !parser.reader.is_eof() {
+            early_error(ErrorOutputType::default(), &format!("invalid --cfg argument: {}",
+                                                             s))
+        }
+
+        meta_item
     }).collect::<ast::CrateConfig>()
 }
 
