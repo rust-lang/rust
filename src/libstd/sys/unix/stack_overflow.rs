@@ -60,7 +60,7 @@ mod imp {
     // This is initialized in init() and only read from after
     static mut PAGE_SIZE: usize = 0;
 
-    #[cfg(any(target_os = "linux", 
+    #[cfg(any(target_os = "linux",
               target_os = "android",
               target_os = "bitrig",
               target_os = "openbsd",
@@ -101,7 +101,7 @@ mod imp {
         (*(info as *const siginfo_t)).si_addr as usize
     }
 
-    #[cfg(not(any(target_os = "linux", 
+    #[cfg(not(any(target_os = "linux",
                   target_os = "android",
                   target_os = "bitrig",
                   target_os = "openbsd",
