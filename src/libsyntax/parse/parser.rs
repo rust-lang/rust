@@ -73,6 +73,7 @@ bitflags! {
     flags Restrictions: u8 {
         const RESTRICTION_STMT_EXPR         = 1 << 0,
         const RESTRICTION_NO_STRUCT_LITERAL = 1 << 1,
+        const NO_NONINLINE_MOD  = 1 << 2,
     }
 }
 
@@ -3208,8 +3209,8 @@ impl<'a> Parser<'a> {
     /// Evaluate the closure with restrictions in place.
     ///
     /// After the closure is evaluated, restrictions are reset.
-    pub fn with_res<F>(&mut self, r: Restrictions, f: F) -> PResult<'a, P<Expr>>
-        where F: FnOnce(&mut Self) -> PResult<'a,  P<Expr>>
+    pub fn with_res<F, T>(&mut self, r: Restrictions, f: F) -> T
+        where F: FnOnce(&mut Self) -> T
     {
         let old = self.restrictions;
         self.restrictions = r;
@@ -3767,7 +3768,9 @@ impl<'a> Parser<'a> {
             }
         } else {
             // FIXME: Bad copy of attrs
-            match try!(self.parse_item_(attrs.clone(), false, true)) {
+            let restrictions = self.restrictions | Restrictions::NO_NONINLINE_MOD;
+            match try!(self.with_res(restrictions,
+                                     |this| this.parse_item_(attrs.clone(), false, true))) {
                 Some(i) => {
                     let hi = i.span.hi;
                     let decl = P(spanned(lo, hi, DeclKind::Item(i)));
@@ -5174,7 +5177,17 @@ impl<'a> Parser<'a> {
 
         let paths = Parser::default_submod_path(id, &dir_path, self.sess.codemap());
 
-        if !self.owns_directory {
+        if self.restrictions.contains(Restrictions::NO_NONINLINE_MOD) {
+            let msg =
+                "Cannot declare a non-inline module inside a block unless it has a path attribute";
+            let mut err = self.diagnostic().struct_span_err(id_sp, msg);
+            if paths.path_exists {
+                let msg = format!("Maybe `use` the module `{}` instead of redeclaring it",
+                                  paths.name);
+                err.span_note(id_sp, &msg);
+            }
+            return Err(err);
+        } else if !self.owns_directory {
             let mut err = self.diagnostic().struct_span_err(id_sp,
                 "cannot declare a new module at this location");
             let this_module = match self.mod_path_stack.last() {
