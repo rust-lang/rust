@@ -67,6 +67,17 @@ impl SocketAddr {
         }
     }
 
+    /// Change the IP address associated with this socket address.
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    pub fn set_ip(&mut self, new_ip: IpAddr) {
+        // `match (*self, new_ip)` would have us mutate a copy of self only to throw it away.
+        match (self, new_ip) {
+            (&mut SocketAddr::V4(ref mut a), IpAddr::V4(new_ip)) => a.set_ip(new_ip),
+            (&mut SocketAddr::V6(ref mut a), IpAddr::V6(new_ip)) => a.set_ip(new_ip),
+            (self_, new_ip) => *self_ = Self::new(new_ip, self_.port()),
+        }
+    }
+
     /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 {
@@ -77,7 +88,7 @@ impl SocketAddr {
     }
 
     /// Change the port number associated with this socket address.
-    #[unstable(feature = "sockaddr_set_port", reason = "recent addition", issue = "0")]  // FIXME add tracking issue
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
     pub fn set_port(&mut self, new_port: u16) {
         match *self {
             SocketAddr::V4(ref mut a) => a.set_port(new_port),
@@ -108,12 +119,16 @@ impl SocketAddrV4 {
         }
     }
 
+    /// Change the IP address associated with this socket address.
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    pub fn set_ip(&mut self, new_ip: Ipv4Addr) { self.inner.sin_addr = *new_ip.as_inner() }
+
     /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 { ntoh(self.inner.sin_port) }
 
     /// Change the port number associated with this socket address.
-    #[unstable(feature = "sockaddr_set_port", reason = "recent addition", issue = "0")]  // FIXME add tracking issue
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
     pub fn set_port(&mut self, new_port: u16) { self.inner.sin_port = hton(new_port) }
 }
 
@@ -143,12 +158,16 @@ impl SocketAddrV6 {
         }
     }
 
+    /// Change the IP address associated with this socket address.
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    pub fn set_ip(&mut self, new_ip: Ipv6Addr) { self.inner.sin6_addr = *new_ip.as_inner() }
+
     /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn port(&self) -> u16 { ntoh(self.inner.sin6_port) }
 
     /// Change the port number associated with this socket address.
-    #[unstable(feature = "sockaddr_set_port", reason = "recent addition", issue = "0")]  // FIXME add tracking issue
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
     pub fn set_port(&mut self, new_port: u16) { self.inner.sin6_port = hton(new_port) }
 
     /// Returns the flow information associated with this address,
@@ -520,6 +539,36 @@ mod tests {
     #[cfg(not(any(windows, target_os = "openbsd", target_os = "bitrig")))]
     fn to_socket_addr_str_bad() {
         assert!(tsa("1200::AB00:1234::2552:7777:1313:34300").is_err());
+    }
+
+    #[test]
+    fn set_ip() {
+        fn ip4(low: u8) -> Ipv4Addr { Ipv4Addr::new(77, 88, 21, low) }
+        fn ip6(low: u16) -> Ipv6Addr { Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, low) }
+
+        let mut v4 = SocketAddrV4::new(ip4(11), 80);
+        assert_eq!(v4.ip(), &ip4(11));
+        v4.set_ip(ip4(12));
+        assert_eq!(v4.ip(), &ip4(12));
+
+        let mut addr = SocketAddr::V4(v4);
+        assert_eq!(addr.ip(), IpAddr::V4(ip4(12)));
+        addr.set_ip(IpAddr::V4(ip4(13)));
+        assert_eq!(addr.ip(), IpAddr::V4(ip4(13)));
+        addr.set_ip(IpAddr::V6(ip6(14)));
+        assert_eq!(addr.ip(), IpAddr::V6(ip6(14)));
+
+        let mut v6 = SocketAddrV6::new(ip6(1), 80, 0, 0);
+        assert_eq!(v6.ip(), &ip6(1));
+        v6.set_ip(ip6(2));
+        assert_eq!(v6.ip(), &ip6(2));
+
+        let mut addr = SocketAddr::V6(v6);
+        assert_eq!(addr.ip(), IpAddr::V6(ip6(2)));
+        addr.set_ip(IpAddr::V6(ip6(3)));
+        assert_eq!(addr.ip(), IpAddr::V6(ip6(3)));
+        addr.set_ip(IpAddr::V4(ip4(4)));
+        assert_eq!(addr.ip(), IpAddr::V4(ip4(4)));
     }
 
     #[test]
