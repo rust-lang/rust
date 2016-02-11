@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! This pass type-checks the MIR to ensure it is not broken.
+#![allow(unreachable_code)]
 
 use rustc::middle::infer;
 use rustc::middle::ty::{self, Ty};
@@ -322,6 +323,13 @@ impl<'a, 'tcx> MirPass for TypeckMir<'a, 'tcx> {
                          _tcx: &ty::ctxt<'tcx_>) {
         // FIXME: pass param_env to run_on_mir
         let mir: &mut Mir<'tcx> = unsafe { ::std::mem::transmute(mir) };
+
+        if self.tcx().sess.err_count() > 0 {
+            // compiling a broken program can obviously result in a
+            // broken MIR, so try not to report duplicate errors.
+            return;
+        }
+
         let mut type_verifier = TypeVerifier::new(self.infcx, mir);
         type_verifier.visit_mir(mir);
 
