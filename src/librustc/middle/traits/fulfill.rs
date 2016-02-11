@@ -42,7 +42,7 @@ pub struct GlobalFulfilledPredicates<'tcx> {
     dep_graph: DepGraph,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LocalFulfilledPredicates<'tcx> {
     set: FnvHashSet<ty::Predicate<'tcx>>,
     log: Option<(Rc<RefCell<ObligationForestUndoLog<'tcx>>>, usize)>,
