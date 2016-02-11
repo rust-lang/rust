@@ -248,13 +248,23 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             variant_index: 0,
                             substs: substs,
                             fields: field_refs,
-                            base: base.to_ref(),
+                            base: base.as_ref().map(|base| {
+                                FruInfo {
+                                    base: base.to_ref(),
+                                    field_types: cx.tcx.tables
+                                        .borrow()
+                                        .fru_field_types[&self.id]
+                                        .clone()
+                                }
+                            })
                         }
                     }
                     ty::TyEnum(adt, substs) => {
                         match cx.tcx.def_map.borrow()[&self.id].full_def() {
                             Def::Variant(enum_id, variant_id) => {
                                 debug_assert!(adt.did == enum_id);
+                                assert!(base.is_none());
+
                                 let index = adt.variant_index_with_id(variant_id);
                                 let field_refs = field_refs(&adt.variants[index], fields);
                                 ExprKind::Adt {
@@ -262,7 +272,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                     variant_index: index,
                                     substs: substs,
                                     fields: field_refs,
-                                    base: base.to_ref(),
+                                    base: None
                                 }
                             }
                             ref def => {
@@ -810,11 +820,16 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             };
             match upvar_capture {
                 ty::UpvarCapture::ByValue => field_kind,
-                ty::UpvarCapture::ByRef(_) => {
+                ty::UpvarCapture::ByRef(borrow) => {
                     ExprKind::Deref {
                         arg: Expr {
                             temp_lifetime: temp_lifetime,
-                            ty: var_ty,
+                            ty: cx.tcx.mk_ref(
+                                cx.tcx.mk_region(borrow.region),
+                                ty::TypeAndMut {
+                                    ty: var_ty,
+                                    mutbl: borrow.kind.to_mutbl_lossy()
+                                }),
                             span: expr.span,
                             kind: field_kind,
                         }.to_ref()

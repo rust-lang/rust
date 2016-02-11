@@ -3179,8 +3179,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
             return;
         }
-        let (adt, variant) = match fcx.def_struct_variant(def, path.span) {
-            Some((adt, variant)) => (adt, variant),
+        let variant = match fcx.def_struct_variant(def, path.span) {
+            Some((_, variant)) => variant,
             None => {
                 span_err!(fcx.tcx().sess, path.span, E0071,
                           "`{}` does not name a structure",
@@ -3195,12 +3195,23 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         check_expr_struct_fields(fcx, expr_ty, expr.span, variant, fields,
                                  base_expr.is_none());
-
         if let &Some(ref base_expr) = base_expr {
             check_expr_has_type(fcx, base_expr, expr_ty);
-            if adt.adt_kind() == ty::AdtKind::Enum {
-                span_err!(tcx.sess, base_expr.span, E0436,
-                          "functional record update syntax requires a struct");
+            match expr_ty.sty {
+                ty::TyStruct(adt, substs) => {
+                    fcx.inh.tables.borrow_mut().fru_field_types.insert(
+                        expr.id,
+                        adt.struct_variant().fields.iter().map(|f| {
+                            fcx.normalize_associated_types_in(
+                                expr.span, &f.ty(tcx, substs)
+                            )
+                        }).collect()
+                    );
+                }
+                _ => {
+                    span_err!(tcx.sess, base_expr.span, E0436,
+                              "functional record update syntax requires a struct");
+                }
             }
         }
     }

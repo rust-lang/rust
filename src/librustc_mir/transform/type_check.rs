@@ -47,6 +47,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'tcx> {
 
     fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: visit::LvalueContext) {
         self.super_lvalue(lvalue, context);
+        debug!("visiting lvalue {:?}", lvalue);
         let lv_ty = self.mir.lvalue_ty(self.tcx(), lvalue).to_ty(self.tcx());
         self.sanitize_type(lvalue, lv_ty);
     }

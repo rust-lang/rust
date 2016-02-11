@@ -126,7 +126,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             }
                         })
                     }
-                    mir::ProjectionElem::Field(ref field) => {
+                    mir::ProjectionElem::Field(ref field, _) => {
                         let base_ty = tr_base.ty.to_ty(tcx);
                         let base_repr = adt::represent_type(ccx, base_ty);
                         let discr = match tr_base.ty {
