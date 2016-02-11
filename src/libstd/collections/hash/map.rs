@@ -645,6 +645,13 @@ impl<K, V, S> HashMap<K, V, S>
         HashMap::with_capacity_and_hasher(capacity, hash_state)
     }
 
+    /// Returns a reference to the map's hasher.
+    #[unstable(feature = "hashmap_public_hasher", reason = "don't want to make insta-stable",
+               issue = "31262")]
+    pub fn hasher(&self) -> &S {
+        &self.hash_builder
+    }
+
     /// Returns the number of elements the map can hold without reallocating.
     ///
     /// This number is a lower bound; the `HashMap<K, V>` might be able to hold

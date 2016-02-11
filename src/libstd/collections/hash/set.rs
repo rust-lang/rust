@@ -193,6 +193,13 @@ impl<T, S> HashSet<T, S>
         }
     }
 
+    /// Returns a reference to the set's hasher.
+    #[unstable(feature = "hashmap_public_hasher", reason = "don't want to make insta-stable",
+               issue = "31262")]
+    pub fn hasher(&self) -> &S {
+        self.map.hasher()
+    }
+
     /// Deprecated, renamed to `with_hasher`
     #[inline]
     #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
