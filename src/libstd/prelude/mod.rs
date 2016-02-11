@@ -55,7 +55,7 @@
 //! * [`std::marker`]::{[`Copy`], [`Send`], [`Sized`], [`Sync`]}. The marker
 //!   traits indicate fundamental properties of types.
 //! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}. Various
-//!   operations for both destuctors and overloading `()`.
+//!   operations for both destructors and overloading `()`.
 //! * [`std::mem`]::[`drop`], a convenience function for explicitly dropping a
 //!   value.
 //! * [`std::boxed`]::[`Box`], a way to allocate values on the heap.
