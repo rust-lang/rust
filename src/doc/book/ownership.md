@@ -148,12 +148,12 @@ on the [heap][sh] for the actual data (`[1, 2, 3]`). Rust copies the address
 of this heap allocation to an internal pointer, which is part of the vector
 object placed on the stack (let's call it the data pointer). 
 
-It is worth pointing out (even at the risk of repeating things) that the vector
-object and its data live in separate memory regions instead of being a single
-contiguous memory allocation (due to reasons we will not go into at this point
-of time). These two parts of the vector (the one on the stack and one on the
-heap) must agree with each other at all times with regards to things like the
-length, capacity etc.
+It is worth pointing out (even at the risk of stating the obvious) that the
+vector object and its data live in separate memory regions instead of being a
+single contiguous memory allocation (due to reasons we will not go into at
+this point of time). These two parts of the vector (the one on the stack and
+one on the heap) must agree with each other at all times with regards to
+things like the length, capacity etc.
 
 When we move `v` to `v2`, rust actually does a bitwise copy of the vector
 object `v` into the stack allocation represented by `v2`. This shallow copy
@@ -169,7 +169,7 @@ For example if we truncated the vector to just two elements through `v2`:
 v2.truncate(2);
 ```
 
-and `v1` were still accessible we'd end up with an invalid vector since it
+and `v1` were still accessible we'd end up with an invalid vector since `v1`
 would not know that the heap data has been truncated. Now, the part of the
 vector `v1` on the stack does not agree with the corresponding part on the
 heap. `v1` still thinks there are three elements in the vector and will
