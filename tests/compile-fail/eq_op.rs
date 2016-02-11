@@ -3,6 +3,7 @@
 
 #[deny(eq_op)]
 #[allow(identity_op)]
+#[allow(no_effect)]
 fn main() {
     // simple values and comparisons
     1 == 1; //~ERROR equal expressions

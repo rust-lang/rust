@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![allow(dead_code)]
+#![allow(dead_code, no_effect)]
 #![allow(let_and_return)]
 #![allow(needless_return)]
 #![allow(unused_variables)]

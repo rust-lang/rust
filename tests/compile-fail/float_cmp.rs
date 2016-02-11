@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(float_cmp)]
-#![allow(unused)]
+#![allow(unused, no_effect)]
 
 use std::ops::Add;
 
