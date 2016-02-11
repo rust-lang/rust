@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
+
 #![feature(std_misc)]
 
 use std::sync::mpsc::{channel, Sender};

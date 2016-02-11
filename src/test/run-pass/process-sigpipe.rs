@@ -18,6 +18,8 @@
 // (instead of running forever), and that it does not print an error
 // message about a broken pipe.
 
+// ignore-emscripten no threads support
+
 use std::process;
 use std::thread;
 

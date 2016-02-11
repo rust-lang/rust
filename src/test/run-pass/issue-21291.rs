@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
+
 // Regression test for unwrapping the result of `join`, issue #21291
 
 use std::thread;

@@ -9,6 +9,8 @@
 // except according to those terms.
 #![feature(panic_handler, const_fn, std_panic)]
 
+// ignore-emscripten no threads support
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::panic;
 use std::thread;
