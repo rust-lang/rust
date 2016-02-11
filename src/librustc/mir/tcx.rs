@@ -73,23 +73,7 @@ impl<'tcx> LvalueTy<'tcx> {
                         tcx.sess.bug(&format!("cannot downcast non-enum type: `{:?}`", self))
                     }
                 },
-            ProjectionElem::Field(field) => {
-                let field_ty = match self {
-                    LvalueTy::Ty { ty } => match ty.sty {
-                        ty::TyStruct(adt_def, substs) =>
-                            adt_def.struct_variant().fields[field.index()].ty(tcx, substs),
-                        ty::TyTuple(ref tys) =>
-                            tys[field.index()],
-                        ty::TyClosure(_, ref closure_substs) =>
-                            closure_substs.upvar_tys[field.index()],
-                        _ =>
-                            tcx.sess.bug(&format!("cannot get field of type: `{:?}`", ty)),
-                    },
-                    LvalueTy::Downcast { adt_def, substs, variant_index } =>
-                        adt_def.variants[variant_index].fields[field.index()].ty(tcx, substs),
-                };
-                LvalueTy::Ty { ty: field_ty }
-            }
+            ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }
         }
     }
 }
