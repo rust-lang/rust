@@ -148,13 +148,18 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let arenas = ty::CtxtArenas::new();
     let hir_map = driver::make_map(&sess, &mut hir_forest);
 
-    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+    let krate_and_analysis = abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                      &cstore,
                                                      hir_map,
                                                      &arenas,
                                                      &name,
                                                      resolve::MakeGlobMap::No,
-                                                     |tcx, _, analysis, _| {
+                                                     |tcx, _, analysis, result| {
+        // Return if the driver hit an err (in `result`)
+        if let Err(_) = result {
+            return None
+        }
+
         let _ignore = tcx.dep_graph.in_ignore();
         let ty::CrateAnalysis { access_levels, .. } = analysis;
 
@@ -195,11 +200,17 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
 
         let external_paths = ctxt.external_paths.borrow_mut().take();
         *analysis.external_paths.borrow_mut() = external_paths;
+
         let map = ctxt.external_typarams.borrow_mut().take();
         *analysis.external_typarams.borrow_mut() = map;
+
         let map = ctxt.inlined.borrow_mut().take();
         *analysis.inlined.borrow_mut() = map;
+
         analysis.deref_trait_did = ctxt.deref_trait_did.get();
-        (krate, analysis)
-    }), &sess)
+
+        Some((krate, analysis))
+    }), &sess);
+
+    krate_and_analysis.unwrap()
 }
