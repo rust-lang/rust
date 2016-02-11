@@ -2163,7 +2163,7 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&index));
                 try!(word(&mut self.s, "]"));
             }
-            ast::ExprKing::Range(ref start, ref end, limits) => {
+            ast::ExprKind::Range(ref start, ref end, limits) => {
                 if let &Some(ref e) = start {
                     try!(self.print_expr(&e));
                 }

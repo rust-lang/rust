@@ -2056,7 +2056,7 @@ impl<'a> Parser<'a> {
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>,
                     limits: RangeLimits)
-                    -> ast::Expr_ {
+                    -> ast::ExprKind {
         ExprKind::Range(start, end, limits)
     }
 
