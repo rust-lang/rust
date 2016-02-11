@@ -4,6 +4,7 @@ use rustc_front::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use syntax::parse::token::InternedString;
+use syntax::util::small_vector::SmallVector;
 use utils::{SpanlessEq, SpanlessHash};
 use utils::{get_parent_expr, in_macro, span_note_and_lint};
 
@@ -78,8 +79,8 @@ impl LateLintPass for CopyAndPaste {
             }
 
             let (conds, blocks) = if_sequence(expr);
-            lint_same_then_else(cx, &blocks);
-            lint_same_cond(cx, &conds);
+            lint_same_then_else(cx, blocks.as_slice());
+            lint_same_cond(cx, conds.as_slice());
             lint_match_arms(cx, expr);
         }
     }
@@ -143,9 +144,9 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 /// Return the list of condition expressions and the list of blocks in a sequence of `if/else`.
 /// Eg. would return `([a, b], [c, d, e])` for the expression
 /// `if a { c } else if b { d } else { e }`.
-fn if_sequence(mut expr: &Expr) -> (Vec<&Expr>, Vec<&Block>) {
-    let mut conds = vec![];
-    let mut blocks = vec![];
+fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
+    let mut conds = SmallVector::zero();
+    let mut blocks = SmallVector::zero();
 
     while let ExprIf(ref cond, ref then_block, ref else_expr) = expr.node {
         conds.push(&**cond);
