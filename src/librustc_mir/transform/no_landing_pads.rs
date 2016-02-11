@@ -26,7 +26,9 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
             Terminator::Return |
             Terminator::If { .. } |
             Terminator::Switch { .. } |
-            Terminator::SwitchInt { .. } => { /* nothing to do */ },
+            Terminator::SwitchInt { .. } => {
+                /* nothing to do */
+            },
             Terminator::Drop { ref mut unwind, .. } => {
                 unwind.take();
             },

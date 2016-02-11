@@ -148,9 +148,6 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
             Ok(mut mir) => {
-                // FIXME: This should run later rather than earlier (since this is supposed to be a
-                // codegen option), but we do not want to re-run the whole simplify_cfg pass all
-                // over again after this pass.
                 no_landing_pads::NoLandingPads.run_on_mir(&mut mir, self.tcx);
                 simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir, self.tcx);
 
