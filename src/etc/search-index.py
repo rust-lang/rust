@@ -14,6 +14,7 @@ from __future__ import print_function
 
 import sys
 import os
+import glob
 import json
 import re
 import argparse
@@ -320,28 +321,46 @@ def check_index(args):
         stderr(DIFF_MSG.format(insertions, deletions))
         raise SystemExit(1)
 
-def update_ref(args):
-    source = try_load(args.source, (index_load, ref_load))
+def update_ref(source, destination):
+    for path in {source, destination}:
+        if not os.path.exists(path):
+            stderr("File does not exist: `{}`".format(path))
+            raise SystemExit(1)
+
+    source = try_load(source, (index_load, ref_load))
     abort_on_errs()
-    with open(args.destination, "r") as fp:
+    with open(destination, "r") as fp:
         template = fp.read()
         new, n = RE_REF.subn(REF_FENCE.format(dumps(source)), template)
     if n != 1:
         stderr("Error -> less or more than a single embedded reference-index")
         raise SystemExit(1)
 
-    root, fname = os.path.split(args.destination)
+    root, fname = os.path.split(destination)
     bak_path = os.path.join(root, "." + fname + ".bak")
-    os.rename(args.destination, bak_path)
+    os.rename(destination, bak_path)
     try:
-        fp = open(args.destination, "w")
+        fp = open(destination, "w")
         fp.writelines([line.rstrip() + '\n' for line in new.splitlines()])
         os.remove(bak_path)
     except Exception as e:
-        os.remove(args.destination)
-        os.rename(bak_path, args.destination)
+        os.remove(destination)
+        os.rename(bak_path, destination)
         stderr("Error -> failed writing new reference-index:\n\t{}".format(e))
         raise SystemExit(1)
+
+def update_refs(args):
+    global ERRS
+    exit = 0
+    for destination in glob.glob(args.destination):
+        template_dict = { "basename": os.path.splitext(os.path.basename(destination))[0] }
+        source = args.source % template_dict
+        try:
+            update_ref(source, destination)
+        except SystemExit as e:
+            exit = e.code
+            ERRS = []
+    raise SystemExit(exit)
 
 def create_parser():
     parser = argparse.ArgumentParser()
@@ -361,7 +380,7 @@ def create_parser():
                             help="overwrite a reference-index from a {search, reference}-index")
     update.add_argument("source")
     update.add_argument("destination")
-    update.set_defaults(func=update_ref)
+    update.set_defaults(func=update_refs)
     return parser
 
 if __name__ == "__main__":
