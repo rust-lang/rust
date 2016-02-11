@@ -16,10 +16,9 @@
 use DefModifiers;
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
-use resolve_imports::ImportResolution;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
-use {NameBinding, DefOrModule};
+use {NameBinding, NameBindingKind};
 use {names_to_string, module_to_string};
 use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
@@ -82,8 +81,8 @@ impl<'a> ToNameBinding<'a> for (Module<'a>, Span) {
 
 impl<'a> ToNameBinding<'a> for (Def, Span, DefModifiers) {
     fn to_name_binding(self) -> NameBinding<'a> {
-        let def = DefOrModule::Def(self.0);
-        NameBinding { modifiers: self.2, def_or_module: def, span: Some(self.1) }
+        let kind = NameBindingKind::Def(self.0);
+        NameBinding { modifiers: self.2, kind: kind, span: Some(self.1) }
     }
 }
 
@@ -101,16 +100,16 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
         where T: ToNameBinding<'b>
     {
-        parent.try_define_child(name, ns, def.to_name_binding());
+        let _ = parent.try_define_child(name, ns, self.new_name_binding(def.to_name_binding()));
     }
 
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
-        let binding = def.to_name_binding();
-        let old_binding = match parent.try_define_child(name, ns, binding.clone()) {
-            Some(old_binding) => old_binding,
-            None => return,
+        let binding = self.new_name_binding(def.to_name_binding());
+        let old_binding = match parent.try_define_child(name, ns, binding) {
+            Ok(()) => return,
+            Err(old_binding) => old_binding,
         };
 
         let span = binding.span.unwrap_or(DUMMY_SP);
@@ -699,18 +698,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 debug!("(building import directive) building import directive: {}::{}",
                        names_to_string(&module_.imports.borrow().last().unwrap().module_path),
                        target);
-
-                let mut import_resolutions = module_.import_resolutions.borrow_mut();
-                for &ns in [TypeNS, ValueNS].iter() {
-                    let mut resolution = import_resolutions.entry((target, ns)).or_insert(
-                        ImportResolution::new(id, is_public)
-                    );
-
-                    resolution.outstanding_references += 1;
-                    // the source of this name is different now
-                    resolution.id = id;
-                    resolution.is_public = is_public;
-                }
+                module_.increment_outstanding_references_for(target, ValueNS);
+                module_.increment_outstanding_references_for(target, TypeNS);
             }
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the
