@@ -418,7 +418,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                              len: Operand<'tcx>,
                              span: Span) {
         // fn(&(filename: &'static str, line: u32), index: usize, length: usize) -> !
-        let region = ty::ReStatic; // TODO(mir-borrowck): use a better region?
+        let region = ty::ReStatic; // FIXME(mir-borrowck): use a better region?
         let func = self.lang_function(lang_items::PanicBoundsCheckFnLangItem);
         let args = self.hir.tcx().replace_late_bound_regions(&func.ty.fn_args(), |_| region).0;
 
@@ -452,7 +452,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// Create diverge cleanup and branch to it from `block`.
     pub fn panic(&mut self, block: BasicBlock, msg: &'static str, span: Span) {
         // fn(&(msg: &'static str filename: &'static str, line: u32)) -> !
-        let region = ty::ReStatic; // TODO(mir-borrowck): use a better region?
+        let region = ty::ReStatic; // FIXME(mir-borrowck): use a better region?
         let func = self.lang_function(lang_items::PanicFnLangItem);
         let args = self.hir.tcx().replace_late_bound_regions(&func.ty.fn_args(), |_| region).0;
 
