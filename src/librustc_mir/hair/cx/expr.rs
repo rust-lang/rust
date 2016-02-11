@@ -54,14 +54,35 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     // Find the actual method implementation being called and
                     // build the appropriate UFCS call expression with the
                     // callee-object as self parameter.
+
+                    // rewrite f(u, v) into FnOnce::call_once(f, (u, v))
+
                     let method = method_callee(cx, self, ty::MethodCall::expr(self.id));
-                    let mut argrefs = vec![fun.to_ref()];
-                    argrefs.extend(args.iter().map(|a| a.to_ref()));
+
+                    let sig = match method.ty.sty {
+                        ty::TyBareFn(_, fn_ty) => &fn_ty.sig,
+                        _ => cx.tcx.sess.span_bug(self.span, "type of method is not an fn")
+                    };
+
+                    let sig = cx.tcx.no_late_bound_regions(sig).unwrap_or_else(|| {
+                        cx.tcx.sess.span_bug(self.span, "method call has late-bound regions")
+                    });
+
+                    assert_eq!(sig.inputs.len(), 2);
+
+                    let tupled_args = Expr {
+                        ty: sig.inputs[1],
+                        temp_lifetime: cx.tcx.region_maps.temporary_scope(self.id),
+                        span: self.span,
+                        kind: ExprKind::Tuple {
+                            fields: args.iter().map(ToRef::to_ref).collect()
+                        }
+                    };
 
                     ExprKind::Call {
                         ty: method.ty,
                         fun: method.to_ref(),
-                        args: argrefs,
+                        args: vec![fun.to_ref(), tupled_args.to_ref()]
                     }
                 } else {
                     let adt_data = if let hir::ExprPath(..) = fun.node {
