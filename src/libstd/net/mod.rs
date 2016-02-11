@@ -139,7 +139,6 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
 ///
 /// ```no_run
 /// #![feature(lookup_addr)]
-/// #![feature(ip_addr)]
 ///
 /// use std::net::{self, Ipv4Addr, IpAddr};
 ///
