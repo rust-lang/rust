@@ -84,6 +84,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
     let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(impl_param_env));
+    let mut fulfillment_cx = traits::FulfillmentContext::new();
 
     let named_type = tcx.lookup_item_type(self_type_did).ty;
     let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
@@ -105,7 +106,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         return Err(());
     }
 
-    if let Err(ref errors) = infcx.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+    if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
         // this could be reached when we get lazy normalization
         traits::report_fulfillment_errors(&infcx, errors);
         return Err(());
