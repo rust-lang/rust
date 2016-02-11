@@ -60,9 +60,8 @@ use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 
-use syntax::ast;
-use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
-use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
+use syntax::ast::{self, FloatTy};
+use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Pos};
 use syntax::errors::DiagnosticBuilder;
@@ -1074,19 +1073,19 @@ impl PrimitiveTypeTable {
 
         table.intern("bool", TyBool);
         table.intern("char", TyChar);
-        table.intern("f32", TyFloat(TyF32));
-        table.intern("f64", TyFloat(TyF64));
-        table.intern("isize", TyInt(TyIs));
-        table.intern("i8", TyInt(TyI8));
-        table.intern("i16", TyInt(TyI16));
-        table.intern("i32", TyInt(TyI32));
-        table.intern("i64", TyInt(TyI64));
+        table.intern("f32", TyFloat(FloatTy::F32));
+        table.intern("f64", TyFloat(FloatTy::F64));
+        table.intern("isize", TyInt(IntTy::Is));
+        table.intern("i8", TyInt(IntTy::I8));
+        table.intern("i16", TyInt(IntTy::I16));
+        table.intern("i32", TyInt(IntTy::I32));
+        table.intern("i64", TyInt(IntTy::I64));
         table.intern("str", TyStr);
-        table.intern("usize", TyUint(TyUs));
-        table.intern("u8", TyUint(TyU8));
-        table.intern("u16", TyUint(TyU16));
-        table.intern("u32", TyUint(TyU32));
-        table.intern("u64", TyUint(TyU64));
+        table.intern("usize", TyUint(UintTy::Us));
+        table.intern("u8", TyUint(UintTy::U8));
+        table.intern("u16", TyUint(UintTy::U16));
+        table.intern("u32", TyUint(UintTy::U32));
+        table.intern("u64", TyUint(UintTy::U64));
 
         table
     }

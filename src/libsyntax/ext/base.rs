@@ -120,7 +120,7 @@ impl<F> MultiItemDecorator for F
     }
 }
 
-// A more flexible ItemModifier (ItemModifier should go away, eventually, FIXME).
+// A more flexible ItemKind::Modifier (ItemKind::Modifier should go away, eventually, FIXME).
 // meta_item is the annotation, item is the item being modified, parent_item
 // is the impl or trait item is declared in if item is part of such a thing.
 // FIXME Decorators should follow the same pattern too.
@@ -205,7 +205,7 @@ macro_rules! make_stmts_default {
     ($me:expr) => {
         $me.make_expr().map(|e| {
             SmallVector::one(P(codemap::respan(
-                e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID))))
+                e.span, ast::StmtKind::Expr(e, ast::DUMMY_NODE_ID))))
         })
     }
 }
@@ -303,7 +303,7 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprLit(_) = e.node {
+            if let ast::ExprKind::Lit(_) = e.node {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
@@ -349,7 +349,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprLit(P(codemap::respan(sp, ast::LitBool(false)))),
+            node: ast::ExprKind::Lit(P(codemap::respan(sp, ast::LitKind::Bool(false)))),
             span: sp,
             attrs: None,
         })
@@ -367,7 +367,7 @@ impl DummyResult {
     pub fn raw_ty(sp: Span) -> P<ast::Ty> {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: ast::TyInfer,
+            node: ast::TyKind::Infer,
             span: sp
         })
     }
@@ -402,8 +402,8 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Stmt>>> {
         Some(SmallVector::one(P(
             codemap::respan(self.span,
-                            ast::StmtExpr(DummyResult::raw_expr(self.span),
-                                          ast::DUMMY_NODE_ID)))))
+                            ast::StmtKind::Expr(DummyResult::raw_expr(self.span),
+                                                ast::DUMMY_NODE_ID)))))
     }
 }
 
@@ -773,8 +773,8 @@ pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
     // we want to be able to handle e.g. concat("foo", "bar")
     let expr = cx.expander().fold_expr(expr);
     match expr.node {
-        ast::ExprLit(ref l) => match l.node {
-            ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
+        ast::ExprKind::Lit(ref l) => match l.node {
+            ast::LitKind::Str(ref s, style) => return Some(((*s).clone(), style)),
             _ => cx.span_err(l.span, err_msg)
         },
         _ => cx.span_err(expr.span, err_msg)

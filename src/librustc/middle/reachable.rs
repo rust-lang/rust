@@ -25,7 +25,7 @@ use session::config;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use rustc_front::hir;
@@ -236,7 +236,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // participate in linkage after this product is produced)
             if let ast_map::NodeItem(item) = *node {
                 if let hir::ItemFn(_, _, _, abi, _, _) = item.node {
-                    if abi != abi::Rust {
+                    if abi != Abi::Rust {
                         self.reachable_symbols.insert(search_item);
                     }
                 }

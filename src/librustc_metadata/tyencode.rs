@@ -76,26 +76,26 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         ty::TyChar => { write!(w, "c"); }
         ty::TyInt(t) => {
             match t {
-                ast::TyIs => write!(w, "is"),
-                ast::TyI8 => write!(w, "MB"),
-                ast::TyI16 => write!(w, "MW"),
-                ast::TyI32 => write!(w, "ML"),
-                ast::TyI64 => write!(w, "MD")
+                ast::IntTy::Is => write!(w, "is"),
+                ast::IntTy::I8 => write!(w, "MB"),
+                ast::IntTy::I16 => write!(w, "MW"),
+                ast::IntTy::I32 => write!(w, "ML"),
+                ast::IntTy::I64 => write!(w, "MD")
             };
         }
         ty::TyUint(t) => {
             match t {
-                ast::TyUs => write!(w, "us"),
-                ast::TyU8 => write!(w, "Mb"),
-                ast::TyU16 => write!(w, "Mw"),
-                ast::TyU32 => write!(w, "Ml"),
-                ast::TyU64 => write!(w, "Md")
+                ast::UintTy::Us => write!(w, "us"),
+                ast::UintTy::U8 => write!(w, "Mb"),
+                ast::UintTy::U16 => write!(w, "Mw"),
+                ast::UintTy::U32 => write!(w, "Ml"),
+                ast::UintTy::U64 => write!(w, "Md")
             };
         }
         ty::TyFloat(t) => {
             match t {
-                ast::TyF32 => write!(w, "Mf"),
-                ast::TyF64 => write!(w, "MF"),
+                ast::FloatTy::F32 => write!(w, "Mf"),
+                ast::FloatTy::F64 => write!(w, "MF"),
             };
         }
         ty::TyEnum(def, substs) => {

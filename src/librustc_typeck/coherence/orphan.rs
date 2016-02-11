@@ -121,84 +121,84 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "*mut T",
                                                   item.span);
                     }
-                    ty::TyInt(ast::TyI8) => {
+                    ty::TyInt(ast::IntTy::I8) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.i8_impl(),
                                                   "i8",
                                                   "i8",
                                                   item.span);
                     }
-                    ty::TyInt(ast::TyI16) => {
+                    ty::TyInt(ast::IntTy::I16) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.i16_impl(),
                                                   "i16",
                                                   "i16",
                                                   item.span);
                     }
-                    ty::TyInt(ast::TyI32) => {
+                    ty::TyInt(ast::IntTy::I32) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.i32_impl(),
                                                   "i32",
                                                   "i32",
                                                   item.span);
                     }
-                    ty::TyInt(ast::TyI64) => {
+                    ty::TyInt(ast::IntTy::I64) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.i64_impl(),
                                                   "i64",
                                                   "i64",
                                                   item.span);
                     }
-                    ty::TyInt(ast::TyIs) => {
+                    ty::TyInt(ast::IntTy::Is) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.isize_impl(),
                                                   "isize",
                                                   "isize",
                                                   item.span);
                     }
-                    ty::TyUint(ast::TyU8) => {
+                    ty::TyUint(ast::UintTy::U8) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.u8_impl(),
                                                   "u8",
                                                   "u8",
                                                   item.span);
                     }
-                    ty::TyUint(ast::TyU16) => {
+                    ty::TyUint(ast::UintTy::U16) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.u16_impl(),
                                                   "u16",
                                                   "u16",
                                                   item.span);
                     }
-                    ty::TyUint(ast::TyU32) => {
+                    ty::TyUint(ast::UintTy::U32) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.u32_impl(),
                                                   "u32",
                                                   "u32",
                                                   item.span);
                     }
-                    ty::TyUint(ast::TyU64) => {
+                    ty::TyUint(ast::UintTy::U64) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.u64_impl(),
                                                   "u64",
                                                   "u64",
                                                   item.span);
                     }
-                    ty::TyUint(ast::TyUs) => {
+                    ty::TyUint(ast::UintTy::Us) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.usize_impl(),
                                                   "usize",
                                                   "usize",
                                                   item.span);
                     }
-                    ty::TyFloat(ast::TyF32) => {
+                    ty::TyFloat(ast::FloatTy::F32) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.f32_impl(),
                                                   "f32",
                                                   "f32",
                                                   item.span);
                     }
-                    ty::TyFloat(ast::TyF64) => {
+                    ty::TyFloat(ast::FloatTy::F64) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.f64_impl(),
                                                   "f64",

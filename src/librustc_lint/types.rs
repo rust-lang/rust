@@ -23,7 +23,8 @@ use lint::{LintPass, LateLintPass};
 use std::cmp;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
-use syntax::{abi, ast};
+use syntax::ast;
+use syntax::abi::Abi;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
@@ -102,10 +103,10 @@ impl LateLintPass for TypeLimits {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
                 if let hir::ExprLit(ref lit) = expr.node {
                     match lit.node {
-                        ast::LitInt(_, ast::UnsignedIntLit(_)) => {
+                        ast::LitKind::Int(_, ast::LitIntType::Unsigned(_)) => {
                             forbid_unsigned_negation(cx, e.span);
                         },
-                        ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
+                        ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                             if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
                                 forbid_unsigned_negation(cx, e.span);
                             }
@@ -138,7 +139,7 @@ impl LateLintPass for TypeLimits {
 
                     if let Some(bits) = opt_ty_bits {
                         let exceeding = if let hir::ExprLit(ref lit) = r.node {
-                            if let ast::LitInt(shift, _) = lit.node { shift >= bits }
+                            if let ast::LitKind::Int(shift, _) = lit.node { shift >= bits }
                             else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked, None) {
@@ -158,9 +159,9 @@ impl LateLintPass for TypeLimits {
                 match cx.tcx.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
-                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
-                                let int_type = if let ast::TyIs = t {
+                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
+                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
+                                let int_type = if let ast::IntTy::Is = t {
                                     cx.sess().target.int_type
                                 } else {
                                     t
@@ -181,15 +182,16 @@ impl LateLintPass for TypeLimits {
                         };
                     },
                     ty::TyUint(t) => {
-                        let uint_type = if let ast::TyUs = t {
+                        let uint_type = if let ast::UintTy::Us = t {
                             cx.sess().target.uint_type
                         } else {
                             t
                         };
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
-                            ast::LitByte(_v) => return,  // _v is u8, within range by definition
-                            ast::LitInt(v, _) => v,
+                            // _v is u8, within range by definition
+                            ast::LitKind::Byte(_v) => return,
+                            ast::LitKind::Int(v, _) => v,
                             _ => panic!()
                         };
                         if lit_val < min || lit_val > max {
@@ -200,8 +202,8 @@ impl LateLintPass for TypeLimits {
                     ty::TyFloat(t) => {
                         let (min, max) = float_ty_range(t);
                         let lit_val: f64 = match lit.node {
-                            ast::LitFloat(ref v, _) |
-                            ast::LitFloatUnsuffixed(ref v) => {
+                            ast::LitKind::Float(ref v, _) |
+                            ast::LitKind::FloatUnsuffixed(ref v) => {
                                 match v.parse() {
                                     Ok(f) => f,
                                     Err(_) => return
@@ -246,48 +248,48 @@ impl LateLintPass for TypeLimits {
         // warnings are consistent between 32- and 64-bit platforms
         fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
             match int_ty {
-                ast::TyIs => (i64::MIN,        i64::MAX),
-                ast::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
-                ast::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
-                ast::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
-                ast::TyI64 =>   (i64::MIN,        i64::MAX)
+                ast::IntTy::Is => (i64::MIN,        i64::MAX),
+                ast::IntTy::I8 =>    (i8::MIN  as i64, i8::MAX  as i64),
+                ast::IntTy::I16 =>   (i16::MIN as i64, i16::MAX as i64),
+                ast::IntTy::I32 =>   (i32::MIN as i64, i32::MAX as i64),
+                ast::IntTy::I64 =>   (i64::MIN,        i64::MAX)
             }
         }
 
         fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
             match uint_ty {
-                ast::TyUs => (u64::MIN,         u64::MAX),
-                ast::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
-                ast::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
-                ast::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
-                ast::TyU64 =>   (u64::MIN,         u64::MAX)
+                ast::UintTy::Us => (u64::MIN,         u64::MAX),
+                ast::UintTy::U8 =>    (u8::MIN   as u64, u8::MAX   as u64),
+                ast::UintTy::U16 =>   (u16::MIN  as u64, u16::MAX  as u64),
+                ast::UintTy::U32 =>   (u32::MIN  as u64, u32::MAX  as u64),
+                ast::UintTy::U64 =>   (u64::MIN,         u64::MAX)
             }
         }
 
         fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
             match float_ty {
-                ast::TyF32 => (f32::MIN as f64, f32::MAX as f64),
-                ast::TyF64 => (f64::MIN,        f64::MAX)
+                ast::FloatTy::F32 => (f32::MIN as f64, f32::MAX as f64),
+                ast::FloatTy::F64 => (f64::MIN,        f64::MAX)
             }
         }
 
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::TyIs => int_ty_bits(target_int_ty, target_int_ty),
-                ast::TyI8 => 8,
-                ast::TyI16 => 16 as u64,
-                ast::TyI32 => 32,
-                ast::TyI64 => 64,
+                ast::IntTy::Is => int_ty_bits(target_int_ty, target_int_ty),
+                ast::IntTy::I8 => 8,
+                ast::IntTy::I16 => 16 as u64,
+                ast::IntTy::I32 => 32,
+                ast::IntTy::I64 => 64,
             }
         }
 
         fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
-                ast::TyU8 => 8,
-                ast::TyU16 => 16,
-                ast::TyU32 => 32,
-                ast::TyU64 => 64,
+                ast::UintTy::Us => uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::UintTy::U8 => 8,
+                ast::UintTy::U16 => 16,
+                ast::UintTy::U32 => 32,
+                ast::UintTy::U64 => 64,
             }
         }
 
@@ -310,10 +312,8 @@ impl LateLintPass for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => v as i64,
-                            ast::LitInt(v, ast::SignedIntLit(_, ast::Minus)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Minus)) => -(v as i64),
+                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
+                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i64,
                             _ => return true
                         },
                         _ => panic!()
@@ -324,7 +324,7 @@ impl LateLintPass for TypeLimits {
                     let (min, max): (u64, u64) = uint_ty_range(uint_ty);
                     let lit_val: u64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            ast::LitInt(v, _) => v,
+                            ast::LitKind::Int(v, _) => v,
                             _ => return true
                         },
                         _ => panic!()
@@ -558,10 +558,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::TyBareFn(None, bare_fn) => {
                 match bare_fn.abi {
-                    abi::Rust |
-                    abi::RustIntrinsic |
-                    abi::PlatformIntrinsic |
-                    abi::RustCall => {
+                    Abi::Rust |
+                    Abi::RustIntrinsic |
+                    Abi::PlatformIntrinsic |
+                    Abi::RustCall => {
                         return FfiUnsafe(
                             "found function pointer with Rust calling \
                              convention in foreign module; consider using an \
@@ -677,7 +677,7 @@ impl LateLintPass for ImproperCTypes {
         }
 
         if let hir::ItemForeignMod(ref nmod) = it.node {
-            if nmod.abi != abi::RustIntrinsic && nmod.abi != abi::PlatformIntrinsic {
+            if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
                         hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),

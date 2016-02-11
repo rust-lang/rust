@@ -91,7 +91,7 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, ExprRet, MutMutable};
+use syntax::ast::{MetaItem, Expr, ExprKind, Mutability};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt,Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -148,7 +148,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 },
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(Ptr(Box::new(Literal(Path::new_local("__S"))),
-                            Borrowed(None, MutMutable))),
+                            Borrowed(None, Mutability::Mutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,
@@ -208,16 +208,15 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 let call = if i != last {
                     cx.expr_try(span, call)
                 } else {
-                    cx.expr(span, ExprRet(Some(call)))
+                    cx.expr(span, ExprKind::Ret(Some(call)))
                 };
                 stmts.push(cx.stmt_expr(call));
             }
 
             // unit structs have no fields and need to return Ok()
             if stmts.is_empty() {
-                let ret_ok = cx.expr(trait_span,
-                                     ExprRet(Some(cx.expr_ok(trait_span,
-                                                             cx.expr_tuple(trait_span, vec![])))));
+                let ok = cx.expr_ok(trait_span, cx.expr_tuple(trait_span, vec![]));
+                let ret_ok = cx.expr(trait_span, ExprKind::Ret(Some(ok)));
                 stmts.push(cx.stmt_expr(ret_ok));
             }
 
@@ -254,14 +253,13 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     let call = if i != last {
                         cx.expr_try(span, call)
                     } else {
-                        cx.expr(span, ExprRet(Some(call)))
+                        cx.expr(span, ExprKind::Ret(Some(call)))
                     };
                     stmts.push(cx.stmt_expr(call));
                 }
             } else {
-                let ret_ok = cx.expr(trait_span,
-                                     ExprRet(Some(cx.expr_ok(trait_span,
-                                                             cx.expr_tuple(trait_span, vec![])))));
+                let ok = cx.expr_ok(trait_span, cx.expr_tuple(trait_span, vec![]));
+                let ret_ok = cx.expr(trait_span, ExprKind::Ret(Some(ok)));
                 stmts.push(cx.stmt_expr(ret_ok));
             }
 

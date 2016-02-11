@@ -48,7 +48,7 @@ pub fn contains_nodebug_attribute(attributes: &[ast::Attribute]) -> bool {
     attributes.iter().any(|attr| {
         let meta_item: &ast::MetaItem = &*attr.node.value;
         match meta_item.node {
-            ast::MetaWord(ref value) => &value[..] == "no_debug",
+            ast::MetaItemKind::Word(ref value) => &value[..] == "no_debug",
             _ => false
         }
     })

@@ -350,7 +350,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             self.visit_ty(&arg.ty);
         }
 
-        if let ast::Return(ref ret_ty) = sig.decl.output {
+        if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
             self.visit_ty(ret_ty);
         }
 
@@ -429,7 +429,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             self.visit_ty(&arg.ty);
         }
 
-        if let ast::Return(ref ret_ty) = decl.output {
+        if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
             self.visit_ty(&ret_ty);
         }
 
@@ -807,7 +807,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         self.visit_pat(&p);
 
         for &(id, ref p, immut, _) in &collector.collected_paths {
-            let value = if immut == ast::MutImmutable {
+            let value = if immut == ast::Mutability::Immutable {
                 value.to_string()
             } else {
                 "<mutable>".to_string()
@@ -864,9 +864,10 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
 impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
+        use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);
         match item.node {
-            ast::ItemUse(ref use_item) => {
+            Use(ref use_item) => {
                 match use_item.node {
                     ast::ViewPathSimple(ident, ref path) => {
                         let sub_span = self.span.span_for_last_ident(path.span);
@@ -927,7 +928,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     ast::ViewPathList(ref path, ref list) => {
                         for plid in list {
                             match plid.node {
-                                ast::PathListIdent { id, .. } => {
+                                ast::PathListItemKind::Ident { id, .. } => {
                                     match self.lookup_type_ref(id) {
                                         Some(def_id) => match self.lookup_def_kind(id, plid.span) {
                                             Some(kind) => {
@@ -942,7 +943,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                         None => (),
                                     }
                                 }
-                                ast::PathListMod { .. } => (),
+                                ast::PathListItemKind::Mod { .. } => (),
                             }
                         }
 
@@ -950,7 +951,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     }
                 }
             }
-            ast::ItemExternCrate(ref s) => {
+            ExternCrate(ref s) => {
                 let location = match *s {
                     Some(s) => s.to_string(),
                     None => item.ident.to_string(),
@@ -968,28 +969,28 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                           &location,
                                           self.cur_scope);
             }
-            ast::ItemFn(ref decl, _, _, _, ref ty_params, ref body) =>
+            Fn(ref decl, _, _, _, ref ty_params, ref body) =>
                 self.process_fn(item, &**decl, ty_params, &**body),
-            ast::ItemStatic(ref typ, _, ref expr) =>
+            Static(ref typ, _, ref expr) =>
                 self.process_static_or_const_item(item, typ, expr),
-            ast::ItemConst(ref typ, ref expr) =>
+            Const(ref typ, ref expr) =>
                 self.process_static_or_const_item(item, &typ, &expr),
-            ast::ItemStruct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
-            ast::ItemEnum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            ast::ItemImpl(_, _,
+            Struct(ref def, ref ty_params) => self.process_struct(item, def, ty_params),
+            Enum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
+            Impl(_, _,
                           ref ty_params,
                           ref trait_ref,
                           ref typ,
                           ref impl_items) => {
                 self.process_impl(item, ty_params, trait_ref, &typ, impl_items)
             }
-            ast::ItemTrait(_, ref generics, ref trait_refs, ref methods) =>
+            Trait(_, ref generics, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
-            ast::ItemMod(ref m) => {
+            Mod(ref m) => {
                 self.process_mod(item);
                 self.nest(item.id, |v| visit::walk_mod(v, m));
             }
-            ast::ItemTy(ref ty, ref ty_params) => {
+            Ty(ref ty, ref ty_params) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let value = ty_to_string(&**ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
@@ -998,7 +999,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 self.visit_ty(&**ty);
                 self.process_generic_params(ty_params, item.span, &qualname, item.id);
             }
-            ast::ItemMac(_) => (),
+            Mac(_) => (),
             _ => visit::walk_item(self, item),
         }
     }
@@ -1019,22 +1020,22 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
         self.process_macro_use(trait_item.span, trait_item.id);
         match trait_item.node {
-            ast::ConstTraitItem(ref ty, Some(ref expr)) => {
+            ast::TraitItemKind::Const(ref ty, Some(ref expr)) => {
                 self.process_const(trait_item.id,
                                    trait_item.ident.name,
                                    trait_item.span,
                                    &*ty,
                                    &*expr);
             }
-            ast::MethodTraitItem(ref sig, ref body) => {
+            ast::TraitItemKind::Method(ref sig, ref body) => {
                 self.process_method(sig,
                                     body.as_ref().map(|x| &**x),
                                     trait_item.id,
                                     trait_item.ident.name,
                                     trait_item.span);
             }
-            ast::ConstTraitItem(_, None) |
-            ast::TypeTraitItem(..) => {}
+            ast::TraitItemKind::Const(_, None) |
+            ast::TraitItemKind::Type(..) => {}
         }
     }
 
@@ -1063,7 +1064,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_ty(&mut self, t: &ast::Ty) {
         self.process_macro_use(t.span, t.id);
         match t.node {
-            ast::TyPath(_, ref path) => {
+            ast::TyKind::Path(_, ref path) => {
                 match self.lookup_type_ref(t.id) {
                     Some(id) => {
                         let sub_span = self.span.sub_span_for_type_name(t.span);
@@ -1083,23 +1084,23 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
     fn visit_expr(&mut self, ex: &ast::Expr) {
         self.process_macro_use(ex.span, ex.id);
         match ex.node {
-            ast::ExprCall(ref _f, ref _args) => {
+            ast::ExprKind::Call(ref _f, ref _args) => {
                 // Don't need to do anything for function calls,
                 // because just walking the callee path does what we want.
                 visit::walk_expr(self, ex);
             }
-            ast::ExprPath(_, ref path) => {
+            ast::ExprKind::Path(_, ref path) => {
                 self.process_path(ex.id, path, None);
                 visit::walk_expr(self, ex);
             }
-            ast::ExprStruct(ref path, ref fields, ref base) => {
+            ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = lower_expr(self.save_ctxt.lcx, ex);
                 let adt = self.tcx.expr_ty(&hir_expr).ty_adt_def().unwrap();
                 let def = self.tcx.resolve_expr(&hir_expr);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
             }
-            ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
-            ast::ExprField(ref sub_ex, _) => {
+            ast::ExprKind::MethodCall(_, _, ref args) => self.process_method_call(ex, args),
+            ast::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 
                 if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
@@ -1111,7 +1112,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                      field_data.scope);
                 }
             }
-            ast::ExprTupField(ref sub_ex, idx) => {
+            ast::ExprKind::TupField(ref sub_ex, idx) => {
                 self.visit_expr(&**sub_ex);
 
                 let hir_node = lower_expr(self.save_ctxt.lcx, sub_ex);
@@ -1131,7 +1132,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                                      ty)),
                 }
             }
-            ast::ExprClosure(_, ref decl, ref body) => {
+            ast::ExprKind::Closure(_, ref decl, ref body) => {
                 let mut id = String::from("$");
                 id.push_str(&ex.id.to_string());
                 self.process_formals(&decl.inputs, &id);
@@ -1141,21 +1142,21 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                     self.visit_ty(&*arg.ty);
                 }
 
-                if let ast::Return(ref ret_ty) = decl.output {
+                if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
                     self.visit_ty(&**ret_ty);
                 }
 
                 // walk the body
                 self.nest(ex.id, |v| v.visit_block(&**body));
             }
-            ast::ExprForLoop(ref pattern, ref subexpression, ref block, _) |
-            ast::ExprWhileLet(ref pattern, ref subexpression, ref block, _) => {
+            ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
+            ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {
                 let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
                 self.process_var_decl(pattern, value);
                 visit::walk_expr(self, subexpression);
                 visit::walk_block(self, block);
             }
-            ast::ExprIfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
+            ast::ExprKind::IfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
                 let value = self.span.snippet(mk_sp(ex.span.lo, subexpression.span.hi));
                 self.process_var_decl(pattern, value);
                 visit::walk_expr(self, subexpression);
@@ -1199,7 +1200,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             let def = def_map.get(&id).unwrap().full_def();
             match def {
                 Def::Local(_, id) => {
-                    let value = if immut == ast::MutImmutable {
+                    let value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {
                         "<mutable>".to_string()

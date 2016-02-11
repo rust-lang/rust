@@ -115,7 +115,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::{HashSet};
 use std::mem::replace;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -691,11 +691,11 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_bounds_are_used(ccx, &generics.ty_params, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
-        if m.abi == abi::RustIntrinsic {
+        if m.abi == Abi::RustIntrinsic {
             for item in &m.items {
                 intrinsic::check_intrinsic_type(ccx, item);
             }
-        } else if m.abi == abi::PlatformIntrinsic {
+        } else if m.abi == Abi::PlatformIntrinsic {
             for item in &m.items {
                 intrinsic::check_platform_intrinsic_type(ccx, item);
             }
@@ -2264,7 +2264,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // First, try built-in indexing.
     match (adjusted_ty.builtin_index(), &index_ty.sty) {
-        (Some(ty), &ty::TyUint(ast::TyUs)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
+        (Some(ty), &ty::TyUint(ast::UintTy::Us)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
             // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
             assert!(!unsize);
@@ -2556,21 +2556,21 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let arg_ty = structurally_resolved_type(fcx, arg.span,
                                                     fcx.expr_ty(&**arg));
             match arg_ty.sty {
-                ty::TyFloat(ast::TyF32) => {
+                ty::TyFloat(ast::FloatTy::F32) => {
                     fcx.type_error_message(arg.span,
                                            |t| {
                         format!("can't pass an {} to variadic \
                                  function, cast to c_double", t)
                     }, arg_ty, None);
                 }
-                ty::TyInt(ast::TyI8) | ty::TyInt(ast::TyI16) | ty::TyBool => {
+                ty::TyInt(ast::IntTy::I8) | ty::TyInt(ast::IntTy::I16) | ty::TyBool => {
                     fcx.type_error_message(arg.span, |t| {
                         format!("can't pass {} to variadic \
                                  function, cast to c_int",
                                        t)
                     }, arg_ty, None);
                 }
-                ty::TyUint(ast::TyU8) | ty::TyUint(ast::TyU16) => {
+                ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
                     fcx.type_error_message(arg.span, |t| {
                         format!("can't pass {} to variadic \
                                  function, cast to c_uint",
@@ -2606,16 +2606,16 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-        ast::LitStr(..) => tcx.mk_static_str(),
-        ast::LitByteStr(ref v) => {
+        ast::LitKind::Str(..) => tcx.mk_static_str(),
+        ast::LitKind::ByteStr(ref v) => {
             tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
                             tcx.mk_array(tcx.types.u8, v.len()))
         }
-        ast::LitByte(_) => tcx.types.u8,
-        ast::LitChar(_) => tcx.types.char,
-        ast::LitInt(_, ast::SignedIntLit(t, _)) => tcx.mk_mach_int(t),
-        ast::LitInt(_, ast::UnsignedIntLit(t)) => tcx.mk_mach_uint(t),
-        ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
+        ast::LitKind::Byte(_) => tcx.types.u8,
+        ast::LitKind::Char(_) => tcx.types.char,
+        ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
+        ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
+        ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::TyInt(_) | ty::TyUint(_) => Some(ty),
@@ -2628,8 +2628,8 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             opt_ty.unwrap_or_else(
                 || tcx.mk_int_var(fcx.infcx().next_int_var_id()))
         }
-        ast::LitFloat(_, t) => tcx.mk_mach_float(t),
-        ast::LitFloatUnsuffixed(_) => {
+        ast::LitKind::Float(_, t) => tcx.mk_mach_float(t),
+        ast::LitKind::FloatUnsuffixed(_) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::TyFloat(_) => Some(ty),
@@ -2639,7 +2639,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             opt_ty.unwrap_or_else(
                 || tcx.mk_float_var(fcx.infcx().next_float_var_id()))
         }
-        ast::LitBool(_) => tcx.types.bool
+        ast::LitKind::Bool(_) => tcx.types.bool
     }
 }
 
@@ -4167,20 +4167,20 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                      disr: ty::Disr) -> bool {
         fn uint_in_range(ccx: &CrateCtxt, ty: ast::UintTy, disr: ty::Disr) -> bool {
             match ty {
-                ast::TyU8 => disr as u8 as Disr == disr,
-                ast::TyU16 => disr as u16 as Disr == disr,
-                ast::TyU32 => disr as u32 as Disr == disr,
-                ast::TyU64 => disr as u64 as Disr == disr,
-                ast::TyUs => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
+                ast::UintTy::U8 => disr as u8 as Disr == disr,
+                ast::UintTy::U16 => disr as u16 as Disr == disr,
+                ast::UintTy::U32 => disr as u32 as Disr == disr,
+                ast::UintTy::U64 => disr as u64 as Disr == disr,
+                ast::UintTy::Us => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
             }
         }
         fn int_in_range(ccx: &CrateCtxt, ty: ast::IntTy, disr: ty::Disr) -> bool {
             match ty {
-                ast::TyI8 => disr as i8 as Disr == disr,
-                ast::TyI16 => disr as i16 as Disr == disr,
-                ast::TyI32 => disr as i32 as Disr == disr,
-                ast::TyI64 => disr as i64 as Disr == disr,
-                ast::TyIs => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
+                ast::IntTy::I8 => disr as i8 as Disr == disr,
+                ast::IntTy::I16 => disr as i16 as Disr == disr,
+                ast::IntTy::I32 => disr as i32 as Disr == disr,
+                ast::IntTy::I64 => disr as i64 as Disr == disr,
+                ast::IntTy::Is => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
             }
         }
         match ty {

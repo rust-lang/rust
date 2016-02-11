@@ -29,7 +29,7 @@ use rustc::front::map as hir_map;
 
 use rustc_front::hir;
 
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::errors;
@@ -96,7 +96,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if let hir_map::NodeForeignItem(_) = map_node {
         let abi = ccx.tcx().map.get_foreign_abi(fn_node_id);
-        if abi != abi::RustIntrinsic && abi != abi::PlatformIntrinsic {
+        if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
             // Foreign externs don't have to be monomorphized.
             return (get_item_val(ccx, fn_node_id), mono_ty, true);
         }
@@ -139,8 +139,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // This shouldn't need to option dance.
     let mut hash_id = Some(hash_id);
-    let mut mk_lldecl = |abi: abi::Abi| {
-        let lldecl = if abi != abi::Rust {
+    let mut mk_lldecl = |abi: Abi| {
+        let lldecl = if abi != Abi::Rust {
             foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s)
         } else {
             // FIXME(nagisa): perhaps needs a more fine grained selection? See
@@ -181,7 +181,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   let d = mk_lldecl(abi);
                   let needs_body = setup_lldecl(d, &i.attrs);
                   if needs_body {
-                      if abi != abi::Rust {
+                      if abi != Abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
                               ccx, &**decl, &**body, &[], d, psubsts, fn_node_id,
                               Some(&hash[..]));
@@ -206,7 +206,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         hir_map::NodeVariant(v) => {
             let variant = inlined_variant_def(ccx, fn_node_id);
             assert_eq!(v.node.name, variant.name);
-            let d = mk_lldecl(abi::Rust);
+            let d = mk_lldecl(Abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
             trans_enum_variant(ccx, fn_node_id, Disr::from(variant.disr_val), psubsts, d);
             d
@@ -214,7 +214,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         hir_map::NodeImplItem(impl_item) => {
             match impl_item.node {
                 hir::ImplItemKind::Method(ref sig, ref body) => {
-                    let d = mk_lldecl(abi::Rust);
+                    let d = mk_lldecl(Abi::Rust);
                     let needs_body = setup_lldecl(d, &impl_item.attrs);
                     if needs_body {
                         trans_fn(ccx,
@@ -236,7 +236,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         hir_map::NodeTraitItem(trait_item) => {
             match trait_item.node {
                 hir::MethodTraitItem(ref sig, Some(ref body)) => {
-                    let d = mk_lldecl(abi::Rust);
+                    let d = mk_lldecl(Abi::Rust);
                     let needs_body = setup_lldecl(d, &trait_item.attrs);
                     if needs_body {
                         trans_fn(ccx,
@@ -256,7 +256,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
         hir_map::NodeStructCtor(struct_def) => {
-            let d = mk_lldecl(abi::Rust);
+            let d = mk_lldecl(Abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
             if struct_def.is_struct() {
                 panic!("ast-mapped struct didn't have a ctor id")

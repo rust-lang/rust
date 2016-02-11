@@ -52,7 +52,7 @@ use rustc_front::hir;
 use std::ffi::{CStr, CString};
 use std::borrow::Cow;
 use libc::c_uint;
-use syntax::ast;
+use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -64,15 +64,15 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
     let _icx = push_ctxt("trans_lit");
     debug!("const_lit: {:?}", lit);
     match lit.node {
-        ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::TyU8), b as u64, false),
-        ast::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
-        ast::LitInt(i, ast::SignedIntLit(t, _)) => {
+        LitKind::Byte(b) => C_integral(Type::uint_from_ty(cx, ast::UintTy::U8), b as u64, false),
+        LitKind::Char(i) => C_integral(Type::char(cx), i as u64, false),
+        LitKind::Int(i, ast::LitIntType::Signed(t)) => {
             C_integral(Type::int_from_ty(cx, t), i, true)
         }
-        ast::LitInt(u, ast::UnsignedIntLit(t)) => {
+        LitKind::Int(u, ast::LitIntType::Unsigned(t)) => {
             C_integral(Type::uint_from_ty(cx, t), u, false)
         }
-        ast::LitInt(i, ast::UnsuffixedIntLit(_)) => {
+        LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
             let lit_int_ty = cx.tcx().node_id_to_type(e.id);
             match lit_int_ty.sty {
                 ty::TyInt(t) => {
@@ -87,10 +87,10 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
                                 lit_int_ty))
             }
         }
-        ast::LitFloat(ref fs, t) => {
+        LitKind::Float(ref fs, t) => {
             C_floating(&fs, Type::float_from_ty(cx, t))
         }
-        ast::LitFloatUnsuffixed(ref fs) => {
+        LitKind::FloatUnsuffixed(ref fs) => {
             let lit_float_ty = cx.tcx().node_id_to_type(e.id);
             match lit_float_ty.sty {
                 ty::TyFloat(t) => {
@@ -102,9 +102,9 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
                 }
             }
         }
-        ast::LitBool(b) => C_bool(cx, b),
-        ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        ast::LitByteStr(ref data) => {
+        LitKind::Bool(b) => C_bool(cx, b),
+        LitKind::Str(ref s, _) => C_str_slice(cx, (*s).clone()),
+        LitKind::ByteStr(ref data) => {
             addr_of(cx, C_bytes(cx, &data[..]), 1, "byte_str")
         }
     }

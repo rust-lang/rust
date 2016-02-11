@@ -193,9 +193,7 @@ use std::collections::HashSet;
 use std::vec;
 
 use syntax::abi::Abi;
-use syntax::abi;
-use syntax::ast;
-use syntax::ast::{EnumDef, Expr, Ident, Generics, VariantData};
+use syntax::ast::{EnumDef, Expr, Ident, Generics, VariantData, BinOpKind, self};
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -356,7 +354,7 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
     impl<'a> visit::Visitor<'a> for Visitor<'a> {
         fn visit_ty(&mut self, ty: &'a ast::Ty) {
             match ty.node {
-                ast::TyPath(_, ref path) if !path.global => {
+                ast::TyKind::Path(_, ref path) if !path.global => {
                     match path.segments.first() {
                         Some(segment) => {
                             if self.ty_param_names.contains(&segment.identifier.name) {
@@ -393,13 +391,13 @@ impl<'a> TraitDef<'a> {
         match *item {
             Annotatable::Item(ref item) => {
                 let newitem = match item.node {
-                    ast::ItemStruct(ref struct_def, ref generics) => {
+                    ast::ItemKind::Struct(ref struct_def, ref generics) => {
                         self.expand_struct_def(cx,
                                                &struct_def,
                                                item.ident,
                                                generics)
                     }
-                    ast::ItemEnum(ref enum_def, ref generics) => {
+                    ast::ItemKind::Enum(ref enum_def, ref generics) => {
                         self.expand_enum_def(cx,
                                              enum_def,
                                              &item.attrs,
@@ -477,7 +475,7 @@ impl<'a> TraitDef<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident: ident,
-                vis: ast::Inherited,
+                vis: ast::Visibility::Inherited,
                 attrs: Vec::new(),
                 node: ast::ImplItemKind::Type(type_def.to_ty(cx,
                     self.span,
@@ -559,7 +557,7 @@ impl<'a> TraitDef<'a> {
 
                 for ty in tys {
                     // if we have already handled this type, skip it
-                    if let ast::TyPath(_, ref p) = ty.node {
+                    if let ast::TyKind::Path(_, ref p) = ty.node {
                         if p.segments.len() == 1
                             && ty_param_names.contains(&p.segments[0].identifier.name)
                             || processed_field_types.contains(&p.segments) {
@@ -639,12 +637,12 @@ impl<'a> TraitDef<'a> {
             self.span,
             ident,
             a,
-            ast::ItemImpl(unsafety,
-                          ast::ImplPolarity::Positive,
-                          trait_generics,
-                          opt_trait_ref,
-                          self_type,
-                          methods.into_iter().chain(associated_types).collect()))
+            ast::ItemKind::Impl(unsafety,
+                                ast::ImplPolarity::Positive,
+                                trait_generics,
+                                opt_trait_ref,
+                                self_type,
+                                methods.into_iter().chain(associated_types).collect()))
     }
 
     fn expand_struct_def(&self,
@@ -682,7 +680,7 @@ impl<'a> TraitDef<'a> {
                                      self,
                                      type_ident,
                                      generics,
-                                     abi::Rust,
+                                     Abi::Rust,
                                      explicit_self,
                                      tys,
                                      body)
@@ -731,7 +729,7 @@ impl<'a> TraitDef<'a> {
                                      self,
                                      type_ident,
                                      generics,
-                                     abi::Rust,
+                                     Abi::Rust,
                                      explicit_self,
                                      tys,
                                      body)
@@ -750,17 +748,17 @@ fn find_repr_type_name(diagnostic: &Handler,
                 attr::ReprAny | attr::ReprPacked | attr::ReprSimd => continue,
                 attr::ReprExtern => "i32",
 
-                attr::ReprInt(_, attr::SignedInt(ast::TyIs)) => "isize",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI8)) => "i8",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI16)) => "i16",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI32)) => "i32",
-                attr::ReprInt(_, attr::SignedInt(ast::TyI64)) => "i64",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::Is)) => "isize",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I8)) => "i8",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I16)) => "i16",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I32)) => "i32",
+                attr::ReprInt(_, attr::SignedInt(ast::IntTy::I64)) => "i64",
 
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyUs)) => "usize",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU8)) => "u8",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU16)) => "u16",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU32)) => "u32",
-                attr::ReprInt(_, attr::UnsignedInt(ast::TyU64)) => "u64",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::Us)) => "usize",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U8)) => "u8",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U16)) => "u16",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U32)) => "u32",
+                attr::ReprInt(_, attr::UnsignedInt(ast::UintTy::U64)) => "u64",
             }
         }
     }
@@ -823,7 +821,7 @@ impl<'a> MethodDef<'a> {
 
                 explicit_self
             }
-            None => codemap::respan(trait_.span, ast::SelfStatic),
+            None => codemap::respan(trait_.span, ast::SelfKind::Static),
         };
 
         for (i, ty) in self.args.iter().enumerate() {
@@ -864,9 +862,11 @@ impl<'a> MethodDef<'a> {
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
         let self_arg = match explicit_self.node {
-            ast::SelfStatic => None,
+            ast::SelfKind::Static => None,
             // creating fresh self id
-            _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable, special_idents::self_))
+            _ => Some(ast::Arg::new_self(trait_.span,
+                                         ast::Mutability::Immutable,
+                                         special_idents::self_))
         };
         let args = {
             let args = arg_types.into_iter().map(|(name, ty)| {
@@ -892,7 +892,7 @@ impl<'a> MethodDef<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span: trait_.span,
-            vis: ast::Inherited,
+            vis: ast::Visibility::Inherited,
             ident: method_ident,
             node: ast::ImplItemKind::Method(ast::MethodSig {
                 generics: fn_generics,
@@ -944,7 +944,7 @@ impl<'a> MethodDef<'a> {
                                              struct_def,
                                              &format!("__self_{}",
                                                      i),
-                                             ast::MutImmutable);
+                                             ast::Mutability::Immutable);
             patterns.push(pat);
             raw_fields.push(ident_expr);
         }
@@ -1137,11 +1137,12 @@ impl<'a> MethodDef<'a> {
         let mut match_arms: Vec<ast::Arm> = variants.iter().enumerate()
             .map(|(index, variant)| {
                 let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
-                    let (p, idents) = trait_.create_enum_variant_pattern(cx, type_ident,
-                                                                         &**variant,
-                                                                         self_arg_name,
-                                                                         ast::MutImmutable);
-                    (cx.pat(sp, ast::PatRegion(p, ast::MutImmutable)), idents)
+                    let (p, idents) = trait_.create_enum_variant_pattern(
+                        cx, type_ident,
+                        &**variant,
+                        self_arg_name,
+                        ast::Mutability::Immutable);
+                    (cx.pat(sp, ast::PatRegion(p, ast::Mutability::Immutable)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
@@ -1267,7 +1268,7 @@ impl<'a> MethodDef<'a> {
                     stmts: vec![],
                     expr: Some(call),
                     id: ast::DUMMY_NODE_ID,
-                    rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                    rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
                     span: sp }));
 
                 let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name));
@@ -1279,8 +1280,9 @@ impl<'a> MethodDef<'a> {
                     Some(first) => {
                         let first_expr = cx.expr_ident(sp, first);
                         let id = cx.expr_ident(sp, ident);
-                        let test = cx.expr_binary(sp, ast::BiEq, first_expr, id);
-                        discriminant_test = cx.expr_binary(sp, ast::BiAnd, discriminant_test, test)
+                        let test = cx.expr_binary(sp, BinOpKind::Eq, first_expr, id);
+                        discriminant_test = cx.expr_binary(sp, BinOpKind::And,
+                                                           discriminant_test, test)
                     }
                     None => {
                         first_ident = Some(ident);
@@ -1302,7 +1304,7 @@ impl<'a> MethodDef<'a> {
                 stmts: vec![],
                 expr: Some(call),
                 id: ast::DUMMY_NODE_ID,
-                rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
                 span: sp }));
             match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], unreachable));
 
@@ -1312,7 +1314,7 @@ impl<'a> MethodDef<'a> {
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
 
             //Lastly we create an expression which branches on all discriminants being equal
             //  if discriminant_test {
@@ -1390,7 +1392,7 @@ impl<'a> MethodDef<'a> {
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
+            let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
             cx.expr_match(sp, match_arg, match_arms)
         }
     }
@@ -1510,8 +1512,8 @@ impl<'a> TraitDef<'a> {
             };
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned{span: sp, node: ident});
-            let val = cx.expr(
-                sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
+            let val = cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)));
+            let val = cx.expr(sp, ast::ExprKind::Paren(val));
             ident_expr.push((sp, opt_id, val, &struct_field.node.attrs[..]));
         }
 

@@ -40,7 +40,7 @@ use trans::Disr;
 use middle::subst::Substs;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
-use syntax::abi::{self, RustIntrinsic};
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
@@ -365,7 +365,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              &mut llargs,
                              cleanup::CustomScope(cleanup_scope),
                              false,
-                             RustIntrinsic);
+                             Abi::RustIntrinsic);
 
     fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
@@ -1261,7 +1261,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
-        abi: abi::Rust,
+        abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![i8p],
             output: ty::FnOutput::FnConverging(tcx.mk_nil()),
@@ -1272,7 +1272,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
     let try_fn_ty  = tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
-        abi: abi::Rust,
+        abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![fn_ty, i8p, i8p],
             output: output,
@@ -1350,7 +1350,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // just do the same.
         let filter_fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
-            abi: abi::Rust,
+            abi: Abi::Rust,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![],
                 output: output,
@@ -1370,7 +1370,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // those along.
         let filter_fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
-            abi: abi::Rust,
+            abi: Abi::Rust,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![i8p, i8p],
                 output: output,
@@ -1664,30 +1664,30 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
     use rustc::middle::ty::{TyInt, TyUint};
     match *sty {
         TyInt(t) => Some((match t {
-            ast::TyIs => {
+            ast::IntTy::Is => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "32" => 32,
                     "64" => 64,
                     tws => panic!("Unsupported target word size for isize: {}", tws),
                 }
             },
-            ast::TyI8 => 8,
-            ast::TyI16 => 16,
-            ast::TyI32 => 32,
-            ast::TyI64 => 64,
+            ast::IntTy::I8 => 8,
+            ast::IntTy::I16 => 16,
+            ast::IntTy::I32 => 32,
+            ast::IntTy::I64 => 64,
         }, true)),
         TyUint(t) => Some((match t {
-            ast::TyUs => {
+            ast::UintTy::Us => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "32" => 32,
                     "64" => 64,
                     tws => panic!("Unsupported target word size for usize: {}", tws),
                 }
             },
-            ast::TyU8 => 8,
-            ast::TyU16 => 16,
-            ast::TyU32 => 32,
-            ast::TyU64 => 64,
+            ast::UintTy::U8 => 8,
+            ast::UintTy::U16 => 16,
+            ast::UintTy::U32 => 32,
+            ast::UintTy::U64 => 64,
         }, false)),
         _ => None,
     }

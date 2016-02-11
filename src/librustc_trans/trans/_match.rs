@@ -921,7 +921,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 compare_str(cx, lhs_data, lhs_len, rhs_data, rhs_len, rhs_t, debug_loc)
             }
             ty::TyArray(ty, _) | ty::TySlice(ty) => match ty.sty {
-                ty::TyUint(ast::TyU8) => {
+                ty::TyUint(ast::UintTy::U8) => {
                     // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
                     let pat_len = val_ty(rhs).element_type().array_length();

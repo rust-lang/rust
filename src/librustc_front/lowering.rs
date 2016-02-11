@@ -211,29 +211,29 @@ pub fn lower_view_path(lctx: &LoweringContext, view_path: &ViewPath) -> P<hir::V
             ViewPathList(ref path, ref path_list_idents) => {
                 hir::ViewPathList(lower_path(lctx, path),
                                   path_list_idents.iter()
-                                                  .map(|path_list_ident| {
-                                                      Spanned {
-                                                          node: match path_list_ident.node {
-                                                              PathListIdent { id, name, rename } =>
-                                                                  hir::PathListIdent {
-                                                                  id: id,
-                                                                  name: name.name,
-                                                                  rename: rename.map(|x| x.name),
-                                                              },
-                                                              PathListMod { id, rename } =>
-                                                                  hir::PathListMod {
-                                                                  id: id,
-                                                                  rename: rename.map(|x| x.name),
-                                                              },
-                                                          },
-                                                          span: path_list_ident.span,
-                                                      }
-                                                  })
+                                                  .map(lower_path_list_item)
                                                   .collect())
             }
         },
         span: view_path.span,
     })
+}
+
+fn lower_path_list_item(path_list_ident: &PathListItem) -> hir::PathListItem {
+    Spanned {
+        node: match path_list_ident.node {
+            PathListItemKind::Ident { id, name, rename } => hir::PathListIdent {
+                id: id,
+                name: name.name,
+                rename: rename.map(|x| x.name),
+            },
+            PathListItemKind::Mod { id, rename } => hir::PathListMod {
+                id: id,
+                rename: rename.map(|x| x.name),
+            },
+        },
+        span: path_list_ident.span,
+    }
 }
 
 pub fn lower_arm(lctx: &LoweringContext, arm: &Arm) -> hir::Arm {
@@ -247,11 +247,11 @@ pub fn lower_arm(lctx: &LoweringContext, arm: &Arm) -> hir::Arm {
 
 pub fn lower_decl(lctx: &LoweringContext, d: &Decl) -> P<hir::Decl> {
     match d.node {
-        DeclLocal(ref l) => P(Spanned {
+        DeclKind::Local(ref l) => P(Spanned {
             node: hir::DeclLocal(lower_local(lctx, l)),
             span: d.span,
         }),
-        DeclItem(ref it) => P(Spanned {
+        DeclKind::Item(ref it) => P(Spanned {
             node: hir::DeclItem(lower_item_id(lctx, it)),
             span: d.span,
         }),
@@ -268,16 +268,17 @@ pub fn lower_ty_binding(lctx: &LoweringContext, b: &TypeBinding) -> hir::TypeBin
 }
 
 pub fn lower_ty(lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
+    use syntax::ast::TyKind::*;
     P(hir::Ty {
         id: t.id,
         node: match t.node {
-            TyInfer => hir::TyInfer,
-            TyVec(ref ty) => hir::TyVec(lower_ty(lctx, ty)),
-            TyPtr(ref mt) => hir::TyPtr(lower_mt(lctx, mt)),
-            TyRptr(ref region, ref mt) => {
+            Infer => hir::TyInfer,
+            Vec(ref ty) => hir::TyVec(lower_ty(lctx, ty)),
+            Ptr(ref mt) => hir::TyPtr(lower_mt(lctx, mt)),
+            Rptr(ref region, ref mt) => {
                 hir::TyRptr(lower_opt_lifetime(lctx, region), lower_mt(lctx, mt))
             }
-            TyBareFn(ref f) => {
+            BareFn(ref f) => {
                 hir::TyBareFn(P(hir::BareFnTy {
                     lifetimes: lower_lifetime_defs(lctx, &f.lifetimes),
                     unsafety: lower_unsafety(lctx, f.unsafety),
@@ -285,11 +286,11 @@ pub fn lower_ty(lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
                     decl: lower_fn_decl(lctx, &f.decl),
                 }))
             }
-            TyTup(ref tys) => hir::TyTup(tys.iter().map(|ty| lower_ty(lctx, ty)).collect()),
-            TyParen(ref ty) => {
+            Tup(ref tys) => hir::TyTup(tys.iter().map(|ty| lower_ty(lctx, ty)).collect()),
+            Paren(ref ty) => {
                 return lower_ty(lctx, ty);
             }
-            TyPath(ref qself, ref path) => {
+            Path(ref qself, ref path) => {
                 let qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                     hir::QSelf {
                         ty: lower_ty(lctx, ty),
@@ -298,19 +299,19 @@ pub fn lower_ty(lctx: &LoweringContext, t: &Ty) -> P<hir::Ty> {
                 });
                 hir::TyPath(qself, lower_path(lctx, path))
             }
-            TyObjectSum(ref ty, ref bounds) => {
+            ObjectSum(ref ty, ref bounds) => {
                 hir::TyObjectSum(lower_ty(lctx, ty), lower_bounds(lctx, bounds))
             }
-            TyFixedLengthVec(ref ty, ref e) => {
+            FixedLengthVec(ref ty, ref e) => {
                 hir::TyFixedLengthVec(lower_ty(lctx, ty), lower_expr(lctx, e))
             }
-            TyTypeof(ref expr) => {
+            Typeof(ref expr) => {
                 hir::TyTypeof(lower_expr(lctx, expr))
             }
-            TyPolyTraitRef(ref bounds) => {
+            PolyTraitRef(ref bounds) => {
                 hir::TyPolyTraitRef(bounds.iter().map(|b| lower_ty_param_bound(lctx, b)).collect())
             }
-            TyMac(_) => panic!("TyMac should have been expanded by now."),
+            Mac(_) => panic!("TyMac should have been expanded by now."),
         },
         span: t.span,
     })
@@ -408,17 +409,17 @@ pub fn lower_local(lctx: &LoweringContext, l: &Local) -> P<hir::Local> {
 }
 
 pub fn lower_explicit_self_underscore(lctx: &LoweringContext,
-                                      es: &ExplicitSelf_)
+                                      es: &SelfKind)
                                       -> hir::ExplicitSelf_ {
     match *es {
-        SelfStatic => hir::SelfStatic,
-        SelfValue(v) => hir::SelfValue(v.name),
-        SelfRegion(ref lifetime, m, ident) => {
+        SelfKind::Static => hir::SelfStatic,
+        SelfKind::Value(v) => hir::SelfValue(v.name),
+        SelfKind::Region(ref lifetime, m, ident) => {
             hir::SelfRegion(lower_opt_lifetime(lctx, lifetime),
                             lower_mutability(lctx, m),
                             ident.name)
         }
-        SelfExplicit(ref typ, ident) => {
+        SelfKind::Explicit(ref typ, ident) => {
             hir::SelfExplicit(lower_ty(lctx, typ), ident.name)
         }
     }
@@ -426,8 +427,8 @@ pub fn lower_explicit_self_underscore(lctx: &LoweringContext,
 
 pub fn lower_mutability(_lctx: &LoweringContext, m: Mutability) -> hir::Mutability {
     match m {
-        MutMutable => hir::MutMutable,
-        MutImmutable => hir::MutImmutable,
+        Mutability::Mutable => hir::MutMutable,
+        Mutability::Immutable => hir::MutImmutable,
     }
 }
 
@@ -450,9 +451,9 @@ pub fn lower_fn_decl(lctx: &LoweringContext, decl: &FnDecl) -> P<hir::FnDecl> {
     P(hir::FnDecl {
         inputs: decl.inputs.iter().map(|x| lower_arg(lctx, x)).collect(),
         output: match decl.output {
-            Return(ref ty) => hir::Return(lower_ty(lctx, ty)),
-            DefaultReturn(span) => hir::DefaultReturn(span),
-            NoReturn(span) => hir::NoReturn(span),
+            FunctionRetTy::Ty(ref ty) => hir::Return(lower_ty(lctx, ty)),
+            FunctionRetTy::Default(span) => hir::DefaultReturn(span),
+            FunctionRetTy::None(span) => hir::NoReturn(span),
         },
         variadic: decl.variadic,
     })
@@ -653,21 +654,21 @@ pub fn lower_block(lctx: &LoweringContext, b: &Block) -> P<hir::Block> {
     })
 }
 
-pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
+pub fn lower_item_kind(lctx: &LoweringContext, i: &ItemKind) -> hir::Item_ {
     match *i {
-        ItemExternCrate(string) => hir::ItemExternCrate(string),
-        ItemUse(ref view_path) => {
+        ItemKind::ExternCrate(string) => hir::ItemExternCrate(string),
+        ItemKind::Use(ref view_path) => {
             hir::ItemUse(lower_view_path(lctx, view_path))
         }
-        ItemStatic(ref t, m, ref e) => {
+        ItemKind::Static(ref t, m, ref e) => {
             hir::ItemStatic(lower_ty(lctx, t),
                             lower_mutability(lctx, m),
                             lower_expr(lctx, e))
         }
-        ItemConst(ref t, ref e) => {
+        ItemKind::Const(ref t, ref e) => {
             hir::ItemConst(lower_ty(lctx, t), lower_expr(lctx, e))
         }
-        ItemFn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+        ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
             hir::ItemFn(lower_fn_decl(lctx, decl),
                         lower_unsafety(lctx, unsafety),
                         lower_constness(lctx, constness),
@@ -675,12 +676,12 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                         lower_generics(lctx, generics),
                         lower_block(lctx, body))
         }
-        ItemMod(ref m) => hir::ItemMod(lower_mod(lctx, m)),
-        ItemForeignMod(ref nm) => hir::ItemForeignMod(lower_foreign_mod(lctx, nm)),
-        ItemTy(ref t, ref generics) => {
+        ItemKind::Mod(ref m) => hir::ItemMod(lower_mod(lctx, m)),
+        ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(lower_foreign_mod(lctx, nm)),
+        ItemKind::Ty(ref t, ref generics) => {
             hir::ItemTy(lower_ty(lctx, t), lower_generics(lctx, generics))
         }
-        ItemEnum(ref enum_definition, ref generics) => {
+        ItemKind::Enum(ref enum_definition, ref generics) => {
             hir::ItemEnum(hir::EnumDef {
                               variants: enum_definition.variants
                                                        .iter()
@@ -689,15 +690,15 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                           },
                           lower_generics(lctx, generics))
         }
-        ItemStruct(ref struct_def, ref generics) => {
+        ItemKind::Struct(ref struct_def, ref generics) => {
             let struct_def = lower_variant_data(lctx, struct_def);
             hir::ItemStruct(struct_def, lower_generics(lctx, generics))
         }
-        ItemDefaultImpl(unsafety, ref trait_ref) => {
+        ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
             hir::ItemDefaultImpl(lower_unsafety(lctx, unsafety),
                                  lower_trait_ref(lctx, trait_ref))
         }
-        ItemImpl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
+        ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
             let new_impl_items = impl_items.iter()
                                            .map(|item| lower_impl_item(lctx, item))
                                            .collect();
@@ -709,7 +710,7 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                           lower_ty(lctx, ty),
                           new_impl_items)
         }
-        ItemTrait(unsafety, ref generics, ref bounds, ref items) => {
+        ItemKind::Trait(unsafety, ref generics, ref bounds, ref items) => {
             let bounds = lower_bounds(lctx, bounds);
             let items = items.iter().map(|item| lower_trait_item(lctx, item)).collect();
             hir::ItemTrait(lower_unsafety(lctx, unsafety),
@@ -717,7 +718,7 @@ pub fn lower_item_underscore(lctx: &LoweringContext, i: &Item_) -> hir::Item_ {
                            bounds,
                            items)
         }
-        ItemMac(_) => panic!("Shouldn't still be around"),
+        ItemKind::Mac(_) => panic!("Shouldn't still be around"),
     }
 }
 
@@ -727,15 +728,15 @@ pub fn lower_trait_item(lctx: &LoweringContext, i: &TraitItem) -> hir::TraitItem
         name: i.ident.name,
         attrs: lower_attrs(lctx, &i.attrs),
         node: match i.node {
-            ConstTraitItem(ref ty, ref default) => {
+            TraitItemKind::Const(ref ty, ref default) => {
                 hir::ConstTraitItem(lower_ty(lctx, ty),
                                     default.as_ref().map(|x| lower_expr(lctx, x)))
             }
-            MethodTraitItem(ref sig, ref body) => {
+            TraitItemKind::Method(ref sig, ref body) => {
                 hir::MethodTraitItem(lower_method_sig(lctx, sig),
                                      body.as_ref().map(|x| lower_block(lctx, x)))
             }
-            TypeTraitItem(ref bounds, ref default) => {
+            TraitItemKind::Type(ref bounds, ref default) => {
                 hir::TypeTraitItem(lower_bounds(lctx, bounds),
                                    default.as_ref().map(|x| lower_ty(lctx, x)))
             }
@@ -819,7 +820,7 @@ pub fn lower_item_id(_lctx: &LoweringContext, i: &Item) -> hir::ItemId {
 }
 
 pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
-    let node = lower_item_underscore(lctx, &i.node);
+    let node = lower_item_kind(lctx, &i.node);
 
     hir::Item {
         id: i.id,
@@ -837,10 +838,10 @@ pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> hir::Forei
         name: i.ident.name,
         attrs: lower_attrs(lctx, &i.attrs),
         node: match i.node {
-            ForeignItemFn(ref fdec, ref generics) => {
+            ForeignItemKind::Fn(ref fdec, ref generics) => {
                 hir::ForeignItemFn(lower_fn_decl(lctx, fdec), lower_generics(lctx, generics))
             }
-            ForeignItemStatic(ref t, m) => {
+            ForeignItemKind::Static(ref t, m) => {
                 hir::ForeignItemStatic(lower_ty(lctx, t), m)
             }
         },
@@ -876,33 +877,33 @@ pub fn lower_constness(_lctx: &LoweringContext, c: Constness) -> hir::Constness 
 
 pub fn lower_unop(_lctx: &LoweringContext, u: UnOp) -> hir::UnOp {
     match u {
-        UnDeref => hir::UnDeref,
-        UnNot => hir::UnNot,
-        UnNeg => hir::UnNeg,
+        UnOp::Deref => hir::UnDeref,
+        UnOp::Not => hir::UnNot,
+        UnOp::Neg => hir::UnNeg,
     }
 }
 
 pub fn lower_binop(_lctx: &LoweringContext, b: BinOp) -> hir::BinOp {
     Spanned {
         node: match b.node {
-            BiAdd => hir::BiAdd,
-            BiSub => hir::BiSub,
-            BiMul => hir::BiMul,
-            BiDiv => hir::BiDiv,
-            BiRem => hir::BiRem,
-            BiAnd => hir::BiAnd,
-            BiOr => hir::BiOr,
-            BiBitXor => hir::BiBitXor,
-            BiBitAnd => hir::BiBitAnd,
-            BiBitOr => hir::BiBitOr,
-            BiShl => hir::BiShl,
-            BiShr => hir::BiShr,
-            BiEq => hir::BiEq,
-            BiLt => hir::BiLt,
-            BiLe => hir::BiLe,
-            BiNe => hir::BiNe,
-            BiGe => hir::BiGe,
-            BiGt => hir::BiGt,
+            BinOpKind::Add => hir::BiAdd,
+            BinOpKind::Sub => hir::BiSub,
+            BinOpKind::Mul => hir::BiMul,
+            BinOpKind::Div => hir::BiDiv,
+            BinOpKind::Rem => hir::BiRem,
+            BinOpKind::And => hir::BiAnd,
+            BinOpKind::Or => hir::BiOr,
+            BinOpKind::BitXor => hir::BiBitXor,
+            BinOpKind::BitAnd => hir::BiBitAnd,
+            BinOpKind::BitOr => hir::BiBitOr,
+            BinOpKind::Shl => hir::BiShl,
+            BinOpKind::Shr => hir::BiShr,
+            BinOpKind::Eq => hir::BiEq,
+            BinOpKind::Lt => hir::BiLt,
+            BinOpKind::Le => hir::BiLe,
+            BinOpKind::Ne => hir::BiNe,
+            BinOpKind::Ge => hir::BiGe,
+            BinOpKind::Gt => hir::BiGt,
         },
         span: b.span,
     }
@@ -986,12 +987,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
             // }
             //
             // But for now there are type-inference issues doing that.
-            ExprBox(ref e) => {
+            ExprKind::Box(ref e) => {
                 hir::ExprBox(lower_expr(lctx, e))
             }
 
             // Desugar ExprBox: `in (PLACE) EXPR`
-            ExprInPlace(ref placer, ref value_expr) => {
+            ExprKind::InPlace(ref placer, ref value_expr) => {
                 // to:
                 //
                 // let p = PLACE;
@@ -1099,57 +1100,57 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 });
             }
 
-            ExprVec(ref exprs) => {
+            ExprKind::Vec(ref exprs) => {
                 hir::ExprVec(exprs.iter().map(|x| lower_expr(lctx, x)).collect())
             }
-            ExprRepeat(ref expr, ref count) => {
+            ExprKind::Repeat(ref expr, ref count) => {
                 let expr = lower_expr(lctx, expr);
                 let count = lower_expr(lctx, count);
                 hir::ExprRepeat(expr, count)
             }
-            ExprTup(ref elts) => {
+            ExprKind::Tup(ref elts) => {
                 hir::ExprTup(elts.iter().map(|x| lower_expr(lctx, x)).collect())
             }
-            ExprCall(ref f, ref args) => {
+            ExprKind::Call(ref f, ref args) => {
                 let f = lower_expr(lctx, f);
                 hir::ExprCall(f, args.iter().map(|x| lower_expr(lctx, x)).collect())
             }
-            ExprMethodCall(i, ref tps, ref args) => {
+            ExprKind::MethodCall(i, ref tps, ref args) => {
                 let tps = tps.iter().map(|x| lower_ty(lctx, x)).collect();
                 let args = args.iter().map(|x| lower_expr(lctx, x)).collect();
                 hir::ExprMethodCall(respan(i.span, i.node.name), tps, args)
             }
-            ExprBinary(binop, ref lhs, ref rhs) => {
+            ExprKind::Binary(binop, ref lhs, ref rhs) => {
                 let binop = lower_binop(lctx, binop);
                 let lhs = lower_expr(lctx, lhs);
                 let rhs = lower_expr(lctx, rhs);
                 hir::ExprBinary(binop, lhs, rhs)
             }
-            ExprUnary(op, ref ohs) => {
+            ExprKind::Unary(op, ref ohs) => {
                 let op = lower_unop(lctx, op);
                 let ohs = lower_expr(lctx, ohs);
                 hir::ExprUnary(op, ohs)
             }
-            ExprLit(ref l) => hir::ExprLit(P((**l).clone())),
-            ExprCast(ref expr, ref ty) => {
+            ExprKind::Lit(ref l) => hir::ExprLit(P((**l).clone())),
+            ExprKind::Cast(ref expr, ref ty) => {
                 let expr = lower_expr(lctx, expr);
                 hir::ExprCast(expr, lower_ty(lctx, ty))
             }
-            ExprType(ref expr, ref ty) => {
+            ExprKind::Type(ref expr, ref ty) => {
                 let expr = lower_expr(lctx, expr);
                 hir::ExprType(expr, lower_ty(lctx, ty))
             }
-            ExprAddrOf(m, ref ohs) => {
+            ExprKind::AddrOf(m, ref ohs) => {
                 let m = lower_mutability(lctx, m);
                 let ohs = lower_expr(lctx, ohs);
                 hir::ExprAddrOf(m, ohs)
             }
             // More complicated than you might expect because the else branch
             // might be `if let`.
-            ExprIf(ref cond, ref blk, ref else_opt) => {
+            ExprKind::If(ref cond, ref blk, ref else_opt) => {
                 let else_opt = else_opt.as_ref().map(|els| {
                     match els.node {
-                        ExprIfLet(..) => {
+                        ExprKind::IfLet(..) => {
                             cache_ids(lctx, e.id, |lctx| {
                                 // wrap the if-let expr in a block
                                 let span = els.span;
@@ -1171,47 +1172,47 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                 hir::ExprIf(lower_expr(lctx, cond), lower_block(lctx, blk), else_opt)
             }
-            ExprWhile(ref cond, ref body, opt_ident) => {
+            ExprKind::While(ref cond, ref body, opt_ident) => {
                 hir::ExprWhile(lower_expr(lctx, cond), lower_block(lctx, body),
                                opt_ident.map(|ident| lower_ident(lctx, ident)))
             }
-            ExprLoop(ref body, opt_ident) => {
+            ExprKind::Loop(ref body, opt_ident) => {
                 hir::ExprLoop(lower_block(lctx, body),
                               opt_ident.map(|ident| lower_ident(lctx, ident)))
             }
-            ExprMatch(ref expr, ref arms) => {
+            ExprKind::Match(ref expr, ref arms) => {
                 hir::ExprMatch(lower_expr(lctx, expr),
                                arms.iter().map(|x| lower_arm(lctx, x)).collect(),
                                hir::MatchSource::Normal)
             }
-            ExprClosure(capture_clause, ref decl, ref body) => {
+            ExprKind::Closure(capture_clause, ref decl, ref body) => {
                 hir::ExprClosure(lower_capture_clause(lctx, capture_clause),
                                  lower_fn_decl(lctx, decl),
                                  lower_block(lctx, body))
             }
-            ExprBlock(ref blk) => hir::ExprBlock(lower_block(lctx, blk)),
-            ExprAssign(ref el, ref er) => {
+            ExprKind::Block(ref blk) => hir::ExprBlock(lower_block(lctx, blk)),
+            ExprKind::Assign(ref el, ref er) => {
                 hir::ExprAssign(lower_expr(lctx, el), lower_expr(lctx, er))
             }
-            ExprAssignOp(op, ref el, ref er) => {
+            ExprKind::AssignOp(op, ref el, ref er) => {
                 hir::ExprAssignOp(lower_binop(lctx, op),
                                   lower_expr(lctx, el),
                                   lower_expr(lctx, er))
             }
-            ExprField(ref el, ident) => {
+            ExprKind::Field(ref el, ident) => {
                 hir::ExprField(lower_expr(lctx, el), respan(ident.span, ident.node.name))
             }
-            ExprTupField(ref el, ident) => {
+            ExprKind::TupField(ref el, ident) => {
                 hir::ExprTupField(lower_expr(lctx, el), ident)
             }
-            ExprIndex(ref el, ref er) => {
+            ExprKind::Index(ref el, ref er) => {
                 hir::ExprIndex(lower_expr(lctx, el), lower_expr(lctx, er))
             }
-            ExprRange(ref e1, ref e2) => {
+            ExprKind::Range(ref e1, ref e2) => {
                 hir::ExprRange(e1.as_ref().map(|x| lower_expr(lctx, x)),
                                e2.as_ref().map(|x| lower_expr(lctx, x)))
             }
-            ExprPath(ref qself, ref path) => {
+            ExprKind::Path(ref qself, ref path) => {
                 let hir_qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
                     hir::QSelf {
                         ty: lower_ty(lctx, ty),
@@ -1220,14 +1221,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 });
                 hir::ExprPath(hir_qself, lower_path_full(lctx, path, qself.is_none()))
             }
-            ExprBreak(opt_ident) => hir::ExprBreak(opt_ident.map(|sp_ident| {
+            ExprKind::Break(opt_ident) => hir::ExprBreak(opt_ident.map(|sp_ident| {
                 respan(sp_ident.span, lower_ident(lctx, sp_ident.node))
             })),
-            ExprAgain(opt_ident) => hir::ExprAgain(opt_ident.map(|sp_ident| {
+            ExprKind::Again(opt_ident) => hir::ExprAgain(opt_ident.map(|sp_ident| {
                 respan(sp_ident.span, lower_ident(lctx, sp_ident.node))
             })),
-            ExprRet(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(lctx, x))),
-            ExprInlineAsm(InlineAsm {
+            ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| lower_expr(lctx, x))),
+            ExprKind::InlineAsm(InlineAsm {
                     ref inputs,
                     ref outputs,
                     ref asm,
@@ -1259,12 +1260,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 dialect: dialect,
                 expn_id: expn_id,
             }),
-            ExprStruct(ref path, ref fields, ref maybe_expr) => {
+            ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                 hir::ExprStruct(lower_path(lctx, path),
                                 fields.iter().map(|x| lower_field(lctx, x)).collect(),
                                 maybe_expr.as_ref().map(|x| lower_expr(lctx, x)))
             }
-            ExprParen(ref ex) => {
+            ExprKind::Paren(ref ex) => {
                 // merge attributes into the inner expression.
                 return lower_expr(lctx, ex).map(|mut ex| {
                     ex.attrs.update(|attrs| {
@@ -1276,7 +1277,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
             // Desugar ExprIfLet
             // From: `if let <pat> = <sub_expr> <body> [<else_opt>]`
-            ExprIfLet(ref pat, ref sub_expr, ref body, ref else_opt) => {
+            ExprKind::IfLet(ref pat, ref sub_expr, ref body, ref else_opt) => {
                 // to:
                 //
                 //   match <sub_expr> {
@@ -1364,7 +1365,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
             // Desugar ExprWhileLet
             // From: `[opt_ident]: while let <pat> = <sub_expr> <body>`
-            ExprWhileLet(ref pat, ref sub_expr, ref body, opt_ident) => {
+            ExprKind::WhileLet(ref pat, ref sub_expr, ref body, opt_ident) => {
                 // to:
                 //
                 //   [opt_ident]: loop {
@@ -1410,7 +1411,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
             // Desugar ExprForLoop
             // From: `[opt_ident]: for <pat> in <head> <body>`
-            ExprForLoop(ref pat, ref head, ref body, opt_ident) => {
+            ExprKind::ForLoop(ref pat, ref head, ref body, opt_ident) => {
                 // to:
                 //
                 //   {
@@ -1524,7 +1525,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 });
             }
 
-            ExprMac(_) => panic!("Shouldn't exist here"),
+            ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         },
         span: e.span,
         attrs: e.attrs.clone(),
@@ -1533,46 +1534,46 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
 pub fn lower_stmt(lctx: &LoweringContext, s: &Stmt) -> hir::Stmt {
     match s.node {
-        StmtDecl(ref d, id) => {
+        StmtKind::Decl(ref d, id) => {
             Spanned {
                 node: hir::StmtDecl(lower_decl(lctx, d), id),
                 span: s.span,
             }
         }
-        StmtExpr(ref e, id) => {
+        StmtKind::Expr(ref e, id) => {
             Spanned {
                 node: hir::StmtExpr(lower_expr(lctx, e), id),
                 span: s.span,
             }
         }
-        StmtSemi(ref e, id) => {
+        StmtKind::Semi(ref e, id) => {
             Spanned {
                 node: hir::StmtSemi(lower_expr(lctx, e), id),
                 span: s.span,
             }
         }
-        StmtMac(..) => panic!("Shouldn't exist here"),
+        StmtKind::Mac(..) => panic!("Shouldn't exist here"),
     }
 }
 
-pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureClause) -> hir::CaptureClause {
+pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureBy) -> hir::CaptureClause {
     match c {
-        CaptureByValue => hir::CaptureByValue,
-        CaptureByRef => hir::CaptureByRef,
+        CaptureBy::Value => hir::CaptureByValue,
+        CaptureBy::Ref => hir::CaptureByRef,
     }
 }
 
 pub fn lower_visibility(_lctx: &LoweringContext, v: Visibility) -> hir::Visibility {
     match v {
-        Public => hir::Public,
-        Inherited => hir::Inherited,
+        Visibility::Public => hir::Public,
+        Visibility::Inherited => hir::Inherited,
     }
 }
 
 pub fn lower_block_check_mode(lctx: &LoweringContext, b: &BlockCheckMode) -> hir::BlockCheckMode {
     match *b {
-        DefaultBlock => hir::DefaultBlock,
-        UnsafeBlock(u) => hir::UnsafeBlock(lower_unsafe_source(lctx, u)),
+        BlockCheckMode::Default => hir::DefaultBlock,
+        BlockCheckMode::Unsafe(u) => hir::UnsafeBlock(lower_unsafe_source(lctx, u)),
     }
 }
 

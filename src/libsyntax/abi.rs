@@ -8,27 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::Os::*;
-pub use self::Abi::*;
-pub use self::Architecture::*;
-pub use self::AbiArchitecture::*;
-
 use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[allow(non_camel_case_types)]
 pub enum Os {
-    OsWindows,
-    OsMacos,
-    OsLinux,
-    OsAndroid,
-    OsFreebsd,
-    OsiOS,
-    OsDragonfly,
-    OsBitrig,
-    OsNetbsd,
-    OsOpenbsd,
-    OsNaCl,
-    OsSolaris,
+    Windows,
+    Macos,
+    Linux,
+    Android,
+    Freebsd,
+    iOS,
+    Dragonfly,
+    Bitrig,
+    Netbsd,
+    Openbsd,
+    NaCl,
+    Solaris,
 }
 
 #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
@@ -74,9 +70,9 @@ pub struct AbiData {
 #[derive(Copy, Clone)]
 pub enum AbiArchitecture {
     /// Not a real ABI (e.g., intrinsic)
-    RustArch,
+    Rust,
     /// An ABI that specifies cross-platform defaults (e.g., "C")
-    AllArch,
+    All,
     /// Multiple architectures (bitset)
     Archs(u32)
 }
@@ -84,23 +80,23 @@ pub enum AbiArchitecture {
 #[allow(non_upper_case_globals)]
 const AbiDatas: &'static [AbiData] = &[
     // Platform-specific ABIs
-    AbiData {abi: Cdecl, name: "cdecl" },
-    AbiData {abi: Stdcall, name: "stdcall" },
-    AbiData {abi: Fastcall, name: "fastcall" },
-    AbiData {abi: Vectorcall, name: "vectorcall"},
-    AbiData {abi: Aapcs, name: "aapcs" },
-    AbiData {abi: Win64, name: "win64" },
+    AbiData {abi: Abi::Cdecl, name: "cdecl" },
+    AbiData {abi: Abi::Stdcall, name: "stdcall" },
+    AbiData {abi: Abi::Fastcall, name: "fastcall" },
+    AbiData {abi: Abi::Vectorcall, name: "vectorcall"},
+    AbiData {abi: Abi::Aapcs, name: "aapcs" },
+    AbiData {abi: Abi::Win64, name: "win64" },
 
     // Cross-platform ABIs
     //
     // NB: Do not adjust this ordering without
     // adjusting the indices below.
-    AbiData {abi: Rust, name: "Rust" },
-    AbiData {abi: C, name: "C" },
-    AbiData {abi: System, name: "system" },
-    AbiData {abi: RustIntrinsic, name: "rust-intrinsic" },
-    AbiData {abi: RustCall, name: "rust-call" },
-    AbiData {abi: PlatformIntrinsic, name: "platform-intrinsic" }
+    AbiData {abi: Abi::Rust, name: "Rust" },
+    AbiData {abi: Abi::C, name: "C" },
+    AbiData {abi: Abi::System, name: "system" },
+    AbiData {abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
+    AbiData {abi: Abi::RustCall, name: "rust-call" },
+    AbiData {abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" }
 ];
 
 /// Returns the ABI with the given name (if any).
@@ -137,18 +133,18 @@ impl fmt::Display for Abi {
 impl fmt::Display for Os {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            OsLinux => "linux".fmt(f),
-            OsWindows => "windows".fmt(f),
-            OsMacos => "macos".fmt(f),
-            OsiOS => "ios".fmt(f),
-            OsAndroid => "android".fmt(f),
-            OsFreebsd => "freebsd".fmt(f),
-            OsDragonfly => "dragonfly".fmt(f),
-            OsBitrig => "bitrig".fmt(f),
-            OsNetbsd => "netbsd".fmt(f),
-            OsOpenbsd => "openbsd".fmt(f),
-            OsNaCl => "nacl".fmt(f),
-            OsSolaris => "solaris".fmt(f),
+            Os::Linux => "linux".fmt(f),
+            Os::Windows => "windows".fmt(f),
+            Os::Macos => "macos".fmt(f),
+            Os::iOS => "ios".fmt(f),
+            Os::Android => "android".fmt(f),
+            Os::Freebsd => "freebsd".fmt(f),
+            Os::Dragonfly => "dragonfly".fmt(f),
+            Os::Bitrig => "bitrig".fmt(f),
+            Os::Netbsd => "netbsd".fmt(f),
+            Os::Openbsd => "openbsd".fmt(f),
+            Os::NaCl => "nacl".fmt(f),
+            Os::Solaris => "solaris".fmt(f),
         }
     }
 }

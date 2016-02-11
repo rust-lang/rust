@@ -409,7 +409,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
 
                 // Translate the format
-                let fill = self.ecx.expr_lit(sp, ast::LitChar(fill));
+                let fill = self.ecx.expr_lit(sp, ast::LitKind::Char(fill));
                 let align = |name| {
                     let mut p = Context::rtpath(self.ecx, "Alignment");
                     p.push(self.ecx.ident_of(name));
@@ -448,20 +448,20 @@ impl<'a, 'b> Context<'a, 'b> {
                     -> P<ast::Expr> {
         let sp = piece_ty.span;
         let ty = ecx.ty_rptr(sp,
-            ecx.ty(sp, ast::TyVec(piece_ty)),
+            ecx.ty(sp, ast::TyKind::Vec(piece_ty)),
             Some(ecx.lifetime(sp, special_idents::static_lifetime.name)),
-            ast::MutImmutable);
+            ast::Mutability::Immutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
         // static instead of const to speed up codegen by not requiring this to be inlined
-        let st = ast::ItemStatic(ty, ast::MutImmutable, slice);
+        let st = ast::ItemKind::Static(ty, ast::Mutability::Immutable, slice);
 
         let name = ecx.ident_of(name);
         let item = ecx.item(sp, name, vec![], st);
-        let decl = respan(sp, ast::DeclItem(item));
+        let decl = respan(sp, ast::DeclKind::Item(item));
 
         // Wrap the declaration in a block so that it forms a single expression.
         ecx.expr_block(ecx.block(sp,
-            vec![P(respan(sp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))],
+            vec![P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))],
             Some(ecx.expr_ident(sp, name))))
     }
 
@@ -480,7 +480,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.fmtsp,
                 self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                 Some(static_lifetime),
-                ast::MutImmutable);
+                ast::Mutability::Immutable);
         let pieces = Context::static_array(self.ecx,
                                            "__STATIC_FMTSTR",
                                            piece_ty,
@@ -559,7 +559,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // as series of let's; the first approach does.
         let pat = self.ecx.pat_tuple(self.fmtsp, pats);
         let arm = self.ecx.arm(self.fmtsp, vec!(pat), args_array);
-        let head = self.ecx.expr(self.fmtsp, ast::ExprTup(heads));
+        let head = self.ecx.expr(self.fmtsp, ast::ExprKind::Tup(heads));
         let result = self.ecx.expr_match(self.fmtsp, head, vec!(arm));
 
         let args_slice = self.ecx.expr_addr_of(self.fmtsp, result);

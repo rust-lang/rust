@@ -89,8 +89,8 @@ impl fold::Folder for CrateInjector {
             attrs: vec!(
                 attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_word_item(
                         InternedString::new("macro_use")))),
-            node: ast::ItemExternCrate(Some(self.crate_name)),
-            vis: ast::Inherited,
+            node: ast::ItemKind::ExternCrate(Some(self.crate_name)),
+            vis: ast::Visibility::Inherited,
             span: DUMMY_SP
         }));
 
@@ -149,7 +149,7 @@ impl fold::Folder for PreludeInjector {
         mod_.items.insert(0, P(ast::Item {
             id: ast::DUMMY_NODE_ID,
             ident: special_idents::invalid,
-            node: ast::ItemUse(vp),
+            node: ast::ItemKind::Use(vp),
             attrs: vec![ast::Attribute {
                 span: self.span,
                 node: ast::Attribute_ {
@@ -157,12 +157,12 @@ impl fold::Folder for PreludeInjector {
                     style: ast::AttrStyle::Outer,
                     value: P(ast::MetaItem {
                         span: self.span,
-                        node: ast::MetaWord(special_idents::prelude_import.name.as_str()),
+                        node: ast::MetaItemKind::Word(special_idents::prelude_import.name.as_str()),
                     }),
                     is_sugared_doc: false,
                 },
             }],
-            vis: ast::Inherited,
+            vis: ast::Visibility::Inherited,
             span: self.span,
         }));
 

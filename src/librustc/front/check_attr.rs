@@ -26,9 +26,9 @@ enum Target {
 impl Target {
     fn from_item(item: &ast::Item) -> Target {
         match item.node {
-            ast::ItemFn(..) => Target::Fn,
-            ast::ItemStruct(..) => Target::Struct,
-            ast::ItemEnum(..) => Target::Enum,
+            ast::ItemKind::Fn(..) => Target::Fn,
+            ast::ItemKind::Struct(..) => Target::Struct,
+            ast::ItemKind::Enum(..) => Target::Enum,
             _ => Target::Other,
         }
     }

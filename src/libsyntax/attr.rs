@@ -15,8 +15,8 @@ pub use self::ReprAttr::*;
 pub use self::IntType::*;
 
 use ast;
-use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
-use ast::{Stmt, StmtDecl, StmtExpr, StmtMac, StmtSemi, DeclItem, DeclLocal};
+use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaItemKind};
+use ast::{Stmt, StmtKind, DeclKind};
 use ast::{Expr, Item, Local, Decl};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
@@ -66,7 +66,7 @@ pub trait AttrMetaMethods {
     /// `#[foo="bar"]` and `#[foo(bar)]`
     fn name(&self) -> InternedString;
 
-    /// Gets the string value if self is a MetaNameValue variant
+    /// Gets the string value if self is a MetaItemKind::NameValue variant
     /// containing a string, otherwise None.
     fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
@@ -96,17 +96,17 @@ impl AttrMetaMethods for Attribute {
 impl AttrMetaMethods for MetaItem {
     fn name(&self) -> InternedString {
         match self.node {
-            MetaWord(ref n) => (*n).clone(),
-            MetaNameValue(ref n, _) => (*n).clone(),
-            MetaList(ref n, _) => (*n).clone(),
+            MetaItemKind::Word(ref n) => (*n).clone(),
+            MetaItemKind::NameValue(ref n, _) => (*n).clone(),
+            MetaItemKind::List(ref n, _) => (*n).clone(),
         }
     }
 
     fn value_str(&self) -> Option<InternedString> {
         match self.node {
-            MetaNameValue(_, ref v) => {
+            MetaItemKind::NameValue(_, ref v) => {
                 match v.node {
-                    ast::LitStr(ref s, _) => Some((*s).clone()),
+                    ast::LitKind::Str(ref s, _) => Some((*s).clone()),
                     _ => None,
                 }
             },
@@ -116,7 +116,7 @@ impl AttrMetaMethods for MetaItem {
 
     fn meta_item_list(&self) -> Option<&[P<MetaItem>]> {
         match self.node {
-            MetaList(_, ref l) => Some(&l[..]),
+            MetaItemKind::List(_, ref l) => Some(&l[..]),
             _ => None
         }
     }
@@ -173,21 +173,21 @@ impl AttributeMethods for Attribute {
 
 pub fn mk_name_value_item_str(name: InternedString, value: InternedString)
                               -> P<MetaItem> {
-    let value_lit = dummy_spanned(ast::LitStr(value, ast::CookedStr));
+    let value_lit = dummy_spanned(ast::LitKind::Str(value, ast::StrStyle::Cooked));
     mk_name_value_item(name, value_lit)
 }
 
 pub fn mk_name_value_item(name: InternedString, value: ast::Lit)
                           -> P<MetaItem> {
-    P(dummy_spanned(MetaNameValue(name, value)))
+    P(dummy_spanned(MetaItemKind::NameValue(name, value)))
 }
 
 pub fn mk_list_item(name: InternedString, items: Vec<P<MetaItem>>) -> P<MetaItem> {
-    P(dummy_spanned(MetaList(name, items)))
+    P(dummy_spanned(MetaItemKind::List(name, items)))
 }
 
 pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
-    P(dummy_spanned(MetaWord(name)))
+    P(dummy_spanned(MetaItemKind::Word(name)))
 }
 
 thread_local! { static NEXT_ATTR_ID: Cell<usize> = Cell::new(0) }
@@ -225,12 +225,11 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
                            hi: BytePos)
                            -> Attribute {
     let style = doc_comment_style(&text);
-    let lit = spanned(lo, hi, ast::LitStr(text, ast::CookedStr));
+    let lit = spanned(lo, hi, ast::LitKind::Str(text, ast::StrStyle::Cooked));
     let attr = Attribute_ {
         id: id,
         style: style,
-        value: P(spanned(lo, hi, MetaNameValue(InternedString::new("doc"),
-                                               lit))),
+        value: P(spanned(lo, hi, MetaItemKind::NameValue(InternedString::new("doc"), lit))),
         is_sugared_doc: true
     };
     spanned(lo, hi, attr)
@@ -286,7 +285,7 @@ pub fn sort_meta_items(items: Vec<P<MetaItem>>) -> Vec<P<MetaItem>> {
     v.into_iter().map(|(_, m)| m.map(|Spanned {node, span}| {
         Spanned {
             node: match node {
-                MetaList(n, mis) => MetaList(n, sort_meta_items(mis)),
+                MetaItemKind::List(n, mis) => MetaItemKind::List(n, sort_meta_items(mis)),
                 _ => node
             },
             span: span
@@ -329,11 +328,11 @@ pub enum InlineAttr {
 pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
     attrs.iter().fold(InlineAttr::None, |ia,attr| {
         match attr.node.value.node {
-            MetaWord(ref n) if *n == "inline" => {
+            MetaItemKind::Word(ref n) if *n == "inline" => {
                 mark_used(attr);
                 InlineAttr::Hint
             }
-            MetaList(ref n, ref items) if *n == "inline" => {
+            MetaItemKind::List(ref n, ref items) if *n == "inline" => {
                 mark_used(attr);
                 if items.len() != 1 {
                     diagnostic.map(|d|{ d.span_err(attr.span, "expected one argument"); });
@@ -365,11 +364,11 @@ pub fn cfg_matches<T: CfgDiag>(cfgs: &[P<MetaItem>],
                            cfg: &ast::MetaItem,
                            diag: &mut T) -> bool {
     match cfg.node {
-        ast::MetaList(ref pred, ref mis) if &pred[..] == "any" =>
+        ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "any" =>
             mis.iter().any(|mi| cfg_matches(cfgs, &**mi, diag)),
-        ast::MetaList(ref pred, ref mis) if &pred[..] == "all" =>
+        ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "all" =>
             mis.iter().all(|mi| cfg_matches(cfgs, &**mi, diag)),
-        ast::MetaList(ref pred, ref mis) if &pred[..] == "not" => {
+        ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "not" => {
             if mis.len() != 1 {
                 diag.emit_error(|diagnostic| {
                     diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
@@ -378,14 +377,14 @@ pub fn cfg_matches<T: CfgDiag>(cfgs: &[P<MetaItem>],
             }
             !cfg_matches(cfgs, &*mis[0], diag)
         }
-        ast::MetaList(ref pred, _) => {
+        ast::MetaItemKind::List(ref pred, _) => {
             diag.emit_error(|diagnostic| {
                 diagnostic.span_err(cfg.span,
                     &format!("invalid predicate `{}`", pred));
             });
             false
         },
-        ast::MetaWord(_) | ast::MetaNameValue(..) => {
+        ast::MetaItemKind::Word(_) | ast::MetaItemKind::NameValue(..) => {
             diag.flag_gated(|feature_gated_cfgs| {
                 feature_gated_cfgs.extend(
                     GatedCfg::gate(cfg).map(GatedCfgAttr::GatedCfg));
@@ -707,11 +706,11 @@ pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
 pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     match attr.node.value.node {
-        ast::MetaList(ref s, ref items) if *s == "repr" => {
+        ast::MetaItemKind::List(ref s, ref items) if *s == "repr" => {
             mark_used(attr);
             for item in items {
                 match item.node {
-                    ast::MetaWord(ref word) => {
+                    ast::MetaItemKind::Word(ref word) => {
                         let hint = match &word[..] {
                             // Can't use "extern" because it's not a lexical identifier.
                             "C" => Some(ReprExtern),
@@ -746,16 +745,16 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
 
 fn int_type_of_word(s: &str) -> Option<IntType> {
     match s {
-        "i8" => Some(SignedInt(ast::TyI8)),
-        "u8" => Some(UnsignedInt(ast::TyU8)),
-        "i16" => Some(SignedInt(ast::TyI16)),
-        "u16" => Some(UnsignedInt(ast::TyU16)),
-        "i32" => Some(SignedInt(ast::TyI32)),
-        "u32" => Some(UnsignedInt(ast::TyU32)),
-        "i64" => Some(SignedInt(ast::TyI64)),
-        "u64" => Some(UnsignedInt(ast::TyU64)),
-        "isize" => Some(SignedInt(ast::TyIs)),
-        "usize" => Some(UnsignedInt(ast::TyUs)),
+        "i8" => Some(SignedInt(ast::IntTy::I8)),
+        "u8" => Some(UnsignedInt(ast::UintTy::U8)),
+        "i16" => Some(SignedInt(ast::IntTy::I16)),
+        "u16" => Some(UnsignedInt(ast::UintTy::U16)),
+        "i32" => Some(SignedInt(ast::IntTy::I32)),
+        "u32" => Some(UnsignedInt(ast::UintTy::U32)),
+        "i64" => Some(SignedInt(ast::IntTy::I64)),
+        "u64" => Some(UnsignedInt(ast::UintTy::U64)),
+        "isize" => Some(SignedInt(ast::IntTy::Is)),
+        "usize" => Some(UnsignedInt(ast::UintTy::Us)),
         _ => None
     }
 }
@@ -797,11 +796,11 @@ impl IntType {
     }
     fn is_ffi_safe(self) -> bool {
         match self {
-            SignedInt(ast::TyI8) | UnsignedInt(ast::TyU8) |
-            SignedInt(ast::TyI16) | UnsignedInt(ast::TyU16) |
-            SignedInt(ast::TyI32) | UnsignedInt(ast::TyU32) |
-            SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
-            SignedInt(ast::TyIs) | UnsignedInt(ast::TyUs) => false
+            SignedInt(ast::IntTy::I8) | UnsignedInt(ast::UintTy::U8) |
+            SignedInt(ast::IntTy::I16) | UnsignedInt(ast::UintTy::U16) |
+            SignedInt(ast::IntTy::I32) | UnsignedInt(ast::UintTy::U32) |
+            SignedInt(ast::IntTy::I64) | UnsignedInt(ast::UintTy::U64) => true,
+            SignedInt(ast::IntTy::Is) | UnsignedInt(ast::UintTy::Us) => false
         }
     }
 }
@@ -933,8 +932,8 @@ impl WithAttrs for P<Decl> {
             Spanned {
                 span: span,
                 node: match node {
-                    DeclLocal(local) => DeclLocal(local.with_attrs(attrs)),
-                    DeclItem(item) => DeclItem(item.with_attrs(attrs)),
+                    DeclKind::Local(local) => DeclKind::Local(local.with_attrs(attrs)),
+                    DeclKind::Item(item) => DeclKind::Item(item.with_attrs(attrs)),
                 }
             }
         })
@@ -947,12 +946,12 @@ impl WithAttrs for P<Stmt> {
             Spanned {
                 span: span,
                 node: match node {
-                    StmtDecl(decl, id) => StmtDecl(decl.with_attrs(attrs), id),
-                    StmtExpr(expr, id) => StmtExpr(expr.with_attrs(attrs), id),
-                    StmtSemi(expr, id) => StmtSemi(expr.with_attrs(attrs), id),
-                    StmtMac(mac, style, mut ats) => {
+                    StmtKind::Decl(decl, id) => StmtKind::Decl(decl.with_attrs(attrs), id),
+                    StmtKind::Expr(expr, id) => StmtKind::Expr(expr.with_attrs(attrs), id),
+                    StmtKind::Semi(expr, id) => StmtKind::Semi(expr.with_attrs(attrs), id),
+                    StmtKind::Mac(mac, style, mut ats) => {
                         ats.update(|a| a.append(attrs));
-                        StmtMac(mac, style, ats)
+                        StmtKind::Mac(mac, style, ats)
                     }
                 },
             }

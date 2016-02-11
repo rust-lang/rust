@@ -56,7 +56,7 @@ pub fn read_macro_defs(sess: &Session, cstore: &CStore, krate: &ast::Crate)
     // crate root, because `$crate` won't work properly. Identify these by
     // spans, because the crate map isn't set up yet.
     for item in &krate.module.items {
-        if let ast::ItemExternCrate(_) = item.node {
+        if let ast::ItemKind::ExternCrate(_) = item.node {
             loader.span_whitelist.insert(item.span);
         }
     }
@@ -73,7 +73,7 @@ impl<'a, 'v> Visitor<'v> for MacroLoader<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
         // We're only interested in `extern crate`.
         match item.node {
-            ast::ItemExternCrate(_) => {}
+            ast::ItemKind::ExternCrate(_) => {}
             _ => {
                 visit::walk_item(self, item);
                 return;
@@ -95,7 +95,7 @@ impl<'a, 'v> Visitor<'v> for MacroLoader<'a> {
                     }
                     if let (Some(sel), Some(names)) = (import.as_mut(), names) {
                         for attr in names {
-                            if let ast::MetaWord(ref name) = attr.node {
+                            if let ast::MetaItemKind::Word(ref name) = attr.node {
                                 sel.insert(name.clone(), attr.span);
                             } else {
                                 span_err!(self.sess, attr.span, E0466, "bad macro import");
@@ -113,7 +113,7 @@ impl<'a, 'v> Visitor<'v> for MacroLoader<'a> {
                     };
 
                     for attr in names {
-                        if let ast::MetaWord(ref name) = attr.node {
+                        if let ast::MetaItemKind::Word(ref name) = attr.node {
                             reexport.insert(name.clone(), attr.span);
                         } else {
                             call_bad_macro_reexport(self.sess, attr.span);

@@ -196,15 +196,15 @@ pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
                                               explicit_self: &'v ExplicitSelf) {
     match explicit_self.node {
-        SelfStatic => {},
-        SelfValue(ident) => {
+        SelfKind::Static => {},
+        SelfKind::Value(ident) => {
             visitor.visit_ident(explicit_self.span, ident)
         }
-        SelfRegion(ref opt_lifetime, _, ident) => {
+        SelfKind::Region(ref opt_lifetime, _, ident) => {
             visitor.visit_ident(explicit_self.span, ident);
             walk_list!(visitor, visit_lifetime, opt_lifetime);
         }
-        SelfExplicit(ref typ, ident) => {
+        SelfKind::Explicit(ref typ, ident) => {
             visitor.visit_ident(explicit_self.span, ident);
             visitor.visit_ty(typ)
         }
@@ -230,10 +230,10 @@ pub fn walk_trait_ref<'v,V>(visitor: &mut V,
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_ident(item.span, item.ident);
     match item.node {
-        ItemExternCrate(opt_name) => {
+        ItemKind::ExternCrate(opt_name) => {
             walk_opt_name(visitor, item.span, opt_name)
         }
-        ItemUse(ref vp) => {
+        ItemKind::Use(ref vp) => {
             match vp.node {
                 ViewPathSimple(ident, ref path) => {
                     visitor.visit_ident(vp.span, ident);
@@ -253,12 +253,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                 }
             }
         }
-        ItemStatic(ref typ, _, ref expr) |
-        ItemConst(ref typ, ref expr) => {
+        ItemKind::Static(ref typ, _, ref expr) |
+        ItemKind::Const(ref typ, ref expr) => {
             visitor.visit_ty(typ);
             visitor.visit_expr(expr);
         }
-        ItemFn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
+        ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
             visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
                                             constness, abi, item.vis),
                              declaration,
@@ -266,24 +266,24 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                              item.span,
                              item.id)
         }
-        ItemMod(ref module) => {
+        ItemKind::Mod(ref module) => {
             visitor.visit_mod(module, item.span, item.id)
         }
-        ItemForeignMod(ref foreign_module) => {
+        ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
-        ItemTy(ref typ, ref type_parameters) => {
+        ItemKind::Ty(ref typ, ref type_parameters) => {
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
         }
-        ItemEnum(ref enum_definition, ref type_parameters) => {
+        ItemKind::Enum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
             visitor.visit_enum_def(enum_definition, type_parameters, item.id, item.span)
         }
-        ItemDefaultImpl(_, ref trait_ref) => {
+        ItemKind::DefaultImpl(_, ref trait_ref) => {
             visitor.visit_trait_ref(trait_ref)
         }
-        ItemImpl(_, _,
+        ItemKind::Impl(_, _,
                  ref type_parameters,
                  ref opt_trait_reference,
                  ref typ,
@@ -293,17 +293,17 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             walk_list!(visitor, visit_impl_item, impl_items);
         }
-        ItemStruct(ref struct_definition, ref generics) => {
+        ItemKind::Struct(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_variant_data(struct_definition, item.ident,
                                      generics, item.id, item.span);
         }
-        ItemTrait(_, ref generics, ref bounds, ref methods) => {
+        ItemKind::Trait(_, ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_trait_item, methods);
         }
-        ItemMac(ref mac) => visitor.visit_mac(mac),
+        ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
@@ -328,45 +328,45 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
     match typ.node {
-        TyVec(ref ty) | TyParen(ref ty) => {
+        TyKind::Vec(ref ty) | TyKind::Paren(ref ty) => {
             visitor.visit_ty(ty)
         }
-        TyPtr(ref mutable_type) => {
+        TyKind::Ptr(ref mutable_type) => {
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyRptr(ref opt_lifetime, ref mutable_type) => {
+        TyKind::Rptr(ref opt_lifetime, ref mutable_type) => {
             walk_list!(visitor, visit_lifetime, opt_lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyTup(ref tuple_element_types) => {
+        TyKind::Tup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
-        TyBareFn(ref function_declaration) => {
+        TyKind::BareFn(ref function_declaration) => {
             walk_fn_decl(visitor, &function_declaration.decl);
             walk_list!(visitor, visit_lifetime_def, &function_declaration.lifetimes);
         }
-        TyPath(ref maybe_qself, ref path) => {
+        TyKind::Path(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
             }
             visitor.visit_path(path, typ.id);
         }
-        TyObjectSum(ref ty, ref bounds) => {
+        TyKind::ObjectSum(ref ty, ref bounds) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
-        TyFixedLengthVec(ref ty, ref expression) => {
+        TyKind::FixedLengthVec(ref ty, ref expression) => {
             visitor.visit_ty(ty);
             visitor.visit_expr(expression)
         }
-        TyPolyTraitRef(ref bounds) => {
+        TyKind::PolyTraitRef(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
-        TyTypeof(ref expression) => {
+        TyKind::Typeof(ref expression) => {
             visitor.visit_expr(expression)
         }
-        TyInfer => {}
-        TyMac(ref mac) => {
+        TyKind::Infer => {}
+        TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }
     }
@@ -467,11 +467,11 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V,
     visitor.visit_ident(foreign_item.span, foreign_item.ident);
 
     match foreign_item.node {
-        ForeignItemFn(ref function_declaration, ref generics) => {
+        ForeignItemKind::Fn(ref function_declaration, ref generics) => {
             walk_fn_decl(visitor, function_declaration);
             visitor.visit_generics(generics)
         }
-        ForeignItemStatic(ref typ, _) => visitor.visit_ty(typ),
+        ForeignItemKind::Static(ref typ, _) => visitor.visit_ty(typ),
     }
 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);
@@ -524,7 +524,7 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
 }
 
 pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionRetTy) {
-    if let Return(ref output_ty) = *ret_ty {
+    if let FunctionRetTy::Ty(ref output_ty) = *ret_ty {
         visitor.visit_ty(output_ty)
     }
 }
@@ -565,20 +565,20 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
     visitor.visit_ident(trait_item.span, trait_item.ident);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
     match trait_item.node {
-        ConstTraitItem(ref ty, ref default) => {
+        TraitItemKind::Const(ref ty, ref default) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, default);
         }
-        MethodTraitItem(ref sig, None) => {
+        TraitItemKind::Method(ref sig, None) => {
             visitor.visit_explicit_self(&sig.explicit_self);
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }
-        MethodTraitItem(ref sig, Some(ref body)) => {
+        TraitItemKind::Method(ref sig, Some(ref body)) => {
             visitor.visit_fn(FnKind::Method(trait_item.ident, sig, None), &sig.decl,
                              body, trait_item.span, trait_item.id);
         }
-        TypeTraitItem(ref bounds, ref default) => {
+        TraitItemKind::Type(ref bounds, ref default) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }
@@ -625,11 +625,11 @@ pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
 
 pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
     match statement.node {
-        StmtDecl(ref declaration, _) => visitor.visit_decl(declaration),
-        StmtExpr(ref expression, _) | StmtSemi(ref expression, _) => {
+        StmtKind::Decl(ref declaration, _) => visitor.visit_decl(declaration),
+        StmtKind::Expr(ref expression, _) | StmtKind::Semi(ref expression, _) => {
             visitor.visit_expr(expression)
         }
-        StmtMac(ref mac, _, ref attrs) => {
+        StmtKind::Mac(ref mac, _, ref attrs) => {
             visitor.visit_mac(mac);
             for attr in attrs.as_attr_slice() {
                 visitor.visit_attribute(attr);
@@ -640,8 +640,8 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
 
 pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
     match declaration.node {
-        DeclLocal(ref local) => visitor.visit_local(local),
-        DeclItem(ref item) => visitor.visit_item(item),
+        DeclKind::Local(ref local) => visitor.visit_local(local),
+        DeclKind::Item(ref item) => visitor.visit_item(item),
     }
 }
 
@@ -651,21 +651,21 @@ pub fn walk_mac<'v, V: Visitor<'v>>(_: &mut V, _: &'v Mac) {
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
     match expression.node {
-        ExprBox(ref subexpression) => {
+        ExprKind::Box(ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprInPlace(ref place, ref subexpression) => {
+        ExprKind::InPlace(ref place, ref subexpression) => {
             visitor.visit_expr(place);
             visitor.visit_expr(subexpression)
         }
-        ExprVec(ref subexpressions) => {
+        ExprKind::Vec(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprRepeat(ref element, ref count) => {
+        ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
             visitor.visit_expr(count)
         }
-        ExprStruct(ref path, ref fields, ref optional_base) => {
+        ExprKind::Struct(ref path, ref fields, ref optional_base) => {
             visitor.visit_path(path, expression.id);
             for field in fields {
                 visitor.visit_ident(field.ident.span, field.ident.node);
@@ -673,116 +673,116 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             }
             walk_list!(visitor, visit_expr, optional_base);
         }
-        ExprTup(ref subexpressions) => {
+        ExprKind::Tup(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprCall(ref callee_expression, ref arguments) => {
+        ExprKind::Call(ref callee_expression, ref arguments) => {
             walk_list!(visitor, visit_expr, arguments);
             visitor.visit_expr(callee_expression)
         }
-        ExprMethodCall(ref ident, ref types, ref arguments) => {
+        ExprKind::MethodCall(ref ident, ref types, ref arguments) => {
             visitor.visit_ident(ident.span, ident.node);
             walk_list!(visitor, visit_expr, arguments);
             walk_list!(visitor, visit_ty, types);
         }
-        ExprBinary(_, ref left_expression, ref right_expression) => {
+        ExprKind::Binary(_, ref left_expression, ref right_expression) => {
             visitor.visit_expr(left_expression);
             visitor.visit_expr(right_expression)
         }
-        ExprAddrOf(_, ref subexpression) | ExprUnary(_, ref subexpression) => {
+        ExprKind::AddrOf(_, ref subexpression) | ExprKind::Unary(_, ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprLit(_) => {}
-        ExprCast(ref subexpression, ref typ) | ExprType(ref subexpression, ref typ) => {
+        ExprKind::Lit(_) => {}
+        ExprKind::Cast(ref subexpression, ref typ) | ExprKind::Type(ref subexpression, ref typ) => {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
-        ExprIf(ref head_expression, ref if_block, ref optional_else) => {
+        ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprWhile(ref subexpression, ref block, opt_ident) => {
+        ExprKind::While(ref subexpression, ref block, opt_ident) => {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprIfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
+        ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprWhileLet(ref pattern, ref subexpression, ref block, opt_ident) => {
+        ExprKind::WhileLet(ref pattern, ref subexpression, ref block, opt_ident) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprForLoop(ref pattern, ref subexpression, ref block, opt_ident) => {
+        ExprKind::ForLoop(ref pattern, ref subexpression, ref block, opt_ident) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprLoop(ref block, opt_ident) => {
+        ExprKind::Loop(ref block, opt_ident) => {
             visitor.visit_block(block);
             walk_opt_ident(visitor, expression.span, opt_ident)
         }
-        ExprMatch(ref subexpression, ref arms) => {
+        ExprKind::Match(ref subexpression, ref arms) => {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprClosure(_, ref function_declaration, ref body) => {
+        ExprKind::Closure(_, ref function_declaration, ref body) => {
             visitor.visit_fn(FnKind::Closure,
                              function_declaration,
                              body,
                              expression.span,
                              expression.id)
         }
-        ExprBlock(ref block) => visitor.visit_block(block),
-        ExprAssign(ref left_hand_expression, ref right_hand_expression) => {
+        ExprKind::Block(ref block) => visitor.visit_block(block),
+        ExprKind::Assign(ref left_hand_expression, ref right_hand_expression) => {
             visitor.visit_expr(right_hand_expression);
             visitor.visit_expr(left_hand_expression)
         }
-        ExprAssignOp(_, ref left_expression, ref right_expression) => {
+        ExprKind::AssignOp(_, ref left_expression, ref right_expression) => {
             visitor.visit_expr(right_expression);
             visitor.visit_expr(left_expression)
         }
-        ExprField(ref subexpression, ref ident) => {
+        ExprKind::Field(ref subexpression, ref ident) => {
             visitor.visit_expr(subexpression);
             visitor.visit_ident(ident.span, ident.node);
         }
-        ExprTupField(ref subexpression, _) => {
+        ExprKind::TupField(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
         }
-        ExprIndex(ref main_expression, ref index_expression) => {
+        ExprKind::Index(ref main_expression, ref index_expression) => {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }
-        ExprRange(ref start, ref end) => {
+        ExprKind::Range(ref start, ref end) => {
             walk_list!(visitor, visit_expr, start);
             walk_list!(visitor, visit_expr, end);
         }
-        ExprPath(ref maybe_qself, ref path) => {
+        ExprKind::Path(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
             }
             visitor.visit_path(path, expression.id)
         }
-        ExprBreak(ref opt_sp_ident) | ExprAgain(ref opt_sp_ident) => {
+        ExprKind::Break(ref opt_sp_ident) | ExprKind::Again(ref opt_sp_ident) => {
             for sp_ident in opt_sp_ident {
                 visitor.visit_ident(sp_ident.span, sp_ident.node);
             }
         }
-        ExprRet(ref optional_expression) => {
+        ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
-        ExprMac(ref mac) => visitor.visit_mac(mac),
-        ExprParen(ref subexpression) => {
+        ExprKind::Mac(ref mac) => visitor.visit_mac(mac),
+        ExprKind::Paren(ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
-        ExprInlineAsm(ref ia) => {
+        ExprKind::InlineAsm(ref ia) => {
             for &(_, ref input) in &ia.inputs {
                 visitor.visit_expr(&input)
             }

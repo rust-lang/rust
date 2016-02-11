@@ -98,7 +98,7 @@ pub enum Ty<'a> {
 }
 
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
-    Borrowed(None, ast::MutImmutable)
+    Borrowed(None, ast::Mutability::Immutable)
 }
 pub fn borrowed<'r>(ty: Box<Ty<'r>>) -> Ty<'r> {
     Ptr(ty, borrowed_ptrty())
@@ -153,7 +153,7 @@ impl<'a> Ty<'a> {
                 cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
             }
             Tuple(ref fields) => {
-                let ty = ast::TyTup(fields.iter()
+                let ty = ast::TyKind::Tup(fields.iter()
                     .map(|f| f.to_ty(cx, span, self_ty, self_generics))
                     .collect());
                 cx.ty(span, ty)
@@ -264,7 +264,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfValue(special_idents::self_)))
+            (self_path, respan(span, ast::SelfKind::Value(special_idents::self_)))
         }
         Some(ref ptr) => {
             let self_ty = respan(
@@ -272,7 +272,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 match *ptr {
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
-                        ast::SelfRegion(lt, mutbl, special_idents::self_)
+                        ast::SelfKind::Region(lt, mutbl, special_idents::self_)
                     }
                     Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition")
                 });

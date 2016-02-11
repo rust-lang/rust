@@ -1153,7 +1153,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::ExprLit(ref lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => {
+                ast::LitKind::Str(ref s, _) => {
                     tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
                 }
                 _ => {
@@ -2370,14 +2370,14 @@ impl OverflowOpViaIntrinsic {
         use middle::ty::{TyInt, TyUint};
 
         let new_sty = match ty.sty {
-            TyInt(TyIs) => match &tcx.sess.target.target.target_pointer_width[..] {
-                "32" => TyInt(TyI32),
-                "64" => TyInt(TyI64),
+            TyInt(Is) => match &tcx.sess.target.target.target_pointer_width[..] {
+                "32" => TyInt(I32),
+                "64" => TyInt(I64),
                 _ => panic!("unsupported target word size")
             },
-            TyUint(TyUs) => match &tcx.sess.target.target.target_pointer_width[..] {
-                "32" => TyUint(TyU32),
-                "64" => TyUint(TyU64),
+            TyUint(Us) => match &tcx.sess.target.target.target_pointer_width[..] {
+                "32" => TyUint(U32),
+                "64" => TyUint(U64),
                 _ => panic!("unsupported target word size")
             },
             ref t @ TyUint(_) | ref t @ TyInt(_) => t.clone(),
@@ -2387,41 +2387,41 @@ impl OverflowOpViaIntrinsic {
 
         match *self {
             OverflowOpViaIntrinsic::Add => match new_sty {
-                TyInt(TyI8) => "llvm.sadd.with.overflow.i8",
-                TyInt(TyI16) => "llvm.sadd.with.overflow.i16",
-                TyInt(TyI32) => "llvm.sadd.with.overflow.i32",
-                TyInt(TyI64) => "llvm.sadd.with.overflow.i64",
+                TyInt(I8) => "llvm.sadd.with.overflow.i8",
+                TyInt(I16) => "llvm.sadd.with.overflow.i16",
+                TyInt(I32) => "llvm.sadd.with.overflow.i32",
+                TyInt(I64) => "llvm.sadd.with.overflow.i64",
 
-                TyUint(TyU8) => "llvm.uadd.with.overflow.i8",
-                TyUint(TyU16) => "llvm.uadd.with.overflow.i16",
-                TyUint(TyU32) => "llvm.uadd.with.overflow.i32",
-                TyUint(TyU64) => "llvm.uadd.with.overflow.i64",
+                TyUint(U8) => "llvm.uadd.with.overflow.i8",
+                TyUint(U16) => "llvm.uadd.with.overflow.i16",
+                TyUint(U32) => "llvm.uadd.with.overflow.i32",
+                TyUint(U64) => "llvm.uadd.with.overflow.i64",
 
                 _ => unreachable!(),
             },
             OverflowOpViaIntrinsic::Sub => match new_sty {
-                TyInt(TyI8) => "llvm.ssub.with.overflow.i8",
-                TyInt(TyI16) => "llvm.ssub.with.overflow.i16",
-                TyInt(TyI32) => "llvm.ssub.with.overflow.i32",
-                TyInt(TyI64) => "llvm.ssub.with.overflow.i64",
+                TyInt(I8) => "llvm.ssub.with.overflow.i8",
+                TyInt(I16) => "llvm.ssub.with.overflow.i16",
+                TyInt(I32) => "llvm.ssub.with.overflow.i32",
+                TyInt(I64) => "llvm.ssub.with.overflow.i64",
 
-                TyUint(TyU8) => "llvm.usub.with.overflow.i8",
-                TyUint(TyU16) => "llvm.usub.with.overflow.i16",
-                TyUint(TyU32) => "llvm.usub.with.overflow.i32",
-                TyUint(TyU64) => "llvm.usub.with.overflow.i64",
+                TyUint(U8) => "llvm.usub.with.overflow.i8",
+                TyUint(U16) => "llvm.usub.with.overflow.i16",
+                TyUint(U32) => "llvm.usub.with.overflow.i32",
+                TyUint(U64) => "llvm.usub.with.overflow.i64",
 
                 _ => unreachable!(),
             },
             OverflowOpViaIntrinsic::Mul => match new_sty {
-                TyInt(TyI8) => "llvm.smul.with.overflow.i8",
-                TyInt(TyI16) => "llvm.smul.with.overflow.i16",
-                TyInt(TyI32) => "llvm.smul.with.overflow.i32",
-                TyInt(TyI64) => "llvm.smul.with.overflow.i64",
+                TyInt(I8) => "llvm.smul.with.overflow.i8",
+                TyInt(I16) => "llvm.smul.with.overflow.i16",
+                TyInt(I32) => "llvm.smul.with.overflow.i32",
+                TyInt(I64) => "llvm.smul.with.overflow.i64",
 
-                TyUint(TyU8) => "llvm.umul.with.overflow.i8",
-                TyUint(TyU16) => "llvm.umul.with.overflow.i16",
-                TyUint(TyU32) => "llvm.umul.with.overflow.i32",
-                TyUint(TyU64) => "llvm.umul.with.overflow.i64",
+                TyUint(U8) => "llvm.umul.with.overflow.i8",
+                TyUint(U16) => "llvm.umul.with.overflow.i16",
+                TyUint(U32) => "llvm.umul.with.overflow.i32",
+                TyUint(U64) => "llvm.umul.with.overflow.i64",
 
                 _ => unreachable!(),
             },

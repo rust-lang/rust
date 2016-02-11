@@ -13,8 +13,7 @@ pub use self::OrderingOp::*;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast;
-use syntax::ast::{MetaItem, Expr};
+use syntax::ast::{MetaItem, Expr, BinOpKind, self};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -161,7 +160,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
 
             let assign = cx.stmt_let(span, false, test_id, new);
 
-            let cond = cx.expr_binary(span, ast::BiEq,
+            let cond = cx.expr_binary(span, BinOpKind::Eq,
                                       cx.expr_ident(span, test_id),
                                       equals_expr.clone());
             let if_ = cx.expr_if(span,
@@ -183,7 +182,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
 /// Strict inequality.
 fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
          span: Span, substr: &Substructure) -> P<Expr> {
-    let op = if less {ast::BiLt} else {ast::BiGt};
+    let op = if less { BinOpKind::Lt } else { BinOpKind::Gt };
     cs_fold(
         false, // need foldr,
         |cx, span, subexpr, self_f, other_fs| {
@@ -211,11 +210,11 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
 
             let cmp = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
 
-            let not_cmp = cx.expr_unary(span, ast::UnNot,
+            let not_cmp = cx.expr_unary(span, ast::UnOp::Not,
                                         cx.expr_binary(span, op, other_f.clone(), self_f));
 
-            let and = cx.expr_binary(span, ast::BiAnd, not_cmp, subexpr);
-            cx.expr_binary(span, ast::BiOr, cmp, and)
+            let and = cx.expr_binary(span, BinOpKind::And, not_cmp, subexpr);
+            cx.expr_binary(span, BinOpKind::Or, cmp, and)
         },
         cx.expr_bool(span, equal),
         Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {

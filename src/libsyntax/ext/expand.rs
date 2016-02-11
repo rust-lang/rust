@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, DeclLocal, PatMac};
+use ast::{Block, Crate, DeclKind, PatMac};
 use ast::{Local, Ident, Mac_, Name};
-use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtDecl, StmtMac};
-use ast::{StmtExpr, StmtSemi};
+use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
 use ast::TokenTree;
 use ast;
 use ext::mtwt;
@@ -42,7 +41,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
-        ast::ExprMac(mac) => {
+        ast::ExprKind::Mac(mac) => {
 
             // Assert that we drop any macro attributes on the floor here
             drop(attrs);
@@ -69,7 +68,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             })
         }
 
-        ast::ExprInPlace(placer, value_expr) => {
+        ast::ExprKind::InPlace(placer, value_expr) => {
             // Ensure feature-gate is enabled
             feature_gate::check_for_placement_in(
                 fld.cx.ecfg.features,
@@ -78,18 +77,18 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let placer = fld.fold_expr(placer);
             let value_expr = fld.fold_expr(value_expr);
-            fld.cx.expr(span, ast::ExprInPlace(placer, value_expr))
+            fld.cx.expr(span, ast::ExprKind::InPlace(placer, value_expr))
                 .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprWhile(cond, body, opt_ident) => {
+        ast::ExprKind::While(cond, body, opt_ident) => {
             let cond = fld.fold_expr(cond);
             let (body, opt_ident) = expand_loop_block(body, opt_ident, fld);
-            fld.cx.expr(span, ast::ExprWhile(cond, body, opt_ident))
+            fld.cx.expr(span, ast::ExprKind::While(cond, body, opt_ident))
                 .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprWhileLet(pat, expr, body, opt_ident) => {
+        ast::ExprKind::WhileLet(pat, expr, body, opt_ident) => {
             let pat = fld.fold_pat(pat);
             let expr = fld.fold_expr(expr);
 
@@ -103,17 +102,17 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             });
             assert!(rewritten_pats.len() == 1);
 
-            fld.cx.expr(span, ast::ExprWhileLet(rewritten_pats.remove(0), expr, body, opt_ident))
-                .with_attrs(fold_thin_attrs(attrs, fld))
+            let wl = ast::ExprKind::WhileLet(rewritten_pats.remove(0), expr, body, opt_ident);
+            fld.cx.expr(span, wl).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprLoop(loop_block, opt_ident) => {
+        ast::ExprKind::Loop(loop_block, opt_ident) => {
             let (loop_block, opt_ident) = expand_loop_block(loop_block, opt_ident, fld);
-            fld.cx.expr(span, ast::ExprLoop(loop_block, opt_ident))
+            fld.cx.expr(span, ast::ExprKind::Loop(loop_block, opt_ident))
                 .with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprForLoop(pat, head, body, opt_ident) => {
+        ast::ExprKind::ForLoop(pat, head, body, opt_ident) => {
             let pat = fld.fold_pat(pat);
 
             // Hygienic renaming of the for loop body (for loop binds its pattern).
@@ -127,11 +126,11 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             assert!(rewritten_pats.len() == 1);
 
             let head = fld.fold_expr(head);
-            fld.cx.expr(span, ast::ExprForLoop(rewritten_pats.remove(0), head, body, opt_ident))
-                .with_attrs(fold_thin_attrs(attrs, fld))
+            let fl = ast::ExprKind::ForLoop(rewritten_pats.remove(0), head, body, opt_ident);
+            fld.cx.expr(span, fl).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprIfLet(pat, sub_expr, body, else_opt) => {
+        ast::ExprKind::IfLet(pat, sub_expr, body, else_opt) => {
             let pat = fld.fold_pat(pat);
 
             // Hygienic renaming of the body.
@@ -146,14 +145,14 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
             let else_opt = else_opt.map(|else_opt| fld.fold_expr(else_opt));
             let sub_expr = fld.fold_expr(sub_expr);
-            fld.cx.expr(span, ast::ExprIfLet(rewritten_pats.remove(0), sub_expr, body, else_opt))
-                .with_attrs(fold_thin_attrs(attrs, fld))
+            let il = ast::ExprKind::IfLet(rewritten_pats.remove(0), sub_expr, body, else_opt);
+            fld.cx.expr(span, il).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprClosure(capture_clause, fn_decl, block) => {
+        ast::ExprKind::Closure(capture_clause, fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
-            let new_node = ast::ExprClosure(capture_clause,
+            let new_node = ast::ExprKind::Closure(capture_clause,
                                             rewritten_fn_decl,
                                             rewritten_block);
             P(ast::Expr{id:id, node: new_node, span: fld.new_span(span),
@@ -316,17 +315,17 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
         .into_iter().map(|i| i.expect_item()).collect()
 }
 
-/// Expand item_underscore
-fn expand_item_underscore(item: ast::Item_, fld: &mut MacroExpander) -> ast::Item_ {
+/// Expand item_kind
+fn expand_item_kind(item: ast::ItemKind, fld: &mut MacroExpander) -> ast::ItemKind {
     match item {
-        ast::ItemFn(decl, unsafety, constness, abi, generics, body) => {
+        ast::ItemKind::Fn(decl, unsafety, constness, abi, generics, body) => {
             let (rewritten_fn_decl, rewritten_body)
                 = expand_and_rename_fn_decl_and_block(decl, body, fld);
             let expanded_generics = fold::noop_fold_generics(generics,fld);
-            ast::ItemFn(rewritten_fn_decl, unsafety, constness, abi,
+            ast::ItemKind::Fn(rewritten_fn_decl, unsafety, constness, abi,
                         expanded_generics, rewritten_body)
         }
-        _ => noop_fold_item_underscore(item, fld)
+        _ => noop_fold_item_kind(item, fld)
     }
 }
 
@@ -349,7 +348,7 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
 
         if is_use {
             match attr.node.value.node {
-                ast::MetaWord(..) => (),
+                ast::MetaItemKind::Word(..) => (),
                 _ => fld.cx.span_err(attr.span, "arguments to macro_use are not allowed here"),
             }
             return true;
@@ -363,7 +362,7 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
 pub fn expand_item_mac(it: P<ast::Item>,
                        fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
     let (extname, path_span, tts, span, attrs, ident) = it.and_then(|it| match it.node {
-        ItemMac(codemap::Spanned { node: Mac_ { path, tts, .. }, .. }) =>
+        ItemKind::Mac(codemap::Spanned { node: Mac_ { path, tts, .. }, .. }) =>
             (path.segments[0].identifier.name, path.span, tts, it.span, it.attrs, it.ident),
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     });
@@ -507,7 +506,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
 fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     let stmt = stmt.and_then(|stmt| stmt);
     let (mac, style, attrs) = match stmt.node {
-        StmtMac(mac, style, attrs) => (mac, style, attrs),
+        StmtKind::Mac(mac, style, attrs) => (mac, style, attrs),
         _ => return expand_non_macro_stmt(stmt, fld)
     };
 
@@ -534,12 +533,12 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
-    if style == MacStmtWithSemicolon {
+    if style == MacStmtStyle::Semicolon {
         if let Some(stmt) = fully_expanded.pop() {
             let new_stmt = stmt.map(|Spanned {node, span}| {
                 Spanned {
                     node: match node {
-                        StmtExpr(e, stmt_id) => StmtSemi(e, stmt_id),
+                        StmtKind::Expr(e, stmt_id) => StmtKind::Semi(e, stmt_id),
                         _ => node /* might already have a semi */
                     },
                     span: span
@@ -558,11 +557,11 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                          -> SmallVector<P<Stmt>> {
     // is it a let?
     match node {
-        StmtDecl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
-            DeclLocal(local) => {
+        StmtKind::Decl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
+            DeclKind::Local(local) => {
                 // take it apart:
                 let rewritten_local = local.map(|Local {id, pat, ty, init, span, attrs}| {
-                    // expand the ty since TyFixedLengthVec contains an Expr
+                    // expand the ty since TyKind::FixedLengthVec contains an Expr
                     // and thus may have a macro use
                     let expanded_ty = ty.map(|t| fld.fold_ty(t));
                     // expand the pat (it might contain macro uses):
@@ -596,8 +595,8 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                     }
                 });
                 SmallVector::one(P(Spanned {
-                    node: StmtDecl(P(Spanned {
-                            node: DeclLocal(rewritten_local),
+                    node: StmtKind::Decl(P(Spanned {
+                            node: DeclKind::Local(rewritten_local),
                             span: span
                         }),
                         node_id),
@@ -606,7 +605,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
             }
             _ => {
                 noop_fold_stmt(Spanned {
-                    node: StmtDecl(P(Spanned {
+                    node: StmtKind::Decl(P(Spanned {
                             node: decl,
                             span: span
                         }),
@@ -891,10 +890,10 @@ fn expand_annotatable(a: Annotatable,
 
     let mut new_items: SmallVector<Annotatable> = match a {
         Annotatable::Item(it) => match it.node {
-            ast::ItemMac(..) => {
+            ast::ItemKind::Mac(..) => {
                 expand_item_mac(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect()
             }
-            ast::ItemMod(_) | ast::ItemForeignMod(_) => {
+            ast::ItemKind::Mod(_) | ast::ItemKind::ForeignMod(_) => {
                 let valid_ident =
                     it.ident.name != parse::token::special_idents::invalid.name;
 
@@ -920,14 +919,14 @@ fn expand_annotatable(a: Annotatable,
         },
 
         Annotatable::TraitItem(it) => match it.node {
-            ast::MethodTraitItem(_, Some(_)) => SmallVector::one(it.map(|ti| ast::TraitItem {
+            ast::TraitItemKind::Method(_, Some(_)) => SmallVector::one(it.map(|ti| ast::TraitItem {
                 id: ti.id,
                 ident: ti.ident,
                 attrs: ti.attrs,
                 node: match ti.node  {
-                    ast::MethodTraitItem(sig, Some(body)) => {
+                    ast::TraitItemKind::Method(sig, Some(body)) => {
                         let (sig, body) = expand_and_rename_method(sig, body, fld);
-                        ast::MethodTraitItem(sig, Some(body))
+                        ast::TraitItemKind::Method(sig, Some(body))
                     }
                     _ => unreachable!()
                 },
@@ -1049,7 +1048,7 @@ fn expand_item_multi_modifier(mut it: Annotatable,
         }
     }
 
-    // Expansion may have added new ItemModifiers.
+    // Expansion may have added new ItemKind::Modifiers.
     expand_item_multi_modifier(it, fld)
 }
 
@@ -1133,7 +1132,7 @@ fn expand_and_rename_method(sig: ast::MethodSig, body: P<ast::Block>,
 
 pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
     let t = match t.node.clone() {
-        ast::Ty_::TyMac(mac) => {
+        ast::TyKind::Mac(mac) => {
             if fld.cx.ecfg.features.unwrap().type_macros {
                 let expanded_ty = match expand_mac_invoc(mac, t.span,
                                                          |r| r.make_ty(),
@@ -1195,8 +1194,8 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_item(item, self)
     }
 
-    fn fold_item_underscore(&mut self, item: ast::Item_) -> ast::Item_ {
-        expand_item_underscore(item, self)
+    fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
+        expand_item_kind(item, self)
     }
 
     fn fold_stmt(&mut self, stmt: P<ast::Stmt>) -> SmallVector<P<ast::Stmt>> {
@@ -1427,7 +1426,7 @@ mod tests {
 
     impl<'v> Visitor<'v> for PathExprFinderContext {
         fn visit_expr(&mut self, expr: &ast::Expr) {
-            if let ast::ExprPath(None, ref p) = expr.node {
+            if let ast::ExprKind::Path(None, ref p) = expr.node {
                 self.path_accumulator.push(p.clone());
             }
             visit::walk_expr(self, expr);
@@ -1694,7 +1693,7 @@ mod tests {
             0)
     }
 
-    // closure arg hygiene (ExprClosure)
+    // closure arg hygiene (ExprKind::Closure)
     // expands to fn f(){(|x_1 : i32| {(x_2 + x_1)})(3);}
     #[test]
     fn closure_arg_hygiene(){

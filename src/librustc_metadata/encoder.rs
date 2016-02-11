@@ -40,7 +40,7 @@ use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use std::rc::Rc;
 use std::u32;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
 use syntax::codemap::BytePos;
 use syntax::attr;
@@ -1381,7 +1381,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                           nitem: &hir::ForeignItem,
                                           index: &mut CrateIndex<'tcx>,
                                           path: PathElems,
-                                          abi: abi::Abi) {
+                                          abi: Abi) {
     let def_id = ecx.tcx.map.local_def_id(nitem.id);
 
     index.record(def_id, rbml_w);
@@ -1393,7 +1393,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_family(rbml_w, FN_FAMILY);
         encode_bounds_and_type_for_item(rbml_w, ecx, index, nitem.id);
         encode_name(rbml_w, nitem.name);
-        if abi == abi::RustIntrinsic || abi == abi::PlatformIntrinsic {
+        if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
         }
         encode_attributes(rbml_w, &*nitem.attrs);
@@ -1541,14 +1541,14 @@ fn encode_item_index(rbml_w: &mut Encoder, index: IndexData) {
 
 fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
     match mi.node {
-      ast::MetaWord(ref name) => {
+      ast::MetaItemKind::Word(ref name) => {
         rbml_w.start_tag(tag_meta_item_word);
         rbml_w.wr_tagged_str(tag_meta_item_name, name);
         rbml_w.end_tag();
       }
-      ast::MetaNameValue(ref name, ref value) => {
+      ast::MetaItemKind::NameValue(ref name, ref value) => {
         match value.node {
-          ast::LitStr(ref value, _) => {
+          ast::LitKind::Str(ref value, _) => {
             rbml_w.start_tag(tag_meta_item_name_value);
             rbml_w.wr_tagged_str(tag_meta_item_name, name);
             rbml_w.wr_tagged_str(tag_meta_item_value, value);
@@ -1557,7 +1557,7 @@ fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
           _ => {/* FIXME (#623): encode other variants */ }
         }
       }
-      ast::MetaList(ref name, ref items) => {
+      ast::MetaItemKind::List(ref name, ref items) => {
         rbml_w.start_tag(tag_meta_item_list);
         rbml_w.wr_tagged_str(tag_meta_item_name, name);
         for inner_item in items {

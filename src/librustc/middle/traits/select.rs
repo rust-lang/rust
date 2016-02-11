@@ -46,7 +46,7 @@ use middle::ty::relate::TypeRelation;
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
-use syntax::abi;
+use syntax::abi::Abi;
 use rustc_front::hir;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashMap;
@@ -1288,7 +1288,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // provide an impl, but only for suitable `fn` pointers
             ty::TyBareFn(_, &ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
-                abi: abi::Rust,
+                abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: _,
                     output: ty::FnConverging(_),

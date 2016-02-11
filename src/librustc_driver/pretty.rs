@@ -30,7 +30,7 @@ use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
-use syntax::ast;
+use syntax::ast::{self, BlockCheckMode};
 use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};
@@ -600,23 +600,23 @@ impl ReplaceBodyWithLoop {
 }
 
 impl fold::Folder for ReplaceBodyWithLoop {
-    fn fold_item_underscore(&mut self, i: ast::Item_) -> ast::Item_ {
+    fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
         match i {
-            ast::ItemStatic(..) | ast::ItemConst(..) => {
+            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                 self.within_static_or_const = true;
-                let ret = fold::noop_fold_item_underscore(i, self);
+                let ret = fold::noop_fold_item_kind(i, self);
                 self.within_static_or_const = false;
                 return ret;
             }
             _ => {
-                fold::noop_fold_item_underscore(i, self)
+                fold::noop_fold_item_kind(i, self)
             }
         }
     }
 
     fn fold_trait_item(&mut self, i: P<ast::TraitItem>) -> SmallVector<P<ast::TraitItem>> {
         match i.node {
-            ast::ConstTraitItem(..) => {
+            ast::TraitItemKind::Const(..) => {
                 self.within_static_or_const = true;
                 let ret = fold::noop_fold_trait_item(i, self);
                 self.within_static_or_const = false;
@@ -651,9 +651,9 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
         if !self.within_static_or_const {
 
-            let empty_block = expr_to_block(ast::DefaultBlock, None);
+            let empty_block = expr_to_block(BlockCheckMode::Default, None);
             let loop_expr = P(ast::Expr {
-                node: ast::ExprLoop(empty_block, None),
+                node: ast::ExprKind::Loop(empty_block, None),
                 id: ast::DUMMY_NODE_ID,
                 span: codemap::DUMMY_SP,
                 attrs: None,

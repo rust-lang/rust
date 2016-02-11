@@ -13,7 +13,7 @@
 
 use hir::*;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, Attribute, Attribute_, MetaItem};
-use syntax::ast::{MetaWord, MetaList, MetaNameValue};
+use syntax::ast::MetaItemKind;
 use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
@@ -522,11 +522,11 @@ pub fn noop_fold_meta_item<T: Folder>(mi: P<MetaItem>, fld: &mut T) -> P<MetaIte
     mi.map(|Spanned { node, span }| {
         Spanned {
             node: match node {
-                MetaWord(id) => MetaWord(id),
-                MetaList(id, mis) => {
-                    MetaList(id, mis.move_map(|e| fld.fold_meta_item(e)))
+                MetaItemKind::Word(id) => MetaItemKind::Word(id),
+                MetaItemKind::List(id, mis) => {
+                    MetaItemKind::List(id, mis.move_map(|e| fld.fold_meta_item(e)))
                 }
-                MetaNameValue(id, s) => MetaNameValue(id, s),
+                MetaItemKind::NameValue(id, s) => MetaItemKind::NameValue(id, s),
             },
             span: fld.new_span(span),
         }
