@@ -21,8 +21,9 @@ use rustc_front::hir;
 
 #[derive(Copy, Clone)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustReifyFnPointer,   // go from a fn-item type to a fn-pointer type
-    AdjustUnsafeFnPointer,  // go from a safe fn pointer to an unsafe fn pointer
+    AdjustReifyFnPointer,    // go from a fn-item type to a fn-pointer type
+    AdjustUnsafeFnPointer,   // go from a safe fn pointer to an unsafe fn pointer
+    AdjustMutToConstPointer, // go from a mut raw pointer to a const raw pointer
     AdjustDerefRef(AutoDerefRef<'tcx>),
 }
 
@@ -106,7 +107,8 @@ impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
             AdjustReifyFnPointer |
-            AdjustUnsafeFnPointer => false,
+            AdjustUnsafeFnPointer |
+            AdjustMutToConstPointer => false,
             AdjustDerefRef(ref r) => r.is_identity(),
         }
     }
@@ -151,7 +153,7 @@ impl<'tcx> ty::TyS<'tcx> {
         return match adjustment {
             Some(adjustment) => {
                 match *adjustment {
-                   AdjustReifyFnPointer => {
+                    AdjustReifyFnPointer => {
                         match self.sty {
                             ty::TyBareFn(Some(_), b) => {
                                 cx.mk_fn(None, b)
@@ -164,17 +166,32 @@ impl<'tcx> ty::TyS<'tcx> {
                         }
                     }
 
-                   AdjustUnsafeFnPointer => {
+                    AdjustUnsafeFnPointer => {
                         match self.sty {
                             ty::TyBareFn(None, b) => cx.safe_to_unsafe_fn_ty(b),
                             ref b => {
                                 cx.sess.bug(
-                                    &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
+                                    &format!("AdjustUnsafeFnPointer adjustment on non-fn-ptr: \
                                              {:?}",
                                             b));
                             }
                         }
-                   }
+                    }
+
+                    AdjustMutToConstPointer => {
+                        match self.sty {
+                            ty::TyRawPtr(mt) => cx.mk_ptr(ty::TypeAndMut {
+                                ty: mt.ty,
+                                mutbl: hir::MutImmutable
+                            }),
+                            ref b => {
+                                cx.sess.bug(
+                                    &format!("AdjustMutToConstPointer on non-raw-ptr: \
+                                             {:?}",
+                                            b));
+                            }
+                        }
+                    }
 
                     AdjustDerefRef(ref adj) => {
                         let mut adjusted_ty = self;

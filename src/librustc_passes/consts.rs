@@ -768,7 +768,8 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
     match v.tcx.tables.borrow().adjustments.get(&e.id) {
         None |
         Some(&ty::adjustment::AdjustReifyFnPointer) |
-        Some(&ty::adjustment::AdjustUnsafeFnPointer) => {}
+        Some(&ty::adjustment::AdjustUnsafeFnPointer) |
+        Some(&ty::adjustment::AdjustMutToConstPointer) => {}
 
         Some(&ty::adjustment::AdjustDerefRef(
             ty::adjustment::AutoDerefRef { autoderefs, .. }

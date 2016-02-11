@@ -416,6 +416,9 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             kind: kind,
         };
 
+        debug!("unadjusted-expr={:?} applying adjustments={:?}",
+               expr, cx.tcx.tables.borrow().adjustments.get(&self.id));
+
         // Now apply adjustments, if any.
         match cx.tcx.tables.borrow().adjustments.get(&self.id) {
             None => {}
@@ -435,6 +438,15 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     ty: adjusted_ty,
                     span: self.span,
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
+                };
+            }
+            Some(&ty::adjustment::AdjustMutToConstPointer) => {
+                let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
+                expr = Expr {
+                    temp_lifetime: temp_lifetime,
+                    ty: adjusted_ty,
+                    span: self.span,
+                    kind: ExprKind::Cast { source: expr.to_ref() },
                 };
             }
             Some(&ty::adjustment::AdjustDerefRef(ref adj)) => {
