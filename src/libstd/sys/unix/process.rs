@@ -380,8 +380,8 @@ impl Command {
             *sys::os::environ() = envp.as_ptr();
         }
 
-        // NaCl has no signal support.
-        if cfg!(not(target_os = "nacl")) {
+        // NaCl and Emscripten have no signal support.
+        if cfg!(not(any(target_os = "nacl", target_os = "emscripten"))) {
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -634,6 +634,7 @@ mod tests {
     #[test]
     #[cfg_attr(target_os = "macos", ignore)]
     #[cfg_attr(target_os = "nacl", ignore)] // no signals on NaCl.
+    #[cfg_attr(target_os = "emscripten", ignore)] // no signals on Emscripten.
     fn test_process_mask() {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.

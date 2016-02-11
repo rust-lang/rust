@@ -488,6 +488,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     }).map(|_| ())
 }
 
+#[cfg(not(target_os = "emscripten"))]
 pub fn page_size() -> usize {
     unsafe {
         libc::sysconf(libc::_SC_PAGESIZE) as usize

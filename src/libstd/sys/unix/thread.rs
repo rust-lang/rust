@@ -11,6 +11,7 @@
 use prelude::v1::*;
 
 use alloc::boxed::FnBox;
+#[cfg(not(target_os = "emscripten"))]
 use cmp;
 #[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
 use ffi::CString;
@@ -21,6 +22,7 @@ use ptr;
 use sys::os;
 use time::Duration;
 
+#[cfg(not(target_os = "emscripten"))]
 use sys_common::thread::*;
 
 pub struct Thread {
@@ -33,6 +35,7 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
+    #[cfg(not(target_os = "emscripten"))]
     pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
                           -> io::Result<Thread> {
         let p = box p;
@@ -74,6 +77,12 @@ impl Thread {
             unsafe { start_thread(main); }
             ptr::null_mut()
         }
+    }
+
+    #[cfg(target_os = "emscripten")]
+    pub unsafe fn new<'a>(_stack: usize, _p: Box<FnBox() + 'a>)
+                          -> io::Result<Thread> {
+        Err(io::Error::new(io::ErrorKind::Other, "emscripten doesn't support threads"))
     }
 
     pub fn yield_now() {
@@ -333,7 +342,8 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 // No point in looking up __pthread_get_minstack() on non-glibc
 // platforms.
 #[cfg(all(not(target_os = "linux"),
-          not(target_os = "netbsd")))]
+          not(target_os = "netbsd"),
+          not(target_os = "emscripten")))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN as usize
 }

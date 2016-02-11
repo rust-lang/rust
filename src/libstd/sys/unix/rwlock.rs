@@ -8,14 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(target_os = "emscripten", allow(unused_imports))]
+
 use libc;
 use cell::UnsafeCell;
 
+#[cfg(not(target_os = "emscripten"))]
 pub struct RWLock { inner: UnsafeCell<libc::pthread_rwlock_t> }
 
 unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
+#[cfg(not(target_os = "emscripten"))]
 impl RWLock {
     pub const fn new() -> RWLock {
         RWLock { inner: UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER) }
@@ -79,4 +83,58 @@ impl RWLock {
             debug_assert_eq!(r, 0);
         }
     }
+}
+
+// Emscripten doesn't support pthreads, so we use an alternative single-threaded
+// implementation of RWLock.
+#[cfg(target_os = "emscripten")]
+pub struct RWLock { inner: UnsafeCell<RWLockState> }
+#[cfg(target_os = "emscripten")]
+enum RWLockState { Unlocked, Read, Write }
+
+#[cfg(target_os = "emscripten")]
+impl RWLock {
+    pub const fn new() -> RWLock { RWLock { inner: UnsafeCell::new(RWLockState::Unlocked) } }
+    #[inline]
+    pub unsafe fn read(&self) {
+        match &mut *self.inner.get() {
+            s @ &mut RWLockState::Unlocked => *s = RWLockState::Read,
+            &mut RWLockState::Read => {},
+            &mut RWLockState::Write => { loop {} }       // deadlock
+        }
+    }
+    #[inline]
+    pub unsafe fn try_read(&self) -> bool {
+        match &mut *self.inner.get() {
+            s @ &mut RWLockState::Unlocked => { *s = RWLockState::Read; true },
+            &mut RWLockState::Read => true,
+            &mut RWLockState::Write => false,
+        }
+    }
+    #[inline]
+    pub unsafe fn write(&self) {
+        match &mut *self.inner.get() {
+            s @ &mut RWLockState::Unlocked => *s = RWLockState::Write,
+            &mut RWLockState::Read => { loop {} },       // deadlock
+            &mut RWLockState::Write => {},
+        }
+    }
+    #[inline]
+    pub unsafe fn try_write(&self) -> bool {
+        match &mut *self.inner.get() {
+            s @ &mut RWLockState::Unlocked => { *s = RWLockState::Write; true },
+            &mut RWLockState::Read => false,
+            &mut RWLockState::Write => false,
+        }
+    }
+    #[inline]
+    pub unsafe fn read_unlock(&self) {
+        *self.inner.get() = RWLockState::Unlocked;
+    }
+    #[inline]
+    pub unsafe fn write_unlock(&self) {
+        *self.inner.get() = RWLockState::Unlocked;
+    }
+    #[inline]
+    pub unsafe fn destroy(&self) {}
 }

@@ -11,7 +11,9 @@
 #![cfg_attr(test, allow(dead_code))]
 
 use libc;
-use self::imp::{make_handler, drop_handler};
+#[cfg(not(target_os = "emscripten"))]
+use self::imp::make_handler;
+use self::imp::drop_handler;
 
 pub use self::imp::cleanup;
 pub use self::imp::init;
@@ -21,6 +23,7 @@ pub struct Handler {
 }
 
 impl Handler {
+    #[cfg(not(target_os = "emscripten"))]
     pub unsafe fn new() -> Handler {
         make_handler()
     }
@@ -188,6 +191,7 @@ mod imp {
               all(target_os = "netbsd", not(target_vendor = "rumprun")),
               target_os = "openbsd")))]
 mod imp {
+    #[cfg(not(target_os = "emscripten"))]
     use ptr;
 
     pub unsafe fn init() {
@@ -196,6 +200,7 @@ mod imp {
     pub unsafe fn cleanup() {
     }
 
+    #[cfg(not(target_os = "emscripten"))]
     pub unsafe fn make_handler() -> super::Handler {
         super::Handler { _data: ptr::null_mut() }
     }
