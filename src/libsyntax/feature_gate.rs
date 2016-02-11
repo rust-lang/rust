@@ -1003,7 +1003,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("type_ascription", e.span,
                                   "type ascription is experimental");
             }
-            ast::ExprRange(_, _, ast::RangeLimits::Closed) => {
+            ast::ExprKind::Range(_, _, ast::RangeLimits::Closed) => {
                 self.gate_feature("inclusive_range_syntax",
                                   e.span,
                                   "inclusive range syntax is experimental");
