@@ -32,6 +32,8 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
         let expr_ty = cx.tcx.expr_ty(self); // note: no adjustments (yet)!
+        let temp_lifetime = cx.tcx.region_maps.temporary_scope(self.id);
+        let expr_extent = cx.tcx.region_maps.node_extent(self.id);
 
         let kind = match self.node {
             // Here comes the interesting stuff:
@@ -72,7 +74,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
                     let tupled_args = Expr {
                         ty: sig.inputs[1],
-                        temp_lifetime: cx.tcx.region_maps.temporary_scope(self.id),
+                        temp_lifetime: temp_lifetime,
                         span: self.span,
                         kind: ExprKind::Tuple {
                             fields: args.iter().map(ToRef::to_ref).collect()
@@ -146,11 +148,20 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             }
 
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-                let op = bin_op(op.node);
-                ExprKind::AssignOp {
-                    op: op,
-                    lhs: lhs.to_ref(),
-                    rhs: rhs.to_ref(),
+                if cx.tcx.is_method_call(self.id) {
+                    let pass_args = if hir_util::is_by_value_binop(op.node) {
+                        PassArgs::ByValue
+                    } else {
+                        PassArgs::ByRef
+                    };
+                    overloaded_operator(cx, self, ty::MethodCall::expr(self.id),
+                                        pass_args, lhs.to_ref(), vec![rhs])
+                } else {
+                    ExprKind::AssignOp {
+                        op: bin_op(op.node),
+                        lhs: lhs.to_ref(),
+                        rhs: rhs.to_ref(),
+                    }
                 }
             }
 
@@ -415,9 +426,6 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             hir::ExprTup(ref fields) =>
                 ExprKind::Tuple { fields: fields.to_ref() },
         };
-
-        let temp_lifetime = cx.tcx.region_maps.temporary_scope(self.id);
-        let expr_extent = cx.tcx.region_maps.node_extent(self.id);
 
         let mut expr = Expr {
             temp_lifetime: temp_lifetime,

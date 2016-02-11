@@ -844,6 +844,18 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "match checking",
              || middle::check_match::check_crate(tcx));
 
+        // this must run before MIR dump, because
+        // "not all control paths return a value" is reported here.
+        //
+        // maybe move the check to a MIR pass?
+        time(time_passes,
+             "liveness checking",
+             || middle::liveness::check_crate(tcx));
+
+        time(time_passes,
+             "rvalue checking",
+             || rvalues::check_crate(tcx));
+
         let mut mir_map =
             time(time_passes,
                  "MIR dump",
@@ -854,16 +866,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || mir_map.run_passes(&mut sess.plugin_mir_passes.borrow_mut(), tcx));
 
         time(time_passes,
-             "liveness checking",
-             || middle::liveness::check_crate(tcx));
-
-        time(time_passes,
              "borrow checking",
              || borrowck::check_crate(tcx));
-
-        time(time_passes,
-             "rvalue checking",
-             || rvalues::check_crate(tcx));
 
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids
