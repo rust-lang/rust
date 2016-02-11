@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#![allow(unused)]
+#![allow(unused, no_effect)]
 
 //#![plugin(regex_macros)]
 //extern crate regex;

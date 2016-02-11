@@ -1,6 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
-#![allow(unknown_lints, unused)]
+#![allow(unknown_lints, unused, no_effect)]
 #![deny(redundant_closure)]
 
 fn main() {

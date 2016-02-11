@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(absurd_extreme_comparisons)]
-#![allow(unused, eq_op)]
+#![allow(unused, eq_op, no_effect)]
 fn main() {
     const Z: u32 = 0;
 
