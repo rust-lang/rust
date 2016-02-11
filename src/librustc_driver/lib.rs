@@ -360,7 +360,7 @@ fn check_cfg(sopts: &config::Options,
     let mut saw_invalid_predicate = false;
     for item in sopts.cfg.iter() {
         match item.node {
-            ast::MetaList(ref pred, _) => {
+            ast::MetaItemKind::List(ref pred, _) => {
                 saw_invalid_predicate = true;
                 emitter.emit(None,
                              &format!("invalid predicate in --cfg command line argument: `{}`",
