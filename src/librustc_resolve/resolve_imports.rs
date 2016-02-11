@@ -524,6 +524,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
         target_module.for_each_child(|name, ns, binding| {
             if !binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) { return }
+            if binding.is_extern_crate() { return }
             self.define(module_, name, ns, directive.import(binding));
 
             if ns == TypeNS && directive.is_public &&
