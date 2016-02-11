@@ -257,18 +257,16 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         let b_sess = AssertRecoverSafe::new(&sess);
         let b_cstore = AssertRecoverSafe::new(&cstore);
         let b_cfg = AssertRecoverSafe::new(cfg.clone());
-        let b_input = AssertRecoverSafe::new(&input);
-        let b_out = AssertRecoverSafe::new(&out);
         let b_control = AssertRecoverSafe::new(&control);
 
         panic::recover(|| {
-            AssertRecoverSafe::new(driver::compile_input(&b_sess, &b_cstore, (*b_cfg).clone(),
-                                                         &b_input, &b_out,
-                                                         &None, None, &b_control))
+            driver::compile_input(&b_sess, &b_cstore, (*b_cfg).clone(),
+                                  &input, &out,
+                                  &None, None, &b_control)
         })
     } {
         Ok(r) => {
-            match *r {
+            match r {
                 Err(count) if count > 0 && compile_fail == false => {
                     sess.fatal("aborting due to previous error(s)")
                 }

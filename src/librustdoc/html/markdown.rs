@@ -27,6 +27,7 @@
 #![allow(non_camel_case_types)]
 
 use libc;
+use rustc::session::config::get_unstable_features_setting;
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::default::Default;
@@ -34,7 +35,7 @@ use std::ffi::CString;
 use std::fmt;
 use std::slice;
 use std::str;
-use std::env;
+use syntax::feature_gate::UnstableFeatures;
 
 use html::render::derive_id;
 use html::toc::TocBuilder;
@@ -440,18 +441,6 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
-fn get_unstable_features_setting() -> bool {
-    // Check if we can activate compile_fail option or not.
-    //
-    // It is done to ensure that it won't be used out-of-tree
-    // because it's not ready yet for production.
-    match (option_env!("CFG_BOOTSTRAP_KEY"),
-           env::var("RUSTC_BOOTSTRAP_KEY").ok()) {
-        (Some(ref cfg), Some(ref r_key)) => cfg == r_key,
-        _ => false,
-    }
-}
-
 #[derive(Eq, PartialEq, Clone, Debug)]
 struct LangString {
     should_panic: bool,
@@ -478,7 +467,10 @@ impl LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
-        let allow_compile_fail = get_unstable_features_setting();
+        let allow_compile_fail = match get_unstable_features_setting() {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat=> true,
+            _ => false,
+        };
 
         let tokens = string.split(|c: char|
             !(c == '_' || c == '-' || c.is_alphanumeric())
@@ -487,11 +479,7 @@ impl LangString {
         for token in tokens {
             match token {
                 "" => {},
-                "should_panic" => {
-                    data.should_panic = true;
-                    seen_rust_tags = true;
-                    data.no_run = true;
-                },
+                "should_panic" => { data.should_panic = true; seen_rust_tags = true; },
                 "no_run" => { data.no_run = true; seen_rust_tags = true; },
                 "ignore" => { data.ignore = true; seen_rust_tags = true; },
                 "rust" => { data.rust = true; seen_rust_tags = true; },
@@ -600,10 +588,10 @@ mod tests {
         t("rust",                  false,        false,  false,  true,  false,        false);
         t("sh",                    false,        false,  false,  false, false,        false);
         t("ignore",                false,        false,  true,   true,  false,        false);
-        t("should_panic",          true,         true,   false,  true,  false,        false);
+        t("should_panic",          true,         false,  false,  true,  false,        false);
         t("no_run",                false,        true,   false,  true,  false,        false);
         t("test_harness",          false,        false,  false,  true,  true,         false);
-        t("compile_fail",          false,        false,  false,  true,  false,        true);
+        t("compile_fail",          false,        true,   false,  true,  false,        true);
         t("{.no_run .example}",    false,        true,   false,  true,  false,        false);
         t("{.sh .should_panic}",   true,         false,  false,  true,  false,        false);
         t("{.example .rust}",      false,        false,  false,  true,  false,        false);
