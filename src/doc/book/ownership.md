@@ -171,10 +171,10 @@ v2.truncate(2);
 
 and `v1` were still accessible we'd end up with an invalid vector since it
 would not know that the heap data has been truncated. Now, the part of the
-vector `v1` on the stack does not agree with its corresponding part on the
+vector `v1` on the stack does not agree with the corresponding part on the
 heap. `v1` still thinks there are three elements in the vector and will
 happily let us access the non existent element `v1[2]` but as you might
-already know this is a recipe for disaster.
+already know this is a recipe for disaster (might lead to a segfault).
 
 This is why Rust forbids using `v` after we’ve done the move.
 
