@@ -41,7 +41,7 @@ pub mod reexport {
         "issue_20646::Trait": [
             "Trait"
         ],
-        "issue_20646::Trait::Output": [
+        "issue_20646::Trait<Trait>::Output": [
             "AssociatedType"
         ],
         "issue_20646::fun": [
@@ -53,7 +53,7 @@ pub mod reexport {
         "issue_20646::reexport::Trait": [
             "Trait"
         ],
-        "issue_20646::reexport::Trait::Output": [
+        "issue_20646::reexport::Trait<Trait>::Output": [
             "AssociatedType"
         ],
         "issue_20646::reexport::fun": [

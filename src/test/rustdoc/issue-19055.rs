@@ -35,19 +35,19 @@ impl Foo for Any {}
         "issue_19055::Any": [
             "Trait"
         ],
-        "issue_19055::Any::downcast_mut": [
+        "issue_19055::Any<Trait>::downcast_mut": [
             "Method(any) -> option"
         ],
-        "issue_19055::Any::downcast_ref": [
+        "issue_19055::Any<Trait>::downcast_ref": [
             "Method(any) -> option"
         ],
-        "issue_19055::Any::is": [
+        "issue_19055::Any<Trait>::is": [
             "Method(any) -> bool"
         ],
         "issue_19055::Foo": [
             "Trait"
         ],
-        "issue_19055::Foo::foo": [
+        "issue_19055::Foo<Trait>::foo": [
             "Method(foo)"
         ]
     }

@@ -37,7 +37,7 @@ impl Bar {
         "assoc_consts::Foo": [
             "Trait"
         ],
-        "assoc_consts::Foo::FOO": [
+        "assoc_consts::Foo<Trait>::FOO": [
             "AssociatedConst"
         ]
     }

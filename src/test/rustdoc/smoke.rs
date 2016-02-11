@@ -44,7 +44,7 @@ pub mod bar {
             "Trait",
             "*wow*"
         ],
-        "smoke::bar::Doge::dummy": [
+        "smoke::bar::Doge<Trait>::dummy": [
             "Method(doge)"
         ],
         "smoke::bar::Foo": [

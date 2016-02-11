@@ -55,16 +55,16 @@ pub mod reexport {
         "issue_20727_4::Index": [
             "Trait"
         ],
-        "issue_20727_4::Index::Output": [
+        "issue_20727_4::Index<Trait>::Output": [
             "AssociatedType"
         ],
-        "issue_20727_4::Index::index": [
+        "issue_20727_4::Index<Trait>::index": [
             "TyMethod(index, idx) -> output"
         ],
         "issue_20727_4::IndexMut": [
             "Trait"
         ],
-        "issue_20727_4::IndexMut::index_mut": [
+        "issue_20727_4::IndexMut<Trait>::index_mut": [
             "TyMethod(indexmut, idx) -> output"
         ],
         "issue_20727_4::reexport": [
@@ -73,16 +73,16 @@ pub mod reexport {
         "issue_20727_4::reexport::Index": [
             "Trait"
         ],
-        "issue_20727_4::reexport::Index::Output": [
+        "issue_20727_4::reexport::Index<Trait>::Output": [
             "AssociatedType"
         ],
-        "issue_20727_4::reexport::Index::index": [
+        "issue_20727_4::reexport::Index<Trait>::index": [
             "TyMethod()"
         ],
         "issue_20727_4::reexport::IndexMut": [
             "Trait"
         ],
-        "issue_20727_4::reexport::IndexMut::index_mut": [
+        "issue_20727_4::reexport::IndexMut<Trait>::index_mut": [
             "TyMethod()"
         ]
     }

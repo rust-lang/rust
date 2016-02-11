@@ -56,13 +56,13 @@ pub type Golf<T> where T: Clone = (T, T);
         "foo::Bravo": [
             "Trait"
         ],
-        "foo::Bravo::get": [
+        "foo::Bravo<Trait>::get": [
             "TyMethod(bravo, b)"
         ],
         "foo::Delta": [
             "Struct"
         ],
-        "foo::Delta::delta": [
+        "foo::Delta<Struct>::delta": [
             "Method(delta)"
         ],
         "foo::Echo": [
@@ -71,7 +71,7 @@ pub type Golf<T> where T: Clone = (T, T);
         "foo::Foxtrot": [
             "Enum"
         ],
-        "foo::Foxtrot::Foxtrot1": [
+        "foo::Foxtrot<Enum>::Foxtrot1": [
             "Variant"
         ],
         "foo::Golf": [
@@ -80,7 +80,7 @@ pub type Golf<T> where T: Clone = (T, T);
         "foo::MyTrait": [
             "Trait"
         ],
-        "foo::MyTrait::dummy": [
+        "foo::MyTrait<Trait>::dummy": [
             "Method(mytrait)"
         ],
         "foo::charlie": [

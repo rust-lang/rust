@@ -34,19 +34,19 @@ pub trait Bar {
         "extern_method::Bar": [
             "Trait"
         ],
-        "extern_method::Bar::bar": [
+        "extern_method::Bar<Trait>::bar": [
             "TyMethod()"
         ],
-        "extern_method::Bar::bar_": [
+        "extern_method::Bar<Trait>::bar_": [
             "Method()"
         ],
         "extern_method::Foo": [
             "Trait"
         ],
-        "extern_method::Foo::foo": [
+        "extern_method::Foo<Trait>::foo": [
             "TyMethod()"
         ],
-        "extern_method::Foo::foo_": [
+        "extern_method::Foo<Trait>::foo_": [
             "Method()"
         ]
     }

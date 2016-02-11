@@ -42,10 +42,10 @@ pub mod reexport {
         "issue_20727_3::Deref2": [
             "Trait"
         ],
-        "issue_20727_3::Deref2::Target": [
+        "issue_20727_3::Deref2<Trait>::Target": [
             "AssociatedType"
         ],
-        "issue_20727_3::Deref2::deref": [
+        "issue_20727_3::Deref2<Trait>::deref": [
             "TyMethod(deref2) -> target"
         ],
         "issue_20727_3::reexport": [
@@ -54,10 +54,10 @@ pub mod reexport {
         "issue_20727_3::reexport::Deref2": [
             "Trait"
         ],
-        "issue_20727_3::reexport::Deref2::Target": [
+        "issue_20727_3::reexport::Deref2<Trait>::Target": [
             "AssociatedType"
         ],
-        "issue_20727_3::reexport::Deref2::deref": [
+        "issue_20727_3::reexport::Deref2<Trait>::deref": [
             "TyMethod()"
         ]
     }

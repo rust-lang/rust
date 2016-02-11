@@ -23,7 +23,7 @@ pub mod traits {
         "issue_16265_1::Foo": [
             "Struct"
         ],
-        "issue_16265_1::Foo::eq": [
+        "issue_16265_1::Foo<Struct>::eq": [
             "Method(foo, foo) -> bool"
         ],
         "issue_16265_1::traits": [

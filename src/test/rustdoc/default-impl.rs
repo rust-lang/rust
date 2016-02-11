@@ -21,7 +21,7 @@ pub fn wut<T: bar::Bar>() {
 /* !search-index
 {
     "default_impl": {
-        "default_impl::Foo::test": [
+        "default_impl::Foo<Trait>::test": [
             "Method()"
         ],
         "default_impl::bar": [
@@ -33,7 +33,7 @@ pub fn wut<T: bar::Bar>() {
         "default_impl::bar::Foo": [
             "Trait"
         ],
-        "default_impl::bar::Foo::foo": [
+        "default_impl::bar::Foo<Trait>::foo": [
             "Method()"
         ],
         "default_impl::bar::TypeId": [
@@ -42,7 +42,7 @@ pub fn wut<T: bar::Bar>() {
         "default_impl::wut": [
             "Function()"
         ],
-        "rustdoc_default_impl::bar::TypeId::of": [
+        "rustdoc_default_impl::bar::TypeId<Struct>::of": [
             "Method(typeid) -> typeid"
         ]
     }

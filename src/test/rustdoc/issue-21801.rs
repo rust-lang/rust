@@ -24,7 +24,7 @@ pub use issue_21801::Foo;
         "issue_21801::Foo": [
             "Struct"
         ],
-        "issue_21801::Foo::new": [
+        "issue_21801::Foo<Struct>::new": [
             "Method(foo, f) -> foo"
         ]
     }

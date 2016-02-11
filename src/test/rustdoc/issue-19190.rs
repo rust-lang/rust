@@ -33,16 +33,16 @@ impl Deref for Bar {
         "issue_19190::Bar": [
             "Struct"
         ],
-        "issue_19190::Bar::deref": [
+        "issue_19190::Bar<Struct>::deref": [
             "Method(bar) -> foo"
         ],
         "issue_19190::Foo": [
             "Struct"
         ],
-        "issue_19190::Foo::foo": [
+        "issue_19190::Foo<Struct>::foo": [
             "Method(foo)"
         ],
-        "issue_19190::Foo::static_foo": [
+        "issue_19190::Foo<Struct>::static_foo": [
             "Method(foo)"
         ]
     }

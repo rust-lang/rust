@@ -58,19 +58,19 @@ impl<'a, T> Bar for &'a mut Foo<T> {
         "issue_25001::Bar": [
             "Trait"
         ],
-        "issue_25001::Bar::Item": [
+        "issue_25001::Bar<Trait>::Item": [
             "AssociatedType"
         ],
-        "issue_25001::Bar::quux": [
+        "issue_25001::Bar<Trait>::quux": [
             "TyMethod(bar)"
         ],
         "issue_25001::Foo": [
             "Struct"
         ],
-        "issue_25001::Foo::pass": [
+        "issue_25001::Foo<Struct>::pass": [
             "Method(foo) -> isize"
         ],
-        "issue_25001::Foo::quux": [
+        "issue_25001::Foo<Struct>::quux": [
             "Method(foo)"
         ]
     }

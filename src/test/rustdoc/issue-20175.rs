@@ -28,7 +28,7 @@ impl<'a> Foo for &'a Bar {}
         "issue_20175::Foo": [
             "Trait"
         ],
-        "issue_20175::Foo::foo": [
+        "issue_20175::Foo<Trait>::foo": [
             "Method(foo)"
         ]
     }

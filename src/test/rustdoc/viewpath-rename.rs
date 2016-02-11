@@ -33,10 +33,10 @@ pub mod prelude {
         "foo::Maybe": [
             "Enum"
         ],
-        "foo::Maybe::Just": [
+        "foo::Maybe<Enum>::Just": [
             "Variant"
         ],
-        "foo::Maybe::Nothing": [
+        "foo::Maybe<Enum>::Nothing": [
             "Variant"
         ],
         "foo::io": [
@@ -45,7 +45,7 @@ pub mod prelude {
         "foo::io::Reader": [
             "Trait"
         ],
-        "foo::io::Reader::dummy": [
+        "foo::io::Reader<Trait>::dummy": [
             "Method(reader)"
         ],
         "foo::prelude": [

@@ -47,16 +47,16 @@ pub fn cmp_input<T: Feed, U: Feed>(a: &T::Input, b: &U::Input) -> bool
         "assoc_types::Feed": [
             "Trait"
         ],
-        "assoc_types::Feed::Input": [
+        "assoc_types::Feed<Trait>::Input": [
             "AssociatedType"
         ],
         "assoc_types::Index": [
             "Trait"
         ],
-        "assoc_types::Index::Output": [
+        "assoc_types::Index<Trait>::Output": [
             "AssociatedType"
         ],
-        "assoc_types::Index::index": [
+        "assoc_types::Index<Trait>::index": [
             "TyMethod(index, i) -> output"
         ],
         "assoc_types::cmp_input": [

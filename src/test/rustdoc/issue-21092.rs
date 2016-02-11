@@ -26,10 +26,10 @@ pub use issue_21092::{Foo, Bar};
         "issue_21092::Foo": [
             "Trait"
         ],
-        "issue_21092::Foo::Bar": [
+        "issue_21092::Foo<Trait>::Bar": [
             "AssociatedType"
         ],
-        "issue_21092::Foo::foo": [
+        "issue_21092::Foo<Trait>::foo": [
             "Method()"
         ]
     }

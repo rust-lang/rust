@@ -22,7 +22,7 @@ pub use ext::Struct;
         "extern_default_method::Struct": [
             "Struct"
         ],
-        "rustdoc_extern_default_method::Struct::provided": [
+        "rustdoc_extern_default_method::Struct<Struct>::provided": [
             "Method()"
         ]
     }

@@ -86,7 +86,9 @@ class Item:
 
     def finalize_index(self, crate):
         if self._parent_idx is not None:
-            self.path += "::" + crate.paths[self._parent_idx][1]
+            parent_name = crate.paths[self._parent_idx][1]
+            parent_ty = crate.paths[self._parent_idx][0].typename
+            self.path += "::{}<{}>".format(parent_name, parent_ty)
         self.path += "::" + self._name
 
     @classmethod
@@ -331,7 +333,10 @@ def update_ref(source, destination):
     abort_on_errs()
     with open(destination, "r") as fp:
         template = fp.read()
-        new, n = RE_REF.subn(REF_FENCE.format(dumps(source)), template)
+        # escape newlines in json strings so that we're not
+        # splitting them later on when writing the new file
+        new_index = dumps(source).encode("unicode_escape")
+        new, n = RE_REF.subn(REF_FENCE.format(new_index), template)
     if n != 1:
         stderr("Error -> less or more than a single embedded reference-index")
         raise SystemExit(1)
@@ -341,6 +346,7 @@ def update_ref(source, destination):
     os.rename(destination, bak_path)
     try:
         fp = open(destination, "w")
+        # Strip the trailing whitespace json.dumps leaves after a comma in a list
         fp.writelines([line.rstrip() + '\n' for line in new.splitlines()])
         os.remove(bak_path)
     except Exception as e:

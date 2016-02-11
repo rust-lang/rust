@@ -18,10 +18,10 @@ pub struct Foo;
         "issue_15169::Foo": [
             "Struct"
         ],
-        "issue_15169::Foo::eq": [
+        "issue_15169::Foo<Struct>::eq": [
             "Method(foo, foo) -> bool"
         ],
-        "issue_15169::Foo::ne": [
+        "issue_15169::Foo<Struct>::ne": [
             "Method(foo, foo) -> bool"
         ]
     }

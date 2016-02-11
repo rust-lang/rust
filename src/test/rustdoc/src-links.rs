@@ -68,7 +68,7 @@ pub fn modfn() { }
             "Trait",
             "Dox"
         ],
-        "foo::bar::Foobar::dummy": [
+        "foo::bar::Foobar<Trait>::dummy": [
             "Method(foobar)"
         ],
         "foo::bar::baz": [
@@ -100,7 +100,7 @@ pub fn modfn() { }
             "Trait",
             "Dox"
         ],
-        "foo::qux::bar::Foobar::dummy": [
+        "foo::qux::bar::Foobar<Trait>::dummy": [
             "Method(foobar)"
         ],
         "foo::qux::bar::baz": [

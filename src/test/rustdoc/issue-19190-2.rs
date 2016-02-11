@@ -27,7 +27,7 @@ impl Deref for Bar {
         "issue_19190_2::Bar": [
             "Struct"
         ],
-        "issue_19190_2::Bar::deref": [
+        "issue_19190_2::Bar<Struct>::deref": [
             "Method(bar) -> i32"
         ]
     }

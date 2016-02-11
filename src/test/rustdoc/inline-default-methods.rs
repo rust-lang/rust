@@ -24,10 +24,10 @@ pub use inline_default_methods::Foo;
         "inline_default_methods::Foo": [
             "Trait"
         ],
-        "inline_default_methods::Foo::bar": [
+        "inline_default_methods::Foo<Trait>::bar": [
             "TyMethod()"
         ],
-        "inline_default_methods::Foo::foo": [
+        "inline_default_methods::Foo<Trait>::foo": [
             "Method()"
         ]
     }

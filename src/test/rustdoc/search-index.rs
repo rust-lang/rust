@@ -41,13 +41,13 @@ impl Deref for Bar {
         "rustdoc_test::Bar": [
             "Struct"
         ],
-        "rustdoc_test::Bar::deref": [
+        "rustdoc_test::Bar<Struct>::deref": [
             "Method(bar) -> bar"
         ],
         "rustdoc_test::Foo": [
             "Struct"
         ],
-        "rustdoc_test::Foo::test_method": [
+        "rustdoc_test::Foo<Struct>::test_method": [
             "Method(foo)"
         ]
     }

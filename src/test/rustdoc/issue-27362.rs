@@ -21,7 +21,7 @@ pub use issue_27362 as quux;
 /* !search-index
 {
     "issue_27362": {
-        "issue_27362::Foo::baz": [
+        "issue_27362::Foo<Struct>::baz": [
             "Method()"
         ],
         "issue_27362::quux::Foo": [

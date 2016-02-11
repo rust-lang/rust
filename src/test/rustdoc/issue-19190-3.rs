@@ -42,25 +42,25 @@ impl Deref for MyBar {
         "issue_19190_3::Bar": [
             "Struct"
         ],
-        "issue_19190_3::Bar::deref": [
+        "issue_19190_3::Bar<Struct>::deref": [
             "Method(bar) -> baz"
         ],
-        "issue_19190_3::Baz::baz": [
+        "issue_19190_3::Baz<Struct>::baz": [
             "Method()"
         ],
-        "issue_19190_3::Baz::static_baz": [
+        "issue_19190_3::Baz<Struct>::static_baz": [
             "Method()"
         ],
         "issue_19190_3::Foo": [
             "Struct"
         ],
-        "issue_19190_3::Foo::deref": [
+        "issue_19190_3::Foo<Struct>::deref": [
             "Method(foo) -> i32"
         ],
         "issue_19190_3::MyBar": [
             "Struct"
         ],
-        "issue_19190_3::MyBar::deref": [
+        "issue_19190_3::MyBar<Struct>::deref": [
             "Method(mybar) -> baz"
         ]
     }

@@ -26,7 +26,7 @@ pub enum Enum {
         "must_use::Enum": [
             "Enum"
         ],
-        "must_use::Enum::Variant": [
+        "must_use::Enum<Enum>::Variant": [
             "Variant"
         ],
         "must_use::Struct": [

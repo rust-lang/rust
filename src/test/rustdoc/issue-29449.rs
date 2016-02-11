@@ -35,15 +35,15 @@ impl Foo {
         "issue_29449::Foo": [
             "Struct"
         ],
-        "issue_29449::Foo::bar": [
+        "issue_29449::Foo<Struct>::bar": [
             "Method(foo)",
             "# Examples\n# Panics"
         ],
-        "issue_29449::Foo::bar_1": [
+        "issue_29449::Foo<Struct>::bar_1": [
             "Method(foo)",
             "# Examples"
         ],
-        "issue_29449::Foo::bar_2": [
+        "issue_29449::Foo<Struct>::bar_2": [
             "Method(foo)",
             "# Examples\n# Panics"
         ]

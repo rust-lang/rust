@@ -27,7 +27,7 @@ pub mod str {
         "issue_23511::str": [
             "Primitive"
         ],
-        "issue_23511::str::foo": [
+        "issue_23511::str<Primitive>::foo": [
             "Method(str)"
         ]
     }

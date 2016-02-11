@@ -37,10 +37,10 @@ pub mod reexport {
         "issue_20727_2::Add": [
             "Trait"
         ],
-        "issue_20727_2::Add::Output": [
+        "issue_20727_2::Add<Trait>::Output": [
             "AssociatedType"
         ],
-        "issue_20727_2::Add::add": [
+        "issue_20727_2::Add<Trait>::add": [
             "TyMethod(add, rhs) -> output"
         ],
         "issue_20727_2::reexport": [
@@ -49,10 +49,10 @@ pub mod reexport {
         "issue_20727_2::reexport::Add": [
             "Trait"
         ],
-        "issue_20727_2::reexport::Add::Output": [
+        "issue_20727_2::reexport::Add<Trait>::Output": [
             "AssociatedType"
         ],
-        "issue_20727_2::reexport::Add::add": [
+        "issue_20727_2::reexport::Add<Trait>::add": [
             "TyMethod()"
         ]
     }
