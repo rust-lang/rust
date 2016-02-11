@@ -125,18 +125,38 @@ The reason that we cannot use a binding after we’ve moved it is subtle, but
 important. When we write code like this:
 
 ```rust
+let x = 10;
+```
+
+Rust allocates memory for an integer [i32] on the [stack][sh], copies the bit
+pattern representing the value of 10 to the allocated memory and binds the
+variable name x to this memory region for future reference.
+
+Now consider the following code fragment:
+
+```rust
 let v = vec![1, 2, 3];
 
 let v2 = v;
 ```
 
-The first line allocates memory for the vector object, `v`, and for the data it
-contains. The vector object is stored on the [stack][sh] and contains a pointer
-to the content (`[1, 2, 3]`) stored on the [heap][sh]. When we move `v` to `v2`,
-it creates a copy of that pointer, for `v2`. Which means that there would be two
-pointers to the content of the vector on the heap. It would violate Rust’s
-safety guarantees by introducing a data race. Therefore, Rust forbids using `v`
-after we’ve done the move.
+The first line allocates memory for the vector object, `v`, on the stack like
+it does for `x` above. But in addition to that it also allocates some memory
+on on the [heap][sh] for the actual data `[1, 2, 3]`. Rust copies the address
+of this heap allocation to an internal pointer part of the vector object
+placed on the stack (let's call it the data pointer). It is worth pointing out
+even at the risk of being redundant that the vector object and its data live
+in separate memory regions instead of being a single contiguous memory
+allocation (due to reasons we will not go into at this point of time).
+
+When we move `v` to `v2`, rust actually does a bitwise copy of the vector
+object `v` into the stack allocation represented by `v2`. This shallow copy
+does not create a copy of the heap allocation containing the actual data.
+Which means that there would be two pointers to the contents of the vector
+both pointing to the same memory allocation on the heap. It would violate
+Rust’s safety guarantees by introducing a data race if one could access both
+`v` and `v2` at the same time. Therefore, Rust forbids using `v` after we’ve
+done the move (shallow copy).
 
 [sh]: the-stack-and-the-heap.html
 
