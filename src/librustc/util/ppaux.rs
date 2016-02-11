@@ -396,6 +396,9 @@ impl<'tcx> fmt::Debug for ty::adjustment::AutoAdjustment<'tcx> {
             ty::adjustment::AdjustUnsafeFnPointer => {
                 write!(f, "AdjustUnsafeFnPointer")
             }
+            ty::adjustment::AdjustMutToConstPointer => {
+                write!(f, "AdjustMutToConstPointer")
+            }
             ty::adjustment::AdjustDerefRef(ref data) => {
                 write!(f, "{:?}", data)
             }
