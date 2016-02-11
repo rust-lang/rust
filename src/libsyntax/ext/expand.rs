@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, DeclKind, PatMac};
+use ast::{Block, Crate, DeclKind, PatKind};
 use ast::{Local, Ident, Mac_, Name};
 use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
 use ast::TokenTree;
@@ -666,7 +666,7 @@ fn rename_in_scope<X, F>(pats: Vec<P<ast::Pat>>,
     (f(&mut rename_fld, fld, x), rewritten_pats)
 }
 
-/// A visitor that extracts the PatIdent (binding) paths
+/// A visitor that extracts the PatKind::Ident (binding) paths
 /// from a given thingy and puts them in a mutable
 /// array
 #[derive(Clone)]
@@ -677,9 +677,9 @@ struct PatIdentFinder {
 impl<'v> Visitor<'v> for PatIdentFinder {
     fn visit_pat(&mut self, pattern: &ast::Pat) {
         match *pattern {
-            ast::Pat { id: _, node: ast::PatIdent(_, ref path1, ref inner), span: _ } => {
+            ast::Pat { id: _, node: PatKind::Ident(_, ref path1, ref inner), span: _ } => {
                 self.ident_accumulator.push(path1.node);
-                // visit optional subpattern of PatIdent:
+                // visit optional subpattern of PatKind::Ident:
                 if let Some(ref subpat) = *inner {
                     self.visit_pat(subpat)
                 }
@@ -690,14 +690,14 @@ impl<'v> Visitor<'v> for PatIdentFinder {
     }
 }
 
-/// find the PatIdent paths in a pattern
+/// find the PatKind::Ident paths in a pattern
 fn pattern_bindings(pat: &ast::Pat) -> Vec<ast::Ident> {
     let mut name_finder = PatIdentFinder{ident_accumulator:Vec::new()};
     name_finder.visit_pat(pat);
     name_finder.ident_accumulator
 }
 
-/// find the PatIdent paths in a
+/// find the PatKind::Ident paths in a
 fn fn_decl_arg_bindings(fn_decl: &ast::FnDecl) -> Vec<ast::Ident> {
     let mut pat_idents = PatIdentFinder{ident_accumulator:Vec::new()};
     for arg in &fn_decl.inputs {
@@ -746,12 +746,12 @@ pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
 
 fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
     match p.node {
-        PatMac(_) => {}
+        PatKind::Mac(_) => {}
         _ => return noop_fold_pat(p, fld)
     }
     p.map(|ast::Pat {node, span, ..}| {
         let (pth, tts) = match node {
-            PatMac(mac) => (mac.node.path, mac.node.tts),
+            PatKind::Mac(mac) => (mac.node.path, mac.node.tts),
             _ => unreachable!()
         };
         if pth.segments.len() > 1 {
@@ -840,7 +840,7 @@ impl<'a> Folder for IdentRenamer<'a> {
 }
 
 /// A tree-folder that applies every rename in its list to
-/// the idents that are in PatIdent patterns. This is more narrowly
+/// the idents that are in PatKind::Ident patterns. This is more narrowly
 /// focused than IdentRenamer, and is needed for FnDecl,
 /// where we want to rename the args but not the fn name or the generics etc.
 pub struct PatIdentRenamer<'a> {
@@ -850,16 +850,16 @@ pub struct PatIdentRenamer<'a> {
 impl<'a> Folder for PatIdentRenamer<'a> {
     fn fold_pat(&mut self, pat: P<ast::Pat>) -> P<ast::Pat> {
         match pat.node {
-            ast::PatIdent(..) => {},
+            PatKind::Ident(..) => {},
             _ => return noop_fold_pat(pat, self)
         }
 
         pat.map(|ast::Pat {id, node, span}| match node {
-            ast::PatIdent(binding_mode, Spanned{span: sp, node: ident}, sub) => {
+            PatKind::Ident(binding_mode, Spanned{span: sp, node: ident}, sub) => {
                 let new_ident = Ident::new(ident.name,
                                            mtwt::apply_renames(self.renames, ident.ctxt));
                 let new_node =
-                    ast::PatIdent(binding_mode,
+                    PatKind::Ident(binding_mode,
                                   Spanned{span: self.new_span(sp), node: new_ident},
                                   sub.map(|p| self.fold_pat(p)));
                 ast::Pat {
