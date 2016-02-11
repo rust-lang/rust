@@ -12,9 +12,11 @@
 #![allow(unreachable_code)]
 
 use rustc::middle::infer;
+use rustc::middle::traits;
 use rustc::middle::ty::{self, Ty};
 use rustc::middle::ty::fold::TypeFoldable;
 use rustc::mir::repr::*;
+use rustc::mir::tcx::LvalueTy;
 use rustc::mir::transform::MirPass;
 use rustc::mir::visit::{self, Visitor};
 
@@ -25,9 +27,25 @@ macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         $context.tcx().sess.span_warn(
             $context.last_span,
-            &format!("broken MIR ({:?}): {:?}", $elem, format!($($message)*))
+            &format!("broken MIR ({:?}): {}", $elem, format!($($message)*))
         )
     })
+}
+
+macro_rules! span_mirbug_and_err {
+    ($context:expr, $elem:expr, $($message:tt)*) => ({
+        {
+            $context.tcx().sess.span_bug(
+                $context.last_span,
+                &format!("broken MIR ({:?}): {:?}", $elem, format!($($message)*))
+            );
+            $context.error()
+        }
+    })
+}
+
+enum FieldAccessError {
+    OutOfRange { field_count: usize }
 }
 
 /// Verifies that MIR types are sane to not crash further
@@ -46,11 +64,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'tcx> {
         }
     }
 
-    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: visit::LvalueContext) {
-        self.super_lvalue(lvalue, context);
-        debug!("visiting lvalue {:?}", lvalue);
-        let lv_ty = self.mir.lvalue_ty(self.tcx(), lvalue).to_ty(self.tcx());
-        self.sanitize_type(lvalue, lv_ty);
+    fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, _context: visit::LvalueContext) {
+        self.sanitize_lvalue(lvalue);
     }
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>) {
@@ -78,6 +93,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'tcx> {
         for (n, tmp_decl) in mir.temp_decls.iter().enumerate() {
             self.sanitize_type(&(n, tmp_decl), tmp_decl.ty);
         }
+        if self.errors_reported {
+            return;
+        }
         self.super_mir(mir);
     }
 }
@@ -96,12 +114,201 @@ impl<'a, 'tcx> TypeVerifier<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn sanitize_type(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) {
-        if !(ty.needs_infer() || ty.has_escaping_regions()) {
-            return;
+    fn sanitize_type(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !(ty.needs_infer() || ty.has_escaping_regions() ||
+             ty.references_error()) {
+            return ty;
         }
-        span_mirbug!(self, parent, "bad type {:?}", ty);
+        span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
+    }
+
+    fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>) -> LvalueTy<'tcx> {
+        debug!("sanitize_lvalue: {:?}", lvalue);
+        match *lvalue {
+            Lvalue::Var(index) => LvalueTy::Ty { ty: self.mir.var_decls[index as usize].ty },
+            Lvalue::Temp(index) =>
+                LvalueTy::Ty { ty: self.mir.temp_decls[index as usize].ty },
+            Lvalue::Arg(index) =>
+                LvalueTy::Ty { ty: self.mir.arg_decls[index as usize].ty },
+            Lvalue::Static(def_id) =>
+                LvalueTy::Ty { ty: self.tcx().lookup_item_type(def_id).ty },
+            Lvalue::ReturnPointer => {
+                if let ty::FnConverging(return_ty) = self.mir.return_ty {
+                    LvalueTy::Ty { ty: return_ty }
+                } else {
+                    LvalueTy::Ty {
+                        ty: span_mirbug_and_err!(
+                            self, lvalue, "return in diverging function")
+                    }
+                }
+            }
+            Lvalue::Projection(ref proj) => {
+                let base_ty = self.sanitize_lvalue(&proj.base);
+                if let LvalueTy::Ty { ty } = base_ty {
+                    if ty.references_error() {
+                        assert!(self.errors_reported);
+                        return LvalueTy::Ty { ty: self.tcx().types.err };
+                    }
+                }
+                self.sanitize_projection(base_ty, &proj.elem, lvalue)
+            }
+        }
+    }
+
+    fn sanitize_projection(&mut self,
+                           base: LvalueTy<'tcx>,
+                           pi: &LvalueElem<'tcx>,
+                           lvalue: &Lvalue<'tcx>)
+                           -> LvalueTy<'tcx> {
+        debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
+        let tcx = self.tcx();
+        let base_ty = base.to_ty(tcx);
+        match *pi {
+            ProjectionElem::Deref => {
+                let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
+                LvalueTy::Ty {
+                    ty: deref_ty.map(|t| t.ty).unwrap_or_else(|| {
+                        span_mirbug_and_err!(
+                            self, lvalue, "deref of non-pointer {:?}", base_ty)
+                    })
+                }
+            }
+            ProjectionElem::Index(ref i) => {
+                self.visit_operand(i);
+                let index_ty = self.mir.operand_ty(tcx, i);
+                if index_ty != tcx.types.usize {
+                    LvalueTy::Ty {
+                        ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i)
+                    }
+                } else {
+                    LvalueTy::Ty {
+                        ty: base_ty.builtin_index().unwrap_or_else(|| {
+                            span_mirbug_and_err!(
+                                self, lvalue, "index of non-array {:?}", base_ty)
+                        })
+                    }
+                }
+            }
+            ProjectionElem::ConstantIndex { .. } => {
+                // consider verifying in-bounds
+                LvalueTy::Ty {
+                    ty: base_ty.builtin_index().unwrap_or_else(|| {
+                        span_mirbug_and_err!(
+                            self, lvalue, "index of non-array {:?}", base_ty)
+                    })
+                }
+            }
+            ProjectionElem::Downcast(adt_def1, index) =>
+                match base_ty.sty {
+                    ty::TyEnum(adt_def, substs) if adt_def == adt_def1 => {
+                        if index >= adt_def.variants.len() {
+                            LvalueTy::Ty {
+                                ty: span_mirbug_and_err!(
+                                    self,
+                                    lvalue,
+                                    "cast to variant #{:?} but enum only has {:?}",
+                                    index,
+                                    adt_def.variants.len())
+                            }
+                        } else {
+                            LvalueTy::Downcast {
+                                adt_def: adt_def,
+                                substs: substs,
+                                variant_index: index
+                            }
+                        }
+                    }
+                    _ => LvalueTy::Ty {
+                        ty: span_mirbug_and_err!(
+                            self, lvalue, "can't downcast {:?}", base_ty)
+                    }
+                },
+            ProjectionElem::Field(field, fty) => {
+                let fty = self.sanitize_type(lvalue, fty);
+                match self.field_ty(lvalue, base, field) {
+                    Ok(ty) => {
+                        if let Err(terr) = infer::can_mk_subty(self.infcx, ty, fty) {
+                            span_mirbug!(
+                                self, lvalue, "bad field access ({:?}: {:?}): {:?}",
+                                ty, fty, terr);
+                        }
+                    }
+                    Err(FieldAccessError::OutOfRange { field_count }) => {
+                        span_mirbug!(
+                            self, lvalue, "accessed field #{} but variant only has {}",
+                            field.index(), field_count)
+                    }
+                }
+                LvalueTy::Ty { ty: fty }
+            }
+        }
+    }
+
+    fn error(&mut self) -> Ty<'tcx> {
         self.errors_reported = true;
+        self.tcx().types.err
+    }
+
+    fn field_ty(&mut self,
+                parent: &fmt::Debug,
+                base_ty: LvalueTy<'tcx>,
+                field: Field)
+                -> Result<Ty<'tcx>, FieldAccessError>
+    {
+        let tcx = self.tcx();
+
+        let (variant, substs) = match base_ty {
+            LvalueTy::Downcast { adt_def, substs, variant_index } => {
+                (&adt_def.variants[variant_index], substs)
+            }
+            LvalueTy::Ty { ty } => match ty.sty {
+                ty::TyStruct(adt_def, substs) | ty::TyEnum(adt_def, substs)
+                    if adt_def.is_univariant() => {
+                        (&adt_def.variants[0], substs)
+                    }
+                ty::TyTuple(ref tys) | ty::TyClosure(_, box ty::ClosureSubsts {
+                    upvar_tys: ref tys, ..
+                }) => {
+                    return match tys.get(field.index()) {
+                        Some(&ty) => Ok(ty),
+                        None => Err(FieldAccessError::OutOfRange {
+                            field_count: tys.len()
+                        })
+                    }
+                }
+                _ => return Ok(span_mirbug_and_err!(
+                    self, parent, "can't project out of {:?}", base_ty))
+            }
+        };
+
+        if let Some(field) = variant.fields.get(field.index()) {
+            Ok(self.normalize(parent, field.ty(tcx, substs)))
+        } else {
+            Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
+        }
+    }
+
+    fn normalize(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let mut selcx = traits::SelectionContext::new(&self.infcx);
+        let cause = traits::ObligationCause::misc(self.last_span, 0);
+        let traits::Normalized { value: ty, obligations } =
+            traits::normalize(&mut selcx, cause, &ty);
+
+        debug!("normalize: ty={:?} obligations={:?}",
+               ty,
+               obligations);
+
+        let mut fulfill_cx = self.infcx.fulfillment_cx.borrow_mut();
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(&self.infcx, obligation);
+        }
+
+        match infer::drain_fulfillment_cx(&self.infcx, &mut fulfill_cx, &ty) {
+            Ok(ty) => ty,
+            Err(e) => {
+                span_mirbug_and_err!(self, parent, "trait fulfillment failed: {:?}", e)
+            }
+        }
     }
 }
 
