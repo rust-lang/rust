@@ -10,6 +10,7 @@
 
 // ignore-bitrig
 // compile-flags: -C codegen-units=3
+// ignore-emscripten no threads support
 
 // Test unwinding through multiple compilation units.
 

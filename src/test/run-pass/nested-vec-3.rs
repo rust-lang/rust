@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
+
 // Test that using the `vec!` macro nested within itself works when
 // the contents implement Drop and we hit a panic in the middle of
 // construction.

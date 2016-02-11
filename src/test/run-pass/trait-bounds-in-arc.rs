@@ -11,6 +11,7 @@
 // Tests that a heterogeneous list of existential types can be put inside an Arc
 // and shared between threads as long as all types fulfill Send.
 
+// ignore-emscripten no threads support
 // ignore-pretty
 
 #![allow(unknown_features)]

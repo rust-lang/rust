@@ -11,6 +11,8 @@
 // DON'T REENABLE THIS UNLESS YOU'VE ACTUALLY FIXED THE UNDERLYING ISSUE
 // ignore-android seems to block forever
 
+// ignore-emscripten no threads support
+
 #![forbid(warnings)]
 
 // Pretty printing tests complain about `use std::predule::*`

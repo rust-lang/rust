@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
+
 #![feature(const_fn)]
 
 // Check that the destructors of simple enums are run on unwinding

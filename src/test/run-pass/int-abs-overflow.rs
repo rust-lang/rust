@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z force-overflow-checks=on
+// ignore-emscripten no threads support
 
 use std::thread;
 

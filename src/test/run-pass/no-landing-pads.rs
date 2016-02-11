@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z no-landing-pads
-
+// ignore-emscripten no threads support
 
 use std::thread;
 

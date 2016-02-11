@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
+
 #![feature(std_panic, recover, panic_propagate, panic_handler, const_fn)]
 
 use std::sync::atomic::{AtomicUsize, Ordering};

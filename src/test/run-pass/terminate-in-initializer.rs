@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
 
 // Issue #787
 // Don't try to clean up uninitialized locals

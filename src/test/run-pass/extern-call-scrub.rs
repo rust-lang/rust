@@ -12,6 +12,8 @@
 // make sure the stack pointers are maintained properly in both
 // directions
 
+// ignore-emscripten no threads support
+
 #![feature(libc, std_misc)]
 
 extern crate libc;

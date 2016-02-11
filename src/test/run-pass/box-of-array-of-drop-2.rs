@@ -11,6 +11,8 @@
 // Test that we cleanup dynamic sized Box<[D]> properly when D has a
 // destructor.
 
+// ignore-emscripten no threads support
+
 #![feature(const_fn)]
 
 use std::thread;
