@@ -40,7 +40,7 @@ use std::fs::File;
 use std::hash::*;
 use std::collections::HashSet;
 
-use syntax::ast::{self, NodeId};
+use syntax::ast::{self, NodeId, PatKind};
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
@@ -780,7 +780,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     fn process_pat(&mut self, p: &ast::Pat) {
         match p.node {
-            ast::PatStruct(ref path, ref fields, _) => {
+            PatKind::Struct(ref path, ref fields, _) => {
                 visit::walk_path(self, path);
                 let adt = self.tcx.node_id_to_type(p.id).ty_adt_def().unwrap();
                 let def = self.tcx.def_map.borrow()[&p.id].full_def();

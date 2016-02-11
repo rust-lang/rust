@@ -193,7 +193,7 @@ use std::collections::HashSet;
 use std::vec;
 
 use syntax::abi::Abi;
-use syntax::ast::{EnumDef, Expr, Ident, Generics, VariantData, BinOpKind, self};
+use syntax::ast::{self, EnumDef, Expr, Ident, Generics, VariantData, BinOpKind, PatKind};
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -1142,7 +1142,7 @@ impl<'a> MethodDef<'a> {
                         variant,
                         self_arg_name,
                         ast::Mutability::Immutable);
-                    (cx.pat(sp, ast::PatRegion(p, ast::Mutability::Immutable)), idents)
+                    (cx.pat(sp, PatKind::Ref(p, ast::Mutability::Immutable)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
@@ -1472,7 +1472,7 @@ impl<'a> TraitDef<'a> {
                           -> Vec<P<ast::Pat>> {
         field_paths.iter().map(|path| {
             cx.pat(path.span,
-                        ast::PatIdent(ast::BindingMode::ByRef(mutbl), (*path).clone(), None))
+                        PatKind::Ident(ast::BindingMode::ByRef(mutbl), (*path).clone(), None))
         }).collect()
     }
 
