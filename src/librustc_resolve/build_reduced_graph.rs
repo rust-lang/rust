@@ -97,13 +97,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         intravisit::walk_crate(&mut visitor, krate);
     }
 
-    /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined.
-    fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
-        where T: ToNameBinding<'b>
-    {
-        parent.try_define_child(name, ns, def.to_name_binding());
-    }
-
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
@@ -517,7 +510,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                        is_public);
                 let parent_link = ModuleParentLink(new_parent, name);
                 let module = self.new_module(parent_link, Some(def), true, is_public);
-                self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
+                self.define(new_parent, name, TypeNS, (module, DUMMY_SP));
             }
             Def::Variant(_, variant_id) => {
                 debug!("(building reduced graph for external crate) building variant {}",
@@ -525,8 +518,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // Variants are always treated as importable to allow them to be glob used.
                 // All variants are defined in both type and value namespaces as future-proofing.
                 let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE;
-                self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
-                self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
+                self.define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
+                self.define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
                 if self.session.cstore.variant_kind(variant_id) == Some(VariantKind::Struct) {
                     // Not adding fields for variants as they are not accessed with a self receiver
                     self.structs.insert(variant_id, Vec::new());
@@ -539,7 +532,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             Def::Method(..) => {
                 debug!("(building reduced graph for external crate) building value (fn/static) {}",
                        final_ident);
-                self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
+                self.define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
             }
             Def::Trait(def_id) => {
                 debug!("(building reduced graph for external crate) building type {}",
@@ -566,22 +559,22 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 let parent_link = ModuleParentLink(new_parent, name);
                 let module = self.new_module(parent_link, Some(def), true, is_public);
-                self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
+                self.define(new_parent, name, TypeNS, (module, DUMMY_SP));
             }
             Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
-                self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
+                self.define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
             }
             Def::Struct(def_id)
                 if self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_none() => {
                 debug!("(building reduced graph for external crate) building type and value for \
                         {}",
                        final_ident);
-                self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
+                self.define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
                 if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
                     let def = Def::Struct(ctor_def_id);
-                    self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
+                    self.define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
                 }
 
                 // Record the def ID and fields of this struct.
