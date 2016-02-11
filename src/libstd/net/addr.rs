@@ -175,10 +175,22 @@ impl SocketAddrV6 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn flowinfo(&self) -> u32 { ntoh(self.inner.sin6_flowinfo) }
 
+    /// Change the flow information associated with this socket address.
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    pub fn set_flowinfo(&mut self, new_flowinfo: u32) {
+        self.inner.sin6_flowinfo = hton(new_flowinfo)
+    }
+
     /// Returns the scope ID associated with this address,
     /// corresponding to the `sin6_scope_id` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn scope_id(&self) -> u32 { ntoh(self.inner.sin6_scope_id) }
+
+    /// Change the scope ID associated with this socket address.
+    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    pub fn set_scope_id(&mut self, new_scope_id: u32) {
+        self.inner.sin6_scope_id = hton(new_scope_id)
+    }
 }
 
 impl FromInner<c::sockaddr_in> for SocketAddrV4 {
@@ -592,5 +604,21 @@ mod tests {
         assert_eq!(addr.port(), 443);
         addr.set_port(8080);
         assert_eq!(addr.port(), 8080);
+    }
+
+    #[test]
+    fn set_flowinfo() {
+        let mut v6 = SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 80, 10, 0);
+        assert_eq!(v6.flowinfo(), 10);
+        v6.set_flowinfo(20);
+        assert_eq!(v6.flowinfo(), 20);
+    }
+
+    #[test]
+    fn set_scope_id() {
+        let mut v6 = SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 80, 0, 10);
+        assert_eq!(v6.scope_id(), 10);
+        v6.set_scope_id(20);
+        assert_eq!(v6.scope_id(), 20);
     }
 }
