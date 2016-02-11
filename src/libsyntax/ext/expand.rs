@@ -503,8 +503,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
 }
 
 /// Expand a stmt
-fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
-    let stmt = stmt.and_then(|stmt| stmt);
+fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
     let (mac, style, attrs) = match stmt.node {
         StmtKind::Mac(mac, style, attrs) => (mac, style, attrs),
         _ => return expand_non_macro_stmt(stmt, fld)
@@ -514,7 +513,7 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     drop(attrs);
 
     let maybe_new_items =
-        expand_mac_invoc(mac.and_then(|m| m), stmt.span,
+        expand_mac_invoc(mac.unwrap(), stmt.span,
                          |r| r.make_stmts(),
                          |stmts, mark| stmts.move_map(|m| mark_stmt(m, mark)),
                          fld);
@@ -535,15 +534,13 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     // semicolon to the final statement produced by expansion.
     if style == MacStmtStyle::Semicolon {
         if let Some(stmt) = fully_expanded.pop() {
-            let new_stmt = stmt.map(|Spanned {node, span}| {
-                Spanned {
-                    node: match node {
-                        StmtKind::Expr(e, stmt_id) => StmtKind::Semi(e, stmt_id),
-                        _ => node /* might already have a semi */
-                    },
-                    span: span
-                }
-            });
+            let new_stmt = Spanned {
+                node: match stmt.node {
+                    StmtKind::Expr(e, stmt_id) => StmtKind::Semi(e, stmt_id),
+                    _ => stmt.node /* might already have a semi */
+                },
+                span: stmt.span
+            };
             fully_expanded.push(new_stmt);
         }
     }
@@ -554,7 +551,7 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
 // expand a non-macro stmt. this is essentially the fallthrough for
 // expand_stmt, above.
 fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroExpander)
-                         -> SmallVector<P<Stmt>> {
+                         -> SmallVector<Stmt> {
     // is it a let?
     match node {
         StmtKind::Decl(decl, node_id) => decl.and_then(|Spanned {node: decl, span}| match decl {
@@ -594,14 +591,14 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
                         attrs: fold::fold_thin_attrs(attrs, fld),
                     }
                 });
-                SmallVector::one(P(Spanned {
+                SmallVector::one(Spanned {
                     node: StmtKind::Decl(P(Spanned {
                             node: DeclKind::Local(rewritten_local),
                             span: span
                         }),
                         node_id),
                     span: stmt_span
-                }))
+                })
             }
             _ => {
                 noop_fold_stmt(Spanned {
@@ -919,24 +916,28 @@ fn expand_annotatable(a: Annotatable,
         },
 
         Annotatable::TraitItem(it) => match it.node {
-            ast::TraitItemKind::Method(_, Some(_)) => SmallVector::one(it.map(|ti| ast::TraitItem {
-                id: ti.id,
-                ident: ti.ident,
-                attrs: ti.attrs,
-                node: match ti.node  {
-                    ast::TraitItemKind::Method(sig, Some(body)) => {
-                        let (sig, body) = expand_and_rename_method(sig, body, fld);
-                        ast::TraitItemKind::Method(sig, Some(body))
-                    }
-                    _ => unreachable!()
-                },
-                span: fld.new_span(ti.span)
-            })),
-            _ => fold::noop_fold_trait_item(it, fld)
-        }.into_iter().map(Annotatable::TraitItem).collect(),
+            ast::TraitItemKind::Method(_, Some(_)) => {
+                let ti = it.unwrap();
+                SmallVector::one(ast::TraitItem {
+                    id: ti.id,
+                    ident: ti.ident,
+                    attrs: ti.attrs,
+                    node: match ti.node  {
+                        ast::TraitItemKind::Method(sig, Some(body)) => {
+                            let (sig, body) = expand_and_rename_method(sig, body, fld);
+                            ast::TraitItemKind::Method(sig, Some(body))
+                        }
+                        _ => unreachable!()
+                    },
+                    span: fld.new_span(ti.span)
+                })
+            }
+            _ => fold::noop_fold_trait_item(it.unwrap(), fld)
+        }.into_iter().map(|ti| Annotatable::TraitItem(P(ti))).collect(),
 
         Annotatable::ImplItem(ii) => {
-            expand_impl_item(ii, fld).into_iter().map(Annotatable::ImplItem).collect()
+            expand_impl_item(ii.unwrap(), fld).into_iter().
+                map(|ii| Annotatable::ImplItem(P(ii))).collect()
         }
     };
 
@@ -1052,10 +1053,10 @@ fn expand_item_multi_modifier(mut it: Annotatable,
     expand_item_multi_modifier(it, fld)
 }
 
-fn expand_impl_item(ii: P<ast::ImplItem>, fld: &mut MacroExpander)
-                 -> SmallVector<P<ast::ImplItem>> {
+fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
+                 -> SmallVector<ast::ImplItem> {
     match ii.node {
-        ast::ImplItemKind::Method(..) => SmallVector::one(ii.map(|ii| ast::ImplItem {
+        ast::ImplItemKind::Method(..) => SmallVector::one(ast::ImplItem {
             id: ii.id,
             ident: ii.ident,
             attrs: ii.attrs,
@@ -1068,12 +1069,12 @@ fn expand_impl_item(ii: P<ast::ImplItem>, fld: &mut MacroExpander)
                 _ => unreachable!()
             },
             span: fld.new_span(ii.span)
-        })),
+        }),
         ast::ImplItemKind::Macro(_) => {
-            let (span, mac) = ii.and_then(|ii| match ii.node {
+            let (span, mac) = match ii.node {
                 ast::ImplItemKind::Macro(mac) => (ii.span, mac),
                 _ => unreachable!()
-            });
+            };
             let maybe_new_items =
                 expand_mac_invoc(mac, span,
                                  |r| r.make_impl_items(),
@@ -1198,7 +1199,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_item_kind(item, self)
     }
 
-    fn fold_stmt(&mut self, stmt: P<ast::Stmt>) -> SmallVector<P<ast::Stmt>> {
+    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
         expand_stmt(stmt, self)
     }
 
@@ -1210,13 +1211,13 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
         expand_arm(arm, self)
     }
 
-    fn fold_trait_item(&mut self, i: P<ast::TraitItem>) -> SmallVector<P<ast::TraitItem>> {
-        expand_annotatable(Annotatable::TraitItem(i), self)
+    fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+        expand_annotatable(Annotatable::TraitItem(P(i)), self)
             .into_iter().map(|i| i.expect_trait_item()).collect()
     }
 
-    fn fold_impl_item(&mut self, i: P<ast::ImplItem>) -> SmallVector<P<ast::ImplItem>> {
-        expand_annotatable(Annotatable::ImplItem(i), self)
+    fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+        expand_annotatable(Annotatable::ImplItem(P(i)), self)
             .into_iter().map(|i| i.expect_impl_item()).collect()
     }
 
@@ -1359,7 +1360,7 @@ fn mark_pat(pat: P<ast::Pat>, m: Mrk) -> P<ast::Pat> {
 }
 
 // apply a given mark to the given stmt. Used following the expansion of a macro.
-fn mark_stmt(stmt: P<ast::Stmt>, m: Mrk) -> P<ast::Stmt> {
+fn mark_stmt(stmt: ast::Stmt, m: Mrk) -> ast::Stmt {
     Marker{mark:m}.fold_stmt(stmt)
         .expect_one("marking a stmt didn't return exactly one stmt")
 }
@@ -1371,7 +1372,7 @@ fn mark_item(expr: P<ast::Item>, m: Mrk) -> P<ast::Item> {
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
-fn mark_impl_item(ii: P<ast::ImplItem>, m: Mrk) -> P<ast::ImplItem> {
+fn mark_impl_item(ii: ast::ImplItem, m: Mrk) -> ast::ImplItem {
     Marker{mark:m}.fold_impl_item(ii)
         .expect_one("marking an impl item didn't return exactly one impl item")
 }
