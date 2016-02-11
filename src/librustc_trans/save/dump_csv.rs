@@ -561,7 +561,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     type_parameters: &ast::Generics,
                     trait_ref: &Option<ast::TraitRef>,
                     typ: &ast::Ty,
-                    impl_items: &[P<ast::ImplItem>]) {
+                    impl_items: &[ast::ImplItem]) {
         let mut has_self_ref = false;
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(impl_data, ImplData, self, item.span);
@@ -602,7 +602,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                      item: &ast::Item,
                      generics: &ast::Generics,
                      trait_refs: &ast::TyParamBounds,
-                     methods: &[P<ast::TraitItem>]) {
+                     methods: &[ast::TraitItem]) {
         let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);

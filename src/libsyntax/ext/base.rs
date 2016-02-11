@@ -82,16 +82,16 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_trait_item(self) -> P<ast::TraitItem> {
+    pub fn expect_trait_item(self) -> ast::TraitItem {
         match self {
-            Annotatable::TraitItem(i) => i,
+            Annotatable::TraitItem(i) => i.unwrap(),
             _ => panic!("expected Item")
         }
     }
 
-    pub fn expect_impl_item(self) -> P<ast::ImplItem> {
+    pub fn expect_impl_item(self) -> ast::ImplItem {
         match self {
-            Annotatable::ImplItem(i) => i,
+            Annotatable::ImplItem(i) => i.unwrap(),
             _ => panic!("expected Item")
         }
     }
@@ -204,8 +204,8 @@ impl<F> IdentMacroExpander for F
 macro_rules! make_stmts_default {
     ($me:expr) => {
         $me.make_expr().map(|e| {
-            SmallVector::one(P(codemap::respan(
-                e.span, ast::StmtKind::Expr(e, ast::DUMMY_NODE_ID))))
+            SmallVector::one(codemap::respan(
+                e.span, ast::StmtKind::Expr(e, ast::DUMMY_NODE_ID)))
         })
     }
 }
@@ -223,7 +223,7 @@ pub trait MacResult {
     }
 
     /// Create zero or more impl items.
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
         None
     }
 
@@ -236,7 +236,7 @@ pub trait MacResult {
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
-    fn make_stmts(self: Box<Self>) -> Option<SmallVector<P<ast::Stmt>>> {
+    fn make_stmts(self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
         make_stmts_default!(self)
     }
 
@@ -273,8 +273,8 @@ make_MacEager! {
     expr: P<ast::Expr>,
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
-    impl_items: SmallVector<P<ast::ImplItem>>,
-    stmts: SmallVector<P<ast::Stmt>>,
+    impl_items: SmallVector<ast::ImplItem>,
+    stmts: SmallVector<ast::Stmt>,
     ty: P<ast::Ty>,
 }
 
@@ -287,11 +287,11 @@ impl MacResult for MacEager {
         self.items
     }
 
-    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<ast::ImplItem>> {
         self.impl_items
     }
 
-    fn make_stmts(self: Box<Self>) -> Option<SmallVector<P<ast::Stmt>>> {
+    fn make_stmts(self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
         match self.stmts.as_ref().map_or(0, |s| s.len()) {
             0 => make_stmts_default!(self),
             _ => self.stmts,
@@ -391,7 +391,7 @@ impl MacResult for DummyResult {
         }
     }
 
-    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVector<P<ast::ImplItem>>> {
+    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVector<ast::ImplItem>> {
         if self.expr_only {
             None
         } else {
@@ -399,11 +399,11 @@ impl MacResult for DummyResult {
         }
     }
 
-    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Stmt>>> {
-        Some(SmallVector::one(P(
+    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<ast::Stmt>> {
+        Some(SmallVector::one(
             codemap::respan(self.span,
                             ast::StmtKind::Expr(DummyResult::raw_expr(self.span),
-                                                ast::DUMMY_NODE_ID)))))
+                                                ast::DUMMY_NODE_ID))))
     }
 }
 

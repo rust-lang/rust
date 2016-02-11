@@ -72,7 +72,7 @@ impl<'a, F> fold::Folder for Context<'a, F> where F: FnMut(&[ast::Attribute]) ->
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         fold_opt_expr(self, expr)
     }
-    fn fold_stmt(&mut self, stmt: P<ast::Stmt>) -> SmallVector<P<ast::Stmt>> {
+    fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
         fold_stmt(self, stmt)
     }
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
@@ -95,8 +95,8 @@ pub fn strip_items<'a, F>(diagnostic: &'a Handler,
 }
 
 fn filter_foreign_item<F>(cx: &mut Context<F>,
-                          item: P<ast::ForeignItem>)
-                          -> Option<P<ast::ForeignItem>> where
+                          item: ast::ForeignItem)
+                          -> Option<ast::ForeignItem> where
     F: FnMut(&[ast::Attribute]) -> bool
 {
     if foreign_item_in_cfg(cx, &item) {
@@ -153,18 +153,15 @@ fn fold_item_kind<F>(cx: &mut Context<F>, item: ast::ItemKind) -> ast::ItemKind 
                 if !(cx.in_cfg)(&v.node.attrs) {
                     None
                 } else {
-                    Some(v.map(|Spanned {node: ast::Variant_ {name, attrs, data,
-                                                              disr_expr}, span}| {
-                        Spanned {
-                            node: ast::Variant_ {
-                                name: name,
-                                attrs: attrs,
-                                data: fold_struct(cx, data),
-                                disr_expr: disr_expr,
-                            },
-                            span: span
-                        }
-                    }))
+                    Some(Spanned {
+                        node: ast::Variant_ {
+                            name: v.node.name,
+                            attrs: v.node.attrs,
+                            data: fold_struct(cx, v.node.data),
+                            disr_expr: v.node.disr_expr,
+                        },
+                        span: v.span
+                    })
                 }
             });
             ast::ItemKind::Enum(ast::EnumDef {
@@ -225,11 +222,11 @@ fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
     })
 }
 
-fn fold_stmt<F>(cx: &mut Context<F>, stmt: P<ast::Stmt>) -> SmallVector<P<ast::Stmt>>
+fn fold_stmt<F>(cx: &mut Context<F>, stmt: ast::Stmt) -> SmallVector<ast::Stmt>
     where F: FnMut(&[ast::Attribute]) -> bool
 {
     if stmt_in_cfg(cx, &stmt) {
-        stmt.and_then(|s| fold::noop_fold_stmt(s, cx))
+        fold::noop_fold_stmt(stmt, cx)
     } else {
         SmallVector::zero()
     }

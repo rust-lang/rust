@@ -523,7 +523,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         },
         "block" => token::NtBlock(panictry!(p.parse_block())),
         "stmt" => match panictry!(p.parse_stmt()) {
-            Some(s) => token::NtStmt(s),
+            Some(s) => token::NtStmt(P(s)),
             None => {
                 p.fatal("expected a statement").emit();
                 panic!(FatalError);

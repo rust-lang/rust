@@ -614,7 +614,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
         }
     }
 
-    fn fold_trait_item(&mut self, i: P<ast::TraitItem>) -> SmallVector<P<ast::TraitItem>> {
+    fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
         match i.node {
             ast::TraitItemKind::Const(..) => {
                 self.within_static_or_const = true;
@@ -626,7 +626,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
         }
     }
 
-    fn fold_impl_item(&mut self, i: P<ast::ImplItem>) -> SmallVector<P<ast::ImplItem>> {
+    fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
         match i.node {
             ast::ImplItemKind::Const(..) => {
                 self.within_static_or_const = true;
