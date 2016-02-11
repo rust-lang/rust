@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{BasicBlockRef, ValueRef, OperandBundleDef};
-use rustc::middle::ty;
+use rustc::middle::ty::{self, Ty};
 use rustc::mir::repr as mir;
 use syntax::abi::Abi;
 use trans::adt;
@@ -26,8 +26,55 @@ use trans::type_::Type;
 
 use super::MirContext;
 use super::operand::OperandValue::{FatPtr, Immediate, Ref};
+use super::operand::OperandRef;
+
+#[derive(PartialEq, Eq)]
+enum AbiStyle {
+    Foreign,
+    RustCall,
+    Rust
+}
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
+    fn abi_style(&self, fn_ty: Ty<'tcx>) -> AbiStyle {
+        if let ty::TyBareFn(_, ref f) = fn_ty.sty {
+            // We do not translate intrinsics here (they shouldn’t be functions)
+            assert!(f.abi != Abi::RustIntrinsic && f.abi != Abi::PlatformIntrinsic);
+
+            match f.abi {
+                Abi::Rust => AbiStyle::Rust,
+                Abi::RustCall => AbiStyle::RustCall,
+                _ => AbiStyle::Foreign
+            }
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn arg_operands(&mut self,
+                    bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                    abi_style: AbiStyle,
+                    args: &[mir::Operand<'tcx>])
+                    -> Vec<OperandRef<'tcx>>
+    {
+        match abi_style {
+            AbiStyle::Foreign | AbiStyle::Rust => {
+                args.iter().map(|arg| self.trans_operand(bcx, arg)).collect()
+            }
+            AbiStyle::RustCall => match args.split_last() {
+                None => vec![],
+                Some((tup, self_ty)) => {
+                    // we can reorder safely because of MIR
+                    let untupled_args = self.trans_operand_untupled(bcx, tup);
+                    self_ty
+                        .iter().map(|arg| self.trans_operand(bcx, arg))
+                        .chain(untupled_args.into_iter())
+                        .collect()
+                }
+            }
+        }
+    }
+
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
         debug!("trans_block({:?})", bb);
 
@@ -159,13 +206,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let mut arg_tys = Vec::new();
 
                 // Foreign-ABI functions are translated differently
-                let is_foreign = if let ty::TyBareFn(_, ref f) = callee.ty.sty {
-                    // We do not translate intrinsics here (they shouldn’t be functions)
-                    assert!(f.abi != Abi::RustIntrinsic && f.abi != Abi::PlatformIntrinsic);
-                    f.abi != Abi::Rust && f.abi != Abi::RustCall
-                } else {
-                    false
-                };
+                let abi_style = self.abi_style(callee.ty);
+                let is_foreign = abi_style == AbiStyle::Foreign;
 
                 // Prepare the return value destination
                 let (ret_dest_ty, must_copy_dest) = if let Some((ref d, _)) = *destination {
@@ -182,8 +224,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 };
 
                 // Process the rest of the args.
-                for arg in args {
-                    let operand = self.trans_operand(&bcx, arg);
+                for operand in self.arg_operands(&bcx, abi_style, args) {
                     match operand.val {
                         Ref(llval) | Immediate(llval) => llargs.push(llval),
                         FatPtr(b, e) => {
