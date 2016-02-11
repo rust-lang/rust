@@ -416,7 +416,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             kind: kind,
         };
 
-        debug!("unadjusted-expr={:?} applying adjustments={:?}",
+        debug!("make_mirror: unadjusted-expr={:?} applying adjustments={:?}",
                expr, cx.tcx.tables.borrow().adjustments.get(&self.id));
 
         // Now apply adjustments, if any.
@@ -459,10 +459,38 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             self.span,
                             i,
                             |mc| cx.tcx.tables.borrow().method_map.get(&mc).map(|m| m.ty));
-                    let kind = if cx.tcx.is_overloaded_autoderef(self.id, i) {
-                        overloaded_lvalue(cx, self, ty::MethodCall::autoderef(self.id, i),
-                                          PassArgs::ByValue, expr.to_ref(), vec![])
+                    debug!("make_mirror: autoderef #{}, adjusted_ty={:?}", i, adjusted_ty);
+                    let method_key = ty::MethodCall::autoderef(self.id, i);
+                    let meth_ty =
+                        cx.tcx.tables.borrow().method_map.get(&method_key).map(|m| m.ty);
+                    let kind = if let Some(meth_ty) = meth_ty {
+                        debug!("make_mirror: overloaded autoderef (meth_ty={:?})", meth_ty);
+
+                        let ref_ty = cx.tcx.no_late_bound_regions(&meth_ty.fn_ret());
+                        let (region, mutbl) = match ref_ty {
+                            Some(ty::FnConverging(&ty::TyS {
+                                sty: ty::TyRef(region, mt), ..
+                            })) => (region, mt.mutbl),
+                            _ => cx.tcx.sess.span_bug(
+                                expr.span, "autoderef returned bad type")
+                        };
+
+                        expr = Expr {
+                            temp_lifetime: temp_lifetime,
+                            ty: cx.tcx.mk_ref(
+                                region, ty::TypeAndMut { ty: expr.ty, mutbl: mutbl }),
+                            span: expr.span,
+                            kind: ExprKind::Borrow {
+                                region: *region,
+                                borrow_kind: to_borrow_kind(mutbl),
+                                arg: expr.to_ref()
+                            }
+                        };
+
+                        overloaded_lvalue(cx, self, method_key,
+                                          PassArgs::ByRef, expr.to_ref(), vec![])
                     } else {
+                        debug!("make_mirror: built-in autoderef");
                         ExprKind::Deref { arg: expr.to_ref() }
                     };
                     expr = Expr {
