@@ -20,3 +20,11 @@ fn test_format_flags() {
 
     assert_eq!(format!("{: >3}", 'a'), "  a");
 }
+
+#[test]
+fn test_pointer_formats_data_pointer() {
+    let b: &[u8] = b"";
+    let s: &str = "";
+    assert_eq!(format!("{:p}", s), format!("{:p}", s.as_ptr()));
+    assert_eq!(format!("{:p}", b), format!("{:p}", b.as_ptr()));
+}
