@@ -180,11 +180,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                 }
 
-                let avoid_invoke = bcx.with_block(|bcx| base::avoid_invoke(bcx));
                 // Many different ways to call a function handled here
-                match (is_foreign, avoid_invoke, cleanup, destination) {
+                match (is_foreign, cleanup, destination) {
                     // The two cases below are the only ones to use LLVM’s `invoke`.
-                    (false, false, &Some(cleanup), &None) => {
+                    (false, &Some(cleanup), &None) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
@@ -195,7 +194,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                    None,
                                    Some(attrs));
                     },
-                    (false, false, &Some(cleanup), &Some((_, success))) => {
+                    (false, &Some(cleanup), &Some((_, success))) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let (target, postinvoke) = if must_copy_dest {
@@ -242,11 +241,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             target.br(postinvoketarget.llbb());
                         }
                     },
-                    (false, _, _, &None) => {
+                    (false, _, &None) => {
                         bcx.call(callee.immediate(), &llargs[..], None, Some(attrs));
                         bcx.unreachable();
                     }
-                    (false, _, _, &Some((_, target))) => {
+                    (false, _, &Some((_, target))) => {
                         let llret = bcx.call(callee.immediate(),
                                              &llargs[..],
                                              None,
@@ -261,7 +260,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         bcx.br(self.llblock(target));
                     }
                     // Foreign functions
-                    (true, _, _, destination) => {
+                    (true, _, destination) => {
                         let (dest, _) = ret_dest_ty
                             .expect("return destination is not set");
                         bcx = bcx.map_block(|bcx| {
