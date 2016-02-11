@@ -45,7 +45,7 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned;
 
-    /// Checks if within the ASCII range.
+    /// Checks if the value is within the ASCII range.
     ///
     /// # Examples
     ///
