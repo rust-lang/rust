@@ -180,7 +180,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
             let result = match ty.sty {
                 // usize and isize are ffi-unsafe
-                ty::TyUint(ast::TyUs) | ty::TyInt(ast::TyIs) => {
+                ty::TyUint(ast::UintTy::Us) | ty::TyInt(ast::IntTy::Is) => {
                     TC::None
                 }
 

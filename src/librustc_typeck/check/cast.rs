@@ -248,7 +248,7 @@ impl<'tcx> CastCheck<'tcx> {
             (_, Int(Bool)) => Err(CastError::CastToBool),
 
             // * -> Char
-            (Int(U(ast::TyU8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
+            (Int(U(ast::UintTy::U8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
             (_, Int(Char)) => Err(CastError::CastToChar),
 
             // prim -> float,ptr

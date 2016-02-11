@@ -105,8 +105,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeAndMut<'tcx> {
         } else {
             let mutbl = a.mutbl;
             let variance = match mutbl {
-                ast::MutImmutable => ty::Covariant,
-                ast::MutMutable => ty::Invariant,
+                ast::Mutability::MutImmutable => ty::Covariant,
+                ast::Mutability::MutMutable => ty::Invariant,
             };
             let ty = try!(relation.relate_with_variance(variance, &a.ty, &b.ty));
             Ok(ty::TypeAndMut {ty: ty, mutbl: mutbl})

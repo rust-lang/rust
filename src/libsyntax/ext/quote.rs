@@ -218,8 +218,8 @@ pub mod rt {
 
     impl ToTokens for str {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            let lit = ast::LitStr(
-                token::intern_and_get_ident(self), ast::CookedStr);
+            let lit = ast::LitKind::Str(
+                token::intern_and_get_ident(self), ast::StrStyle::Cooked);
             dummy_spanned(lit).to_tokens(cx)
         }
     }
@@ -240,7 +240,7 @@ pub mod rt {
             // FIXME: This is wrong
             P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::ExprLit(P(self.clone())),
+                node: ast::ExprKind::Lit(P(self.clone())),
                 span: DUMMY_SP,
                 attrs: None,
             }).to_tokens(cx)
@@ -249,13 +249,13 @@ pub mod rt {
 
     impl ToTokens for bool {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            dummy_spanned(ast::LitBool(*self)).to_tokens(cx)
+            dummy_spanned(ast::LitKind::Bool(*self)).to_tokens(cx)
         }
     }
 
     impl ToTokens for char {
         fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-            dummy_spanned(ast::LitChar(*self)).to_tokens(cx)
+            dummy_spanned(ast::LitKind::Char(*self)).to_tokens(cx)
         }
     }
 
@@ -263,33 +263,51 @@ pub mod rt {
         (signed, $t:ty, $tag:expr) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-                    let lit = ast::LitInt(*self as u64, ast::SignedIntLit($tag,
-                                                                          ast::Sign::new(*self)));
-                    dummy_spanned(lit).to_tokens(cx)
+                    let val = if *self < 0 {
+                        -self
+                    } else {
+                        *self
+                    };
+                    let lit = ast::LitKind::Int(val as u64, ast::LitIntType::Signed($tag));
+                    let lit = P(ast::Expr {
+                        id: ast::DUMMY_NODE_ID,
+                        node: ast::ExprKind::Lit(P(dummy_spanned(lit))),
+                        span: DUMMY_SP,
+                        attrs: None,
+                    });
+                    if *self >= 0 {
+                        return lit.to_tokens(cx);
+                    }
+                    P(ast::Expr {
+                        id: ast::DUMMY_NODE_ID,
+                        node: ast::ExprKind::Unary(ast::UnOp::Neg, lit),
+                        span: DUMMY_SP,
+                        attrs: None,
+                    }).to_tokens(cx)
                 }
             }
         );
         (unsigned, $t:ty, $tag:expr) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-                    let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit($tag));
+                    let lit = ast::LitKind::Int(*self as u64, ast::LitIntType::Unsigned($tag));
                     dummy_spanned(lit).to_tokens(cx)
                 }
             }
         );
     }
 
-    impl_to_tokens_int! { signed, isize, ast::TyIs }
-    impl_to_tokens_int! { signed, i8,  ast::TyI8 }
-    impl_to_tokens_int! { signed, i16, ast::TyI16 }
-    impl_to_tokens_int! { signed, i32, ast::TyI32 }
-    impl_to_tokens_int! { signed, i64, ast::TyI64 }
+    impl_to_tokens_int! { signed, isize, ast::IntTy::Is }
+    impl_to_tokens_int! { signed, i8,  ast::IntTy::I8 }
+    impl_to_tokens_int! { signed, i16, ast::IntTy::I16 }
+    impl_to_tokens_int! { signed, i32, ast::IntTy::I32 }
+    impl_to_tokens_int! { signed, i64, ast::IntTy::I64 }
 
-    impl_to_tokens_int! { unsigned, usize, ast::TyUs }
-    impl_to_tokens_int! { unsigned, u8,   ast::TyU8 }
-    impl_to_tokens_int! { unsigned, u16,  ast::TyU16 }
-    impl_to_tokens_int! { unsigned, u32,  ast::TyU32 }
-    impl_to_tokens_int! { unsigned, u64,  ast::TyU64 }
+    impl_to_tokens_int! { unsigned, usize, ast::UintTy::Us }
+    impl_to_tokens_int! { unsigned, u8,   ast::UintTy::U8 }
+    impl_to_tokens_int! { unsigned, u16,  ast::UintTy::U16 }
+    impl_to_tokens_int! { unsigned, u32,  ast::UintTy::U32 }
+    impl_to_tokens_int! { unsigned, u64,  ast::UintTy::U64 }
 
     pub trait ExtParseUtils {
         fn parse_item(&self, s: String) -> P<ast::Item>;
@@ -521,11 +539,6 @@ fn mk_name(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
 
 fn mk_tt_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
     let idents = vec!(id_ext("syntax"), id_ext("ast"), id_ext("TokenTree"), id_ext(name));
-    cx.expr_path(cx.path_global(sp, idents))
-}
-
-fn mk_ast_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
-    let idents = vec!(id_ext("syntax"), id_ext("ast"), id_ext(name));
     cx.expr_path(cx.path_global(sp, idents))
 }
 
@@ -761,9 +774,16 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<P<ast::S
                 None => cx.expr_none(sp),
             };
             let e_op = match seq.op {
-                ast::ZeroOrMore => mk_ast_path(cx, sp, "ZeroOrMore"),
-                ast::OneOrMore => mk_ast_path(cx, sp, "OneOrMore"),
+                ast::KleeneOp::ZeroOrMore => "ZeroOrMore",
+                ast::KleeneOp::OneOrMore => "OneOrMore",
             };
+            let e_op_idents = vec![
+                id_ext("syntax"),
+                id_ext("ast"),
+                id_ext("KleeneOp"),
+                id_ext(e_op),
+            ];
+            let e_op = cx.expr_path(cx.path_global(sp, e_op_idents));
             let fields = vec![cx.field_imm(sp, id_ext("tts"), e_tts),
                               cx.field_imm(sp, id_ext("separator"), e_separator),
                               cx.field_imm(sp, id_ext("op"), e_op),
@@ -886,7 +906,7 @@ fn expand_wrapper(cx: &ExtCtxt,
     let stmts = imports.iter().map(|path| {
         // make item: `use ...;`
         let path = path.iter().map(|s| s.to_string()).collect();
-        cx.stmt_item(sp, cx.item_use_glob(sp, ast::Inherited, ids_ext(path)))
+        cx.stmt_item(sp, cx.item_use_glob(sp, ast::Visibility::Inherited, ids_ext(path)))
     }).chain(Some(stmt_let_ext_cx)).collect();
 
     cx.expr_block(cx.block_all(sp, stmts, Some(expr)))

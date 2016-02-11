@@ -44,7 +44,7 @@ use std::borrow::Borrow;
 use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::special_idents;
@@ -192,18 +192,18 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: mk(TyBool),
             char: mk(TyChar),
             err: mk(TyError),
-            isize: mk(TyInt(ast::TyIs)),
-            i8: mk(TyInt(ast::TyI8)),
-            i16: mk(TyInt(ast::TyI16)),
-            i32: mk(TyInt(ast::TyI32)),
-            i64: mk(TyInt(ast::TyI64)),
-            usize: mk(TyUint(ast::TyUs)),
-            u8: mk(TyUint(ast::TyU8)),
-            u16: mk(TyUint(ast::TyU16)),
-            u32: mk(TyUint(ast::TyU32)),
-            u64: mk(TyUint(ast::TyU64)),
-            f32: mk(TyFloat(ast::TyF32)),
-            f64: mk(TyFloat(ast::TyF64)),
+            isize: mk(TyInt(ast::IntTy::Is)),
+            i8: mk(TyInt(ast::IntTy::I8)),
+            i16: mk(TyInt(ast::IntTy::I16)),
+            i32: mk(TyInt(ast::IntTy::I32)),
+            i64: mk(TyInt(ast::IntTy::I64)),
+            usize: mk(TyUint(ast::UintTy::Us)),
+            u8: mk(TyUint(ast::UintTy::U8)),
+            u16: mk(TyUint(ast::UintTy::U16)),
+            u32: mk(TyUint(ast::UintTy::U32)),
+            u64: mk(TyUint(ast::UintTy::U64)),
+            f32: mk(TyFloat(ast::FloatTy::F32)),
+            f64: mk(TyFloat(ast::FloatTy::F64)),
         }
     }
 }
@@ -840,28 +840,28 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
         match tm {
-            ast::TyIs   => self.types.isize,
-            ast::TyI8   => self.types.i8,
-            ast::TyI16  => self.types.i16,
-            ast::TyI32  => self.types.i32,
-            ast::TyI64  => self.types.i64,
+            ast::IntTy::Is   => self.types.isize,
+            ast::IntTy::I8   => self.types.i8,
+            ast::IntTy::I16  => self.types.i16,
+            ast::IntTy::I32  => self.types.i32,
+            ast::IntTy::I64  => self.types.i64,
         }
     }
 
     pub fn mk_mach_uint(&self, tm: ast::UintTy) -> Ty<'tcx> {
         match tm {
-            ast::TyUs   => self.types.usize,
-            ast::TyU8   => self.types.u8,
-            ast::TyU16  => self.types.u16,
-            ast::TyU32  => self.types.u32,
-            ast::TyU64  => self.types.u64,
+            ast::UintTy::Us   => self.types.usize,
+            ast::UintTy::U8   => self.types.u8,
+            ast::UintTy::U16  => self.types.u16,
+            ast::UintTy::U32  => self.types.u32,
+            ast::UintTy::U64  => self.types.u64,
         }
     }
 
     pub fn mk_mach_float(&self, tm: ast::FloatTy) -> Ty<'tcx> {
         match tm {
-            ast::TyF32  => self.types.f32,
-            ast::TyF64  => self.types.f64,
+            ast::FloatTy::F32  => self.types.f32,
+            ast::FloatTy::F64  => self.types.f64,
         }
     }
 
@@ -943,7 +943,7 @@ impl<'tcx> ctxt<'tcx> {
         let input_args = input_tys.iter().cloned().collect();
         self.mk_fn(Some(def_id), self.mk_bare_fn(BareFnTy {
             unsafety: hir::Unsafety::Normal,
-            abi: abi::Rust,
+            abi: Abi::Rust,
             sig: ty::Binder(ty::FnSig {
                 inputs: input_args,
                 output: ty::FnConverging(output),

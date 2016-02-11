@@ -100,7 +100,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::str;
 use std::{i8, i16, i32, i64};
-use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
+use syntax::abi::Abi;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::InternedString;
 use syntax::attr::AttrMetaMethods;
@@ -816,12 +816,12 @@ pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         ty::TyInt(t) => {
             let llty = Type::int_from_ty(cx.ccx(), t);
             let min = match t {
-                ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
-                ast::TyIs => i64::MIN as u64,
-                ast::TyI8 => i8::MIN as u64,
-                ast::TyI16 => i16::MIN as u64,
-                ast::TyI32 => i32::MIN as u64,
-                ast::TyI64 => i64::MIN as u64,
+                ast::IntTy::Is if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
+                ast::IntTy::Is => i64::MIN as u64,
+                ast::IntTy::I8 => i8::MIN as u64,
+                ast::IntTy::I16 => i16::MIN as u64,
+                ast::IntTy::I32 => i32::MIN as u64,
+                ast::IntTy::I64 => i64::MIN as u64,
             };
             (llty, min)
         }
@@ -911,10 +911,10 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match t.sty {
         ty::TyBareFn(_, ref fn_ty) => {
             match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
-                Rust | RustCall => {
+                Abi::Rust | Abi::RustCall => {
                     get_extern_rust_fn(ccx, t, &name[..], did)
                 }
-                RustIntrinsic | PlatformIntrinsic => {
+                Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {
@@ -2031,7 +2031,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            bcx.fcx.ccx.tn().val_to_string(bcx.fcx.llfn));
 
     let has_tupled_arg = match closure_env {
-        closure::ClosureEnv::NotClosure => abi == RustCall,
+        closure::ClosureEnv::NotClosure => abi == Abi::RustCall,
         _ => false,
     };
 
@@ -2503,7 +2503,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
                     let llfn = get_item_val(ccx, item.id);
                     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-                    if abi != Rust {
+                    if abi != Abi::Rust {
                         foreign::trans_rust_fn_with_foreign_abi(ccx,
                                                                 &**decl,
                                                                 &**body,
@@ -2607,12 +2607,12 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          node_type: Ty<'tcx>)
                          -> ValueRef {
     if let ty::TyBareFn(_, ref f) = node_type.sty {
-        if f.abi != Rust && f.abi != RustCall {
+        if f.abi != Abi::Rust && f.abi != Abi::RustCall {
             ccx.sess().span_bug(sp,
                                 &format!("only the `{}` or `{}` calling conventions are valid \
                                           for this function; `{}` was specified",
-                                         Rust.name(),
-                                         RustCall.name(),
+                                         Abi::Rust.name(),
+                                         Abi::RustCall.name(),
                                          f.abi.name()));
         }
     } else {
@@ -2790,7 +2790,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                 hir::ItemFn(_, _, _, abi, _, _) => {
                     let sym = sym();
-                    let llfn = if abi == Rust {
+                    let llfn = if abi == Abi::Rust {
                         register_fn(ccx, i.span, sym, i.id, ty)
                     } else {
                         foreign::register_rust_fn_with_foreign_abi(ccx, i.span, sym, i.id)
@@ -2913,7 +2913,7 @@ fn register_method(ccx: &CrateContext,
     let sym = exported_name(ccx, id, mty, &attrs);
 
     if let ty::TyBareFn(_, ref f) = mty.sty {
-        let llfn = if f.abi == Rust || f.abi == RustCall {
+        let llfn = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
             register_fn(ccx, span, sym, id, mty)
         } else {
             foreign::register_rust_fn_with_foreign_abi(ccx, span, sym, id)

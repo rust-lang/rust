@@ -73,7 +73,7 @@ impl LateLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprWhile(ref cond, _, _) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
-                if let ast::LitBool(true) = lit.node {
+                if let ast::LitKind::Bool(true) = lit.node {
                     cx.span_lint(WHILE_TRUE, e.span,
                                  "denote infinite loops with loop { ... }");
                 }
@@ -308,7 +308,7 @@ impl MissingDoc {
 
         let has_doc = attrs.iter().any(|a| {
             match a.node.value.node {
-                ast::MetaNameValue(ref name, _) if *name == "doc" => true,
+                ast::MetaItemKind::NameValue(ref name, _) if *name == "doc" => true,
                 _ => false
             }
         });
@@ -1039,7 +1039,7 @@ impl LintPass for MutableTransmutes {
 
 impl LateLintPass for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
-        use syntax::abi::RustIntrinsic;
+        use syntax::abi::Abi::RustIntrinsic;
 
         let msg = "mutating transmuted &mut T from &T may cause undefined behavior,\
                    consider instead using an UnsafeCell";

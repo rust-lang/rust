@@ -977,7 +977,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn sequence_element_type(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
-            TyStr => cx.mk_mach_uint(ast::TyU8),
+            TyStr => cx.mk_mach_uint(ast::UintTy::U8),
             _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
                                       self)),
         }
@@ -1068,7 +1068,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn is_uint(&self) -> bool {
         match self.sty {
-            TyInfer(IntVar(_)) | TyUint(ast::TyUs) => true,
+            TyInfer(IntVar(_)) | TyUint(ast::UintTy::Us) => true,
             _ => false
         }
     }
@@ -1114,7 +1114,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn is_machine(&self) -> bool {
         match self.sty {
-            TyInt(ast::TyIs) | TyUint(ast::TyUs) => false,
+            TyInt(ast::IntTy::Is) | TyUint(ast::UintTy::Us) => false,
             TyInt(..) | TyUint(..) | TyFloat(..) => true,
             _ => false
         }

@@ -17,7 +17,7 @@
 //!
 //! * **Identity**: sharing AST nodes is problematic for the various analysis
 //!   passes (e.g. one may be able to bypass the borrow checker with a shared
-//!   `ExprAddrOf` node taking a mutable borrow). The only reason `@T` in the
+//!   `ExprKind::AddrOf` node taking a mutable borrow). The only reason `@T` in the
 //!   AST hasn't caused issues is because of inefficient folding passes which
 //!   would always deduplicate any such shared nodes. Even if the AST were to
 //!   switch to an arena, this would still hold, i.e. it couldn't use `&'a T`,

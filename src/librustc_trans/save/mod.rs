@@ -229,7 +229,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
-            ast::ItemFn(..) => {
+            ast::ItemKind::Fn(..) => {
                 let name = self.tcx.map.path_to_string(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
@@ -243,13 +243,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                 }))
             }
-            ast::ItemStatic(ref typ, mt, ref expr) => {
+            ast::ItemKind::Static(ref typ, mt, ref expr) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
                 // If the variable is immutable, save the initialising expression.
                 let (value, keyword) = match mt {
-                    ast::MutMutable => (String::from("<mutable>"), keywords::Mut),
-                    ast::MutImmutable => (self.span_utils.snippet(expr.span), keywords::Static),
+                    ast::Mutability::Mutable => (String::from("<mutable>"), keywords::Mut),
+                    ast::Mutability::Immutable => {
+                        (self.span_utils.snippet(expr.span), keywords::Static)
+                    },
                 };
 
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
@@ -264,7 +266,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                 }))
             }
-            ast::ItemConst(ref typ, ref expr) => {
+            ast::ItemKind::Const(ref typ, ref expr) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
                 filter!(self.span_utils, sub_span, item.span, None);
@@ -278,7 +280,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     type_value: ty_to_string(&typ),
                 }))
             }
-            ast::ItemMod(ref m) => {
+            ast::ItemKind::Mod(ref m) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
 
                 let cm = self.tcx.sess.codemap();
@@ -295,7 +297,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     filename: filename,
                 }))
             }
-            ast::ItemEnum(..) => {
+            ast::ItemKind::Enum(..) => {
                 let enum_name = format!("::{}", self.tcx.map.path_to_string(item.id));
                 let val = self.span_utils.snippet(item.span);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
@@ -308,7 +310,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(item.id),
                 }))
             }
-            ast::ItemImpl(_, _, _, ref trait_ref, ref typ, _) => {
+            ast::ItemKind::Impl(_, _, _, ref trait_ref, ref typ, _) => {
                 let mut type_data = None;
                 let sub_span;
 
@@ -316,7 +318,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 match typ.node {
                     // Common case impl for a struct or something basic.
-                    ast::TyPath(None, ref path) => {
+                    ast::TyKind::Path(None, ref path) => {
                         sub_span = self.span_utils.sub_span_for_type_name(path.span);
                         filter!(self.span_utils, sub_span, path.span, None);
                         type_data = self.lookup_ref_id(typ.id).map(|id| {
@@ -487,7 +489,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             return None;
         }
         match expr.node {
-            ast::ExprField(ref sub_ex, ident) => {
+            ast::ExprKind::Field(ref sub_ex, ident) => {
                 let hir_node = lowering::lower_expr(self.lcx, sub_ex);
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
@@ -507,7 +509,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprStruct(ref path, _, _) => {
+            ast::ExprKind::Struct(ref path, _, _) => {
                 let hir_node = lowering::lower_expr(self.lcx, expr);
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
@@ -527,7 +529,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
             }
-            ast::ExprMethodCall(..) => {
+            ast::ExprKind::MethodCall(..) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let method_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
                 let (def_id, decl_id) = match self.tcx.impl_or_trait_item(method_id).container() {
@@ -544,7 +546,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     decl_id: decl_id,
                 }))
             }
-            ast::ExprPath(_, ref path) => {
+            ast::ExprKind::Path(_, ref path) => {
                 self.get_path_data(expr.id, path)
             }
             _ => {
@@ -758,12 +760,12 @@ impl<'v> Visitor<'v> for PathCollector {
         match p.node {
             ast::PatStruct(ref path, _, _) => {
                 self.collected_paths.push((p.id, path.clone(),
-                                           ast::MutMutable, recorder::TypeRef));
+                                           ast::Mutability::Mutable, recorder::TypeRef));
             }
             ast::PatEnum(ref path, _) |
             ast::PatQPath(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(),
-                                           ast::MutMutable, recorder::VarRef));
+                                           ast::Mutability::Mutable, recorder::VarRef));
             }
             ast::PatIdent(bm, ref path1, _) => {
                 debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
@@ -774,7 +776,7 @@ impl<'v> Visitor<'v> for PathCollector {
                     // Even if the ref is mut, you can't change the ref, only
                     // the data pointed at, so showing the initialising expression
                     // is still worthwhile.
-                    ast::BindingMode::ByRef(_) => ast::MutImmutable,
+                    ast::BindingMode::ByRef(_) => ast::Mutability::Immutable,
                     ast::BindingMode::ByValue(mt) => mt,
                 };
                 // collect path for either visit_local or visit_arm

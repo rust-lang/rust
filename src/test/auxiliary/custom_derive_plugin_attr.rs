@@ -81,7 +81,7 @@ fn totalsum_substructure(cx: &mut ExtCtxt, trait_span: Span,
         if item.attrs.iter().find(|a| a.check_name("ignore")).is_some() {
             acc
         } else {
-            cx.expr_binary(item.span, ast::BiAdd, acc,
+            cx.expr_binary(item.span, ast::BinOpKind::Add, acc,
                            cx.expr_method_call(item.span,
                                                item.self_.clone(),
                                                substr.method_ident,

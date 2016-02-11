@@ -317,51 +317,51 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 let lang_def_id = self.tcx().lang_items.mut_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI8) => {
+            ty::TyInt(ast::IntTy::I8) => {
                 let lang_def_id = self.tcx().lang_items.i8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI16) => {
+            ty::TyInt(ast::IntTy::I16) => {
                 let lang_def_id = self.tcx().lang_items.i16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI32) => {
+            ty::TyInt(ast::IntTy::I32) => {
                 let lang_def_id = self.tcx().lang_items.i32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI64) => {
+            ty::TyInt(ast::IntTy::I64) => {
                 let lang_def_id = self.tcx().lang_items.i64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyIs) => {
+            ty::TyInt(ast::IntTy::Is) => {
                 let lang_def_id = self.tcx().lang_items.isize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU8) => {
+            ty::TyUint(ast::UintTy::U8) => {
                 let lang_def_id = self.tcx().lang_items.u8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU16) => {
+            ty::TyUint(ast::UintTy::U16) => {
                 let lang_def_id = self.tcx().lang_items.u16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU32) => {
+            ty::TyUint(ast::UintTy::U32) => {
                 let lang_def_id = self.tcx().lang_items.u32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU64) => {
+            ty::TyUint(ast::UintTy::U64) => {
                 let lang_def_id = self.tcx().lang_items.u64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyUs) => {
+            ty::TyUint(ast::UintTy::Us) => {
                 let lang_def_id = self.tcx().lang_items.usize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyFloat(ast::TyF32) => {
+            ty::TyFloat(ast::FloatTy::F32) => {
                 let lang_def_id = self.tcx().lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyFloat(ast::TyF64) => {
+            ty::TyFloat(ast::FloatTy::F64) => {
                 let lang_def_id = self.tcx().lang_items.f64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }

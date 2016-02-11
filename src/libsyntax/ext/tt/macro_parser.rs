@@ -374,7 +374,7 @@ pub fn parse(sess: &ParseSess,
                 match ei.top_elts.get_tt(idx) {
                     /* need to descend into sequence */
                     TokenTree::Sequence(sp, seq) => {
-                        if seq.op == ast::ZeroOrMore {
+                        if seq.op == ast::KleeneOp::ZeroOrMore {
                             let mut new_ei = ei.clone();
                             new_ei.match_cur += seq.num_captures;
                             new_ei.idx += 1;

@@ -27,7 +27,7 @@ pub fn path_name_i(idents: &[Ident]) -> String {
 }
 
 pub fn is_path(e: P<Expr>) -> bool {
-    match e.node { ExprPath(..) => true, _ => false }
+    match e.node { ExprKind::Path(..) => true, _ => false }
 }
 
 
@@ -66,9 +66,10 @@ pub fn path_to_ident(path: &Path) -> Option<Ident> {
 }
 
 pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> P<Pat> {
+    let spanned = codemap::Spanned{ span: s, node: i };
     P(Pat {
         id: id,
-        node: PatIdent(BindingMode::ByValue(MutImmutable), codemap::Spanned{span:s, node:i}, None),
+        node: PatIdent(BindingMode::ByValue(Mutability::Immutable), spanned, None),
         span: s
     })
 }
@@ -173,7 +174,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
 
         self.operation.visit_id(item.id);
         match item.node {
-            ItemUse(ref view_path) => {
+            ItemKind::Use(ref view_path) => {
                 match view_path.node {
                     ViewPathSimple(_, _) |
                     ViewPathGlob(_) => {}

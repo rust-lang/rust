@@ -360,7 +360,7 @@ fn check_cfg(sopts: &config::Options,
     let mut saw_invalid_predicate = false;
     for item in sopts.cfg.iter() {
         match item.node {
-            ast::MetaList(ref pred, _) => {
+            ast::MetaItemKind::List(ref pred, _) => {
                 saw_invalid_predicate = true;
                 emitter.emit(None,
                              &format!("invalid predicate in --cfg command line argument: `{}`",
@@ -560,18 +560,18 @@ impl RustcDefaultCalls {
                 PrintRequest::Cfg => {
                     for cfg in config::build_configuration(sess) {
                         match cfg.node {
-                            ast::MetaWord(ref word) => println!("{}", word),
-                            ast::MetaNameValue(ref name, ref value) => {
+                            ast::MetaItemKind::Word(ref word) => println!("{}", word),
+                            ast::MetaItemKind::NameValue(ref name, ref value) => {
                                 println!("{}=\"{}\"", name, match value.node {
-                                    ast::LitStr(ref s, _) => s,
+                                    ast::LitKind::Str(ref s, _) => s,
                                     _ => continue,
                                 });
                             }
                             // Right now there are not and should not be any
-                            // MetaList items in the configuration returned by
+                            // MetaItemKind::List items in the configuration returned by
                             // `build_configuration`.
-                            ast::MetaList(..) => {
-                                panic!("MetaList encountered in default cfg")
+                            ast::MetaItemKind::List(..) => {
+                                panic!("MetaItemKind::List encountered in default cfg")
                             }
                         }
                     }

@@ -51,7 +51,7 @@ use syntax::attr;
 use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;
 use syntax::ast;
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::codemap::{self, Span, BytePos, NO_EXPANSION};
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -1170,7 +1170,7 @@ fn get_meta_items(md: rbml::Doc) -> Vec<P<ast::MetaItem>> {
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
         let n = token::intern_and_get_ident(nd.as_str_slice());
         let v = token::intern_and_get_ident(vd.as_str_slice());
-        // FIXME (#623): Should be able to decode MetaNameValue variants,
+        // FIXME (#623): Should be able to decode MetaItemKind::NameValue variants,
         // but currently the encoder just drops them
         attr::mk_name_value_item_str(n, v)
     })).chain(reader::tagged_docs(md, tag_meta_item_list).map(|meta_item_doc| {
@@ -1701,7 +1701,7 @@ pub fn is_extern_fn(cdata: Cmd, id: DefIndex, tcx: &ty::ctxt) -> bool {
     if let Fn = item_family(item_doc) {
         let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
         generics.types.is_empty() && match ty.sty {
-            ty::TyBareFn(_, fn_ty) => fn_ty.abi != abi::Rust,
+            ty::TyBareFn(_, fn_ty) => fn_ty.abi != Abi::Rust,
             _ => false,
         }
     } else {

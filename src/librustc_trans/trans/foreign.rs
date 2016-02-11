@@ -34,9 +34,7 @@ use middle::subst::Substs;
 use std::cmp;
 use std::iter::once;
 use libc::c_uint;
-use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
-use syntax::abi::{PlatformIntrinsic, RustIntrinsic, Rust, RustCall, Stdcall};
-use syntax::abi::{Fastcall, Vectorcall, System};
+use syntax::abi::Abi;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
@@ -80,6 +78,7 @@ struct LlvmSignature {
 
 pub fn llvm_calling_convention(ccx: &CrateContext,
                                abi: Abi) -> CallConv {
+    use syntax::abi::Abi::*;
     match ccx.sess().target.target.adjust_abi(abi) {
         RustIntrinsic => {
             // Intrinsics are emitted at the call site
@@ -488,7 +487,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
 
         if let hir::ForeignItemFn(ref decl, _) = foreign_item.node {
             match foreign_mod.abi {
-                Rust | RustIntrinsic | PlatformIntrinsic => {}
+                Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic => {}
                 abi => {
                     let ty = ccx.tcx().node_id_to_type(foreign_item.id);
                     match ty.sty {
@@ -626,7 +625,9 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // normal Rust function. This will be the type of the wrappee fn.
         match t.sty {
             ty::TyBareFn(_, ref f) => {
-                assert!(f.abi != Rust && f.abi != RustIntrinsic && f.abi != PlatformIntrinsic);
+                assert!(f.abi != Abi::Rust);
+                assert!(f.abi != Abi::RustIntrinsic);
+                assert!(f.abi != Abi::PlatformIntrinsic);
             }
             _ => {
                 ccx.sess().bug(&format!("build_rust_fn: extern fn {} has ty {:?}, \

@@ -12,7 +12,7 @@
 
 // Predicates on exprs and stmts that the pretty-printer and parser use
 
-use ast;
+use ast::{self, BlockCheckMode};
 
 /// Does this expression require a semicolon to be treated
 /// as a statement? The negation of this: 'can this expression
@@ -23,21 +23,21 @@ use ast;
 /// isn't parsed as (if true {...} else {...} | x) | 5
 pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     match e.node {
-        ast::ExprIf(..) |
-        ast::ExprIfLet(..) |
-        ast::ExprMatch(..) |
-        ast::ExprBlock(_) |
-        ast::ExprWhile(..) |
-        ast::ExprWhileLet(..) |
-        ast::ExprLoop(..) |
-        ast::ExprForLoop(..) => false,
+        ast::ExprKind::If(..) |
+        ast::ExprKind::IfLet(..) |
+        ast::ExprKind::Match(..) |
+        ast::ExprKind::Block(_) |
+        ast::ExprKind::While(..) |
+        ast::ExprKind::WhileLet(..) |
+        ast::ExprKind::Loop(..) |
+        ast::ExprKind::ForLoop(..) => false,
         _ => true,
     }
 }
 
 pub fn expr_is_simple_block(e: &ast::Expr) -> bool {
     match e.node {
-        ast::ExprBlock(ref block) => block.rules == ast::DefaultBlock,
+        ast::ExprKind::Block(ref block) => block.rules == BlockCheckMode::Default,
         _ => false,
     }
 }
@@ -45,16 +45,16 @@ pub fn expr_is_simple_block(e: &ast::Expr) -> bool {
 /// this statement requires a semicolon after it.
 /// note that in one case (stmt_semi), we've already
 /// seen the semicolon, and thus don't need another.
-pub fn stmt_ends_with_semi(stmt: &ast::Stmt_) -> bool {
+pub fn stmt_ends_with_semi(stmt: &ast::StmtKind) -> bool {
     match *stmt {
-        ast::StmtDecl(ref d, _) => {
+        ast::StmtKind::Decl(ref d, _) => {
             match d.node {
-                ast::DeclLocal(_) => true,
-                ast::DeclItem(_) => false,
+                ast::DeclKind::Local(_) => true,
+                ast::DeclKind::Item(_) => false,
             }
         }
-        ast::StmtExpr(ref e, _) => expr_requires_semi_to_be_stmt(e),
-        ast::StmtSemi(..) => false,
-        ast::StmtMac(..) => false,
+        ast::StmtKind::Expr(ref e, _) => expr_requires_semi_to_be_stmt(e),
+        ast::StmtKind::Semi(..) => false,
+        ast::StmtKind::Mac(..) => false,
     }
 }

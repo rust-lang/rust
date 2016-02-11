@@ -10,7 +10,7 @@
 
 pub use self::AnnNode::*;
 
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, BytePos, Spanned};
 use syntax::errors;
@@ -290,7 +290,7 @@ pub fn fun_to_string(decl: &hir::FnDecl,
         try!(s.print_fn(decl,
                         unsafety,
                         constness,
-                        abi::Rust,
+                        Abi::Rust,
                         Some(name),
                         generics,
                         opt_explicit_self,
@@ -569,7 +569,7 @@ impl<'a> State<'a> {
                 try!(self.print_fn(decl,
                                    hir::Unsafety::Normal,
                                    hir::Constness::NotConst,
-                                   abi::Rust,
+                                   Abi::Rust,
                                    Some(item.name),
                                    generics,
                                    None,
@@ -652,7 +652,7 @@ impl<'a> State<'a> {
                 if let Some(p) = *optional_path {
                     let val = p.as_str();
                     if val.contains("-") {
-                        try!(self.print_string(&val, ast::CookedStr));
+                        try!(self.print_string(&val, ast::StrStyle::Cooked));
                     } else {
                         try!(self.print_name(p));
                     }
@@ -1510,9 +1510,9 @@ impl<'a> State<'a> {
                 try!(self.commasep(Inconsistent, &a.outputs, |s, out| {
                     match out.constraint.slice_shift_char() {
                         Some(('=', operand)) if out.is_rw => {
-                            try!(s.print_string(&format!("+{}", operand), ast::CookedStr))
+                            try!(s.print_string(&format!("+{}", operand), ast::StrStyle::Cooked))
                         }
-                        _ => try!(s.print_string(&out.constraint, ast::CookedStr)),
+                        _ => try!(s.print_string(&out.constraint, ast::StrStyle::Cooked)),
                     }
                     try!(s.popen());
                     try!(s.print_expr(&*out.expr));
@@ -1523,7 +1523,7 @@ impl<'a> State<'a> {
                 try!(self.word_space(":"));
 
                 try!(self.commasep(Inconsistent, &a.inputs, |s, &(ref co, ref o)| {
-                    try!(s.print_string(&co, ast::CookedStr));
+                    try!(s.print_string(&co, ast::StrStyle::Cooked));
                     try!(s.popen());
                     try!(s.print_expr(&**o));
                     try!(s.pclose());
@@ -1533,7 +1533,7 @@ impl<'a> State<'a> {
                 try!(self.word_space(":"));
 
                 try!(self.commasep(Inconsistent, &a.clobbers, |s, co| {
-                    try!(s.print_string(&co, ast::CookedStr));
+                    try!(s.print_string(&co, ast::StrStyle::Cooked));
                     Ok(())
                 }));
 
@@ -1552,7 +1552,7 @@ impl<'a> State<'a> {
                     try!(space(&mut self.s));
                     try!(self.word_space(":"));
                     try!(self.commasep(Inconsistent, &*options, |s, &co| {
-                        try!(s.print_string(co, ast::CookedStr));
+                        try!(s.print_string(co, ast::StrStyle::Cooked));
                         Ok(())
                     }));
                 }
@@ -1916,7 +1916,7 @@ impl<'a> State<'a> {
                     decl: &hir::FnDecl,
                     unsafety: hir::Unsafety,
                     constness: hir::Constness,
-                    abi: abi::Abi,
+                    abi: Abi,
                     name: Option<ast::Name>,
                     generics: &hir::Generics,
                     opt_explicit_self: Option<&hir::ExplicitSelf_>,
@@ -2250,7 +2250,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_fn(&mut self,
-                       abi: abi::Abi,
+                       abi: Abi,
                        unsafety: hir::Unsafety,
                        decl: &hir::FnDecl,
                        name: Option<ast::Name>,
@@ -2331,10 +2331,10 @@ impl<'a> State<'a> {
     }
 
     pub fn print_opt_abi_and_extern_if_nondefault(&mut self,
-                                                  opt_abi: Option<abi::Abi>)
+                                                  opt_abi: Option<Abi>)
                                                   -> io::Result<()> {
         match opt_abi {
-            Some(abi::Rust) => Ok(()),
+            Some(Abi::Rust) => Ok(()),
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
                 self.word_nbsp(&abi.to_string())
@@ -2343,7 +2343,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_extern_opt_abi(&mut self, opt_abi: Option<abi::Abi>) -> io::Result<()> {
+    pub fn print_extern_opt_abi(&mut self, opt_abi: Option<Abi>) -> io::Result<()> {
         match opt_abi {
             Some(abi) => {
                 try!(self.word_nbsp("extern"));
@@ -2356,7 +2356,7 @@ impl<'a> State<'a> {
     pub fn print_fn_header_info(&mut self,
                                 unsafety: hir::Unsafety,
                                 constness: hir::Constness,
-                                abi: abi::Abi,
+                                abi: Abi,
                                 vis: hir::Visibility)
                                 -> io::Result<()> {
         try!(word(&mut self.s, &visibility_qualified(vis, "")));
@@ -2367,7 +2367,7 @@ impl<'a> State<'a> {
             hir::Constness::Const => try!(self.word_nbsp("const")),
         }
 
-        if abi != abi::Rust {
+        if abi != Abi::Rust {
             try!(self.word_nbsp("extern"));
             try!(self.word_nbsp(&abi.to_string()));
         }

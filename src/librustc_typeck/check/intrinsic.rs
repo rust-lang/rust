@@ -20,7 +20,7 @@ use middle::ty::fold::TypeFolder;
 use {CrateCtxt, require_same_types};
 
 use std::collections::{HashMap};
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
@@ -30,7 +30,7 @@ use rustc_front::hir;
 
 fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &hir::ForeignItem,
                                    n_tps: usize,
-                                   abi: abi::Abi,
+                                   abi: Abi,
                                    inputs: Vec<ty::Ty<'tcx>>,
                                    output: ty::FnOutput<'tcx>) {
     let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
@@ -285,7 +285,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
                 let fn_ty = ty::BareFnTy {
                     unsafety: hir::Unsafety::Normal,
-                    abi: abi::Rust,
+                    abi: Abi::Rust,
                     sig: ty::Binder(FnSig {
                         inputs: vec![mut_u8],
                         output: ty::FnOutput::FnConverging(tcx.mk_nil()),
@@ -308,7 +308,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
         tcx,
         it,
         n_tps,
-        abi::RustIntrinsic,
+        Abi::RustIntrinsic,
         inputs,
         output
         )
@@ -398,7 +398,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
         tcx,
         it,
         n_tps,
-        abi::PlatformIntrinsic,
+        Abi::PlatformIntrinsic,
         inputs,
         ty::FnConverging(output)
         )
@@ -429,22 +429,22 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
         },
         // (The width we pass to LLVM doesn't concern the type checker.)
         Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
-            (true,  8,  &ty::TyInt(ast::IntTy::TyI8)) |
-            (false, 8,  &ty::TyUint(ast::UintTy::TyU8)) |
-            (true,  16, &ty::TyInt(ast::IntTy::TyI16)) |
-            (false, 16, &ty::TyUint(ast::UintTy::TyU16)) |
-            (true,  32, &ty::TyInt(ast::IntTy::TyI32)) |
-            (false, 32, &ty::TyUint(ast::UintTy::TyU32)) |
-            (true,  64, &ty::TyInt(ast::IntTy::TyI64)) |
-            (false, 64, &ty::TyUint(ast::UintTy::TyU64)) => {},
+            (true,  8,  &ty::TyInt(ast::IntTy::I8)) |
+            (false, 8,  &ty::TyUint(ast::UintTy::U8)) |
+            (true,  16, &ty::TyInt(ast::IntTy::I16)) |
+            (false, 16, &ty::TyUint(ast::UintTy::U16)) |
+            (true,  32, &ty::TyInt(ast::IntTy::I32)) |
+            (false, 32, &ty::TyUint(ast::UintTy::U32)) |
+            (true,  64, &ty::TyInt(ast::IntTy::I64)) |
+            (false, 64, &ty::TyUint(ast::UintTy::U64)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`{}{n}`",
                                        if signed {"i"} else {"u"},
                                        n = bits)),
         },
         Float(bits) => match (bits, &t.sty) {
-            (32, &ty::TyFloat(ast::FloatTy::TyF32)) |
-            (64, &ty::TyFloat(ast::FloatTy::TyF64)) => {},
+            (32, &ty::TyFloat(ast::FloatTy::F32)) |
+            (64, &ty::TyFloat(ast::FloatTy::F64)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`f{n}`", n = bits)),
         },

@@ -207,15 +207,15 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         span,
         ecx.ty_ident(span, ecx.ident_of("str")),
         Some(static_),
-        ast::MutImmutable,
+        ast::Mutability::Immutable,
     );
 
     let ty = ecx.ty(
         span,
-        ast::TyFixedLengthVec(
+        ast::TyKind::FixedLengthVec(
             ecx.ty(
                 span,
-                ast::TyTup(vec![ty_str.clone(), ty_str])
+                ast::TyKind::Tup(vec![ty_str.clone(), ty_str])
             ),
             ecx.expr_usize(span, count),
         ),
@@ -226,11 +226,11 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             ident: name.clone(),
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
-            node: ast::ItemConst(
+            node: ast::ItemKind::Const(
                 ty,
                 expr,
             ),
-            vis: ast::Public,
+            vis: ast::Visibility::Public,
             span: span,
         })
     ]))

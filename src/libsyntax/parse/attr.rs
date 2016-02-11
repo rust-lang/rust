@@ -175,23 +175,23 @@ impl<'a> Parser<'a> {
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
                 match lit.node {
-                    ast::LitStr(..) => {}
+                    ast::LitKind::Str(..) => {}
                     _ => {
                         self.span_err(lit.span,
                                       "non-string literals are not allowed in meta-items");
                     }
                 }
                 let hi = self.span.hi;
-                Ok(P(spanned(lo, hi, ast::MetaNameValue(name, lit))))
+                Ok(P(spanned(lo, hi, ast::MetaItemKind::NameValue(name, lit))))
             }
             token::OpenDelim(token::Paren) => {
                 let inner_items = try!(self.parse_meta_seq());
                 let hi = self.span.hi;
-                Ok(P(spanned(lo, hi, ast::MetaList(name, inner_items))))
+                Ok(P(spanned(lo, hi, ast::MetaItemKind::List(name, inner_items))))
             }
             _ => {
                 let hi = self.last_span.hi;
-                Ok(P(spanned(lo, hi, ast::MetaWord(name))))
+                Ok(P(spanned(lo, hi, ast::MetaItemKind::Word(name))))
             }
         }
     }

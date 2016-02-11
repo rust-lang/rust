@@ -1220,18 +1220,18 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyBool              => output.push_str("bool"),
         ty::TyChar              => output.push_str("char"),
         ty::TyStr               => output.push_str("str"),
-        ty::TyInt(ast::TyIs)    => output.push_str("isize"),
-        ty::TyInt(ast::TyI8)    => output.push_str("i8"),
-        ty::TyInt(ast::TyI16)   => output.push_str("i16"),
-        ty::TyInt(ast::TyI32)   => output.push_str("i32"),
-        ty::TyInt(ast::TyI64)   => output.push_str("i64"),
-        ty::TyUint(ast::TyUs)   => output.push_str("usize"),
-        ty::TyUint(ast::TyU8)   => output.push_str("u8"),
-        ty::TyUint(ast::TyU16)  => output.push_str("u16"),
-        ty::TyUint(ast::TyU32)  => output.push_str("u32"),
-        ty::TyUint(ast::TyU64)  => output.push_str("u64"),
-        ty::TyFloat(ast::TyF32) => output.push_str("f32"),
-        ty::TyFloat(ast::TyF64) => output.push_str("f64"),
+        ty::TyInt(ast::IntTy::Is)    => output.push_str("isize"),
+        ty::TyInt(ast::IntTy::I8)    => output.push_str("i8"),
+        ty::TyInt(ast::IntTy::I16)   => output.push_str("i16"),
+        ty::TyInt(ast::IntTy::I32)   => output.push_str("i32"),
+        ty::TyInt(ast::IntTy::I64)   => output.push_str("i64"),
+        ty::TyUint(ast::UintTy::Us)   => output.push_str("usize"),
+        ty::TyUint(ast::UintTy::U8)   => output.push_str("u8"),
+        ty::TyUint(ast::UintTy::U16)  => output.push_str("u16"),
+        ty::TyUint(ast::UintTy::U32)  => output.push_str("u32"),
+        ty::TyUint(ast::UintTy::U64)  => output.push_str("u64"),
+        ty::TyFloat(ast::FloatTy::F32) => output.push_str("f32"),
+        ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
         ty::TyStruct(adt_def, substs) |
         ty::TyEnum(adt_def, substs) => {
             push_item_name(cx, adt_def.did, output);
@@ -1294,7 +1294,7 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 output.push_str("unsafe ");
             }
 
-            if abi != ::syntax::abi::Rust {
+            if abi != ::syntax::abi::Abi::Rust {
                 output.push_str("extern \"");
                 output.push_str(abi.name());
                 output.push_str("\" ");

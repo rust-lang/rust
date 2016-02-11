@@ -21,7 +21,7 @@ use middle::ty::{self, Ty, TypeFoldable};
 
 use trans::type_::Type;
 
-use syntax::abi;
+use syntax::abi::Abi;
 use syntax::ast;
 
 // LLVM doesn't like objects that are too big. Issue #17913
@@ -91,7 +91,7 @@ pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  llenvironment_type: Option<Type>,
                                  sig: &ty::FnSig<'tcx>,
-                                 abi: abi::Abi)
+                                 abi: Abi)
                                  -> Type
 {
     debug!("type_of_rust_fn(sig={:?},abi={:?})",
@@ -104,7 +104,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // First, munge the inputs, if this has the `rust-call` ABI.
     let inputs_temp;
-    let inputs = if abi == abi::RustCall {
+    let inputs = if abi == Abi::RustCall {
         inputs_temp = untuple_arguments(cx, &sig.inputs);
         &inputs_temp
     } else {
@@ -156,7 +156,7 @@ pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) 
         ty::TyBareFn(_, ref f) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
-            if f.abi == abi::Rust || f.abi == abi::RustCall {
+            if f.abi == Abi::Rust || f.abi == Abi::RustCall {
                 let sig = cx.tcx().erase_late_bound_regions(&f.sig);
                 let sig = infer::normalize_associated_type(cx.tcx(), &sig);
                 type_of_rust_fn(cx, None, &sig, f.abi)
@@ -385,7 +385,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   let unsized_part = cx.tcx().struct_tail(ty);
                   let info_ty = match unsized_part.sty {
                       ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
-                          Type::uint_from_ty(cx, ast::TyUs)
+                          Type::uint_from_ty(cx, ast::UintTy::Us)
                       }
                       ty::TyTrait(_) => Type::vtable_ptr(cx),
                       _ => panic!("Unexpected type returned from \

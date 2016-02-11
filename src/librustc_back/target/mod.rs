@@ -48,7 +48,7 @@
 use serialize::json::Json;
 use std::default::Default;
 use std::io::prelude::*;
-use syntax::abi;
+use syntax::abi::Abi;
 
 mod android_base;
 mod apple_base;
@@ -262,13 +262,13 @@ impl Default for TargetOptions {
 
 impl Target {
     /// Given a function ABI, turn "System" into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: abi::Abi) -> abi::Abi {
+    pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
-            abi::System => {
+            Abi::System => {
                 if self.options.is_like_windows && self.arch == "x86" {
-                    abi::Stdcall
+                    Abi::Stdcall
                 } else {
-                    abi::C
+                    Abi::C
                 }
             },
             abi => abi

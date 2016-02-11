@@ -22,7 +22,7 @@
 use llvm::{self, ValueRef};
 use middle::ty;
 use middle::infer;
-use syntax::abi;
+use syntax::abi::Abi;
 use trans::attributes;
 use trans::base;
 use trans::context::CrateContext;
@@ -116,7 +116,7 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
             let llenvironment_type = type_of::type_of_explicit_arg(ccx, self_type);
             debug!("declare_rust_fn function_type={:?} self_type={:?}",
                    function_type, self_type);
-            (&function_type.sig, abi::RustCall, Some(llenvironment_type))
+            (&function_type.sig, Abi::RustCall, Some(llenvironment_type))
         }
         _ => ccx.sess().bug("expected closure or fn")
     };
