@@ -14,9 +14,7 @@ use fmt;
 use hash;
 use io;
 use mem;
-use net::{lookup_host, ntoh, hton, Ipv4Addr, Ipv6Addr};
-#[allow(deprecated)]
-use net::IpAddr;
+use net::{lookup_host, ntoh, hton, IpAddr, Ipv4Addr, Ipv6Addr};
 use option;
 use sys::net::netc as c;
 use sys_common::{FromInner, AsInner, IntoInner};
@@ -50,10 +48,7 @@ pub struct SocketAddrV6 { inner: c::sockaddr_in6 }
 
 impl SocketAddr {
     /// Creates a new socket address from the (ip, port) pair.
-    #[unstable(feature = "ip_addr", reason = "recent addition", issue = "27801")]
-    #[rustc_deprecated(reason = "ip type too small a type to pull its weight",
-                       since = "1.6.0")]
-    #[allow(deprecated)]
+    #[stable(feature = "ip_addr", since = "1.7.0")]
     pub fn new(ip: IpAddr, port: u16) -> SocketAddr {
         match ip {
             IpAddr::V4(a) => SocketAddr::V4(SocketAddrV4::new(a, port)),
@@ -62,10 +57,7 @@ impl SocketAddr {
     }
 
     /// Returns the IP address associated with this socket address.
-    #[unstable(feature = "ip_addr", reason = "recent addition", issue = "27801")]
-    #[rustc_deprecated(reason = "too small a type to pull its weight",
-                       since = "1.6.0")]
-    #[allow(deprecated)]
+    #[stable(feature = "ip_addr", since = "1.7.0")]
     pub fn ip(&self) -> IpAddr {
         match *self {
             SocketAddr::V4(ref a) => IpAddr::V4(*a.ip()),
@@ -359,7 +351,6 @@ impl ToSocketAddrs for SocketAddrV6 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
 impl ToSocketAddrs for (IpAddr, u16) {
     type Iter = option::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<option::IntoIter<SocketAddr>> {
