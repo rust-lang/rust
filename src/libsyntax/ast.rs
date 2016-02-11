@@ -21,7 +21,6 @@ pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
 pub use self::PrimTy::*;
-pub use self::Sign::*;
 pub use self::Stmt_::*;
 pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
@@ -1270,35 +1269,10 @@ pub enum StrStyle {
 pub type Lit = Spanned<Lit_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum Sign {
-    Minus,
-    Plus
-}
-
-impl Sign {
-    pub fn new<T: IntSign>(n: T) -> Sign {
-        n.sign()
-    }
-}
-
-pub trait IntSign {
-    fn sign(&self) -> Sign;
-}
-macro_rules! doit {
-    ($($t:ident)*) => ($(impl IntSign for $t {
-        #[allow(unused_comparisons)]
-        fn sign(&self) -> Sign {
-            if *self < 0 {Minus} else {Plus}
-        }
-    })*)
-}
-doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum LitIntType {
-    SignedIntLit(IntTy, Sign),
+    SignedIntLit(IntTy),
     UnsignedIntLit(UintTy),
-    UnsuffixedIntLit(Sign)
+    UnsuffixedIntLit,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

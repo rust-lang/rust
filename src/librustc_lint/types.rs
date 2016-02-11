@@ -106,7 +106,7 @@ impl LateLintPass for TypeLimits {
                         ast::LitInt(_, ast::UnsignedIntLit(_)) => {
                             forbid_unsigned_negation(cx, e.span);
                         },
-                        ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
+                        ast::LitInt(_, ast::UnsuffixedIntLit) => {
                             if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
                                 forbid_unsigned_negation(cx, e.span);
                             }
@@ -159,8 +159,8 @@ impl LateLintPass for TypeLimits {
                 match cx.tcx.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
-                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
+                            ast::LitInt(v, ast::SignedIntLit(_)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit) => {
                                 let int_type = if let ast::IntTy::Is = t {
                                     cx.sess().target.int_type
                                 } else {
@@ -311,10 +311,8 @@ impl LateLintPass for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => v as i64,
-                            ast::LitInt(v, ast::SignedIntLit(_, ast::Minus)) |
-                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Minus)) => -(v as i64),
+                            ast::LitInt(v, ast::SignedIntLit(_)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit) => v as i64,
                             _ => return true
                         },
                         _ => panic!()

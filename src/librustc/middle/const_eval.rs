@@ -1328,15 +1328,13 @@ fn lit_to_const(sess: &Session, span: Span, lit: &ast::Lit, ty_hint: Option<Ty>)
         }
         ast::LitByte(n) => Uint(n as u64),
         ast::LitChar(n) => Uint(n as u64),
-        ast::LitInt(n, ast::SignedIntLit(_, ast::Plus)) => Int(n as i64),
-        ast::LitInt(n, ast::UnsuffixedIntLit(ast::Plus)) => {
+        ast::LitInt(n, ast::SignedIntLit(_)) => Int(n as i64),
+        ast::LitInt(n, ast::UnsuffixedIntLit) => {
             match ty_hint.map(|ty| &ty.sty) {
                 Some(&ty::TyUint(_)) => Uint(n),
                 _ => Int(n as i64)
             }
         }
-        ast::LitInt(n, ast::SignedIntLit(_, ast::Minus)) |
-        ast::LitInt(n, ast::UnsuffixedIntLit(ast::Minus)) => Int(-(n as i64)),
         ast::LitInt(n, ast::UnsignedIntLit(_)) => Uint(n),
         ast::LitFloat(ref n, _) |
         ast::LitFloatUnsuffixed(ref n) => {

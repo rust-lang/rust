@@ -263,9 +263,27 @@ pub mod rt {
         (signed, $t:ty, $tag:expr) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
-                    let lit = ast::LitInt(*self as u64, ast::SignedIntLit($tag,
-                                                                          ast::Sign::new(*self)));
-                    dummy_spanned(lit).to_tokens(cx)
+                    let val = if *self < 0 {
+                        -self
+                    } else {
+                        *self
+                    };
+                    let lit = ast::LitInt(val as u64, ast::SignedIntLit($tag));
+                    let lit = P(ast::Expr {
+                        id: ast::DUMMY_NODE_ID,
+                        node: ast::ExprKind::Lit(P(dummy_spanned(lit))),
+                        span: DUMMY_SP,
+                        attrs: None,
+                    });
+                    if *self >= 0 {
+                        return lit.to_tokens(cx);
+                    }
+                    P(ast::Expr {
+                        id: ast::DUMMY_NODE_ID,
+                        node: ast::ExprKind::Unary(ast::UnOp::Neg, lit),
+                        span: DUMMY_SP,
+                        attrs: None,
+                    }).to_tokens(cx)
                 }
             }
         );
