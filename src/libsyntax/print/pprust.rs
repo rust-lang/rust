@@ -645,23 +645,15 @@ pub trait PrintState<'a> {
             }
             ast::LitInt(i, t) => {
                 match t {
-                    ast::SignedIntLit(st, ast::Plus) => {
+                    ast::SignedIntLit(st) => {
                         word(self.writer(),
                              &st.val_to_string(i as i64))
-                    }
-                    ast::SignedIntLit(st, ast::Minus) => {
-                        let istr = st.val_to_string(-(i as i64));
-                        word(self.writer(),
-                             &format!("-{}", istr))
                     }
                     ast::UnsignedIntLit(ut) => {
                         word(self.writer(), &ut.val_to_string(i))
                     }
-                    ast::UnsuffixedIntLit(ast::Plus) => {
+                    ast::UnsuffixedIntLit => {
                         word(self.writer(), &format!("{}", i))
-                    }
-                    ast::UnsuffixedIntLit(ast::Minus) => {
-                        word(self.writer(), &format!("-{}", i))
                     }
                 }
             }
