@@ -189,7 +189,7 @@ pub fn build_link_meta(sess: &Session,
                        -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
-        crate_hash: Svh::calculate(&sess.opts.cg.metadata, krate),
+        crate_hash: Svh::calculate(&sess.crate_disambiguator.borrow()[..], krate),
     };
     info!("{:?}", r);
     return r;
@@ -201,7 +201,7 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
     output[.. 8].to_hex().to_string()
 }
 
-pub fn def_to_string(_tcx: &ty::ctxt, did: DefId) -> String {
+pub fn def_to_string(_tcx: &TyCtxt, did: DefId) -> String {
     format!("{}:{}", did.krate, did.index.as_usize())
 }
 
@@ -218,9 +218,7 @@ fn symbol_hash<'tcx>(tcx: &TyCtxt<'tcx>,
     symbol_hasher.input_str(&link_meta.crate_name);
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
-    for meta in tcx.sess.crate_metadata.borrow().iter() {
-        symbol_hasher.input_str(&meta[..]);
-    }
+    symbol_hasher.input_str(&tcx.sess.crate_disambiguator.borrow()[..]);
     symbol_hasher.input_str("-");
     symbol_hasher.input(&tcx.sess.cstore.encode_type(tcx, t, def_to_string));
     // Prefix with 'h' so that it never blends into adjacent digits

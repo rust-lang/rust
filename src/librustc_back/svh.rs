@@ -66,7 +66,7 @@ impl Svh {
         &self.hash
     }
 
-    pub fn calculate(metadata: &Vec<String>, krate: &hir::Crate) -> Svh {
+    pub fn calculate(crate_disambiguator: &str, krate: &hir::Crate) -> Svh {
         // FIXME (#14132): This is better than it used to be, but it still not
         // ideal. We now attempt to hash only the relevant portions of the
         // Crate AST as well as the top-level crate attributes. (However,
@@ -78,9 +78,9 @@ impl Svh {
         //        avoid collisions.
         let mut state = SipHasher::new();
 
-        for data in metadata {
-            data.hash(&mut state);
-        }
+        "crate_disambiguator".hash(&mut state);
+        crate_disambiguator.len().hash(&mut state);
+        crate_disambiguator.hash(&mut state);
 
         {
             let mut visit = svh_visitor::make(&mut state, krate);

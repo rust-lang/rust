@@ -64,7 +64,12 @@ pub struct Session {
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
-    pub crate_metadata: RefCell<Vec<String>>,
+    // The crate_disambiguator is constructed out of all the `-C metadata`
+    // arguments passed to the compiler. Its value together with the crate-name
+    // forms a unique global identifier for the crate. It is used to allow
+    // multiple crates with the same name to coexist. See the
+    // trans::back::symbol_names module for more information.
+    pub crate_disambiguator: RefCell<String>,
     pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -481,7 +486,7 @@ pub fn build_session_(sopts: config::Options,
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FnvHashMap()),
-        crate_metadata: RefCell::new(Vec::new()),
+        crate_disambiguator: RefCell::new(String::new()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
         next_node_id: Cell::new(1),

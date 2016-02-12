@@ -206,6 +206,7 @@ pub trait CrateStore<'tcx> : Any {
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
     fn crate_name(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>;
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
@@ -385,6 +386,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { unimplemented!() }
     fn crate_name(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh { unimplemented!() }
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>
         { unimplemented!() }
