@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io;
+use prelude::v1::*;
+
+use io::{self, Read};
 use libc::{self, c_int, size_t, c_void};
 use mem;
+use sync::atomic::{AtomicBool, Ordering};
 use sys::cvt;
 use sys_common::AsInner;
-use sync::atomic::{AtomicBool, Ordering};
+use sys_common::io::read_to_end_uninitialized;
 
 pub struct FileDesc {
     fd: c_int,
@@ -40,6 +43,11 @@ impl FileDesc {
                        buf.len() as size_t)
         }));
         Ok(ret as usize)
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+        (&mut me).read_to_end(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -115,6 +123,17 @@ impl FileDesc {
             }
         }
         cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).map(make_filedesc)
+    }
+}
+
+#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
+impl<'a> Read for &'a FileDesc {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
 use io::prelude::*;
 use os::windows::prelude::*;
 
@@ -310,6 +311,10 @@ impl File {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.handle.read(buf)
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.handle.read_to_end(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
