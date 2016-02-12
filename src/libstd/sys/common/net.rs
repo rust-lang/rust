@@ -197,6 +197,10 @@ impl TcpStream {
         self.inner.read(buf)
     }
 
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = try!(cvt(unsafe {
             c::send(*self.inner.as_inner(),

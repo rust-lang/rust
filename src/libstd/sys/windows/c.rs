@@ -268,6 +268,7 @@ pub const ERROR_PATH_NOT_FOUND: DWORD = 3;
 pub const ERROR_ACCESS_DENIED: DWORD = 5;
 pub const ERROR_INVALID_HANDLE: DWORD = 6;
 pub const ERROR_NO_MORE_FILES: DWORD = 18;
+pub const ERROR_HANDLE_EOF: DWORD = 38;
 pub const ERROR_BROKEN_PIPE: DWORD = 109;
 pub const ERROR_DISK_FULL: DWORD = 112;
 pub const ERROR_CALL_NOT_IMPLEMENTED: DWORD = 120;
@@ -360,6 +361,14 @@ pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING |
                                     EXCEPTION_EXIT_UNWIND |
                                     EXCEPTION_TARGET_UNWIND |
                                     EXCEPTION_COLLIDED_UNWIND;
+
+pub const PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
+pub const FILE_FLAG_FIRST_PIPE_INSTANCE: DWORD = 0x00080000;
+pub const FILE_FLAG_OVERLAPPED: DWORD = 0x40000000;
+pub const PIPE_WAIT: DWORD = 0x00000000;
+pub const PIPE_TYPE_BYTE: DWORD = 0x00000000;
+pub const PIPE_REJECT_REMOTE_CLIENTS: DWORD = 0x00000008;
+pub const PIPE_READMODE_BYTE: DWORD = 0x00000000;
 
 #[repr(C)]
 #[cfg(target_arch = "x86")]
@@ -1261,6 +1270,29 @@ extern "system" {
                        OriginalContext: *const CONTEXT,
                        HistoryTable: *const UNWIND_HISTORY_TABLE);
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
+
+    pub fn CreateEventW(lpEventAttributes: LPSECURITY_ATTRIBUTES,
+                        bManualReset: BOOL,
+                        bInitialState: BOOL,
+                        lpName: LPCWSTR) -> HANDLE;
+    pub fn WaitForMultipleObjects(nCount: DWORD,
+                                  lpHandles: *const HANDLE,
+                                  bWaitAll: BOOL,
+                                  dwMilliseconds: DWORD) -> DWORD;
+    pub fn CreateNamedPipeW(lpName: LPCWSTR,
+                            dwOpenMode: DWORD,
+                            dwPipeMode: DWORD,
+                            nMaxInstances: DWORD,
+                            nOutBufferSize: DWORD,
+                            nInBufferSize: DWORD,
+                            nDefaultTimeOut: DWORD,
+                            lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
+                            -> HANDLE;
+    pub fn CancelIo(handle: HANDLE) -> BOOL;
+    pub fn GetOverlappedResult(hFile: HANDLE,
+                               lpOverlapped: LPOVERLAPPED,
+                               lpNumberOfBytesTransferred: LPDWORD,
+                               bWait: BOOL) -> BOOL;
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just

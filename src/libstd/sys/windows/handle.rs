@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::ErrorKind;
+use prelude::v1::*;
+
+use io::{ErrorKind, Read};
 use io;
 use mem;
 use ops::Deref;
 use ptr;
 use sys::c;
 use sys::cvt;
+use sys_common::io::read_to_end_uninitialized;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
@@ -66,8 +69,8 @@ impl RawHandle {
         let mut read = 0;
         let res = cvt(unsafe {
             c::ReadFile(self.0, buf.as_ptr() as c::LPVOID,
-                           buf.len() as c::DWORD, &mut read,
-                           ptr::null_mut())
+                        buf.len() as c::DWORD, &mut read,
+                        0 as *mut _)
         });
 
         match res {
@@ -81,6 +84,60 @@ impl RawHandle {
 
             Err(e) => Err(e)
         }
+    }
+
+    pub unsafe fn read_overlapped(&self,
+                                  buf: &mut [u8],
+                                  overlapped: *mut c::OVERLAPPED)
+                                  -> io::Result<bool> {
+        let res = cvt({
+            c::ReadFile(self.0, buf.as_ptr() as c::LPVOID,
+                        buf.len() as c::DWORD, 0 as *mut _,
+                        overlapped)
+        });
+        match res {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if e.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub fn overlapped_result(&self,
+                             overlapped: *mut c::OVERLAPPED,
+                             wait: bool) -> io::Result<usize> {
+        unsafe {
+            let mut bytes = 0;
+            let wait = if wait {c::TRUE} else {c::FALSE};
+            let res = cvt({
+                c::GetOverlappedResult(self.raw(), overlapped, &mut bytes, wait)
+            });
+            match res {
+                Ok(_) => Ok(bytes as usize),
+                Err(e) => {
+                    if e.raw_os_error() == Some(c::ERROR_HANDLE_EOF as i32) {
+                        Ok(0)
+                    } else {
+                        Err(e)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn cancel_io(&self) -> io::Result<()> {
+        unsafe {
+            cvt(c::CancelIo(self.raw())).map(|_| ())
+        }
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+        (&mut me).read_to_end(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -103,5 +160,16 @@ impl RawHandle {
                             options)
         }));
         Ok(Handle::new(ret))
+    }
+}
+
+#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
+impl<'a> Read for &'a RawHandle {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
