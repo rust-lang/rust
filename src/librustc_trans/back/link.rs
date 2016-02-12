@@ -976,7 +976,9 @@ fn link_args(cmd: &mut Linker,
 
     // Try to strip as much out of the generated object by removing unused
     // sections if possible. See more comments in linker.rs
-    cmd.gc_sections(dylib);
+    if !sess.opts.cg.link_dead_code {
+        cmd.gc_sections(dylib);
+    }
 
     let used_link_args = sess.cstore.used_link_args();
 
