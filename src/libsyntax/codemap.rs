@@ -341,7 +341,7 @@ impl MultiSpan {
         for idx in 0.. {
             if let Some(sp_trim) = sp.trim_start(prev) {
                 // Implies `sp.hi > prev.hi`
-                let cur = match self.spans.as_slice().get(idx) {
+                let cur = match self.spans.get(idx) {
                     Some(s) => *s,
                     None => {
                         sp = sp_trim;
