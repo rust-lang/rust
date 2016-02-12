@@ -40,7 +40,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
                       errnum: libc::c_int);
     enum backtrace_state {}
     #[link(name = "backtrace", kind = "static")]
-    #[cfg(not(test))]
+    #[cfg(all(not(test), not(cargobuild)))]
     extern {}
 
     extern {

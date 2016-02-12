@@ -609,6 +609,9 @@ pub mod debuginfo {
 // automatically updated whenever LLVM is updated to include an up-to-date
 // set of the libraries we need to link to LLVM for.
 #[link(name = "rustllvm", kind = "static")]
+#[cfg(not(cargobuild))]
+extern {}
+
 #[linked_from = "rustllvm"] // not quite true but good enough
 extern {
     /* Create and destroy contexts. */
@@ -2163,53 +2166,6 @@ extern {
     pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
 }
 
-#[cfg(have_component_x86)]
-extern {
-    pub fn LLVMInitializeX86TargetInfo();
-    pub fn LLVMInitializeX86Target();
-    pub fn LLVMInitializeX86TargetMC();
-    pub fn LLVMInitializeX86AsmPrinter();
-    pub fn LLVMInitializeX86AsmParser();
-}
-#[cfg(have_component_arm)]
-extern {
-    pub fn LLVMInitializeARMTargetInfo();
-    pub fn LLVMInitializeARMTarget();
-    pub fn LLVMInitializeARMTargetMC();
-    pub fn LLVMInitializeARMAsmPrinter();
-    pub fn LLVMInitializeARMAsmParser();
-}
-#[cfg(have_component_aarch64)]
-extern {
-    pub fn LLVMInitializeAArch64TargetInfo();
-    pub fn LLVMInitializeAArch64Target();
-    pub fn LLVMInitializeAArch64TargetMC();
-    pub fn LLVMInitializeAArch64AsmPrinter();
-    pub fn LLVMInitializeAArch64AsmParser();
-}
-#[cfg(have_component_mips)]
-extern {
-    pub fn LLVMInitializeMipsTargetInfo();
-    pub fn LLVMInitializeMipsTarget();
-    pub fn LLVMInitializeMipsTargetMC();
-    pub fn LLVMInitializeMipsAsmPrinter();
-    pub fn LLVMInitializeMipsAsmParser();
-}
-#[cfg(have_component_powerpc)]
-extern {
-    pub fn LLVMInitializePowerPCTargetInfo();
-    pub fn LLVMInitializePowerPCTarget();
-    pub fn LLVMInitializePowerPCTargetMC();
-    pub fn LLVMInitializePowerPCAsmPrinter();
-    pub fn LLVMInitializePowerPCAsmParser();
-}
-#[cfg(have_component_pnacl)]
-extern {
-    pub fn LLVMInitializePNaClTargetInfo();
-    pub fn LLVMInitializePNaClTarget();
-    pub fn LLVMInitializePNaClTargetMC();
-}
-
 // LLVM requires symbols from this library, but apparently they're not printed
 // during llvm-config?
 #[cfg(windows)]
@@ -2396,20 +2352,14 @@ pub unsafe fn debug_loc_to_string(c: ContextRef, tr: DebugLocRef) -> String {
 
 pub fn initialize_available_targets() {
     macro_rules! init_target(
-        ($cfg:ident $arch:ident) => { {
+        ($cfg:meta, $($method:ident),*) => { {
             #[cfg($cfg)]
             fn init() {
+                extern {
+                    $(fn $method();)*
+                }
                 unsafe {
-                    let f = concat_idents!(LLVMInitialize, $arch, TargetInfo);
-                    f();
-                    let f = concat_idents!(LLVMInitialize, $arch, Target);
-                    f();
-                    let f = concat_idents!(LLVMInitialize, $arch, TargetMC);
-                    f();
-                    let f = concat_idents!(LLVMInitialize, $arch, AsmPrinter);
-                    f();
-                    let f = concat_idents!(LLVMInitialize, $arch, AsmParser);
-                    f();
+                    $($method();)*
                 }
             }
             #[cfg(not($cfg))]
@@ -2417,26 +2367,40 @@ pub fn initialize_available_targets() {
             init();
         } }
     );
-
-    init_target!(have_component_powerpc PowerPC);
-    init_target!(have_component_mips Mips);
-    init_target!(have_component_aarch64 AArch64);
-    init_target!(have_component_arm ARM);
-    init_target!(have_component_x86 X86);
-
-    // PNaCl doesn't provide some of the optional target components, so we
-    // manually initialize it here.
-    #[cfg(have_component_pnacl)]
-    fn init_pnacl() {
-        unsafe {
-            LLVMInitializePNaClTargetInfo();
-            LLVMInitializePNaClTarget();
-            LLVMInitializePNaClTargetMC();
-        }
-    }
-    #[cfg(not(have_component_pnacl))]
-    fn init_pnacl() { }
-    init_pnacl();
+    init_target!(llvm_component = "x86",
+                 LLVMInitializeX86TargetInfo,
+                 LLVMInitializeX86Target,
+                 LLVMInitializeX86TargetMC,
+                 LLVMInitializeX86AsmPrinter,
+                 LLVMInitializeX86AsmParser);
+    init_target!(llvm_component = "arm",
+                 LLVMInitializeARMTargetInfo,
+                 LLVMInitializeARMTarget,
+                 LLVMInitializeARMTargetMC,
+                 LLVMInitializeARMAsmPrinter,
+                 LLVMInitializeARMAsmParser);
+    init_target!(llvm_component = "aarch64",
+                 LLVMInitializeAArch64TargetInfo,
+                 LLVMInitializeAArch64Target,
+                 LLVMInitializeAArch64TargetMC,
+                 LLVMInitializeAArch64AsmPrinter,
+                 LLVMInitializeAArch64AsmParser);
+    init_target!(llvm_component = "mips",
+                 LLVMInitializeMipsTargetInfo,
+                 LLVMInitializeMipsTarget,
+                 LLVMInitializeMipsTargetMC,
+                 LLVMInitializeMipsAsmPrinter,
+                 LLVMInitializeMipsAsmParser);
+    init_target!(llvm_component = "powerpc",
+                 LLVMInitializePowerPCTargetInfo,
+                 LLVMInitializePowerPCTarget,
+                 LLVMInitializePowerPCTargetMC,
+                 LLVMInitializePowerPCAsmPrinter,
+                 LLVMInitializePowerPCAsmParser);
+    init_target!(llvm_component = "pnacl",
+                 LLVMInitializePNaClTargetInfo,
+                 LLVMInitializePNaClTarget,
+                 LLVMInitializePNaClTargetMC);
 }
 
 pub fn last_error() -> Option<String> {
@@ -2486,6 +2450,7 @@ impl Drop for OperandBundleDef {
 // parts of LLVM that rustllvm depends on aren't thrown away by the linker.
 // Works to the above fix for #15460 to ensure LLVM dependencies that
 // are only used by rustllvm don't get stripped by the linker.
+#[cfg(not(cargobuild))]
 mod llvmdeps {
     include! { env!("CFG_LLVM_LINKAGE_FILE") }
 }

@@ -1,0 +1,17 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_plugin"
+version = "0.0.0"
+
+[lib]
+name = "rustc_plugin"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+log = { path = "../liblog" }
+rustc = { path = "../librustc" }
+rustc_front = { path = "../librustc_front" }
+rustc_metadata = { path = "../librustc_metadata" }
+rustc_mir = { path = "../librustc_mir" }
+syntax = { path = "../libsyntax" }

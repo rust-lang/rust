@@ -1,0 +1,20 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_metadata"
+version = "0.0.0"
+
+[lib]
+name = "rustc_metadata"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+flate = { path = "../libflate" }
+log = { path = "../liblog" }
+rbml = { path = "../librbml" }
+rustc = { path = "../librustc" }
+rustc_back = { path = "../librustc_back" }
+rustc_front = { path = "../librustc_front" }
+rustc_llvm = { path = "../librustc_llvm" }
+serialize = { path = "../libserialize" }
+syntax = { path = "../libsyntax" }

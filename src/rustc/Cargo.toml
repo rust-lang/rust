@@ -1,0 +1,36 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc-main"
+version = "0.0.0"
+
+[[bin]]
+name = "rustc"
+path = "rustc.rs"
+
+[[bin]]
+name = "rustdoc"
+path = "rustdoc.rs"
+
+[[bin]]
+name = "rustbook"
+path = "rustbook.rs"
+
+[profile.release]
+opt-level = 2
+
+# These options are controlled from our rustc wrapper script, so turn them off
+# here and have them controlled elsewhere.
+[profile.dev]
+debug = false
+debug-assertions = false
+
+# All optional dependencies so the features passed to this Cargo.toml select
+# what should actually be built.
+[dependencies]
+rustbook = { path = "../rustbook", optional = true }
+rustc_back = { path = "../librustc_back" }
+rustc_driver = { path = "../librustc_driver" }
+rustdoc = { path = "../librustdoc", optional = true }
+
+[features]
+jemalloc = ["rustc_back/jemalloc"]
