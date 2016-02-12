@@ -1,10 +1,11 @@
 [package]
 name = "clippy"
-version = "0.0.38"
+version = "0.0.39"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
-	"Georg Brandl <georg@python.org>"
+	"Georg Brandl <georg@python.org>",
+	"Martin Carton <cartonmartin@gmail.com>"
 ]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/Manishearth/rust-clippy"
