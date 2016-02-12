@@ -3281,8 +3281,7 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         for cnum in sess.cstore.crates() {
             let syms = sess.cstore.reachable_ids(cnum);
             reachable_symbols.extend(syms.into_iter().filter(|did| {
-                sess.cstore.is_extern_fn(shared_ccx.tcx(), *did) ||
-                sess.cstore.is_static(*did)
+                sess.cstore.is_extern_item(shared_ccx.tcx(), *did)
             }).map(|did| {
                 sess.cstore.item_symbol(did)
             }));
