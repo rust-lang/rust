@@ -9,5 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    assert!("foo"); //~ERROR: mismatched types
+    assert!(Ok(1)); //~ ERROR: mismatched types
+    assert!(true);
+    assert!(false);
 }

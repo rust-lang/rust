@@ -953,7 +953,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let m: ModuleRef = llvm::LLVMGetGlobalParent(fn_);
             let p = "llvm.trap\0".as_ptr();
             let t: ValueRef = llvm::LLVMGetNamedFunction(m, p as *const _);
-            assert!((t as isize != 0));
+            assert!(t as isize != 0);
             let args: &[ValueRef] = &[];
             self.count_insn("trap");
             llvm::LLVMRustBuildCall(self.llbuilder, t,
