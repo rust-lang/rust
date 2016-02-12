@@ -10,8 +10,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use syntax::ast::Lit_;
-use syntax::ast;
+use syntax::ast::{LitKind, self};
 use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
@@ -531,7 +530,7 @@ pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
 pub fn is_integer_literal(expr: &Expr, value: u64) -> bool {
     // FIXME: use constant folding
     if let ExprLit(ref spanned) = expr.node {
-        if let Lit_::LitInt(v, _) = spanned.node {
+        if let LitKind::Int(v, _) = spanned.node {
             return v == value;
         }
     }
@@ -575,9 +574,9 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
         if attr.is_sugared_doc {
             continue;
         }
-        if let ast::MetaNameValue(ref key, ref value) = attr.value.node {
+        if let ast::MetaItemKind::NameValue(ref key, ref value) = attr.value.node {
             if *key == name {
-                if let Lit_::LitStr(ref s, _) = value.node {
+                if let LitKind::Str(ref s, _) = value.node {
                     if let Ok(value) = FromStr::from_str(s) {
                         f(value)
                     } else {

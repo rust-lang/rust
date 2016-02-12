@@ -47,15 +47,15 @@ impl EarlyLintPass for ItemsAfterStatemets {
         }
         let mut stmts = item.stmts.iter().map(|stmt| &stmt.node);
         // skip initial items
-        while let Some(&StmtDecl(ref decl, _)) = stmts.next() {
-            if let DeclLocal(_) = decl.node {
+        while let Some(&StmtKind::Decl(ref decl, _)) = stmts.next() {
+            if let DeclKind::Local(_) = decl.node {
                 break;
             }
         }
         // lint on all further items
         for stmt in stmts {
-            if let StmtDecl(ref decl, _) = *stmt {
-                if let DeclItem(ref it) = decl.node {
+            if let StmtKind::Decl(ref decl, _) = *stmt {
+                if let DeclKind::Item(ref it) = decl.node {
                     if in_macro(cx, it.span) {
                         return;
                     }

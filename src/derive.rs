@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::middle::ty::fast_reject::simplify_type;
 use rustc::middle::ty;
 use rustc_front::hir::*;
-use syntax::ast::{Attribute, MetaItem_};
+use syntax::ast::{Attribute, MetaItemKind};
 use syntax::codemap::Span;
 use utils::{CLONE_TRAIT_PATH, HASH_PATH};
 use utils::{match_path, span_lint_and_then};
@@ -170,7 +170,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref:
 
 /// Checks for the `#[automatically_derived]` attribute all `#[derive]`d implementations have.
 fn is_automatically_derived(attr: &Attribute) -> bool {
-    if let MetaItem_::MetaWord(ref word) = attr.node.value.node {
+    if let MetaItemKind::Word(ref word) = attr.node.value.node {
         word == &"automatically_derived"
     } else {
         false
