@@ -501,9 +501,9 @@ impl Target {
 }
 
 fn maybe_jemalloc() -> String {
-    if cfg!(disable_jemalloc) {
-        "alloc_system".to_string()
-    } else {
+    if cfg!(feature = "jemalloc") {
         "alloc_jemalloc".to_string()
+    } else {
+        "alloc_system".to_string()
     }
 }

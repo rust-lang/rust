@@ -1,0 +1,368 @@
+[root]
+name = "rustc-main"
+version = "0.0.0"
+dependencies = [
+ "rustbook 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_driver 0.0.0",
+ "rustdoc 0.0.0",
+]
+
+[[package]]
+name = "advapi32-sys"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "winapi 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "arena"
+version = "0.0.0"
+
+[[package]]
+name = "build_helper"
+version = "0.1.0"
+
+[[package]]
+name = "flate"
+version = "0.0.0"
+dependencies = [
+ "build_helper 0.1.0",
+ "gcc 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "fmt_macros"
+version = "0.0.0"
+
+[[package]]
+name = "gcc"
+version = "0.3.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "advapi32-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "getopts"
+version = "0.0.0"
+
+[[package]]
+name = "graphviz"
+version = "0.0.0"
+
+[[package]]
+name = "log"
+version = "0.0.0"
+
+[[package]]
+name = "rbml"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "serialize 0.0.0",
+]
+
+[[package]]
+name = "rustbook"
+version = "0.0.0"
+dependencies = [
+ "rustc_back 0.0.0",
+ "rustdoc 0.0.0",
+]
+
+[[package]]
+name = "rustc"
+version = "0.0.0"
+dependencies = [
+ "arena 0.0.0",
+ "flate 0.0.0",
+ "fmt_macros 0.0.0",
+ "getopts 0.0.0",
+ "graphviz 0.0.0",
+ "log 0.0.0",
+ "rbml 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_data_structures 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_llvm 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_back"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_llvm 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_borrowck"
+version = "0.0.0"
+dependencies = [
+ "graphviz 0.0.0",
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_data_structures"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "serialize 0.0.0",
+]
+
+[[package]]
+name = "rustc_driver"
+version = "0.0.0"
+dependencies = [
+ "arena 0.0.0",
+ "flate 0.0.0",
+ "getopts 0.0.0",
+ "graphviz 0.0.0",
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_borrowck 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_lint 0.0.0",
+ "rustc_llvm 0.0.0",
+ "rustc_metadata 0.0.0",
+ "rustc_mir 0.0.0",
+ "rustc_passes 0.0.0",
+ "rustc_plugin 0.0.0",
+ "rustc_privacy 0.0.0",
+ "rustc_resolve 0.0.0",
+ "rustc_trans 0.0.0",
+ "rustc_typeck 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+ "syntax_ext 0.0.0",
+]
+
+[[package]]
+name = "rustc_front"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_lint"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_llvm"
+version = "0.0.0"
+dependencies = [
+ "build_helper 0.1.0",
+ "gcc 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rustc_metadata"
+version = "0.0.0"
+dependencies = [
+ "flate 0.0.0",
+ "log 0.0.0",
+ "rbml 0.0.0",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_llvm 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_mir"
+version = "0.0.0"
+dependencies = [
+ "graphviz 0.0.0",
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_data_structures 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_passes"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_platform_intrinsics"
+version = "0.0.0"
+dependencies = [
+ "rustc 0.0.0",
+ "rustc_llvm 0.0.0",
+]
+
+[[package]]
+name = "rustc_plugin"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_metadata 0.0.0",
+ "rustc_mir 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_privacy"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_resolve"
+version = "0.0.0"
+dependencies = [
+ "arena 0.0.0",
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_trans"
+version = "0.0.0"
+dependencies = [
+ "arena 0.0.0",
+ "flate 0.0.0",
+ "getopts 0.0.0",
+ "graphviz 0.0.0",
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_data_structures 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_llvm 0.0.0",
+ "rustc_mir 0.0.0",
+ "rustc_platform_intrinsics 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_typeck"
+version = "0.0.0"
+dependencies = [
+ "arena 0.0.0",
+ "fmt_macros 0.0.0",
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_platform_intrinsics 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustdoc"
+version = "0.0.0"
+dependencies = [
+ "arena 0.0.0",
+ "build_helper 0.1.0",
+ "gcc 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getopts 0.0.0",
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_driver 0.0.0",
+ "rustc_front 0.0.0",
+ "rustc_lint 0.0.0",
+ "rustc_metadata 0.0.0",
+ "rustc_resolve 0.0.0",
+ "rustc_trans 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+ "test 0.0.0",
+]
+
+[[package]]
+name = "serialize"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+]
+
+[[package]]
+name = "syntax"
+version = "0.0.0"
+dependencies = [
+ "arena 0.0.0",
+ "fmt_macros 0.0.0",
+ "log 0.0.0",
+ "serialize 0.0.0",
+ "term 0.0.0",
+]
+
+[[package]]
+name = "syntax_ext"
+version = "0.0.0"
+dependencies = [
+ "fmt_macros 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "term"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+]
+
+[[package]]
+name = "test"
+version = "0.0.0"
+dependencies = [
+ "getopts 0.0.0",
+ "serialize 0.0.0",
+ "term 0.0.0",
+]
+
+[[package]]
+name = "winapi"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "winapi-build"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+

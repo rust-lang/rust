@@ -1,0 +1,33 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_driver"
+version = "0.0.0"
+
+[lib]
+name = "rustc_driver"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+arena = { path = "../libarena" }
+flate = { path = "../libflate" }
+getopts = { path = "../libgetopts" }
+graphviz = { path = "../libgraphviz" }
+log = { path = "../liblog" }
+rustc = { path = "../librustc" }
+rustc_back = { path = "../librustc_back" }
+rustc_borrowck = { path = "../librustc_borrowck" }
+rustc_front = { path = "../librustc_front" }
+rustc_lint = { path = "../librustc_lint" }
+rustc_llvm = { path = "../librustc_llvm" }
+rustc_mir = { path = "../librustc_mir" }
+rustc_plugin = { path = "../librustc_plugin" }
+rustc_passes = { path = "../librustc_passes" }
+rustc_privacy = { path = "../librustc_privacy" }
+rustc_resolve = { path = "../librustc_resolve" }
+rustc_trans = { path = "../librustc_trans" }
+rustc_typeck = { path = "../librustc_typeck" }
+rustc_metadata = { path = "../librustc_metadata" }
+serialize = { path = "../libserialize" }
+syntax = { path = "../libsyntax" }
+syntax_ext = { path = "../libsyntax_ext" }

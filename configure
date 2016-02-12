@@ -606,6 +606,7 @@ opt stage0-landing-pads 1 "enable landing pads during bootstrap with stage0"
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
+opt rustbuild 0 "use the rust and cargo based build system"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
@@ -625,7 +626,7 @@ valopt llvm-root "" "set LLVM root"
 valopt python "" "set path to python"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
-valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path (deprecated)"
+valopt android-cross-path "" "Android NDK standalone path (deprecated)"
 valopt i686-linux-android-ndk "" "i686-linux-android NDK standalone path"
 valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
@@ -1422,7 +1423,7 @@ done
 step_msg "configuring submodules"
 
 # Have to be in the top of src directory for this
-if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ]
+if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ] && [ -z $CFG_ENABLE_RUSTBUILD ]
 then
     cd ${CFG_SRC_DIR}
 
@@ -1481,7 +1482,11 @@ do
         ;;
     esac
 
-    if [ -z $CFG_LLVM_ROOT ]
+    if [ -n "$CFG_ENABLE_RUSTBUILD" ]
+    then
+        msg "not configuring LLVM, rustbuild in use"
+        do_reconfigure=0
+    elif [ -z $CFG_LLVM_ROOT ]
     then
         LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
         if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]
@@ -1812,8 +1817,15 @@ do
     putvar $CFG_LLVM_INST_DIR
 done
 
+if [ -n "$CFG_ENABLE_RUSTBUILD" ]
+then
+    INPUT_MAKEFILE=src/bootstrap/mk/Makefile.in
+else
+    INPUT_MAKEFILE=Makefile.in
+fi
+
 msg
-copy_if_changed ${CFG_SRC_DIR}Makefile.in ./Makefile
+copy_if_changed ${CFG_SRC_DIR}${INPUT_MAKEFILE} ./Makefile
 move_if_changed config.tmp config.mk
 rm -f config.tmp
 touch config.stamp

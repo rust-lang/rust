@@ -12,6 +12,8 @@
 //! the standard library This varies per-platform, but these libraries are
 //! necessary for running libstd.
 
+#![cfg(not(cargobuild))]
+
 // LLVM implements the `frem` instruction as a call to `fmod`, which lives in
 // libm. Hence, we must explicitly link to it.
 //

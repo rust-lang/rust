@@ -1,0 +1,19 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_typeck"
+version = "0.0.0"
+
+[lib]
+name = "rustc_typeck"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+log = { path = "../liblog" }
+syntax = { path = "../libsyntax" }
+arena = { path = "../libarena" }
+fmt_macros = { path = "../libfmt_macros" }
+rustc = { path = "../librustc" }
+rustc_back = { path = "../librustc_back" }
+rustc_front = { path = "../librustc_front" }
+rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
