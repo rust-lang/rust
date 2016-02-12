@@ -6,7 +6,7 @@ use reexport::*;
 use semver::Version;
 use syntax::codemap::Span;
 use syntax::attr::*;
-use syntax::ast::{Attribute, Lit, Lit_, MetaList, MetaWord, MetaNameValue};
+use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind};
 use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 
 /// **What it does:** This lint checks for items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
@@ -54,12 +54,12 @@ impl LintPass for AttrPass {
 
 impl LateLintPass for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext, attr: &Attribute) {
-        if let MetaList(ref name, ref items) = attr.node.value.node {
+        if let MetaItemKind::List(ref name, ref items) = attr.node.value.node {
             if items.is_empty() || name != &"deprecated" {
                 return;
             }
             for ref item in items {
-                if let MetaNameValue(ref name, ref lit) = item.node {
+                if let MetaItemKind::NameValue(ref name, ref lit) = item.node {
                     if name == &"since" {
                         check_semver(cx, item.span, lit);
                     }
@@ -144,11 +144,11 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
     }
 
     for attr in attrs {
-        if let MetaList(ref inline, ref values) = attr.node.value.node {
+        if let MetaItemKind::List(ref inline, ref values) = attr.node.value.node {
             if values.len() != 1 || inline != &"inline" {
                 continue;
             }
-            if let MetaWord(ref always) = values[0].node {
+            if let MetaItemKind::Word(ref always) = values[0].node {
                 if always != &"always" {
                     continue;
                 }
@@ -163,7 +163,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
 }
 
 fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
-    if let Lit_::LitStr(ref is, _) = lit.node {
+    if let LitKind::Str(ref is, _) = lit.node {
         if Version::parse(&*is).is_ok() {
             return;
         }

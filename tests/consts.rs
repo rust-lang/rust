@@ -11,13 +11,11 @@ use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
 
-use syntax::ast::Lit_::*;
-use syntax::ast::Lit_;
-use syntax::ast::LitIntType::*;
-use syntax::ast::StrStyle::*;
-use syntax::ast::Sign::*;
+use syntax::ast::LitKind;
+use syntax::ast::LitIntType;
+use syntax::ast::StrStyle;
 
-use clippy::consts::{constant_simple, Constant, FloatWidth};
+use clippy::consts::{constant_simple, Constant, FloatWidth, Sign};
 
 fn spanned<T>(t: T) -> Spanned<T> {
     Spanned{ node: t, span: COMMAND_LINE_SP }
@@ -32,7 +30,7 @@ fn expr(n: Expr_) -> Expr {
     }
 }
 
-fn lit(l: Lit_) -> Expr {
+fn lit(l: LitKind) -> Expr {
     expr(ExprLit(P(spanned(l))))
 }
 
@@ -46,26 +44,26 @@ fn check(expect: Constant, expr: &Expr) {
 
 const TRUE : Constant = Constant::Bool(true);
 const FALSE : Constant = Constant::Bool(false);
-const ZERO : Constant = Constant::Int(0, UnsuffixedIntLit(Plus));
-const ONE : Constant = Constant::Int(1, UnsuffixedIntLit(Plus));
-const TWO : Constant = Constant::Int(2, UnsuffixedIntLit(Plus));
+const ZERO : Constant = Constant::Int(0, LitIntType::Unsuffixed, Sign::Plus);
+const ONE : Constant = Constant::Int(1, LitIntType::Unsuffixed, Sign::Plus);
+const TWO : Constant = Constant::Int(2, LitIntType::Unsuffixed, Sign::Plus);
 
 #[test]
 fn test_lit() {
-    check(TRUE, &lit(LitBool(true)));
-    check(FALSE, &lit(LitBool(false)));
-    check(ZERO, &lit(LitInt(0, UnsuffixedIntLit(Plus))));
-    check(Constant::Str("cool!".into(), CookedStr), &lit(LitStr(
-        InternedString::new("cool!"), CookedStr)));
+    check(TRUE, &lit(LitKind::Bool(true)));
+    check(FALSE, &lit(LitKind::Bool(false)));
+    check(ZERO, &lit(LitKind::Int(0, LitIntType::Unsuffixed)));
+    check(Constant::Str("cool!".into(), StrStyle::Cooked), &lit(LitKind::Str(
+        InternedString::new("cool!"), StrStyle::Cooked)));
 }
 
 #[test]
 fn test_ops() {
-    check(TRUE, &binop(BiOr, lit(LitBool(false)), lit(LitBool(true))));
-    check(FALSE, &binop(BiAnd, lit(LitBool(false)), lit(LitBool(true))));
+    check(TRUE, &binop(BiOr, lit(LitKind::Bool(false)), lit(LitKind::Bool(true))));
+    check(FALSE, &binop(BiAnd, lit(LitKind::Bool(false)), lit(LitKind::Bool(true))));
 
-    let litzero = lit(LitInt(0, UnsuffixedIntLit(Plus)));
-    let litone = lit(LitInt(1, UnsuffixedIntLit(Plus)));
+    let litzero = lit(LitKind::Int(0, LitIntType::Unsuffixed));
+    let litone = lit(LitKind::Int(1, LitIntType::Unsuffixed));
     check(TRUE, &binop(BiEq, litzero.clone(), litzero.clone()));
     check(TRUE, &binop(BiGe, litzero.clone(), litzero.clone()));
     check(TRUE, &binop(BiLe, litzero.clone(), litzero.clone()));

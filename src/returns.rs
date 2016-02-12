@@ -40,8 +40,8 @@ impl ReturnPass {
         if let Some(ref expr) = block.expr {
             self.check_final_expr(cx, expr);
         } else if let Some(stmt) = block.stmts.last() {
-            if let StmtSemi(ref expr, _) = stmt.node {
-                if let ExprRet(Some(ref inner)) = expr.node {
+            if let StmtKind::Semi(ref expr, _) = stmt.node {
+                if let ExprKind::Ret(Some(ref inner)) = expr.node {
                     self.emit_return_lint(cx, (stmt.span, inner.span));
                 }
             }
@@ -52,22 +52,22 @@ impl ReturnPass {
     fn check_final_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         match expr.node {
             // simple return is always "bad"
-            ExprRet(Some(ref inner)) => {
+            ExprKind::Ret(Some(ref inner)) => {
                 self.emit_return_lint(cx, (expr.span, inner.span));
             }
             // a whole block? check it!
-            ExprBlock(ref block) => {
+            ExprKind::Block(ref block) => {
                 self.check_block_return(cx, block);
             }
             // an if/if let expr, check both exprs
             // note, if without else is going to be a type checking error anyways
             // (except for unit type functions) so we don't match it
-            ExprIf(_, ref ifblock, Some(ref elsexpr)) => {
+            ExprKind::If(_, ref ifblock, Some(ref elsexpr)) => {
                 self.check_block_return(cx, ifblock);
                 self.check_final_expr(cx, elsexpr);
             }
             // a match expr, check all arms
-            ExprMatch(_, ref arms) => {
+            ExprKind::Match(_, ref arms) => {
                 for arm in arms {
                     self.check_final_expr(cx, &arm.body);
                 }
@@ -94,11 +94,11 @@ impl ReturnPass {
             [
                 let Some(stmt) = block.stmts.last(),
                 let Some(ref retexpr) = block.expr,
-                let StmtDecl(ref decl, _) = stmt.node,
-                let DeclLocal(ref local) = decl.node,
+                let StmtKind::Decl(ref decl, _) = stmt.node,
+                let DeclKind::Local(ref local) = decl.node,
                 let Some(ref initexpr) = local.init,
                 let PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
-                let ExprPath(_, ref path) = retexpr.node,
+                let ExprKind::Path(_, ref path) = retexpr.node,
                 match_path_ast(path, &[&id.name.as_str()])
             ], {
                 self.emit_let_lint(cx, retexpr.span, initexpr.span);

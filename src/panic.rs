@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use syntax::ast::Lit_::LitStr;
+use syntax::ast::LitKind;
 
 use utils::{span_lint, in_external_macro, match_path, BEGIN_UNWIND};
 
@@ -37,7 +37,7 @@ impl LateLintPass for PanicPass {
             let ExprPath(None, ref path) = fun.node,
             match_path(path, &BEGIN_UNWIND),
             let ExprLit(ref lit) = params[0].node,
-            let LitStr(ref string, _) = lit.node,
+            let LitKind::Str(ref string, _) = lit.node,
             string.contains('{'),
             let Some(sp) = cx.sess().codemap()
                              .with_expn_info(expr.span.expn_id,

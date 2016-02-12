@@ -32,7 +32,7 @@ impl LintPass for Precedence {
 
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
-        if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
+        if let ExprKind::Binary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
             if !is_bit_op(op) {
                 return;
             }
@@ -71,12 +71,12 @@ impl EarlyLintPass for Precedence {
             }
         }
 
-        if let ExprUnary(UnNeg, ref rhs) = expr.node {
-            if let ExprMethodCall(_, _, ref args) = rhs.node {
+        if let ExprKind::Unary(UnOp::Neg, ref rhs) = expr.node {
+            if let ExprKind::MethodCall(_, _, ref args) = rhs.node {
                 if let Some(slf) = args.first() {
-                    if let ExprLit(ref lit) = slf.node {
+                    if let ExprKind::Lit(ref lit) = slf.node {
                         match lit.node {
-                            LitInt(..) | LitFloat(..) | LitFloatUnsuffixed(..) => {
+                            LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => {
                                 span_lint(cx,
                                           PRECEDENCE,
                                           expr.span,
@@ -95,21 +95,23 @@ impl EarlyLintPass for Precedence {
 
 fn is_arith_expr(expr: &Expr) -> bool {
     match expr.node {
-        ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
+        ExprKind::Binary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
         _ => false,
     }
 }
 
-fn is_bit_op(op: BinOp_) -> bool {
+fn is_bit_op(op: BinOpKind) -> bool {
+    use syntax::ast::BinOpKind::*;
     match op {
-        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => true,
+        BitXor | BitAnd | BitOr | Shl | Shr => true,
         _ => false,
     }
 }
 
-fn is_arith_op(op: BinOp_) -> bool {
+fn is_arith_op(op: BinOpKind) -> bool {
+    use syntax::ast::BinOpKind::*;
     match op {
-        BiAdd | BiSub | BiMul | BiDiv | BiRem => true,
+        Add | Sub | Mul | Div | Rem => true,
         _ => false,
     }
 }

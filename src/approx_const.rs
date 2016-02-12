@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use std::f64::consts as f64;
 use utils::span_lint;
-use syntax::ast::{Lit, Lit_, FloatTy};
+use syntax::ast::{Lit, LitKind, FloatTy};
 
 /// **What it does:** This lint checks for floating point literals that approximate constants which are defined in [`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants) or [`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants), respectively, suggesting to use the predefined constant.
 ///
@@ -55,9 +55,9 @@ impl LateLintPass for ApproxConstant {
 
 fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
     match lit.node {
-        Lit_::LitFloat(ref s, FloatTy::TyF32) => check_known_consts(cx, e, s, "f32"),
-        Lit_::LitFloat(ref s, FloatTy::TyF64) => check_known_consts(cx, e, s, "f64"),
-        Lit_::LitFloatUnsuffixed(ref s) => check_known_consts(cx, e, s, "f{32, 64}"),
+        LitKind::Float(ref s, FloatTy::F32) => check_known_consts(cx, e, s, "f32"),
+        LitKind::Float(ref s, FloatTy::F64) => check_known_consts(cx, e, s, "f64"),
+        LitKind::FloatUnsuffixed(ref s) => check_known_consts(cx, e, s, "f{32, 64}"),
         _ => (),
     }
 }
