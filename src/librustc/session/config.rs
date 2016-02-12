@@ -936,17 +936,17 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some("human")   => ErrorOutputType::HumanReadable(color),
             Some("json") => ErrorOutputType::Json,
 
-            None => ErrorOutputType::default(),
+            None => ErrorOutputType::HumanReadable(color),
 
             Some(arg) => {
-                early_error(ErrorOutputType::default(), &format!("argument for --error-format must \
-                                                                  be human or json (instead was \
-                                                                  `{}`)",
-                                                                 arg))
+                early_error(ErrorOutputType::HumanReadable(color),
+                            &format!("argument for --error-format must be human or json (instead \
+                                      was `{}`)",
+                                     arg))
             }
         }
     } else {
-        ErrorOutputType::default()
+        ErrorOutputType::HumanReadable(color)
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
