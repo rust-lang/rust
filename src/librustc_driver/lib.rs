@@ -532,6 +532,11 @@ impl RustcDefaultCalls {
         let attrs = input.map(|input| parse_crate_attrs(sess, input));
         for req in &sess.opts.prints {
             match *req {
+                PrintRequest::TargetList => {
+                    let mut targets = rustc_back::target::TARGETS.to_vec();
+                    targets.sort();
+                    println!("{}", targets.join("\n"));
+                },
                 PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
                 PrintRequest::FileNames |
                 PrintRequest::CrateName => {

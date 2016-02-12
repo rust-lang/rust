@@ -63,6 +63,82 @@ mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
 
+macro_rules! supported_targets {
+    ( $(($triple:expr, $module:ident)),+ ) => (
+        /// List of supported targets
+        pub const TARGETS: &'static [&'static str] = &[$($triple),*];
+
+        // this would use a match if stringify! were allowed in pattern position
+        fn load_specific(target: &str) -> Option<Target> {
+            $(mod $module;)*
+            let target = target.replace("-", "_");
+            if false { }
+            $(
+                else if target == stringify!($module) {
+                    let t = $module::target();
+                    debug!("Got builtin target: {:?}", t);
+                    return Some(t);
+                }
+            )*
+
+            None
+        }
+    )
+}
+
+supported_targets! {
+    ("x86_64-unknown-linux-gnu", x86_64_unknown_linux_gnu),
+    ("i686-unknown-linux-gnu", i686_unknown_linux_gnu),
+    ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
+    ("mipsel-unknown-linux-gnu", mipsel_unknown_linux_gnu),
+    ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
+    ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
+    ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
+    ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
+    ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
+    ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
+    ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
+    ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
+    ("i686-unknown-linux-musl", i686_unknown_linux_musl),
+    ("mips-unknown-linux-musl", mips_unknown_linux_musl),
+    ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
+
+    ("i686-linux-android", i686_linux_android),
+    ("arm-linux-androideabi", arm_linux_androideabi),
+    ("aarch64-linux-android", aarch64_linux_android),
+
+    ("i686-unknown-freebsd", i686_unknown_freebsd),
+    ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
+
+    ("i686-unknown-dragonfly", i686_unknown_dragonfly),
+    ("x86_64-unknown-dragonfly", x86_64_unknown_dragonfly),
+
+    ("x86_64-unknown-bitrig", x86_64_unknown_bitrig),
+    ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
+    ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
+    ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
+
+    ("x86_64-apple-darwin", x86_64_apple_darwin),
+    ("i686-apple-darwin", i686_apple_darwin),
+
+    ("i386-apple-ios", i386_apple_ios),
+    ("x86_64-apple-ios", x86_64_apple_ios),
+    ("aarch64-apple-ios", aarch64_apple_ios),
+    ("armv7-apple-ios", armv7_apple_ios),
+    ("armv7s-apple-ios", armv7s_apple_ios),
+
+    ("x86_64-sun-solaris", x86_64_sun_solaris),
+
+    ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
+    ("i686-pc-windows-gnu", i686_pc_windows_gnu),
+
+    ("x86_64-pc-windows-msvc", x86_64_pc_windows_msvc),
+    ("i686-pc-windows-msvc", i686_pc_windows_msvc),
+
+    ("le32-unknown-nacl", le32_unknown_nacl),
+    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten)
+}
+
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
@@ -393,84 +469,9 @@ impl Target {
             Ok(Target::from_json(obj))
         }
 
-        // this would use a match if stringify! were allowed in pattern position
-        macro_rules! load_specific {
-            ( $($name:ident),+ ) => (
-                {
-                    $(mod $name;)*
-                    let target = target.replace("-", "_");
-                    if false { }
-                    $(
-                        else if target == stringify!($name) {
-                            let t = $name::target();
-                            debug!("Got builtin target: {:?}", t);
-                            return Ok(t);
-                        }
-                    )*
-                    else if target == "x86_64-w64-mingw32" {
-                        let t = x86_64_pc_windows_gnu::target();
-                        return Ok(t);
-                    } else if target == "i686-w64-mingw32" {
-                        let t = i686_pc_windows_gnu::target();
-                        return Ok(t);
-                    }
-                }
-            )
+        if let Some(t) = load_specific(target) {
+            return Ok(t)
         }
-
-        load_specific!(
-            x86_64_unknown_linux_gnu,
-            i686_unknown_linux_gnu,
-            mips_unknown_linux_gnu,
-            mipsel_unknown_linux_gnu,
-            powerpc_unknown_linux_gnu,
-            powerpc64_unknown_linux_gnu,
-            powerpc64le_unknown_linux_gnu,
-            arm_unknown_linux_gnueabi,
-            arm_unknown_linux_gnueabihf,
-            armv7_unknown_linux_gnueabihf,
-            aarch64_unknown_linux_gnu,
-            x86_64_unknown_linux_musl,
-            i686_unknown_linux_musl,
-            mips_unknown_linux_musl,
-            mipsel_unknown_linux_musl,
-
-            i686_linux_android,
-            arm_linux_androideabi,
-            aarch64_linux_android,
-
-            i686_unknown_freebsd,
-            x86_64_unknown_freebsd,
-
-            i686_unknown_dragonfly,
-            x86_64_unknown_dragonfly,
-
-            x86_64_unknown_bitrig,
-            x86_64_unknown_openbsd,
-            x86_64_unknown_netbsd,
-            x86_64_rumprun_netbsd,
-
-            x86_64_apple_darwin,
-            i686_apple_darwin,
-
-            i386_apple_ios,
-            x86_64_apple_ios,
-            aarch64_apple_ios,
-            armv7_apple_ios,
-            armv7s_apple_ios,
-
-            x86_64_sun_solaris,
-
-            x86_64_pc_windows_gnu,
-            i686_pc_windows_gnu,
-
-            x86_64_pc_windows_msvc,
-            i686_pc_windows_msvc,
-
-            le32_unknown_nacl,
-            asmjs_unknown_emscripten
-        );
-
 
         let path = Path::new(target);
 
