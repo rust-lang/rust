@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use io;
 use ptr;
 use sys::cvt;
@@ -39,6 +41,10 @@ impl AnonPipe {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {

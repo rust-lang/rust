@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::ErrorKind;
+use prelude::v1::*;
+
+use io::{ErrorKind, Read};
 use io;
 use mem;
 use ops::Deref;
 use ptr;
 use sys::c;
 use sys::cvt;
+use sys_common::io::read_to_end_uninitialized;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
@@ -83,6 +86,11 @@ impl RawHandle {
         }
     }
 
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+        (&mut me).read_to_end(buf)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let mut amt = 0;
         try!(cvt(unsafe {
@@ -103,5 +111,16 @@ impl RawHandle {
                             options)
         }));
         Ok(Handle::new(ret))
+    }
+}
+
+#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
+impl<'a> Read for &'a RawHandle {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }

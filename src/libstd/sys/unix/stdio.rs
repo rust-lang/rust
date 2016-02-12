@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use io;
 use libc;
 use sys::fd::FileDesc;
@@ -22,6 +24,13 @@ impl Stdin {
     pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
         let fd = FileDesc::new(libc::STDIN_FILENO);
         let ret = fd.read(data);
+        fd.into_raw();
+        ret
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let fd = FileDesc::new(libc::STDIN_FILENO);
+        let ret = fd.read_to_end(buf);
         fd.into_raw();
         ret
     }
