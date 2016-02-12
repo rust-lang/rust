@@ -106,6 +106,14 @@ impl OutputType {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum Sanitize {
+    Address,
+    Leak,
+    Memory,
+    Thread,
+}
+
 #[derive(Clone)]
 pub struct Options {
     // The crate config requested for the session, which may be combined
@@ -388,11 +396,13 @@ macro_rules! options {
             Some("a space-separated list of passes, or `all`");
         pub const parse_opt_uint: Option<&'static str> =
             Some("a number");
+        pub const parse_sanitize: Option<&'static str> =
+            Some("one of: `address`, `leak`, `memory`, or `thread`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitize};
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -496,6 +506,22 @@ macro_rules! options {
                 }
             }
         }
+
+        fn parse_sanitize(slot: &mut Option<Sanitize>, v: Option<&str>) -> bool {
+            if let Some(s) = v {
+                let sanitize = match s {
+                    "address" => Sanitize::Address,
+                    "leak"    => Sanitize::Leak,
+                    "memory"  => Sanitize::Memory,
+                    "thread"  => Sanitize::Thread,
+                    _ => return false,
+                };
+                *slot = Some(sanitize);
+                true
+            } else {
+                false
+            }
+        }
     }
 ) }
 
@@ -561,8 +587,9 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint,
         "set the inlining threshold for"),
+    sanitize: Option<Sanitize> = (None, parse_sanitize,
+        "choose the sanitizer to use"),
 }
-
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          build_debugging_options, "Z", "debugging",
@@ -698,6 +725,17 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
     }
+
+    sess.opts.cg.sanitize.map(|s| {
+        let name = match s {
+            Sanitize::Address => "sanitize_address",
+            Sanitize::Leak    => "sanitize_leak",
+            Sanitize::Memory  => "sanitize_memory",
+            Sanitize::Thread  => "sanitize_thread"
+        };
+        ret.push(attr::mk_word_item(InternedString::new(name)));
+    });
+
     return ret;
 }
 

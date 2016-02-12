@@ -15,6 +15,7 @@ use super::rpath;
 use super::msvc;
 use super::svh::Svh;
 use session::config;
+use session::config::Sanitize;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputType};
 use session::filesearch;
@@ -857,6 +858,9 @@ fn link_natively(sess: &Session, dylib: bool,
     let (pname, mut cmd) = get_linker(sess);
     cmd.env("PATH", command_path(sess));
 
+    // Sanitizer runtimes go first if any.
+    let needs_sanitizers_runtime_deps = link_sanitizers(sess, dylib, &mut cmd);
+
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
 
@@ -886,6 +890,10 @@ fn link_natively(sess: &Session, dylib: bool,
         cmd.arg(root.join(obj));
     }
     cmd.args(&sess.target.target.options.post_link_args);
+
+    if needs_sanitizers_runtime_deps {
+        link_sanitizers_runtime_deps(sess, &mut cmd);
+    }
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);
@@ -939,6 +947,38 @@ fn link_natively(sess: &Session, dylib: bool,
     }
 }
 
+fn link_sanitizers(sess: &Session, dylib: bool, cmd: &mut Command) -> bool {
+    // Sanitizer runtimes are linked into final executable only.
+    if dylib { return false; }
+
+    sess.opts.cg.sanitize.map(|s| {
+        let runtime = match s {
+            Sanitize::Address => "rustc_asan",
+            Sanitize::Leak    => "rustc_lsan",
+            Sanitize::Memory  => "rustc_msan",
+            Sanitize::Thread  => "rustc_tsan",
+        };
+        // FIXME: This should be done through a linker trait.
+        cmd.arg("-Wl,-whole-archive");
+        cmd.arg("-l").arg(runtime);
+        cmd.arg("-Wl,-no-whole-archive");
+    });
+    true
+}
+
+fn link_sanitizers_runtime_deps(sess: &Session, cmd: &mut Command) {
+    // Make sure that sanitizers runtime dependencies are always linked in.
+    // This avoids potential problems when using --as-needed.
+    // FIXME: This should be done through a linker trait.
+    cmd.arg("-Wl,--no-as-needed");
+    cmd.arg("-lpthread");
+    cmd.arg("-lrt");
+    cmd.arg("-lm");
+    if sess.target.target.target_os != "freebsd" {
+        cmd.arg("-ldl");
+    }
+}
+
 fn link_args(cmd: &mut Linker,
              sess: &Session,
              dylib: bool,
@@ -982,7 +1022,7 @@ fn link_args(cmd: &mut Linker,
 
     let used_link_args = sess.cstore.used_link_args();
 
-    if !dylib && t.options.position_independent_executables {
+    if !dylib && t.options.position_independent_executables && sanitizer_support_pie(sess) {
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
@@ -1077,6 +1117,11 @@ fn link_args(cmd: &mut Linker,
         cmd.args(args);
     }
     cmd.args(&used_link_args);
+}
+
+// Checks if sanitizer supports position independent executables.
+fn sanitizer_support_pie(sess: &Session) -> bool {
+    sess.opts.cg.sanitize != Some(Sanitize::Thread)
 }
 
 // # Native library linking

@@ -160,6 +160,9 @@ bitflags! {
         const ReturnsTwice    = 1 << 29,
         const UWTable         = 1 << 30,
         const NonLazyBind     = 1 << 31,
+        const SanitizeAddress = 1 << 32,
+        const SanitizeThread  = 1 << 36,
+        const SanitizeMemory  = 1 << 37,
         const OptimizeNone    = 1 << 42,
     }
 }

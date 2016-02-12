@@ -1636,6 +1636,17 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
                                skip_retptr: bool,
                                output: ty::FnOutput<'tcx>)
                                -> Block<'a, 'tcx> {
+
+    fcx.ccx.sess().opts.cg.sanitize.map(|s| {
+        let attr = match s {
+            config::Sanitize::Address => llvm::Attribute::SanitizeAddress,
+            config::Sanitize::Memory  => llvm::Attribute::SanitizeMemory,
+            config::Sanitize::Thread  => llvm::Attribute::SanitizeThread,
+            config::Sanitize::Leak    => return,
+        };
+        llvm::SetFunctionAttribute(fcx.llfn, attr);
+    });
+
     let entry_bcx = fcx.new_temp_block("entry-block");
 
     // Use a dummy instruction as the insertion point for all allocas.
