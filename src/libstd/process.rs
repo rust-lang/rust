@@ -295,7 +295,7 @@ impl Command {
     /// By default, stdin, stdout and stderr are inherited from the parent.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
-        self.inner.spawn(imp::Stdio::Inherit).map(Child::from_inner)
+        self.inner.spawn(imp::Stdio::Inherit, true).map(Child::from_inner)
     }
 
     /// Executes the command as a child process, waiting for it to finish and
@@ -318,7 +318,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        self.inner.spawn(imp::Stdio::MakePipe).map(Child::from_inner)
+        self.inner.spawn(imp::Stdio::MakePipe, false).map(Child::from_inner)
             .and_then(|p| p.wait_with_output())
     }
 
@@ -340,7 +340,8 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn status(&mut self) -> io::Result<ExitStatus> {
-        self.spawn().and_then(|mut p| p.wait())
+        self.inner.spawn(imp::Stdio::Inherit, false).map(Child::from_inner)
+                  .and_then(|mut p| p.wait())
     }
 }
 
