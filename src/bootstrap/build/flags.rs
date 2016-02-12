@@ -26,6 +26,7 @@ pub struct Flags {
     pub src: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub args: Vec<String>,
+    pub clean: bool,
 }
 
 pub struct Filter {
@@ -44,6 +45,7 @@ impl Flags {
         opts.optopt("", "stage", "stage to build", "N");
         opts.optopt("", "src", "path to repo root", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
+        opts.optflag("", "clean", "clean output directory");
         opts.optflag("h", "help", "print this help message");
 
         let usage = |n| -> ! {
@@ -75,6 +77,7 @@ impl Flags {
 
         Flags {
             verbose: m.opt_present("v"),
+            clean: m.opt_present("clean"),
             stage: m.opt_str("stage").map(|j| j.parse().unwrap()),
             build: m.opt_str("build").unwrap(),
             host: Filter { values: m.opt_strs("host") },
