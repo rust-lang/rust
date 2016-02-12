@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(reason = "not public", issue = "0", feature = "fd")]
+
 use prelude::v1::*;
 
 use io::{self, Read};
@@ -75,6 +77,20 @@ impl FileDesc {
         }
     }
 
+    pub fn set_nonblocking(&self, nonblocking: bool) {
+        unsafe {
+            let previous = libc::fcntl(self.fd, libc::F_GETFL);
+            debug_assert!(previous != -1);
+            let new = if nonblocking {
+                previous | libc::O_NONBLOCK
+            } else {
+                previous & !libc::O_NONBLOCK
+            };
+            let ret = libc::fcntl(self.fd, libc::F_SETFL, new);
+            debug_assert!(ret != -1);
+        }
+    }
+
     pub fn duplicate(&self) -> io::Result<FileDesc> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
@@ -126,7 +142,6 @@ impl FileDesc {
     }
 }
 
-#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
 impl<'a> Read for &'a FileDesc {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)

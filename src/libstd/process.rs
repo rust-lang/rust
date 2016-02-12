@@ -20,10 +20,9 @@ use fmt;
 use io;
 use path::Path;
 use str;
-use sys::pipe::AnonPipe;
+use sys::pipe::{read2, AnonPipe};
 use sys::process as imp;
 use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-use thread::{self, JoinHandle};
 
 /// Representation of a running or exited child process.
 ///
@@ -503,24 +502,29 @@ impl Child {
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
-        fn read<R>(mut input: R) -> JoinHandle<io::Result<Vec<u8>>>
-            where R: Read + Send + 'static
-        {
-            thread::spawn(move || {
-                let mut ret = Vec::new();
-                input.read_to_end(&mut ret).map(|_| ret)
-            })
-        }
-        let stdout = self.stdout.take().map(read);
-        let stderr = self.stderr.take().map(read);
-        let status = try!(self.wait());
-        let stdout = stdout.and_then(|t| t.join().unwrap().ok());
-        let stderr = stderr.and_then(|t| t.join().unwrap().ok());
 
+        let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+        match (self.stdout.take(), self.stderr.take()) {
+            (None, None) => {}
+            (Some(mut out), None) => {
+                let res = out.read_to_end(&mut stdout);
+                res.unwrap();
+            }
+            (None, Some(mut err)) => {
+                let res = err.read_to_end(&mut stderr);
+                res.unwrap();
+            }
+            (Some(out), Some(err)) => {
+                let res = read2(out.inner, &mut stdout, err.inner, &mut stderr);
+                res.unwrap();
+            }
+        }
+
+        let status = try!(self.wait());
         Ok(Output {
             status: status,
-            stdout: stdout.unwrap_or(Vec::new()),
-            stderr: stderr.unwrap_or(Vec::new()),
+            stdout: stdout,
+            stderr: stderr,
         })
     }
 }
