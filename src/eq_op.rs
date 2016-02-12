@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc_front::util as ast_util;
 
-use utils::{is_exp_equal, span_lint};
+use utils::{SpanlessEq, span_lint};
 
 /// **What it does:** This lint checks for equal operands to comparison, logical and bitwise,
 /// difference and division binary operators (`==`, `>`, etc., `&&`, `||`, `&`, `|`, `^`, `-` and
@@ -31,7 +31,7 @@ impl LintPass for EqOp {
 impl LateLintPass for EqOp {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
-            if is_valid_operator(op) && is_exp_equal(cx, left, right, true) {
+            if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
                 span_lint(cx,
                           EQ_OP,
                           e.span,

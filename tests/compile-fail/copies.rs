@@ -5,16 +5,18 @@
 #![allow(let_and_return)]
 #![allow(needless_return)]
 #![allow(unused_variables)]
-#![deny(if_same_then_else)]
-#![deny(ifs_same_cond)]
+#![allow(cyclomatic_complexity)]
 
+fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
 
+#[deny(if_same_then_else)]
+#[deny(match_same_arms)]
 fn if_same_then_else() -> &'static str {
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
         foo();
     }
-    else {
+    else { //~ERROR this `if` has identical blocks
         foo();
     }
 
@@ -26,11 +28,11 @@ fn if_same_then_else() -> &'static str {
         foo();
     }
 
-    let _ = if true { //~ERROR this if has the same then and else blocks
+    let _ = if true {
         foo();
         42
     }
-    else {
+    else { //~ERROR this `if` has identical blocks
         foo();
         42
     };
@@ -39,14 +41,14 @@ fn if_same_then_else() -> &'static str {
         foo();
     }
 
-    let _ = if true { //~ERROR this if has the same then and else blocks
+    let _ = if true {
         42
     }
-    else {
+    else { //~ERROR this `if` has identical blocks
         42
     };
 
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
         let bar = if true {
             42
         }
@@ -57,7 +59,7 @@ fn if_same_then_else() -> &'static str {
         while foo() { break; }
         bar + 1;
     }
-    else {
+    else { //~ERROR this `if` has identical blocks
         let bar = if true {
             42
         }
@@ -69,53 +71,99 @@ fn if_same_then_else() -> &'static str {
         bar + 1;
     }
 
-    if true { //~ERROR this if has the same then and else blocks
-        match 42 {
-            42 => (),
-            a if a > 0 => (),
-            10...15 => (),
-            _ => (),
-        }
+    if true {
+        let _ = match 42 {
+            42 => 1,
+            a if a > 0 => 2,
+            10...15 => 3,
+            _ => 4,
+        };
     }
-    else {
-        match 42 {
-            42 => (),
-            a if a > 0 => (),
-            10...15 => (),
-            _ => (),
-        }
+    else if false {
+        foo();
+    }
+    else if foo() { //~ERROR this `if` has identical blocks
+        let _ = match 42 {
+            42 => 1,
+            a if a > 0 => 2,
+            10...15 => 3,
+            _ => 4,
+        };
     }
 
-    if true { //~ERROR this if has the same then and else blocks
+    if true {
+        if let Some(a) = Some(42) {}
+    }
+    else { //~ERROR this `if` has identical blocks
+        if let Some(a) = Some(42) {}
+    }
+
+    if true {
         if let Some(a) = Some(42) {}
     }
     else {
-        if let Some(a) = Some(42) {}
+        if let Some(a) = Some(43) {}
     }
 
-    if true { //~ERROR this if has the same then and else blocks
+    let _ = match 42 {
+        42 => foo(),
+        51 => foo(), //~ERROR this `match` has identical arm bodies
+        _ => true,
+    };
+
+    let _ = match Some(42) {
+        Some(42) => 24,
+        Some(a) => 24, // bindings are different
+        None => 0,
+    };
+
+    match (Some(42), Some(42)) {
+        (Some(a), None) => bar(a),
+        (None, Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
+        _ => (),
+    }
+
+    match (Some(42), Some("")) {
+        (Some(a), None) => bar(a),
+        (None, Some(a)) => bar(a), // bindings have different types
+        _ => (),
+    }
+
+    if true {
         let foo = "";
         return &foo[0..];
     }
-    else {
+    else if false {
+        let foo = "bar";
+        return &foo[0..];
+    }
+    else { //~ERROR this `if` has identical blocks
         let foo = "";
         return &foo[0..];
     }
 }
 
+#[deny(ifs_same_cond)]
+#[allow(if_same_then_else)] // all empty blocks
 fn ifs_same_cond() {
     let a = 0;
+    let b = false;
+
+    if b {
+    }
+    else if b { //~ERROR this `if` has the same condition as a previous if
+    }
 
     if a == 1 {
     }
-    else if a == 1 { //~ERROR this if has the same condition as a previous if
+    else if a == 1 { //~ERROR this `if` has the same condition as a previous if
     }
 
     if 2*a == 1 {
     }
     else if 2*a == 2 {
     }
-    else if 2*a == 1 { //~ERROR this if has the same condition as a previous if
+    else if 2*a == 1 { //~ERROR this `if` has the same condition as a previous if
     }
     else if a == 1 {
     }

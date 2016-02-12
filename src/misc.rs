@@ -421,8 +421,7 @@ impl LateLintPass for UsedUnderscoreBinding {
 fn is_used(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(ref parent) = get_parent_expr(cx, expr) {
         match parent.node {
-            ExprAssign(_, ref rhs) => **rhs == *expr,
-            ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
+            ExprAssign(_, ref rhs) | ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
             _ => is_used(cx, &parent),
         }
     } else {

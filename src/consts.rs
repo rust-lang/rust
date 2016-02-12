@@ -2,21 +2,18 @@
 
 use rustc::lint::LateContext;
 use rustc::middle::const_eval::lookup_const_by_id;
-use rustc::middle::def::PathResolution;
-use rustc::middle::def::Def;
+use rustc::middle::def::{Def, PathResolution};
 use rustc_front::hir::*;
-use syntax::ptr::P;
-use std::cmp::PartialOrd;
 use std::cmp::Ordering::{self, Greater, Less, Equal};
-use std::rc::Rc;
+use std::cmp::PartialOrd;
+use std::hash::{Hash, Hasher};
+use std::mem;
 use std::ops::Deref;
+use std::rc::Rc;
+use syntax::ast::{FloatTy, LitIntType, LitKind, StrStyle, UintTy};
+use syntax::ptr::P;
 
-use syntax::ast::LitKind;
-use syntax::ast::LitIntType;
-use syntax::ast::{UintTy, FloatTy, StrStyle};
-
-
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum FloatWidth {
     Fw32,
     Fw64,
@@ -32,14 +29,14 @@ impl From<FloatTy> for FloatWidth {
     }
 }
 
-#[derive(Copy, Eq, Debug, Clone, PartialEq)]
+#[derive(Copy, Eq, Debug, Clone, PartialEq, Hash)]
 pub enum Sign {
     Plus,
     Minus,
 }
 
 /// a Lit_-like enum to fold constant `Expr`s into
-#[derive(Eq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum Constant {
     /// a String "abc"
     Str(String, StrStyle),
@@ -101,18 +98,12 @@ impl PartialEq for Constant {
             (&Constant::Int(lv, _, lneg), &Constant::Int(rv, _, rneg)) => {
                 lv == rv && lneg == rneg
             }
-            (&Constant::Float(ref ls, lw), &Constant::Float(ref rs, rw)) => {
-                use self::FloatWidth::*;
-                if match (lw, rw) {
-                    (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
+            (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
+                // we want `Fw32 == FwAny` and `FwAny == Fw64`, by transitivity we must have
+                // `Fw32 == Fw64` so don’t compare them
+                match (ls.parse::<f64>(), rs.parse::<f64>()) {
+                    (Ok(l), Ok(r)) => l.eq(&r),
                     _ => false,
-                } {
-                    match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                        (Ok(l), Ok(r)) => l.eq(&r),
-                        _ => false,
-                    }
-                } else {
-                    false
                 }
             }
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
@@ -120,6 +111,46 @@ impl PartialEq for Constant {
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
             (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l == r,
             _ => false, //TODO: Are there inter-type equalities?
+        }
+    }
+}
+
+impl Hash for Constant {
+    fn hash<H>(&self, state: &mut H) where H: Hasher {
+        match *self {
+            Constant::Str(ref s, ref k) => {
+                s.hash(state);
+                k.hash(state);
+            }
+            Constant::Binary(ref b) => {
+                b.hash(state);
+            }
+            Constant::Byte(u) => {
+                u.hash(state);
+            }
+            Constant::Char(c) => {
+                c.hash(state);
+            }
+            Constant::Int(u, _, t) => {
+                u.hash(state);
+                t.hash(state);
+            }
+            Constant::Float(ref f, _) => {
+                // don’t use the width here because of PartialEq implementation
+                if let Ok(f) = f.parse::<f64>() {
+                    unsafe { mem::transmute::<f64, u64>(f) }.hash(state);
+                }
+            }
+            Constant::Bool(b) => {
+                b.hash(state);
+            }
+            Constant::Vec(ref v) | Constant::Tuple(ref v)=> {
+                v.hash(state);
+            }
+            Constant::Repeat(ref c, l) => {
+                c.hash(state);
+                l.hash(state);
+            }
         }
     }
 }
@@ -141,18 +172,10 @@ impl PartialOrd for Constant {
             (&Constant::Int(ref lv, _, Sign::Minus), &Constant::Int(ref rv, _, Sign::Minus)) => Some(rv.cmp(lv)),
             (&Constant::Int(_, _, Sign::Minus), &Constant::Int(_, _, Sign::Plus)) => Some(Less),
             (&Constant::Int(_, _, Sign::Plus), &Constant::Int(_, _, Sign::Minus)) => Some(Greater),
-            (&Constant::Float(ref ls, lw), &Constant::Float(ref rs, rw)) => {
-                use self::FloatWidth::*;
-                if match (lw, rw) {
-                    (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
-                    _ => false,
-                } {
-                    match (ls.parse::<f64>(), rs.parse::<f64>()) {
-                        (Ok(ref l), Ok(ref r)) => l.partial_cmp(r),
-                        _ => None,
-                    }
-                } else {
-                    None
+            (&Constant::Float(ref ls, _), &Constant::Float(ref rs, _)) => {
+                match (ls.parse::<f64>(), rs.parse::<f64>()) {
+                    (Ok(ref l), Ok(ref r)) => l.partial_cmp(r),
+                    _ => None,
                 }
             }
             (&Constant::Bool(ref l), &Constant::Bool(ref r)) => Some(l.cmp(r)),
@@ -187,8 +210,7 @@ fn constant_not(o: Constant) -> Option<Constant> {
     use self::Constant::*;
     match o {
         Bool(b) => Some(Bool(!b)),
-        Int(::std::u64::MAX, LitIntType::Signed(_), Sign::Plus) => None,
-        Int(value, LitIntType::Signed(ity), Sign::Plus) => Some(Int(value + 1, LitIntType::Signed(ity), Sign::Minus)),
+        Int(value, LitIntType::Signed(ity), Sign::Plus) if value != ::std::u64::MAX => Some(Int(value + 1, LitIntType::Signed(ity), Sign::Minus)),
         Int(0, LitIntType::Signed(ity), Sign::Minus) => Some(Int(1, LitIntType::Signed(ity), Sign::Minus)),
         Int(value, LitIntType::Signed(ity), Sign::Minus) => Some(Int(value - 1, LitIntType::Signed(ity), Sign::Plus)),
         Int(value, LitIntType::Unsigned(ity), Sign::Plus) => {

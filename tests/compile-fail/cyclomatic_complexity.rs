@@ -138,15 +138,15 @@ fn bloo() {
 #[cyclomatic_complexity = "0"]
 fn baa() { //~ ERROR: the function has a cyclomatic complexity of 2
     let x = || match 99 {
-        0 => true,
-        1 => false,
-        2 => true,
-        4 => true,
-        6 => true,
-        9 => true,
-        _ => false,
+        0 => 0,
+        1 => 1,
+        2 => 2,
+        4 => 4,
+        6 => 6,
+        9 => 9,
+        _ => 42,
     };
-    if x() {
+    if x() == 42 {
         println!("x");
     } else {
         println!("not x");
