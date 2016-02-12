@@ -10,6 +10,7 @@
 
 // ignore-android: FIXME (#20004)
 // ignore-musl
+// ignore-asmjs
 
 #![feature(asm)]
 #![feature(libc)]
