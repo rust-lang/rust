@@ -178,6 +178,10 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: <[_]>::to_vec(str.as_bytes()) }
     }
 
+    pub fn clear(&mut self) {
+        self.bytes.clear()
+    }
+
     /// Creates a WTF-8 string from a potentially ill-formed UTF-16 slice of 16-bit code units.
     ///
     /// This is lossless: calling `.encode_wide()` on the resulting string
@@ -232,6 +236,11 @@ impl Wtf8Buf {
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.bytes.reserve(additional)
+    }
+
+    #[inline]
+    pub fn reserve_exact(&mut self, additional: usize) {
+        self.bytes.reserve_exact(additional)
     }
 
     /// Returns the number of bytes that this string buffer can hold without reallocating.
@@ -441,6 +450,11 @@ impl Wtf8 {
     #[inline]
     pub fn len(&self) -> usize {
         self.bytes.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.bytes.is_empty()
     }
 
     /// Returns the code point at `position` if it is in the ASCII range,
