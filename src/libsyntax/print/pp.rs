@@ -413,12 +413,12 @@ impl<'a> Printer<'a> {
         } else {
             self.top += 1;
             self.top %= self.buf_len;
-            assert!((self.top != self.bottom));
+            assert!(self.top != self.bottom);
         }
         self.scan_stack[self.top] = x;
     }
     pub fn scan_pop(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
+        assert!(!self.scan_stack_empty);
         let x = self.scan_stack[self.top];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
@@ -428,11 +428,11 @@ impl<'a> Printer<'a> {
         return x;
     }
     pub fn scan_top(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
+        assert!(!self.scan_stack_empty);
         return self.scan_stack[self.top];
     }
     pub fn scan_pop_bottom(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
+        assert!(!self.scan_stack_empty);
         let x = self.scan_stack[self.bottom];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
@@ -444,7 +444,7 @@ impl<'a> Printer<'a> {
     pub fn advance_right(&mut self) {
         self.right += 1;
         self.right %= self.buf_len;
-        assert!((self.right != self.left));
+        assert!(self.right != self.left);
     }
     pub fn advance_left(&mut self) -> io::Result<()> {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
@@ -566,7 +566,7 @@ impl<'a> Printer<'a> {
           Token::End => {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
-            assert!((!print_stack.is_empty()));
+            assert!(!print_stack.is_empty());
             print_stack.pop().unwrap();
             Ok(())
           }
