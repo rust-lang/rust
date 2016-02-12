@@ -77,7 +77,10 @@ fn main_mir() {
     assert_eq!(x, Int(0));
 
     // indexed LHS
-    let mut v = vec![Int(1), Int(2)];
+    // FIXME(mir-drop): use the vec![..] macro
+    let mut v = Vec::new();
+    v.push(Int(1));
+    v.push(Int(2));
     v[0] += Int(2);
     assert_eq!(v[0], Int(3));
 
@@ -87,6 +90,7 @@ fn main_mir() {
     assert_eq!(array[0], 1);
     assert_eq!(array[1], 2);
     assert_eq!(array[2], 3);
+
 }
 
 impl AddAssign for Int {
