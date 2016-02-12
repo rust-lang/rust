@@ -12,7 +12,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::v1::*;
+use clone::Clone;
+use char::CharExt;
+use str::StrExt;
+use iter::Iterator;
+use slice::SliceExt;
+use marker::Sized;
+use option::Option::{self, Some, None};
+use result::Result::Ok;
 
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use marker::PhantomData;
@@ -980,7 +987,7 @@ impl<'a> Formatter<'a> {
     /// afterwards depending on whether right or left alignment is requested.
     fn with_padding<F>(&mut self, padding: usize, default: Alignment,
                        f: F) -> Result
-        where F: FnOnce(&mut Formatter) -> Result,
+        where F: ::ops::FnOnce(&mut Formatter) -> Result,
     {
         use char::CharExt;
         let align = match self.align {
@@ -1576,7 +1583,7 @@ impl<T: ?Sized> Debug for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Copy + Debug> Debug for Cell<T> {
+impl<T: ::marker::Copy + Debug> Debug for Cell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "Cell {{ value: {:?} }}", self.get())
     }

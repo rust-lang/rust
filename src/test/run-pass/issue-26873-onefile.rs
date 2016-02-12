@@ -22,7 +22,7 @@ mod A {
         pub struct T;
     }
 
-    pub use self::C::T;
+    pub use self::C::T as Q;
 }
 
 use A::*;

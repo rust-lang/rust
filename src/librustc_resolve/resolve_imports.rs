@@ -136,13 +136,6 @@ impl<'a> NameResolution<'a> {
             _ => { self.binding = Some(binding); return Ok(()); }
         };
 
-        // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
-        if !old_binding.is_import() && binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-            if let NameBindingKind::Import { binding, .. } = binding.kind {
-                if binding.is_import() { return Ok(()); }
-            }
-        }
-
         Err(old_binding)
     }
 }
