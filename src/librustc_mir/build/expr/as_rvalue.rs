@@ -153,6 +153,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let fields = if let Some(FruInfo { base, field_types }) = base {
                     let base = unpack!(block = this.as_lvalue(block, base));
+
+                    // MIR does not natively support FRU, so for each
+                    // base-supplied field, generate an operand that
+                    // reads it from the base.
                     field_names.into_iter()
                         .zip(field_types.into_iter())
                         .map(|(n, ty)| match fields_map.get(&n) {

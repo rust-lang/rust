@@ -8,12 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A pass that erases the contents of dead blocks. This is required
-//! because rustc allows for ill-typed block terminators in dead
-//! blocks.
+//! A pass that erases the contents of dead blocks. This pass must
+//! run before any analysis passes because some of the dead blocks
+//! can be ill-typed.
 //!
-//! This pass does not renumber or remove the blocks, to have the
-//! MIR better match the source.
+//! The main problem is that typeck lets most blocks whose end is not
+//! reachable have an arbitrary return type, rather than having the
+//! usual () return type (as a note, typeck's notion of reachability
+//! is in fact slightly weaker than MIR CFG reachability - see #31617).
+//!
+//! A standard example of the situation is:
+//! ```rust
+//!   fn example() {
+//!       let _a: char = { return; };
+//!   }
+//! ```
+//!
+//! Here the block (`{ return; }`) has the return type `char`,
+//! rather than `()`, but the MIR we naively generate still contains
+//! the `_a = ()` write in the unreachable block "after" the return.
+//!
+//! As we have to run this pass even when we want to debug the MIR,
+//! this pass just replaces the blocks with empty "return" blocks
+//! and does not renumber anything.
 
 use rustc::middle::infer;
 use rustc::mir::repr::*;
@@ -43,8 +60,9 @@ impl ClearDeadBlocks {
             }
         }
 
-        for (block, seen) in mir.basic_blocks.iter_mut().zip(seen) {
+        for (n, (block, seen)) in mir.basic_blocks.iter_mut().zip(seen).enumerate() {
             if !seen {
+                info!("clearing block #{}: {:?}", n, block);
                 *block = BasicBlockData {
                     statements: vec![],
                     terminator: Some(Terminator::Return),

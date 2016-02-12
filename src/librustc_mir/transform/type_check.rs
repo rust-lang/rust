@@ -48,8 +48,11 @@ enum FieldAccessError {
     OutOfRange { field_count: usize }
 }
 
-/// Verifies that MIR types are sane to not crash further
-/// checks.
+/// Verifies that MIR types are sane to not crash further checks.
+///
+/// The sanitize_XYZ methods here take an MIR object and compute its
+/// type, calling `span_mirbug` and returning an error type if there
+/// is a problem.
 struct TypeVerifier<'a, 'b: 'a, 'tcx: 'b> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     mir: &'a Mir<'tcx>,
@@ -119,11 +122,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn sanitize_type(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !(ty.needs_infer() || ty.has_escaping_regions() ||
-             ty.references_error()) {
-            return ty;
+        if ty.needs_infer() || ty.has_escaping_regions() || ty.references_error() {
+            span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
+        } else {
+            ty
         }
-        span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
     }
 
     fn sanitize_lvalue(&mut self, lvalue: &Lvalue<'tcx>) -> LvalueTy<'tcx> {
@@ -225,7 +228,8 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     }
                     _ => LvalueTy::Ty {
                         ty: span_mirbug_and_err!(
-                            self, lvalue, "can't downcast {:?}", base_ty)
+                            self, lvalue, "can't downcast {:?} as {:?}",
+                            base_ty, adt_def1)
                     }
                 },
             ProjectionElem::Field(field, fty) => {
@@ -467,8 +471,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                          args: &[Operand<'tcx>])
     {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
-        if sig.inputs.len() > args.len() ||
-           (sig.inputs.len() < args.len() && !sig.variadic) {
+        if args.len() < sig.inputs.len() ||
+           (args.len() > sig.inputs.len() && !sig.variadic) {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
         for (n, (fn_arg, op_arg)) in sig.inputs.iter().zip(args).enumerate() {

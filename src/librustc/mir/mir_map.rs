@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use dep_graph::DepNode;
 use util::nodemap::NodeMap;
 use mir::repr::Mir;
 use mir::transform::MirPass;
@@ -23,6 +24,9 @@ impl<'tcx> MirMap<'tcx> {
         if passes.is_empty() { return; }
 
         for (&id, mir) in &mut self.map {
+            let did = tcx.map.local_def_id(id);
+            let _task = tcx.dep_graph.in_task(DepNode::MirMapConstruction(did));
+
             let param_env = ty::ParameterEnvironment::for_item(tcx, id);
             let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
 
