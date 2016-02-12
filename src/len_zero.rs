@@ -6,7 +6,7 @@ use syntax::codemap::{Span, Spanned};
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 
-use syntax::ast::{Lit, Lit_};
+use syntax::ast::{Lit, LitKind};
 
 use utils::{get_item_name, snippet, span_lint, walk_ptrs_ty};
 
@@ -151,7 +151,7 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 }
 
 fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], lit: &Lit, op: &str) {
-    if let Spanned{node: Lit_::LitInt(0, _), ..} = *lit {
+    if let Spanned{node: LitKind::Int(0, _), ..} = *lit {
         if name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint(cx,
                       LEN_ZERO,

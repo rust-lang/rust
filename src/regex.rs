@@ -1,7 +1,7 @@
 use regex_syntax;
 use std::error::Error;
 use std::collections::HashSet;
-use syntax::ast::Lit_::LitStr;
+use syntax::ast::LitKind;
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
 use rustc_front::hir::*;
@@ -75,7 +75,7 @@ impl LateLintPass for RegexPass {
             match_path(path, &REGEX_NEW_PATH) && args.len() == 1
         ], {
             if let ExprLit(ref lit) = args[0].node {
-                if let LitStr(ref r, _) = lit.node {
+                if let LitKind::Str(ref r, _) = lit.node {
                     match regex_syntax::Expr::parse(r) {
                         Ok(r) => {
                             if let Some(repl) = is_trivial_regex(&r) {
@@ -176,8 +176,8 @@ impl<'v, 't: 'v> Visitor<'v> for RegexVisitor<'v, 't> {
                 if self.spans.contains(&span) {
                     return;
                 }
-                span_lint(self.cx, 
-                          REGEX_MACRO, 
+                span_lint(self.cx,
+                          REGEX_MACRO,
                           span,
                           "`regex!(_)` found. \
                           Please use `Regex::new(_)`, which is faster for now.");

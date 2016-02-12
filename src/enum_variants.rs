@@ -41,7 +41,7 @@ fn partial_rmatch(left: &str, right: &str) -> usize {
 
 impl EarlyLintPass for EnumVariantNames {
     fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
-        if let ItemEnum(ref def, _) = item.node {
+        if let ItemKind::Enum(ref def, _) = item.node {
             if def.variants.len() < 2 {
                 return;
             }

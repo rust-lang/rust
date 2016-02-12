@@ -11,10 +11,9 @@ use std::cmp::Ordering::{self, Greater, Less, Equal};
 use std::rc::Rc;
 use std::ops::Deref;
 
-use syntax::ast::Lit_;
+use syntax::ast::LitKind;
 use syntax::ast::LitIntType;
 use syntax::ast::{UintTy, FloatTy, StrStyle};
-use syntax::ast::Sign::{self, Plus, Minus};
 
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
@@ -27,10 +26,16 @@ pub enum FloatWidth {
 impl From<FloatTy> for FloatWidth {
     fn from(ty: FloatTy) -> FloatWidth {
         match ty {
-            FloatTy::TyF32 => FloatWidth::Fw32,
-            FloatTy::TyF64 => FloatWidth::Fw64,
+            FloatTy::F32 => FloatWidth::Fw32,
+            FloatTy::F64 => FloatWidth::Fw64,
         }
     }
+}
+
+#[derive(Copy, Eq, Debug, Clone, PartialEq)]
+pub enum Sign {
+    Plus,
+    Minus,
 }
 
 /// a Lit_-like enum to fold constant `Expr`s into
@@ -44,8 +49,8 @@ pub enum Constant {
     Byte(u8),
     /// a single char 'a'
     Char(char),
-    /// an integer
-    Int(u64, LitIntType),
+    /// an integer, third argument is whether the value is negated
+    Int(u64, LitIntType, Sign),
     /// a float with given type
     Float(String, FloatWidth),
     /// true or false
@@ -65,7 +70,7 @@ impl Constant {
     ///
     /// if the constant could not be converted to u64 losslessly
     fn as_u64(&self) -> u64 {
-        if let Constant::Int(val, _) = *self {
+        if let Constant::Int(val, _, _) = *self {
             val // TODO we may want to check the sign if any
         } else {
             panic!("Could not convert a {:?} to u64", self);
@@ -78,13 +83,8 @@ impl Constant {
         match *self {
             Constant::Byte(b) => Some(b as f64),
             Constant::Float(ref s, _) => s.parse().ok(),
-            Constant::Int(i, ty) => {
-                Some(if is_negative(ty) {
-                    -(i as f64)
-                } else {
-                    i as f64
-                })
-            }
+            Constant::Int(i, _, Sign::Minus) => Some(-(i as f64)),
+            Constant::Int(i, _, Sign::Plus) => Some(i as f64),
             _ => None,
         }
     }
@@ -97,8 +97,9 @@ impl PartialEq for Constant {
             (&Constant::Binary(ref l), &Constant::Binary(ref r)) => l == r,
             (&Constant::Byte(l), &Constant::Byte(r)) => l == r,
             (&Constant::Char(l), &Constant::Char(r)) => l == r,
-            (&Constant::Int(lv, lty), &Constant::Int(rv, rty)) => {
-                lv == rv && (is_negative(lty) & (lv != 0)) == (is_negative(rty) & (rv != 0))
+            (&Constant::Int(0, _, _), &Constant::Int(0, _, _)) => true,
+            (&Constant::Int(lv, _, lneg), &Constant::Int(rv, _, rneg)) => {
+                lv == rv && lneg == rneg
             }
             (&Constant::Float(ref ls, lw), &Constant::Float(ref rs, rw)) => {
                 use self::FloatWidth::*;
@@ -135,14 +136,11 @@ impl PartialOrd for Constant {
             }
             (&Constant::Byte(ref l), &Constant::Byte(ref r)) => Some(l.cmp(r)),
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
-            (&Constant::Int(ref lv, lty), &Constant::Int(ref rv, rty)) => {
-                Some(match (is_negative(lty) && *lv != 0, is_negative(rty) && *rv != 0) {
-                    (true, true) => rv.cmp(lv),
-                    (false, false) => lv.cmp(rv),
-                    (true, false) => Less,
-                    (false, true) => Greater,
-                })
-            }
+            (&Constant::Int(0, _, _), &Constant::Int(0, _, _)) => Some(Equal),
+            (&Constant::Int(ref lv, _, Sign::Plus), &Constant::Int(ref rv, _, Sign::Plus)) => Some(lv.cmp(rv)),
+            (&Constant::Int(ref lv, _, Sign::Minus), &Constant::Int(ref rv, _, Sign::Minus)) => Some(rv.cmp(lv)),
+            (&Constant::Int(_, _, Sign::Minus), &Constant::Int(_, _, Sign::Plus)) => Some(Less),
+            (&Constant::Int(_, _, Sign::Plus), &Constant::Int(_, _, Sign::Minus)) => Some(Greater),
             (&Constant::Float(ref ls, lw), &Constant::Float(ref rs, rw)) => {
                 use self::FloatWidth::*;
                 if match (lw, rw) {
@@ -171,16 +169,16 @@ impl PartialOrd for Constant {
     }
 }
 
-fn lit_to_constant(lit: &Lit_) -> Constant {
+fn lit_to_constant(lit: &LitKind) -> Constant {
     match *lit {
-        Lit_::LitStr(ref is, style) => Constant::Str(is.to_string(), style),
-        Lit_::LitByte(b) => Constant::Byte(b),
-        Lit_::LitByteStr(ref s) => Constant::Binary(s.clone()),
-        Lit_::LitChar(c) => Constant::Char(c),
-        Lit_::LitInt(value, ty) => Constant::Int(value, ty),
-        Lit_::LitFloat(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
-        Lit_::LitFloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::FwAny),
-        Lit_::LitBool(b) => Constant::Bool(b),
+        LitKind::Str(ref is, style) => Constant::Str(is.to_string(), style),
+        LitKind::Byte(b) => Constant::Byte(b),
+        LitKind::ByteStr(ref s) => Constant::Binary(s.clone()),
+        LitKind::Char(c) => Constant::Char(c),
+        LitKind::Int(value, ty) => Constant::Int(value, ty, Sign::Plus),
+        LitKind::Float(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
+        LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::FwAny),
+        LitKind::Bool(b) => Constant::Bool(b),
     }
 }
 
@@ -189,21 +187,21 @@ fn constant_not(o: Constant) -> Option<Constant> {
     use self::Constant::*;
     match o {
         Bool(b) => Some(Bool(!b)),
-        Int(::std::u64::MAX, SignedIntLit(_, Plus)) => None,
-        Int(value, SignedIntLit(ity, Plus)) => Some(Int(value + 1, SignedIntLit(ity, Minus))),
-        Int(0, SignedIntLit(ity, Minus)) => Some(Int(1, SignedIntLit(ity, Minus))),
-        Int(value, SignedIntLit(ity, Minus)) => Some(Int(value - 1, SignedIntLit(ity, Plus))),
-        Int(value, UnsignedIntLit(ity)) => {
+        Int(::std::u64::MAX, LitIntType::Signed(_), Sign::Plus) => None,
+        Int(value, LitIntType::Signed(ity), Sign::Plus) => Some(Int(value + 1, LitIntType::Signed(ity), Sign::Minus)),
+        Int(0, LitIntType::Signed(ity), Sign::Minus) => Some(Int(1, LitIntType::Signed(ity), Sign::Minus)),
+        Int(value, LitIntType::Signed(ity), Sign::Minus) => Some(Int(value - 1, LitIntType::Signed(ity), Sign::Plus)),
+        Int(value, LitIntType::Unsigned(ity), Sign::Plus) => {
             let mask = match ity {
-                UintTy::TyU8 => ::std::u8::MAX as u64,
-                UintTy::TyU16 => ::std::u16::MAX as u64,
-                UintTy::TyU32 => ::std::u32::MAX as u64,
-                UintTy::TyU64 => ::std::u64::MAX,
-                UintTy::TyUs => {
+                UintTy::U8 => ::std::u8::MAX as u64,
+                UintTy::U16 => ::std::u16::MAX as u64,
+                UintTy::U32 => ::std::u32::MAX as u64,
+                UintTy::U64 => ::std::u64::MAX,
+                UintTy::Us => {
                     return None;
                 }  // refuse to guess
             };
-            Some(Int(!value & mask, UnsignedIntLit(ity)))
+            Some(Int(!value & mask, LitIntType::Unsigned(ity), Sign::Plus))
         },
         _ => None,
     }
@@ -213,8 +211,8 @@ fn constant_negate(o: Constant) -> Option<Constant> {
     use syntax::ast::LitIntType::*;
     use self::Constant::*;
     match o {
-        Int(value, SignedIntLit(ity, sign)) => Some(Int(value, SignedIntLit(ity, neg_sign(sign)))),
-        Int(value, UnsuffixedIntLit(sign)) => Some(Int(value, UnsuffixedIntLit(neg_sign(sign)))),
+        Int(value, LitIntType::Signed(ity), sign) => Some(Int(value, LitIntType::Signed(ity), neg_sign(sign))),
+        Int(value, LitIntType::Unsuffixed, sign) => Some(Int(value, LitIntType::Unsuffixed, neg_sign(sign))),
         Float(is, ty) => Some(Float(neg_float_str(is), ty)),
         _ => None,
     }
@@ -235,77 +233,31 @@ fn neg_float_str(s: String) -> String {
     }
 }
 
-/// is the given LitIntType negative?
-///
-/// Examples
-///
-/// ```
-/// assert!(is_negative(UnsuffixedIntLit(Minus)));
-/// ```
-pub fn is_negative(ty: LitIntType) -> bool {
-    match ty {
-        LitIntType::SignedIntLit(_, sign) | LitIntType::UnsuffixedIntLit(sign) => sign == Minus,
-        LitIntType::UnsignedIntLit(_) => false,
-    }
-}
-
-fn unify_int_type(l: LitIntType, r: LitIntType, s: Sign) -> Option<LitIntType> {
+fn unify_int_type(l: LitIntType, r: LitIntType) -> Option<LitIntType> {
     use syntax::ast::LitIntType::*;
     match (l, r) {
-        (SignedIntLit(lty, _), SignedIntLit(rty, _)) => {
+        (Signed(lty), Signed(rty)) => {
             if lty == rty {
-                Some(SignedIntLit(lty, s))
+                Some(LitIntType::Signed(lty))
             } else {
                 None
             }
         }
-        (UnsignedIntLit(lty), UnsignedIntLit(rty)) => {
-            if s == Plus && lty == rty {
-                Some(UnsignedIntLit(lty))
+        (Unsigned(lty), Unsigned(rty)) => {
+            if lty == rty {
+                Some(LitIntType::Unsigned(lty))
             } else {
                 None
             }
         }
-        (UnsuffixedIntLit(_), UnsuffixedIntLit(_)) => Some(UnsuffixedIntLit(s)),
-        (SignedIntLit(lty, _), UnsuffixedIntLit(_)) => Some(SignedIntLit(lty, s)),
-        (UnsignedIntLit(lty), UnsuffixedIntLit(rs)) => {
-            if rs == Plus {
-                Some(UnsignedIntLit(lty))
-            } else {
-                None
-            }
-        }
-        (UnsuffixedIntLit(_), SignedIntLit(rty, _)) => Some(SignedIntLit(rty, s)),
-        (UnsuffixedIntLit(ls), UnsignedIntLit(rty)) => {
-            if ls == Plus {
-                Some(UnsignedIntLit(rty))
-            } else {
-                None
-            }
-        }
+        (Unsuffixed, Unsuffixed) => Some(Unsuffixed),
+        (Signed(lty), Unsuffixed) => Some(Signed(lty)),
+        (Unsigned(lty), Unsuffixed) => Some(Unsigned(lty)),
+        (Unsuffixed, Signed(rty)) => Some(Signed(rty)),
+        (Unsuffixed, Unsigned(rty)) => Some(Unsigned(rty)),
         _ => None,
     }
 }
-
-fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) -> Option<Constant> {
-    if neg > pos {
-        unify_int_type(nty, pty, Minus).map(|ty| Constant::Int(neg - pos, ty))
-    } else {
-        unify_int_type(nty, pty, Plus).map(|ty| Constant::Int(pos - neg, ty))
-    }
-}
-
-fn sub_int(l: u64, lty: LitIntType, r: u64, rty: LitIntType, neg: bool) -> Option<Constant> {
-    unify_int_type(lty,
-                   rty,
-                   if neg {
-                       Minus
-                   } else {
-                       Plus
-                   })
-        .and_then(|ty| l.checked_sub(r).map(|v| Constant::Int(v, ty)))
-}
-
 
 pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
@@ -412,23 +364,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 self.binop_apply(left, right, |l, r| {
                     match (l, r) {
                         (Constant::Byte(l8), Constant::Byte(r8)) => l8.checked_add(r8).map(Constant::Byte),
-                        (Constant::Int(l64, lty), Constant::Int(r64, rty)) => {
-                            let (ln, rn) = (is_negative(lty), is_negative(rty));
-                            if ln == rn {
-                                unify_int_type(lty,
-                                               rty,
-                                               if ln {
-                                                   Minus
-                                               } else {
-                                                   Plus
-                                               })
-                                    .and_then(|ty| l64.checked_add(r64).map(|v| Constant::Int(v, ty)))
-                            } else if ln {
-                                add_neg_int(r64, rty, l64, lty)
-                            } else {
-                                add_neg_int(l64, lty, r64, rty)
-                            }
-                        }
+                        (Constant::Int(l64, lty, lsign), Constant::Int(r64, rty, rsign)) => {
+                            add_ints(l64, r64, lty, rty, lsign, rsign)
+                        },
                         // TODO: float (would need bignum library?)
                         _ => None,
                     }
@@ -444,20 +382,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                                 Some(Constant::Byte(l8 - r8))
                             }
                         }
-                        (Constant::Int(l64, lty), Constant::Int(r64, rty)) => {
-                            match (is_negative(lty), is_negative(rty)) {
-                                (false, false) => sub_int(l64, lty, r64, rty, r64 > l64),
-                                (true, true) => sub_int(l64, lty, r64, rty, l64 > r64),
-                                (true, false) => {
-                                    unify_int_type(lty, rty, Minus)
-                                        .and_then(|ty| l64.checked_add(r64).map(|v| Constant::Int(v, ty)))
-                                }
-                                (false, true) => {
-                                    unify_int_type(lty, rty, Plus)
-                                        .and_then(|ty| l64.checked_add(r64).map(|v| Constant::Int(v, ty)))
-                                }
-                            }
-                        }
+                        (Constant::Int(l64, lty, lsign), Constant::Int(r64, rty, rsign)) => {
+                            add_ints(l64, r64, lty, rty, lsign, neg_sign(rsign))
+                        },
                         _ => None,
                     }
                 })
@@ -487,16 +414,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     {
         self.binop_apply(left, right, |l, r| {
             match (l, r) {
-                (Constant::Int(l64, lty), Constant::Int(r64, rty)) => {
+                (Constant::Int(l64, lty, lsign), Constant::Int(r64, rty, rsign)) => {
                     f(l64, r64).and_then(|value| {
-                        unify_int_type(lty,
-                                       rty,
-                                       if is_negative(lty) == is_negative(rty) {
-                                           Plus
-                                       } else {
-                                           Minus
-                                       })
-                            .map(|ty| Constant::Int(value, ty))
+                        let sign = if lsign == rsign { Sign::Plus } else { Sign::Minus };
+                        unify_int_type(lty, rty).map(|ty| Constant::Int(value, ty, sign))
                     })
                 }
                 _ => None,
@@ -511,8 +432,12 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             match (l, r) {
                 (Constant::Bool(l), Constant::Bool(r)) => Some(Constant::Bool(f(l as u64, r as u64) != 0)),
                 (Constant::Byte(l8), Constant::Byte(r8)) => Some(Constant::Byte(f(l8 as u64, r8 as u64) as u8)),
-                (Constant::Int(l, lty), Constant::Int(r, rty)) => {
-                    unify_int_type(lty, rty, Plus).map(|ty| Constant::Int(f(l, r), ty))
+                (Constant::Int(l, lty, lsign), Constant::Int(r, rty, rsign)) => {
+                    if lsign == Sign::Plus && rsign == Sign::Plus {
+                        unify_int_type(lty, rty).map(|ty| Constant::Int(f(l, r), ty, Sign::Plus))
+                    } else {
+                        None
+                    }
                 }
                 _ => None,
             }
@@ -553,5 +478,23 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 None
             }
         })
+    }
+}
+
+fn add_ints(l64: u64, r64: u64, lty: LitIntType, rty: LitIntType, lsign: Sign, rsign: Sign) -> Option<Constant> {
+    let ty = if let Some(ty) = unify_int_type(lty, rty) { ty } else { return None; };
+    match (lsign, rsign) {
+        (Sign::Plus, Sign::Plus) => l64.checked_add(r64).map(|v| Constant::Int(v, ty, Sign::Plus)),
+        (Sign::Plus, Sign::Minus) => if r64 > l64 {
+            Some(Constant::Int(r64 - l64, ty, Sign::Minus))
+        } else {
+            Some(Constant::Int(l64 - r64, ty, Sign::Plus))
+        },
+        (Sign::Minus, Sign::Minus) =>  l64.checked_add(r64).map(|v| Constant::Int(v, ty, Sign::Minus)),
+        (Sign::Minus, Sign::Plus) => if l64 > r64 {
+            Some(Constant::Int(l64 - r64, ty, Sign::Minus))
+        } else {
+            Some(Constant::Int(r64 - l64, ty, Sign::Plus))
+        },
     }
 }

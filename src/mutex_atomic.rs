@@ -56,8 +56,8 @@ impl LateLintPass for MutexAtomic {
                                        behaviour and not the internal type, consider using Mutex<()>.",
                                       atomic_name);
                     match *mutex_param {
-                        ty::TyUint(t) if t != ast::TyUs => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
-                        ty::TyInt(t) if t != ast::TyIs => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::TyUint(t) if t != ast::UintTy::Us => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
+                        ty::TyInt(t) if t != ast::IntTy::Is => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         _ => span_lint(cx, MUTEX_ATOMIC, expr.span, &msg),
                     };
                 }

@@ -235,7 +235,7 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
 
 fn is_isize_or_usize(typ: &ty::TyS) -> bool {
     match typ.sty {
-        ty::TyInt(IntTy::TyIs) | ty::TyUint(UintTy::TyUs) => true,
+        ty::TyInt(IntTy::Is) | ty::TyUint(UintTy::Us) => true,
         _ => false,
     }
 }
@@ -360,7 +360,7 @@ impl LateLintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits = if let ty::TyFloat(FloatTy::TyF32) = cast_to.sty {
+                        let to_nbits = if let ty::TyFloat(FloatTy::F32) = cast_to.sty {
                             32
                         } else {
                             64
@@ -391,7 +391,7 @@ impl LateLintPass for CastPass {
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                     }
                     (false, false) => {
-                        if let (&ty::TyFloat(FloatTy::TyF64), &ty::TyFloat(FloatTy::TyF32)) = (&cast_from.sty, &cast_to.sty) {
+                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) = (&cast_from.sty, &cast_to.sty) {
                             span_lint(cx,
                                       CAST_POSSIBLE_TRUNCATION,
                                       expr.span,
@@ -560,12 +560,12 @@ impl LintPass for CharLitAsU8 {
 
 impl LateLintPass for CharLitAsU8 {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        use syntax::ast::{Lit_, UintTy};
+        use syntax::ast::{LitKind, UintTy};
 
         if let ExprCast(ref e, _) = expr.node {
             if let ExprLit(ref l) = e.node {
-                if let Lit_::LitChar(_) = l.node {
-                    if ty::TyUint(UintTy::TyU8) == cx.tcx.expr_ty(expr).sty && !in_macro(cx, expr.span) {
+                if let LitKind::Char(_) = l.node {
+                    if ty::TyUint(UintTy::U8) == cx.tcx.expr_ty(expr).sty && !in_macro(cx, expr.span) {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
@@ -676,31 +676,31 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
     let which = match (ty, cv) {
         (&ty::TyBool, Bool(false)) => Minimum,
 
-        (&ty::TyInt(IntTy::TyIs), Int(x)) if x == ::std::isize::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::TyI8), Int(x)) if x == ::std::i8::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::TyI16), Int(x)) if x == ::std::i16::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::TyI32), Int(x)) if x == ::std::i32::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::TyI64), Int(x)) if x == ::std::i64::MIN as i64 => Minimum,
+        (&ty::TyInt(IntTy::Is), Int(x)) if x == ::std::isize::MIN as i64 => Minimum,
+        (&ty::TyInt(IntTy::I8), Int(x)) if x == ::std::i8::MIN as i64 => Minimum,
+        (&ty::TyInt(IntTy::I16), Int(x)) if x == ::std::i16::MIN as i64 => Minimum,
+        (&ty::TyInt(IntTy::I32), Int(x)) if x == ::std::i32::MIN as i64 => Minimum,
+        (&ty::TyInt(IntTy::I64), Int(x)) if x == ::std::i64::MIN as i64 => Minimum,
 
-        (&ty::TyUint(UintTy::TyUs), Uint(x)) if x == ::std::usize::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::TyU8), Uint(x)) if x == ::std::u8::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::TyU16), Uint(x)) if x == ::std::u16::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::TyU32), Uint(x)) if x == ::std::u32::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::TyU64), Uint(x)) if x == ::std::u64::MIN as u64 => Minimum,
+        (&ty::TyUint(UintTy::Us), Uint(x)) if x == ::std::usize::MIN as u64 => Minimum,
+        (&ty::TyUint(UintTy::U8), Uint(x)) if x == ::std::u8::MIN as u64 => Minimum,
+        (&ty::TyUint(UintTy::U16), Uint(x)) if x == ::std::u16::MIN as u64 => Minimum,
+        (&ty::TyUint(UintTy::U32), Uint(x)) if x == ::std::u32::MIN as u64 => Minimum,
+        (&ty::TyUint(UintTy::U64), Uint(x)) if x == ::std::u64::MIN as u64 => Minimum,
 
         (&ty::TyBool, Bool(true)) => Maximum,
 
-        (&ty::TyInt(IntTy::TyIs), Int(x)) if x == ::std::isize::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::TyI8), Int(x)) if x == ::std::i8::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::TyI16), Int(x)) if x == ::std::i16::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::TyI32), Int(x)) if x == ::std::i32::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::TyI64), Int(x)) if x == ::std::i64::MAX as i64 => Maximum,
+        (&ty::TyInt(IntTy::Is), Int(x)) if x == ::std::isize::MAX as i64 => Maximum,
+        (&ty::TyInt(IntTy::I8), Int(x)) if x == ::std::i8::MAX as i64 => Maximum,
+        (&ty::TyInt(IntTy::I16), Int(x)) if x == ::std::i16::MAX as i64 => Maximum,
+        (&ty::TyInt(IntTy::I32), Int(x)) if x == ::std::i32::MAX as i64 => Maximum,
+        (&ty::TyInt(IntTy::I64), Int(x)) if x == ::std::i64::MAX as i64 => Maximum,
 
-        (&ty::TyUint(UintTy::TyUs), Uint(x)) if x == ::std::usize::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::TyU8), Uint(x)) if x == ::std::u8::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::TyU16), Uint(x)) if x == ::std::u16::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::TyU32), Uint(x)) if x == ::std::u32::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::TyU64), Uint(x)) if x == ::std::u64::MAX as u64 => Maximum,
+        (&ty::TyUint(UintTy::Us), Uint(x)) if x == ::std::usize::MAX as u64 => Maximum,
+        (&ty::TyUint(UintTy::U8), Uint(x)) if x == ::std::u8::MAX as u64 => Maximum,
+        (&ty::TyUint(UintTy::U16), Uint(x)) if x == ::std::u16::MAX as u64 => Maximum,
+        (&ty::TyUint(UintTy::U32), Uint(x)) if x == ::std::u32::MAX as u64 => Maximum,
+        (&ty::TyUint(UintTy::U64), Uint(x)) if x == ::std::u64::MAX as u64 => Maximum,
 
         _ => return None,
     };

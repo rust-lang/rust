@@ -5,7 +5,7 @@ use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::ty;
 use rustc_front::hir::*;
 use std::cmp::Ordering;
-use syntax::ast::Lit_::LitBool;
+use syntax::ast::LitKind;
 use syntax::codemap::Span;
 
 use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
@@ -238,8 +238,8 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
             let exprs = if let PatLit(ref arm_bool) = arms[0].pats[0].node {
                 if let ExprLit(ref lit) = arm_bool.node {
                     match lit.node {
-                        LitBool(true) => Some((&*arms[0].body, &*arms[1].body)),
-                        LitBool(false) => Some((&*arms[1].body, &*arms[0].body)),
+                        LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
+                        LitKind::Bool(false) => Some((&*arms[1].body, &*arms[0].body)),
                         _ => None,
                     }
                 } else {

@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::{Expr, ExprMethodCall, ExprLit};
 use utils::{walk_ptrs_ty_depth, match_type, span_lint, OPEN_OPTIONS_PATH};
 use syntax::codemap::{Span, Spanned};
-use syntax::ast::Lit_::LitBool;
+use syntax::ast::LitKind;
 
 /// **What it does:** This lint checks for duplicate open options as well as combinations that make no sense.
 ///
@@ -65,7 +65,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
 
             let argument_option = match arguments[1].node {
                 ExprLit(ref span) => {
-                    if let Spanned {node: LitBool(lit), ..} = **span {
+                    if let Spanned {node: LitKind::Bool(lit), ..} = **span {
                         if lit {
                             Argument::True
                         } else {
