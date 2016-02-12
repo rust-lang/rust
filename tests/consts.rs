@@ -17,7 +17,7 @@ use syntax::ast::LitIntType::*;
 use syntax::ast::StrStyle::*;
 use syntax::ast::Sign::*;
 
-use clippy::consts::{constant_simple, Constant};
+use clippy::consts::{constant_simple, Constant, FloatWidth};
 
 fn spanned<T>(t: T) -> Spanned<T> {
     Spanned{ node: t, span: COMMAND_LINE_SP }
@@ -78,4 +78,12 @@ fn test_ops() {
     check(ONE, &binop(BiSub, litone.clone(), litzero.clone()));
     check(ONE, &binop(BiMul, litone.clone(), litone.clone()));
     check(ONE, &binop(BiDiv, litone.clone(), litone.clone()));
+
+    let half_any = Constant::Float("0.5".into(), FloatWidth::FwAny);
+    let half32 = Constant::Float("0.5".into(), FloatWidth::Fw32);
+    let half64 = Constant::Float("0.5".into(), FloatWidth::Fw64);
+
+    assert_eq!(half_any, half32);
+    assert_eq!(half_any, half64);
+    assert_eq!(half32, half64); // for transitivity
 }
