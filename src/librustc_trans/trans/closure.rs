@@ -49,7 +49,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let closure_ty = node_id_type(bcx, bcx.fcx.id);
     let self_type = self_type_for_closure(bcx.ccx(), closure_def_id, closure_ty);
     let kind = kind_for_closure(bcx.ccx(), closure_def_id);
-    let llenv = if kind == ty::FnOnceClosureKind &&
+    let llenv = if kind == ty::ClosureKind::FnOnce &&
             !arg_is_indirect(bcx.ccx(), self_type) {
         let datum = rvalue_scratch_datum(bcx,
                                          self_type,
@@ -85,7 +85,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let node_id = freevar.def.var_id();
         bcx.fcx.llupvars.borrow_mut().insert(node_id, upvar_ptr);
 
-        if kind == ty::FnOnceClosureKind && !captured_by_ref {
+        if kind == ty::ClosureKind::FnOnce && !captured_by_ref {
             let hint = bcx.fcx.lldropflag_hints.borrow().hint_datum(upvar_id.var_id);
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
@@ -300,20 +300,20 @@ fn trans_closure_adapter_shim<'a, 'tcx>(
            ccx.tn().val_to_string(llfn));
 
     match (llfn_closure_kind, trait_closure_kind) {
-        (ty::FnClosureKind, ty::FnClosureKind) |
-        (ty::FnMutClosureKind, ty::FnMutClosureKind) |
-        (ty::FnOnceClosureKind, ty::FnOnceClosureKind) => {
+        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+        (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
             // No adapter needed.
             llfn
         }
-        (ty::FnClosureKind, ty::FnMutClosureKind) => {
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
             // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
             // `fn(&mut self, ...)`. In fact, at trans time, these are
             // basically the same thing, so we can just return llfn.
             llfn
         }
-        (ty::FnClosureKind, ty::FnOnceClosureKind) |
-        (ty::FnMutClosureKind, ty::FnOnceClosureKind) => {
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
             // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
             // self, ...)`.  We want a `fn(self, ...)`. We can produce
             // this by doing something like:
