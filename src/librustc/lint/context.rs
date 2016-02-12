@@ -920,7 +920,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
             run_lints!(cx, check_item, early_passes, it);
             cx.visit_ids(|v| v.visit_item(it));
             ast_visit::walk_item(cx, it);
-            run_lints!(cx, check_item, early_passes, it);
+            run_lints!(cx, check_item_post, early_passes, it);
         })
     }
 
