@@ -316,6 +316,11 @@ pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Inte
     })
 }
 
+pub fn contains_extern_indicator(diag: &Handler, attrs: &[Attribute]) -> bool {
+    contains_name(attrs, "no_mangle") ||
+        find_export_name_attr(diag, attrs).is_some()
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum InlineAttr {
     None,

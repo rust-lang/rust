@@ -187,8 +187,7 @@ pub trait CrateStore<'tcx> : Any {
     fn is_defaulted_trait(&self, did: DefId) -> bool;
     fn is_impl(&self, did: DefId) -> bool;
     fn is_default_impl(&self, impl_did: DefId) -> bool;
-    fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool;
-    fn is_static(&self, did: DefId) -> bool;
+    fn is_extern_item(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool;
     fn is_static_method(&self, did: DefId) -> bool;
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool;
     fn is_typedef(&self, did: DefId) -> bool;
@@ -357,8 +356,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_defaulted_trait(&self, did: DefId) -> bool { unimplemented!() }
     fn is_impl(&self, did: DefId) -> bool { unimplemented!() }
     fn is_default_impl(&self, impl_did: DefId) -> bool { unimplemented!() }
-    fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool { unimplemented!() }
-    fn is_static(&self, did: DefId) -> bool { unimplemented!() }
+    fn is_extern_item(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool { unimplemented!() }
     fn is_static_method(&self, did: DefId) -> bool { unimplemented!() }
     fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool { false }
     fn is_typedef(&self, did: DefId) -> bool { unimplemented!() }

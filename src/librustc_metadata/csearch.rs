@@ -260,16 +260,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_default_impl(&*cdata, impl_did.index)
     }
 
-    fn is_extern_fn(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool
-    {
+    fn is_extern_item(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool {
         let cdata = self.get_crate_data(did.krate);
-        decoder::is_extern_fn(&*cdata, did.index, tcx)
-    }
-
-    fn is_static(&self, did: DefId) -> bool
-    {
-        let cdata = self.get_crate_data(did.krate);
-        decoder::is_static(&*cdata, did.index)
+        decoder::is_extern_item(&*cdata, did.index, tcx)
     }
 
     fn is_static_method(&self, def: DefId) -> bool
