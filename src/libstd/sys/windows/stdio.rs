@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(issue = "0", feature = "windows_stdio")]
+
 use prelude::v1::*;
 use io::prelude::*;
 
