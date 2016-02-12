@@ -59,7 +59,7 @@ fn expr<'a>(s: &str, ps: &'a ParseSess) -> PResult<'a, P<ast::Expr>> {
     })
 }
 
-fn stmt<'a>(s: &str, ps: &'a ParseSess) -> PResult<'a, P<ast::Stmt>> {
+fn stmt<'a>(s: &str, ps: &'a ParseSess) -> PResult<'a, ast::Stmt> {
     with_error_checking_parse(s.to_string(), ps, |p| {
         p.parse_stmt().map(|s| s.unwrap())
     })

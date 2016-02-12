@@ -287,7 +287,7 @@ impl PathParameters {
         }
     }
 
-    pub fn bindings(&self) -> Vec<&P<TypeBinding>> {
+    pub fn bindings(&self) -> Vec<&TypeBinding> {
         match *self {
             PathParameters::AngleBracketed(ref data) => {
                 data.bindings.iter().collect()
@@ -308,7 +308,7 @@ pub struct AngleBracketedParameterData {
     pub types: P<[P<Ty>]>,
     /// Bindings (equality constraints) on associated types, if present.
     /// e.g., `Foo<A=Bar>`.
-    pub bindings: P<[P<TypeBinding>]>,
+    pub bindings: P<[TypeBinding]>,
 }
 
 impl AngleBracketedParameterData {
@@ -508,7 +508,7 @@ impl PartialEq for MetaItemKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Block {
     /// Statements in a block
-    pub stmts: Vec<P<Stmt>>,
+    pub stmts: Vec<Stmt>,
     /// An expression at the end of the block
     /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
@@ -1716,12 +1716,12 @@ pub struct Mod {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ForeignMod {
     pub abi: Abi,
-    pub items: Vec<P<ForeignItem>>,
+    pub items: Vec<ForeignItem>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
-    pub variants: Vec<P<Variant>>,
+    pub variants: Vec<Variant>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1988,7 +1988,7 @@ pub enum ItemKind {
     Trait(Unsafety,
               Generics,
               TyParamBounds,
-              Vec<P<TraitItem>>),
+              Vec<TraitItem>),
 
     // Default trait implementations
     ///
@@ -2000,7 +2000,7 @@ pub enum ItemKind {
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             Vec<P<ImplItem>>),
+             Vec<ImplItem>),
     /// A macro invocation (which includes macro definition)
     Mac(Mac),
 }

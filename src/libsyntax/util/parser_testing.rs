@@ -64,7 +64,7 @@ pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
 }
 
 /// Parse a string, return a stmt
-pub fn string_to_stmt(source_str : String) -> Option<P<ast::Stmt>> {
+pub fn string_to_stmt(source_str : String) -> Option<ast::Stmt> {
     let ps = ParseSess::new();
     with_error_checking_parse(source_str, &ps, |p| {
         p.parse_stmt()

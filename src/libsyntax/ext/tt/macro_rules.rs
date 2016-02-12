@@ -87,7 +87,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
     }
 
     fn make_impl_items(self: Box<ParserAnyMacro<'a>>)
-                       -> Option<SmallVector<P<ast::ImplItem>>> {
+                       -> Option<SmallVector<ast::ImplItem>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
@@ -101,7 +101,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
     }
 
     fn make_stmts(self: Box<ParserAnyMacro<'a>>)
-                 -> Option<SmallVector<P<ast::Stmt>>> {
+                 -> Option<SmallVector<ast::Stmt>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();

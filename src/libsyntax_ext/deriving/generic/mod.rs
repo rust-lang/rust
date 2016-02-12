@@ -312,7 +312,7 @@ pub enum SubstructureFields<'a> {
     /// variants for the enum itself, and the third component is a list of
     /// `Ident`s bound to the variant index values for each of the actual
     /// input `Self` arguments.
-    EnumNonMatchingCollapsed(Vec<Ident>, &'a [P<ast::Variant>], &'a [Ident]),
+    EnumNonMatchingCollapsed(Vec<Ident>, &'a [ast::Variant], &'a [Ident]),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::VariantData, StaticFields),
@@ -466,12 +466,12 @@ impl<'a> TraitDef<'a> {
                            type_ident: Ident,
                            generics: &Generics,
                            field_tys: Vec<P<ast::Ty>>,
-                           methods: Vec<P<ast::ImplItem>>) -> P<ast::Item> {
+                           methods: Vec<ast::ImplItem>) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         // Transform associated types from `deriving::ty::Ty` into `ast::ImplItem`
         let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
-            P(ast::ImplItem {
+            ast::ImplItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident: ident,
@@ -482,7 +482,7 @@ impl<'a> TraitDef<'a> {
                     type_ident,
                     generics
                 )),
-            })
+            }
         });
 
         let Generics { mut lifetimes, ty_params, mut where_clause } =
@@ -857,7 +857,7 @@ impl<'a> MethodDef<'a> {
                      abi: Abi,
                      explicit_self: ast::ExplicitSelf,
                      arg_types: Vec<(Ident, P<ast::Ty>)> ,
-                     body: P<Expr>) -> P<ast::ImplItem> {
+                     body: P<Expr>) -> ast::ImplItem {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
@@ -888,7 +888,7 @@ impl<'a> MethodDef<'a> {
         };
 
         // Create the method.
-        P(ast::ImplItem {
+        ast::ImplItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span: trait_.span,
@@ -902,7 +902,7 @@ impl<'a> MethodDef<'a> {
                 constness: ast::Constness::NotConst,
                 decl: fn_decl
             }, body_block)
-        })
+        }
     }
 
     /// ```ignore
@@ -1139,7 +1139,7 @@ impl<'a> MethodDef<'a> {
                 let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
                     let (p, idents) = trait_.create_enum_variant_pattern(
                         cx, type_ident,
-                        &**variant,
+                        variant,
                         self_arg_name,
                         ast::Mutability::Immutable);
                     (cx.pat(sp, ast::PatRegion(p, ast::Mutability::Immutable)), idents)
@@ -1209,7 +1209,7 @@ impl<'a> MethodDef<'a> {
                 // Self arg, assuming all are instances of VariantK.
                 // Build up code associated with such a case.
                 let substructure = EnumMatching(index,
-                                                &**variant,
+                                                variant,
                                                 field_tuples);
                 let arm_expr = self.call_substructure_method(
                     cx, trait_, type_ident, &self_args[..], nonself_args,
@@ -1250,7 +1250,7 @@ impl<'a> MethodDef<'a> {
             // let __self2_vi = unsafe {
             //     std::intrinsics::discriminant_value(&__arg2) } as i32;
             // ```
-            let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
+            let mut index_let_stmts: Vec<ast::Stmt> = Vec::new();
 
             //We also build an expression which checks whether all discriminants are equal
             // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...

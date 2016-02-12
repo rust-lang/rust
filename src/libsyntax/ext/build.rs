@@ -34,7 +34,7 @@ pub trait AstBuilder {
                 idents: Vec<ast::Ident> ,
                 lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>>,
-                bindings: Vec<P<ast::TypeBinding>> )
+                bindings: Vec<ast::TypeBinding> )
         -> ast::Path;
 
     fn qpath(&self, self_type: P<ast::Ty>,
@@ -46,7 +46,7 @@ pub trait AstBuilder {
                 ident: ast::Ident,
                 lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>>,
-                bindings: Vec<P<ast::TypeBinding>>)
+                bindings: Vec<ast::TypeBinding>)
                 -> (ast::QSelf, ast::Path);
 
     // types
@@ -88,8 +88,8 @@ pub trait AstBuilder {
                     -> ast::LifetimeDef;
 
     // statements
-    fn stmt_expr(&self, expr: P<ast::Expr>) -> P<ast::Stmt>;
-    fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: P<ast::Expr>) -> P<ast::Stmt>;
+    fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt;
+    fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident, ex: P<ast::Expr>) -> ast::Stmt;
     fn stmt_let_typed(&self,
                       sp: Span,
                       mutbl: bool,
@@ -97,14 +97,14 @@ pub trait AstBuilder {
                       typ: P<ast::Ty>,
                       ex: P<ast::Expr>)
                       -> P<ast::Stmt>;
-    fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> P<ast::Stmt>;
+    fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt;
 
     // blocks
-    fn block(&self, span: Span, stmts: Vec<P<ast::Stmt>>,
+    fn block(&self, span: Span, stmts: Vec<ast::Stmt>,
              expr: Option<P<ast::Expr>>) -> P<ast::Block>;
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block>;
     fn block_all(&self, span: Span,
-                 stmts: Vec<P<ast::Stmt>>,
+                 stmts: Vec<ast::Stmt>,
                  expr: Option<P<ast::Expr>>) -> P<ast::Block>;
 
     // expressions
@@ -206,9 +206,9 @@ pub trait AstBuilder {
     fn lambda_expr_1(&self, span: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr>;
 
     fn lambda_stmts(&self, span: Span, ids: Vec<ast::Ident>,
-                    blk: Vec<P<ast::Stmt>>) -> P<ast::Expr>;
-    fn lambda_stmts_0(&self, span: Span, stmts: Vec<P<ast::Stmt>>) -> P<ast::Expr>;
-    fn lambda_stmts_1(&self, span: Span, stmts: Vec<P<ast::Stmt>>,
+                    blk: Vec<ast::Stmt>) -> P<ast::Expr>;
+    fn lambda_stmts_0(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Expr>;
+    fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>,
                       ident: ast::Ident) -> P<ast::Expr>;
 
     // items
@@ -315,7 +315,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 mut idents: Vec<ast::Ident> ,
                 lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>>,
-                bindings: Vec<P<ast::TypeBinding>> )
+                bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_identifier = idents.pop().unwrap();
         let mut segments: Vec<ast::PathSegment> = idents.into_iter()
@@ -360,7 +360,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  ident: ast::Ident,
                  lifetimes: Vec<ast::Lifetime>,
                  types: Vec<P<ast::Ty>>,
-                 bindings: Vec<P<ast::TypeBinding>>)
+                 bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
         path.segments.push(ast::PathSegment {
@@ -505,12 +505,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    fn stmt_expr(&self, expr: P<ast::Expr>) -> P<ast::Stmt> {
-        P(respan(expr.span, ast::StmtKind::Semi(expr, ast::DUMMY_NODE_ID)))
+    fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
+        respan(expr.span, ast::StmtKind::Semi(expr, ast::DUMMY_NODE_ID))
     }
 
     fn stmt_let(&self, sp: Span, mutbl: bool, ident: ast::Ident,
-                ex: P<ast::Expr>) -> P<ast::Stmt> {
+                ex: P<ast::Expr>) -> ast::Stmt {
         let pat = if mutbl {
             let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mutable);
             self.pat_ident_binding_mode(sp, ident, binding_mode)
@@ -526,7 +526,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             attrs: None,
         });
         let decl = respan(sp, ast::DeclKind::Local(local));
-        P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))
+        respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
     }
 
     fn stmt_let_typed(&self,
@@ -554,14 +554,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))
     }
 
-    fn block(&self, span: Span, stmts: Vec<P<ast::Stmt>>,
+    fn block(&self, span: Span, stmts: Vec<ast::Stmt>,
              expr: Option<P<Expr>>) -> P<ast::Block> {
         self.block_all(span, stmts, expr)
     }
 
-    fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> P<ast::Stmt> {
+    fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
         let decl = respan(sp, ast::DeclKind::Item(item));
-        P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))
+        respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
     }
 
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
@@ -569,7 +569,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn block_all(&self,
                  span: Span,
-                 stmts: Vec<P<ast::Stmt>>,
+                 stmts: Vec<ast::Stmt>,
                  expr: Option<P<ast::Expr>>) -> P<ast::Block> {
             P(ast::Block {
                stmts: stmts,
@@ -923,14 +923,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn lambda_stmts(&self,
                     span: Span,
                     ids: Vec<ast::Ident>,
-                    stmts: Vec<P<ast::Stmt>>)
+                    stmts: Vec<ast::Stmt>)
                     -> P<ast::Expr> {
         self.lambda(span, ids, self.block(span, stmts, None))
     }
-    fn lambda_stmts_0(&self, span: Span, stmts: Vec<P<ast::Stmt>>) -> P<ast::Expr> {
+    fn lambda_stmts_0(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Expr> {
         self.lambda0(span, self.block(span, stmts, None))
     }
-    fn lambda_stmts_1(&self, span: Span, stmts: Vec<P<ast::Stmt>>,
+    fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>,
                       ident: ast::Ident) -> P<ast::Expr> {
         self.lambda1(span, self.block(span, stmts, None), ident)
     }

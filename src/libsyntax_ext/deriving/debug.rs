@@ -141,7 +141,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
 fn stmt_let_undescore(cx: &mut ExtCtxt,
                       sp: Span,
-                      expr: P<ast::Expr>) -> P<ast::Stmt> {
+                      expr: P<ast::Expr>) -> ast::Stmt {
     let local = P(ast::Local {
         pat: cx.pat_wild(sp),
         ty: None,
@@ -151,5 +151,5 @@ fn stmt_let_undescore(cx: &mut ExtCtxt,
         attrs: None,
     });
     let decl = respan(sp, ast::DeclKind::Local(local));
-    P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))
+    respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))
 }
