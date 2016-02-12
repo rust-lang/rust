@@ -9,6 +9,8 @@
 Add a `splice` method to `Vec<T>` and `String` removes a range of elements,
 and replaces it in place with a given sequence of values.
 The new sequence does not necessarily have the same length as the range it replaces.
+In the `Vec` case, this method returns an iterator of the elements being moved out, like `drain`.
+
 
 # Motivation
 [motivation]: #motivation
@@ -49,78 +51,44 @@ extern crate collections;
 use collections::range::RangeArgument;
 use std::ptr;
 
-trait ReplaceVecSlice<T> {
-    fn splice<R, I>(&mut self, range: R, iterable: I)
-    where R: RangeArgument<usize>, I: IntoIterator<Item=T>, I::IntoIter: ExactSizeIterator;
+trait VecSplice<T> {
+    fn splice<R, I>(&mut self, range: R, iterable: I) -> Splice<I>
+    where R: RangeArgument<usize>, I: IntoIterator<Item=T>;
 }
 
-impl<T> ReplaceVecSlice<T> for Vec<T> {
-    fn splice<R, I>(&mut self, range: R, iterable: I)
-    where R: RangeArgument<usize>, I: IntoIterator<Item=T>, I::IntoIter: ExactSizeIterator
+impl<T> VecSplice<T> for Vec<T> {
+    fn splice<R, I>(&mut self, range: R, iterable: I) -> Splice<I>
+    where R: RangeArgument<usize>, I: IntoIterator<Item=T>
     {
-        let len = self.len();
-        let range_start = *range.start().unwrap_or(&0);
-        let range_end = *range.end().unwrap_or(&len);
-        assert!(range_start <= range_end);
-        assert!(range_end <= len);
-        let mut iter = iterable.into_iter();
-        // Overwrite range
-        for i in range_start..range_end {
-            if let Some(new_element) = iter.next() {
-                unsafe {
-                    *self.get_unchecked_mut(i) = new_element
-                }
-            } else {
-                // Iterator shorter than range
-                self.drain(i..range_end);
-                return
-            }
-        }
-        // Insert rest
-        let iter_len = iter.len();
-        let elements_after = len - range_end;
-        let free_space_start = range_end;
-        let free_space_end = free_space_start + iter_len;
-
-        if iter_len > 0 {
-            // FIXME: merge the reallocating case with the first ptr::copy below?
-            self.reserve(iter_len);
-
-            let p = self.as_mut_ptr();
-            unsafe {
-                // In case iter.next() panics, leak some elements rather than risk double-freeing them.
-                self.set_len(free_space_start);
-                // Shift everything over to make space (duplicating some elements).
-                ptr::copy(p.offset(free_space_start as isize),
-                          p.offset(free_space_end as isize),
-                          elements_after);
-                for i in free_space_start..free_space_end {
-                    if let Some(new_element) = iter.next() {
-                        *self.get_unchecked_mut(i) = new_element
-                    } else {
-                        // Iterator shorter than its ExactSizeIterator::len()
-                        ptr::copy(p.offset(free_space_end as isize),
-                                  p.offset(i as isize),
-                                  elements_after);
-                        self.set_len(i + elements_after);
-                        return
-                    }
-                }
-                self.set_len(free_space_end + elements_after);
-            }
-        }
-        // Iterator longer than its ExactSizeIterator::len(), degenerate to quadratic time
-        for (new_element, i) in iter.zip(free_space_end..) {
-            self.insert(i, new_element);
-        }
+        unimplemented!() // FIXME: Fill in when exact semantics are decided.
     }
 }
 
-trait ReplaceStringSlice {
+struct Splice<I: IntoIterator> {
+    vec: &mut Vec<I::Item>,
+    range: Range<usize>
+    iter: I::IntoIter,
+    // FIXME: Fill in when exact semantics are decided.
+}
+
+impl<I: IntoIterator> Iterator for Splice<I> {
+    type Item = I::Item;
+    fn next(&mut self) -> Option<Self::Item> {
+        unimplemented!() // FIXME: Fill in when exact semantics are decided.
+    }
+}
+
+impl<I: IntoIterator> Drop for Splice<I> {
+    fn drop(&mut self) {
+        unimplemented!() // FIXME: Fill in when exact semantics are decided.
+    }
+}
+
+trait StringSplice {
     fn splice<R>(&mut self, range: R, s: &str) where R: RangeArgument<usize>;
 }
 
-impl ReplaceStringSlice for String {
+impl StringSplice for String {
     fn splice<R>(&mut self, range: R, s: &str) where R: RangeArgument<usize> {
         if let Some(&start) = range.start() {
             assert!(self.is_char_boundary(start));
@@ -154,12 +122,14 @@ fn char_boundary() {
 }
 ```
 
-This implementation defends against `ExactSizeIterator::len()` being incorrect.
-If `len()` is too high, it reserves more capacity than necessary
-and does more copying than necessary,
-but stays in linear time.
-If `len()` is too low, the algorithm degenerates to quadratic time
-using `Vec::insert` for each additional new element.
+The elements of the vector after the range first be moved by an offset of
+the lower bound of `Iterator::size_hint` minus the length of the range.
+Then, depending on the real length of the iterator:
+
+* If it’s the same as the lower bound, we’re done.
+* If it’s lower than the lower bound (which was then incorrect), the elements will be moved once more.
+* If it’s higher, the extra iterator items well be collected into a temporary `Vec`
+  in order to know exactly how many there are, and the elements after will be moved once more.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -178,13 +148,8 @@ not every program needs it, and standard library growth has a maintainance cost.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* Should the `ExactSizeIterator` bound be removed?
-  The lower bound of `Iterator::size_hint` could be used instead of `ExactSizeIterator::len`,
-  but the degenerate quadratic time case would become “normal”.
-  With `ExactSizeIterator` it only happens when `ExactSizeIterator::len` is incorrect
-  which means that someone is doing something wrong.
-
-* Alternatively, should `splice` panic when `ExactSizeIterator::len` is incorrect?
+* Should the input iterator be consumed incrementally at each `Splice::next` call,
+  or only in `Splice::drop`?
 
 * It would be nice to be able to `Vec::splice` with a slice
   without writing `.iter().cloned()` explicitly.
@@ -193,9 +158,9 @@ not every program needs it, and standard library growth has a maintainance cost.
   accept iterators of `&T` as well as iterators of `T`:
 
   ```rust
-  impl<'a, T: 'a> ReplaceVecSlice<&'a T> for Vec<T> where T: Copy {
+  impl<'a, T: 'a> VecSplice<&'a T> for Vec<T> where T: Copy {
       fn splice<R, I>(&mut self, range: R, iterable: I)
-      where R: RangeArgument<usize>, I: IntoIterator<Item=&'a T>, I::IntoIter: ExactSizeIterator
+      where R: RangeArgument<usize>, I: IntoIterator<Item=&'a T>
       {
           self.splice(range, iterable.into_iter().cloned())
       }
@@ -205,12 +170,6 @@ not every program needs it, and standard library growth has a maintainance cost.
   However, this trick can not be used with an inherent method instead of a trait.
   (By the way, what was the motivation for `Extend` being a trait rather than inherent methods,
   before RFC 839?)
-
-* The method could return an iterator of the replaced elements.
-  Nothing would happen when the method is called,
-  only when the returned iterator is advanced or dropped.
-  There’s is precedent of this in `Vec::drain`,
-  though the input iterator being lazily consumed could be surprising.
 
 * If coherence rules and backward-compatibility allow it,
   this functionality could be added to `Vec::insert` and `String::insert`
