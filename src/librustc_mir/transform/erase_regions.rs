@@ -16,17 +16,12 @@ use rustc::middle::ty;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::mir_map::MirMap;
-use rustc::mir::transform::MirPass;
 
 pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
-    let mut eraser = EraseRegions;
-
     for (_, mir) in &mut mir_map.map {
-        eraser.run_on_mir(mir, tcx);
+        EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }
-
-pub struct EraseRegions;
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -55,12 +50,6 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
         for ty in tys {
             *ty = self.tcx.erase_regions(ty);
         }
-    }
-}
-
-impl MirPass for EraseRegions {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, tcx: &ty::ctxt<'tcx>) {
-        EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }
 
