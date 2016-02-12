@@ -196,6 +196,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         collapsible_if::COLLAPSIBLE_IF,
         copies::IF_SAME_THEN_ELSE,
         copies::IFS_SAME_COND,
+        copies::MATCH_SAME_ARMS,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_NOT_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,

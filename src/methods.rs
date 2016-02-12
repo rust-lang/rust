@@ -865,12 +865,11 @@ enum SelfKind {
 impl SelfKind {
     fn matches(&self, slf: &ExplicitSelf_, allow_value_for_ref: bool) -> bool {
         match (self, slf) {
-            (&SelfKind::Value, &SelfValue(_)) => true,
-            (&SelfKind::Ref, &SelfRegion(_, Mutability::MutImmutable, _)) => true,
-            (&SelfKind::RefMut, &SelfRegion(_, Mutability::MutMutable, _)) => true,
-            (&SelfKind::Ref, &SelfValue(_)) => allow_value_for_ref,
-            (&SelfKind::RefMut, &SelfValue(_)) => allow_value_for_ref,
-            (&SelfKind::No, &SelfStatic) => true,
+            (&SelfKind::Value, &SelfValue(_)) |
+                (&SelfKind::Ref, &SelfRegion(_, Mutability::MutImmutable, _)) |
+                (&SelfKind::RefMut, &SelfRegion(_, Mutability::MutMutable, _)) |
+                (&SelfKind::No, &SelfStatic) => true,
+            (&SelfKind::Ref, &SelfValue(_)) | (&SelfKind::RefMut, &SelfValue(_)) => allow_value_for_ref,
             (_, &SelfExplicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
             _ => false,
         }
@@ -878,11 +877,11 @@ impl SelfKind {
 
     fn matches_explicit_type(&self, ty: &Ty, allow_value_for_ref: bool) -> bool {
         match (self, &ty.node) {
-            (&SelfKind::Value, &TyPath(..)) => true,
-            (&SelfKind::Ref, &TyRptr(_, MutTy { mutbl: Mutability::MutImmutable, .. })) => true,
-            (&SelfKind::RefMut, &TyRptr(_, MutTy { mutbl: Mutability::MutMutable, .. })) => true,
-            (&SelfKind::Ref, &TyPath(..)) => allow_value_for_ref,
-            (&SelfKind::RefMut, &TyPath(..)) => allow_value_for_ref,
+            (&SelfKind::Value, &TyPath(..)) |
+                (&SelfKind::Ref, &TyRptr(_, MutTy { mutbl: Mutability::MutImmutable, .. })) |
+                (&SelfKind::RefMut, &TyRptr(_, MutTy { mutbl: Mutability::MutMutable, .. })) => true,
+            (&SelfKind::Ref, &TyPath(..)) |
+                (&SelfKind::RefMut, &TyPath(..)) => allow_value_for_ref,
             _ => false,
         }
     }

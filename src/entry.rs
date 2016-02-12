@@ -1,8 +1,9 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
-use utils::{get_item_name, is_exp_equal, match_type, snippet, span_lint_and_then, walk_ptrs_ty};
+use utils::SpanlessEq;
 use utils::{BTREEMAP_PATH, HASHMAP_PATH};
+use utils::{get_item_name, match_type, snippet, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** This lint checks for uses of `contains_key` + `insert` on `HashMap` or
 /// `BTreeMap`.
@@ -89,7 +90,7 @@ fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: 
             params.len() == 3,
             name.node.as_str() == "insert",
             get_item_name(cx, map) == get_item_name(cx, &*params[0]),
-            is_exp_equal(cx, key, &params[1], false)
+            SpanlessEq::new(cx).eq_expr(key, &params[1])
         ], {
             let help = if sole_expr {
                 format!("{}.entry({}).or_insert({})",
