@@ -241,7 +241,7 @@ impl Clean<ExternalCrate> for CrateNum {
             }
         });
         ExternalCrate {
-            name: cx.sess().cstore.crate_name(self.0),
+            name: (&cx.sess().cstore.crate_name(self.0)[..]).to_owned(),
             attrs: cx.sess().cstore.crate_attrs(self.0).clean(cx),
             primitives: primitives,
         }
