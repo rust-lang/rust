@@ -59,15 +59,14 @@ macro_rules! panic {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! assert {
     ($cond:expr) => (
-        if !$cond {
-            panic!(concat!("assertion failed: ", stringify!($cond)))
-        }
+        assert!($cond, concat!("assertion failed: ", stringify!($cond)))
     );
-    ($cond:expr, $($arg:tt)+) => (
-        if !$cond {
+    ($cond:expr, $($arg:tt)+) => ({
+        let cond: bool = $cond;
+        if !cond {
             panic!($($arg)+)
         }
-    );
+    });
 }
 
 /// Asserts that two expressions are equal to each other.
