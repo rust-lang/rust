@@ -345,6 +345,12 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_crate_hash(cdata.data())
     }
 
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> token::InternedString
+    {
+        let cdata = self.get_crate_data(cnum);
+        token::intern_and_get_ident(decoder::get_crate_disambiguator(cdata.data()))
+    }
+
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>
     {

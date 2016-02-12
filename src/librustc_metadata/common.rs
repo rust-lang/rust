@@ -73,6 +73,7 @@ pub const tag_crate_dep: usize = 0x35;
 
 pub const tag_crate_hash: usize = 0x103; // top-level only
 pub const tag_crate_crate_name: usize = 0x104; // top-level only
+pub const tag_crate_disambiguator: usize = 0x113; // top-level only
 
 pub const tag_crate_dep_crate_name: usize = 0x36;
 pub const tag_crate_dep_hash: usize = 0x37;

@@ -1295,6 +1295,13 @@ pub fn maybe_get_crate_name(data: &[u8]) -> Option<String> {
     })
 }
 
+pub fn get_crate_disambiguator<'a>(data: &'a [u8]) -> &'a str {
+    let crate_doc = rbml::Doc::new(data);
+    let salt_doc = reader::get_doc(crate_doc, tag_crate_disambiguator);
+    let slice: &'a str = salt_doc.as_str_slice();
+    slice
+}
+
 pub fn get_crate_triple(data: &[u8]) -> Option<String> {
     let cratedoc = rbml::Doc::new(data);
     let triple_doc = reader::maybe_get_doc(cratedoc, tag_crate_triple);
