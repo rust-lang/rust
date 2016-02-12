@@ -25,7 +25,7 @@ is too specific or the ordering is incorrect.
 
 For example, the following `match` block has too many arms:
 
-```
+```compile_fail
 match foo {
     Some(bar) => {/* ... */}
     None => {/* ... */}
@@ -50,6 +50,8 @@ one or more cases to the match expression.
 An example of an empty type is `enum Empty { }`. So, the following will work:
 
 ```
+enum Empty {}
+
 fn foo(x: Empty) {
     match x {
         // empty
@@ -59,7 +61,9 @@ fn foo(x: Empty) {
 
 However, this won't:
 
-```
+```compile_fail
+enum Empty {}
+
 fn foo(x: Option<String>) {
     match x {
         // empty
@@ -72,12 +76,14 @@ E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. So, the following will not compile:
 
-```
+```compile_fail
 const NAN: f32 = 0.0 / 0.0;
+
+let number = 0.1f32;
 
 match number {
     NAN => { /* ... */ },
-    // ...
+    _ => {}
 }
 ```
 
@@ -85,10 +91,11 @@ To match against NaN values, you should instead use the `is_nan()` method in a
 guard, like so:
 
 ```
+let number = 0.1f32;
+
 match number {
-    // ...
     x if x.is_nan() => { /* ... */ }
-    // ...
+    _ => {}
 }
 ```
 "##,
@@ -120,15 +127,16 @@ the following is invalid as it requires the entire `Option<String>` to be moved
 into a variable called `op_string` while simultaneously requiring the inner
 String to be moved into a variable called `s`.
 
-```
+```compile_fail
 let x = Some("s".to_string());
+
 match x {
-    op_string @ Some(s) => ...
-    None => ...
+    op_string @ Some(s) => {},
+    None => {},
 }
 ```
 
-See also Error 303.
+See also the error E0303.
 "##,
 
 E0008: r##"
@@ -137,10 +145,10 @@ name is bound by move in a pattern, it should also be moved to wherever it is
 referenced in the pattern guard code. Doing so however would prevent the name
 from being available in the body of the match arm. Consider the following:
 
-```
+```compile_fail
 match Some("hi".to_string()) {
-    Some(s) if s.len() == 0 => // use s.
-    ...
+    Some(s) if s.len() == 0 => {}, // use s.
+    _ => {},
 }
 ```
 
@@ -151,11 +159,11 @@ therefore become unavailable in the body of the arm. Although this example seems
 innocuous, the problem is most clear when considering functions that take their
 argument by value.
 
-```
+```compile_fail
 match Some("hi".to_string()) {
     Some(s) if { drop(s); false } => (),
-    Some(s) => // use s.
-    ...
+    Some(s) => {}, // use s.
+    _ => {},
 }
 ```
 
@@ -174,7 +182,7 @@ This limitation may be removed in a future version of Rust.
 
 Wrong example:
 
-```
+```compile_fail
 struct X { x: (), }
 
 let x = Some((X { x: () }, X { x: () }));
@@ -220,7 +228,7 @@ This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression. Erroneous
 code example:
 
-```
+```compile_fail
 const X: i32 = 42 / 0;
 // error: attempted to divide by zero in a constant expression
 ```
@@ -267,7 +275,7 @@ this restriction.
 
 This happens when a trait has a method like the following:
 
-```
+```compile_fail
 trait Trait {
     fn foo(&self) -> Self;
 }
@@ -291,7 +299,11 @@ cause this problem)
 In such a case, the compiler cannot predict the return type of `foo()` in a
 situation like the following:
 
-```
+```compile_fail
+trait Trait {
+    fn foo(&self) -> Self;
+}
+
 fn call_foo(x: Box<Trait>) {
     let y = x.foo(); // What type is y?
     // ...
@@ -324,11 +336,13 @@ have:
 trait Trait {
     fn foo(&self);
 }
+
 impl Trait for String {
     fn foo(&self) {
         // implementation 1
     }
 }
+
 impl Trait for u8 {
     fn foo(&self) {
         // implementation 2
@@ -351,7 +365,7 @@ fn foo<T>(x: T) {
 }
 ```
 
-the machine code for `foo::<u8>()`, `foo::<bool>()`, `foo::<String>()`, or any
+The machine code for `foo::<u8>()`, `foo::<bool>()`, `foo::<String>()`, or any
 other type substitution is different. Hence the compiler generates the
 implementation on-demand. If you call `foo()` with a `bool` parameter, the
 compiler will only generate code for `foo::<bool>()`. When we have additional
@@ -373,22 +387,25 @@ trait Trait {
     fn foo<T>(&self, on: T);
     // more methods
 }
+
 impl Trait for String {
     fn foo<T>(&self, on: T) {
         // implementation 1
     }
 }
+
 impl Trait for u8 {
     fn foo<T>(&self, on: T) {
         // implementation 2
     }
 }
+
 // 8 more implementations
 ```
 
 Now, if we have the following code:
 
-```
+```ignore
 fn call_foo(thing: Box<Trait>) {
     thing.foo(true); // this could be any one of the 8 types above
     thing.foo(1);
@@ -396,7 +413,7 @@ fn call_foo(thing: Box<Trait>) {
 }
 ```
 
-we don't just need to create a table of all implementations of all methods of
+We don't just need to create a table of all implementations of all methods of
 `Trait`, we need to create such a table, for each different type fed to
 `foo()`. In this case this turns out to be (10 types implementing `Trait`)*(3
 types being fed to `foo()`) = 30 implementations!
@@ -422,7 +439,7 @@ out the methods of different types.
 ### Method has no receiver
 
 Methods that do not take a `self` parameter can't be called since there won't be
-a way to get a pointer to the method table for them
+a way to get a pointer to the method table for them.
 
 ```
 trait Foo {
@@ -446,7 +463,7 @@ trait Foo {
 This is similar to the second sub-error, but subtler. It happens in situations
 like the following:
 
-```
+```compile_fail
 trait Super<A> {}
 
 trait Trait: Super<Self> {
@@ -488,7 +505,7 @@ the pointer the size of the type would need to be unbounded.
 
 Consider the following erroneous definition of a type for a list of bytes:
 
-```
+```compile_fail
 // error, invalid recursive struct type
 struct ListNode {
     head: u8,
@@ -521,7 +538,7 @@ E0109: r##"
 You tried to give a type parameter to a type which doesn't need it. Erroneous
 code example:
 
-```
+```compile_fail
 type X = u32<i32>; // error: type parameters are not allowed on this type
 ```
 
@@ -542,7 +559,7 @@ E0110: r##"
 You tried to give a lifetime parameter to a type which doesn't need it.
 Erroneous code example:
 
-```
+```compile_fail
 type X = u32<'static>; // error: lifetime parameters are not allowed on
                        //        this type
 ```
@@ -605,8 +622,8 @@ parameters are involved, this cannot always be done.
 
 So, for example, the following is not allowed:
 
-```
-struct Foo<T>(Vec<T>)
+```compile_fail
+struct Foo<T>(Vec<T>);
 
 fn foo<T>(x: Vec<T>) {
     // we are transmuting between Vec<T> and Foo<T> here
@@ -631,9 +648,11 @@ If it's possible, hand-monomorphize the code by writing the function for each
 possible type substitution. It's possible to use traits to do this cleanly,
 for example:
 
-```
+```ignore
+struct Foo<T>(Vec<T>);
+
 trait MyTransmutableType {
-    fn transmute(Vec<Self>) -> Foo<Self>
+    fn transmute(Vec<Self>) -> Foo<Self>;
 }
 
 impl MyTransmutableType for u8 {
@@ -641,11 +660,13 @@ impl MyTransmutableType for u8 {
         transmute(x)
     }
 }
+
 impl MyTransmutableType for String {
     fn transmute(x: Foo<String>) -> Vec<String> {
         transmute(x)
     }
 }
+
 // ... more impls for the types you intend to transmute
 
 fn foo<T: MyTransmutableType>(x: Vec<T>) {
@@ -660,7 +681,7 @@ is a size mismatch in one of the impls.
 
 It is also possible to manually transmute:
 
-```
+```ignore
 ptr::read(&v as *const _ as *const SomeType) // `v` transmuted to `SomeType`
 ```
 
@@ -696,9 +717,10 @@ If you want to match against a `static`, consider using a guard instead:
 
 ```
 static FORTY_TWO: i32 = 42;
+
 match Some(42) {
-    Some(x) if x == FORTY_TWO => ...
-    ...
+    Some(x) if x == FORTY_TWO => {}
+    _ => {}
 }
 ```
 "##,
@@ -708,7 +730,7 @@ An if-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding instead. For instance:
 
-```
+```compile_fail
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -717,8 +739,14 @@ if let Irrefutable(x) = irr {
     // This body will always be executed.
     foo(x);
 }
+```
 
-// Try this instead:
+Try this instead:
+
+```ignore
+struct Irrefutable(i32);
+let irr = Irrefutable(0);
+
 let Irrefutable(x) = irr;
 foo(x);
 ```
@@ -729,7 +757,7 @@ A while-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding inside a `loop` instead. For instance:
 
-```
+```compile_fail
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -738,7 +766,12 @@ while let Irrefutable(x) = irr {
     ...
 }
 
-// Try this instead:
+Try this instead:
+
+```
+struct Irrefutable(i32);
+let irr = Irrefutable(0);
+
 loop {
     let Irrefutable(x) = irr;
     ...
@@ -752,16 +785,23 @@ Enum variants are qualified by default. For example, given this type:
 ```
 enum Method {
     GET,
-    POST
+    POST,
 }
 ```
 
-you would match it using:
+You would match it using:
 
 ```
+enum Method {
+    GET,
+    POST,
+}
+
+let m = Method::GET;
+
 match m {
-    Method::GET => ...
-    Method::POST => ...
+    Method::GET => {},
+    Method::POST => {},
 }
 ```
 
@@ -772,7 +812,7 @@ that happens.
 Qualified names are good practice, and most code works well with them. But if
 you prefer them unqualified, you can import the variants into scope:
 
-```
+```ignore
 use Method::*;
 enum Method { GET, POST }
 ```
@@ -780,7 +820,7 @@ enum Method { GET, POST }
 If you want others to be able to import variants from your module directly, use
 `pub use`:
 
-```
+```ignore
 pub use Method::*;
 enum Method { GET, POST }
 ```
@@ -790,7 +830,7 @@ E0229: r##"
 An associated type binding was done outside of the type parameter declaration
 and `where` clause. Erroneous code example:
 
-```
+```compile_fail
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;
@@ -810,13 +850,13 @@ fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
 To solve this error, please move the type bindings in the type parameter
 declaration:
 
-```
+```ignore
 fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
 ```
 
-or in the `where` clause:
+Or in the `where` clause:
 
-```
+```ignore
 fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
 ```
 "##,
@@ -827,7 +867,7 @@ used.
 
 These two examples illustrate the problem:
 
-```
+```compile_fail
 // error, use of undeclared lifetime name `'a`
 fn foo(x: &'a str) { }
 
@@ -840,7 +880,7 @@ struct Foo {
 These can be fixed by declaring lifetime parameters:
 
 ```
-fn foo<'a>(x: &'a str) { }
+fn foo<'a>(x: &'a str) {}
 
 struct Foo<'a> {
     x: &'a str,
@@ -853,7 +893,7 @@ Declaring certain lifetime names in parameters is disallowed. For example,
 because the `'static` lifetime is a special built-in lifetime name denoting
 the lifetime of the entire program, this is an error:
 
-```
+```compile_fail
 // error, invalid lifetime parameter name `'static`
 fn foo<'static>(x: &'static str) { }
 ```
@@ -863,7 +903,7 @@ E0263: r##"
 A lifetime name cannot be declared more than once in the same scope. For
 example:
 
-```
+```compile_fail
 // error, lifetime name `'a` declared twice in the same scope
 fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) { }
 ```
@@ -872,7 +912,7 @@ fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) { }
 E0264: r##"
 An unknown external lang item was used. Erroneous code example:
 
-```
+```compile_fail
 #![feature(lang_items)]
 
 extern "C" {
@@ -896,9 +936,9 @@ extern "C" {
 
 E0269: r##"
 Functions must eventually return a value of their return type. For example, in
-the following function
+the following function:
 
-```
+```compile_fail
 fn foo(x: u8) -> u8 {
     if x > 0 {
         x // alternatively, `return x`
@@ -907,7 +947,7 @@ fn foo(x: u8) -> u8 {
 }
 ```
 
-if the condition is true, the value `x` is returned, but if the condition is
+If the condition is true, the value `x` is returned, but if the condition is
 false, control exits the `if` block and reaches a place where nothing is being
 returned. All possible control paths must eventually return a `u8`, which is not
 happening here.
@@ -915,7 +955,7 @@ happening here.
 An easy fix for this in a complicated function is to specify a default return
 value, if possible:
 
-```
+```ignore
 fn foo(x: u8) -> u8 {
     if x > 0 {
         x // alternatively, `return x`
@@ -935,7 +975,7 @@ Rust lets you define functions which are known to never return, i.e. are
 
 For example, the following functions never return:
 
-```
+```no_run
 fn foo() -> ! {
     loop {}
 }
@@ -947,18 +987,24 @@ fn bar() -> ! {
 fn baz() -> ! {
     panic!(); // this macro internally expands to a call to a diverging function
 }
-
 ```
 
 Such functions can be used in a place where a value is expected without
-returning a value of that type,  for instance:
+returning a value of that type, for instance:
 
-```
+```no_run
+fn foo() -> ! {
+    loop {}
+}
+
+let x = 3;
+
 let y = match x {
     1 => 1,
     2 => 4,
     _ => foo() // diverging function called here
 };
+
 println!("{}", y)
 ```
 
@@ -967,22 +1013,29 @@ return control to the match block, it is fine to use it in a place where an
 integer was expected. The `match` block will never finish executing, and any
 point where `y` (like the print statement) is needed will not be reached.
 
-However, if we had a diverging function that actually does finish execution
+However, if we had a diverging function that actually does finish execution:
 
-```
-fn foo() -> {
+```ignore
+fn foo() -> ! {
     loop {break;}
 }
 ```
 
-then we would have an unknown value for `y` in the following code:
+Then we would have an unknown value for `y` in the following code:
 
-```
+```no_run
+fn foo() -> ! {
+    loop {}
+}
+
+let x = 3;
+
 let y = match x {
     1 => 1,
     2 => 4,
     _ => foo()
 };
+
 println!("{}", y);
 ```
 
@@ -1004,18 +1057,21 @@ Examples follow.
 
 Here is a basic example:
 
-```
+```compile_fail
 trait Trait { type AssociatedType; }
+
 fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
     println!("in foo");
 }
+
 impl Trait for i8 { type AssociatedType = &'static str; }
+
 foo(3_i8);
 ```
 
 Here is that same example again, with some explanatory comments:
 
-```
+```ignore
 trait Trait { type AssociatedType; }
 
 fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
@@ -1053,12 +1109,12 @@ foo(3_i8);
 Here is a more subtle instance of the same problem, that can
 arise with for-loops in Rust:
 
-```
+```compile_fail
 let vs: Vec<i32> = vec![1, 2, 3, 4];
 for v in &vs {
     match v {
-        1 => {}
-        _ => {}
+        1 => {},
+        _ => {},
     }
 }
 ```
@@ -1067,7 +1123,7 @@ The above fails because of an analogous type mismatch,
 though may be harder to see. Again, here are some
 explanatory comments for the same example:
 
-```
+```ignore
 {
     let vs = vec![1, 2, 3, 4];
 
@@ -1115,10 +1171,13 @@ So we can fix the previous examples like this:
 ```
 // Basic Example:
 trait Trait { type AssociatedType; }
+
 fn foo<T>(t: T) where T: Trait<AssociatedType = &'static str> {
     println!("in foo");
 }
+
 impl Trait for i8 { type AssociatedType = &'static str; }
+
 foo(3_i8);
 
 // For-Loop Example:
@@ -1138,7 +1197,7 @@ message for when a particular trait isn't implemented on a type placed in a
 position that needs that trait. For example, when the following code is
 compiled:
 
-```
+```compile_fail
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
@@ -1168,7 +1227,7 @@ message for when a particular trait isn't implemented on a type placed in a
 position that needs that trait. For example, when the following code is
 compiled:
 
-```
+```compile_fail
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
@@ -1196,7 +1255,7 @@ message for when a particular trait isn't implemented on a type placed in a
 position that needs that trait. For example, when the following code is
 compiled:
 
-```
+```compile_fail
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
@@ -1218,9 +1277,9 @@ This error occurs when there was a recursive trait requirement that overflowed
 before it could be evaluated. Often this means that there is unbounded recursion
 in resolving some type bounds.
 
-For example, in the following code
+For example, in the following code:
 
-```
+```compile_fail
 trait Foo {}
 
 struct Bar<T>(T);
@@ -1228,7 +1287,7 @@ struct Bar<T>(T);
 impl<T> Foo for T where Bar<T>: Foo {}
 ```
 
-to determine if a `T` is `Foo`, we need to check if `Bar<T>` is `Foo`. However,
+To determine if a `T` is `Foo`, we need to check if `Bar<T>` is `Foo`. However,
 to do this check, we need to determine that `Bar<Bar<T>>` is `Foo`. To determine
 this, we check if `Bar<Bar<Bar<T>>>` is `Foo`, and so on. This is clearly a
 recursive requirement that can't be resolved directly.
@@ -1240,13 +1299,13 @@ E0276: r##"
 This error occurs when a bound in an implementation of a trait does not match
 the bounds specified in the original trait. For example:
 
-```
+```compile_fail
 trait Foo {
- fn foo<T>(x: T);
+    fn foo<T>(x: T);
 }
 
 impl Foo for bool {
- fn foo<T>(x: T) where T: Copy {}
+    fn foo<T>(x: T) where T: Copy {}
 }
 ```
 
@@ -1262,7 +1321,7 @@ E0277: r##"
 You tried to use a type which doesn't implement some trait in a place which
 expected that trait. Erroneous code example:
 
-```
+```compile_fail
 // here we declare the Foo trait with a bar method
 trait Foo {
     fn bar(&self);
@@ -1310,7 +1369,7 @@ You tried to supply a type which doesn't implement some trait in a location
 which expected that trait. This error typically occurs when working with
 `Fn`-based types. Erroneous code example:
 
-```
+```compile_fail
 fn foo<F: Fn()>(x: F) { }
 
 fn main() {
@@ -1336,7 +1395,7 @@ parameter with a `FromIterator` bound, which for a `char` iterator is
 implemented by `Vec` and `String` among others. Consider the following snippet
 that reverses the characters of a string:
 
-```
+```compile_fail
 let x = "hello".chars().rev().collect();
 ```
 
@@ -1373,9 +1432,9 @@ occur when a type parameter of a struct or trait cannot be inferred. In that
 case it is not always possible to use a type annotation, because all candidates
 have the same return type. For instance:
 
-```
+```compile_fail
 struct Foo<T> {
-    // Some fields omitted.
+    num: T,
 }
 
 impl<T> Foo<T> {
@@ -1399,17 +1458,19 @@ to unambiguously choose an implementation.
 
 For example:
 
-```
+```compile_fail
 trait Generator {
     fn create() -> u32;
 }
 
 struct Impl;
+
 impl Generator for Impl {
     fn create() -> u32 { 1 }
 }
 
 struct AnotherImpl;
+
 impl Generator for AnotherImpl {
     fn create() -> u32 { 2 }
 }
@@ -1424,6 +1485,16 @@ fn main() {
 To resolve this error use the concrete type:
 
 ```
+trait Generator {
+    fn create() -> u32;
+}
+
+struct AnotherImpl;
+
+impl Generator for AnotherImpl {
+    fn create() -> u32 { 2 }
+}
+
 fn main() {
     let gen1 = AnotherImpl::create();
 
@@ -1448,24 +1519,36 @@ that a name will be extracted in all cases. Instead of pattern matching the
 loop variable, consider using a `match` or `if let` inside the loop body. For
 instance:
 
-```
+```compile_fail
+let xs : Vec<Option<i32>> = vec!(Some(1), None);
+
 // This fails because `None` is not covered.
 for Some(x) in xs {
-    ...
+    // ...
 }
+```
 
-// Match inside the loop instead:
+Match inside the loop instead:
+
+```
+let xs : Vec<Option<i32>> = vec!(Some(1), None);
+
 for item in xs {
     match item {
-        Some(x) => ...
-        None => ...
+        Some(x) => {},
+        None => {},
     }
 }
+```
 
-// Or use `if let`:
+Or use `if let`:
+
+```
+let xs : Vec<Option<i32>> = vec!(Some(1), None);
+
 for item in xs {
     if let Some(x) = item {
-        ...
+        // ...
     }
 }
 ```
@@ -1478,7 +1561,7 @@ on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if mutable
 borrows were allowed:
 
-```
+```compile_fail
 match Some(()) {
     None => { },
     option if option.take().is_none() => { /* impossible, option is `Some` */ },
@@ -1494,7 +1577,7 @@ on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if assignments
 were allowed:
 
-```
+```compile_fail
 match Some(()) {
     None => { },
     option if { option = None; false } { },
@@ -1508,20 +1591,20 @@ In certain cases it is possible for sub-bindings to violate memory safety.
 Updates to the borrow checker in a future version of Rust may remove this
 restriction, but for now patterns must be rewritten without sub-bindings.
 
-```
+```ignore
 // Before.
 match Some("hi".to_string()) {
-    ref op_string_ref @ Some(ref s) => ...
-    None => ...
+    ref op_string_ref @ Some(s) => {},
+    None => {},
 }
 
 // After.
 match Some("hi".to_string()) {
     Some(ref s) => {
         let op_string_ref = &Some(s);
-        ...
-    }
-    None => ...
+        // ...
+    },
+    None => {},
 }
 ```
 
@@ -1549,7 +1632,7 @@ variable.
 
 For example:
 
-```
+```compile_fail
 let x: i32 = "I am not a number!";
 //     ~~~   ~~~~~~~~~~~~~~~~~~~~
 //      |             |
@@ -1562,7 +1645,7 @@ let x: i32 = "I am not a number!";
 Another situation in which this occurs is when you attempt to use the `try!`
 macro inside a function that does not return a `Result<T, E>`:
 
-```
+```compile_fail
 use std::fs::File;
 
 fn main() {
@@ -1590,14 +1673,17 @@ how long the data stored within them is guaranteed to be live. This lifetime
 must be as long as the data needs to be alive, and missing the constraint that
 denotes this will cause this error.
 
-```
+```compile_fail
 // This won't compile because T is not constrained, meaning the data
 // stored in it is not guaranteed to last as long as the reference
 struct Foo<'a, T> {
     foo: &'a T
 }
+```
 
-// This will compile, because it has the constraint on the type parameter
+This will compile, because it has the constraint on the type parameter:
+
+```
 struct Foo<'a, T: 'a> {
     foo: &'a T
 }
@@ -1610,14 +1696,16 @@ how long the data stored within them is guaranteed to be live. This lifetime
 must be as long as the data needs to be alive, and missing the constraint that
 denotes this will cause this error.
 
-```
+```compile_fail
 // This won't compile because T is not constrained to the static lifetime
 // the reference needs
 struct Foo<T> {
     foo: &'static T
 }
 
-// This will compile, because it has the constraint on the type parameter
+This will compile, because it has the constraint on the type parameter:
+
+```
 struct Foo<T: 'static> {
     foo: &'static T
 }
@@ -1644,13 +1732,13 @@ signature of a function that you are calling. For example, if
 the error is reported on a call like `foo(x)`, and `foo` is
 defined as follows:
 
-```
+```ignore
 fn foo(arg: &Box<SomeTrait>) { ... }
 ```
 
-you might change it to:
+You might change it to:
 
-```
+```ignore
 fn foo<'a>(arg: &Box<SomeTrait+'a>) { ... }
 ```
 
@@ -1663,7 +1751,7 @@ contain references (with a maximum lifetime of `'a`).
 E0452: r##"
 An invalid lint attribute has been given. Erroneous code example:
 
-```
+```compile_fail
 #![allow(foo = "")] // error: malformed lint attribute
 ```
 
@@ -1680,7 +1768,7 @@ lint name). Ensure the attribute is of this form:
 E0496: r##"
 A lifetime name is shadowing another lifetime name. Erroneous code example:
 
-```
+```compile_fail
 struct Foo<'a> {
     a: &'a i32,
 }
@@ -1713,7 +1801,7 @@ E0497: r##"
 A stability attribute was used outside of the standard library. Erroneous code
 example:
 
-```
+```compile_fail
 #[stable] // error: stability attributes may not be used outside of the
           //        standard library
 fn foo() {}
@@ -1729,7 +1817,7 @@ item.
 
 Examples of erroneous code:
 
-```
+```compile_fail
 #[repr(C)]
 type Foo = u8;
 
@@ -1777,7 +1865,7 @@ something other than a function or method.
 
 Examples of erroneous code:
 
-```
+```compile_fail
 #[inline(always)]
 struct Foo;
 
@@ -1811,9 +1899,9 @@ register_diagnostics! {
 //  E0285, // overflow evaluation builtin bounds
     E0298, // mismatched types between arms
     E0299, // mismatched types between arms
-    // E0300, // unexpanded macro
-    // E0304, // expected signed integer constant
-    // E0305, // expected constant
+//  E0300, // unexpanded macro
+//  E0304, // expected signed integer constant
+//  E0305, // expected constant
     E0311, // thing may not live long enough
     E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable

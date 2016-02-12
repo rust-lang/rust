@@ -298,14 +298,14 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-rfail-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-cfail-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pfail-exec \
-    check-stage$(1)-T-$(2)-H-$(3)-rpass-valgrind-exec \
-    check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec \
-    check-stage$(1)-T-$(2)-H-$(3)-rfail-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-valgrind-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rfail-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-cfail-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-rustdocck-exec \
-        check-stage$(1)-T-$(2)-H-$(3)-crates-exec \
-        check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-crates-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-gdb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-lldb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
@@ -673,8 +673,8 @@ CTEST_DEPS_debuginfo-lldb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_LLDB_TESTS) \
 CTEST_DEPS_codegen_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_TESTS)
 CTEST_DEPS_codegen-units_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_UNITS_TESTS)
 CTEST_DEPS_rustdocck_$(1)-T-$(2)-H-$(3) = $$(RUSTDOCCK_TESTS) \
-        $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-	$(S)src/etc/htmldocck.py
+		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
+		$(S)src/etc/htmldocck.py
 
 endef
 
@@ -892,6 +892,28 @@ $(foreach host,$(CFG_HOST), \
    $(foreach crate,$(TEST_DOC_CRATES), \
     $(eval $(call DEF_CRATE_DOC_TEST,$(stage),$(target),$(host),$(crate)))))))
 
+define DEF_DOC_TEST_ERROR_INDEX
+
+check-stage$(1)-T-$(2)-H-$(3)-doc-error-index-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-error-index)
+
+ifeq ($(2),$$(CFG_BUILD))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-error-index): \
+		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
+		doc/error-index.md
+	$$(Q)touch $$@.start_time
+	$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test doc/error-index.md
+	$$(Q)touch -r $$@.start_time $$@ && rm $$@.start_time
+else
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-error-index):
+	$$(Q)touch $$@
+endif
+endef
+
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(eval $(call DEF_DOC_TEST_ERROR_INDEX,$(stage),$(target),$(host))))))
+
 ######################################################################
 # Shortcut rules
 ######################################################################
@@ -901,7 +923,7 @@ TEST_GROUPS = \
 	$(foreach crate,$(TEST_CRATES),$(crate)) \
 	$(foreach crate,$(TEST_DOC_CRATES),doc-crate-$(crate)) \
 	rpass \
-    rpass-valgrind \
+	rpass-valgrind \
 	rpass-full \
 	rfail-full \
 	cfail-full \
@@ -918,7 +940,7 @@ TEST_GROUPS = \
 	$(foreach docname,$(DOC_NAMES),doc-$(docname)) \
 	pretty \
 	pretty-rpass \
-    pretty-rpass-valgrind \
+	pretty-rpass-valgrind \
 	pretty-rpass-full \
 	pretty-rfail-full \
 	pretty-rfail \
@@ -987,7 +1009,8 @@ define DEF_CHECK_DOC_FOR_STAGE
 check-stage$(1)-docs: $$(foreach docname,$$(DOC_NAMES), \
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
                      $$(foreach crate,$$(TEST_DOC_CRATES), \
-                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-crate-$$(crate))
+                       check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-crate-$$(crate)) \
+                     check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-error-index-exec
 endef
 
 $(foreach stage,$(STAGES), \

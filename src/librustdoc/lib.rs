@@ -22,10 +22,12 @@
 #![feature(box_syntax)]
 #![feature(dynamic_lib)]
 #![feature(libc)]
+#![feature(recover)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
+#![feature(std_panic)]
 #![feature(test)]
 #![feature(unicode)]
 
