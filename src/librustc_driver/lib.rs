@@ -203,7 +203,7 @@ pub fn run_compiler<'a>(args: &[String],
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess);
     (driver::compile_input(&sess, &cstore, cfg, &input, &odir, &ofile,
-                           Some(plugins), control),
+                           Some(plugins), &control),
      Some(sess))
 }
 

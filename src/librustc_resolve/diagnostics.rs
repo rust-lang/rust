@@ -21,12 +21,12 @@ variable declarations and expression statements.
 
 Here is an example that demonstrates the error:
 
-```
+```compile_fail
 fn f() {
     // Variable declaration before import
     let x = 0;
     use std::io::Read;
-    ...
+    // ...
 }
 ```
 
@@ -39,7 +39,7 @@ Here is the previous example again, with the correct order:
 fn f() {
     use std::io::Read;
     let x = 0;
-    ...
+    // ...
 }
 ```
 
@@ -55,7 +55,7 @@ items under a new local name.
 
 An example of this error:
 
-```
+```compile_fail
 use foo::baz;
 use bar::*; // error, do `use foo::baz as quux` instead on the previous line
 
@@ -77,7 +77,7 @@ items under a new local name.
 
 An example of this error:
 
-```
+```compile_fail
 use foo::baz;
 use bar::baz; // error, do `use bar::baz as quux` instead
 
@@ -97,12 +97,13 @@ E0253: r##"
 Attempt was made to import an unimportable value. This can happen when
 trying to import a method from a trait. An example of this error:
 
-```
+```compile_fail
 mod foo {
     pub trait MyTrait {
         fn do_something();
     }
 }
+
 use foo::MyTrait::do_something;
 ```
 
@@ -115,7 +116,7 @@ module.
 
 An example of this error:
 
-```
+```compile_fail
 use bar::foo; // error, do `use bar::foo as baz` instead
 
 fn foo() {}
@@ -134,7 +135,7 @@ the same as another type or submodule defined in the module.
 
 An example of this error:
 
-```
+```compile_fail
 use foo::Bar; // error
 
 type Bar = u32;
@@ -153,7 +154,7 @@ has been imported into the current module.
 
 Wrong example:
 
-```
+```compile_fail
 extern crate a;
 extern crate crate_a as a;
 ```
@@ -163,7 +164,7 @@ external crate imported into the current module.
 
 Correct example:
 
-```
+```ignore
 extern crate a;
 extern crate crate_a as other_name;
 ```
@@ -172,9 +173,9 @@ extern crate crate_a as other_name;
 E0260: r##"
 The name for an item declaration conflicts with an external crate's name.
 
-For instance,
+For instance:
 
-```
+```ignore
 extern crate abc;
 
 struct abc;
@@ -184,7 +185,7 @@ There are two possible solutions:
 
 Solution #1: Rename the item.
 
-```
+```ignore
 extern crate abc;
 
 struct xyz;
@@ -192,7 +193,7 @@ struct xyz;
 
 Solution #2: Import the crate with a different name.
 
-```
+```ignore
 extern crate abc as xyz;
 
 struct abc;
@@ -209,7 +210,7 @@ User-defined types or type parameters cannot shadow the primitive types.
 This error indicates you tried to define a type, struct or enum with the same
 name as an existing primitive type:
 
-```
+```compile_fail
 struct u8 {
     // ...
 }
@@ -220,7 +221,7 @@ To fix this, simply name it something else.
 Such an error may also occur if you define a type parameter which shadows a
 primitive type. An example would be something like:
 
-```
+```compile_fail
 impl<u8> MyTrait for Option<u8> {
     // ...
 }
@@ -229,7 +230,7 @@ impl<u8> MyTrait for Option<u8> {
 In such a case, if you meant for `u8` to be a generic type parameter (i.e. any
 type can be used in its place), use something like `T` instead:
 
-```
+```ignore
 impl<T> MyTrait for Option<T> {
     // ...
 }
@@ -238,7 +239,7 @@ impl<T> MyTrait for Option<T> {
 On the other hand, if you wished to refer to the specific type `u8`, remove it
 from the type parameter list:
 
-```
+```ignore
 impl MyTrait for Option<u8> {
     // ...
 }
@@ -255,20 +256,22 @@ you attempted to `pub use` a type or value that was not itself public.
 
 Here is an example that demonstrates the error:
 
-```
+```compile_fail
 mod foo {
     const X: u32 = 1;
 }
+
 pub use foo::X;
 ```
 
 The solution to this problem is to ensure that the items that you are
 re-exporting are themselves marked with `pub`:
 
-```
+```ignore
 mod foo {
     pub const X: u32 = 1;
 }
+
 pub use foo::X;
 ```
 
@@ -284,20 +287,22 @@ that you attempted to `pub use` a module that was not itself public.
 
 Here is an example that demonstrates the error:
 
-```
+```compile_fail
 mod foo {
     pub const X: u32 = 1;
 }
-pub use foo as foo2;
 
+pub use foo as foo2;
 ```
+
 The solution to this problem is to ensure that the module that you are
 re-exporting is itself marked with `pub`:
 
-```
+```ignore
 pub mod foo {
     pub const X: u32 = 1;
 }
+
 pub use foo as foo2;
 ```
 
@@ -311,7 +316,7 @@ E0401: r##"
 Inner items do not inherit type parameters from the functions they are
 embedded in. For example, this will not compile:
 
-```
+```compile_fail
 fn foo<T>(x: T) {
     fn bar(y: T) { // T is defined in the "outer" function
         // ..
@@ -320,18 +325,18 @@ fn foo<T>(x: T) {
 }
 ```
 
-nor will this:
+Nor will this:
 
-```
+```compile_fail
 fn foo<T>(x: T) {
     type MaybeT = Option<T>;
     // ...
 }
 ```
 
-or this:
+Or this:
 
-```
+```compile_fail
 fn foo<T>(x: T) {
     struct Foo {
         x: T,
@@ -351,7 +356,7 @@ If the item is a function, you may use a closure:
 fn foo<T>(x: T) {
     let bar = |y: T| { // explicit type annotation may not be necessary
         // ..
-    }
+    };
     bar(x);
 }
 ```
@@ -397,11 +402,12 @@ This may require additional type hints in the function body.
 In case the item is a function inside an `impl`, defining a private helper
 function might be easier:
 
-```
+```ignore
 impl<T> Foo<T> {
     pub fn foo(&self, x: T) {
         self.bar(x);
     }
+
     fn bar(&self, y: T) {
         // ..
     }
@@ -415,7 +421,7 @@ closures or copying the parameters should still work.
 E0403: r##"
 Some type parameters have the same name. Example of erroneous code:
 
-```
+```compile_fail
 fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
                             //        parameter in this type parameter list
 ```
@@ -432,7 +438,7 @@ E0404: r##"
 You tried to implement something which was not a trait on an object. Example of
 erroneous code:
 
-```
+```compile_fail
 struct Foo;
 struct Bar;
 
@@ -457,7 +463,7 @@ impl Foo for Bar { // ok!
 E0405: r##"
 An unknown trait was implemented. Example of erroneous code:
 
-```
+```compile_fail
 struct Foo;
 
 impl SomeTrait for Foo {} // error: use of undeclared trait name `SomeTrait`
@@ -466,7 +472,7 @@ impl SomeTrait for Foo {} // error: use of undeclared trait name `SomeTrait`
 Please verify that the name of the trait wasn't misspelled and ensure that it
 was imported. Example:
 
-```
+```ignore
 // solution 1:
 use some_file::SomeTrait;
 
@@ -487,7 +493,7 @@ E0407: r##"
 A definition of a method not in the implemented trait was given in a trait
 implementation. Example of erroneous code:
 
-```
+```compile_fail
 trait Foo {
     fn a();
 }
@@ -540,7 +546,7 @@ E0411: r##"
 The `Self` keyword was used outside an impl or a trait. Erroneous
 code example:
 
-```
+```compile_fail
 <Self>::foo; // error: use of `Self` outside of an impl or trait
 ```
 
@@ -560,7 +566,7 @@ trait Baz : Foo {
 
 However, be careful when two types has a common associated type:
 
-```
+```compile_fail
 trait Foo {
     type Bar;
 }
@@ -579,6 +585,14 @@ This problem can be solved by specifying from which trait we want
 to use the `Bar` type:
 
 ```
+trait Foo {
+    type Bar;
+}
+
+trait Foo2 {
+    type Bar;
+}
+
 trait Baz : Foo + Foo2 {
     fn bar() -> <Self as Foo>::Bar; // ok!
 }
@@ -588,7 +602,7 @@ trait Baz : Foo + Foo2 {
 E0412: r##"
 An undeclared type name was used. Example of erroneous codes:
 
-```
+```compile_fail
 impl Something {} // error: use of undeclared type name `Something`
 // or:
 trait Foo {
@@ -605,13 +619,17 @@ you did declare it or imported it into the scope. Examples:
 struct Something;
 
 impl Something {} // ok!
+
 // or:
+
 trait Foo {
     type N;
 
     fn bar(Self::N); // ok!
 }
-//or:
+
+// or:
+
 fn foo<T>(x: T) {} // ok!
 ```
 "##,
@@ -620,13 +638,12 @@ E0413: r##"
 A declaration shadows an enum variant or unit-like struct in scope.
 Example of erroneous code:
 
-```
+```compile_fail
 struct Foo;
 
 let Foo = 12i32; // error: declaration of `Foo` shadows an enum variant or
                  //        unit-like struct in scope
 ```
-
 
 To fix this error, rename the variable such that it doesn't shadow any enum
 variable or structure in scope. Example:
@@ -652,7 +669,7 @@ E0415: r##"
 More than one function parameter have the same name. Example of erroneous
 code:
 
-```
+```compile_fail
 fn foo(f: i32, f: i32) {} // error: identifier `f` is bound more than
                           //        once in this parameter list
 ```
@@ -668,7 +685,7 @@ E0416: r##"
 An identifier is bound more than once in a pattern. Example of erroneous
 code:
 
-```
+```compile_fail
 match (1, 2) {
     (x, x) => {} // error: identifier `x` is bound more than once in the
                  //        same pattern
@@ -685,7 +702,7 @@ match (1, 2) {
 
 Or maybe did you mean to unify? Consider using a guard:
 
-```
+```ignore
 match (A, B, C) {
     (x, x2, see) if x == x2 => { /* A and B are equal, do one thing */ }
     (y, z, see) => { /* A and B unequal; do another thing */ }
@@ -696,7 +713,7 @@ match (A, B, C) {
 E0417: r##"
 A static variable was referenced in a pattern. Example of erroneous code:
 
-```
+```compile_fail
 static FOO : i32 = 0;
 
 match 0 {
@@ -725,7 +742,7 @@ E0419: r##"
 An unknown enum variant, struct or const was used. Example of
 erroneous code:
 
-```
+```compile_fail
 match 0 {
     Something::Foo => {} // error: unresolved enum variant, struct
                          //        or const `Foo`
@@ -751,7 +768,8 @@ match Something::NotFoo {
 E0422: r##"
 You are trying to use an identifier that is either undefined or not a
 struct. For instance:
-```
+
+``` compile_fail
 fn main () {
     let x = Foo { x: 1, y: 2 };
 }
@@ -760,7 +778,7 @@ fn main () {
 In this case, `Foo` is undefined, so it inherently isn't anything, and
 definitely not a struct.
 
-```
+```compile_fail
 fn main () {
     let foo = 1;
     let x = foo { x: 1, y: 2 };
@@ -775,7 +793,7 @@ E0423: r##"
 A `struct` variant name was used like a function name. Example of
 erroneous code:
 
-```
+```compile_fail
 struct Foo { a: bool};
 
 let f = Foo();
@@ -796,7 +814,7 @@ let f = Foo(); // ok!
 E0424: r##"
 The `self` keyword was used in a static method. Example of erroneous code:
 
-```
+```compile_fail
 struct Foo;
 
 impl Foo {
@@ -828,7 +846,7 @@ impl Foo {
 E0425: r##"
 An unresolved name was used. Example of erroneous codes:
 
-```
+```compile_fail
 something_that_doesnt_exist::foo;
 // error: unresolved name `something_that_doesnt_exist::foo`
 
@@ -848,17 +866,23 @@ identifier being referred to is valid for the given situation. Example:
 
 ```
 enum something_that_does_exist {
-    foo
+    Foo,
 }
+```
 
-// or:
+Or:
+
+```
 mod something_that_does_exist {
     pub static foo : i32 = 0i32;
 }
 
 something_that_does_exist::foo; // ok!
+```
 
-// or:
+Or:
+
+```
 let unknown_variable = 12u32;
 let x = unknown_variable; // ok!
 ```
@@ -867,7 +891,7 @@ let x = unknown_variable; // ok!
 E0426: r##"
 An undeclared label was used. Example of erroneous code:
 
-```
+```compile_fail
 loop {
     break 'a; // error: use of undeclared label `'a`
 }
@@ -886,7 +910,7 @@ E0428: r##"
 A type or module has been defined more than once. Example of erroneous
 code:
 
-```
+```compile_fail
 struct Bar;
 struct Bar; // error: duplicate definition of value `Bar`
 ```
@@ -903,7 +927,7 @@ struct Bar2; // ok!
 E0430: r##"
 The `self` import appears more than once in the list. Erroneous code example:
 
-```
+```compile_fail
 use something::{self, self}; // error: `self` import can only appear once in
                              //        the list
 ```
@@ -911,7 +935,7 @@ use something::{self, self}; // error: `self` import can only appear once in
 Please verify you didn't misspell the import name or remove the duplicated
 `self` import. Example:
 
-```
+```ignore
 use something::self; // ok!
 ```
 "##,
@@ -919,7 +943,7 @@ use something::self; // ok!
 E0431: r##"
 `self` import was made. Erroneous code example:
 
-```
+```compile_fail
 use {self}; // error: `self` import can only appear in an import list with a
             //        non-empty prefix
 ```
@@ -931,14 +955,14 @@ or verify you didn't misspell it.
 E0432: r##"
 An import was unresolved. Erroneous code example:
 
-```
+```compile_fail
 use something::Foo; // error: unresolved import `something::Foo`.
 ```
 
 Please verify you didn't misspell the import name or the import does exist
 in the module from where you tried to import it. Example:
 
-```
+```ignore
 use something::Foo; // ok!
 
 mod something {
@@ -949,7 +973,7 @@ mod something {
 Or, if you tried to use a module from an external crate, you may have missed
 the `extern crate` declaration:
 
-```
+```ignore
 extern crate homura; // Required to use the `homura` crate
 
 use homura::Madoka;
@@ -959,7 +983,7 @@ use homura::Madoka;
 E0433: r##"
 Invalid import. Example of erroneous code:
 
-```
+```compile_fail
 use something_which_doesnt_exist;
 // error: unresolved import `something_which_doesnt_exist`
 ```
@@ -971,7 +995,7 @@ E0435: r##"
 A non-constant value was used to initialise a constant. Example of erroneous
 code:
 
-```
+```compile_fail
 let foo = 42u32;
 const FOO : u32 = foo; // error: attempt to use a non-constant value in a
                        //        constant
@@ -981,8 +1005,11 @@ To fix this error, please replace the value with a constant. Example:
 
 ```
 const FOO : u32 = 42u32; // ok!
+```
 
-// or:
+Or:
+
+```
 const OTHER_FOO : u32 = 42u32;
 const FOO : u32 = OTHER_FOO; // ok!
 ```
@@ -996,7 +1023,7 @@ in the trait.
 
 Here is an example that demonstrates the error:
 
-```
+```compile_fail
 trait Foo {}
 
 impl Foo for i32 {
@@ -1021,7 +1048,7 @@ match the name of any associated constant in the trait.
 
 Here is an example that demonstrates the error:
 
-```
+```compile_fail
 #![feature(associated_consts)]
 
 trait Foo {}

@@ -18,6 +18,7 @@ use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
+use std::panic::{self, AssertRecoverSafe};
 use std::process::Command;
 use std::rc::Rc;
 use std::str;
@@ -178,7 +179,7 @@ fn scrape_test_config(krate: &::rustc_front::hir::Crate) -> TestOptions {
 fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
            externs: core::Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
-           opts: &TestOptions) {
+           compile_fail: bool, opts: &TestOptions) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), as_test_harness, opts);
@@ -244,19 +245,39 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
                                        cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
-    let out = Some(outdir.path().to_path_buf());
-    let mut cfg = config::build_configuration(&sess);
-    cfg.extend(config::parse_cfgspecs(cfgs));
+    let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
+    let mut cfg = config::build_configuration(&sess);
+    cfg.extend(config::parse_cfgspecs(cfgs.clone()));
+    let out = Some(outdir.lock().unwrap().path().to_path_buf());
+
     if no_run {
         control.after_analysis.stop = Compilation::Stop;
     }
-    let result = driver::compile_input(&sess, &cstore, cfg, &input,
-                                       &out, &None, None, control);
-    match result {
-        Err(count) if count > 0 => sess.fatal("aborting due to previous error(s)"),
+
+    match {
+        let b_sess = AssertRecoverSafe::new(&sess);
+        let b_cstore = AssertRecoverSafe::new(&cstore);
+        let b_cfg = AssertRecoverSafe::new(cfg.clone());
+        let b_control = AssertRecoverSafe::new(&control);
+
+        panic::recover(|| {
+            driver::compile_input(&b_sess, &b_cstore, (*b_cfg).clone(),
+                                  &input, &out,
+                                  &None, None, &b_control)
+        })
+    } {
+        Ok(r) => {
+            match r {
+                Err(count) if count > 0 && compile_fail == false => {
+                    sess.fatal("aborting due to previous error(s)")
+                }
+                Ok(()) if compile_fail => panic!("test compiled while it wasn't supposed to"),
+                _ => {}
+            }
+        }
+        Err(_) if compile_fail == false => panic!("couldn't compile the test"),
         _ => {}
     }
 
@@ -268,7 +289,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     // environment to ensure that the target loads the right libraries at
     // runtime. It would be a sad day if the *host* libraries were loaded as a
     // mistake.
-    let mut cmd = Command::new(&outdir.path().join("rust_out"));
+    let mut cmd = Command::new(&outdir.lock().unwrap().path().join("rust_out"));
     let var = DynamicLibrary::envvar();
     let newpath = {
         let path = env::var_os(var).unwrap_or(OsString::new());
@@ -392,7 +413,7 @@ impl Collector {
 
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool) {
+                    as_test_harness: bool, compile_fail: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
             format!("{}_{}", s, self.cnt)
@@ -422,6 +443,7 @@ impl Collector {
                         should_panic,
                         no_run,
                         as_test_harness,
+                        compile_fail,
                         &opts);
             }))
         });
