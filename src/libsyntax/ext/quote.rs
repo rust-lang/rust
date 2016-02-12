@@ -114,22 +114,24 @@ pub mod rt {
         }
     }
 
-    impl ToTokens for P<ast::ImplItem> {
+    impl ToTokens for ast::ImplItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(self.span, token::Interpolated(token::NtImplItem(self.clone())))]
+            vec![TokenTree::Token(self.span,
+                                  token::Interpolated(token::NtImplItem(P(self.clone()))))]
         }
     }
 
-    impl ToTokens for P<ast::TraitItem> {
+    impl ToTokens for ast::TraitItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(self.span, token::Interpolated(token::NtTraitItem(self.clone())))]
+            vec![TokenTree::Token(self.span,
+                                  token::Interpolated(token::NtTraitItem(P(self.clone()))))]
         }
     }
 
-    impl ToTokens for P<ast::Stmt> {
+    impl ToTokens for ast::Stmt {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let mut tts = vec![
-                TokenTree::Token(self.span, token::Interpolated(token::NtStmt(self.clone())))
+                TokenTree::Token(self.span, token::Interpolated(token::NtStmt(P(self.clone()))))
             ];
 
             // Some statements require a trailing semicolon.
@@ -312,7 +314,7 @@ pub mod rt {
     pub trait ExtParseUtils {
         fn parse_item(&self, s: String) -> P<ast::Item>;
         fn parse_expr(&self, s: String) -> P<ast::Expr>;
-        fn parse_stmt(&self, s: String) -> P<ast::Stmt>;
+        fn parse_stmt(&self, s: String) -> ast::Stmt;
         fn parse_tts(&self, s: String) -> Vec<TokenTree>;
     }
 
@@ -326,7 +328,7 @@ pub mod rt {
                 self.parse_sess()).expect("parse error")
         }
 
-        fn parse_stmt(&self, s: String) -> P<ast::Stmt> {
+        fn parse_stmt(&self, s: String) -> ast::Stmt {
             parse::parse_stmt_from_source_str("<quote expansion>".to_string(),
                                               s,
                                               self.cfg(),
@@ -371,7 +373,7 @@ pub fn parse_ty_panic(parser: &mut Parser) -> P<Ty> {
     panictry!(parser.parse_ty())
 }
 
-pub fn parse_stmt_panic(parser: &mut Parser) -> Option<P<Stmt>> {
+pub fn parse_stmt_panic(parser: &mut Parser) -> Option<Stmt> {
     panictry!(parser.parse_stmt())
 }
 
@@ -710,7 +712,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     mk_token_path(cx, sp, name)
 }
 
-fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<P<ast::Stmt>> {
+fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stmt> {
     match *tt {
         TokenTree::Token(sp, SubstNt(ident, _)) => {
             // tt.extend($ident.to_tokens(ext_cx))
@@ -831,7 +833,7 @@ fn parse_arguments_to_quote(cx: &ExtCtxt, tts: &[TokenTree])
     (cx_expr, tts)
 }
 
-fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<P<ast::Stmt>> {
+fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<ast::Stmt> {
     // We also bind a single value, sp, to ext_cx.call_site()
     //
     // This causes every span in a token-tree quote to be attributed to the
@@ -872,7 +874,7 @@ fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<P<ast::Stmt>> {
     vec!(stmt_let_sp, stmt_let_tt)
 }
 
-fn statements_mk_tts(cx: &ExtCtxt, tts: &[TokenTree], matcher: bool) -> Vec<P<ast::Stmt>> {
+fn statements_mk_tts(cx: &ExtCtxt, tts: &[TokenTree], matcher: bool) -> Vec<ast::Stmt> {
     let mut ss = Vec::new();
     for tt in tts {
         ss.extend(statements_mk_tt(cx, tt, matcher));

@@ -74,7 +74,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
             quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Impl(_, _, _, _, _, mut items) => {
-                        Annotatable::ImplItem(items.pop().expect("impl method not found"))
+                        Annotatable::ImplItem(P(items.pop().expect("impl method not found")))
                     }
                     _ => unreachable!("impl parsed to something other than impl")
                 }
@@ -84,7 +84,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
             quote_item!(cx, trait X { fn foo(&self) -> i32 { 0 } }).unwrap().and_then(|i| {
                 match i.node {
                     ItemKind::Trait(_, _, _, mut items) => {
-                        Annotatable::TraitItem(items.pop().expect("trait method not found"))
+                        Annotatable::TraitItem(P(items.pop().expect("trait method not found")))
                     }
                     _ => unreachable!("trait parsed to something other than trait")
                 }

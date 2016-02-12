@@ -52,7 +52,7 @@ fn main() {
 
     let twenty: u16 = 20;
     let stmt = quote_stmt!(cx, let x = $twenty;).unwrap();
-    check!(stmt_to_string, stmt, *quote_stmt!(cx, $stmt).unwrap(); "let x = 20u16;");
+    check!(stmt_to_string, stmt, quote_stmt!(cx, $stmt).unwrap(); "let x = 20u16;");
 
     let pat = quote_pat!(cx, Some(_));
     check!(pat_to_string, pat, *quote_pat!(cx, $pat); "Some(_)");

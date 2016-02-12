@@ -65,6 +65,10 @@ impl<T: 'static> P<T> {
     {
         f(*self.ptr)
     }
+    /// Equivalent to and_then(|x| x)
+    pub fn unwrap(self) -> T {
+        *self.ptr
+    }
 
     /// Transform the inner value, consuming `self` and producing a new `P<T>`.
     pub fn map<F>(mut self, f: F) -> P<T> where

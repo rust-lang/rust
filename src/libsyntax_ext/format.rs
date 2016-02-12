@@ -461,7 +461,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // Wrap the declaration in a block so that it forms a single expression.
         ecx.expr_block(ecx.block(sp,
-            vec![P(respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID)))],
+            vec![respan(sp, ast::StmtKind::Decl(P(decl), ast::DUMMY_NODE_ID))],
             Some(ecx.expr_ident(sp, name))))
     }
 

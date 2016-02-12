@@ -144,7 +144,7 @@ pub fn parse_stmt_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
                                   sess: &ParseSess)
-                                  -> Option<P<ast::Stmt>> {
+                                  -> Option<ast::Stmt> {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -866,7 +866,7 @@ mod tests {
 
     #[test] fn parse_stmt_1 () {
         assert!(string_to_stmt("b;".to_string()) ==
-                   Some(P(Spanned{
+                   Some(Spanned{
                        node: ast::StmtKind::Expr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprKind::Path(None, ast::Path {
@@ -882,7 +882,7 @@ mod tests {
                            span: sp(0,1),
                            attrs: None}),
                                            ast::DUMMY_NODE_ID),
-                       span: sp(0,1)})))
+                       span: sp(0,1)}))
 
     }
 
@@ -957,7 +957,7 @@ mod tests {
                                         }
                                     },
                                     P(ast::Block {
-                                        stmts: vec!(P(Spanned{
+                                        stmts: vec!(Spanned{
                                             node: ast::StmtKind::Semi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
                                                 node: ast::ExprKind::Path(None,
@@ -977,7 +977,7 @@ mod tests {
                                                 span: sp(17,18),
                                                 attrs: None,}),
                                                 ast::DUMMY_NODE_ID),
-                                            span: sp(17,19)})),
+                                            span: sp(17,19)}),
                                         expr: None,
                                         id: ast::DUMMY_NODE_ID,
                                         rules: ast::BlockCheckMode::Default, // no idea
