@@ -18,7 +18,6 @@ use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
-use sys_common::io::{read_to_end_uninitialized};
 use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use thread::LocalKeyState;
 
@@ -78,6 +77,9 @@ fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.0.read_to_end(buf)
+    }
 }
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
@@ -113,6 +115,12 @@ impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
+            Maybe::Fake => Ok(0)
+        }
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        match *self {
+            Maybe::Real(ref mut r) => handle_ebadf(r.read_to_end(buf), 0),
             Maybe::Fake => Ok(0)
         }
     }
@@ -294,7 +302,7 @@ impl<'a> Read for StdinLock<'a> {
         self.inner.read(buf)
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        unsafe { read_to_end_uninitialized(self, buf) }
+        self.inner.read_to_end(buf)
     }
 }
 
