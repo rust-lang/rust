@@ -334,9 +334,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_crate_attributes(self.get_crate_data(cnum).data())
     }
 
-    fn crate_name(&self, cnum: ast::CrateNum) -> String
+    fn crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
     {
-        self.get_crate_data(cnum).name.clone()
+        token::intern_and_get_ident(&self.get_crate_data(cnum).name[..])
     }
 
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh

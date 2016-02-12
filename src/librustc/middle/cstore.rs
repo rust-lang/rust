@@ -42,6 +42,7 @@ use syntax::ast_util::{IdVisitingOperation};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::ptr::P;
+use syntax::parse::token::InternedString;
 use rustc_back::target::Target;
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
@@ -203,7 +204,7 @@ pub trait CrateStore<'tcx> : Any {
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
-    fn crate_name(&self, cnum: ast::CrateNum) -> String;
+    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>;
@@ -382,7 +383,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
         { unimplemented!() }
-    fn crate_name(&self, cnum: ast::CrateNum) -> String { unimplemented!() }
+    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh { unimplemented!() }
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>
