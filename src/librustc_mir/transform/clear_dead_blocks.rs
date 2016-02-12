@@ -15,7 +15,7 @@
 //! This pass does not renumber or remove the blocks, to have the
 //! MIR better match the source.
 
-use rustc::middle::ty;
+use rustc::middle::infer;
 use rustc::mir::repr::*;
 use rustc::mir::transform::MirPass;
 
@@ -56,7 +56,8 @@ impl ClearDeadBlocks {
 }
 
 impl MirPass for ClearDeadBlocks {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, _tcx: &ty::ctxt<'tcx>) {
+    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &infer::InferCtxt<'a, 'tcx>)
+    {
         self.clear_dead_blocks(mir);
     }
 }

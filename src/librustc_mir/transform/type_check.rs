@@ -11,7 +11,7 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
-use rustc::middle::infer;
+use rustc::middle::infer::{self, InferCtxt};
 use rustc::middle::traits;
 use rustc::middle::ty::{self, Ty};
 use rustc::middle::ty::fold::TypeFoldable;
@@ -35,7 +35,7 @@ macro_rules! span_mirbug {
 macro_rules! span_mirbug_and_err {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         {
-            $context.tcx().sess.span_bug(
+            $context.tcx().sess.span_warn(
                 $context.last_span,
                 &format!("broken MIR ({:?}): {:?}", $elem, format!($($message)*))
             );
@@ -50,14 +50,14 @@ enum FieldAccessError {
 
 /// Verifies that MIR types are sane to not crash further
 /// checks.
-struct TypeVerifier<'a, 'tcx: 'a> {
-    infcx: &'a infer::InferCtxt<'a, 'tcx>,
+struct TypeVerifier<'a, 'b: 'a, 'tcx: 'b> {
+    cx: &'a mut TypeChecker<'b, 'tcx>,
     mir: &'a Mir<'tcx>,
     last_span: Span,
     errors_reported: bool
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'tcx> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     fn visit_span(&mut self, span: &Span) {
         if *span != DUMMY_SP {
             self.last_span = *span;
@@ -100,10 +100,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeVerifier<'a, 'tcx> {
-    fn new(infcx: &'a infer::InferCtxt<'a, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
+    fn new(cx: &'a mut TypeChecker<'b, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
-            infcx: infcx,
+            cx: cx,
             mir: mir,
             last_span: mir.span,
             errors_reported: false
@@ -111,7 +111,11 @@ impl<'a, 'tcx> TypeVerifier<'a, 'tcx> {
     }
 
     fn tcx(&self) -> &'a ty::ctxt<'tcx> {
-        self.infcx.tcx
+        self.cx.infcx.tcx
+    }
+
+    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx> {
+        self.cx.infcx
     }
 
     fn sanitize_type(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -163,6 +167,7 @@ impl<'a, 'tcx> TypeVerifier<'a, 'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
         let tcx = self.tcx();
         let base_ty = base.to_ty(tcx);
+        let span = self.last_span;
         match *pi {
             ProjectionElem::Deref => {
                 let deref_ty = base_ty.builtin_deref(true, ty::LvaluePreference::NoPreference);
@@ -227,7 +232,7 @@ impl<'a, 'tcx> TypeVerifier<'a, 'tcx> {
                 let fty = self.sanitize_type(lvalue, fty);
                 match self.field_ty(lvalue, base, field) {
                     Ok(ty) => {
-                        if let Err(terr) = infer::can_mk_subty(self.infcx, ty, fty) {
+                        if let Err(terr) = self.cx.mk_eqty(span, ty, fty) {
                             span_mirbug!(
                                 self, lvalue, "bad field access ({:?}: {:?}): {:?}",
                                 ty, fty, terr);
@@ -282,14 +287,15 @@ impl<'a, 'tcx> TypeVerifier<'a, 'tcx> {
         };
 
         if let Some(field) = variant.fields.get(field.index()) {
-            Ok(self.normalize(parent, field.ty(tcx, substs)))
+            Ok(self.normalize(field.ty(tcx, substs)))
         } else {
             Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
     }
 
-    fn normalize(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let mut selcx = traits::SelectionContext::new(&self.infcx);
+    fn normalize(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let infcx = self.infcx();
+        let mut selcx = traits::SelectionContext::new(infcx);
         let cause = traits::ObligationCause::misc(self.last_span, 0);
         let traits::Normalized { value: ty, obligations } =
             traits::normalize(&mut selcx, cause, &ty);
@@ -298,31 +304,42 @@ impl<'a, 'tcx> TypeVerifier<'a, 'tcx> {
                ty,
                obligations);
 
-        let mut fulfill_cx = self.infcx.fulfillment_cx.borrow_mut();
+        let mut fulfill_cx = &mut self.cx.fulfillment_cx;
         for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(&self.infcx, obligation);
+            fulfill_cx.register_predicate_obligation(infcx, obligation);
         }
 
-        match infer::drain_fulfillment_cx(&self.infcx, &mut fulfill_cx, &ty) {
-            Ok(ty) => ty,
-            Err(e) => {
-                span_mirbug_and_err!(self, parent, "trait fulfillment failed: {:?}", e)
-            }
-        }
+        ty
     }
 }
 
-pub struct TypeckMir<'a, 'tcx: 'a> {
-    infcx: &'a infer::InferCtxt<'a, 'tcx>,
+pub struct TypeChecker<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    fulfillment_cx: traits::FulfillmentContext<'tcx>,
     last_span: Span
 }
 
-impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
-    pub fn new(infcx: &'a infer::InferCtxt<'a, 'tcx>) -> Self {
-        TypeckMir {
+impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+        TypeChecker {
             infcx: infcx,
+            fulfillment_cx: traits::FulfillmentContext::new(),
             last_span: DUMMY_SP
         }
+    }
+
+    fn mk_subty(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
+                -> infer::UnitResult<'tcx>
+    {
+        infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span),
+                        sup, sub)
+    }
+
+    fn mk_eqty(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
+                -> infer::UnitResult<'tcx>
+    {
+        infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span),
+                       a, b)
     }
 
     fn tcx(&self) -> &'a ty::ctxt<'tcx> {
@@ -337,7 +354,7 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
                 let lv_ty = mir.lvalue_ty(tcx, lv).to_ty(tcx);
                 let rv_ty = mir.rvalue_ty(tcx, rv);
                 if let Some(rv_ty) = rv_ty {
-                    if let Err(terr) = infer::can_mk_subty(self.infcx, rv_ty, lv_ty) {
+                    if let Err(terr) = self.mk_subty(self.last_span, rv_ty, lv_ty) {
                         span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
                                      lv_ty, rv_ty, terr);
                     }
@@ -358,7 +375,10 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
             Terminator::Goto { .. } |
             Terminator::Resume |
             Terminator::Return |
-            Terminator::Drop { .. } => {}
+            Terminator::Drop { .. } => {
+                // no checks needed for these
+            }
+
             Terminator::If { ref cond, .. } => {
                 let cond_ty = mir.operand_ty(tcx, cond);
                 match cond_ty.sty {
@@ -370,15 +390,23 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
             }
             Terminator::SwitchInt { ref discr, switch_ty, .. } => {
                 let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
-                if let Err(terr) = infer::can_mk_subty(self.infcx, discr_ty, switch_ty) {
+                if let Err(terr) = self.mk_subty(self.last_span, discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
                 }
+                if !switch_ty.is_integral() && !switch_ty.is_char() &&
+                    !switch_ty.is_bool()
+                {
+                    span_mirbug!(self, term, "bad SwitchInt discr ty {:?}",switch_ty);
+                }
+                // FIXME: check the values
             }
-            Terminator::Switch { ref discr, adt_def, .. } => {
+            Terminator::Switch { ref discr, adt_def, ref targets } => {
                 let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
                 match discr_ty.sty {
-                    ty::TyEnum(def, _) if def == adt_def => {},
+                    ty::TyEnum(def, _)
+                        if def == adt_def && adt_def.variants.len() == targets.len()
+                        => {},
                     _ => {
                         span_mirbug!(self, term, "bad Switch ({:?} on {:?})",
                                      adt_def, discr_ty);
@@ -419,7 +447,7 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
             }
             (&Some((ref dest, _)), ty::FnConverging(ty)) => {
                 let dest_ty = mir.lvalue_ty(tcx, dest).to_ty(tcx);
-                if let Err(terr) = infer::can_mk_subty(self.infcx, ty, dest_ty) {
+                if let Err(terr) = self.mk_subty(self.last_span, ty, dest_ty) {
                     span_mirbug!(self, term,
                                  "call dest mismatch ({:?} <- {:?}): {:?}",
                                  dest_ty, ty, terr);
@@ -445,7 +473,7 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
         }
         for (n, (fn_arg, op_arg)) in sig.inputs.iter().zip(args).enumerate() {
             let op_arg_ty = mir.operand_ty(self.tcx(), op_arg);
-            if let Err(terr) = infer::can_mk_subty(self.infcx, op_arg_ty, fn_arg) {
+            if let Err(terr) = self.mk_subty(self.last_span, op_arg_ty, fn_arg) {
                 span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
                              n, fn_arg, op_arg_ty, terr);
             }
@@ -500,7 +528,7 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
             }
         };
 
-        if let Err(terr) = infer::can_mk_subty(self.infcx, arg_ty, pointee_ty) {
+        if let Err(terr) = self.mk_subty(self.last_span, arg_ty, pointee_ty) {
             span_mirbug!(self, term, "bad box_free arg ({:?} <- {:?}): {:?}",
                          pointee_ty, arg_ty, terr);
         }
@@ -522,28 +550,45 @@ impl<'a, 'tcx> TypeckMir<'a, 'tcx> {
             }
         }
     }
+
+    fn verify_obligations(&mut self, mir: &Mir<'tcx>) {
+        self.last_span = mir.span;
+        if let Err(e) = self.fulfillment_cx.select_all_or_error(self.infcx) {
+            span_mirbug!(self, "", "errors selecting obligation: {:?}",
+                         e);
+        }
+    }
 }
 
-impl<'a, 'tcx> MirPass for TypeckMir<'a, 'tcx> {
-    fn run_on_mir<'tcx_>(&mut self,
-                         mir: &mut Mir<'tcx_>,
-                         _tcx: &ty::ctxt<'tcx_>) {
-        // FIXME: pass param_env to run_on_mir
-        let mir: &mut Mir<'tcx> = unsafe { ::std::mem::transmute(mir) };
+pub struct TypeckMir;
 
-        if self.tcx().sess.err_count() > 0 {
+impl TypeckMir {
+    pub fn new() -> Self {
+        TypeckMir
+    }
+}
+
+impl MirPass for TypeckMir {
+    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, infcx: &InferCtxt<'a, 'tcx>)
+    {
+        if infcx.tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
 
-        let mut type_verifier = TypeVerifier::new(self.infcx, mir);
-        type_verifier.visit_mir(mir);
+        let mut checker = TypeChecker::new(infcx);
 
-        if type_verifier.errors_reported {
-            return;
+        {
+            let mut verifier = TypeVerifier::new(&mut checker, mir);
+            verifier.visit_mir(mir);
+            if verifier.errors_reported {
+                // don't do further checks to avoid ICEs
+                return;
+            }
         }
 
-        self.typeck_mir(mir);
+        checker.typeck_mir(mir);
+        checker.verify_obligations(mir);
     }
 }
