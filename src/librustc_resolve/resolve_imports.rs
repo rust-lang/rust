@@ -90,6 +90,9 @@ impl ImportDirective {
         if self.shadowable == Shadowable::Always {
             modifiers = modifiers | DefModifiers::PRELUDE;
         }
+        if binding.defined_with(DefModifiers::LINKED_NAMESPACES) {
+            modifiers = modifiers | DefModifiers::LINKED_NAMESPACES;
+        }
 
         NameBinding {
             kind: NameBindingKind::Import { binding: binding, id: self.id },
@@ -136,11 +139,9 @@ impl<'a> NameResolution<'a> {
             _ => { self.binding = Some(binding); return Ok(()); }
         };
 
-        // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
+        // We currently allow items to shadow glob-imports.
         if !old_binding.is_import() && binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-            if let NameBindingKind::Import { binding, .. } = binding.kind {
-                if binding.is_import() { return Ok(()); }
-            }
+            return Ok(());
         }
 
         Err(old_binding)
