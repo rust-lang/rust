@@ -1,4 +1,4 @@
-- Feature Name: replace-slice
+- Feature Name: splice
 - Start Date: 2015-12-28
 - RFC PR:
 - Rust Issue:
@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Add a `replace_slice` method to `Vec<T>` and `String` removes a range of elements,
+Add a `splice` method to `Vec<T>` and `String` removes a range of elements,
 and replaces it in place with a given sequence of values.
 The new sequence does not necessarily have the same length as the range it replaces.
 
@@ -50,12 +50,12 @@ use collections::range::RangeArgument;
 use std::ptr;
 
 trait ReplaceVecSlice<T> {
-    fn replace_slice<R, I>(&mut self, range: R, iterable: I)
+    fn splice<R, I>(&mut self, range: R, iterable: I)
     where R: RangeArgument<usize>, I: IntoIterator<Item=T>, I::IntoIter: ExactSizeIterator;
 }
 
 impl<T> ReplaceVecSlice<T> for Vec<T> {
-    fn replace_slice<R, I>(&mut self, range: R, iterable: I)
+    fn splice<R, I>(&mut self, range: R, iterable: I)
     where R: RangeArgument<usize>, I: IntoIterator<Item=T>, I::IntoIter: ExactSizeIterator
     {
         let len = self.len();
@@ -117,11 +117,11 @@ impl<T> ReplaceVecSlice<T> for Vec<T> {
 }
 
 trait ReplaceStringSlice {
-    fn replace_slice<R>(&mut self, range: R, s: &str) where R: RangeArgument<usize>;
+    fn splice<R>(&mut self, range: R, s: &str) where R: RangeArgument<usize>;
 }
 
 impl ReplaceStringSlice for String {
-    fn replace_slice<R>(&mut self, range: R, s: &str) where R: RangeArgument<usize> {
+    fn splice<R>(&mut self, range: R, s: &str) where R: RangeArgument<usize> {
         if let Some(&start) = range.start() {
             assert!(self.is_char_boundary(start));
         }
@@ -130,19 +130,19 @@ impl ReplaceStringSlice for String {
         }
         unsafe {
             self.as_mut_vec()
-        }.replace_slice(range, s.bytes())
+        }.splice(range, s.bytes())
     }
 }
 
 #[test]
 fn it_works() {
     let mut v = vec![1, 2, 3, 4, 5];
-    v.replace_slice(2..4, [10, 11, 12].iter().cloned());
+    v.splice(2..4, [10, 11, 12].iter().cloned());
     assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
-    v.replace_slice(1..3, Some(20));
+    v.splice(1..3, Some(20));
     assert_eq!(v, &[1, 20, 11, 12, 5]);
     let mut s = "Hello, world!".to_owned();
-    s.replace_slice(7.., "世界!");
+    s.splice(7.., "世界!");
     assert_eq!(s, "Hello, 世界!");
 }
 
@@ -150,7 +150,7 @@ fn it_works() {
 #[should_panic]
 fn char_boundary() {
     let mut s = "Hello, 世界!".to_owned();
-    s.replace_slice(..8, "")
+    s.splice(..8, "")
 }
 ```
 
@@ -184,9 +184,9 @@ not every program needs it, and standard library growth has a maintainance cost.
   With `ExactSizeIterator` it only happens when `ExactSizeIterator::len` is incorrect
   which means that someone is doing something wrong.
 
-* Alternatively, should `replace_slice` panic when `ExactSizeIterator::len` is incorrect?
+* Alternatively, should `splice` panic when `ExactSizeIterator::len` is incorrect?
 
-* It would be nice to be able to `Vec::replace_slice` with a slice
+* It would be nice to be able to `Vec::splice` with a slice
   without writing `.iter().cloned()` explicitly.
   This is possible with the same trick as for the `Extend` trait
   ([RFC 839](https://github.com/rust-lang/rfcs/blob/master/text/0839-embrace-extend-extinguish.md)):
@@ -194,10 +194,10 @@ not every program needs it, and standard library growth has a maintainance cost.
 
   ```rust
   impl<'a, T: 'a> ReplaceVecSlice<&'a T> for Vec<T> where T: Copy {
-      fn replace_slice<R, I>(&mut self, range: R, iterable: I)
+      fn splice<R, I>(&mut self, range: R, iterable: I)
       where R: RangeArgument<usize>, I: IntoIterator<Item=&'a T>, I::IntoIter: ExactSizeIterator
       {
-          self.replace_slice(range, iterable.into_iter().cloned())
+          self.splice(range, iterable.into_iter().cloned())
       }
   }
   ```
@@ -205,11 +205,6 @@ not every program needs it, and standard library growth has a maintainance cost.
   However, this trick can not be used with an inherent method instead of a trait.
   (By the way, what was the motivation for `Extend` being a trait rather than inherent methods,
   before RFC 839?)
-
-* Naming.
-  I accidentally typed `replace_range` instead of `replace_slice` several times
-  while typing up this RFC.
-  Update: I’m told `splice` is how this operation is called.
 
 * The method could return an iterator of the replaced elements.
   Nothing would happen when the method is called,
