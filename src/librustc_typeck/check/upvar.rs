@@ -131,7 +131,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
         if !self.fcx.inh.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
             self.closures_with_inferred_kinds.insert(expr.id);
             self.fcx.inh.tables.borrow_mut().closure_kinds
-                                            .insert(closure_def_id, ty::FnClosureKind);
+                                            .insert(closure_def_id, ty::ClosureKind::Fn);
             debug!("check_closure: adding closure_id={:?} to closures_with_inferred_kinds",
                    closure_def_id);
         }
@@ -301,7 +301,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                                upvar_id);
 
                         // to move out of an upvar, this must be a FnOnce closure
-                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnOnceClosureKind);
+                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnOnce);
 
                         let upvar_capture_map =
                             &mut self.fcx.inh.tables.borrow_mut().upvar_capture_map;
@@ -314,7 +314,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                         // must still adjust the kind of the closure
                         // to be a FnOnce closure to permit moves out
                         // of the environment.
-                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnOnceClosureKind);
+                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnOnce);
                     }
                     mc::NoteNone => {
                     }
@@ -418,7 +418,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                 }
 
                 // also need to be in an FnMut closure since this is not an ImmBorrow
-                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnMutClosureKind);
+                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnMut);
 
                 true
             }
@@ -426,7 +426,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                 // this kind of deref occurs in a `move` closure, or
                 // for a by-value upvar; in either case, to mutate an
                 // upvar, we need to be an FnMut closure
-                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnMutClosureKind);
+                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::ClosureKind::FnMut);
 
                 true
             }
@@ -488,16 +488,16 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                closure_id, existing_kind, new_kind);
 
         match (existing_kind, new_kind) {
-            (ty::FnClosureKind, ty::FnClosureKind) |
-            (ty::FnMutClosureKind, ty::FnClosureKind) |
-            (ty::FnMutClosureKind, ty::FnMutClosureKind) |
-            (ty::FnOnceClosureKind, _) => {
+            (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+            (ty::ClosureKind::FnMut, ty::ClosureKind::Fn) |
+            (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+            (ty::ClosureKind::FnOnce, _) => {
                 // no change needed
             }
 
-            (ty::FnClosureKind, ty::FnMutClosureKind) |
-            (ty::FnClosureKind, ty::FnOnceClosureKind) |
-            (ty::FnMutClosureKind, ty::FnOnceClosureKind) => {
+            (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) |
+            (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+            (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                 // new kind is stronger than the old kind
                 closure_kinds.insert(closure_def_id, new_kind);
             }
