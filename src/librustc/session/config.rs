@@ -164,6 +164,7 @@ pub enum PrintRequest {
     Sysroot,
     CrateName,
     Cfg,
+    TargetList,
 }
 
 pub enum Input {
@@ -844,7 +845,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                  "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
         opt::multi("", "print", "Comma separated list of compiler information to \
                                print on stdout",
-                 "[crate-name|file-names|sysroot]"),
+                 "[crate-name|file-names|sysroot|target-list]"),
         opt::flagmulti("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti("O", "", "Equivalent to -C opt-level=2"),
         opt::opt("o", "", "Write output to <filename>", "FILENAME"),
@@ -1109,6 +1110,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             "file-names" => PrintRequest::FileNames,
             "sysroot" => PrintRequest::Sysroot,
             "cfg" => PrintRequest::Cfg,
+            "target-list" => PrintRequest::TargetList,
             req => {
                 early_error(error_format, &format!("unknown print request `{}`", req))
             }
