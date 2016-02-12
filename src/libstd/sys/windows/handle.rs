@@ -69,8 +69,8 @@ impl RawHandle {
         let mut read = 0;
         let res = cvt(unsafe {
             c::ReadFile(self.0, buf.as_ptr() as c::LPVOID,
-                           buf.len() as c::DWORD, &mut read,
-                           ptr::null_mut())
+                        buf.len() as c::DWORD, &mut read,
+                        0 as *mut _)
         });
 
         match res {
@@ -83,6 +83,55 @@ impl RawHandle {
             Err(ref e) if e.kind() == ErrorKind::BrokenPipe => Ok(0),
 
             Err(e) => Err(e)
+        }
+    }
+
+    pub unsafe fn read_overlapped(&self,
+                                  buf: &mut [u8],
+                                  overlapped: *mut c::OVERLAPPED)
+                                  -> io::Result<bool> {
+        let res = cvt({
+            c::ReadFile(self.0, buf.as_ptr() as c::LPVOID,
+                        buf.len() as c::DWORD, 0 as *mut _,
+                        overlapped)
+        });
+        match res {
+            Ok(_) => Ok(true),
+            Err(e) => {
+                if e.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
+                    Ok(false)
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub fn overlapped_result(&self,
+                             overlapped: *mut c::OVERLAPPED,
+                             wait: bool) -> io::Result<usize> {
+        unsafe {
+            let mut bytes = 0;
+            let wait = if wait {c::TRUE} else {c::FALSE};
+            let res = cvt({
+                c::GetOverlappedResult(self.raw(), overlapped, &mut bytes, wait)
+            });
+            match res {
+                Ok(_) => Ok(bytes as usize),
+                Err(e) => {
+                    if e.raw_os_error() == Some(c::ERROR_HANDLE_EOF as i32) {
+                        Ok(0)
+                    } else {
+                        Err(e)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn cancel_io(&self) -> io::Result<()> {
+        unsafe {
+            cvt(c::CancelIo(self.raw())).map(|_| ())
         }
     }
 

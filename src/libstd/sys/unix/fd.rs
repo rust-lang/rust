@@ -75,6 +75,20 @@ impl FileDesc {
         }
     }
 
+    pub fn set_nonblocking(&self, nonblocking: bool) {
+        unsafe {
+            let previous = libc::fcntl(self.fd, libc::F_GETFL);
+            debug_assert!(previous != -1);
+            let new = if nonblocking {
+                previous | libc::O_NONBLOCK
+            } else {
+                previous & !libc::O_NONBLOCK
+            };
+            let ret = libc::fcntl(self.fd, libc::F_SETFL, new);
+            debug_assert!(ret != -1);
+        }
+    }
+
     pub fn duplicate(&self) -> io::Result<FileDesc> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This

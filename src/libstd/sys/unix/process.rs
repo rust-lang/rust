@@ -651,7 +651,7 @@ mod tests {
             cmd.stdin(Stdio::MakePipe);
             cmd.stdout(Stdio::MakePipe);
 
-            let (mut cat, mut pipes) = t!(cmd.spawn(Stdio::Null));
+            let (mut cat, mut pipes) = t!(cmd.spawn(Stdio::Null, true));
             let stdin_write = pipes.stdin.take().unwrap();
             let stdout_read = pipes.stdout.take().unwrap();
 
