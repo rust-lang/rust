@@ -64,9 +64,20 @@ pub unsafe fn setup() {
                                     mem::size_of_val(&info) as DWORD);
     assert!(r != 0, "{}", io::Error::last_os_error());
 
-    // Assign our process to this job object
+    // Assign our process to this job object. Note that if this fails, one very
+    // likely reason is that we are ourselves already in a job object! This can
+    // happen on the build bots that we've got for Windows, or if just anyone
+    // else is instrumenting the build. In this case we just bail out
+    // immediately and assume that they take care of it.
+    //
+    // Also note that nested jobs (why this might fail) are supported in recent
+    // versions of Windows, but the version of Windows that our bots are running
+    // at least don't support nested job objects.
     let r = AssignProcessToJobObject(job, GetCurrentProcess());
-    assert!(r != 0, "{}", io::Error::last_os_error());
+    if r == 0 {
+        CloseHandle(job);
+        return
+    }
 
     // If we've got a parent process (e.g. the python script that called us)
     // then move ownership of this job object up to them. That way if the python
