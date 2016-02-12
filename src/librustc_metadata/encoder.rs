@@ -1877,6 +1877,10 @@ fn encode_crate_name(rbml_w: &mut Encoder, crate_name: &str) {
     rbml_w.wr_tagged_str(tag_crate_crate_name, crate_name);
 }
 
+fn encode_crate_disambiguator(rbml_w: &mut Encoder, crate_disambiguator: &str) {
+    rbml_w.wr_tagged_str(tag_crate_disambiguator, crate_disambiguator);
+}
+
 fn encode_crate_triple(rbml_w: &mut Encoder, triple: &str) {
     rbml_w.wr_tagged_str(tag_crate_triple, triple);
 }
@@ -1987,6 +1991,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
     encode_crate_name(rbml_w, &ecx.link_meta.crate_name);
     encode_crate_triple(rbml_w, &ecx.tcx.sess.opts.target_triple);
     encode_hash(rbml_w, &ecx.link_meta.crate_hash);
+    encode_crate_disambiguator(rbml_w, &ecx.tcx.sess.crate_disambiguator.borrow());
     encode_dylib_dependency_formats(rbml_w, &ecx);
 
     let mut i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();

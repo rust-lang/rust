@@ -22,6 +22,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::middle::ty::TyCtxt;
 use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
+use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
 use rustc_resolve as resolve;
 use rustc_metadata::macro_import;
@@ -500,7 +501,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     })?;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
-    *sess.crate_metadata.borrow_mut() = collect_crate_metadata(sess, &krate.attrs);
+    *sess.crate_disambiguator.borrow_mut() = compute_crate_disambiguator(sess);
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
@@ -1121,8 +1122,34 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         .collect()
 }
 
-pub fn collect_crate_metadata(session: &Session, _attrs: &[ast::Attribute]) -> Vec<String> {
-    session.opts.cg.metadata.clone()
+pub fn compute_crate_disambiguator(session: &Session) -> String {
+    let mut hasher = Sha256::new();
+
+    let mut metadata = session.opts.cg.metadata.clone();
+    // We don't want the crate_disambiguator to dependent on the order
+    // -C metadata arguments, so sort them:
+    metadata.sort();
+    // Every distinct -C metadata value is only incorporated once:
+    metadata.dedup();
+
+    hasher.input_str("metadata");
+    for s in &metadata {
+        // Also incorporate the length of a metadata string, so that we generate
+        // different values for `-Cmetadata=ab -Cmetadata=c` and
+        // `-Cmetadata=a -Cmetadata=bc`
+        hasher.input_str(&format!("{}", s.len())[..]);
+        hasher.input_str(&s[..]);
+    }
+
+    let mut hash = hasher.result_str();
+
+    // If this is an executable, add a special suffix, so that we don't get
+    // symbol conflicts when linking against a library of the same name.
+    if session.crate_types.borrow().contains(&config::CrateTypeExecutable) {
+       hash.push_str("-exe");
+    }
+
+    hash
 }
 
 pub fn build_output_filenames(input: &Input,
