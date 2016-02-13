@@ -12,6 +12,7 @@
 // aux-build:issue-12133-dylib.rs
 // aux-build:issue-12133-dylib2.rs
 // ignore-musl
+// ignore-emscripten no dylib support
 
 // pretty-expanded FIXME #23616
 

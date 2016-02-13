@@ -12,7 +12,7 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use cmp;
-#[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
+#[cfg(not(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten")))]
 use ffi::CString;
 use io;
 use libc;
@@ -82,8 +82,7 @@ impl Thread {
     }
 
     #[cfg(any(target_os = "linux",
-              target_os = "android",
-              target_os = "emscripten"))]
+              target_os = "android"))]
     pub fn set_name(name: &str) {
         const PR_SET_NAME: libc::c_int = 15;
         let cname = CString::new(name).unwrap_or_else(|_| {
@@ -124,9 +123,9 @@ impl Thread {
                                      carg.as_ptr() as *mut libc::c_void);
         }
     }
-    #[cfg(any(target_env = "newlib", target_os = "solaris"))]
+    #[cfg(any(target_env = "newlib", target_os = "solaris", target_os = "emscripten"))]
     pub fn set_name(_name: &str) {
-        // Newlib and Illumos has no way to set a thread name.
+        // Newlib, Illumos and Emscripten have no way to set a thread name.
     }
 
     pub fn sleep(dur: Duration) {
