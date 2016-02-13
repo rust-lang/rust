@@ -11,7 +11,7 @@ don’t want to use the standard library via an attribute: `#![no_std]`.
 > For details on binaries without the standard library, see [the nightly
 > chapter on `#![no_std]`](no-stdlib.html)
 
-To use `#![no_std]`, add a it to your crate root:
+To use `#![no_std]`, add it to your crate root:
 
 ```rust
 #![no_std]
