@@ -306,6 +306,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let def = Def::Mod(self.ast_map.local_def_id(item.id));
                 let module = self.new_module(parent_link, Some(def), false, is_public);
                 self.define(parent, name, TypeNS, (module, sp));
+                parent.module_children.borrow_mut().insert(item.id, module);
                 module
             }
 
@@ -474,7 +475,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             let parent_link = BlockParentLink(parent, block_id);
             let new_module = self.new_module(parent_link, None, false, false);
-            parent.anonymous_children.borrow_mut().insert(block_id, new_module);
+            parent.module_children.borrow_mut().insert(block_id, new_module);
             new_module
         } else {
             parent

@@ -243,19 +243,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         errors.extend(self.resolve_imports_for_module(module_));
         self.resolver.current_module = orig_module;
 
-        build_reduced_graph::populate_module_if_necessary(self.resolver, module_);
-        module_.for_each_local_child(|_, _, child_node| {
-            match child_node.module() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    errors.extend(self.resolve_imports_for_module_subtree(child_module));
-                }
-            }
-        });
-
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        for (_, child_module) in module_.module_children.borrow().iter() {
             errors.extend(self.resolve_imports_for_module_subtree(child_module));
         }
 
