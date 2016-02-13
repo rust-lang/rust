@@ -143,7 +143,7 @@ Add in your `Cargo.toml`:
 clippy = "*"
 ```
 
-You may also use [`cargo clippy`](https://github.com/arcnmx/cargo-clippy), a custom cargo subcommand that runs clippy on a given project.
+You then need to add `#![feature(plugin)]` and `#![plugin(clippy)]` to the top of your crate entry point (`main.rs` or `lib.rs`).
 
 Sample `main.rs`:
 ```rust
@@ -171,6 +171,9 @@ src/main.rs:11     }
 src/main.rs:8:5: 11:6 help: Try
 if let Some(y) = x { println!("{:?}", y) }
 ```
+
+
+An alternate way to use clippy is by compiling and using [`cargo clippy`](https://github.com/arcnmx/cargo-clippy), a custom cargo subcommand that runs clippy on a given project.
 
 You can add options  to `allow`/`warn`/`deny`:
 - the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy)]`)
