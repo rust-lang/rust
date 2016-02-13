@@ -22,13 +22,26 @@ impl T {
     fn into_u16(&self) -> u16 { 0 } //~ERROR methods called `into_*` usually take self by value
 
     fn to_something(self) -> u32 { 0 } //~ERROR methods called `to_*` usually take self by reference
+
+    fn new(self) {}
+    //~^ ERROR methods called `new` usually take no self
+    //~| ERROR methods called `new` usually return `Self`
 }
 
 #[derive(Clone,Copy)]
 struct U;
 
 impl U {
+    fn new() -> Self { U }
     fn to_something(self) -> u32 { 0 } // ok because U is Copy
+}
+
+struct V<T> {
+    _dummy: T
+}
+
+impl<T> V<T> {
+    fn new() -> Option<V<T>> { None }
 }
 
 impl Mul<T> for T {
@@ -274,10 +287,8 @@ fn main() {
     // the error type implements `Debug`
     let res2: Result<i32, MyError> = Ok(0);
     res2.ok().expect("oh noes!");
-    // we currently don't warn if the error type has a type parameter
-    // (but it would be nice if we did)
     let res3: Result<u32, MyErrorWithParam<u8>>= Ok(0);
-    res3.ok().expect("whoof");
+    res3.ok().expect("whoof"); //~ERROR called `ok().expect()`
     let res4: Result<u32, io::Error> = Ok(0);
     res4.ok().expect("argh"); //~ERROR called `ok().expect()`
     let res5: io::Result<u32> = Ok(0);

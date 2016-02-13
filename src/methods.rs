@@ -1,11 +1,11 @@
-use rustc_front::hir::*;
 use rustc::lint::*;
-use rustc::middle::ty;
 use rustc::middle::subst::{Subst, TypeSpace};
-use std::iter;
+use rustc::middle::ty;
+use rustc_front::hir::*;
 use std::borrow::Cow;
-use syntax::ptr::P;
+use std::{fmt, iter};
 use syntax::codemap::Span;
+use syntax::ptr::P;
 
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
             match_type, method_chain_args, snippet, snippet_opt, span_lint, span_lint_and_then, span_note_and_lint,
@@ -274,9 +274,25 @@ declare_lint! {
 ///    println!("{:p} {:p}",*y, z); // prints out the same pointer
 /// }
 /// ```
-/// 
 declare_lint! {
     pub CLONE_DOUBLE_REF, Warn, "using `clone` on `&&T`"
+}
+
+/// **What it does:** This lint warns about `new` not returning `Self`.
+///
+/// **Why is this bad?** As a convention, `new` methods are used to make a new instance of a type.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// impl Foo {
+///     fn new(..) -> NotAFoo {
+///     }
+/// }
+/// ```
+declare_lint! {
+    pub NEW_RET_NO_SELF, Warn, "not returning `Self` in a `new` method"
 }
 
 impl LintPass for MethodsPass {
@@ -295,7 +311,8 @@ impl LintPass for MethodsPass {
                     OR_FUN_CALL,
                     CHARS_NEXT_CMP,
                     CLONE_ON_COPY,
-                    CLONE_DOUBLE_REF)
+                    CLONE_DOUBLE_REF,
+                    NEW_RET_NO_SELF)
     }
 }
 
@@ -368,10 +385,11 @@ impl LateLintPass for MethodsPass {
                             }
                         }
                     }
+
                     // check conventions w.r.t. conversion method names and predicates
                     let is_copy = is_copy(cx, &ty, &item);
-                    for &(prefix, self_kinds) in &CONVENTIONS {
-                        if name.as_str().starts_with(prefix) &&
+                    for &(ref conv, self_kinds) in &CONVENTIONS {
+                        if conv.check(&name.as_str()) &&
                            !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
                             let lint = if item.vis == Visibility::Public {
                                 WRONG_PUB_SELF_CONVENTION
@@ -381,13 +399,36 @@ impl LateLintPass for MethodsPass {
                             span_lint(cx,
                                       lint,
                                       sig.explicit_self.span,
-                                      &format!("methods called `{}*` usually take {}; consider choosing a less \
+                                      &format!("methods called `{}` usually take {}; consider choosing a less \
                                                 ambiguous name",
-                                               prefix,
+                                               conv,
                                                &self_kinds.iter()
                                                           .map(|k| k.description())
                                                           .collect::<Vec<_>>()
                                                           .join(" or ")));
+                        }
+                    }
+
+                    if &name.as_str() == &"new" {
+                        let returns_self = if let FunctionRetTy::Return(ref ret_ty) = sig.decl.output {
+                            let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
+                            let ty = ast_ty_to_ty_cache.get(&ty.id);
+                            let ret_ty = ast_ty_to_ty_cache.get(&ret_ty.id);
+
+                            match (ty, ret_ty) {
+                                (Some(&ty), Some(&ret_ty)) => ret_ty.walk().any(|t| t == ty),
+                                _ => false,
+                            }
+                        }
+                        else {
+                            false
+                        };
+
+                        if !returns_self {
+                            span_lint(cx,
+                                      NEW_RET_NO_SELF,
+                                      sig.explicit_self.span,
+                                      "methods called `new` usually return `Self`");
                         }
                     }
                 }
@@ -789,69 +830,61 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     None
 }
 
-/// This checks whether a given type is known to implement Debug. It's
-/// conservative, i.e. it should not return false positives, but will return
-/// false negatives.
+/// This checks whether a given type is known to implement Debug.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
-    let no_ref_ty = walk_ptrs_ty(ty);
-    let debug = match cx.tcx.lang_items.debug_trait() {
-        Some(debug) => debug,
-        None => return false,
-    };
-    let debug_def = cx.tcx.lookup_trait_def(debug);
-    let mut debug_impl_exists = false;
-    debug_def.for_each_relevant_impl(cx.tcx, no_ref_ty, |d| {
-        let self_ty = &cx.tcx.impl_trait_ref(d).and_then(|im| im.substs.self_ty());
-        if let Some(self_ty) = *self_ty {
-            if !self_ty.flags.get().contains(ty::TypeFlags::HAS_PARAMS) {
-                debug_impl_exists = true;
-            }
-        }
-    });
-    debug_impl_exists
+    match cx.tcx.lang_items.debug_trait() {
+        Some(debug) => implements_trait(cx, ty, debug, Some(vec![])),
+        None => false,
+    }
+}
+
+enum Convention {
+    Eq(&'static str),
+    StartsWith(&'static str),
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
-    ("into_", &[SelfKind::Value]),
-    ("to_", &[SelfKind::Ref]),
-    ("as_", &[SelfKind::Ref, SelfKind::RefMut]),
-    ("is_", &[SelfKind::Ref, SelfKind::No]),
-    ("from_", &[SelfKind::No]),
+const CONVENTIONS: [(Convention, &'static [SelfKind]); 6] = [
+    (Convention::Eq("new"), &[SelfKind::No]),
+    (Convention::StartsWith("as_"), &[SelfKind::Ref, SelfKind::RefMut]),
+    (Convention::StartsWith("from_"), &[SelfKind::No]),
+    (Convention::StartsWith("into_"), &[SelfKind::Value]),
+    (Convention::StartsWith("is_"), &[SelfKind::Ref, SelfKind::No]),
+    (Convention::StartsWith("to_"), &[SelfKind::Ref]),
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
     ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
-    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
+    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
     ("bitand", 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
     ("bitor", 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
     ("bitxor", 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
     ("borrow", 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
     ("borrow_mut", 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
+    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
     ("cmp", 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
     ("default", 0, SelfKind::No, OutType::Any, "std::default::Default"),
-    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
+    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
+    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
+    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
+    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
     ("from_iter", 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
     ("from_str", 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
+    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
+    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
+    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
+    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
+    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
+    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
+    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
+    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
+    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
+    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
 
 #[derive(Clone, Copy)]
@@ -892,6 +925,24 @@ impl SelfKind {
             SelfKind::Ref => "self by reference",
             SelfKind::RefMut => "self by mutable reference",
             SelfKind::No => "no self",
+        }
+    }
+}
+
+impl Convention {
+    fn check(&self, other: &str) -> bool {
+        match *self {
+            Convention::Eq(this) => this == other,
+            Convention::StartsWith(this) => other.starts_with(this),
+        }
+    }
+}
+
+impl fmt::Display for Convention {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            Convention::Eq(this) => this.fmt(f),
+            Convention::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
         }
     }
 }
