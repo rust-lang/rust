@@ -24,6 +24,15 @@ linelength_flag = "ignore-tidy-linelength"
 
 interesting_files = ['.rs', '.py', '.js', '.sh', '.c', '.h']
 uninteresting_files = ['miniz.c', 'jquery', 'rust_android_dummy']
+stable_whitelist = {
+    'src/bootstrap',
+    'src/build_helper',
+    'src/libcollectionstest',
+    'src/libcore',
+    'src/libstd',
+    'src/rustc/std_shim',
+    'src/test'
+}
 
 
 def report_error_name_no(name, no, s):
@@ -93,6 +102,7 @@ count_other_linted_files = 0
 file_counts = {ext: 0 for ext in interesting_files}
 
 all_paths = set()
+needs_unstable_attr = set()
 
 try:
     for (dirpath, dirnames, filenames) in os.walk(src_dir):
@@ -149,6 +159,9 @@ try:
                 else:
                     if "SNAP " in line:
                         report_warn("unmatched SNAP line: " + line)
+                search = re.search(r'^#!\[unstable', line)
+                if search:
+                    needs_unstable_attr.discard(filename)
 
             if cr_flag in line:
                 check_cr = False
@@ -181,6 +194,9 @@ try:
                 check_cr = True
                 check_tab = True
                 check_linelength = True
+                if all(f not in filename for f in stable_whitelist) and \
+                   re.search(r'src/.*/lib\.rs', filename):
+                    needs_unstable_attr.add(filename)
 
             # Put a reasonable limit on the amount of header data we use for
             # the licenseck
@@ -195,6 +211,8 @@ try:
         update_counts(current_name)
         assert len(current_contents) > 0
         do_license_check(current_name, current_contents)
+    for f in needs_unstable_attr:
+        report_error_name_no(f, 1, "requires unstable attribute")
 
 except UnicodeDecodeError as e:
     report_err("UTF-8 decoding error " + str(e))
