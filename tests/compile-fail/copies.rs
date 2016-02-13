@@ -12,7 +12,7 @@ fn foo() -> bool { unimplemented!() }
 
 #[deny(if_same_then_else)]
 #[deny(match_same_arms)]
-fn if_same_then_else() -> &'static str {
+fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
         foo();
     }
@@ -130,16 +130,23 @@ fn if_same_then_else() -> &'static str {
     }
 
     if true {
+        try!(Ok("foo"));
+    }
+    else { //~ERROR this `if` has identical blocks
+        try!(Ok("foo"));
+    }
+
+    if true {
         let foo = "";
-        return &foo[0..];
+        return Ok(&foo[0..]);
     }
     else if false {
         let foo = "bar";
-        return &foo[0..];
+        return Ok(&foo[0..]);
     }
     else { //~ERROR this `if` has identical blocks
         let foo = "";
-        return &foo[0..];
+        return Ok(&foo[0..]);
     }
 }
 
@@ -167,6 +174,15 @@ fn ifs_same_cond() {
     }
     else if a == 1 {
     }
+
+    // See #659
+    if cfg!(feature = "feature1-659") {
+        1
+    } else if cfg!(feature = "feature2-659") {
+        2
+    } else {
+        3
+    };
 
     let mut v = vec![1];
     if v.pop() == None { // ok, functions
