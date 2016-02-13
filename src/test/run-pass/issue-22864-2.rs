@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
+
 pub fn main() {
     let f = || || 0;
     std::thread::spawn(f());

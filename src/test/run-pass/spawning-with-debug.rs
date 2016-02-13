@@ -10,6 +10,7 @@
 
 // ignore-windows
 // exec-env:RUST_LOG=debug
+// ignore-emscripten no threads support
 
 // regression test for issue #10405, make sure we don't call println! too soon.
 

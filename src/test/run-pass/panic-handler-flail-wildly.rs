@@ -9,6 +9,8 @@
 // except according to those terms.
 #![feature(panic_handler, std_panic)]
 
+// ignore-emscripten no threads support
+
 use std::panic;
 use std::thread;
 

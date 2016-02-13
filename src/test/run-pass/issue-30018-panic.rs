@@ -13,6 +13,8 @@
 // spawned thread to isolate the expected error result from the
 // SIGTRAP injected by the drop-flag consistency checking.
 
+// ignore-emscripten no threads support
+
 struct Foo;
 
 impl Drop for Foo {

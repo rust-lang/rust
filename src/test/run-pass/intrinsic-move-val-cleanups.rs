@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-emscripten no threads support
+
 // This test is checking that the move_val_init intrinsic is
 // respecting cleanups for both of its argument expressions.
 //

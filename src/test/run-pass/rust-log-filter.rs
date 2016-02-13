@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // exec-env:RUST_LOG=rust_log_filter/foo
-
+// ignore-emscripten no threads support
 
 #![allow(unknown_features)]
 #![feature(box_syntax, std_misc, rustc_private)]
