@@ -24,8 +24,6 @@ use middle::const_eval::{const_int_checked_div, const_uint_checked_div};
 use middle::const_eval::{const_int_checked_rem, const_uint_checked_rem};
 use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
 use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
-use middle::const_eval::EvalHint::ExprTypeChecked;
-use middle::const_eval::eval_const_expr_partial;
 use middle::def::Def;
 use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
@@ -261,7 +259,7 @@ impl ConstEvalFailure {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TrueConst {
     Yes, No
 }
@@ -665,11 +663,11 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         hir::ExprIndex(ref base, ref index) => {
             let (bv, bt) = try!(const_expr(cx, &base, param_substs, fn_args, trueconst));
-            let iv = match eval_const_expr_partial(cx.tcx(), &index, ExprTypeChecked, None) {
-                Ok(ConstVal::Int(i)) => i as u64,
-                Ok(ConstVal::Uint(u)) => u,
-                _ => cx.sess().span_bug(index.span,
-                                        "index is not an integer-constant expression")
+            let iv = try!(const_expr(cx, &index, param_substs, fn_args, TrueConst::Yes)).0;
+            let iv = if let Some(iv) = const_to_opt_uint(iv) {
+                iv
+            } else {
+                cx.sess().span_bug(index.span, "index is not an integer-constant expression");
             };
             let (arr, len) = match bt.sty {
                 ty::TyArray(_, u) => (bv, C_uint(cx, u)),
