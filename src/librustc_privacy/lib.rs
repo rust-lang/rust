@@ -855,7 +855,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
             hir::ExprField(ref base, name) => {
-                if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
+                if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&base).sty {
                     self.check_field(expr.span,
                                      def,
                                      def.struct_variant(),
@@ -863,7 +863,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 }
             }
             hir::ExprTupField(ref base, idx) => {
-                if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
+                if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&base).sty {
                     self.check_field(expr.span,
                                      def,
                                      def.struct_variant(),
@@ -1238,7 +1238,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
                         at_outer_type: true,
                         outer_type_is_public_path: false,
                     };
-                    visitor.visit_ty(&**self_);
+                    visitor.visit_ty(&self_);
                     self_contains_private = visitor.contains_private;
                     self_is_public_path = visitor.outer_type_is_public_path;
                 }
@@ -1395,7 +1395,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
                 }
                 &hir::WherePredicate::RegionPredicate(_) => {}
                 &hir::WherePredicate::EqPredicate(ref eq_pred) => {
-                    self.visit_ty(&*eq_pred.ty);
+                    self.visit_ty(&eq_pred.ty);
                 }
             }
         }

@@ -1071,7 +1071,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
     let ident = match node {
         // The node may have changed, recompute the "pretty" impl name.
         ItemKind::Impl(_, _, _, ref maybe_trait, ref ty, _) => {
-            ast_util::impl_pretty_name(maybe_trait, Some(&**ty))
+            ast_util::impl_pretty_name(maybe_trait, Some(&ty))
         }
         _ => ident
     };

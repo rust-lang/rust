@@ -143,7 +143,7 @@ pub trait AttributeMethods {
 impl AttributeMethods for Attribute {
     /// Extract the MetaItem from inside this Attribute.
     fn meta(&self) -> &MetaItem {
-        &*self.node.value
+        &self.node.value
     }
 
     /// Convert self to a normal #[doc="foo"] comment, if it is a
@@ -370,9 +370,9 @@ pub fn cfg_matches<T: CfgDiag>(cfgs: &[P<MetaItem>],
                            diag: &mut T) -> bool {
     match cfg.node {
         ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "any" =>
-            mis.iter().any(|mi| cfg_matches(cfgs, &**mi, diag)),
+            mis.iter().any(|mi| cfg_matches(cfgs, &mi, diag)),
         ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "all" =>
-            mis.iter().all(|mi| cfg_matches(cfgs, &**mi, diag)),
+            mis.iter().all(|mi| cfg_matches(cfgs, &mi, diag)),
         ast::MetaItemKind::List(ref pred, ref mis) if &pred[..] == "not" => {
             if mis.len() != 1 {
                 diag.emit_error(|diagnostic| {
@@ -380,7 +380,7 @@ pub fn cfg_matches<T: CfgDiag>(cfgs: &[P<MetaItem>],
                 });
                 return false;
             }
-            !cfg_matches(cfgs, &*mis[0], diag)
+            !cfg_matches(cfgs, &mis[0], diag)
         }
         ast::MetaItemKind::List(ref pred, _) => {
             diag.emit_error(|diagnostic| {

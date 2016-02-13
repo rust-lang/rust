@@ -87,7 +87,7 @@ impl<T> Deref for P<T> {
     type Target = T;
 
     fn deref<'a>(&'a self) -> &'a T {
-        &*self.ptr
+        &self.ptr
     }
 }
 
@@ -153,7 +153,7 @@ impl<T> P<[T]> {
     }
 
     pub fn as_slice<'a>(&'a self) -> &'a [T] {
-        &*self.ptr
+        &self.ptr
     }
 
     pub fn move_iter(self) -> vec::IntoIter<T> {

@@ -72,7 +72,7 @@ impl<'a> fmt::Debug for Matrix<'a> {
         let &Matrix(ref m) = self;
         let pretty_printed_matrix: Vec<Vec<String>> = m.iter().map(|row| {
             row.iter()
-               .map(|&pat| pat_to_string(&*pat))
+               .map(|&pat| pat_to_string(&pat))
                .collect::<Vec<String>>()
         }).collect();
 
@@ -175,7 +175,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 // Second, if there is a guard on each arm, make sure it isn't
                 // assigning or borrowing anything mutably.
                 match arm.guard {
-                    Some(ref guard) => check_for_mutation_in_guard(cx, &**guard),
+                    Some(ref guard) => check_for_mutation_in_guard(cx, &guard),
                     None => {}
                 }
             }
@@ -196,14 +196,14 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                 .iter()
                 .flat_map(|&(ref pats, _)| pats) {
                 // Third, check legality of move bindings.
-                check_legality_of_bindings_in_at_patterns(cx, &**pat);
+                check_legality_of_bindings_in_at_patterns(cx, &pat);
 
                 // Fourth, check if there are any references to NaN that we should warn about.
-                check_for_static_nan(cx, &**pat);
+                check_for_static_nan(cx, &pat);
 
                 // Fifth, check if for any of the patterns that match an enumerated type
                 // are bindings with the same name as one of the variants of said type.
-                check_for_bindings_named_the_same_as_variants(cx, &**pat);
+                check_for_bindings_named_the_same_as_variants(cx, &pat);
             }
 
             // Fourth, check for unreachable arms.
@@ -275,7 +275,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
     front_util::walk_pat(pat, |p| {
         if let hir::PatLit(ref expr) = p.node {
-            match eval_const_expr_partial(cx.tcx, &**expr, ExprTypeChecked, None) {
+            match eval_const_expr_partial(cx.tcx, &expr, ExprTypeChecked, None) {
                 Ok(ConstVal::Float(f)) if f.is_nan() => {
                     span_warn!(cx.tcx.sess, p.span, E0003,
                                "unmatchable NaN in pattern, \
@@ -360,7 +360,7 @@ fn check_arms(cx: &MatchCheckCtxt,
 
 fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
     match p.node {
-        hir::PatIdent(_, _, Some(ref s)) => raw_pat(&**s),
+        hir::PatIdent(_, _, Some(ref s)) => raw_pat(&s),
         _ => p
     }
 }
@@ -679,7 +679,7 @@ fn is_useful(cx: &MatchCheckCtxt,
     let left_ty = if real_pat.id == DUMMY_NODE_ID {
         cx.tcx.mk_nil()
     } else {
-        let left_ty = cx.tcx.pat_ty(&*real_pat);
+        let left_ty = cx.tcx.pat_ty(&real_pat);
 
         match real_pat.node {
             hir::PatIdent(hir::BindByRef(..), _, _) => {
@@ -798,9 +798,9 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 _ => vec!(Single)
             },
         hir::PatLit(ref expr) =>
-            vec!(ConstantValue(eval_const_expr(cx.tcx, &**expr))),
+            vec!(ConstantValue(eval_const_expr(cx.tcx, &expr))),
         hir::PatRange(ref lo, ref hi) =>
-            vec!(ConstantRange(eval_const_expr(cx.tcx, &**lo), eval_const_expr(cx.tcx, &**hi))),
+            vec!(ConstantRange(eval_const_expr(cx.tcx, &lo), eval_const_expr(cx.tcx, &hi))),
         hir::PatVec(ref before, ref slice, ref after) =>
             match left_ty.sty {
                 ty::TyArray(_, _) => vec!(Single),
@@ -941,7 +941,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             Some(vec![&**inner]),
 
         hir::PatLit(ref expr) => {
-            let expr_value = eval_const_expr(cx.tcx, &**expr);
+            let expr_value = eval_const_expr(cx.tcx, &expr);
             match range_covered_by_constructor(constructor, &expr_value, &expr_value) {
                 Some(true) => Some(vec![]),
                 Some(false) => None,
@@ -953,8 +953,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         hir::PatRange(ref from, ref to) => {
-            let from_value = eval_const_expr(cx.tcx, &**from);
-            let to_value = eval_const_expr(cx.tcx, &**to);
+            let from_value = eval_const_expr(cx.tcx, &from);
+            let to_value = eval_const_expr(cx.tcx, &to);
             match range_covered_by_constructor(constructor, &from_value, &to_value) {
                 Some(true) => Some(vec![]),
                 Some(false) => None,
@@ -1012,7 +1012,7 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &hir::Local) {
 
     // Check legality of move bindings and `@` patterns.
     check_legality_of_move_bindings(cx, false, slice::ref_slice(&loc.pat));
-    check_legality_of_bindings_in_at_patterns(cx, &*loc.pat);
+    check_legality_of_bindings_in_at_patterns(cx, &loc.pat);
 }
 
 fn check_fn(cx: &mut MatchCheckCtxt,
@@ -1031,7 +1031,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
     for input in &decl.inputs {
         check_irrefutable(cx, &input.pat, true);
         check_legality_of_move_bindings(cx, false, slice::ref_slice(&input.pat));
-        check_legality_of_bindings_in_at_patterns(cx, &*input.pat);
+        check_legality_of_bindings_in_at_patterns(cx, &input.pat);
     }
 }
 
@@ -1058,7 +1058,7 @@ fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F) -> Option<A>
     match is_useful(cx, &pats, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
             assert_eq!(pats.len(), 1);
-            Some(refutable(&*pats[0]))
+            Some(refutable(&pats[0]))
         },
         NotUseful => None,
         Useful => unreachable!()
@@ -1073,7 +1073,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let def_map = &tcx.def_map;
     let mut by_ref_span = None;
     for pat in pats {
-        pat_bindings(def_map, &**pat, |bm, _, span, _path| {
+        pat_bindings(def_map, &pat, |bm, _, span, _path| {
             match bm {
                 hir::BindByRef(_) => {
                     by_ref_span = Some(span);
@@ -1088,7 +1088,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
-        if sub.map_or(false, |p| pat_contains_bindings(&def_map.borrow(), &*p)) {
+        if sub.map_or(false, |p| pat_contains_bindings(&def_map.borrow(), &p)) {
             span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings");
         } else if has_guard {
             span_err!(cx.tcx.sess, p.span, E0008, "cannot bind by-move into a pattern guard");
@@ -1101,8 +1101,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     };
 
     for pat in pats {
-        front_util::walk_pat(&**pat, |p| {
-            if pat_is_binding(&def_map.borrow(), &*p) {
+        front_util::walk_pat(&pat, |p| {
+            if pat_is_binding(&def_map.borrow(), &p) {
                 match p.node {
                     hir::PatIdent(hir::BindByValue(_), _, ref sub) => {
                         let pat_ty = tcx.node_id_to_type(p.id);

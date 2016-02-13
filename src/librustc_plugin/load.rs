@@ -68,7 +68,7 @@ pub fn load_plugins(sess: &Session, cstore: &CStore, krate: &ast::Crate,
             }
 
             let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
-            loader.load_plugin(plugin.span, &*plugin.name(), args);
+            loader.load_plugin(plugin.span, &plugin.name(), args);
         }
     }
 

@@ -562,7 +562,7 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
     let assoc_bindings: Vec<_> =
         data.bindings.iter()
                      .map(|b| ConvertedBinding { item_name: b.name,
-                                                 ty: ast_ty_to_ty(this, rscope, &*b.ty),
+                                                 ty: ast_ty_to_ty(this, rscope, &b.ty),
                                                  span: b.span })
                      .collect();
 
@@ -1064,7 +1064,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                     err.span_suggestion(full_span, "try adding parentheses (per RFC 438):",
                                         format!("&{}({} +{})",
                                                 mutbl_str,
-                                                pprust::ty_to_string(&*mut_ty.ty),
+                                                pprust::ty_to_string(&mut_ty.ty),
                                                 pprust::bounds_to_string(bounds)));
                 }
                 (&hir::TyRptr(Some(ref lt), ref mut_ty), Some(full_span)) => {
@@ -1073,7 +1073,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                                         format!("&{} {}({} +{})",
                                                 pprust::lifetime_to_string(lt),
                                                 mutbl_str,
-                                                pprust::ty_to_string(&*mut_ty.ty),
+                                                pprust::ty_to_string(&mut_ty.ty),
                                                 pprust::bounds_to_string(bounds)));
                 }
 
@@ -1596,10 +1596,10 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     let typ = match ast_ty.node {
         hir::TyVec(ref ty) => {
-            tcx.mk_slice(ast_ty_to_ty(this, rscope, &**ty))
+            tcx.mk_slice(ast_ty_to_ty(this, rscope, &ty))
         }
         hir::TyObjectSum(ref ty, ref bounds) => {
-            match ast_ty_to_trait_ref(this, rscope, &**ty, bounds) {
+            match ast_ty_to_trait_ref(this, rscope, &ty, bounds) {
                 Ok((trait_ref, projection_bounds)) => {
                     trait_ref_to_object_type(this,
                                              rscope,
@@ -1615,7 +1615,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         hir::TyPtr(ref mt) => {
             tcx.mk_ptr(ty::TypeAndMut {
-                ty: ast_ty_to_ty(this, rscope, &*mt.ty),
+                ty: ast_ty_to_ty(this, rscope, &mt.ty),
                 mutbl: mt.mutbl
             })
         }
@@ -1626,18 +1626,18 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 &ObjectLifetimeDefaultRscope::new(
                     rscope,
                     ty::ObjectLifetimeDefault::Specific(r));
-            let t = ast_ty_to_ty(this, rscope1, &*mt.ty);
+            let t = ast_ty_to_ty(this, rscope1, &mt.ty);
             tcx.mk_ref(tcx.mk_region(r), ty::TypeAndMut {ty: t, mutbl: mt.mutbl})
         }
         hir::TyTup(ref fields) => {
             let flds = fields.iter()
-                             .map(|t| ast_ty_to_ty(this, rscope, &**t))
+                             .map(|t| ast_ty_to_ty(this, rscope, &t))
                              .collect();
             tcx.mk_tup(flds)
         }
         hir::TyBareFn(ref bf) => {
             require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-            let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
+            let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &bf.decl);
             tcx.mk_fn(None, tcx.mk_bare_fn(bare_fn))
         }
         hir::TyPolyTraitRef(ref bounds) => {
@@ -1687,10 +1687,10 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 Ok(r) => {
                     match r {
                         ConstVal::Int(i) =>
-                            tcx.mk_array(ast_ty_to_ty(this, rscope, &**ty),
+                            tcx.mk_array(ast_ty_to_ty(this, rscope, &ty),
                                          i as usize),
                         ConstVal::Uint(i) =>
-                            tcx.mk_array(ast_ty_to_ty(this, rscope, &**ty),
+                            tcx.mk_array(ast_ty_to_ty(this, rscope, &ty),
                                          i as usize),
                         _ => {
                             span_err!(tcx.sess, ast_ty.span, E0249,
@@ -1740,7 +1740,7 @@ pub fn ty_of_arg<'tcx>(this: &AstConv<'tcx>,
     match a.ty.node {
         hir::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
         hir::TyInfer => this.ty_infer(None, None, None, a.ty.span),
-        _ => ast_ty_to_ty(this, rscope, &*a.ty),
+        _ => ast_ty_to_ty(this, rscope, &a.ty),
     }
 }
 
@@ -1804,7 +1804,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     let arg_tys: Vec<Ty> =
         arg_params.iter().map(|a| ty_of_arg(this, &rb, a, None)).collect();
     let arg_pats: Vec<String> =
-        arg_params.iter().map(|a| pprust::pat_to_string(&*a.pat)).collect();
+        arg_params.iter().map(|a| pprust::pat_to_string(&a.pat)).collect();
 
     // Second, if there was exactly one lifetime (either a substitution or a
     // reference) in the arguments, then any anonymous regions in the output
@@ -1860,7 +1860,7 @@ fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx>,
              Some(ty::ExplicitSelfCategory::ByReference(region, mutability)))
         }
         hir::SelfExplicit(ref ast_type, _) => {
-            let explicit_type = ast_ty_to_ty(this, rscope, &**ast_type);
+            let explicit_type = ast_ty_to_ty(this, rscope, &ast_type);
 
             // We wish to (for now) categorize an explicit self
             // declaration like `self: SomeType` into either `self`,
@@ -1967,7 +1967,7 @@ pub fn ty_of_closure<'tcx>(
         _ if is_infer =>
             ty::FnConverging(this.ty_infer(None, None, None, decl.output.span())),
         hir::Return(ref output) =>
-            ty::FnConverging(ast_ty_to_ty(this, &rb, &**output)),
+            ty::FnConverging(ast_ty_to_ty(this, &rb, &output)),
         hir::DefaultReturn(..) => unreachable!(),
         hir::NoReturn(..) => ty::FnDiverging
     };

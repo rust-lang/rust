@@ -34,7 +34,7 @@ impl NamespaceTreeNode {
     pub fn mangled_name_of_contained_item(&self, item_name: &str) -> String {
         fn fill_nested(node: &NamespaceTreeNode, output: &mut String) {
             match node.parent {
-                Some(ref parent) => fill_nested(&*parent.upgrade().unwrap(), output),
+                Some(ref parent) => fill_nested(&parent.upgrade().unwrap(), output),
                 None => {}
             }
             let string = node.name.as_str();

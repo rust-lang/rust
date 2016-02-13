@@ -196,7 +196,7 @@ pub fn block_query<P>(b: &hir::Block, p: P) -> bool where P: FnMut(&hir::Expr) -
         p: p,
         flag: false,
     };
-    intravisit::walk_block(&mut v, &*b);
+    intravisit::walk_block(&mut v, &b);
     return v.flag;
 }
 

@@ -438,25 +438,25 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                 help_msg = format!("To reference an item from the \
                                                     `{module}` module, use \
                                                     `{module}::{ident}`",
-                                                   module = &*path,
+                                                   module = path,
                                                    ident = ident.node);
                             }
                             ExprMethodCall(ident, _, _) => {
                                 help_msg = format!("To call a function from the \
                                                     `{module}` module, use \
                                                     `{module}::{ident}(..)`",
-                                                   module = &*path,
+                                                   module = path,
                                                    ident = ident.node);
                             }
                             ExprCall(_, _) => {
                                 help_msg = format!("No function corresponds to `{module}(..)`",
-                                                   module = &*path);
+                                                   module = path);
                             }
                             _ => { } // no help available
                         }
                     } else {
                         help_msg = format!("Module `{module}` cannot be the value of an expression",
-                                           module = &*path);
+                                           module = path);
                     }
 
                     if !help_msg.is_empty() {
@@ -577,7 +577,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         self.resolve_expr(expr);
     }
     fn visit_local(&mut self, local: &Local) {
-        execute_callback!(hir_map::Node::NodeLocal(&*local.pat), self);
+        execute_callback!(hir_map::Node::NodeLocal(&local.pat), self);
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &Ty) {
@@ -1331,8 +1331,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         match search_parent_externals(name, &self.current_module) {
                             Some(module) => {
                                 let path_str = names_to_string(module_path);
-                                let target_mod_str = module_to_string(&*module);
-                                let current_mod_str = module_to_string(&*self.current_module);
+                                let target_mod_str = module_to_string(&module);
+                                let current_mod_str = module_to_string(&self.current_module);
 
                                 let prefix = if target_mod_str == current_mod_str {
                                     "self::".to_string()
@@ -1400,7 +1400,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving module path for import) processing `{}` rooted at `{}`",
                names_to_string(module_path),
-               module_to_string(&*module_));
+               module_to_string(&module_));
 
         // Resolve the module prefix, if any.
         let module_prefix_result = self.resolve_module_prefix(module_, module_path);
@@ -1494,7 +1494,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
                name,
                namespace,
-               module_to_string(&*module_));
+               module_to_string(&module_));
 
         // Proceed up the scope chain looking for parent modules.
         let mut search_module = module_;
@@ -1502,7 +1502,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // Resolve the name in the parent module.
             match self.resolve_name_in_module(search_module, name, namespace, true, record_used) {
                 Failed(Some((span, msg))) => {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 }
                 Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
@@ -1592,7 +1592,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Now loop through all the `super`s we find.
         while i < module_path.len() && "super" == module_path[i].as_str() {
             debug!("(resolving module prefix) resolving `super` at {}",
-                   module_to_string(&*containing_module));
+                   module_to_string(&containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
                 None => return Failed(None),
                 Some(new_module) => {
@@ -1603,7 +1603,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         debug!("(resolving module prefix) finished resolving prefix at {}",
-               module_to_string(&*containing_module));
+               module_to_string(&containing_module));
 
         return Success(PrefixFound(containing_module, i));
     }
@@ -1770,7 +1770,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ItemImpl(_, _, ref generics, ref opt_trait_ref, ref self_type, ref impl_items) => {
                 self.resolve_implementation(generics,
                                             opt_trait_ref,
-                                            &**self_type,
+                                            &self_type,
                                             item.id,
                                             impl_items);
             }
@@ -1965,9 +1965,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Add each argument to the rib.
         let mut bindings_list = HashMap::new();
         for argument in &declaration.inputs {
-            self.resolve_pattern(&*argument.pat, ArgumentIrrefutableMode, &mut bindings_list);
+            self.resolve_pattern(&argument.pat, ArgumentIrrefutableMode, &mut bindings_list);
 
-            self.visit_ty(&*argument.ty);
+            self.visit_ty(&argument.ty);
 
             debug!("(resolving function) recorded argument");
         }
@@ -1997,7 +1997,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut err =
                     resolve_struct_error(self,
                                   trait_path.span,
-                                  ResolutionError::IsNotATrait(&*path_names_to_string(trait_path,
+                                  ResolutionError::IsNotATrait(&path_names_to_string(trait_path,
                                                                                       path_depth)));
 
                 // If it's a typedef, give a note
@@ -2011,7 +2011,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         } else {
             resolve_error(self,
                           trait_path.span,
-                          ResolutionError::UndeclaredTraitName(&*path_names_to_string(trait_path,
+                          ResolutionError::UndeclaredTraitName(&path_names_to_string(trait_path,
                                                                                       path_depth)));
             Err(())
         }
@@ -2165,7 +2165,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if let Some((did, ref trait_ref)) = self.current_trait_ref {
             if !self.trait_item_map.contains_key(&(name, did)) {
                 let path_str = path_names_to_string(&trait_ref.path, 0);
-                resolve_error(self, span, err(name, &*path_str));
+                resolve_error(self, span, err(name, &path_str));
             }
         }
     }
@@ -2178,7 +2178,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
-        self.resolve_pattern(&*local.pat, LocalIrrefutableMode, &mut HashMap::new());
+        self.resolve_pattern(&local.pat, LocalIrrefutableMode, &mut HashMap::new());
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -2204,9 +2204,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if arm.pats.is_empty() {
             return;
         }
-        let map_0 = self.binding_mode_map(&*arm.pats[0]);
+        let map_0 = self.binding_mode_map(&arm.pats[0]);
         for (i, p) in arm.pats.iter().enumerate() {
-            let map_i = self.binding_mode_map(&**p);
+            let map_i = self.binding_mode_map(&p);
 
             for (&key, &binding_0) in &map_0 {
                 match map_i.get(&key) {
@@ -2241,7 +2241,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut bindings_list = HashMap::new();
         for pattern in &arm.pats {
-            self.resolve_pattern(&**pattern, RefutableMode, &mut bindings_list);
+            self.resolve_pattern(&pattern, RefutableMode, &mut bindings_list);
         }
 
         // This has to happen *after* we determine which
@@ -2249,7 +2249,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.check_consistent_bindings(arm);
 
         walk_list!(self, visit_expr, &arm.guard);
-        self.visit_expr(&*arm.body);
+        self.visit_expr(&arm.body);
 
         if !self.resolved {
             self.value_ribs.pop();
@@ -2340,7 +2340,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                           ty.span,
                                           ResolutionError::UseOfUndeclared(
                                                                     kind,
-                                                                    &*path_names_to_string(path,
+                                                                    &path_names_to_string(path,
                                                                                            0))
                                          );
                         }
@@ -2616,7 +2616,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 self,
                                 path.span,
                                 ResolutionError::DoesNotNameAStruct(
-                                    &*path_names_to_string(path, 0))
+                                    &path_names_to_string(path, 0))
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
@@ -2672,7 +2672,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Failed(err) => {
                 match err {
                     Some((span, msg)) => {
-                        resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                        resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                     }
                     None => (),
                 }
@@ -2804,7 +2804,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
             Success(binding) => binding.def().map(LocalDef::from_def),
             Failed(Some((span, msg))) => {
-                resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 None
             }
             _ => None,
@@ -2927,7 +2927,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 };
 
-                resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 return None;
             }
             Indeterminate => return None,
@@ -2982,7 +2982,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 };
 
-                resolve_error(self, span, ResolutionError::FailedToResolve(&*msg));
+                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 return None;
             }
 
@@ -3064,8 +3064,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     -> Option<(Path, NodeId, FallbackChecks)> {
             match t.node {
                 TyPath(None, ref path) => Some((path.clone(), t.id, allow)),
-                TyPtr(ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
-                TyRptr(_, ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, allow),
+                TyPtr(ref mut_ty) => extract_path_and_node_id(&mut_ty.ty, OnlyTraitAndStatics),
+                TyRptr(_, ref mut_ty) => extract_path_and_node_id(&mut_ty.ty, allow),
                 // This doesn't handle the remaining `Ty` variants as they are not
                 // that commonly the self_type, it might be interesting to provide
                 // support for those in future.
@@ -3183,7 +3183,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     .flat_map(|rib| rib.bindings.keys());
 
         if let Some(found) = find_best_match_for_name(names, name, None) {
-            if name != &*found {
+            if name != found {
                 return SuggestionType::Function(found);
             }
         } SuggestionType::NotFound
@@ -3229,7 +3229,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         let mut err = resolve_struct_error(self,
                                         expr.span,
-                                        ResolutionError::StructVariantUsedAsFunction(&*path_name));
+                                        ResolutionError::StructVariantUsedAsFunction(&path_name));
 
                         let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
                                           path_name);
@@ -3270,7 +3270,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Some(Def::Struct(..)) => {
                             let mut err = resolve_struct_error(self,
                                 expr.span,
-                                ResolutionError::StructVariantUsedAsFunction(&*path_name));
+                                ResolutionError::StructVariantUsedAsFunction(&path_name));
 
                             let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
                                               path_name);
@@ -3346,7 +3346,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 resolve_error(self,
                                               expr.span,
                                               ResolutionError::UnresolvedName(
-                                                  &*path_name, &*msg, context));
+                                                  &path_name, &msg, context));
                             }
                         }
                     }
@@ -3367,7 +3367,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         resolve_error(self,
                                       path.span,
                                       ResolutionError::DoesNotNameAStruct(
-                                                                &*path_names_to_string(path, 0))
+                                                                &path_names_to_string(path, 0))
                                      );
                         self.record_def(expr.id, err_path_resolution());
                     }

@@ -206,7 +206,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match dest {
                 Ignore => {
                     for element in elements {
-                        bcx = expr::trans_into(bcx, &**element, Ignore);
+                        bcx = expr::trans_into(bcx, &element, Ignore);
                     }
                 }
 
@@ -216,7 +216,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         let lleltptr = GEPi(bcx, lldest, &[i]);
                         debug!("writing index {} with lleltptr={}",
                                i, bcx.val_to_string(lleltptr));
-                        bcx = expr::trans_into(bcx, &**element,
+                        bcx = expr::trans_into(bcx, &element,
                                                SaveIn(lleltptr));
                         let scope = cleanup::CustomScope(temp_scope);
                         // Issue #30822: mark memory as dropped after running destructor
@@ -230,14 +230,14 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::ExprRepeat(ref element, ref count_expr) => {
             match dest {
                 Ignore => {
-                    return expr::trans_into(bcx, &**element, Ignore);
+                    return expr::trans_into(bcx, &element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    match bcx.tcx().eval_repeat_count(&**count_expr) {
-                        0 => expr::trans_into(bcx, &**element, Ignore),
-                        1 => expr::trans_into(bcx, &**element, SaveIn(lldest)),
+                    match bcx.tcx().eval_repeat_count(&count_expr) {
+                        0 => expr::trans_into(bcx, &element, Ignore),
+                        1 => expr::trans_into(bcx, &element, SaveIn(lldest)),
                         count => {
-                            let elem = unpack_datum!(bcx, expr::trans(bcx, &**element));
+                            let elem = unpack_datum!(bcx, expr::trans(bcx, &element));
                             let bcx = iter_vec_loop(bcx, lldest, vt,
                                                     C_uint(bcx.ccx(), count),
                                                     |set_bcx, lleltptr, _| {
@@ -285,7 +285,7 @@ fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
         },
         hir::ExprVec(ref es) => es.len(),
         hir::ExprRepeat(_, ref count_expr) => {
-            bcx.tcx().eval_repeat_count(&**count_expr)
+            bcx.tcx().eval_repeat_count(&count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
                                      "unexpected vec content")

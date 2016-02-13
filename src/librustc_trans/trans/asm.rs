@@ -44,10 +44,10 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     for (i, out) in ia.outputs.iter().enumerate() {
         constraints.push(out.constraint.clone());
 
-        let out_datum = unpack_datum!(bcx, expr::trans(bcx, &*out.expr));
+        let out_datum = unpack_datum!(bcx, expr::trans(bcx, &out.expr));
         if out.is_indirect {
             bcx = callee::trans_arg_datum(bcx,
-                                          expr_ty(bcx, &*out.expr),
+                                          expr_ty(bcx, &out.expr),
                                           out_datum,
                                           cleanup::CustomScope(temp_scope),
                                           callee::DontAutorefArg,
@@ -61,7 +61,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
             outputs.push(out_datum.val);
             if out.is_rw {
                 bcx = callee::trans_arg_datum(bcx,
-                                              expr_ty(bcx, &*out.expr),
+                                              expr_ty(bcx, &out.expr),
                                               out_datum,
                                               cleanup::CustomScope(temp_scope),
                                               callee::DontAutorefArg,
@@ -75,9 +75,9 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     for &(ref c, ref input) in &ia.inputs {
         constraints.push((*c).clone());
 
-        let in_datum = unpack_datum!(bcx, expr::trans(bcx, &**input));
+        let in_datum = unpack_datum!(bcx, expr::trans(bcx, &input));
         bcx = callee::trans_arg_datum(bcx,
-                                    expr_ty(bcx, &**input),
+                                    expr_ty(bcx, &input),
                                     in_datum,
                                     cleanup::CustomScope(temp_scope),
                                     callee::DontAutorefArg,
@@ -159,4 +159,3 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     return bcx;
 
 }
-

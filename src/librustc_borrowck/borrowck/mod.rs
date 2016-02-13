@@ -85,14 +85,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
         if let hir::ConstTraitItem(_, Some(ref expr)) = ti.node {
-            gather_loans::gather_loans_in_static_initializer(self, &*expr);
+            gather_loans::gather_loans_in_static_initializer(self, &expr);
         }
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = ii.node {
-            gather_loans::gather_loans_in_static_initializer(self, &*expr);
+            gather_loans::gather_loans_in_static_initializer(self, &expr);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -139,7 +139,7 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
     match item.node {
         hir::ItemStatic(_, _, ref ex) |
         hir::ItemConst(_, ref ex) => {
-            gather_loans::gather_loans_in_static_initializer(this, &**ex);
+            gather_loans::gather_loans_in_static_initializer(this, &ex);
         }
         _ => { }
     }
@@ -251,9 +251,9 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx,
                                                      fn_parts.kind,
-                                                     &*fn_parts.decl,
+                                                     &fn_parts.decl,
                                                      cfg,
-                                                     &*fn_parts.body,
+                                                     &fn_parts.body,
                                                      fn_parts.span,
                                                      fn_parts.id);
 
@@ -426,12 +426,12 @@ impl<'tcx> LoanPath<'tcx> {
             (&LpExtend(ref base, _, LpInterior(opt_variant_id, id)),
              &LpExtend(ref base2, _, LpInterior(opt_variant_id2, id2))) =>
                 if id == id2 && opt_variant_id == opt_variant_id2 {
-                    base.has_fork(&**base2)
+                    base.has_fork(&base2)
                 } else {
                     true
                 },
             (&LpExtend(ref base, _, LpDeref(_)), _) => base.has_fork(other),
-            (_, &LpExtend(ref base, _, LpDeref(_))) => self.has_fork(&**base),
+            (_, &LpExtend(ref base, _, LpDeref(_))) => self.has_fork(&base),
             _ => false,
         }
     }
@@ -449,7 +449,7 @@ impl<'tcx> LoanPath<'tcx> {
             (&LpExtend(ref base, a, LpInterior(opt_variant_id, id)),
              &LpExtend(ref base2, _, LpInterior(opt_variant_id2, id2))) => {
                 if id == id2 && opt_variant_id == opt_variant_id2 {
-                    base.common(&**base2).map(|x| {
+                    base.common(&base2).map(|x| {
                         let xd = x.depth();
                         if base.depth() == xd && base2.depth() == xd {
                             assert_eq!(base.ty, base2.ty);
@@ -463,11 +463,11 @@ impl<'tcx> LoanPath<'tcx> {
                         }
                     })
                 } else {
-                    base.common(&**base2)
+                    base.common(&base2)
                 }
             }
             (&LpExtend(ref base, _, LpDeref(_)), _) => base.common(other),
-            (_, &LpExtend(ref other, _, LpDeref(_))) => self.common(&**other),
+            (_, &LpExtend(ref other, _, LpDeref(_))) => self.common(&other),
             (&LpVar(id), &LpVar(id2)) => {
                 if id == id2 {
                     assert_eq!(self.ty, other.ty);
@@ -673,7 +673,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                      .map
                                                      .find(the_move.id) {
                     Some(hir_map::NodeExpr(expr)) => {
-                        (self.tcx.expr_ty_adjusted(&*expr), expr.span)
+                        (self.tcx.expr_ty_adjusted(&expr), expr.span)
                     }
                     r => {
                         self.tcx.sess.bug(&format!("MoveExpr({}) maps to \
@@ -735,7 +735,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                      .map
                                                      .find(the_move.id) {
                     Some(hir_map::NodeExpr(expr)) => {
-                        (self.tcx.expr_ty_adjusted(&*expr), expr.span)
+                        (self.tcx.expr_ty_adjusted(&expr), expr.span)
                     }
                     r => {
                         self.tcx.sess.bug(&format!("Captured({}) maps to \
@@ -833,19 +833,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err_mutbl => {
                 let descr = match err.cmt.note {
                     mc::NoteClosureEnv(_) | mc::NoteUpvarRef(_) => {
-                        self.cmt_to_string(&*err.cmt)
+                        self.cmt_to_string(&err.cmt)
                     }
                     _ => match opt_loan_path(&err.cmt) {
                         None => {
                             format!("{} {}",
                                     err.cmt.mutbl.to_user_str(),
-                                    self.cmt_to_string(&*err.cmt))
+                                    self.cmt_to_string(&err.cmt))
                         }
                         Some(lp) => {
                             format!("{} {} `{}`",
                                     err.cmt.mutbl.to_user_str(),
-                                    self.cmt_to_string(&*err.cmt),
-                                    self.loan_path_to_string(&*lp))
+                                    self.cmt_to_string(&err.cmt),
+                                    self.loan_path_to_string(&lp))
                         }
                     }
                 };
@@ -876,7 +876,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let msg = match opt_loan_path(&err.cmt) {
                     None => "borrowed value".to_string(),
                     Some(lp) => {
-                        format!("`{}`", self.loan_path_to_string(&*lp))
+                        format!("`{}`", self.loan_path_to_string(&lp))
                     }
                 };
                 format!("{} does not live long enough", msg)
@@ -1051,9 +1051,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
-                        format!("`{}`", self.loan_path_to_string(&*lp))
+                        format!("`{}`", self.loan_path_to_string(&lp))
                     }
-                    None => self.cmt_to_string(&*err.cmt),
+                    None => self.cmt_to_string(&err.cmt),
                 };
                 self.tcx.note_and_explain_region(
                     db,
@@ -1081,7 +1081,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
             LpDowncast(ref lp_base, variant_def_id) => {
                 out.push('(');
-                self.append_loan_path_to_string(&**lp_base, out);
+                self.append_loan_path_to_string(&lp_base, out);
                 out.push_str(DOWNCAST_PRINTED_OPERATOR);
                 out.push_str(&self.tcx.item_path_str(variant_def_id));
                 out.push(')');
@@ -1089,7 +1089,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
 
             LpExtend(ref lp_base, _, LpInterior(_, InteriorField(fname))) => {
-                self.append_autoderefd_loan_path_to_string(&**lp_base, out);
+                self.append_autoderefd_loan_path_to_string(&lp_base, out);
                 match fname {
                     mc::NamedField(fname) => {
                         out.push('.');
@@ -1103,13 +1103,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
             LpExtend(ref lp_base, _, LpInterior(_, InteriorElement(..))) => {
-                self.append_autoderefd_loan_path_to_string(&**lp_base, out);
+                self.append_autoderefd_loan_path_to_string(&lp_base, out);
                 out.push_str("[..]");
             }
 
             LpExtend(ref lp_base, _, LpDeref(_)) => {
                 out.push('*');
-                self.append_loan_path_to_string(&**lp_base, out);
+                self.append_loan_path_to_string(&lp_base, out);
             }
         }
     }
@@ -1122,12 +1122,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 // For a path like `(*x).f` or `(*x)[3]`, autoderef
                 // rules would normally allow users to omit the `*x`.
                 // So just serialize such paths to `x.f` or x[3]` respectively.
-                self.append_autoderefd_loan_path_to_string(&**lp_base, out)
+                self.append_autoderefd_loan_path_to_string(&lp_base, out)
             }
 
             LpDowncast(ref lp_base, variant_def_id) => {
                 out.push('(');
-                self.append_autoderefd_loan_path_to_string(&**lp_base, out);
+                self.append_autoderefd_loan_path_to_string(&lp_base, out);
                 out.push(':');
                 out.push_str(&self.tcx.item_path_str(variant_def_id));
                 out.push(')');

@@ -83,7 +83,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
              &fn_sig,
              decl,
              expr.id,
-             &*body,
+             &body,
              fcx.inh);
 
     // Tuple up the arguments and insert the resulting function type into

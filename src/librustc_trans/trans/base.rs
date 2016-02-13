@@ -513,7 +513,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
             let repr = adt::represent_type(cx.ccx(), t);
             let VariantInfo { fields, discr } = VariantInfo::from_ty(cx.tcx(), t, None);
             for (i, &Field(_, field_ty)) in fields.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, Disr::from(discr), i);
+                let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr::from(discr), i);
 
                 let val = if common::type_is_sized(cx.tcx(), field_ty) {
                     llfld_a
@@ -529,7 +529,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         ty::TyClosure(_, ref substs) => {
             let repr = adt::represent_type(cx.ccx(), t);
             for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
-                let llupvar = adt::trans_field_ptr(cx, &*repr, value, Disr(0), i);
+                let llupvar = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
                 cx = f(cx, llupvar, upvar_ty);
             }
         }
@@ -545,7 +545,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         ty::TyTuple(ref args) => {
             let repr = adt::represent_type(cx.ccx(), t);
             for (i, arg) in args.iter().enumerate() {
-                let llfld_a = adt::trans_field_ptr(cx, &*repr, value, Disr(0), i);
+                let llfld_a = adt::trans_field_ptr(cx, &repr, value, Disr(0), i);
                 cx = f(cx, llfld_a, *arg);
             }
         }
@@ -559,11 +559,11 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
             // NB: we must hit the discriminant first so that structural
             // comparison know not to proceed when the discriminants differ.
 
-            match adt::trans_switch(cx, &*repr, av, false) {
+            match adt::trans_switch(cx, &repr, av, false) {
                 (_match::Single, None) => {
                     if n_variants != 0 {
                         assert!(n_variants == 1);
-                        cx = iter_variant(cx, &*repr, adt::MaybeSizedValue::sized(av),
+                        cx = iter_variant(cx, &repr, adt::MaybeSizedValue::sized(av),
                                           &en.variants[0], substs, &mut f);
                     }
                 }
@@ -592,10 +592,10 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                         let variant_cx = fcx.new_temp_block(&format!("enum-iter-variant-{}",
                                                                      &variant.disr_val
                                                                              .to_string()));
-                        let case_val = adt::trans_case(cx, &*repr, Disr::from(variant.disr_val));
+                        let case_val = adt::trans_case(cx, &repr, Disr::from(variant.disr_val));
                         AddCase(llswitch, case_val, variant_cx.llbb);
                         let variant_cx = iter_variant(variant_cx,
-                                                      &*repr,
+                                                      &repr,
                                                       value,
                                                       variant,
                                                       substs,
@@ -1530,7 +1530,7 @@ fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bo
             Some(hir_map::NodeExpr(ex)) => {
                 if let hir::ExprRet(Some(ref ret_expr)) = ex.node {
                     let mut visitor = FindNestedReturn::new();
-                    intravisit::walk_expr(&mut visitor, &**ret_expr);
+                    intravisit::walk_expr(&mut visitor, &ret_expr);
                     if visitor.found {
                         return true;
                     }
@@ -2272,7 +2272,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         let repr = adt::represent_type(ccx, result_ty.unwrap());
         let mut llarg_idx = fcx.arg_offset() as c_uint;
         for (i, arg_ty) in arg_tys.into_iter().enumerate() {
-            let lldestptr = adt::trans_field_ptr(bcx, &*repr, dest_val, Disr::from(disr), i);
+            let lldestptr = adt::trans_field_ptr(bcx, &repr, dest_val, Disr::from(disr), i);
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 Store(bcx,
                       get_param(fcx.llfn, llarg_idx),
@@ -2292,7 +2292,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                 }
             }
         }
-        adt::trans_set_discr(bcx, &*repr, dest, disr);
+        adt::trans_set_discr(bcx, &repr, dest, disr);
     }
 
     finish_fn(&fcx, bcx, result_ty, DebugLoc::None);
@@ -2346,14 +2346,14 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span,
 
         let sess = &ccx.tcx().sess;
         sess.span_note_without_error(sp,
-                                     &*format!("total size: {} bytes", llsize_of_real(ccx, llty)));
+                                     &format!("total size: {} bytes", llsize_of_real(ccx, llty)));
         match *avar {
             adt::General(..) => {
                 for (i, var) in enum_def.variants.iter().enumerate() {
                     ccx.tcx()
                        .sess
                        .span_note_without_error(var.span,
-                                                &*format!("variant data: {} bytes", sizes[i]));
+                                                &format!("variant data: {} bytes", sizes[i]));
                 }
             }
             _ => {}
@@ -2505,8 +2505,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
                     if abi != Abi::Rust {
                         foreign::trans_rust_fn_with_foreign_abi(ccx,
-                                                                &**decl,
-                                                                &**body,
+                                                                &decl,
+                                                                &body,
                                                                 &item.attrs,
                                                                 llfn,
                                                                 empty_substs,
@@ -2514,8 +2514,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                                                                 None);
                     } else {
                         trans_fn(ccx,
-                                 &**decl,
-                                 &**body,
+                                 &decl,
+                                 &body,
                                  llfn,
                                  empty_substs,
                                  item.id,
@@ -2837,11 +2837,11 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 hir::ForeignItemFn(..) => {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
                     let ty = ccx.tcx().node_id_to_type(ni.id);
-                    let name = foreign::link_name(&*ni);
+                    let name = foreign::link_name(&ni);
                     foreign::register_foreign_item_fn(ccx, abi, ty, &name, &ni.attrs)
                 }
                 hir::ForeignItemStatic(..) => {
-                    foreign::register_static(ccx, &*ni)
+                    foreign::register_static(ccx, &ni)
                 }
             }
         }

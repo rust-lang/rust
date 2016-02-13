@@ -1040,7 +1040,7 @@ fn expand_item_multi_modifier(mut it: Annotatable,
                             allow_internal_unstable: true,
                         }
                     });
-                    it = mac.expand(fld.cx, attr.span, &*attr.node.value, it);
+                    it = mac.expand(fld.cx, attr.span, &attr.node.value, it);
                     fld.cx.bt_pop();
                 }
                 _ => unreachable!()

@@ -145,7 +145,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                         _ => "expression",
                     },
                     Some(ast_map::NodeStmt(_)) => "statement",
-                    Some(ast_map::NodeItem(it)) => item_scope_tag(&*it),
+                    Some(ast_map::NodeItem(it)) => item_scope_tag(&it),
                     Some(_) | None => {
                         err.span_note(span, &unknown_scope());
                         return;
@@ -190,7 +190,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                         (format!("{} {}", prefix, msg), opt_span)
                     }
                     Some(ast_map::NodeItem(it)) => {
-                        let tag = item_scope_tag(&*it);
+                        let tag = item_scope_tag(&it);
                         let (msg, opt_span) = explain_span(self, tag, it.span);
                         (format!("{} {}", prefix, msg), opt_span)
                     }
@@ -1333,7 +1333,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                        -> hir::HirVec<hir::Arg> {
         let mut new_inputs = Vec::new();
         for arg in inputs {
-            let new_ty = self.rebuild_arg_ty_or_output(&*arg.ty, lifetime,
+            let new_ty = self.rebuild_arg_ty_or_output(&arg.ty, lifetime,
                                                        anon_nums, region_names);
             let possibly_new_arg = hir::Arg {
                 ty: new_ty,
@@ -1351,7 +1351,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                       region_names: &HashSet<ast::Name>) -> hir::FunctionRetTy {
         match *ty {
             hir::Return(ref ret_ty) => hir::Return(
-                self.rebuild_arg_ty_or_output(&**ret_ty, lifetime, anon_nums, region_names)
+                self.rebuild_arg_ty_or_output(&ret_ty, lifetime, anon_nums, region_names)
             ),
             hir::DefaultReturn(span) => hir::DefaultReturn(span),
             hir::NoReturn(span) => hir::NoReturn(span)
@@ -1390,7 +1390,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         };
                         new_ty = self.rebuild_ty(new_ty, P(to));
                     }
-                    ty_queue.push(&*mut_ty.ty);
+                    ty_queue.push(&mut_ty.ty);
                 }
                 hir::TyPath(ref maybe_qself, ref path) => {
                     let a_def = match self.tcx.def_map.borrow().get(&cur_ty.id) {
@@ -1455,11 +1455,11 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 }
 
                 hir::TyPtr(ref mut_ty) => {
-                    ty_queue.push(&*mut_ty.ty);
+                    ty_queue.push(&mut_ty.ty);
                 }
                 hir::TyVec(ref ty) |
                 hir::TyFixedLengthVec(ref ty, _) => {
-                    ty_queue.push(&**ty);
+                    ty_queue.push(&ty);
                 }
                 hir::TyTup(ref tys) => ty_queue.extend(tys.iter().map(|ty| &**ty)),
                 _ => {}
@@ -1554,13 +1554,13 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     }
                 }
                 let new_types = data.types.iter().map(|t| {
-                    self.rebuild_arg_ty_or_output(&**t, lifetime, anon_nums, region_names)
+                    self.rebuild_arg_ty_or_output(&t, lifetime, anon_nums, region_names)
                 }).collect();
                 let new_bindings = data.bindings.iter().map(|b| {
                     hir::TypeBinding {
                         id: b.id,
                         name: b.name,
-                        ty: self.rebuild_arg_ty_or_output(&*b.ty,
+                        ty: self.rebuild_arg_ty_or_output(&b.ty,
                                                           lifetime,
                                                           anon_nums,
                                                           region_names),

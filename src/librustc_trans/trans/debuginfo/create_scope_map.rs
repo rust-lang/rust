@@ -47,7 +47,7 @@ pub fn create_scope_map(cx: &CrateContext,
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for arg in args {
-        pat_util::pat_bindings_ident(def_map, &*arg.pat, |_, node_id, _, path1| {
+        pat_util::pat_bindings_ident(def_map, &arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
                                                name: Some(path1.node.unhygienic_name) });
             scope_map.insert(node_id, fn_metadata);
@@ -122,15 +122,15 @@ fn walk_block(cx: &CrateContext,
 
         match statement.node {
             hir::StmtDecl(ref decl, _) =>
-                walk_decl(cx, &**decl, scope_stack, scope_map),
+                walk_decl(cx, &decl, scope_stack, scope_map),
             hir::StmtExpr(ref exp, _) |
             hir::StmtSemi(ref exp, _) =>
-                walk_expr(cx, &**exp, scope_stack, scope_map),
+                walk_expr(cx, &exp, scope_stack, scope_map),
         }
     }
 
     if let Some(ref exp) = block.expr {
-        walk_expr(cx, &**exp, scope_stack, scope_map);
+        walk_expr(cx, &exp, scope_stack, scope_map);
     }
 }
 
@@ -142,10 +142,10 @@ fn walk_decl(cx: &CrateContext,
         codemap::Spanned { node: hir::DeclLocal(ref local), .. } => {
             scope_map.insert(local.id, scope_stack.last().unwrap().scope_metadata);
 
-            walk_pattern(cx, &*local.pat, scope_stack, scope_map);
+            walk_pattern(cx, &local.pat, scope_stack, scope_map);
 
             if let Some(ref exp) = local.init {
-                walk_expr(cx, &**exp, scope_stack, scope_map);
+                walk_expr(cx, &exp, scope_stack, scope_map);
             }
         }
         _ => ()
@@ -167,7 +167,7 @@ fn walk_pattern(cx: &CrateContext,
 
             // Check if this is a binding. If so we need to put it on the
             // scope stack and maybe introduce an artificial scope
-            if pat_util::pat_is_binding(&def_map.borrow(), &*pat) {
+            if pat_util::pat_is_binding(&def_map.borrow(), &pat) {
 
                 let name = path1.node.unhygienic_name;
 
@@ -231,7 +231,7 @@ fn walk_pattern(cx: &CrateContext,
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             if let Some(ref sub_pat) = *sub_pat_opt {
-                walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
+                walk_pattern(cx, &sub_pat, scope_stack, scope_map);
             }
         }
 
@@ -244,7 +244,7 @@ fn walk_pattern(cx: &CrateContext,
 
             if let Some(ref sub_pats) = *sub_pats_opt {
                 for p in sub_pats {
-                    walk_pattern(cx, &**p, scope_stack, scope_map);
+                    walk_pattern(cx, &p, scope_stack, scope_map);
                 }
             }
         }
@@ -260,7 +260,7 @@ fn walk_pattern(cx: &CrateContext,
                 node: hir::FieldPat { pat: ref sub_pat, .. },
                 ..
             } in field_pats {
-                walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
+                walk_pattern(cx, &sub_pat, scope_stack, scope_map);
             }
         }
 
@@ -268,39 +268,39 @@ fn walk_pattern(cx: &CrateContext,
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             for sub_pat in sub_pats {
-                walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
+                walk_pattern(cx, &sub_pat, scope_stack, scope_map);
             }
         }
 
         hir::PatBox(ref sub_pat) | hir::PatRegion(ref sub_pat, _) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
-            walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
+            walk_pattern(cx, &sub_pat, scope_stack, scope_map);
         }
 
         hir::PatLit(ref exp) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
-            walk_expr(cx, &**exp, scope_stack, scope_map);
+            walk_expr(cx, &exp, scope_stack, scope_map);
         }
 
         hir::PatRange(ref exp1, ref exp2) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
-            walk_expr(cx, &**exp1, scope_stack, scope_map);
-            walk_expr(cx, &**exp2, scope_stack, scope_map);
+            walk_expr(cx, &exp1, scope_stack, scope_map);
+            walk_expr(cx, &exp2, scope_stack, scope_map);
         }
 
         hir::PatVec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             for sub_pat in front_sub_pats {
-                walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
+                walk_pattern(cx, &sub_pat, scope_stack, scope_map);
             }
 
             if let Some(ref sub_pat) = *middle_sub_pats {
-                walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
+                walk_pattern(cx, &sub_pat, scope_stack, scope_map);
             }
 
             for sub_pat in back_sub_pats {
-                walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
+                walk_pattern(cx, &sub_pat, scope_stack, scope_map);
             }
         }
     }
@@ -324,73 +324,73 @@ fn walk_expr(cx: &CrateContext,
         hir::ExprAddrOf(_, ref sub_exp)  |
         hir::ExprField(ref sub_exp, _) |
         hir::ExprTupField(ref sub_exp, _) =>
-            walk_expr(cx, &**sub_exp, scope_stack, scope_map),
+            walk_expr(cx, &sub_exp, scope_stack, scope_map),
 
         hir::ExprBox(ref sub_expr) => {
-            walk_expr(cx, &**sub_expr, scope_stack, scope_map);
+            walk_expr(cx, &sub_expr, scope_stack, scope_map);
         }
 
         hir::ExprRet(ref exp_opt) => match *exp_opt {
-            Some(ref sub_exp) => walk_expr(cx, &**sub_exp, scope_stack, scope_map),
+            Some(ref sub_exp) => walk_expr(cx, &sub_exp, scope_stack, scope_map),
             None => ()
         },
 
         hir::ExprUnary(_, ref sub_exp) => {
-            walk_expr(cx, &**sub_exp, scope_stack, scope_map);
+            walk_expr(cx, &sub_exp, scope_stack, scope_map);
         }
 
         hir::ExprAssignOp(_, ref lhs, ref rhs) |
         hir::ExprIndex(ref lhs, ref rhs) |
         hir::ExprBinary(_, ref lhs, ref rhs)    => {
-            walk_expr(cx, &**lhs, scope_stack, scope_map);
-            walk_expr(cx, &**rhs, scope_stack, scope_map);
+            walk_expr(cx, &lhs, scope_stack, scope_map);
+            walk_expr(cx, &rhs, scope_stack, scope_map);
         }
 
         hir::ExprRange(ref start, ref end) => {
-            start.as_ref().map(|e| walk_expr(cx, &**e, scope_stack, scope_map));
-            end.as_ref().map(|e| walk_expr(cx, &**e, scope_stack, scope_map));
+            start.as_ref().map(|e| walk_expr(cx, &e, scope_stack, scope_map));
+            end.as_ref().map(|e| walk_expr(cx, &e, scope_stack, scope_map));
         }
 
         hir::ExprVec(ref init_expressions) |
         hir::ExprTup(ref init_expressions) => {
             for ie in init_expressions {
-                walk_expr(cx, &**ie, scope_stack, scope_map);
+                walk_expr(cx, &ie, scope_stack, scope_map);
             }
         }
 
         hir::ExprAssign(ref sub_exp1, ref sub_exp2) |
         hir::ExprRepeat(ref sub_exp1, ref sub_exp2) => {
-            walk_expr(cx, &**sub_exp1, scope_stack, scope_map);
-            walk_expr(cx, &**sub_exp2, scope_stack, scope_map);
+            walk_expr(cx, &sub_exp1, scope_stack, scope_map);
+            walk_expr(cx, &sub_exp2, scope_stack, scope_map);
         }
 
         hir::ExprIf(ref cond_exp, ref then_block, ref opt_else_exp) => {
-            walk_expr(cx, &**cond_exp, scope_stack, scope_map);
+            walk_expr(cx, &cond_exp, scope_stack, scope_map);
 
             with_new_scope(cx,
                            then_block.span,
                            scope_stack,
                            scope_map,
                            |cx, scope_stack, scope_map| {
-                walk_block(cx, &**then_block, scope_stack, scope_map);
+                walk_block(cx, &then_block, scope_stack, scope_map);
             });
 
             match *opt_else_exp {
                 Some(ref else_exp) =>
-                    walk_expr(cx, &**else_exp, scope_stack, scope_map),
+                    walk_expr(cx, &else_exp, scope_stack, scope_map),
                 _ => ()
             }
         }
 
         hir::ExprWhile(ref cond_exp, ref loop_body, _) => {
-            walk_expr(cx, &**cond_exp, scope_stack, scope_map);
+            walk_expr(cx, &cond_exp, scope_stack, scope_map);
 
             with_new_scope(cx,
                            loop_body.span,
                            scope_stack,
                            scope_map,
                            |cx, scope_stack, scope_map| {
-                walk_block(cx, &**loop_body, scope_stack, scope_map);
+                walk_block(cx, &loop_body, scope_stack, scope_map);
             })
         }
 
@@ -401,7 +401,7 @@ fn walk_expr(cx: &CrateContext,
                            scope_stack,
                            scope_map,
                            |cx, scope_stack, scope_map| {
-                walk_block(cx, &**block, scope_stack, scope_map);
+                walk_block(cx, &block, scope_stack, scope_map);
             })
         }
 
@@ -412,29 +412,29 @@ fn walk_expr(cx: &CrateContext,
                            scope_map,
                            |cx, scope_stack, scope_map| {
                 for &hir::Arg { pat: ref pattern, .. } in &decl.inputs {
-                    walk_pattern(cx, &**pattern, scope_stack, scope_map);
+                    walk_pattern(cx, &pattern, scope_stack, scope_map);
                 }
 
-                walk_block(cx, &**block, scope_stack, scope_map);
+                walk_block(cx, &block, scope_stack, scope_map);
             })
         }
 
         hir::ExprCall(ref fn_exp, ref args) => {
-            walk_expr(cx, &**fn_exp, scope_stack, scope_map);
+            walk_expr(cx, &fn_exp, scope_stack, scope_map);
 
             for arg_exp in args {
-                walk_expr(cx, &**arg_exp, scope_stack, scope_map);
+                walk_expr(cx, &arg_exp, scope_stack, scope_map);
             }
         }
 
         hir::ExprMethodCall(_, _, ref args) => {
             for arg_exp in args {
-                walk_expr(cx, &**arg_exp, scope_stack, scope_map);
+                walk_expr(cx, &arg_exp, scope_stack, scope_map);
             }
         }
 
         hir::ExprMatch(ref discriminant_exp, ref arms, _) => {
-            walk_expr(cx, &**discriminant_exp, scope_stack, scope_map);
+            walk_expr(cx, &discriminant_exp, scope_stack, scope_map);
 
             // For each arm we have to first walk the pattern as these might
             // introduce new artificial scopes. It should be sufficient to
@@ -450,25 +450,25 @@ fn walk_expr(cx: &CrateContext,
                                scope_map,
                                |cx, scope_stack, scope_map| {
                     for pat in &arm_ref.pats {
-                        walk_pattern(cx, &**pat, scope_stack, scope_map);
+                        walk_pattern(cx, &pat, scope_stack, scope_map);
                     }
 
                     if let Some(ref guard_exp) = arm_ref.guard {
-                        walk_expr(cx, &**guard_exp, scope_stack, scope_map)
+                        walk_expr(cx, &guard_exp, scope_stack, scope_map)
                     }
 
-                    walk_expr(cx, &*arm_ref.body, scope_stack, scope_map);
+                    walk_expr(cx, &arm_ref.body, scope_stack, scope_map);
                 })
             }
         }
 
         hir::ExprStruct(_, ref fields, ref base_exp) => {
             for &hir::Field { expr: ref exp, .. } in fields {
-                walk_expr(cx, &**exp, scope_stack, scope_map);
+                walk_expr(cx, &exp, scope_stack, scope_map);
             }
 
             match *base_exp {
-                Some(ref exp) => walk_expr(cx, &**exp, scope_stack, scope_map),
+                Some(ref exp) => walk_expr(cx, &exp, scope_stack, scope_map),
                 None => ()
             }
         }
@@ -478,11 +478,11 @@ fn walk_expr(cx: &CrateContext,
                                             .. }) => {
             // inputs, outputs: Vec<(String, P<Expr>)>
             for &(_, ref exp) in inputs {
-                walk_expr(cx, &**exp, scope_stack, scope_map);
+                walk_expr(cx, &exp, scope_stack, scope_map);
             }
 
             for out in outputs {
-                walk_expr(cx, &*out.expr, scope_stack, scope_map);
+                walk_expr(cx, &out.expr, scope_stack, scope_map);
             }
         }
     }

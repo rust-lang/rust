@@ -116,7 +116,7 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
         .filter_map(|item| {
             match *item {
                 ty::MethodTraitItem(ref m) => {
-                    object_safety_violation_for_method(tcx, trait_def_id, &**m)
+                    object_safety_violation_for_method(tcx, trait_def_id, &m)
                         .map(|code| ObjectSafetyViolation::Method(m.clone(), code))
                 }
                 _ => None,

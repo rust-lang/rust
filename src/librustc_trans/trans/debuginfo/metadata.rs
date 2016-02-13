@@ -1919,7 +1919,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &hir::Local) {
     let def_map = &cx.tcx().def_map;
     let locals = bcx.fcx.lllocals.borrow();
 
-    pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, var_name| {
+    pat_util::pat_bindings(def_map, &local.pat, |_, node_id, span, var_name| {
         let datum = match locals.get(&node_id) {
             Some(datum) => datum,
             None => {
@@ -2099,7 +2099,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &hir::Arg) {
                          .fn_metadata;
     let locals = bcx.fcx.lllocals.borrow();
 
-    pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, var_name| {
+    pat_util::pat_bindings(def_map, &arg.pat, |_, node_id, span, var_name| {
         let datum = match locals.get(&node_id) {
             Some(v) => v,
             None => {

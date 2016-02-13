@@ -51,13 +51,13 @@ fn owned_ptr_base_path<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> &'a LoanPath<
         match loan_path.kind {
             LpVar(_) | LpUpvar(_) => None,
             LpExtend(ref lp_base, _, LpDeref(mc::Unique)) => {
-                match helper(&**lp_base) {
+                match helper(&lp_base) {
                     v @ Some(_) => v,
-                    None => Some(&**lp_base)
+                    None => Some(&lp_base)
                 }
             }
             LpDowncast(ref lp_base, _) |
-            LpExtend(ref lp_base, _, _) => helper(&**lp_base)
+            LpExtend(ref lp_base, _, _) => helper(&lp_base)
         }
     }
 }
@@ -319,7 +319,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 }
                 LpDowncast(ref lp_base, _) |
                 LpExtend(ref lp_base, _, _) => {
-                    loan_path = &**lp_base;
+                    loan_path = &lp_base;
                 }
             }
 
@@ -442,21 +442,21 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             //     borrow prevents subsequent moves, borrows, or modification of `x` until the
             //     borrow ends
 
-            let common = new_loan.loan_path.common(&*old_loan.loan_path);
+            let common = new_loan.loan_path.common(&old_loan.loan_path);
             let (nl, ol, new_loan_msg, old_loan_msg) =
-                if new_loan.loan_path.has_fork(&*old_loan.loan_path) && common.is_some() {
+                if new_loan.loan_path.has_fork(&old_loan.loan_path) && common.is_some() {
                     let nl = self.bccx.loan_path_to_string(&common.unwrap());
                     let ol = nl.clone();
                     let new_loan_msg = format!(" (here through borrowing `{}`)",
                                                self.bccx.loan_path_to_string(
-                                                   &*new_loan.loan_path));
+                                                   &new_loan.loan_path));
                     let old_loan_msg = format!(" (through borrowing `{}`)",
                                                self.bccx.loan_path_to_string(
-                                                   &*old_loan.loan_path));
+                                                   &old_loan.loan_path));
                     (nl, ol, new_loan_msg, old_loan_msg)
                 } else {
-                    (self.bccx.loan_path_to_string(&*new_loan.loan_path),
-                     self.bccx.loan_path_to_string(&*old_loan.loan_path),
+                    (self.bccx.loan_path_to_string(&new_loan.loan_path),
+                     self.bccx.loan_path_to_string(&old_loan.loan_path),
                      String::new(), String::new())
                 };
 
@@ -578,7 +578,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             Some(lp) => {
                 let moved_value_use_kind = match mode {
                     euv::Copy => {
-                        self.check_for_copy_of_frozen_path(id, span, &*lp);
+                        self.check_for_copy_of_frozen_path(id, span, &lp);
                         MovedInUse
                     }
                     euv::Move(_) => {
@@ -593,7 +593,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                             }
                             Some(move_kind) => {
                                 self.check_for_move_of_borrowed_path(id, span,
-                                                                     &*lp, move_kind);
+                                                                     &lp, move_kind);
                                 if move_kind == move_data::Captured {
                                     MovedInCapture
                                 } else {
@@ -622,7 +622,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                  &self.bccx.loan_path_to_string(copy_path))
                     .span_note(loan_span,
                                &format!("borrow of `{}` occurs here",
-                                       &self.bccx.loan_path_to_string(&*loan_path))
+                                       &self.bccx.loan_path_to_string(&loan_path))
                                )
                     .emit();
             }
@@ -656,7 +656,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 err.span_note(
                     loan_span,
                     &format!("borrow of `{}` occurs here",
-                            &self.bccx.loan_path_to_string(&*loan_path))
+                            &self.bccx.loan_path_to_string(&loan_path))
                     );
                 err.emit();
             }
@@ -706,7 +706,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             self.bccx.report_use_of_moved_value(
                 span,
                 use_kind,
-                &**lp,
+                &lp,
                 the_move,
                 moved_lp,
                 self.param_env);
@@ -760,7 +760,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                             self.bccx
                                 .report_partial_reinitialization_of_uninitialized_structure(
                                     span,
-                                    &*loan_path);
+                                    &loan_path);
                             false
                         });
                         return;
@@ -790,8 +790,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
             let scope = self.tcx().region_maps.node_extent(assignment_id);
-            self.each_in_scope_loan_affecting_path(scope, &*loan_path, |loan| {
-                self.report_illegal_mutation(assignment_span, &*loan_path, loan);
+            self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
+                self.report_illegal_mutation(assignment_span, &loan_path, loan);
                 false
             });
         }
@@ -807,7 +807,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 } else {
                     self.bccx.report_reassigned_immutable_variable(
                         assignment_span,
-                        &*lp,
+                        &lp,
                         assign);
                 }
                 false

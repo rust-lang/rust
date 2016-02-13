@@ -916,7 +916,7 @@ fn link_natively(sess: &Session, dylib: bool,
                                          pname,
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
-                    .note(&*escape_string(&output[..]))
+                    .note(&escape_string(&output[..]))
                     .emit();
                 sess.abort_if_errors();
             }

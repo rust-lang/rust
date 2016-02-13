@@ -472,10 +472,10 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &hir::FnDecl, ty: &ty::BareFnTy) {
         };
         let sig = &ty.sig.0;
         for (input, ty) in decl.inputs.iter().zip(&sig.inputs) {
-            check(&*input.ty, *ty)
+            check(&input.ty, *ty)
         }
         if let hir::Return(ref ty) = decl.output {
-            check(&**ty, sig.output.unwrap())
+            check(&ty, sig.output.unwrap())
         }
     }
 }
@@ -491,7 +491,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
                 abi => {
                     let ty = ccx.tcx().node_id_to_type(foreign_item.id);
                     match ty.sty {
-                        ty::TyBareFn(_, bft) => gate_simd_ffi(ccx.tcx(), &**decl, bft),
+                        ty::TyBareFn(_, bft) => gate_simd_ffi(ccx.tcx(), &decl, bft),
                         _ => ccx.tcx().sess.span_bug(foreign_item.span,
                                                      "foreign fn's sty isn't a bare_fn_ty?")
                     }
