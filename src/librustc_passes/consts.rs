@@ -249,9 +249,9 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         let ty = self.tcx.node_id_to_type(e.id);
         let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
-        let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
-        fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        match fulfill_cx.select_all_or_error(&infcx) {
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
+        match fulfillment_cx.select_all_or_error(&infcx) {
             Ok(()) => { },
             Err(ref errors) => {
                 traits::report_fulfillment_errors(&infcx, errors);

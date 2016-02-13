@@ -353,7 +353,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         let region_obligations =
             self.fcx
                 .inh
-                .infcx
                 .fulfillment_cx
                 .borrow()
                 .region_obligations(node_id)
@@ -369,7 +368,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
         // Processing the region obligations should not cause the list to grow further:
         assert_eq!(region_obligations.len(),
-                   self.fcx.inh.infcx.fulfillment_cx.borrow().region_obligations(node_id).len());
+                   self.fcx.inh.fulfillment_cx.borrow().region_obligations(node_id).len());
     }
 
     fn code_to_origin(&self,

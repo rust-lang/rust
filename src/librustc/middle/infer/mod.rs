@@ -88,8 +88,6 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
 
     pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
 
-    pub fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
-
     // the set of predicates on which errors have been reported, to
     // avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FnvHashSet<traits::TraitErrorKey<'tcx>>>,
@@ -366,7 +364,6 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
         float_unification_table: RefCell::new(UnificationTable::new()),
         region_vars: RegionVarBindings::new(tcx),
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
-        fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
         reported_trait_errors: RefCell::new(FnvHashSet()),
         normalize: false,
         err_count_on_creation: tcx.sess.err_count()
@@ -525,7 +522,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
            result,
            obligations);
 
-    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+    let mut fulfill_cx = traits::FulfillmentContext::new();
 
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
