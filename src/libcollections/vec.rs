@@ -528,7 +528,7 @@ impl<T> Vec<T> {
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
-    /// elements after position `i` one position to the right.
+    /// elements after it to the right.
     ///
     /// # Panics
     ///
@@ -570,7 +570,7 @@ impl<T> Vec<T> {
     }
 
     /// Removes and returns the element at position `index` within the vector,
-    /// shifting all elements after position `index` one position to the left.
+    /// shifting all elements after it to the left.
     ///
     /// # Panics
     ///
