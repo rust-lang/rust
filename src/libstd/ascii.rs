@@ -45,7 +45,7 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned;
 
-    /// Checks if within the ASCII range.
+    /// Checks if the value is within the ASCII range.
     ///
     /// # Examples
     ///
@@ -55,8 +55,8 @@ pub trait AsciiExt {
     /// let ascii = 'a';
     /// let utf8 = '❤';
     ///
-    /// assert_eq!(true, ascii.is_ascii());
-    /// assert_eq!(false, utf8.is_ascii())
+    /// assert!(ascii.is_ascii());
+    /// assert!(!utf8.is_ascii());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
@@ -114,9 +114,9 @@ pub trait AsciiExt {
     /// let ascii3 = 'A';
     /// let ascii4 = 'z';
     ///
-    /// assert_eq!(true, ascii1.eq_ignore_ascii_case(&ascii2));
-    /// assert_eq!(true, ascii1.eq_ignore_ascii_case(&ascii3));
-    /// assert_eq!(false, ascii1.eq_ignore_ascii_case(&ascii4));
+    /// assert!(ascii1.eq_ignore_ascii_case(&ascii2));
+    /// assert!(ascii1.eq_ignore_ascii_case(&ascii3));
+    /// assert!(!ascii1.eq_ignore_ascii_case(&ascii4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;

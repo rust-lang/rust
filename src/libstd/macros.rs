@@ -269,9 +269,10 @@ pub mod builtin {
     /// This macro takes any number of comma-separated identifiers, and
     /// concatenates them all into one, yielding an expression which is a new
     /// identifier. Note that hygiene makes it such that this macro cannot
-    /// capture local variables, and macros are only allowed in item,
-    /// statement or expression position, meaning this macro may be difficult to
-    /// use in some situations.
+    /// capture local variables. Also, as a general rule, macros are only
+    /// allowed in item, statement or expression position. That means while
+    /// you may use this macro for referring to existing variables, functions or
+    /// modules etc, you cannot define a new one with it.
     ///
     /// # Examples
     ///
@@ -283,6 +284,8 @@ pub mod builtin {
     ///
     /// let f = concat_idents!(foo, bar);
     /// println!("{}", f());
+    ///
+    /// // fn concat_idents!(new, fun, name) { } // not usable in this way!
     /// # }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
