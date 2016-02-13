@@ -225,7 +225,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     // efficient (these are done efficiently implicitly in C
                     // with the `__m128i` type and so this means Rust doesn't
                     // lose out there).
-                    let expr = &*arg_exprs[0];
+                    let expr = &arg_exprs[0];
                     let datum = unpack_datum!(bcx, expr::trans(bcx, expr));
                     let datum = unpack_datum!(bcx, datum.to_rvalue_datum(bcx, "transmute_temp"));
                     let val = if datum.kind.is_by_ref() {
@@ -253,7 +253,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         expr::SaveIn(d) => expr::SaveIn(PointerCast(bcx, d, llintype.ptr_to())),
                         expr::Ignore => expr::Ignore
                     };
-                    bcx = expr::trans_into(bcx, &*arg_exprs[0], dest);
+                    bcx = expr::trans_into(bcx, &arg_exprs[0], dest);
                     dest
                 };
 
@@ -404,7 +404,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let simple = get_simple_intrinsic(ccx, &*foreign_item);
+    let simple = get_simple_intrinsic(ccx, &foreign_item);
     let llval = match (simple, &*name) {
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, None, call_debug_location)
@@ -658,7 +658,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             match val_ty.sty {
                 ty::TyEnum(..) => {
                     let repr = adt::represent_type(ccx, *val_ty);
-                    adt::trans_get_discr(bcx, &*repr, llargs[0],
+                    adt::trans_get_discr(bcx, &repr, llargs[0],
                                          Some(llret_ty), true)
                 }
                 _ => C_null(llret_ty)
@@ -849,7 +849,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         assert!(!bcx.fcx.type_needs_drop(arg_type));
 
                         let repr = adt::represent_type(bcx.ccx(), arg_type);
-                        let repr_ptr = &*repr;
+                        let repr_ptr = &repr;
                         let arg = adt::MaybeSizedValue::sized(llarg);
                         (0..contents.len())
                             .map(|i| {

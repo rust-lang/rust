@@ -65,7 +65,7 @@ fn method_might_be_inlined(tcx: &ty::ctxt, sig: &hir::MethodSig,
     if let Some(impl_node_id) = tcx.map.as_local_node_id(impl_src) {
         match tcx.map.find(impl_node_id) {
             Some(ast_map::NodeItem(item)) =>
-                item_might_be_inlined(&*item),
+                item_might_be_inlined(&item),
             Some(..) | None =>
                 tcx.sess.span_bug(impl_item.span, "impl did is not an item")
         }
@@ -166,7 +166,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match self.tcx.map.find(node_id) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    hir::ItemFn(..) => item_might_be_inlined(&*item),
+                    hir::ItemFn(..) => item_might_be_inlined(&item),
                     _ => false,
                 }
             }
@@ -255,8 +255,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             ast_map::NodeItem(item) => {
                 match item.node {
                     hir::ItemFn(_, _, _, _, _, ref search_block) => {
-                        if item_might_be_inlined(&*item) {
-                            intravisit::walk_block(self, &**search_block)
+                        if item_might_be_inlined(&item) {
+                            intravisit::walk_block(self, &search_block)
                         }
                     }
 
@@ -264,7 +264,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
                     hir::ItemConst(_, ref init) => {
-                        self.visit_expr(&**init);
+                        self.visit_expr(&init);
                     }
 
                     // These are normal, nothing reachable about these
@@ -285,7 +285,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         // Keep going, nothing to get exported
                     }
                     hir::ConstTraitItem(_, Some(ref expr)) => {
-                        self.visit_expr(&*expr);
+                        self.visit_expr(&expr);
                     }
                     hir::MethodTraitItem(_, Some(ref body)) => {
                         intravisit::walk_block(self, body);
@@ -296,7 +296,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             ast_map::NodeImplItem(impl_item) => {
                 match impl_item.node {
                     hir::ImplItemKind::Const(_, ref expr) => {
-                        self.visit_expr(&*expr);
+                        self.visit_expr(&expr);
                     }
                     hir::ImplItemKind::Method(ref sig, ref body) => {
                         let did = self.tcx.map.get_parent_did(search_item);

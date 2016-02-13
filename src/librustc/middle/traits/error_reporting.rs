@@ -770,7 +770,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                        err,
                                        &parent_predicate,
                                        cause_span,
-                                       &*data.parent_code);
+                                       &data.parent_code);
         }
         ObligationCauseCode::ImplDerivedObligation(ref data) => {
             let parent_trait_ref = infcx.resolve_type_vars_if_possible(&data.parent_trait_ref);
@@ -784,7 +784,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                        err,
                                        &parent_predicate,
                                        cause_span,
-                                       &*data.parent_code);
+                                       &data.parent_code);
         }
         ObligationCauseCode::CompareImplMethodObligation => {
             err.fileline_note(

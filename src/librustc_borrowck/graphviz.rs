@@ -87,7 +87,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
             if saw_some {
                 set.push_str(", ");
             }
-            let loan_str = self.borrowck_ctxt.loan_path_to_string(&*lp);
+            let loan_str = self.borrowck_ctxt.loan_path_to_string(&lp);
             set.push_str(&loan_str[..]);
             saw_some = true;
             true

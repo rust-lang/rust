@@ -248,7 +248,7 @@ impl LateLintPass for UnusedAttributes {
 
         let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
         for &(ref name, ty) in plugin_attributes.iter() {
-            if ty == AttributeType::Whitelisted && attr.check_name(&*name) {
+            if ty == AttributeType::Whitelisted && attr.check_name(&name) {
                 break;
             }
         }
@@ -265,7 +265,7 @@ impl LateLintPass for UnusedAttributes {
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
                                                 .find(|&&(ref x, t)| {
-                                                        &*attr.name() == &*x &&
+                                                        &*attr.name() == x &&
                                                         AttributeType::CrateLevel == t
                                                     }).is_some();
             if  known_crate || plugin_crate {
@@ -294,7 +294,7 @@ impl UnusedParens {
     fn check_unused_parens_core(&self, cx: &EarlyContext, value: &ast::Expr, msg: &str,
                                 struct_lit_needs_parens: bool) {
         if let ast::ExprKind::Paren(ref inner) = value.node {
-            let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
+            let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&inner);
             if !necessary {
                 cx.span_lint(UNUSED_PARENS, value.span,
                              &format!("unnecessary parentheses around {}", msg))
@@ -314,8 +314,8 @@ impl UnusedParens {
                 ast::ExprKind::AssignOp(_, ref lhs, ref rhs) |
                 ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
                     // X { y: 1 } + X { y: 2 }
-                    contains_exterior_struct_lit(&**lhs) ||
-                        contains_exterior_struct_lit(&**rhs)
+                    contains_exterior_struct_lit(&lhs) ||
+                        contains_exterior_struct_lit(&rhs)
                 }
                 ast::ExprKind::Unary(_, ref x) |
                 ast::ExprKind::Cast(ref x, _) |
@@ -324,12 +324,12 @@ impl UnusedParens {
                 ast::ExprKind::TupField(ref x, _) |
                 ast::ExprKind::Index(ref x, _) => {
                     // &X { y: 1 }, X { y: 1 }.y
-                    contains_exterior_struct_lit(&**x)
+                    contains_exterior_struct_lit(&x)
                 }
 
                 ast::ExprKind::MethodCall(_, _, ref exprs) => {
                     // X { y: 1 }.bar(...)
-                    contains_exterior_struct_lit(&*exprs[0])
+                    contains_exterior_struct_lit(&exprs[0])
                 }
 
                 _ => false
@@ -360,7 +360,7 @@ impl EarlyLintPass for UnusedParens {
             InPlace(_, ref value) => (value, "emplacement value", false),
             _ => return
         };
-        self.check_unused_parens_core(cx, &**value, msg, struct_lit_needs_parens);
+        self.check_unused_parens_core(cx, &value, msg, struct_lit_needs_parens);
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
@@ -374,7 +374,7 @@ impl EarlyLintPass for UnusedParens {
             },
             _ => return
         };
-        self.check_unused_parens_core(cx, &**value, msg, false);
+        self.check_unused_parens_core(cx, &value, msg, false);
     }
 }
 

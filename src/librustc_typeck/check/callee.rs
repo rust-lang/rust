@@ -199,7 +199,7 @@ fn try_overloaded_call_traits<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         match method::lookup_in_trait_adjusted(fcx,
                                                call_expr.span,
-                                               Some(&*callee_expr),
+                                               Some(&callee_expr),
                                                method_name,
                                                trait_def_id,
                                                autoderefs,
@@ -304,12 +304,12 @@ fn confirm_deferred_closure_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    call_expr.span,
                                    expected,
                                    fn_sig.output.clone(),
-                                   &*fn_sig.inputs);
+                                   &fn_sig.inputs);
 
     check_argument_types(fcx,
                          call_expr.span,
-                         &*fn_sig.inputs,
-                         &*expected_arg_tys,
+                         &fn_sig.inputs,
+                         &expected_arg_tys,
                          arg_exprs,
                          fn_sig.variadic,
                          TupleArgumentsFlag::TupleArguments);

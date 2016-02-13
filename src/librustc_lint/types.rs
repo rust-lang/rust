@@ -125,7 +125,7 @@ impl LateLintPass for TypeLimits {
                 }
             },
             hir::ExprBinary(binop, ref l, ref r) => {
-                if is_comparison(binop) && !check_limits(cx.tcx, binop, &**l, &**r) {
+                if is_comparison(binop) && !check_limits(cx.tcx, binop, &l, &r) {
                     cx.span_lint(UNUSED_COMPARISONS, e.span,
                                  "comparison is useless due to type limits");
                 }
@@ -174,7 +174,7 @@ impl LateLintPass for TypeLimits {
                                 if (negative && v > max as u64 + 1) ||
                                    (!negative && v > max as u64) {
                                     cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                                 &*format!("literal out of range for {:?}", t));
+                                                 &format!("literal out of range for {:?}", t));
                                     return;
                                 }
                             }
@@ -196,7 +196,7 @@ impl LateLintPass for TypeLimits {
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         &*format!("literal out of range for {:?}", t));
+                                         &format!("literal out of range for {:?}", t));
                         }
                     },
                     ty::TyFloat(t) => {
@@ -213,7 +213,7 @@ impl LateLintPass for TypeLimits {
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         &*format!("literal out of range for {:?}", t));
+                                         &format!("literal out of range for {:?}", t));
                         }
                     },
                     _ => ()
@@ -666,7 +666,7 @@ impl LateLintPass for ImproperCTypes {
 
         fn check_foreign_fn(cx: &LateContext, decl: &hir::FnDecl) {
             for input in &decl.inputs {
-                check_ty(cx, &*input.ty);
+                check_ty(cx, &input.ty);
             }
             if let hir::Return(ref ret_ty) = decl.output {
                 let tty = ast_ty_to_normalized(cx.tcx, ret_ty.id);
@@ -680,8 +680,8 @@ impl LateLintPass for ImproperCTypes {
             if nmod.abi != Abi::RustIntrinsic && nmod.abi != Abi::PlatformIntrinsic {
                 for ni in &nmod.items {
                     match ni.node {
-                        hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),
-                        hir::ForeignItemStatic(ref t, _) => check_ty(cx, &**t)
+                        hir::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &decl),
+                        hir::ForeignItemStatic(ref t, _) => check_ty(cx, &t)
                     }
                 }
             }

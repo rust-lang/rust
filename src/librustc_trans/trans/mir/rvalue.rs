@@ -106,7 +106,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let repr = adt::represent_type(bcx.ccx(), dest.ty.to_ty(bcx.tcx()));
                         let disr = Disr::from(adt_def.variants[index].disr_val);
                         bcx.with_block(|bcx| {
-                            adt::trans_set_discr(bcx, &*repr, dest.llval, Disr::from(disr));
+                            adt::trans_set_discr(bcx, &repr, dest.llval, Disr::from(disr));
                         });
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
@@ -114,7 +114,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             if !common::type_is_zero_size(bcx.ccx(), op.ty) {
                                 let val = adt::MaybeSizedValue::sized(dest.llval);
                                 let lldest_i = bcx.with_block(|bcx| {
-                                    adt::trans_field_ptr(bcx, &*repr, val, disr, i)
+                                    adt::trans_field_ptr(bcx, &repr, val, disr, i)
                                 });
                                 self.store_operand(&bcx, lldest_i, op);
                             }
@@ -234,9 +234,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             let repr = adt::represent_type(bcx.ccx(), operand.ty);
                             let llval = operand.immediate();
                             let discr = bcx.with_block(|bcx| {
-                                adt::trans_get_discr(bcx, &*repr, llval, None, true)
+                                adt::trans_get_discr(bcx, &repr, llval, None, true)
                             });
-                            (discr, common::val_ty(discr), adt::is_discr_signed(&*repr))
+                            (discr, common::val_ty(discr), adt::is_discr_signed(&repr))
                         } else {
                             (operand.immediate(), ll_t_in, operand.ty.is_signed())
                         };

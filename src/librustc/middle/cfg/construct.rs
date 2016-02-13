@@ -73,12 +73,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
         match stmt.node {
             hir::StmtDecl(ref decl, id) => {
-                let exit = self.decl(&**decl, pred);
+                let exit = self.decl(&decl, pred);
                 self.add_ast_node(id, &[exit])
             }
 
             hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) => {
-                let exit = self.expr(&**expr, pred);
+                let exit = self.expr(&expr, pred);
                 self.add_ast_node(id, &[exit])
             }
         }
@@ -88,7 +88,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         match decl.node {
             hir::DeclLocal(ref local) => {
                 let init_exit = self.opt_expr(&local.init, pred);
-                self.pat(&*local.pat, init_exit)
+                self.pat(&local.pat, init_exit)
             }
 
             hir::DeclItem(_) => {
@@ -111,7 +111,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::PatBox(ref subpat) |
             hir::PatRegion(ref subpat, _) |
             hir::PatIdent(_, _, Some(ref subpat)) => {
-                let subpat_exit = self.pat(&**subpat, pred);
+                let subpat_exit = self.pat(&subpat, pred);
                 self.add_ast_node(pat.id, &[subpat_exit])
             }
 
@@ -140,13 +140,13 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                                           pats: I,
                                           pred: CFGIndex) -> CFGIndex {
         //! Handles case where all of the patterns must match.
-        pats.fold(pred, |pred, pat| self.pat(&**pat, pred))
+        pats.fold(pred, |pred, pat| self.pat(&pat, pred))
     }
 
     fn expr(&mut self, expr: &hir::Expr, pred: CFGIndex) -> CFGIndex {
         match expr.node {
             hir::ExprBlock(ref blk) => {
-                let blk_exit = self.block(&**blk, pred);
+                let blk_exit = self.block(&blk, pred);
                 self.add_ast_node(expr.id, &[blk_exit])
             }
 
@@ -165,8 +165,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //    v 3   v 4
                 //   [..expr..]
                 //
-                let cond_exit = self.expr(&**cond, pred);                // 1
-                let then_exit = self.block(&**then, cond_exit);          // 2
+                let cond_exit = self.expr(&cond, pred);                // 1
+                let then_exit = self.block(&then, cond_exit);          // 2
                 self.add_ast_node(expr.id, &[cond_exit, then_exit])      // 3,4
             }
 
@@ -185,9 +185,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //    v 4   v 5
                 //   [..expr..]
                 //
-                let cond_exit = self.expr(&**cond, pred);                // 1
-                let then_exit = self.block(&**then, cond_exit);          // 2
-                let else_exit = self.expr(&**otherwise, cond_exit);      // 3
+                let cond_exit = self.expr(&cond, pred);                // 1
+                let then_exit = self.block(&then, cond_exit);          // 2
+                let else_exit = self.expr(&otherwise, cond_exit);      // 3
                 self.add_ast_node(expr.id, &[then_exit, else_exit])      // 4, 5
             }
 
@@ -211,14 +211,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
                 // Is the condition considered part of the loop?
                 let loopback = self.add_dummy_node(&[pred]);              // 1
-                let cond_exit = self.expr(&**cond, loopback);             // 2
+                let cond_exit = self.expr(&cond, loopback);             // 2
                 let expr_exit = self.add_ast_node(expr.id, &[cond_exit]); // 3
                 self.loop_scopes.push(LoopScope {
                     loop_id: expr.id,
                     continue_index: loopback,
                     break_index: expr_exit
                 });
-                let body_exit = self.block(&**body, cond_exit);          // 4
+                let body_exit = self.block(&body, cond_exit);          // 4
                 self.add_contained_edge(body_exit, loopback);            // 5
                 self.loop_scopes.pop();
                 expr_exit
@@ -246,7 +246,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     continue_index: loopback,
                     break_index: expr_exit,
                 });
-                let body_exit = self.block(&**body, loopback);           // 3
+                let body_exit = self.block(&body, loopback);           // 3
                 self.add_contained_edge(body_exit, loopback);            // 4
                 self.loop_scopes.pop();
                 expr_exit
@@ -271,8 +271,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //    v 3  v 4
                 //   [..exit..]
                 //
-                let l_exit = self.expr(&**l, pred);                      // 1
-                let r_exit = self.expr(&**r, l_exit);                    // 2
+                let l_exit = self.expr(&l, pred);                      // 1
+                let r_exit = self.expr(&r, l_exit);                    // 2
                 self.add_ast_node(expr.id, &[l_exit, r_exit])            // 3,4
             }
 
@@ -304,16 +304,16 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprCall(ref func, ref args) => {
-                self.call(expr, pred, &**func, args.iter().map(|e| &**e))
+                self.call(expr, pred, &func, args.iter().map(|e| &**e))
             }
 
             hir::ExprMethodCall(_, _, ref args) => {
-                self.call(expr, pred, &*args[0], args[1..].iter().map(|e| &**e))
+                self.call(expr, pred, &args[0], args[1..].iter().map(|e| &**e))
             }
 
             hir::ExprIndex(ref l, ref r) |
             hir::ExprBinary(_, ref l, ref r) if self.tcx.is_method_call(expr.id) => {
-                self.call(expr, pred, &**l, Some(&**r).into_iter())
+                self.call(expr, pred, &l, Some(&**r).into_iter())
             }
 
             hir::ExprRange(ref start, ref end) => {
@@ -323,7 +323,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprUnary(_, ref e) if self.tcx.is_method_call(expr.id) => {
-                self.call(expr, pred, &**e, None::<hir::Expr>.iter())
+                self.call(expr, pred, &e, None::<hir::Expr>.iter())
             }
 
             hir::ExprTup(ref exprs) => {
@@ -413,7 +413,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 opt_expr: &Option<P<hir::Expr>>,
                 pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `opt_expr` evaluated, if Some
-        opt_expr.iter().fold(pred, |p, e| self.expr(&**e, p))
+        opt_expr.iter().fold(pred, |p, e| self.expr(&e, p))
     }
 
     fn straightline<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
@@ -461,7 +461,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             for pat in &arm.pats {
                 // Visit the pattern, coming from the discriminant exit
-                let mut pat_exit = self.pat(&**pat, discr_exit);
+                let mut pat_exit = self.pat(&pat, discr_exit);
 
                 // If there is a guard expression, handle it here
                 if let Some(ref guard) = arm.guard {
@@ -469,10 +469,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // expression to target
                     let guard_start = self.add_dummy_node(&[pat_exit]);
                     // Visit the guard expression
-                    let guard_exit = self.expr(&**guard, guard_start);
+                    let guard_exit = self.expr(&guard, guard_start);
 
                     let this_has_bindings = pat_util::pat_contains_bindings_or_wild(
-                        &self.tcx.def_map.borrow(), &**pat);
+                        &self.tcx.def_map.borrow(), &pat);
 
                     // If both this pattern and the previous pattern
                     // were free of bindings, they must consist only

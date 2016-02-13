@@ -183,12 +183,12 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   if needs_body {
                       if abi != Abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
-                              ccx, &**decl, &**body, &[], d, psubsts, fn_node_id,
+                              ccx, &decl, &body, &[], d, psubsts, fn_node_id,
                               Some(&hash[..]));
                       } else {
                           trans_fn(ccx,
-                                   &**decl,
-                                   &**body,
+                                   &decl,
+                                   &body,
                                    d,
                                    psubsts,
                                    fn_node_id,

@@ -256,7 +256,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         for ty_param in generics.ty_params.iter() {
             walk_list!(self, visit_ty_param_bound, &ty_param.bounds);
             match ty_param.default {
-                Some(ref ty) => self.visit_ty(&**ty),
+                Some(ref ty) => self.visit_ty(&ty),
                 None => {}
             }
         }
@@ -271,13 +271,13 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         let result = self.with(LateScope(bound_lifetimes, self.scope),
                                                |old_scope, this| {
                             this.check_lifetime_defs(old_scope, bound_lifetimes);
-                            this.visit_ty(&**bounded_ty);
+                            this.visit_ty(&bounded_ty);
                             walk_list!(this, visit_ty_param_bound, bounds);
                         });
                         self.trait_ref_hack = false;
                         result
                     } else {
-                        self.visit_ty(&**bounded_ty);
+                        self.visit_ty(&bounded_ty);
                         walk_list!(self, visit_ty_param_bound, bounds);
                     }
                 }
@@ -295,7 +295,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                                                                          ref ty,
                                                                          .. }) => {
                     self.visit_path(path, id);
-                    self.visit_ty(&**ty);
+                    self.visit_ty(&ty);
                 }
             }
         }
@@ -810,7 +810,7 @@ fn early_bound_lifetime_names(generics: &hir::Generics) -> Vec<ast::Name> {
                 &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate{ref bounds,
                                                                               ref bounded_ty,
                                                                               ..}) => {
-                    collector.visit_ty(&**bounded_ty);
+                    collector.visit_ty(&bounded_ty);
                     walk_list!(&mut collector, visit_ty_param_bound, bounds);
                 }
                 &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate{ref lifetime,

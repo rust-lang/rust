@@ -666,7 +666,7 @@ impl InternedString {
 impl Deref for InternedString {
     type Target = str;
 
-    fn deref(&self) -> &str { &*self.string }
+    fn deref(&self) -> &str { &self.string }
 }
 
 impl fmt::Debug for InternedString {

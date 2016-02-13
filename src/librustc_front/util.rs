@@ -23,25 +23,25 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool
     fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool
         where G: FnMut(&Pat) -> bool
     {
-        if !(*it)(pat) {
+        if !it(pat) {
             return false;
         }
 
         match pat.node {
-            PatIdent(_, _, Some(ref p)) => walk_pat_(&**p, it),
+            PatIdent(_, _, Some(ref p)) => walk_pat_(&p, it),
             PatStruct(_, ref fields, _) => {
-                fields.iter().all(|field| walk_pat_(&*field.node.pat, it))
+                fields.iter().all(|field| walk_pat_(&field.node.pat, it))
             }
             PatEnum(_, Some(ref s)) | PatTup(ref s) => {
-                s.iter().all(|p| walk_pat_(&**p, it))
+                s.iter().all(|p| walk_pat_(&p, it))
             }
             PatBox(ref s) | PatRegion(ref s, _) => {
-                walk_pat_(&**s, it)
+                walk_pat_(&s, it)
             }
             PatVec(ref before, ref slice, ref after) => {
-                before.iter().all(|p| walk_pat_(&**p, it)) &&
-                slice.iter().all(|p| walk_pat_(&**p, it)) &&
-                after.iter().all(|p| walk_pat_(&**p, it))
+                before.iter().all(|p| walk_pat_(&p, it)) &&
+                slice.iter().all(|p| walk_pat_(&p, it)) &&
+                after.iter().all(|p| walk_pat_(&p, it))
             }
             PatWild |
             PatLit(_) |

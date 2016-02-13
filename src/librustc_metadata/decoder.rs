@@ -655,7 +655,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
             None => {}
             Some(child_item_doc) => {
                 // Hand off the item to the callback.
-                let child_name = item_name(&*intr, child_item_doc);
+                let child_name = item_name(&intr, child_item_doc);
                 let def_like = item_to_def_like(crate_data, child_item_doc, child_def_id);
                 let visibility = item_visibility(child_item_doc);
                 callback(def_like, child_name, visibility);
@@ -677,7 +677,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
                 if let Some(impl_method_doc) = cdata.get_item(impl_item_def_id.index) {
                     if let StaticMethod = item_family(impl_method_doc) {
                         // Hand off the static method to the callback.
-                        let static_method_name = item_name(&*intr, impl_method_doc);
+                        let static_method_name = item_name(&intr, impl_method_doc);
                         let static_method_def_like = item_to_def_like(cdata, impl_method_doc,
                                                                       impl_item_def_id);
                         callback(static_method_def_like,
@@ -938,7 +938,7 @@ pub fn get_trait_name(intr: Rc<IdentInterner>,
                       id: DefIndex)
                       -> ast::Name {
     let doc = cdata.lookup_item(id);
-    item_name(&*intr, doc)
+    item_name(&intr, doc)
 }
 
 pub fn is_static_method(cdata: Cmd, id: DefIndex) -> bool {
@@ -967,7 +967,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
         _ => ImplContainer(container_id),
     };
 
-    let name = item_name(&*intr, item_doc);
+    let name = item_name(&intr, item_doc);
     let vis = item_visibility(item_doc);
 
     match item_sort(item_doc) {
@@ -1622,7 +1622,7 @@ fn doc_generics<'tcx>(base_doc: rbml::Doc,
     for rp_doc in reader::tagged_docs(doc, tag_region_param_def) {
         let ident_str_doc = reader::get_doc(rp_doc,
                                             tag_region_param_def_ident);
-        let name = item_name(&*token::get_ident_interner(), ident_str_doc);
+        let name = item_name(&token::get_ident_interner(), ident_str_doc);
         let def_id_doc = reader::get_doc(rp_doc,
                                          tag_region_param_def_def_id);
         let def_id = translated_def_id(cdata, def_id_doc);

@@ -266,20 +266,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         assert_eq!(self.mode, Mode::Var);
         match i.node {
             hir::ItemStatic(_, hir::MutImmutable, ref expr) => {
-                self.check_static_type(&**expr);
-                self.global_expr(Mode::Static, &**expr);
+                self.check_static_type(&expr);
+                self.global_expr(Mode::Static, &expr);
             }
             hir::ItemStatic(_, hir::MutMutable, ref expr) => {
-                self.check_static_mut_type(&**expr);
-                self.global_expr(Mode::StaticMut, &**expr);
+                self.check_static_mut_type(&expr);
+                self.global_expr(Mode::StaticMut, &expr);
             }
             hir::ItemConst(_, ref expr) => {
-                self.global_expr(Mode::Const, &**expr);
+                self.global_expr(Mode::Const, &expr);
             }
             hir::ItemEnum(ref enum_definition, _) => {
                 for var in &enum_definition.variants {
                     if let Some(ref ex) = var.node.disr_expr {
-                        self.global_expr(Mode::Const, &**ex);
+                        self.global_expr(Mode::Const, &ex);
                     }
                 }
             }
@@ -293,7 +293,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         match t.node {
             hir::ConstTraitItem(_, ref default) => {
                 if let Some(ref expr) = *default {
-                    self.global_expr(Mode::Const, &*expr);
+                    self.global_expr(Mode::Const, &expr);
                 } else {
                     intravisit::walk_trait_item(self, t);
                 }
@@ -305,7 +305,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_impl_item(&mut self, i: &'v hir::ImplItem) {
         match i.node {
             hir::ImplItemKind::Const(_, ref expr) => {
-                self.global_expr(Mode::Const, &*expr);
+                self.global_expr(Mode::Const, &expr);
             }
             _ => self.with_mode(Mode::Var, |v| intravisit::walk_impl_item(v, i)),
         }
@@ -323,11 +323,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, p: &hir::Pat) {
         match p.node {
             hir::PatLit(ref lit) => {
-                self.global_expr(Mode::Const, &**lit);
+                self.global_expr(Mode::Const, &lit);
             }
             hir::PatRange(ref start, ref end) => {
-                self.global_expr(Mode::Const, &**start);
-                self.global_expr(Mode::Const, &**end);
+                self.global_expr(Mode::Const, &start);
+                self.global_expr(Mode::Const, &end);
 
                 match const_eval::compare_lit_exprs(self.tcx, start, end) {
                     Some(Ordering::Less) |
@@ -379,17 +379,17 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         match ex.node {
             hir::ExprCall(ref callee, ref args) => {
                 for arg in args {
-                    self.visit_expr(&**arg)
+                    self.visit_expr(&arg)
                 }
 
                 let inner = self.qualif;
-                self.visit_expr(&**callee);
+                self.visit_expr(&callee);
                 // The callee's size doesn't count in the call.
                 let added = self.qualif - inner;
                 self.qualif = inner | (added - ConstQualif::NON_ZERO_SIZED);
             }
             hir::ExprRepeat(ref element, _) => {
-                self.visit_expr(&**element);
+                self.visit_expr(&element);
                 // The count is checked elsewhere (typeck).
                 let count = match node_ty.sty {
                     ty::TyArray(_, n) => n,
@@ -631,7 +631,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             loop {
                 callee = match callee.node {
                     hir::ExprBlock(ref block) => match block.expr {
-                        Some(ref tail) => &**tail,
+                        Some(ref tail) => &tail,
                         None => break
                     },
                     _ => break

@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
                 } else {
                     b.push_str(", ");
                 }
-                b.push_str(&*a.to_string());
+                b.push_str(&a.to_string());
                 b
             })
         }
@@ -696,7 +696,7 @@ impl<'a> Parser<'a> {
                 if text.is_empty() {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                self.span_err(sp, &*format!("{} with a suffix is invalid", kind));
+                self.span_err(sp, &format!("{} with a suffix is invalid", kind));
             }
         }
     }
@@ -1574,7 +1574,7 @@ impl<'a> Parser<'a> {
 
                 if suffix_illegal {
                     let sp = self.last_span;
-                    self.expect_no_suffix(sp, &*format!("{} literal", lit.short_name()), suf)
+                    self.expect_no_suffix(sp, &format!("{} literal", lit.short_name()), suf)
                 }
 
                 Ok(out)
@@ -2083,7 +2083,7 @@ impl<'a> Parser<'a> {
                 let mut trailing_comma = false;
                 while self.token != token::CloseDelim(token::Paren) {
                     es.push(try!(self.parse_expr()));
-                    try!(self.commit_expr(&**es.last().unwrap(), &[],
+                    try!(self.commit_expr(&es.last().unwrap(), &[],
                                      &[token::Comma, token::CloseDelim(token::Paren)]));
                     if self.check(&token::Comma) {
                         trailing_comma = true;
@@ -2295,7 +2295,7 @@ impl<'a> Parser<'a> {
                                 }
 
                                 fields.push(try!(self.parse_field()));
-                                try!(self.commit_expr(&*fields.last().unwrap().expr,
+                                try!(self.commit_expr(&fields.last().unwrap().expr,
                                                  &[token::Comma],
                                                  &[token::CloseDelim(token::Brace)]));
                             }
@@ -2508,7 +2508,7 @@ impl<'a> Parser<'a> {
                 }
                 continue;
             }
-            if self.expr_is_complete(&*e) { break; }
+            if self.expr_is_complete(&e) { break; }
             match self.token {
               // expr(...)
               token::OpenDelim(token::Paren) => {
@@ -2530,7 +2530,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let ix = try!(self.parse_expr());
                 hi = self.span.hi;
-                try!(self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket)));
+                try!(self.commit_expr_expecting(&ix, token::CloseDelim(token::Bracket)));
                 let index = self.mk_index(e, ix);
                 e = self.mk_expr(lo, hi, index, None)
               }
@@ -2820,7 +2820,7 @@ impl<'a> Parser<'a> {
         };
 
 
-        if self.expr_is_complete(&*lhs) {
+        if self.expr_is_complete(&lhs) {
             // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
             return Ok(lhs);
         }
@@ -2844,7 +2844,7 @@ impl<'a> Parser<'a> {
             }
             self.bump();
             if op.is_comparison() {
-                self.check_no_chained_comparison(&*lhs, &op);
+                self.check_no_chained_comparison(&lhs, &op);
             }
             // Special cases:
             if op == AssocOp::As {
@@ -3152,7 +3152,7 @@ impl<'a> Parser<'a> {
         let lo = self.last_span.lo;
         let discriminant = try!(self.parse_expr_res(
             Restrictions::RESTRICTION_NO_STRUCT_LITERAL, None));
-        if let Err(mut e) = self.commit_expr_expecting(&*discriminant,
+        if let Err(mut e) = self.commit_expr_expecting(&discriminant,
                                                        token::OpenDelim(token::Brace)) {
             if self.token == token::Token::Semi {
                 e.span_note(match_span, "did you mean to remove this `match` keyword?");
@@ -3183,11 +3183,11 @@ impl<'a> Parser<'a> {
         let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_STMT_EXPR, None));
 
         let require_comma =
-            !classify::expr_is_simple_block(&*expr)
+            !classify::expr_is_simple_block(&expr)
             && self.token != token::CloseDelim(token::Brace);
 
         if require_comma {
-            try!(self.commit_expr(&*expr, &[token::Comma], &[token::CloseDelim(token::Brace)]));
+            try!(self.commit_expr(&expr, &[token::Comma], &[token::CloseDelim(token::Brace)]));
         } else {
             self.eat(&token::Comma);
         }
@@ -3936,7 +3936,7 @@ impl<'a> Parser<'a> {
             stmts: &mut Vec<Stmt>,
             last_block_expr: &mut Option<P<Expr>>) -> PResult<'a, ()> {
         // expression without semicolon
-        if classify::expr_requires_semi_to_be_stmt(&*e) {
+        if classify::expr_requires_semi_to_be_stmt(&e) {
             // Just check for errors and recover; do not eat semicolon yet.
             try!(self.commit_stmt(&[],
                              &[token::Semi, token::CloseDelim(token::Brace)]));
@@ -4861,7 +4861,7 @@ impl<'a> Parser<'a> {
                 impl_items.push(try!(self.parse_impl_item()));
             }
 
-            Ok((ast_util::impl_pretty_name(&opt_trait, Some(&*ty)),
+            Ok((ast_util::impl_pretty_name(&opt_trait, Some(&ty)),
              ItemKind::Impl(unsafety, polarity, generics, opt_trait, ty, impl_items),
              Some(attrs)))
         }
@@ -5075,7 +5075,7 @@ impl<'a> Parser<'a> {
         let ty = try!(self.parse_ty_sum());
         try!(self.expect(&token::Eq));
         let e = try!(self.parse_expr());
-        try!(self.commit_expr_expecting(&*e, token::Semi));
+        try!(self.commit_expr_expecting(&e, token::Semi));
         let item = match m {
             Some(m) => ItemKind::Static(ty, m, e),
             None => ItemKind::Const(ty, e),

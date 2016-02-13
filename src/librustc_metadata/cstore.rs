@@ -138,7 +138,7 @@ impl CStore {
         for (&k, v) in self.metas.borrow().iter() {
             let origin = self.opt_used_crate_source(k);
             origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
-            i(k, &**v, origin);
+            i(k, &v, origin);
         }
     }
 

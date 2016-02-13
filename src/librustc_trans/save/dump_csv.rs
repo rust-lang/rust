@@ -468,7 +468,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                             &name.as_str(),
                             &qualname,
                             &self.span.snippet(expr.span),
-                            &ty_to_string(&*typ),
+                            &ty_to_string(&typ),
                             self.cur_scope);
 
         // walk type and init value
@@ -550,7 +550,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
             for field in variant.node.data.fields() {
                 self.process_struct_field_def(field, variant.node.data.id());
-                self.visit_ty(&*field.node.ty);
+                self.visit_ty(&field.node.ty);
             }
         }
         self.process_generic_params(ty_params, item.span, &enum_data.qualname, enum_data.id);
@@ -970,7 +970,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                           self.cur_scope);
             }
             Fn(ref decl, _, _, _, ref ty_params, ref body) =>
-                self.process_fn(item, &**decl, ty_params, &**body),
+                self.process_fn(item, &decl, ty_params, &body),
             Static(ref typ, _, ref expr) =>
                 self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) =>
@@ -992,11 +992,11 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             }
             Ty(ref ty, ref ty_params) => {
                 let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
-                let value = ty_to_string(&**ty);
+                let value = ty_to_string(&ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
                 self.fmt.typedef_str(item.span, sub_span, item.id, &qualname, &value);
 
-                self.visit_ty(&**ty);
+                self.visit_ty(&ty);
                 self.process_generic_params(ty_params, item.span, &qualname, item.id);
             }
             Mac(_) => (),
@@ -1012,7 +1012,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 }
             }
             if let Some(ref ty) = param.default {
-                self.visit_ty(&**ty);
+                self.visit_ty(&ty);
             }
         }
     }
@@ -1024,8 +1024,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 self.process_const(trait_item.id,
                                    trait_item.ident.name,
                                    trait_item.span,
-                                   &*ty,
-                                   &*expr);
+                                   &ty,
+                                   &expr);
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
                 self.process_method(sig,
@@ -1113,7 +1113,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 }
             }
             ast::ExprKind::TupField(ref sub_ex, idx) => {
-                self.visit_expr(&**sub_ex);
+                self.visit_expr(&sub_ex);
 
                 let hir_node = lower_expr(self.save_ctxt.lcx, sub_ex);
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
@@ -1139,15 +1139,15 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 // walk arg and return types
                 for arg in &decl.inputs {
-                    self.visit_ty(&*arg.ty);
+                    self.visit_ty(&arg.ty);
                 }
 
                 if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
-                    self.visit_ty(&**ret_ty);
+                    self.visit_ty(&ret_ty);
                 }
 
                 // walk the body
-                self.nest(ex.id, |v| v.visit_block(&**body));
+                self.nest(ex.id, |v| v.visit_block(&body));
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
             ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {

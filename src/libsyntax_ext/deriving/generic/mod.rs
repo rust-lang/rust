@@ -553,7 +553,7 @@ impl<'a> TraitDef<'a> {
 
             let mut processed_field_types = HashSet::new();
             for field_ty in field_tys {
-                let tys = find_type_parameters(&*field_ty, &ty_param_names);
+                let tys = find_type_parameters(&field_ty, &ty_param_names);
 
                 for ty in tys {
                     // if we have already handled this type, skip it
@@ -617,7 +617,7 @@ impl<'a> TraitDef<'a> {
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
-        let ident = ast_util::impl_pretty_name(&opt_trait_ref, Some(&*self_type));
+        let ident = ast_util::impl_pretty_name(&opt_trait_ref, Some(&self_type));
         let unused_qual = cx.attribute(
             self.span,
             cx.meta_list(self.span,

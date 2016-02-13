@@ -284,7 +284,7 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
         match *self {
             ConstantValue(ConstantExpr(lit_expr), _) => {
                 let lit_ty = bcx.tcx().node_id_to_type(lit_expr.id);
-                let expr = consts::const_expr(ccx, &*lit_expr, bcx.fcx.param_substs, None, Yes);
+                let expr = consts::const_expr(ccx, &lit_expr, bcx.fcx.param_substs, None, Yes);
                 let llval = match expr {
                     Ok((llval, _)) => llval,
                     Err(err) => bcx.ccx().sess().span_fatal(lit_expr.span, &err.description()),
@@ -294,18 +294,18 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
                 SingleResult(Result::new(bcx, lit_datum.val))
             }
             ConstantRange(ConstantExpr(ref l1), ConstantExpr(ref l2), _) => {
-                let l1 = match consts::const_expr(ccx, &**l1, bcx.fcx.param_substs, None, Yes) {
+                let l1 = match consts::const_expr(ccx, &l1, bcx.fcx.param_substs, None, Yes) {
                     Ok((l1, _)) => l1,
                     Err(err) => bcx.ccx().sess().span_fatal(l1.span, &err.description()),
                 };
-                let l2 = match consts::const_expr(ccx, &**l2, bcx.fcx.param_substs, None, Yes) {
+                let l2 = match consts::const_expr(ccx, &l2, bcx.fcx.param_substs, None, Yes) {
                     Ok((l2, _)) => l2,
                     Err(err) => bcx.ccx().sess().span_fatal(l2.span, &err.description()),
                 };
                 RangeResult(Result::new(bcx, l1), Result::new(bcx, l2))
             }
             Variant(disr_val, ref repr, _, _) => {
-                SingleResult(Result::new(bcx, adt::trans_case(bcx, &**repr, disr_val)))
+                SingleResult(Result::new(bcx, adt::trans_case(bcx, &repr, disr_val)))
             }
             SliceLengthEqual(length, _) => {
                 SingleResult(Result::new(bcx, C_uint(ccx, length)))
@@ -479,7 +479,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             pat = match pat.node {
                 hir::PatIdent(_, ref path, Some(ref inner)) => {
                     bound_ptrs.push((path.node.name, val.val));
-                    &**inner
+                    &inner
                 },
                 _ => break
             }
@@ -489,7 +489,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         pats[col] = pat;
         Match {
             pats: pats,
-            data: &*br.data,
+            data: &br.data,
             bound_ptrs: bound_ptrs,
             pat_renaming_map: br.pat_renaming_map,
         }
@@ -518,7 +518,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
                 hir::PatIdent(_, ref path, None) => {
-                    if pat_is_binding(&dm.borrow(), &*this) {
+                    if pat_is_binding(&dm.borrow(), &this) {
                         bound_ptrs.push((path.node.name, val.val));
                     }
                 }
@@ -557,7 +557,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Collect all of the matches that can match against anything.
     enter_match(bcx, dm, m, col, val, |pats| {
-        if pat_is_binding_or_wild(&dm.borrow(), &*pats[col]) {
+        if pat_is_binding_or_wild(&dm.borrow(), &pats[col]) {
             let mut r = pats[..col].to_vec();
             r.extend_from_slice(&pats[col + 1..]);
             Some(r)
@@ -615,11 +615,11 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
 
     let ctor = match opt {
         &ConstantValue(ConstantExpr(expr), _) => check_match::ConstantValue(
-            const_eval::eval_const_expr(bcx.tcx(), &*expr)
+            const_eval::eval_const_expr(bcx.tcx(), &expr)
         ),
         &ConstantRange(ConstantExpr(lo), ConstantExpr(hi), _) => check_match::ConstantRange(
-            const_eval::eval_const_expr(bcx.tcx(), &*lo),
-            const_eval::eval_const_expr(bcx.tcx(), &*hi)
+            const_eval::eval_const_expr(bcx.tcx(), &lo),
+            const_eval::eval_const_expr(bcx.tcx(), &hi)
         ),
         &SliceLengthEqual(n, _) =>
             check_match::Slice(n),
@@ -663,7 +663,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let opt = match cur.node {
             hir::PatLit(ref l) => {
-                ConstantValue(ConstantExpr(&**l), debug_loc)
+                ConstantValue(ConstantExpr(&l), debug_loc)
             }
             hir::PatIdent(..) | hir::PatEnum(..) | hir::PatStruct(..) => {
                 // This is either an enum variant or a variable binding.
@@ -680,7 +680,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
             hir::PatRange(ref l1, ref l2) => {
-                ConstantRange(ConstantExpr(&**l1), ConstantExpr(&**l2), debug_loc)
+                ConstantRange(ConstantExpr(&l1), ConstantExpr(&l2), debug_loc)
             }
             hir::PatVec(ref before, None, ref after) => {
                 SliceLengthEqual(before.len() + after.len(), debug_loc)
@@ -849,7 +849,7 @@ impl FailureHandler {
 fn pick_column_to_specialize(def_map: &RefCell<DefMap>, m: &[Match]) -> Option<usize> {
     fn pat_score(def_map: &RefCell<DefMap>, pat: &hir::Pat) -> usize {
         match pat.node {
-            hir::PatIdent(_, _, Some(ref inner)) => pat_score(def_map, &**inner),
+            hir::PatIdent(_, _, Some(ref inner)) => pat_score(def_map, &inner),
             _ if pat_is_refutable(&def_map.borrow(), pat) => 1,
             _ => 0
         }
@@ -1143,7 +1143,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match data.arm.guard {
                 Some(ref guard_expr) => {
                     bcx = compile_guard(bcx,
-                                        &**guard_expr,
+                                        &guard_expr,
                                         m[0].data,
                                         &m[1..m.len()],
                                         vals,
@@ -1190,7 +1190,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
     let adt_vals = if any_irrefutable_adt_pat(bcx.tcx(), m, col) {
         let repr = adt::represent_type(bcx.ccx(), left_ty);
-        let arg_count = adt::num_args(&*repr, Disr(0));
+        let arg_count = adt::num_args(&repr, Disr(0));
         let (arg_count, struct_val) = if type_is_sized(bcx.tcx(), left_ty) {
             (arg_count, val.val)
         } else {
@@ -1202,7 +1202,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         };
         let mut field_vals: Vec<ValueRef> = (0..arg_count).map(|ix|
             // By definition, these are all sized
-            adt::trans_field_ptr(bcx, &*repr, adt::MaybeSizedValue::sized(struct_val), Disr(0), ix)
+            adt::trans_field_ptr(bcx, &repr, adt::MaybeSizedValue::sized(struct_val), Disr(0), ix)
         ).collect();
 
         match left_ty.sty {
@@ -1218,7 +1218,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let meta = Load(bcx, expr::get_meta(bcx, val.val));
                 let struct_val = adt::MaybeSizedValue::unsized_(struct_val, meta);
 
-                let data = adt::trans_field_ptr(bcx, &*repr, struct_val, Disr(0), arg_count);
+                let data = adt::trans_field_ptr(bcx, &repr, struct_val, Disr(0), arg_count);
                 Store(bcx, data, expr::get_dataptr(bcx, scratch));
                 Store(bcx, meta, expr::get_meta(bcx, scratch));
                 field_vals.push(scratch);
@@ -1385,7 +1385,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         match *opt {
             Variant(disr_val, ref repr, _, _) => {
                 let ExtractedBlock {vals: argvals, bcx: new_bcx} =
-                    extract_variant_args(opt_cx, &**repr, disr_val, val);
+                    extract_variant_args(opt_cx, &repr, disr_val, val);
                 size = argvals.len();
                 unpacked = argvals;
                 opt_cx = new_bcx;
@@ -1534,7 +1534,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &hir::Pat,
     let tcx = bcx.tcx();
     let reassigned = is_discr_reassigned(bcx, discr, body);
     let mut bindings_map = FnvHashMap();
-    pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
+    pat_bindings(&tcx.def_map, &pat, |bm, p_id, span, path1| {
         let name = path1.node;
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
@@ -1604,7 +1604,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     let arm_datas: Vec<ArmData> = arms.iter().map(|arm| ArmData {
         bodycx: fcx.new_id_block("case_body", arm.body.id),
         arm: arm,
-        bindings_map: create_bindings_map(bcx, &*arm.pats[0], discr_expr, &*arm.body)
+        bindings_map: create_bindings_map(bcx, &arm.pats[0], discr_expr, &arm.body)
     }).collect();
 
     let mut pat_renaming_map = if scope_cx.sess().opts.debuginfo != NoDebugInfo {
@@ -1624,7 +1624,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     let mut matches = Vec::new();
     for (arm_data, pats) in arm_datas.iter().zip(&arm_pats) {
         matches.extend(pats.iter().map(|p| Match {
-            pats: vec![&**p],
+            pats: vec![&p],
             data: arm_data,
             bound_ptrs: Vec::new(),
             pat_renaming_map: pat_renaming_map.as_ref()
@@ -1651,7 +1651,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         // insert bindings into the lllocals map and add cleanups
         let cs = fcx.push_custom_cleanup_scope();
         bcx = insert_lllocals(bcx, &arm_data.bindings_map, Some(cleanup::CustomScope(cs)));
-        bcx = expr::trans_into(bcx, &*arm_data.arm.body, dest);
+        bcx = expr::trans_into(bcx, &arm_data.arm.body, dest);
         bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cs);
         arm_cxs.push(bcx);
     }
@@ -1668,7 +1668,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("match::store_local");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
-    let pat = &*local.pat;
+    let pat = &local.pat;
 
     fn create_dummy_locals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                        pat: &hir::Pat)
@@ -1723,7 +1723,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     return mk_binding_alloca(
                         bcx, pat.id, name, var_scope, (),
                         "_match::store_local",
-                        |(), bcx, Datum { val: v, .. }| expr::trans_into(bcx, &**init_expr,
+                        |(), bcx, Datum { val: v, .. }| expr::trans_into(bcx, &init_expr,
                                                                          expr::SaveIn(v)));
                 }
 
@@ -1732,7 +1732,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             // General path.
             let init_datum =
-                unpack_datum!(bcx, expr::trans_to_lvalue(bcx, &**init_expr, "let"));
+                unpack_datum!(bcx, expr::trans_to_lvalue(bcx, &init_expr, "let"));
             if bcx.sess().asm_comments() {
                 add_comment(bcx, "creating zeroable ref llval");
             }
@@ -1813,7 +1813,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
     match pat.node {
         hir::PatIdent(pat_binding_mode, ref path1, ref inner) => {
-            if pat_is_binding(&tcx.def_map.borrow(), &*pat) {
+            if pat_is_binding(&tcx.def_map.borrow(), &pat) {
                 // Allocate the stack slot where the value of this
                 // binding will live and place it into the appropriate
                 // map.
@@ -1846,7 +1846,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
 
             if let Some(ref inner_pat) = *inner {
-                bcx = bind_irrefutable_pat(bcx, &**inner_pat, val, cleanup_scope);
+                bcx = bind_irrefutable_pat(bcx, &inner_pat, val, cleanup_scope);
             }
         }
         hir::PatEnum(_, ref sub_pats) => {
@@ -1856,14 +1856,14 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     let repr = adt::represent_node(bcx, pat.id);
                     let vinfo = ccx.tcx().lookup_adt_def(enum_id).variant_with_id(var_id);
                     let args = extract_variant_args(bcx,
-                                                    &*repr,
+                                                    &repr,
                                                     Disr::from(vinfo.disr_val),
                                                     val);
                     if let Some(ref sub_pat) = *sub_pats {
                         for (i, &argval) in args.vals.iter().enumerate() {
                             bcx = bind_irrefutable_pat(
                                 bcx,
-                                &*sub_pat[i],
+                                &sub_pat[i],
                                 MatchInput::from_val(argval),
                                 cleanup_scope);
                         }
@@ -1879,11 +1879,11 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             let repr = adt::represent_node(bcx, pat.id);
                             let val = adt::MaybeSizedValue::sized(val.val);
                             for (i, elem) in elems.iter().enumerate() {
-                                let fldptr = adt::trans_field_ptr(bcx, &*repr,
+                                let fldptr = adt::trans_field_ptr(bcx, &repr,
                                                                   val, Disr(0), i);
                                 bcx = bind_irrefutable_pat(
                                     bcx,
-                                    &**elem,
+                                    &elem,
                                     MatchInput::from_val(fldptr),
                                     cleanup_scope);
                             }
@@ -1914,7 +1914,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let field_idx = pat_v.field_index(name);
                 let mut fldptr = adt::trans_field_ptr(
                     bcx,
-                    &*pat_repr,
+                    &pat_repr,
                     val,
                     pat_v.discr,
                     field_idx);
@@ -1930,7 +1930,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     fldptr = scratch;
                 }
                 bcx = bind_irrefutable_pat(bcx,
-                                           &*f.node.pat,
+                                           &f.node.pat,
                                            MatchInput::from_val(fldptr),
                                            cleanup_scope);
             }
@@ -1939,10 +1939,10 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let repr = adt::represent_node(bcx, pat.id);
             let val = adt::MaybeSizedValue::sized(val.val);
             for (i, elem) in elems.iter().enumerate() {
-                let fldptr = adt::trans_field_ptr(bcx, &*repr, val, Disr(0), i);
+                let fldptr = adt::trans_field_ptr(bcx, &repr, val, Disr(0), i);
                 bcx = bind_irrefutable_pat(
                     bcx,
-                    &**elem,
+                    &elem,
                     MatchInput::from_val(fldptr),
                     cleanup_scope);
             }
@@ -1964,7 +1964,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 val.val
             };
             bcx = bind_irrefutable_pat(
-                bcx, &**inner, MatchInput::from_val(val), cleanup_scope);
+                bcx, &inner, MatchInput::from_val(val), cleanup_scope);
         }
         hir::PatRegion(ref inner, _) => {
             let pat_ty = node_id_type(bcx, inner.id);
@@ -1984,7 +1984,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             bcx = bind_irrefutable_pat(
                 bcx,
-                &**inner,
+                &inner,
                 MatchInput::from_val(val),
                 cleanup_scope);
         }
@@ -2008,7 +2008,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 .fold(bcx, |bcx, (inner, elem)| {
                     bind_irrefutable_pat(
                         bcx,
-                        &**inner,
+                        &inner,
                         MatchInput::from_val(elem),
                         cleanup_scope)
                 });

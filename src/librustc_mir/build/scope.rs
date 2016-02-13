@@ -488,7 +488,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let funcdid = match self.hir.tcx().lang_items.require(lang_item) {
             Ok(d) => d,
             Err(m) => {
-                self.hir.tcx().sess.fatal(&*m)
+                self.hir.tcx().sess.fatal(&m)
             }
         };
         Constant {

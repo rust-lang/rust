@@ -173,7 +173,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         match *ii {
           InlinedItem::Item(ref i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-                   ::rustc_front::print::pprust::item_to_string(&**i));
+                   ::rustc_front::print::pprust::item_to_string(&i));
           }
           _ => { }
         }
@@ -1404,8 +1404,8 @@ fn test_simplification() {
     ).unwrap())));
     match (item_out, item_exp) {
       (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
-        assert!(pprust::item_to_string(&*item_out) ==
-                pprust::item_to_string(&*item_exp));
+        assert!(pprust::item_to_string(&item_out) ==
+                pprust::item_to_string(&item_exp));
       }
       _ => panic!()
     }
