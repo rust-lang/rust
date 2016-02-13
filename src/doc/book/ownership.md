@@ -166,6 +166,8 @@ Rust’s safety guarantees by introducing a data race if one could access both
 For example if we truncated the vector to just two elements through `v2`:
 
 ```rust
+# let v = vec![1, 2, 3];
+# let v2 = v;
 v2.truncate(2);
 ```
 
@@ -174,7 +176,9 @@ would not know that the heap data has been truncated. Now, the part of the
 vector `v1` on the stack does not agree with the corresponding part on the
 heap. `v1` still thinks there are three elements in the vector and will
 happily let us access the non existent element `v1[2]` but as you might
-already know this is a recipe for disaster (might lead to a segfault).
+already know this is a recipe for disaster. Especially because it might lead
+to a segmentation fault or worse allow an unauthorized user to read from
+memory to which they don't have access.
 
 This is why Rust forbids using `v` after we’ve done the move.
 
