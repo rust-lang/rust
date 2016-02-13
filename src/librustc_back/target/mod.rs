@@ -89,6 +89,7 @@ macro_rules! supported_targets {
 supported_targets! {
     ("x86_64-unknown-linux-gnu", x86_64_unknown_linux_gnu),
     ("i686-unknown-linux-gnu", i686_unknown_linux_gnu),
+    ("i586-unknown-linux-gnu", i586_unknown_linux_gnu),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
     ("mipsel-unknown-linux-gnu", mipsel_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
