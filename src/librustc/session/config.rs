@@ -587,8 +587,6 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint,
         "set the inlining threshold for"),
-    sanitize: Option<Sanitize> = (None, parse_sanitize,
-        "choose the sanitizer to use"),
 }
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
@@ -681,6 +679,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "show spans for compiler debugging (expr|pat|ty)"),
     print_trans_items: Option<String> = (None, parse_opt_string,
           "print the result of the translation item collection pass"),
+    sanitize: Option<Sanitize> = (None, parse_sanitize,
+          "choose the sanitizer to use"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -726,14 +726,15 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
     }
 
-    sess.opts.cg.sanitize.map(|s| {
+    sess.opts.debugging_opts.sanitize.map(|s| {
         let name = match s {
-            Sanitize::Address => "sanitize_address",
-            Sanitize::Leak    => "sanitize_leak",
-            Sanitize::Memory  => "sanitize_memory",
-            Sanitize::Thread  => "sanitize_thread"
+            Sanitize::Address => "address",
+            Sanitize::Leak    => "leak",
+            Sanitize::Memory  => "memory",
+            Sanitize::Thread  => "thread"
         };
-        ret.push(attr::mk_word_item(InternedString::new(name)));
+        ret.push(mk(InternedString::new("sanitize"),
+                    InternedString::new(name)));
     });
 
     return ret;

@@ -1637,7 +1637,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
                                output: ty::FnOutput<'tcx>)
                                -> Block<'a, 'tcx> {
 
-    fcx.ccx.sess().opts.cg.sanitize.map(|s| {
+    fcx.ccx.sess().opts.debugging_opts.sanitize.map(|s| {
         let attr = match s {
             config::Sanitize::Address => llvm::Attribute::SanitizeAddress,
             config::Sanitize::Memory  => llvm::Attribute::SanitizeMemory,

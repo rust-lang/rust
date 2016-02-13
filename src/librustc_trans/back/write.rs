@@ -636,7 +636,7 @@ pub fn run_passes(sess: &Session,
     let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
     let mut metadata_config = ModuleConfig::new(tm, vec!());
 
-    sess.opts.cg.sanitize.map(|s| {
+    sess.opts.debugging_opts.sanitize.map(|s| {
         let ref mut passes = modules_config.passes;
         match s {
             config::Sanitize::Address => {

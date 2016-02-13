@@ -951,7 +951,7 @@ fn link_sanitizers(sess: &Session, dylib: bool, cmd: &mut Command) -> bool {
     // Sanitizer runtimes are linked into final executable only.
     if dylib { return false; }
 
-    sess.opts.cg.sanitize.map(|s| {
+    sess.opts.debugging_opts.sanitize.map(|s| {
         let runtime = match s {
             Sanitize::Address => "rustc_asan",
             Sanitize::Leak    => "rustc_lsan",
@@ -1121,7 +1121,12 @@ fn link_args(cmd: &mut Linker,
 
 // Checks if sanitizer supports position independent executables.
 fn sanitizer_support_pie(sess: &Session) -> bool {
-    sess.opts.cg.sanitize != Some(Sanitize::Thread)
+    // Thread sanitizer does not support memory mapping changes introduced in
+    // Linux kernel 4.1.2 and will fail with following error when run:
+    // FATAL: ThreadSanitizer: unexpected memory mapping
+    //
+    // Issue on thread sanitizer bugtracker: https://github.com/google/sanitizers/issues/503
+    sess.opts.debugging_opts.sanitize != Some(Sanitize::Thread)
 }
 
 // # Native library linking
