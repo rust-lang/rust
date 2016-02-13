@@ -554,7 +554,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
                         path: fqp[..fqp.len() - 1].join("::"),
-                        desc: shorter(item.doc_value()),
+                        desc: Escape(&shorter(item.doc_value())).to_string(),
                         parent: Some(did),
                         search_type: get_index_search_type(&item, parent_basename),
                     });
@@ -1065,7 +1065,7 @@ impl DocFolder for Cache {
                             ty: shortty(&item),
                             name: s.to_string(),
                             path: path.join("::").to_string(),
-                            desc: shorter(item.doc_value()),
+                            desc: Escape(&shorter(item.doc_value())).to_string(),
                             parent: parent,
                             search_type: get_index_search_type(&item, parent_basename),
                         });
