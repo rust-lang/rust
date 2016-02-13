@@ -207,7 +207,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
                         }
 
-                        let subclass = SingleImport(binding, source_name);
+                        let subclass = ImportDirectiveSubclass::single(binding, source_name);
                         self.build_import_directive(parent,
                                                     module_path,
                                                     subclass,
@@ -258,9 +258,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                     (module_path.to_vec(), name, rename)
                                 }
                             };
+                            let subclass = ImportDirectiveSubclass::single(rename, name);
                             self.build_import_directive(parent,
                                                         module_path,
-                                                        SingleImport(rename, name),
+                                                        subclass,
                                                         source_item.span,
                                                         source_item.node.id(),
                                                         is_public,
@@ -683,11 +684,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                               id: NodeId,
                               is_public: bool,
                               shadowable: Shadowable) {
-        module_.unresolved_imports
-               .borrow_mut()
-               .push(ImportDirective::new(module_path, subclass, span, id, is_public, shadowable));
-        self.unresolved_imports += 1;
-
         if is_public {
             module_.inc_pub_count();
         }
@@ -696,7 +692,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         // the appropriate flag.
 
         match subclass {
-            SingleImport(target, _) => {
+            SingleImport { target, .. } => {
                 module_.increment_outstanding_references_for(target, ValueNS);
                 module_.increment_outstanding_references_for(target, TypeNS);
             }
@@ -710,6 +706,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 }
             }
         }
+
+        module_.unresolved_imports
+               .borrow_mut()
+               .push(ImportDirective::new(module_path, subclass, span, id, is_public, shadowable));
+        self.unresolved_imports += 1;
     }
 }
 

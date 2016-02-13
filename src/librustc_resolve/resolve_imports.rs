@@ -32,12 +32,29 @@ use syntax::codemap::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::mem::replace;
+use std::cell::Cell;
 
 /// Contains data for specific types of import directives.
-#[derive(Copy, Clone,Debug)]
+#[derive(Clone, Debug)]
 pub enum ImportDirectiveSubclass {
-    SingleImport(Name /* target */, Name /* source */),
+    SingleImport {
+        target: Name,
+        source: Name,
+        type_determined: Cell<bool>,
+        value_determined: Cell<bool>,
+    },
     GlobImport,
+}
+
+impl ImportDirectiveSubclass {
+    pub fn single(target: Name, source: Name) -> Self {
+        SingleImport {
+            target: target,
+            source: source,
+            type_determined: Cell::new(false),
+            value_determined: Cell::new(false),
+        }
+    }
 }
 
 /// Whether an import can be shadowed by another import.
@@ -218,7 +235,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     fn import_resolving_error(&self, e: ImportResolvingError<'b>) {
         // If it's a single failed import then create a "fake" import
         // resolution for it so that later resolve stages won't complain.
-        if let SingleImport(target, _) = e.import_directive.subclass {
+        if let SingleImport { target, .. } = e.import_directive.subclass {
             let dummy_binding = self.resolver.new_name_binding(NameBinding {
                 modifiers: DefModifiers::PRELUDE,
                 kind: NameBindingKind::Def(Def::Err),
@@ -304,15 +321,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             .and_then(|containing_module| {
                 // We found the module that the target is contained
                 // within. Attempt to resolve the import within it.
-                if let SingleImport(target, source) = import_directive.subclass {
-                    self.resolve_single_import(module_,
-                                               containing_module,
-                                               target,
-                                               source,
-                                               import_directive)
-                } else {
-                    self.resolve_glob_import(module_, containing_module, import_directive)
-                }
+                self.resolve_import(module_, containing_module, import_directive)
             })
             .and_then(|()| {
                 // Decrement the count of unresolved imports.
@@ -332,36 +341,53 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             })
     }
 
-    fn resolve_single_import(&mut self,
-                             module_: Module<'b>,
-                             target_module: Module<'b>,
-                             target: Name,
-                             source: Name,
-                             directive: &ImportDirective)
-                             -> ResolveResult<()> {
-        debug!("(resolving single import) resolving `{}` = `{}::{}` from `{}` id {}",
-               target,
-               module_to_string(&target_module),
-               source,
-               module_to_string(module_),
-               directive.id);
-
-        // If this is a circular import, we temporarily count it as determined so that
-        // it fails (as opposed to being indeterminate) when nothing else can define it.
-        if target_module.def_id() == module_.def_id() && source == target {
-            module_.decrement_outstanding_references_for(target, ValueNS);
-            module_.decrement_outstanding_references_for(target, TypeNS);
-        }
+    fn resolve_import(&mut self,
+                      module_: Module<'b>,
+                      target_module: Module<'b>,
+                      directive: &ImportDirective)
+                      -> ResolveResult<()> {
+        let (source, target, value_determined, type_determined) = match directive.subclass {
+            SingleImport { source, target, ref value_determined, ref type_determined } =>
+                (source, target, value_determined, type_determined),
+            GlobImport => return self.resolve_glob_import(module_, target_module, directive),
+        };
 
         // We need to resolve both namespaces for this to succeed.
-        let value_result =
-            self.resolver.resolve_name_in_module(target_module, source, ValueNS, false, true);
-        let type_result =
-            self.resolver.resolve_name_in_module(target_module, source, TypeNS, false, true);
+        let (value_result, type_result) = {
+            let mut resolve_in_ns = |ns, determined: bool| {
+                // Temporarily count the directive as determined so that the resolution fails
+                // (as opposed to being indeterminate) when it can only be defined by the directive.
+                if !determined { module_.decrement_outstanding_references_for(target, ns) }
+                let result =
+                    self.resolver.resolve_name_in_module(target_module, source, ns, false, true);
+                if !determined { module_.increment_outstanding_references_for(target, ns) }
+                result
+            };
+            (resolve_in_ns(ValueNS, value_determined.get()),
+             resolve_in_ns(TypeNS, type_determined.get()))
+        };
 
-        if target_module.def_id() == module_.def_id() && source == target {
-            module_.increment_outstanding_references_for(target, ValueNS);
-            module_.increment_outstanding_references_for(target, TypeNS);
+        for &(ns, result, determined) in &[(ValueNS, &value_result, value_determined),
+                                           (TypeNS, &type_result, type_determined)] {
+            if determined.get() { continue }
+            if let Indeterminate = *result { continue }
+
+            determined.set(true);
+            if let Success(binding) = *result {
+                if !binding.defined_with(DefModifiers::IMPORTABLE) {
+                    let msg = format!("`{}` is not directly importable", target);
+                    span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
+                }
+
+                let privacy_error = if !self.resolver.is_visible(binding, target_module) {
+                    Some(Box::new(PrivacyError(directive.span, source, binding)))
+                } else {
+                    None
+                };
+
+                self.define(module_, target, ns, directive.import(binding, privacy_error));
+            }
+            module_.decrement_outstanding_references_for(target, ns);
         }
 
         match (&value_result, &type_result) {
@@ -425,37 +451,22 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             _ => {}
         }
 
+        // Report a privacy error here if all successful namespaces are privacy errors.
         let mut privacy_error = None;
-        let mut report_privacy_error = true;
-        for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
-            if let Success(binding) = *result {
-                if !binding.defined_with(DefModifiers::IMPORTABLE) {
-                    let msg = format!("`{}` is not directly importable", target);
-                    span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
-                }
-
-                privacy_error = if !self.resolver.is_visible(binding, target_module) {
-                    Some(Box::new(PrivacyError(directive.span, source, binding)))
-                } else {
-                    report_privacy_error = false;
-                    None
-                };
-
-                self.define(module_, target, ns, directive.import(binding, privacy_error.clone()));
-            }
+        for &ns in &[ValueNS, TypeNS] {
+            privacy_error = match module_.resolve_name(target, ns, true) {
+                Success(&NameBinding {
+                    kind: NameBindingKind::Import { ref privacy_error, .. }, ..
+                }) => privacy_error.as_ref().map(|error| (**error).clone()),
+                _ => continue,
+            };
+            if privacy_error.is_none() { break }
         }
-
-        if report_privacy_error { // then all successful namespaces are privacy errors
-            // We report here so there is an error even if the imported name is not used
-            self.resolver.privacy_errors.push(*privacy_error.unwrap());
-        }
+        privacy_error.map(|error| self.resolver.privacy_errors.push(error));
 
         // Record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        module_.decrement_outstanding_references_for(target, ValueNS);
-        module_.decrement_outstanding_references_for(target, TypeNS);
-
         let def = match type_result.success().and_then(NameBinding::def) {
             Some(def) => def,
             None => value_result.success().and_then(NameBinding::def).unwrap(),
@@ -610,7 +621,7 @@ fn import_path_to_string(names: &[Name], subclass: ImportDirectiveSubclass) -> S
 
 fn import_directive_subclass_to_string(subclass: ImportDirectiveSubclass) -> String {
     match subclass {
-        SingleImport(_, source) => source.to_string(),
+        SingleImport { source, .. } => source.to_string(),
         GlobImport => "*".to_string(),
     }
 }
