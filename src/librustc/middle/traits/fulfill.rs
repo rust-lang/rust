@@ -133,7 +133,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
     {
-        debug!("normalize_associated_type(projection_ty={:?})",
+        debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
 
         assert!(!projection_ty.has_escaping_regions());
@@ -147,7 +147,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             self.register_predicate_obligation(infcx, obligation);
         }
 
-        debug!("normalize_associated_type: result={:?}", normalized.value);
+        debug!("normalize_projection_type: result={:?}", normalized.value);
 
         normalized.value
     }
@@ -185,11 +185,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
         assert!(!obligation.has_escaping_regions());
 
         if self.is_duplicate_or_add(infcx.tcx, &obligation.predicate) {
-            debug!("register_predicate({:?}) -- already seen, skip", obligation);
+            debug!("register_predicate_obligation({:?}) -- already seen, skip", obligation);
             return;
         }
 
-        debug!("register_predicate({:?})", obligation);
+        debug!("register_predicate_obligation({:?})", obligation);
         let obligation = PendingPredicateObligation {
             obligation: obligation,
             stalled_on: vec![]
@@ -274,7 +274,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         let mut errors = Vec::new();
 
         loop {
-            debug!("select_where_possible: starting another iteration");
+            debug!("select: starting another iteration");
 
             // Process pending obligations.
             let outcome = {
@@ -287,7 +287,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                                                      region_obligations))
             };
 
-            debug!("select_where_possible: outcome={:?}", outcome);
+            debug!("select: outcome={:?}", outcome);
 
             // these are obligations that were proven to be true.
             for pending_obligation in outcome.completed {
