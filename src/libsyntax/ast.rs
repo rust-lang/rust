@@ -458,7 +458,7 @@ pub struct WhereEqPredicate {
 
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = Vec<P<MetaItem>> ;
+pub type CrateConfig = Vec<P<MetaItem>>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Crate {
