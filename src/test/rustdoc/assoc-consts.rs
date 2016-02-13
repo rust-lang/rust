@@ -20,7 +20,7 @@ pub trait Foo {
 pub struct Bar;
 
 impl Bar {
-    // @has assoc_consts/struct.Bar.html '//*[@id="assoc_const.BAR"]' \
+    // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAR"]' \
     //      'const BAR: usize = 3'
     pub const BAR: usize = 3;
 }

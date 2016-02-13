@@ -2550,25 +2550,25 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
-                let id = derive_id(format!("assoc_type.{}", name));
+                let id = derive_id(format!("associatedtype.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(write!(w, "type {} = {}", name, tydef.type_));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
-                let id = derive_id(format!("assoc_const.{}", name));
+                let id = derive_id(format!("associatedconstant.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(assoc_const(w, item, ty, default.as_ref()));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::ConstantItem(ref c) => {
-                let id = derive_id(format!("assoc_const.{}", name));
+                let id = derive_id(format!("associatedconstant.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(assoc_const(w, item, &c.type_, Some(&c.expr)));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
-                let id = derive_id(format!("assoc_type.{}", name));
+                let id = derive_id(format!("associatedtype.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(assoc_type(w, item, bounds, default));
                 try!(write!(w, "</code></h4>\n"));
