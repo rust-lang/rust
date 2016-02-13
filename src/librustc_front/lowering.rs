@@ -920,10 +920,13 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
                               sub.as_ref().map(|x| lower_pat(lctx, x)))
             }
             PatKind::Lit(ref e) => hir::PatLit(lower_expr(lctx, e)),
-            PatKind::Enum(ref pth, ref pats) => {
+            PatKind::TupleStruct(ref pth, ref pats) => {
                 hir::PatEnum(lower_path(lctx, pth),
                              pats.as_ref()
                                  .map(|pats| pats.iter().map(|x| lower_pat(lctx, x)).collect()))
+            }
+            PatKind::Path(ref pth) => {
+                hir::PatEnum(lower_path(lctx, pth), Some(hir::HirVec::new()))
             }
             PatKind::QPath(ref qself, ref pth) => {
                 let qself = hir::QSelf {
