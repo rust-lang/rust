@@ -45,7 +45,7 @@ impl EarlyLintPass for EnumVariantNames {
             if def.variants.len() < 2 {
                 return;
             }
-            let first = var2str(&*def.variants[0]);
+            let first = var2str(&def.variants[0]);
             let mut pre = first.to_string();
             let mut post = pre.clone();
             for var in &def.variants[1..] {
