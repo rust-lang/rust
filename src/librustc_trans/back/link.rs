@@ -858,41 +858,43 @@ fn link_natively(sess: &Session, dylib: bool,
     let (pname, mut cmd) = get_linker(sess);
     cmd.env("PATH", command_path(sess));
 
-    // Sanitizer runtimes go first if any.
-    let needs_sanitizers_runtime_deps = link_sanitizers(sess, dylib, &mut cmd);
-
-    let root = sess.target_filesearch(PathKind::Native).get_lib_path();
-    cmd.args(&sess.target.target.options.pre_link_args);
-
-    let pre_link_objects = if dylib {
-        &sess.target.target.options.pre_link_objects_dll
-    } else {
-        &sess.target.target.options.pre_link_objects_exe
-    };
-    for obj in pre_link_objects {
-        cmd.arg(root.join(obj));
-    }
-
     {
         let mut linker = if sess.target.target.options.is_like_msvc {
             Box::new(MsvcLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
         } else {
             Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
         };
+
+        // Sanitizer runtimes go first if any.
+        let needs_sanitizers_runtime_deps = link_sanitizers(sess, dylib, &mut *linker);
+
+        let root = sess.target_filesearch(PathKind::Native).get_lib_path();
+        linker.args(&sess.target.target.options.pre_link_args);
+
+        let pre_link_objects = if dylib {
+            &sess.target.target.options.pre_link_objects_dll
+        } else {
+            &sess.target.target.options.pre_link_objects_exe
+        };
+        for obj in pre_link_objects {
+            linker.add_object(&root.join(obj));
+        }
+
         link_args(&mut *linker, sess, dylib, tmpdir,
                   objects, out_filename, trans, outputs);
         if !sess.target.target.options.no_compiler_rt {
             linker.link_staticlib("compiler-rt");
         }
-    }
-    cmd.args(&sess.target.target.options.late_link_args);
-    for obj in &sess.target.target.options.post_link_objects {
-        cmd.arg(root.join(obj));
-    }
-    cmd.args(&sess.target.target.options.post_link_args);
 
-    if needs_sanitizers_runtime_deps {
-        link_sanitizers_runtime_deps(sess, &mut cmd);
+        linker.args(&sess.target.target.options.late_link_args);
+        for obj in &sess.target.target.options.post_link_objects {
+            linker.add_object(&root.join(obj));
+        }
+        linker.args(&sess.target.target.options.post_link_args);
+
+        if needs_sanitizers_runtime_deps {
+            link_sanitizers_runtime_deps(sess, &mut *linker);
+        }
     }
 
     if sess.opts.debugging_opts.print_link_args {
@@ -947,7 +949,7 @@ fn link_natively(sess: &Session, dylib: bool,
     }
 }
 
-fn link_sanitizers(sess: &Session, dylib: bool, cmd: &mut Command) -> bool {
+fn link_sanitizers(sess: &Session, dylib: bool, linker: &mut Linker) -> bool {
     // Sanitizer runtimes are linked into final executable only.
     if dylib { return false; }
 
@@ -958,24 +960,20 @@ fn link_sanitizers(sess: &Session, dylib: bool, cmd: &mut Command) -> bool {
             Sanitize::Memory  => "rustc_msan",
             Sanitize::Thread  => "rustc_tsan",
         };
-        // FIXME: This should be done through a linker trait.
-        cmd.arg("-Wl,-whole-archive");
-        cmd.arg("-l").arg(runtime);
-        cmd.arg("-Wl,-no-whole-archive");
+        linker.link_whole_staticlib(runtime, &[]);
     });
     true
 }
 
-fn link_sanitizers_runtime_deps(sess: &Session, cmd: &mut Command) {
+fn link_sanitizers_runtime_deps(sess: &Session, linker: &mut Linker) {
     // Make sure that sanitizers runtime dependencies are always linked in.
     // This avoids potential problems when using --as-needed.
-    // FIXME: This should be done through a linker trait.
-    cmd.arg("-Wl,--no-as-needed");
-    cmd.arg("-lpthread");
-    cmd.arg("-lrt");
-    cmd.arg("-lm");
+    linker.args(&["-Wl,--no-as-needed".to_owned()]);
+    linker.link_dylib("pthread");
+    linker.link_dylib("rt");
+    linker.link_dylib("m");
     if sess.target.target.target_os != "freebsd" {
-        cmd.arg("-ldl");
+        linker.link_dylib("dl");
     }
 }
 
