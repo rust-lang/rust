@@ -22,6 +22,8 @@ impl T {
     fn into_u16(&self) -> u16 { 0 } //~ERROR methods called `into_*` usually take self by value
 
     fn to_something(self) -> u32 { 0 } //~ERROR methods called `to_*` usually take self by reference
+
+    fn new(self) {} //~ERROR methods called `new` usually take no self
 }
 
 #[derive(Clone,Copy)]

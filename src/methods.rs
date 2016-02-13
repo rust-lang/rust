@@ -1,11 +1,11 @@
-use rustc_front::hir::*;
 use rustc::lint::*;
-use rustc::middle::ty;
 use rustc::middle::subst::{Subst, TypeSpace};
-use std::iter;
+use rustc::middle::ty;
+use rustc_front::hir::*;
 use std::borrow::Cow;
-use syntax::ptr::P;
+use std::{fmt, iter};
 use syntax::codemap::Span;
+use syntax::ptr::P;
 
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
             match_type, method_chain_args, snippet, snippet_opt, span_lint, span_lint_and_then, span_note_and_lint,
@@ -367,10 +367,11 @@ impl LateLintPass for MethodsPass {
                             }
                         }
                     }
+
                     // check conventions w.r.t. conversion method names and predicates
                     let is_copy = is_copy(cx, &ty, &item);
-                    for &(prefix, self_kinds) in &CONVENTIONS {
-                        if name.as_str().starts_with(prefix) &&
+                    for &(ref conv, self_kinds) in &CONVENTIONS {
+                        if conv.check(&name.as_str()) &&
                            !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
                             let lint = if item.vis == Visibility::Public {
                                 WRONG_PUB_SELF_CONVENTION
@@ -380,9 +381,9 @@ impl LateLintPass for MethodsPass {
                             span_lint(cx,
                                       lint,
                                       sig.explicit_self.span,
-                                      &format!("methods called `{}*` usually take {}; consider choosing a less \
+                                      &format!("methods called `{}` usually take {}; consider choosing a less \
                                                 ambiguous name",
-                                               prefix,
+                                               conv,
                                                &self_kinds.iter()
                                                           .map(|k| k.description())
                                                           .collect::<Vec<_>>()
@@ -796,47 +797,53 @@ fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     }
 }
 
+enum Convention {
+    Eq(&'static str),
+    StartsWith(&'static str),
+}
+
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
-    ("into_", &[SelfKind::Value]),
-    ("to_", &[SelfKind::Ref]),
-    ("as_", &[SelfKind::Ref, SelfKind::RefMut]),
-    ("is_", &[SelfKind::Ref, SelfKind::No]),
-    ("from_", &[SelfKind::No]),
+const CONVENTIONS: [(Convention, &'static [SelfKind]); 6] = [
+    (Convention::Eq("new"), &[SelfKind::No]),
+    (Convention::StartsWith("as_"), &[SelfKind::Ref, SelfKind::RefMut]),
+    (Convention::StartsWith("from_"), &[SelfKind::No]),
+    (Convention::StartsWith("into_"), &[SelfKind::Value]),
+    (Convention::StartsWith("is_"), &[SelfKind::Ref, SelfKind::No]),
+    (Convention::StartsWith("to_"), &[SelfKind::Ref]),
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
     ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
-    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
-    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
-    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
-    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
-    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
-    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
+    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
     ("bitand", 2, SelfKind::Value, OutType::Any, "std::ops::BitAnd"),
     ("bitor", 2, SelfKind::Value, OutType::Any, "std::ops::BitOr"),
     ("bitxor", 2, SelfKind::Value, OutType::Any, "std::ops::BitXor"),
-    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
-    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
-    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
-    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
-    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
-    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
-    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
-    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
     ("borrow", 1, SelfKind::Ref, OutType::Ref, "std::borrow::Borrow"),
     ("borrow_mut", 1, SelfKind::RefMut, OutType::Ref, "std::borrow::BorrowMut"),
-    ("as_ref", 1, SelfKind::Ref, OutType::Ref, "std::convert::AsRef"),
-    ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
-    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
+    ("clone", 1, SelfKind::Ref, OutType::Any, "std::clone::Clone"),
     ("cmp", 2, SelfKind::Ref, OutType::Any, "std::cmp::Ord"),
     ("default", 0, SelfKind::No, OutType::Any, "std::default::Default"),
-    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
-    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
-    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("deref", 1, SelfKind::Ref, OutType::Ref, "std::ops::Deref"),
+    ("deref_mut", 1, SelfKind::RefMut, OutType::Ref, "std::ops::DerefMut"),
+    ("div", 2, SelfKind::Value, OutType::Any, "std::ops::Div"),
+    ("drop", 1, SelfKind::RefMut, OutType::Unit, "std::ops::Drop"),
+    ("eq", 2, SelfKind::Ref, OutType::Bool, "std::cmp::PartialEq"),
     ("from_iter", 1, SelfKind::No, OutType::Any, "std::iter::FromIterator"),
     ("from_str", 1, SelfKind::No, OutType::Any, "std::str::FromStr"),
+    ("hash", 2, SelfKind::Ref, OutType::Unit, "std::hash::Hash"),
+    ("index", 2, SelfKind::Ref, OutType::Ref, "std::ops::Index"),
+    ("index_mut", 2, SelfKind::RefMut, OutType::Ref, "std::ops::IndexMut"),
+    ("into_iter", 1, SelfKind::Value, OutType::Any, "std::iter::IntoIterator"),
+    ("mul", 2, SelfKind::Value, OutType::Any, "std::ops::Mul"),
+    ("neg", 1, SelfKind::Value, OutType::Any, "std::ops::Neg"),
+    ("next", 1, SelfKind::RefMut, OutType::Any, "std::iter::Iterator"),
+    ("not", 1, SelfKind::Value, OutType::Any, "std::ops::Not"),
+    ("rem", 2, SelfKind::Value, OutType::Any, "std::ops::Rem"),
+    ("shl", 2, SelfKind::Value, OutType::Any, "std::ops::Shl"),
+    ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
+    ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
 
 #[derive(Clone, Copy)]
@@ -877,6 +884,24 @@ impl SelfKind {
             SelfKind::Ref => "self by reference",
             SelfKind::RefMut => "self by mutable reference",
             SelfKind::No => "no self",
+        }
+    }
+}
+
+impl Convention {
+    fn check(&self, other: &str) -> bool {
+        match *self {
+            Convention::Eq(this) => this == other,
+            Convention::StartsWith(this) => other.starts_with(this),
+        }
+    }
+}
+
+impl fmt::Display for Convention {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            Convention::Eq(this) => this.fmt(f),
+            Convention::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
         }
     }
 }
