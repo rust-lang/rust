@@ -1653,8 +1653,8 @@ fn shorter<'a>(s: Option<&'a str>) -> String {
 
 #[inline]
 fn plain_summary_line(s: Option<&str>) -> String {
-    let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line(&line[..])
+    let md = markdown::plain_summary_line(s.unwrap_or(""));
+    shorter(Some(&md)).replace("\n", " ")
 }
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
@@ -1781,6 +1781,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 } else {
                     String::new()
                 };
+                let doc_value = myitem.doc_value().unwrap_or("");
                 try!(write!(w, "
                     <tr class='{stab} module-item'>
                         <td><a class='{class}' href='{href}'
@@ -1792,7 +1793,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ",
                 name = *myitem.name.as_ref().unwrap(),
                 stab_docs = stab_docs,
-                docs = Markdown(&shorter(myitem.doc_value())),
+                docs = shorter(Some(&Markdown(doc_value).to_string())),
                 class = shortty(myitem),
                 stab = myitem.stability_class(),
                 href = item_path(myitem),
