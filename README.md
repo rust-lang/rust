@@ -1,6 +1,6 @@
 #rust-clippy
 [![Build Status](https://travis-ci.org/Manishearth/rust-clippy.svg?branch=master)](https://travis-ci.org/Manishearth/rust-clippy)
-[![Current Version](http://meritbadge.herokuapp.com/optional)](https://crates.io/crates/clippy)
+[![Current Version](http://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MIT/Apache](https://img.shields.io/crates/l/clippy.svg)](#License)
 
 A collection of lints to catch common mistakes and improve your Rust code.
