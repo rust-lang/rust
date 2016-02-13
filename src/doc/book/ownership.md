@@ -51,10 +51,11 @@ fn foo() {
 }
 ```
 
-When `v` comes into scope, a new [vector] is created, and it allocates space on
-[the heap][heap] for each of its elements. When `v` goes out of scope at the
-end of `foo()`, Rust will clean up everything related to the vector, even the
-heap-allocated memory. This happens deterministically, at the end of the scope.
+When `v` comes into scope, a new [vector] is created on [the stack][stack],
+and it allocates space on [the heap][heap] for its elements. When `v` goes out
+of scope at the end of `foo()`, Rust will clean up everything related to the
+vector, even the heap-allocated memory. This happens deterministically, at the
+end of the scope.
 
 We'll cover [vectors] in detail later in this chapter; we only use them
 here as an example of a type that allocates space on the heap at runtime. They
@@ -67,6 +68,7 @@ Vectors have a [generic type][generics] `Vec<T>`, so in this example `v` will ha
 [arrays]: primitive-types.html#arrays
 [vectors]: vectors.html
 [heap]: the-stack-and-the-heap.html
+[stack]: the-stack-and-the-heap.html#the-stack
 [bindings]: variable-bindings.html
 [generics]: generics.html
 

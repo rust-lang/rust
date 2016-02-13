@@ -319,7 +319,7 @@ our source code:
 ```text
     First, we set `x` to five:
 
-    ```text
+    ```rust
     let x = 5;
     # let y = 6;
     # println!("{}", x + y);
@@ -327,7 +327,7 @@ our source code:
 
     Next, we set `y` to six:
 
-    ```text
+    ```rust
     # let x = 5;
     let y = 6;
     # println!("{}", x + y);
@@ -335,7 +335,7 @@ our source code:
 
     Finally, we print the sum of `x` and `y`:
 
-    ```text
+    ```rust
     # let x = 5;
     # let y = 6;
     println!("{}", x + y);
