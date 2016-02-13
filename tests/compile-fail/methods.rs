@@ -23,14 +23,25 @@ impl T {
 
     fn to_something(self) -> u32 { 0 } //~ERROR methods called `to_*` usually take self by reference
 
-    fn new(self) {} //~ERROR methods called `new` usually take no self
+    fn new(self) {}
+    //~^ ERROR methods called `new` usually take no self
+    //~| ERROR methods called `new` usually return `Self`
 }
 
 #[derive(Clone,Copy)]
 struct U;
 
 impl U {
+    fn new() -> Self { U }
     fn to_something(self) -> u32 { 0 } // ok because U is Copy
+}
+
+struct V<T> {
+    _dummy: T
+}
+
+impl<T> V<T> {
+    fn new() -> Option<V<T>> { None }
 }
 
 impl Mul<T> for T {

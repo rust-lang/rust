@@ -234,6 +234,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::CLONE_ON_COPY,
         methods::EXTEND_FROM_SLICE,
         methods::FILTER_NEXT,
+        methods::NEW_RET_NO_SELF,
         methods::OK_EXPECT,
         methods::OPTION_MAP_UNWRAP_OR,
         methods::OPTION_MAP_UNWRAP_OR_ELSE,

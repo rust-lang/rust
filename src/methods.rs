@@ -278,6 +278,23 @@ declare_lint! {
     pub CLONE_DOUBLE_REF, Warn, "using `clone` on `&&T`"
 }
 
+/// **What it does:** This lint warns about `new` not returning `Self`.
+///
+/// **Why is this bad?** As a convention, `new` methods are used to make a new instance of a type.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// impl Foo {
+///     fn new(..) -> NotAFoo {
+///     }
+/// }
+/// ```
+declare_lint! {
+    pub NEW_RET_NO_SELF, Warn, "not returning `Self` in a `new` method"
+}
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
@@ -294,7 +311,8 @@ impl LintPass for MethodsPass {
                     OR_FUN_CALL,
                     CHARS_NEXT_CMP,
                     CLONE_ON_COPY,
-                    CLONE_DOUBLE_REF)
+                    CLONE_DOUBLE_REF,
+                    NEW_RET_NO_SELF)
     }
 }
 
@@ -388,6 +406,29 @@ impl LateLintPass for MethodsPass {
                                                           .map(|k| k.description())
                                                           .collect::<Vec<_>>()
                                                           .join(" or ")));
+                        }
+                    }
+
+                    if &name.as_str() == &"new" {
+                        let returns_self = if let FunctionRetTy::Return(ref ret_ty) = sig.decl.output {
+                            let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
+                            let ty = ast_ty_to_ty_cache.get(&ty.id);
+                            let ret_ty = ast_ty_to_ty_cache.get(&ret_ty.id);
+
+                            match (ty, ret_ty) {
+                                (Some(&ty), Some(&ret_ty)) => ret_ty.walk().any(|t| t == ty),
+                                _ => false,
+                            }
+                        }
+                        else {
+                            false
+                        };
+
+                        if !returns_self {
+                            span_lint(cx,
+                                      NEW_RET_NO_SELF,
+                                      sig.explicit_self.span,
+                                      "methods called `new` usually return `Self`");
                         }
                     }
                 }
