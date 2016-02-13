@@ -729,12 +729,12 @@ step_msg "looking for build programs"
 
 probe_need CFG_CURLORWGET  curl wget
 if [ -z "$CFG_PYTHON_PROVIDED" ]; then
-    probe_need CFG_PYTHON      python2.7 python2.6 python2 python
+    probe_need CFG_PYTHON      python2.7 python2 python
 fi
 
 python_version=$($CFG_PYTHON -V 2>&1)
-if [ $(echo $python_version | grep -c '^Python 2\.[4567]') -ne 1 ]; then
-    err "Found $python_version, but LLVM requires Python 2.4-2.7"
+if [ $(echo $python_version | grep -c '^Python 2\.7') -ne 1 ]; then
+    err "Found $python_version, but Python 2.7 is required"
 fi
 
 # If we have no git directory then we are probably a tarball distribution
