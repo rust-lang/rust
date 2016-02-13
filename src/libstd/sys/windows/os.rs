@@ -338,9 +338,9 @@ pub fn home_dir() -> Option<PathBuf> {
         let _handle = Handle::new(token);
         super::fill_utf16_buf(|buf, mut sz| {
             match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
-                0 if c::GetLastError() != 0 => 0,
+                0 if c::GetLastError() != c::ERROR_INSUFFICIENT_BUFFER => 0,
                 0 => sz,
-                n => n as c::DWORD,
+                _ => sz - 1, // sz includes the null terminator
             }
         }, super::os2path).ok()
     })
