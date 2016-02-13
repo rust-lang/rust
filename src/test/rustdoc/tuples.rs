@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![crate_name = "foo"]
 
 // @has foo/fn.tuple0.html //pre 'pub fn tuple0(x: ())'

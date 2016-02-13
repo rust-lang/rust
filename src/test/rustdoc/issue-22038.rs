@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 extern {
     // @has issue_22038/fn.foo1.html \
     //      '//*[@class="rust fn"]' 'pub unsafe extern fn foo1()'

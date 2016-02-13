@@ -10,6 +10,7 @@
 
 // aux-build:issue-27362.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_27362;
 pub use issue_27362 as quux;

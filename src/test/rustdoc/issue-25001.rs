@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // @has issue_25001/struct.Foo.html
 pub struct Foo<T>(T);
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 pub struct Foo;
 
 // @has issue_16265_1/traits/index.html '[src]'

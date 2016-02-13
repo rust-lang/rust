@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // compile-flags:--test
-// ignore-search-index
 
 /// ```
 /// #

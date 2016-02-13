@@ -10,6 +10,7 @@
 
 // aux-build:issue-22025.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_22025;
 

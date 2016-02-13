@@ -1771,7 +1771,7 @@ fn run_rustdoc_test(config: &Config, props: &TestProps, testfile: &Path) {
         fatal_proc_rec("htmldocck failed!", &res);
     }
 
-    if !props.ignore_search_index {
+    if props.check_search_index {
         let res = cmd2procres(config,
                               testfile,
                               Command::new(&config.python)

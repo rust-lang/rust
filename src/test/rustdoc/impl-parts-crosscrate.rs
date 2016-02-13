@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-impl-parts-crosscrate.rs
 // ignore-cross-compile
+// check-search-index
 
 #![feature(optin_builtin_traits)]
 

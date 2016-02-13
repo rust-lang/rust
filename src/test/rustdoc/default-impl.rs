@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-default-impl.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate rustdoc_default_impl as foo;
 

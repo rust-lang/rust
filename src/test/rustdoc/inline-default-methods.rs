@@ -10,6 +10,7 @@
 
 // aux-build:inline-default-methods.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate inline_default_methods;
 

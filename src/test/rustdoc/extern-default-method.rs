@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-extern-default-method.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate rustdoc_extern_default_method as ext;
 

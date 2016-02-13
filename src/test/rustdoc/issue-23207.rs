@@ -11,6 +11,7 @@
 // aux-build:issue-23207-1.rs
 // aux-build:issue-23207-2.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_23207_2;
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // @has must_use/struct.Struct.html //pre '#[must_use]'
 #[must_use]
 pub struct Struct {

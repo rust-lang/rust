@@ -11,6 +11,7 @@
 // build-aux-docs
 // aux-build:issue-30109-1.rs
 // ignore-cross-compile
+// check-search-index
 
 pub mod quux {
     extern crate issue_30109_1 as bar;

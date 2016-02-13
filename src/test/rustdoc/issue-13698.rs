@@ -10,6 +10,7 @@
 
 // aux-build:issue-13698.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_13698;
 

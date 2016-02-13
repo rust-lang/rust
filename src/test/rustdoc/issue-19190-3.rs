@@ -10,6 +10,7 @@
 
 // aux-build:issue-19190-3.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_19190_3;
 

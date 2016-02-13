@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-extern-method.rs
 // ignore-cross-compile
+// check-search-index
 
 #![feature(unboxed_closures)]
 

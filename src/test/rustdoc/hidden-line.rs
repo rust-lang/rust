@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 /// The '# ' lines should be removed from the output, but the #[derive] should be
 /// retained.
 ///

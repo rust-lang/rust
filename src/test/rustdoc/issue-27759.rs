@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![feature(staged_api)]
 #![doc(issue_tracker_base_url = "http://issue_url/")]
 

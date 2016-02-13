@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-ffi.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate rustdoc_ffi as lib;
 

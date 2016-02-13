@@ -10,6 +10,7 @@
 
 // aux-build:issue-20646.rs
 // ignore-cross-compile
+// check-search-index
 
 #![feature(associated_types)]
 

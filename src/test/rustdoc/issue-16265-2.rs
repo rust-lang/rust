@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
 
 // @has issue_16265_2/index.html '[src]'
 
