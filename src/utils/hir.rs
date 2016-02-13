@@ -4,6 +4,7 @@ use rustc_front::hir::*;
 use std::hash::{Hash, Hasher, SipHasher};
 use syntax::ast::Name;
 use syntax::ptr::P;
+use utils::differing_macro_contexts;
 
 /// Type used to check whether two ast are the same. This is different from the operator
 /// `==` on ast types as this operator would compare true equality with ID and span.
@@ -53,6 +54,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     // ok, it’s a big function, but mostly one big match with simples cases
     #[allow(cyclomatic_complexity)]
     pub fn eq_expr(&self, left: &Expr, right: &Expr) -> bool {
+        if self.ignore_fn && differing_macro_contexts(left.span, right.span) {
+            return false;
+        }
+
         if let (Some(l), Some(r)) = (constant(self.cx, left), constant(self.cx, right)) {
             if l == r {
                 return true;
