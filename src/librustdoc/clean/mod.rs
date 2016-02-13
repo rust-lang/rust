@@ -1281,10 +1281,8 @@ impl Clean<Item> for hir::ImplItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
             hir::ImplItemKind::Const(ref ty, ref expr) => {
-                ConstantItem(Constant{
-                    type_: ty.clean(cx),
-                    expr: expr.span.to_src(cx),
-                })
+                AssociatedConstItem(ty.clean(cx),
+                                    Some(expr.span.to_src(cx)))
             }
             hir::ImplItemKind::Method(ref sig, _) => {
                 MethodItem(sig.clean(cx))

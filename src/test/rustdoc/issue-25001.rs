@@ -31,21 +31,21 @@ impl<T> Foo<T> {
 }
 
 impl<T> Bar for Foo<T> {
-    // @has - '//*[@id="assoc_type.Item"]//code' 'type Item = T'
+    // @has - '//*[@id="associatedtype.Item"]//code' 'type Item = T'
     type Item=T;
 
     // @has - '//*[@id="method.quux"]//code' 'fn quux(self)'
     fn quux(self) {}
 }
 impl<'a, T> Bar for &'a Foo<T> {
-    // @has - '//*[@id="assoc_type.Item-1"]//code' "type Item = &'a T"
+    // @has - '//*[@id="associatedtype.Item-1"]//code' "type Item = &'a T"
     type Item=&'a T;
 
     // @has - '//*[@id="method.quux-1"]//code' 'fn quux(self)'
     fn quux(self) {}
 }
 impl<'a, T> Bar for &'a mut Foo<T> {
-    // @has - '//*[@id="assoc_type.Item-2"]//code' "type Item = &'a mut T"
+    // @has - '//*[@id="associatedtype.Item-2"]//code' "type Item = &'a mut T"
     type Item=&'a mut T;
 
     // @has - '//*[@id="method.quux-2"]//code' 'fn quux(self)'
