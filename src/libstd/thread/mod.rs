@@ -284,7 +284,7 @@ impl Builder {
 
         Ok(JoinHandle(JoinInner {
             native: unsafe {
-                Some(try!(imp::Thread::new(stack_size, Box::new(main))))
+                Some(try!(imp::Thread::new(stack_size, main)))
             },
             thread: my_thread,
             packet: Packet(my_packet),

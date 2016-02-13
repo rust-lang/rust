@@ -25,10 +25,31 @@ pub struct Thread {
 }
 
 impl Thread {
-    pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
+    pub unsafe fn new<F: FnOnce()>(stack: usize, p: F)
                           -> io::Result<Thread> {
+        extern "system" fn thread_start<F: FnOnce()>(main: *mut c_void)
+            -> c::DWORD {
+            unsafe {
+                let main = Box::from_raw(main as *mut F);
+                start_thread(main);
+            }
+            0
+        }
+
         let p = box p;
 
+        match Thread::new_inner(stack, &*p as *const _ as *const _, thread_start::<F>) {
+            Ok(thread) => {
+                mem::forget(p); // ownership passed to CreateThread
+                Ok(thread)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    unsafe fn new_inner(stack: usize, p: *const c_void,
+                 f: extern "system" fn(*mut c_void) -> c::DWORD)
+                 -> io::Result<Thread> {
         // FIXME On UNIX, we guard against stack sizes that are too small but
         // that's because pthreads enforces that stacks are at least
         // PTHREAD_STACK_MIN bytes big.  Windows has no such lower limit, it's
@@ -37,21 +58,15 @@ impl Thread {
         // Round up to the next 64 kB because that's what the NT kernel does,
         // might as well make it explicit.
         let stack_size = (stack + 0xfffe) & (!0xfffe);
-        let ret = c::CreateThread(ptr::null_mut(), stack_size,
-                                  thread_start, &*p as *const _ as *mut _,
+        let ret = c::CreateThread(ptr::null_mut(), stack,
+                                  f, p as *mut _,
                                   0, ptr::null_mut());
 
         return if ret as usize == 0 {
             Err(io::Error::last_os_error())
         } else {
-            mem::forget(p); // ownership passed to CreateThread
             Ok(Thread { handle: Handle::new(ret) })
         };
-
-        extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {
-            unsafe { start_thread(main); }
-            0
-        }
     }
 
     pub fn set_name(_name: &str) {

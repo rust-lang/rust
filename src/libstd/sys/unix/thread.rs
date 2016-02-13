@@ -10,7 +10,6 @@
 
 use prelude::v1::*;
 
-use alloc::boxed::FnBox;
 use cmp;
 #[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
 use ffi::CString;
@@ -33,9 +32,33 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
-    pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
+    pub unsafe fn new<F: FnOnce()>(stack: usize, p: F)
                           -> io::Result<Thread> {
+
+        extern fn thread_start<F: FnOnce()>(main: *mut libc::c_void)
+            -> *mut libc::c_void {
+            unsafe {
+                let main = Box::from_raw(main as *mut F);
+                start_thread(main);
+            }
+            ptr::null_mut()
+        }
+
         let p = box p;
+
+        match Thread::new_inner(stack, &*p as *const _ as *const _, thread_start::<F>) {
+            Ok(thread) => {
+                mem::forget(p); // ownership passed to pthread_create
+                Ok(thread)
+            }
+
+            Err(e) => Err(e),
+        }
+    }
+
+    unsafe fn new_inner(stack: usize, p: *const libc::c_void,
+                        f: extern fn(*mut libc::c_void) -> *mut libc::c_void)
+                        -> io::Result<Thread> {
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
@@ -59,20 +82,14 @@ impl Thread {
             }
         };
 
-        let ret = libc::pthread_create(&mut native, &attr, thread_start,
-                                       &*p as *const _ as *mut _);
+        let ret = libc::pthread_create(&mut native, &attr, f,
+                                       p as *mut _);
         assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
 
-        return if ret != 0 {
+        if ret != 0 {
             Err(io::Error::from_raw_os_error(ret))
         } else {
-            mem::forget(p); // ownership passed to pthread_create
             Ok(Thread { id: native })
-        };
-
-        extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
-            unsafe { start_thread(main); }
-            ptr::null_mut()
         }
     }
 
