@@ -12,11 +12,8 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts();
-
-    // Use yonah as default CPU to enable SSE[2] instructions.
-    // Clang defaults to i686 for this target, but defaulting to yonah
-    // is consistent with what Clang does for i386-apple-darwin.
-    base.cpu = "yonah".to_string();
+    // Use i686 as default CPU. Clang uses the same default.
+    base.cpu = "i686".to_string();
 
     base.pre_link_args.push("-m32".to_string());
 
