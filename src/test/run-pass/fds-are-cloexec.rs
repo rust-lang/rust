@@ -10,6 +10,7 @@
 
 // ignore-windows
 // ignore-android
+// ignore-emscripten
 
 #![feature(libc)]
 

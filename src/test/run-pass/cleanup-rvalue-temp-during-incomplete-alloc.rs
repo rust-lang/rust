@@ -24,6 +24,7 @@
 // It's unclear how likely such a bug is to recur, but it seems like a
 // scenario worth testing.
 
+// ignore-emscripten no threads support
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

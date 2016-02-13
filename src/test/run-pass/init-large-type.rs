@@ -13,6 +13,7 @@
 // optimisation.
 
 // pretty-expanded FIXME #23616
+// ignore-emscripten no threads support
 
 #![feature(intrinsics, std_misc)]
 

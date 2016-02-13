@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // ignore-aarch64
+// ignore-emscripten no threads support
+
 #![feature(libc)]
 
 extern crate libc;

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // pretty-expanded FIXME #23616
+// ignore-emscripten no threads support
 
 #![feature(std_misc)]
 

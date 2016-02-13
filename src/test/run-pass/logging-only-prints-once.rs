@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-windows
+// ignore-emscripten no threads support
 // exec-env:RUST_LOG=debug
 
 use std::cell::Cell;
