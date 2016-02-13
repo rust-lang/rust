@@ -4,6 +4,7 @@ use rustc::lint::*;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::middle::const_eval::{ConstVal, eval_const_expr_partial};
 use rustc::middle::def::Def;
+use rustc::middle::region::CodeExtent;
 use rustc::middle::ty;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
@@ -338,19 +339,27 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
     if let ExprRange(Some(ref l), ref r) = arg.node {
         // the var must be a single name
         if let PatIdent(_, ref ident, _) = pat.node {
+
             let mut visitor = VarVisitor {
                 cx: cx,
                 var: ident.node.name,
-                indexed: HashSet::new(),
+                indexed: HashMap::new(),
                 nonindex: false,
             };
             walk_expr(&mut visitor, body);
+
             // linting condition: we only indexed one variable
             if visitor.indexed.len() == 1 {
-                let indexed = visitor.indexed
+                let (indexed, indexed_extent) = visitor.indexed
                                      .into_iter()
                                      .next()
                                      .expect("Len was nonzero, but no contents found");
+
+                // ensure that the indexed variable was declared before the loop, see #601
+                let pat_extent = cx.tcx.region_maps.var_scope(pat.id);
+                if cx.tcx.region_maps.is_subscope_of(indexed_extent, pat_extent) {
+                    return;
+                }
 
                 let starts_at_zero = is_integer_literal(l, 0);
 
@@ -673,7 +682,7 @@ fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
 struct VarVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>, // context reference
     var: Name, // var name to look for as index
-    indexed: HashSet<Name>, // indexed variables
+    indexed: HashMap<Name, CodeExtent>, // indexed variables
     nonindex: bool, // has the var been used otherwise?
 }
 
@@ -689,8 +698,12 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
                         let ExprPath(None, ref seqvar) = seqexpr.node,
                         seqvar.segments.len() == 1
                     ], {
-                        self.indexed.insert(seqvar.segments[0].identifier.name);
-                        return;  // no need to walk further
+                        let def_map = self.cx.tcx.def_map.borrow();
+                        if let Some(def) = def_map.get(&seqexpr.id) {
+                            let extent = self.cx.tcx.region_maps.var_scope(def.base_def.var_id());
+                            self.indexed.insert(seqvar.segments[0].identifier.name, extent);
+                            return;  // no need to walk further
+                        }
                     }
                 }
                 // we are not indexing anything, record that

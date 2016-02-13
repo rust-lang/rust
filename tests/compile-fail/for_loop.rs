@@ -192,6 +192,12 @@ fn main() {
         println!("{}", i);
     }
 
+    // See #601
+    for i in 0..10 { // no error, id_col does not exist outside the loop
+        let mut id_col = vec![0f64; 10];
+        id_col[i] = 1f64;
+    }
+
     /*
     for i in (10..0).map(|x| x * 2) {
         println!("{}", i);
