@@ -555,18 +555,27 @@ pub enum PatKind {
     /// Represents a wildcard pattern (`_`)
     Wild,
 
-    /// A PatKind::Ident may either be a new bound variable,
-    /// or a nullary enum (in which case the third field
-    /// is None).
+    /// A `PatKind::Ident` may either be a new bound variable,
+    /// or a unit struct/variant pattern, or a const pattern (in the last two cases
+    /// the third field must be `None`).
     ///
-    /// In the nullary enum case, the parser can't determine
+    /// In the unit or const pattern case, the parser can't determine
     /// which it is. The resolver determines this, and
-    /// records this pattern's NodeId in an auxiliary
-    /// set (of "PatIdents that refer to nullary enums")
+    /// records this pattern's `NodeId` in an auxiliary
+    /// set (of "PatIdents that refer to unit patterns or constants").
     Ident(BindingMode, SpannedIdent, Option<P<Pat>>),
 
+    /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
+    /// The `bool` is `true` in the presence of a `..`.
+    Struct(Path, Vec<Spanned<FieldPat>>, bool),
+
+    /// A tuple struct/variant pattern `Variant(x, y, z)`.
     /// "None" means a `Variant(..)` pattern where we don't bind the fields to names.
-    Enum(Path, Option<Vec<P<Pat>>>),
+    TupleStruct(Path, Option<Vec<P<Pat>>>),
+
+    /// A path pattern.
+    /// Such pattern can be resolved to a unit struct/variant or a constant.
+    Path(Path),
 
     /// An associated const named using the qualified path `<T>::CONST` or
     /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
@@ -574,9 +583,6 @@ pub enum PatKind {
     /// PatKind::Enum, and the resolver will have to sort that out.
     QPath(QSelf, Path),
 
-    /// Destructuring of a struct, e.g. `Foo {x, y, ..}`
-    /// The `bool` is `true` in the presence of a `..`
-    Struct(Path, Vec<Spanned<FieldPat>>, bool),
     /// A tuple pattern `(a, b)`
     Tup(Vec<P<Pat>>),
     /// A `box` pattern

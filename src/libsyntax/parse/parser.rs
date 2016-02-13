@@ -3534,14 +3534,14 @@ impl<'a> Parser<'a> {
                             self.bump();
                             self.bump();
                             try!(self.expect(&token::CloseDelim(token::Paren)));
-                            pat = PatKind::Enum(path, None);
+                            pat = PatKind::TupleStruct(path, None);
                         } else {
                             let args = try!(self.parse_enum_variant_seq(
                                     &token::OpenDelim(token::Paren),
                                     &token::CloseDelim(token::Paren),
                                     seq_sep_trailing_allowed(token::Comma),
                                     |p| p.parse_pat()));
-                            pat = PatKind::Enum(path, Some(args));
+                            pat = PatKind::TupleStruct(path, Some(args));
                         }
                       }
                       _ => {
@@ -3549,7 +3549,7 @@ impl<'a> Parser<'a> {
                             // Parse qualified path
                             Some(qself) => PatKind::QPath(qself, path),
                             // Parse nullary enum
-                            None => PatKind::Enum(path, Some(vec![]))
+                            None => PatKind::Path(path)
                         };
                       }
                     }
