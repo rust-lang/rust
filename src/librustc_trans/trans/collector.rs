@@ -501,7 +501,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         .tcx()
                         .lang_items
                         .require(ExchangeMallocFnLangItem)
-                        .expect("Could not find ExchangeMallocFnLangItem");
+                        .unwrap_or_else(|e| self.ccx.sess().fatal(&e));
 
                 assert!(can_have_local_instance(self.ccx, exchange_malloc_fn_def_id));
                 let exchange_malloc_fn_trans_item =
@@ -645,7 +645,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let exchange_free_fn_def_id = ccx.tcx()
                                          .lang_items
                                          .require(ExchangeFreeFnLangItem)
-                                         .expect("Could not find ExchangeFreeFnLangItem");
+                                         .unwrap_or_else(|e| ccx.sess().fatal(&e));
 
         assert!(can_have_local_instance(ccx, exchange_free_fn_def_id));
         let exchange_free_fn_trans_item =
