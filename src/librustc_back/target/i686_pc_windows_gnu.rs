@@ -12,6 +12,9 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::windows_base::opts();
+
+    // Use pentium4 as default CPU to enable SSE[2] instructions.
+    // Clang uses the same default.
     base.cpu = "pentium4".to_string();
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address

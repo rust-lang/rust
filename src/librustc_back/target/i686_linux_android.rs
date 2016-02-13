@@ -12,6 +12,11 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
+
+    // Use pentium4 as default CPU to enable SSE[2] instructions.
+    // Clang defaults to i686 and enables SSSE3 for this target, but
+    // defaulting to pentium4 is consistent with linux and windows
+    // targets.
     base.cpu = "pentium4".to_string();
 
     Target {

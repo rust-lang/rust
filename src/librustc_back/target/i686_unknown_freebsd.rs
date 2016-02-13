@@ -12,7 +12,12 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
+
+    // Use pentium4 as default CPU to enable SSE[2] instructions.
+    // Clang defaults to i486 for this target, but defaulting to
+    // pentium4 is consistent with linux and windows targets.
     base.cpu = "pentium4".to_string();
+
     base.pre_link_args.push("-m32".to_string());
 
     Target {
