@@ -758,6 +758,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
             run_lints!(cx, check_item, late_passes, it);
             cx.visit_ids(|v| v.visit_item(it));
             hir_visit::walk_item(cx, it);
+            run_lints!(cx, check_item_post, late_passes, it);
         })
     }
 
@@ -846,6 +847,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     fn visit_block(&mut self, b: &hir::Block) {
         run_lints!(self, check_block, late_passes, b);
         hir_visit::walk_block(self, b);
+        run_lints!(self, check_block_post, late_passes, b);
     }
 
     fn visit_arm(&mut self, a: &hir::Arm) {
@@ -918,6 +920,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
             run_lints!(cx, check_item, early_passes, it);
             cx.visit_ids(|v| v.visit_item(it));
             ast_visit::walk_item(cx, it);
+            run_lints!(cx, check_item_post, early_passes, it);
         })
     }
 
@@ -1001,6 +1004,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     fn visit_block(&mut self, b: &ast::Block) {
         run_lints!(self, check_block, early_passes, b);
         ast_visit::walk_block(self, b);
+        run_lints!(self, check_block_post, early_passes, b);
     }
 
     fn visit_arm(&mut self, a: &ast::Arm) {
@@ -1253,6 +1257,8 @@ pub fn check_crate(tcx: &ty::ctxt, access_levels: &AccessLevels) {
         run_lints!(cx, check_crate, late_passes, krate);
 
         hir_visit::walk_crate(cx, krate);
+
+        run_lints!(cx, check_crate_post, late_passes, krate);
     });
 
     // If we missed any lints added to the session, then there's a bug somewhere
@@ -1284,6 +1290,8 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
         run_lints!(cx, check_crate, early_passes, krate);
 
         ast_visit::walk_crate(cx, krate);
+
+        run_lints!(cx, check_crate_post, early_passes, krate);
     });
 
     // Put the lint store back in the session.

@@ -132,11 +132,14 @@ pub trait LintPass {
 pub trait LateLintPass: LintPass {
     fn check_name(&mut self, _: &LateContext, _: Span, _: ast::Name) { }
     fn check_crate(&mut self, _: &LateContext, _: &hir::Crate) { }
+    fn check_crate_post(&mut self, _: &LateContext, _: &hir::Crate) { }
     fn check_mod(&mut self, _: &LateContext, _: &hir::Mod, _: Span, _: ast::NodeId) { }
     fn check_foreign_item(&mut self, _: &LateContext, _: &hir::ForeignItem) { }
     fn check_item(&mut self, _: &LateContext, _: &hir::Item) { }
+    fn check_item_post(&mut self, _: &LateContext, _: &hir::Item) { }
     fn check_local(&mut self, _: &LateContext, _: &hir::Local) { }
     fn check_block(&mut self, _: &LateContext, _: &hir::Block) { }
+    fn check_block_post(&mut self, _: &LateContext, _: &hir::Block) { }
     fn check_stmt(&mut self, _: &LateContext, _: &hir::Stmt) { }
     fn check_arm(&mut self, _: &LateContext, _: &hir::Arm) { }
     fn check_pat(&mut self, _: &LateContext, _: &hir::Pat) { }
@@ -174,11 +177,14 @@ pub trait LateLintPass: LintPass {
 pub trait EarlyLintPass: LintPass {
     fn check_ident(&mut self, _: &EarlyContext, _: Span, _: ast::Ident) { }
     fn check_crate(&mut self, _: &EarlyContext, _: &ast::Crate) { }
+    fn check_crate_post(&mut self, _: &EarlyContext, _: &ast::Crate) { }
     fn check_mod(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
     fn check_foreign_item(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
     fn check_item(&mut self, _: &EarlyContext, _: &ast::Item) { }
+    fn check_item_post(&mut self, _: &EarlyContext, _: &ast::Item) { }
     fn check_local(&mut self, _: &EarlyContext, _: &ast::Local) { }
     fn check_block(&mut self, _: &EarlyContext, _: &ast::Block) { }
+    fn check_block_post(&mut self, _: &EarlyContext, _: &ast::Block) { }
     fn check_stmt(&mut self, _: &EarlyContext, _: &ast::Stmt) { }
     fn check_arm(&mut self, _: &EarlyContext, _: &ast::Arm) { }
     fn check_pat(&mut self, _: &EarlyContext, _: &ast::Pat) { }
