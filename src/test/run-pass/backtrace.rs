@@ -10,6 +10,7 @@
 
 // no-pretty-expanded FIXME #15189
 // ignore-android FIXME #17520
+// ignore-emscripten spawning processes is not supported
 // compile-flags:-g
 
 use std::env;

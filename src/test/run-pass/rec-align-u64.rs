@@ -45,13 +45,13 @@ struct Outer {
           target_os = "solaris",
           target_os = "emscripten"))]
 mod m {
-    #[cfg(any(target_arch = "x86", target_arch = "asmjs"))]
+    #[cfg(any(target_arch = "x86"))]
     pub mod m {
         pub fn align() -> usize { 4 }
         pub fn size() -> usize { 12 }
     }
 
-    #[cfg(not(any(target_arch = "x86", target_arch = "asmjs")))]
+    #[cfg(not(any(target_arch = "x86")))]
     pub mod m {
         pub fn align() -> usize { 8 }
         pub fn size() -> usize { 16 }
