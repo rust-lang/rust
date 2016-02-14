@@ -31,8 +31,10 @@ impl Rewrite for Pat {
 
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
+                        // 3 - ` @ `.
                         let width = try_opt!(width.checked_sub(prefix.len() + mut_infix.len() +
-                                                               id_str.len()));
+                                                               id_str.len() +
+                                                               3));
                         format!(" @ {}", try_opt!(p.rewrite(context, width, offset)))
                     }
                     None => "".to_owned(),
@@ -105,17 +107,16 @@ impl Rewrite for Pat {
                 let suffix = suffix.iter().map(|p| p.rewrite(context, width, offset));
 
                 // Munge them together.
-                let pats = prefix.chain(slice_pat.into_iter()).chain(suffix);
+                let pats: Option<Vec<String>> = prefix.chain(slice_pat.into_iter())
+                                                      .chain(suffix)
+                                                      .collect();
 
                 // Check that all the rewrites succeeded, and if not return None.
-                let (somes, nones) = pats.partition::<Vec<Option<String>>, _>(Option::is_some);
-                if nones.len() > 0 {
-                    return None;
-                }
+                let pats = try_opt!(pats);
 
                 // Unwrap all the sub-strings and join them with commas.
-                let pats = somes.into_iter().map(|p| p.unwrap()).collect::<Vec<_>>().join(", ");
-                Some(format!("[{}]", pats))
+                let result = format!("[{}]", pats.join(", "));
+                wrap_str(result, context.config.max_width, width, offset)
             }
             Pat_::PatStruct(ref path, ref fields, elipses) => {
                 let path = try_opt!(rewrite_path(context, true, None, path, width, offset));
@@ -126,10 +127,12 @@ impl Rewrite for Pat {
                     ("", "}")
                 };
 
+                // 5 = `{` plus space before and after plus `}` plus space before.
                 let budget = try_opt!(width.checked_sub(path.len() + 5 + elipses_str.len()));
                 // FIXME Using visual indenting, should use block or visual to match
                 // struct lit preference (however, in practice I think it is rare
                 // for struct patterns to be multi-line).
+                // 3 = `{` plus space before and after.
                 let offset = offset + path.len() + 3;
 
                 let items = itemize_list(context.codemap,
@@ -157,7 +160,7 @@ impl Rewrite for Pat {
                     }
                 }
 
-                if field_string.len() == 0 {
+                if field_string.is_empty() {
                     Some(format!("{} {{}}", path))
                 } else {
                     Some(format!("{} {{ {} }}", path, field_string))
@@ -180,7 +183,10 @@ impl Rewrite for FieldPat {
         if self.is_shorthand {
             pat
         } else {
-            Some(format!("{}: {}", self.ident.to_string(), try_opt!(pat)))
+            wrap_str(format!("{}: {}", self.ident.to_string(), try_opt!(pat)),
+                     context.config.max_width,
+                     width,
+                     offset)
         }
     }
 }
