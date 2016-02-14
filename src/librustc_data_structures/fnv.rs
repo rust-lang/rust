@@ -35,10 +35,12 @@ pub fn FnvHashSet<V: Hash + Eq>() -> FnvHashSet<V> {
 pub struct FnvHasher(u64);
 
 impl Default for FnvHasher {
+    #[inline]
     fn default() -> FnvHasher { FnvHasher(0xcbf29ce484222325) }
 }
 
 impl Hasher for FnvHasher {
+    #[inline]
     fn write(&mut self, bytes: &[u8]) {
         let FnvHasher(mut hash) = *self;
         for byte in bytes {
@@ -47,5 +49,7 @@ impl Hasher for FnvHasher {
         }
         *self = FnvHasher(hash);
     }
+
+    #[inline]
     fn finish(&self) -> u64 { self.0 }
 }

@@ -1253,7 +1253,11 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
 
             if any_objects {
                 archive.build();
-                cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
+                if dylib {
+                    cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
+                } else {
+                    cmd.link_rlib(&fix_windows_verbatim_for_gcc(&dst));
+                }
             }
         });
     }
