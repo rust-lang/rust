@@ -90,7 +90,7 @@ use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::ptr::P;
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit;
 use rustc_front::print::pprust;
 
@@ -2121,8 +2121,8 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
 {
     for i in &decl.inputs {
         match i.pat.node {
-            hir::PatIdent(_, _, _) => (),
-            hir::PatWild => (),
+            PatKind::Ident(_, _, _) => (),
+            PatKind::Wild => (),
             _ => {
                 span_err!(ccx.tcx.sess, i.pat.span, E0130,
                           "patterns aren't allowed in foreign function declarations");

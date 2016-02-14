@@ -14,7 +14,7 @@ use middle::ty;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::util::walk_pat;
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
 
@@ -34,25 +34,25 @@ pub fn pat_id_map(dm: &RefCell<DefMap>, pat: &hir::Pat) -> PatIdMap {
 
 pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        hir::PatLit(_) | hir::PatRange(_, _) | hir::PatQPath(..) => true,
-        hir::PatEnum(_, _) |
-        hir::PatIdent(_, _, None) |
-        hir::PatStruct(..) => {
+        PatKind::Lit(_) | PatKind::Range(_, _) | PatKind::QPath(..) => true,
+        PatKind::Enum(_, _) |
+        PatKind::Ident(_, _, None) |
+        PatKind::Struct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(Def::Variant(..)) => true,
                 _ => false
             }
         }
-        hir::PatVec(_, _, _) => true,
+        PatKind::Vec(_, _, _) => true,
         _ => false
     }
 }
 
 pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        hir::PatEnum(_, _) |
-        hir::PatIdent(_, _, None) |
-        hir::PatStruct(..) => {
+        PatKind::Enum(_, _) |
+        PatKind::Ident(_, _, None) |
+        PatKind::Struct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(Def::Variant(..)) | Some(Def::Struct(..)) => true,
                 _ => false
@@ -64,7 +64,7 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        hir::PatIdent(_, _, None) | hir::PatEnum(..) | hir::PatQPath(..) => {
+        PatKind::Ident(_, _, None) | PatKind::Enum(..) | PatKind::QPath(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => true,
                 _ => false
@@ -78,7 +78,7 @@ pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
 // returned instead of a panic.
 pub fn pat_is_resolved_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        hir::PatIdent(_, _, None) | hir::PatEnum(..) | hir::PatQPath(..) => {
+        PatKind::Ident(_, _, None) | PatKind::Enum(..) | PatKind::QPath(..) => {
             match dm.get(&pat.id)
                     .and_then(|d| if d.depth == 0 { Some(d.base_def) }
                                   else { None } ) {
@@ -92,7 +92,7 @@ pub fn pat_is_resolved_const(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 pub fn pat_is_binding(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        hir::PatIdent(..) => {
+        PatKind::Ident(..) => {
             !pat_is_variant_or_struct(dm, pat) &&
             !pat_is_const(dm, pat)
         }
@@ -102,8 +102,8 @@ pub fn pat_is_binding(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 pub fn pat_is_binding_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        hir::PatIdent(..) => pat_is_binding(dm, pat),
-        hir::PatWild => true,
+        PatKind::Ident(..) => pat_is_binding(dm, pat),
+        PatKind::Wild => true,
         _ => false
     }
 }
@@ -115,7 +115,7 @@ pub fn pat_bindings<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
 {
     walk_pat(pat, |p| {
         match p.node {
-          hir::PatIdent(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
+          PatKind::Ident(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
             it(binding_mode, p.id, p.span, &respan(pth.span, pth.node.name));
           }
           _ => {}
@@ -128,7 +128,7 @@ pub fn pat_bindings_ident<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) wh
 {
     walk_pat(pat, |p| {
         match p.node {
-          hir::PatIdent(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
+          PatKind::Ident(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
             it(binding_mode, p.id, p.span, &respan(pth.span, pth.node));
           }
           _ => {}
@@ -199,7 +199,7 @@ pub fn pat_contains_bindings_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
     match pat.node {
-        hir::PatIdent(hir::BindByValue(_), ref path1, None) => {
+        PatKind::Ident(hir::BindByValue(_), ref path1, None) => {
             Some(path1.node.name)
         }
         _ => {
@@ -224,9 +224,9 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
     let mut variants = vec![];
     walk_pat(pat, |p| {
         match p.node {
-            hir::PatEnum(_, _) |
-            hir::PatIdent(_, _, None) |
-            hir::PatStruct(..) => {
+            PatKind::Enum(_, _) |
+            PatKind::Ident(_, _, None) |
+            PatKind::Struct(..) => {
                 match dm.get(&p.id) {
                     Some(&PathResolution { base_def: Def::Variant(_, id), .. }) => {
                         variants.push(id);

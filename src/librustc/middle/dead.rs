@@ -14,7 +14,7 @@
 
 use dep_graph::DepNode;
 use front::map as ast_map;
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::{self, Visitor};
 
 use middle::{pat_util, privacy, ty};
@@ -143,7 +143,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             _ => self.tcx.sess.span_bug(lhs.span, "non-ADT in struct pattern")
         };
         for pat in pats {
-            if let hir::PatWild = pat.node.pat.node {
+            if let PatKind::Wild = pat.node.pat.node {
                 continue;
             }
             self.insert_def_id(variant.field_named(pat.node.name).did);
@@ -268,7 +268,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &hir::Pat) {
         let def_map = &self.tcx.def_map;
         match pat.node {
-            hir::PatStruct(_, ref fields, _) => {
+            PatKind::Struct(_, ref fields, _) => {
                 self.handle_field_pattern_match(pat, fields);
             }
             _ if pat_util::pat_is_const(&def_map.borrow(), pat) => {

@@ -28,7 +28,7 @@ use middle::infer;
 use middle::pat_util;
 use middle::subst;
 use rustc::front::map as hir_map;
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use trans::{type_of, adt, machine, monomorphize};
 use trans::common::{self, CrateContext, FunctionContext, Block};
 use trans::_match::{BindingInfo, TransBindingMode};
@@ -1971,7 +1971,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         Some(hir_map::NodeLocal(pat)) => {
             match pat.node {
-                hir::PatIdent(_, ref path1, _) => {
+                PatKind::Ident(_, ref path1, _) => {
                     path1.node.name
                 }
                 _ => {

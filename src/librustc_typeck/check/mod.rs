@@ -127,7 +127,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
-use rustc_front::hir::Visibility;
+use rustc_front::hir::{Visibility, PatKind};
 use rustc_front::print::pprust;
 use rustc_back::slice;
 
@@ -506,7 +506,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat) {
-        if let hir::PatIdent(_, ref path1, _) = p.node {
+        if let PatKind::Ident(_, ref path1, _) = p.node {
             if pat_util::pat_is_binding(&self.fcx.ccx.tcx.def_map.borrow(), p) {
                 let var_ty = self.assign(p.span, p.id, None);
 

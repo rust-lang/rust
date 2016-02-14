@@ -50,7 +50,7 @@ use syntax::parse::token::special_idents;
 use syntax;
 use rbml::writer::Encoder;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::Visitor;
 use rustc_front::intravisit;
 
@@ -783,7 +783,7 @@ fn encode_method_argument_names(rbml_w: &mut Encoder,
     rbml_w.start_tag(tag_method_argument_names);
     for arg in &decl.inputs {
         let tag = tag_method_argument_name;
-        if let hir::PatIdent(_, ref path1, _) = arg.pat.node {
+        if let PatKind::Ident(_, ref path1, _) = arg.pat.node {
             let name = path1.node.name.as_str();
             rbml_w.wr_tagged_bytes(tag, name.as_bytes());
         } else {

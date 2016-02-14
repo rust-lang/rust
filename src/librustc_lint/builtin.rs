@@ -46,7 +46,7 @@ use syntax::{ast};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::FnKind;
 
 use bad_style::{MethodLateContext, method_context};
@@ -157,7 +157,7 @@ impl LintPass for NonShorthandFieldPatterns {
 impl LateLintPass for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
         let def_map = cx.tcx.def_map.borrow();
-        if let hir::PatStruct(_, ref v, _) = pat.node {
+        if let PatKind::Struct(_, ref v, _) = pat.node {
             let field_pats = v.iter().filter(|fieldpat| {
                 if fieldpat.node.is_shorthand {
                     return false;
@@ -170,7 +170,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
                 }
             });
             for fieldpat in field_pats {
-                if let hir::PatIdent(_, ident, None) = fieldpat.node.pat.node {
+                if let PatKind::Ident(_, ident, None) = fieldpat.node.pat.node {
                     if ident.node.unhygienic_name == fieldpat.node.name {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant and can \

@@ -41,7 +41,7 @@ use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::feature_gate::UnstableFeatures;
@@ -322,10 +322,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, p: &hir::Pat) {
         match p.node {
-            hir::PatLit(ref lit) => {
+            PatKind::Lit(ref lit) => {
                 self.global_expr(Mode::Const, &lit);
             }
-            hir::PatRange(ref start, ref end) => {
+            PatKind::Range(ref start, ref end) => {
                 self.global_expr(Mode::Const, &start);
                 self.global_expr(Mode::Const, &end);
 
