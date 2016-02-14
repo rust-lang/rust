@@ -13,7 +13,7 @@
 
 use rustc::session::{Session, CompileResult};
 
-use syntax::ast;
+use syntax::ast::{self, PatKind};
 use syntax::visit::{self, Visitor, FnKind};
 use syntax::codemap::Span;
 
@@ -104,8 +104,8 @@ impl<'a, 'v> Visitor<'v> for CheckConstFn<'a> {
         // Ensure the arguments are simple, not mutable/by-ref or patterns.
         for arg in &fd.inputs {
             match arg.pat.node {
-                ast::PatWild => {}
-                ast::PatIdent(ast::BindingMode::ByValue(ast::Mutability::Immutable), _, None) => {}
+                PatKind::Wild => {}
+                PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Immutable), _, None) => {}
                 _ => {
                     span_err!(self.sess, arg.pat.span, E0022,
                               "arguments of constant functions can only \

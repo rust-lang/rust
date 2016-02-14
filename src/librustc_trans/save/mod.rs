@@ -21,7 +21,7 @@ use rustc_front::{hir, lowering};
 use rustc::front::map::NodeItem;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 
-use syntax::ast::{self, NodeId};
+use syntax::ast::{self, NodeId, PatKind};
 use syntax::ast_util;
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
@@ -758,16 +758,17 @@ impl PathCollector {
 impl<'v> Visitor<'v> for PathCollector {
     fn visit_pat(&mut self, p: &ast::Pat) {
         match p.node {
-            ast::PatStruct(ref path, _, _) => {
+            PatKind::Struct(ref path, _, _) => {
                 self.collected_paths.push((p.id, path.clone(),
                                            ast::Mutability::Mutable, recorder::TypeRef));
             }
-            ast::PatEnum(ref path, _) |
-            ast::PatQPath(_, ref path) => {
+            PatKind::TupleStruct(ref path, _) |
+            PatKind::Path(ref path) |
+            PatKind::QPath(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(),
                                            ast::Mutability::Mutable, recorder::VarRef));
             }
-            ast::PatIdent(bm, ref path1, _) => {
+            PatKind::Ident(bm, ref path1, _) => {
                 debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
                        path1.node,
                        p.span,

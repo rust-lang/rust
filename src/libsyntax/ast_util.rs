@@ -69,7 +69,7 @@ pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> P<Pat> {
     let spanned = codemap::Spanned{ span: s, node: i };
     P(Pat {
         id: id,
-        node: PatIdent(BindingMode::ByValue(Mutability::Immutable), spanned, None),
+        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), spanned, None),
         span: s
     })
 }
@@ -348,7 +348,7 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
 /// and false otherwise.
 pub fn pat_is_ident(pat: P<ast::Pat>) -> bool {
     match pat.node {
-        ast::PatIdent(..) => true,
+        PatKind::Ident(..) => true,
         _ => false,
     }
 }

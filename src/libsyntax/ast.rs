@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::Pat_::*;
 pub use self::StructFieldKind::*;
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
@@ -521,7 +520,7 @@ pub struct Block {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pat {
     pub id: NodeId,
-    pub node: Pat_,
+    pub node: PatKind,
     pub span: Span,
 }
 
@@ -552,47 +551,53 @@ pub enum BindingMode {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Pat_ {
+pub enum PatKind {
     /// Represents a wildcard pattern (`_`)
-    PatWild,
+    Wild,
 
-    /// A PatIdent may either be a new bound variable,
-    /// or a nullary enum (in which case the third field
-    /// is None).
+    /// A `PatKind::Ident` may either be a new bound variable,
+    /// or a unit struct/variant pattern, or a const pattern (in the last two cases
+    /// the third field must be `None`).
     ///
-    /// In the nullary enum case, the parser can't determine
+    /// In the unit or const pattern case, the parser can't determine
     /// which it is. The resolver determines this, and
-    /// records this pattern's NodeId in an auxiliary
-    /// set (of "PatIdents that refer to nullary enums")
-    PatIdent(BindingMode, SpannedIdent, Option<P<Pat>>),
+    /// records this pattern's `NodeId` in an auxiliary
+    /// set (of "PatIdents that refer to unit patterns or constants").
+    Ident(BindingMode, SpannedIdent, Option<P<Pat>>),
 
+    /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
+    /// The `bool` is `true` in the presence of a `..`.
+    Struct(Path, Vec<Spanned<FieldPat>>, bool),
+
+    /// A tuple struct/variant pattern `Variant(x, y, z)`.
     /// "None" means a `Variant(..)` pattern where we don't bind the fields to names.
-    PatEnum(Path, Option<Vec<P<Pat>>>),
+    TupleStruct(Path, Option<Vec<P<Pat>>>),
+
+    /// A path pattern.
+    /// Such pattern can be resolved to a unit struct/variant or a constant.
+    Path(Path),
 
     /// An associated const named using the qualified path `<T>::CONST` or
     /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
     /// referred to as simply `T::CONST`, in which case they will end up as
-    /// PatEnum, and the resolver will have to sort that out.
-    PatQPath(QSelf, Path),
+    /// PatKind::Enum, and the resolver will have to sort that out.
+    QPath(QSelf, Path),
 
-    /// Destructuring of a struct, e.g. `Foo {x, y, ..}`
-    /// The `bool` is `true` in the presence of a `..`
-    PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
     /// A tuple pattern `(a, b)`
-    PatTup(Vec<P<Pat>>),
+    Tup(Vec<P<Pat>>),
     /// A `box` pattern
-    PatBox(P<Pat>),
+    Box(P<Pat>),
     /// A reference pattern, e.g. `&mut (a, b)`
-    PatRegion(P<Pat>, Mutability),
+    Ref(P<Pat>, Mutability),
     /// A literal
-    PatLit(P<Expr>),
+    Lit(P<Expr>),
     /// A range pattern, e.g. `1...2`
-    PatRange(P<Expr>, P<Expr>),
+    Range(P<Expr>, P<Expr>),
     /// `[a, b, ..i, y, z]` is represented as:
-    ///     `PatVec(box [a, b], Some(i), box [y, z])`
-    PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    ///     `PatKind::Vec(box [a, b], Some(i), box [y, z])`
+    Vec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
     /// A macro pattern; pre-expansion
-    PatMac(Mac),
+    Mac(Mac),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1609,7 +1614,7 @@ impl Arg {
             }),
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
-                node: PatIdent(BindingMode::ByValue(mutability), path, None),
+                node: PatKind::Ident(BindingMode::ByValue(mutability), path, None),
                 span: span
             }),
             id: DUMMY_NODE_ID

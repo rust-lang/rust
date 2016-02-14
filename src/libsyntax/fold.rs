@@ -1119,23 +1119,26 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
     p.map(|Pat {id, node, span}| Pat {
         id: folder.new_id(id),
         node: match node {
-            PatWild => PatWild,
-            PatIdent(binding_mode, pth1, sub) => {
-                PatIdent(binding_mode,
+            PatKind::Wild => PatKind::Wild,
+            PatKind::Ident(binding_mode, pth1, sub) => {
+                PatKind::Ident(binding_mode,
                         Spanned{span: folder.new_span(pth1.span),
                                 node: folder.fold_ident(pth1.node)},
                         sub.map(|x| folder.fold_pat(x)))
             }
-            PatLit(e) => PatLit(folder.fold_expr(e)),
-            PatEnum(pth, pats) => {
-                PatEnum(folder.fold_path(pth),
+            PatKind::Lit(e) => PatKind::Lit(folder.fold_expr(e)),
+            PatKind::TupleStruct(pth, pats) => {
+                PatKind::TupleStruct(folder.fold_path(pth),
                         pats.map(|pats| pats.move_map(|x| folder.fold_pat(x))))
             }
-            PatQPath(qself, pth) => {
-                let qself = QSelf {ty: folder.fold_ty(qself.ty), .. qself};
-                PatQPath(qself, folder.fold_path(pth))
+            PatKind::Path(pth) => {
+                PatKind::Path(folder.fold_path(pth))
             }
-            PatStruct(pth, fields, etc) => {
+            PatKind::QPath(qself, pth) => {
+                let qself = QSelf {ty: folder.fold_ty(qself.ty), .. qself};
+                PatKind::QPath(qself, folder.fold_path(pth))
+            }
+            PatKind::Struct(pth, fields, etc) => {
                 let pth = folder.fold_path(pth);
                 let fs = fields.move_map(|f| {
                     Spanned { span: folder.new_span(f.span),
@@ -1145,20 +1148,20 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                                   is_shorthand: f.node.is_shorthand,
                               }}
                 });
-                PatStruct(pth, fs, etc)
+                PatKind::Struct(pth, fs, etc)
             }
-            PatTup(elts) => PatTup(elts.move_map(|x| folder.fold_pat(x))),
-            PatBox(inner) => PatBox(folder.fold_pat(inner)),
-            PatRegion(inner, mutbl) => PatRegion(folder.fold_pat(inner), mutbl),
-            PatRange(e1, e2) => {
-                PatRange(folder.fold_expr(e1), folder.fold_expr(e2))
+            PatKind::Tup(elts) => PatKind::Tup(elts.move_map(|x| folder.fold_pat(x))),
+            PatKind::Box(inner) => PatKind::Box(folder.fold_pat(inner)),
+            PatKind::Ref(inner, mutbl) => PatKind::Ref(folder.fold_pat(inner), mutbl),
+            PatKind::Range(e1, e2) => {
+                PatKind::Range(folder.fold_expr(e1), folder.fold_expr(e2))
             },
-            PatVec(before, slice, after) => {
-                PatVec(before.move_map(|x| folder.fold_pat(x)),
+            PatKind::Vec(before, slice, after) => {
+                PatKind::Vec(before.move_map(|x| folder.fold_pat(x)),
                        slice.map(|x| folder.fold_pat(x)),
                        after.move_map(|x| folder.fold_pat(x)))
             }
-            PatMac(mac) => PatMac(folder.fold_mac(mac))
+            PatKind::Mac(mac) => PatKind::Mac(folder.fold_mac(mac))
         },
         span: folder.new_span(span)
     })

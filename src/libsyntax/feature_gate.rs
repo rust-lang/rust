@@ -27,7 +27,7 @@ use self::AttributeType::*;
 use self::AttributeGate::*;
 
 use abi::Abi;
-use ast::NodeId;
+use ast::{NodeId, PatKind};
 use ast;
 use attr;
 use attr::AttrMetaMethods;
@@ -1005,19 +1005,19 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_pat(&mut self, pattern: &ast::Pat) {
         match pattern.node {
-            ast::PatVec(_, Some(_), ref last) if !last.is_empty() => {
+            PatKind::Vec(_, Some(_), ref last) if !last.is_empty() => {
                 self.gate_feature("advanced_slice_patterns",
                                   pattern.span,
                                   "multiple-element slice matches anywhere \
                                    but at the end of a slice (e.g. \
                                    `[0, ..xs, 0]`) are experimental")
             }
-            ast::PatVec(..) => {
+            PatKind::Vec(..) => {
                 self.gate_feature("slice_patterns",
                                   pattern.span,
                                   "slice pattern syntax is experimental");
             }
-            ast::PatBox(..) => {
+            PatKind::Box(..) => {
                 self.gate_feature("box_patterns",
                                   pattern.span,
                                   "box pattern syntax is experimental");
