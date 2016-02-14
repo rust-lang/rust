@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use arena::TypedArena;
-use back::link::{self, mangle_internal_name_by_path_and_seq};
+use back::{link, symbol_names};
 use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
@@ -150,8 +150,9 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     }
 
-    let path = ccx.tcx().def_path(closure_id);
-    let symbol = mangle_internal_name_by_path_and_seq(path, "closure");
+    let symbol = symbol_names::exported_name(ccx,
+                                             mono_id.def,
+                                             mono_id.params.as_slice());
 
     let function_type = ccx.tcx().mk_closure_from_closure_substs(closure_id, Box::new(substs));
     let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type);
