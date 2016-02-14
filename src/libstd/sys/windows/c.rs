@@ -240,6 +240,7 @@ pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
 pub const FSCTL_GET_REPARSE_POINT: DWORD = 0x900a8;
 pub const IO_REPARSE_TAG_SYMLINK: DWORD = 0xa000000c;
 pub const IO_REPARSE_TAG_MOUNT_POINT: DWORD = 0xa0000003;
+pub const SYMLINK_FLAG_RELATIVE: DWORD = 0x00000001;
 pub const FSCTL_SET_REPARSE_POINT: DWORD = 0x900a4;
 pub const FSCTL_DELETE_REPARSE_POINT: DWORD = 0x900ac;
 
@@ -530,6 +531,15 @@ pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
     pub PrintNameOffset: c_ushort,
     pub PrintNameLength: c_ushort,
     pub Flags: c_ulong,
+    pub PathBuffer: WCHAR,
+}
+
+#[repr(C)]
+pub struct MOUNT_POINT_REPARSE_BUFFER {
+    pub SubstituteNameOffset: c_ushort,
+    pub SubstituteNameLength: c_ushort,
+    pub PrintNameOffset: c_ushort,
+    pub PrintNameLength: c_ushort,
     pub PathBuffer: WCHAR,
 }
 
