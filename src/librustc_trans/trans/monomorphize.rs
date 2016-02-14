@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::link::exported_name;
+use back::symbol_names;
 use llvm::ValueRef;
 use llvm;
 use middle::def_id::DefId;
 use middle::infer::normalize_associated_type;
 use middle::subst;
 use middle::subst::{Subst, Substs};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use trans::attributes;
 use trans::base::{push_ctxt};
@@ -22,7 +23,6 @@ use trans::base::trans_fn;
 use trans::base;
 use trans::common::*;
 use trans::declare;
-use middle::ty::{self, Ty, TyCtxt};
 use trans::Disr;
 use rustc::front::map as hir_map;
 use rustc::util::ppaux;
@@ -33,7 +33,6 @@ use syntax::attr;
 use syntax::errors;
 
 use std::fmt;
-use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: DefId,
@@ -90,22 +89,13 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         monomorphizing.insert(fn_id, depth + 1);
     }
 
-    let hash;
-    let s = {
-        let mut state = SipHasher::new();
-        instance.hash(&mut state);
-        mono_ty.hash(&mut state);
+    let symbol = symbol_names::exported_name(ccx, &instance);
 
-        hash = format!("h{}", state.finish());
-        let path = ccx.tcx().map.def_path(fn_id);
-        exported_name(path, &hash[..])
-    };
-
-    debug!("monomorphize_fn mangled to {}", s);
-    assert!(declare::get_defined_value(ccx, &s).is_none());
+    debug!("monomorphize_fn mangled to {}", symbol);
+    assert!(declare::get_defined_value(ccx, &symbol).is_none());
 
     // FIXME(nagisa): perhaps needs a more fine grained selection?
-    let lldecl = declare::define_internal_fn(ccx, &s, mono_ty);
+    let lldecl = declare::define_internal_fn(ccx, &symbol, mono_ty);
     // FIXME(eddyb) Doubt all extern fn should allow unwinding.
     attributes::unwind(lldecl, true);
 
@@ -137,9 +127,10 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
             attributes::from_fn_attrs(ccx, attrs, lldecl);
 
-            let is_first = !ccx.available_monomorphizations().borrow().contains(&s);
+            let is_first = !ccx.available_monomorphizations().borrow()
+                                                             .contains(&symbol);
             if is_first {
-                ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+                ccx.available_monomorphizations().borrow_mut().insert(symbol.clone());
             }
 
             let trans_everywhere = attr::requests_inline(attrs);

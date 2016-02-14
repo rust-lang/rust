@@ -15,6 +15,7 @@ pub use self::base::trans_crate;
 pub use self::context::CrateContext;
 pub use self::common::gensym_name;
 pub use self::disr::Disr;
+pub use self::monomorphize::Instance;
 
 #[macro_use]
 mod macros;

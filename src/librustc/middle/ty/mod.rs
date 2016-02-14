@@ -2688,7 +2688,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let node_id = self.map.as_local_node_id(impl_did).unwrap();
             Ok(self.map.span(node_id))
         } else {
-            Err(self.crate_name(impl_did.krate))
+            Err(self.sess.cstore.crate_name(impl_did.krate))
         }
     }
 }

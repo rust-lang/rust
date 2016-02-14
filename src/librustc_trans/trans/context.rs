@@ -25,7 +25,8 @@ use trans::debuginfo;
 use trans::declare;
 use trans::glue::DropGlueKind;
 use trans::mir::CachedMir;
-use trans::monomorphize::Instance;
+use trans::Instance;
+
 use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
 use middle::subst::{Substs, VecPerParamSpace};
