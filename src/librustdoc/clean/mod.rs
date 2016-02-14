@@ -2552,12 +2552,12 @@ fn name_from_pat(p: &hir::Pat) -> String {
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
-        PatWild => "_".to_string(),
-        PatIdent(_, ref p, _) => p.node.to_string(),
-        PatEnum(ref p, _) => path_to_string(p),
-        PatQPath(..) => panic!("tried to get argument name from PatQPath, \
+        PatKind::Wild => "_".to_string(),
+        PatKind::Ident(_, ref p, _) => p.node.to_string(),
+        PatKind::Enum(ref p, _) => path_to_string(p),
+        PatKind::QPath(..) => panic!("tried to get argument name from PatKind::QPath, \
                                 which is not allowed in function arguments"),
-        PatStruct(ref name, ref fields, etc) => {
+        PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
                                   format!("{}: {}", fp.name, name_from_pat(&*fp.pat)))
@@ -2565,18 +2565,18 @@ fn name_from_pat(p: &hir::Pat) -> String {
                 if etc { ", ..." } else { "" }
             )
         },
-        PatTup(ref elts) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
+        PatKind::Tup(ref elts) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
                                             .collect::<Vec<String>>().join(", ")),
-        PatBox(ref p) => name_from_pat(&**p),
-        PatRegion(ref p, _) => name_from_pat(&**p),
-        PatLit(..) => {
-            warn!("tried to get argument name from PatLit, \
+        PatKind::Box(ref p) => name_from_pat(&**p),
+        PatKind::Ref(ref p, _) => name_from_pat(&**p),
+        PatKind::Lit(..) => {
+            warn!("tried to get argument name from PatKind::Lit, \
                   which is silly in function arguments");
             "()".to_string()
         },
-        PatRange(..) => panic!("tried to get argument name from PatRange, \
+        PatKind::Range(..) => panic!("tried to get argument name from PatKind::Range, \
                               which is not allowed in function arguments"),
-        PatVec(ref begin, ref mid, ref end) => {
+        PatKind::Vec(ref begin, ref mid, ref end) => {
             let begin = begin.iter().map(|p| name_from_pat(&**p));
             let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
             let end = end.iter().map(|p| name_from_pat(&**p));
