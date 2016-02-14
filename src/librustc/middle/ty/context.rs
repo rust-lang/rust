@@ -43,7 +43,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
-use syntax::parse::token::special_idents;
+use syntax::parse::token::{self, special_idents};
 
 use rustc_front::hir;
 
@@ -415,6 +415,10 @@ pub struct TyCtxt<'tcx> {
     /// fragmented data to the set of unfragmented pieces that
     /// constitute it.
     pub fragment_infos: RefCell<DefIdMap<Vec<ty::FragmentInfo>>>,
+
+    /// The definite name of the current crate after taking into account
+    /// attributes, commandline parameters, etc.
+    pub crate_name: token::InternedString,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -511,6 +515,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                  region_maps: RegionMaps,
                                  lang_items: middle::lang_items::LanguageItems,
                                  stability: stability::Index<'tcx>,
+                                 crate_name: &str,
                                  f: F) -> R
                                  where F: FnOnce(&TyCtxt<'tcx>) -> R
     {
@@ -570,7 +575,8 @@ impl<'tcx> TyCtxt<'tcx> {
             const_qualif_map: RefCell::new(NodeMap()),
             custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
             cast_kinds: RefCell::new(NodeMap()),
-            fragment_infos: RefCell::new(DefIdMap())
+            fragment_infos: RefCell::new(DefIdMap()),
+            crate_name: token::intern_and_get_ident(crate_name),
        }, f)
     }
 }

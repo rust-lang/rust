@@ -146,6 +146,7 @@ fn test_env<F>(source_string: &str,
                                region_map,
                                lang_items,
                                index,
+                               "test_crate",
                                |tcx| {
                                    let infcx = infer::new_infer_ctxt(tcx,
                                                                      &tcx.tables,
