@@ -14,7 +14,7 @@ mod a {
 trait A {
 }
 
-impl A for a { //~ ERROR use of undeclared type name `a`
+impl A for a { //~ ERROR type name `a` is undefined or not in scope
 }
 
 fn main() {

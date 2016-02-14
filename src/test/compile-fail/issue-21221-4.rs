@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl Undefined {}
-//~^ ERROR type name `Undefined` is undefined or not in scope
+// testing whether the lookup mechanism picks up types
+// defined in the outside crate
 
-fn main() {}
+// aux-build:issue-21221-4.rs
+
+extern crate issue_21221_4;
+
+struct Foo;
+
+impl T for Foo {}
+//~^ ERROR trait `T` is not in scope
+//~| HELP you can to import it into scope: `use issue_21221_4::T;`.
+
+fn main() {
+    println!("Hello, world!");
+}

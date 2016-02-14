@@ -35,7 +35,7 @@ fn main() {
     C; //~ ERROR: unresolved
     import(); //~ ERROR: unresolved
 
-    foo::<A>(); //~ ERROR: undeclared
-    foo::<C>(); //~ ERROR: undeclared
-    foo::<D>(); //~ ERROR: undeclared
+    foo::<A>(); //~ ERROR: not in scope
+    foo::<C>(); //~ ERROR: not in scope
+    foo::<D>(); //~ ERROR: not in scope
 }

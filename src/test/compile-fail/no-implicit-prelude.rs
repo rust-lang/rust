@@ -17,11 +17,11 @@
 // fail with the same error message).
 
 struct Test;
-impl Add for Test {} //~ ERROR: use of undeclared trait
-impl Clone for Test {} //~ ERROR: use of undeclared trait
-impl Iterator for Test {} //~ ERROR: use of undeclared trait
-impl ToString for Test {} //~ ERROR: use of undeclared trait
-impl Writer for Test {} //~ ERROR: use of undeclared trait
+impl Add for Test {} //~ ERROR: not in scope
+impl Clone for Test {} //~ ERROR: not in scope
+impl Iterator for Test {} //~ ERROR: not in scope
+impl ToString for Test {} //~ ERROR: not in scope
+impl Writer for Test {} //~ ERROR: not in scope
 
 fn main() {
     drop(2) //~ ERROR: unresolved name
