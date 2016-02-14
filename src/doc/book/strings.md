@@ -39,7 +39,7 @@ The second, with a `\`, trims the spaces and the newline:
 
 ```rust
 let s = "foo\
-    bar"; 
+    bar";
 
 assert_eq!("foobar", s);
 ```

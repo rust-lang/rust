@@ -479,7 +479,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Checked negation. Computes `!self`, returning `None` if `self ==
+        /// Checked negation. Computes `-self`, returning `None` if `self ==
         /// MIN`.
         ///
         /// # Examples
