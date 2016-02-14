@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::{abi, link};
+use back::{abi, symbol_names};
 use llvm::{ValueRef, CallConv, get_param};
 use llvm;
 use middle::weak_lang_items;
@@ -32,7 +32,6 @@ use middle::ty::{self, Ty, TyCtxt};
 use middle::subst::Substs;
 
 use std::cmp;
-use std::iter::once;
 use libc::c_uint;
 use syntax::abi::Abi;
 use syntax::attr;
@@ -596,8 +595,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 attrs: &[ast::Attribute],
                                                 llwrapfn: ValueRef,
                                                 param_substs: &'tcx Substs<'tcx>,
-                                                id: ast::NodeId,
-                                                hash: Option<&str>) {
+                                                id: ast::NodeId) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
 
     let fnty = ccx.tcx().node_id_to_type(id);
@@ -606,7 +604,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     unsafe { // unsafe because we call LLVM operations
         // Build up the Rust function (`foo0` above).
-        let llrustfn = build_rust_fn(ccx, decl, body, param_substs, attrs, id, hash);
+        let llrustfn = build_rust_fn(ccx, decl, body, param_substs, attrs, id);
 
         // Build up the foreign wrapper (`foo` above).
         return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, mty);
@@ -617,8 +615,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                body: &hir::Block,
                                param_substs: &'tcx Substs<'tcx>,
                                attrs: &[ast::Attribute],
-                               id: ast::NodeId,
-                               hash: Option<&str>)
+                               id: ast::NodeId)
                                -> ValueRef
     {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
@@ -626,12 +623,11 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let t = tcx.node_id_to_type(id);
         let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
-        let path =
-            tcx.map.def_path_from_id(id)
-                   .into_iter()
-                   .map(|e| e.data.as_interned_str())
-                   .chain(once(special_idents::clownshoe_abi.name.as_str()));
-        let ps = link::mangle(path, hash);
+        let suffix = special_idents::clownshoe_abi.name.as_str();
+        let ps = symbol_names::exported_name_with_suffix(ccx,
+                                                         tcx.map.local_def_id(id),
+                                                         param_substs.types.as_slice(),
+                                                         &suffix);
 
         // Compute the type that the function would have if it were just a
         // normal Rust function. This will be the type of the wrappee fn.

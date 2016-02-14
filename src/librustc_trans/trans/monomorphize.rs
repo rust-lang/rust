@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::link::exported_name;
+use back::symbol_names;
 use llvm::ValueRef;
 use llvm;
 use middle::def_id::DefId;
@@ -33,7 +33,6 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::errors;
-use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: DefId,
@@ -117,40 +116,31 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         monomorphizing.insert(fn_id, depth + 1);
     }
 
-    let hash;
-    let s = {
-        let mut state = SipHasher::new();
-        hash_id.hash(&mut state);
-        mono_ty.hash(&mut state);
+    let symbol = symbol_names::exported_name(ccx,
+                                             hash_id.def,
+                                             hash_id.params.as_slice());
 
-        hash = format!("h{}", state.finish());
-        let path = ccx.tcx().map.def_path_from_id(fn_node_id);
-        exported_name(path, &hash[..])
-    };
+    debug!("monomorphize_fn mangled to {}", symbol);
 
-    debug!("monomorphize_fn mangled to {}", s);
-
-    // This shouldn't need to option dance.
-    let mut hash_id = Some(hash_id);
-    let mut mk_lldecl = |abi: Abi| {
+    let mk_lldecl = |abi: Abi| {
         let lldecl = if abi != Abi::Rust {
-            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s)
+            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &symbol)
         } else {
             // FIXME(nagisa): perhaps needs a more fine grained selection? See
             // setup_lldecl below.
-            declare::define_internal_rust_fn(ccx, &s, mono_ty)
+            declare::define_internal_rust_fn(ccx, &symbol, mono_ty)
         };
 
-        ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
+        ccx.monomorphized().borrow_mut().insert(hash_id, lldecl);
         lldecl
     };
     let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
         base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
         attributes::from_fn_attrs(ccx, attrs, lldecl);
 
-        let is_first = !ccx.available_monomorphizations().borrow().contains(&s);
+        let is_first = !ccx.available_monomorphizations().borrow().contains(&symbol);
         if is_first {
-            ccx.available_monomorphizations().borrow_mut().insert(s.clone());
+            ccx.available_monomorphizations().borrow_mut().insert(symbol.clone());
         }
 
         let trans_everywhere = attr::requests_inline(attrs);
@@ -175,9 +165,13 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   let needs_body = setup_lldecl(d, &i.attrs);
                   if needs_body {
                       if abi != Abi::Rust {
-                          foreign::trans_rust_fn_with_foreign_abi(
-                              ccx, &decl, &body, &[], d, psubsts, fn_node_id,
-                              Some(&hash[..]));
+                          foreign::trans_rust_fn_with_foreign_abi(ccx,
+                                                                  &decl,
+                                                                  &body,
+                                                                  &i.attrs,
+                                                                  d,
+                                                                  psubsts,
+                                                                  fn_node_id);
                       } else {
                           trans_fn(ccx,
                                    &decl,
@@ -281,7 +275,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     (lldecl, mono_ty, true)
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct MonoId<'tcx> {
     pub def: DefId,
     pub params: &'tcx subst::VecPerParamSpace<Ty<'tcx>>

@@ -69,6 +69,7 @@ pub mod back {
     pub mod linker;
     pub mod link;
     pub mod lto;
+    pub mod symbol_names;
     pub mod write;
     pub mod msvc;
 }
