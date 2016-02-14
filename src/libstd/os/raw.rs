@@ -81,36 +81,10 @@ mod tests {
         )*}
     }
 
-    macro_rules! ok_size {
-        ($($t:ident)*) => {$(
-            assert!(mem::size_of::<libc::$t>() == mem::size_of::<raw::$t>(),
-                    "{} is wrong", stringify!($t));
-        )*}
-    }
-
     #[test]
     fn same() {
         use os::raw;
         ok!(c_char c_schar c_uchar c_short c_ushort c_int c_uint c_long c_ulong
             c_longlong c_ulonglong c_float c_double);
-    }
-
-    #[cfg(all(unix, not(target_os = "android")))]
-    #[test]
-    fn unix() {
-        {
-            use os::unix::raw;
-            ok!(uid_t gid_t dev_t ino_t mode_t nlink_t off_t blksize_t blkcnt_t);
-        }
-        {
-            use sys::platform::raw;
-            ok_size!(stat);
-        }
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn windows() {
-        use os::windows::raw;
     }
 }
