@@ -798,7 +798,7 @@ pub struct ModuleS<'a> {
     is_public: bool,
     is_extern_crate: bool,
 
-    children: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
+    resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
     imports: RefCell<Vec<ImportDirective>>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
@@ -846,7 +846,7 @@ impl<'a> ModuleS<'a> {
             def: def,
             is_public: is_public,
             is_extern_crate: false,
-            children: RefCell::new(HashMap::new()),
+            resolutions: RefCell::new(HashMap::new()),
             imports: RefCell::new(Vec::new()),
             anonymous_children: RefCell::new(NodeMap()),
             shadowed_traits: RefCell::new(Vec::new()),
@@ -863,7 +863,7 @@ impl<'a> ModuleS<'a> {
         let glob_count =
             if allow_private_imports { self.glob_count.get() } else { self.pub_glob_count.get() };
 
-        self.children.borrow().get(&(name, ns)).cloned().unwrap_or_default().result(glob_count)
+        self.resolutions.borrow().get(&(name, ns)).cloned().unwrap_or_default().result(glob_count)
             .and_then(|binding| {
                 let allowed = allow_private_imports || !binding.is_import() || binding.is_public();
                 if allowed { Success(binding) } else { Failed(None) }
@@ -873,7 +873,7 @@ impl<'a> ModuleS<'a> {
     // Define the name or return the existing binding if there is a collision.
     fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
                         -> Result<(), &'a NameBinding<'a>> {
-        let mut children = self.children.borrow_mut();
+        let mut children = self.resolutions.borrow_mut();
         let resolution = children.entry((name, ns)).or_insert_with(Default::default);
 
         // FIXME #31379: We can use methods from imported traits shadowed by non-import items
@@ -889,19 +889,19 @@ impl<'a> ModuleS<'a> {
     }
 
     fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        let mut children = self.children.borrow_mut();
+        let mut children = self.resolutions.borrow_mut();
         children.entry((name, ns)).or_insert_with(Default::default).outstanding_references += 1;
     }
 
     fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        match self.children.borrow_mut().get_mut(&(name, ns)).unwrap().outstanding_references {
+        match self.resolutions.borrow_mut().get_mut(&(name, ns)).unwrap().outstanding_references {
             0 => panic!("No more outstanding references!"),
             ref mut outstanding_references => { *outstanding_references -= 1; }
         }
     }
 
     fn for_each_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        for (&(name, ns), name_resolution) in self.children.borrow().iter() {
+        for (&(name, ns), name_resolution) in self.resolutions.borrow().iter() {
             name_resolution.binding.map(|binding| f(name, ns, binding));
         }
     }
