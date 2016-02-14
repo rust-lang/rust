@@ -48,6 +48,7 @@ declare_lint! {
 ///     Bar => bar(),
 ///     Quz => quz(),
 ///     Baz => bar(), // <= oups
+/// }
 /// ```
 declare_lint! {
     pub MATCH_SAME_ARMS,
