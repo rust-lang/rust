@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use arena::TypedArena;
-use back::{link, symbol_names};
+use back::symbol_names;
 use llvm::{ValueRef, get_param, get_params};
 use middle::def_id::DefId;
 use middle::infer;
@@ -382,7 +382,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     });
 
     // Create the by-value helper.
-    let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
+    let function_name =
+        symbol_names::internal_name_from_type_and_suffix(ccx, llonce_fn_ty, "once_shim");
     let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
