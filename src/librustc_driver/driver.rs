@@ -818,6 +818,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                region_map,
                                lang_items,
                                index,
+                               name,
                                |tcx| {
         // passes are timed inside typeck
         try_with_f!(typeck::check_crate(tcx, trait_map), (tcx, None, analysis));
