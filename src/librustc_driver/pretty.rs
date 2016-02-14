@@ -30,6 +30,8 @@ use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
+use rustc_mir::pretty::write_mir_pretty;
+
 use syntax::ast::{self, BlockCheckMode};
 use syntax::codemap;
 use syntax::fold::{self, Folder};
@@ -77,6 +79,7 @@ pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmHir(PpSourceMode),
     PpmFlowGraph(PpFlowGraphMode),
+    PpmMir,
 }
 
 pub fn parse_pretty(sess: &Session,
@@ -96,6 +99,7 @@ pub fn parse_pretty(sess: &Session,
         ("hir", true) => PpmHir(PpmNormal),
         ("hir,identified", true) => PpmHir(PpmIdentified),
         ("hir,typed", true) => PpmHir(PpmTyped),
+        ("mir", true) => PpmMir,
         ("flowgraph", true) => PpmFlowGraph(PpFlowGraphMode::Default),
         ("flowgraph,unlabelled", true) => PpmFlowGraph(PpFlowGraphMode::UnlabelledEdges),
         _ => {
@@ -103,7 +107,7 @@ pub fn parse_pretty(sess: &Session,
                 sess.fatal(&format!("argument to `unpretty` must be one of `normal`, \
                                      `expanded`, `flowgraph[,unlabelled]=<nodeid>`, \
                                      `identified`, `expanded,identified`, `everybody_loops`, \
-                                     `hir`, `hir,identified`, or `hir,typed`; got {}",
+                                     `hir`, `hir,identified`, `hir,typed`, or `mir`; got {}",
                                     name));
             } else {
                 sess.fatal(&format!("argument to `pretty` must be one of `normal`, `expanded`, \
@@ -569,6 +573,7 @@ fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
         PpmSource(PpmExpandedIdentified) |
         PpmSource(PpmExpandedHygiene) |
         PpmHir(_) |
+        PpmMir |
         PpmFlowGraph(_) => true,
         PpmSource(PpmTyped) => panic!("invalid state"),
     }
@@ -584,6 +589,7 @@ fn needs_expansion(ppm: &PpMode) -> bool {
         PpmSource(PpmExpandedIdentified) |
         PpmSource(PpmExpandedHygiene) |
         PpmHir(_) |
+        PpmMir |
         PpmFlowGraph(_) => true,
         PpmSource(PpmTyped) => panic!("invalid state"),
     }
@@ -799,6 +805,48 @@ pub fn pretty_print_input(sess: Session,
                 }
                 pp::eof(&mut pp_state.s)
             })
+        }
+
+        (PpmMir, None) => {
+            debug!("pretty printing MIR for whole crate");
+            let ast_map = ast_map.expect("--unpretty mir missing ast_map");
+            abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+                                                             &cstore,
+                                                             ast_map,
+                                                             &arenas,
+                                                             &id,
+                                                             resolve::MakeGlobMap::No,
+                                                             |tcx, mir_map, _, _| {
+                let mir_map = mir_map.unwrap();
+
+                for (nodeid, mir) in &mir_map.map {
+                    try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(*nodeid)));
+                    try!(write_mir_pretty(mir, &mut out));
+                }
+
+                Ok(())
+            }), &sess)
+        }
+
+        (PpmMir, Some(uii)) => {
+            debug!("pretty printing MIR for {:?}", uii);
+            let ast_map = ast_map.expect("--unpretty mir missing ast_map");
+            let nodeid = uii.to_one_node_id("--unpretty", &sess, &ast_map);
+
+            abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+                                                             &cstore,
+                                                             ast_map,
+                                                             &arenas,
+                                                             &id,
+                                                             resolve::MakeGlobMap::No,
+                                                             |tcx, mir_map, _, _| {
+                let mir_map = mir_map.unwrap();
+                try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(nodeid)));
+                let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
+                    sess.fatal(&format!("no MIR map entry for node {}", nodeid))
+                });
+                write_mir_pretty(mir, &mut out)
+            }), &sess)
         }
 
         (PpmFlowGraph(mode), opt_uii) => {
