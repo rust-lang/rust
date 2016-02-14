@@ -157,7 +157,7 @@ impl Utf8Error {
     /// // std::str::from_utf8 returns a Utf8Error
     /// let error = str::from_utf8(&sparkle_heart).unwrap_err();
     ///
-    /// // the first byte is invalid here
+    /// // the second byte is invalid here
     /// assert_eq!(1, error.valid_up_to());
     /// ```
     #[stable(feature = "utf8_error", since = "1.5.0")]
@@ -174,10 +174,10 @@ impl Utf8Error {
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
 /// incur the overhead of the validity check, there is an unsafe version of
-/// this function, [`from_utf8_unchecked()`][fromutf8], which has the same
+/// this function, [`from_utf8_unchecked()`][fromutf8u], which has the same
 /// behavior but skips the check.
 ///
-/// [fromutf8]: fn.from_utf8.html
+/// [fromutf8u]: fn.from_utf8_unchecked.html
 ///
 /// If you need a `String` instead of a `&str`, consider
 /// [`String::from_utf8()`][string].
@@ -275,7 +275,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
-/// See the safe version, [`from_utf8()`][fromutf8], for more.
+/// See the safe version, [`from_utf8()`][fromutf8], for more information.
 ///
 /// [fromutf8]: fn.from_utf8.html
 ///
