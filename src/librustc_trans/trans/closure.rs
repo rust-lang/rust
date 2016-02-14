@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use arena::TypedArena;
-use back::link::{self, mangle_internal_name_by_path_and_seq};
+use back::{link, symbol_names};
 use llvm::{ValueRef, get_param, get_params};
 use middle::def_id::DefId;
 use middle::infer;
@@ -152,8 +152,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     }
 
-    let path = tcx.def_path(closure_id);
-    let symbol = mangle_internal_name_by_path_and_seq(path, "closure");
+    let symbol = symbol_names::exported_name(ccx, &instance);
 
     // Compute the rust-call form of the closure call method.
     let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
