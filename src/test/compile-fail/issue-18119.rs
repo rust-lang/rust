@@ -13,10 +13,10 @@ static Y: u8 = 1;
 fn foo() {}
 
 impl X {}
-//~^ ERROR use of undeclared type name `X`
+//~^ ERROR type name `X` is undefined or not in scope
 impl Y {}
-//~^ ERROR use of undeclared type name `Y`
+//~^ ERROR type name `Y` is undefined or not in scope
 impl foo {}
-//~^ ERROR use of undeclared type name `foo`
+//~^ ERROR type name `foo` is undefined or not in scope
 
 fn main() {}

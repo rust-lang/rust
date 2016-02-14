@@ -14,5 +14,5 @@ trait Trait {
 
 fn main() {
     <<i32 as Copy>::foobar as Trait>::foo();
-    //~^ ERROR use of undeclared associated type `Copy::foobar`
+    //~^ ERROR associated type `Copy::foobar` is undefined or not in scope
 }
