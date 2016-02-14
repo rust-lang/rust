@@ -46,6 +46,7 @@ make = sys.argv[2]
 putenv('RUSTC', os.path.abspath(sys.argv[3]))
 putenv('TMPDIR', os.path.abspath(sys.argv[4]))
 putenv('CC', sys.argv[5] + ' ' + sys.argv[6])
+putenv('CFLAGS', sys.argv[6])
 putenv('RUSTDOC', os.path.abspath(sys.argv[7]))
 filt = sys.argv[8]
 putenv('LD_LIB_PATH_ENVVAR', sys.argv[9])
@@ -55,6 +56,7 @@ putenv('RUST_BUILD_STAGE', sys.argv[12])
 putenv('S', os.path.abspath(sys.argv[13]))
 putenv('RUSTFLAGS', sys.argv[15])
 putenv('LLVM_COMPONENTS', sys.argv[16])
+putenv('LLVM_CXXFLAGS', sys.argv[17])
 putenv('PYTHON', sys.executable)
 os.putenv('TARGET', target_triple)
 
