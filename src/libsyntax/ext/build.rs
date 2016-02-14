@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi::Abi;
-use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp};
+use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
 use ext::base::ExtCtxt;
@@ -166,7 +166,7 @@ pub trait AstBuilder {
     fn expr_err(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_try(&self, span: Span, head: P<ast::Expr>) -> P<ast::Expr>;
 
-    fn pat(&self, span: Span, pat: ast::Pat_) -> P<ast::Pat>;
+    fn pat(&self, span: Span, pat: PatKind) -> P<ast::Pat>;
     fn pat_wild(&self, span: Span) -> P<ast::Pat>;
     fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat>;
     fn pat_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Pat>;
@@ -805,14 +805,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
 
-    fn pat(&self, span: Span, pat: ast::Pat_) -> P<ast::Pat> {
+    fn pat(&self, span: Span, pat: PatKind) -> P<ast::Pat> {
         P(ast::Pat { id: ast::DUMMY_NODE_ID, node: pat, span: span })
     }
     fn pat_wild(&self, span: Span) -> P<ast::Pat> {
-        self.pat(span, ast::PatWild)
+        self.pat(span, PatKind::Wild)
     }
     fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat> {
-        self.pat(span, ast::PatLit(expr))
+        self.pat(span, PatKind::Lit(expr))
     }
     fn pat_ident(&self, span: Span, ident: ast::Ident) -> P<ast::Pat> {
         let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Immutable);
@@ -823,20 +823,24 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                               span: Span,
                               ident: ast::Ident,
                               bm: ast::BindingMode) -> P<ast::Pat> {
-        let pat = ast::PatIdent(bm, Spanned{span: span, node: ident}, None);
+        let pat = PatKind::Ident(bm, Spanned{span: span, node: ident}, None);
         self.pat(span, pat)
     }
     fn pat_enum(&self, span: Span, path: ast::Path, subpats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
-        let pat = ast::PatEnum(path, Some(subpats));
+        let pat = if subpats.is_empty() {
+            PatKind::Path(path)
+        } else {
+            PatKind::TupleStruct(path, Some(subpats))
+        };
         self.pat(span, pat)
     }
     fn pat_struct(&self, span: Span,
                   path: ast::Path, field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat> {
-        let pat = ast::PatStruct(path, field_pats, false);
+        let pat = PatKind::Struct(path, field_pats, false);
         self.pat(span, pat)
     }
     fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
-        self.pat(span, ast::PatTup(pats))
+        self.pat(span, PatKind::Tup(pats))
     }
 
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {

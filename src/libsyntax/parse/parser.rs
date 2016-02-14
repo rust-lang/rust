@@ -30,8 +30,7 @@ use ast::MacStmtStyle;
 use ast::Mac_;
 use ast::{MutTy, Mutability};
 use ast::NamedField;
-use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
-use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild};
+use ast::{Pat, PatKind};
 use ast::{PolyTraitRef, QSelf};
 use ast::{Stmt, StmtKind};
 use ast::{VariantData, StructField};
@@ -3292,7 +3291,7 @@ impl<'a> Parser<'a> {
                             self.check(&token::CloseDelim(token::Bracket)) {
                         slice = Some(P(ast::Pat {
                             id: ast::DUMMY_NODE_ID,
-                            node: PatWild,
+                            node: PatKind::Wild,
                             span: self.span,
                         }));
                         before_slice = false;
@@ -3370,14 +3369,14 @@ impl<'a> Parser<'a> {
                 let fieldpath = codemap::Spanned{span:self.last_span, node:fieldname};
                 let fieldpat = P(ast::Pat{
                     id: ast::DUMMY_NODE_ID,
-                    node: PatIdent(bind_type, fieldpath, None),
+                    node: PatKind::Ident(bind_type, fieldpath, None),
                     span: mk_sp(boxed_span_lo, hi),
                 });
 
                 let subpat = if is_box {
                     P(ast::Pat{
                         id: ast::DUMMY_NODE_ID,
-                        node: PatBox(fieldpat),
+                        node: PatKind::Box(fieldpat),
                         span: mk_sp(lo, hi),
                     })
                 } else {
@@ -3429,7 +3428,7 @@ impl<'a> Parser<'a> {
           token::Underscore => {
             // Parse _
             self.bump();
-            pat = PatWild;
+            pat = PatKind::Wild;
           }
           token::BinOp(token::And) | token::AndAnd => {
             // Parse &pat / &mut pat
@@ -3440,21 +3439,21 @@ impl<'a> Parser<'a> {
             }
 
             let subpat = try!(self.parse_pat());
-            pat = PatRegion(subpat, mutbl);
+            pat = PatKind::Ref(subpat, mutbl);
           }
           token::OpenDelim(token::Paren) => {
             // Parse (pat,pat,pat,...) as tuple pattern
             self.bump();
             let fields = try!(self.parse_pat_tuple_elements());
             try!(self.expect(&token::CloseDelim(token::Paren)));
-            pat = PatTup(fields);
+            pat = PatKind::Tup(fields);
           }
           token::OpenDelim(token::Bracket) => {
             // Parse [pat,pat,...] as slice pattern
             self.bump();
             let (before, slice, after) = try!(self.parse_pat_vec_elements());
             try!(self.expect(&token::CloseDelim(token::Bracket)));
-            pat = PatVec(before, slice, after);
+            pat = PatKind::Vec(before, slice, after);
           }
           _ => {
             // At this point, token != _, &, &&, (, [
@@ -3468,7 +3467,7 @@ impl<'a> Parser<'a> {
             } else if self.eat_keyword(keywords::Box) {
                 // Parse box pat
                 let subpat = try!(self.parse_pat());
-                pat = PatBox(subpat);
+                pat = PatKind::Box(subpat);
             } else if self.is_path_start() {
                 // Parse pattern starting with a path
                 if self.token.is_plain_ident() && self.look_ahead(1, |t| *t != token::DotDotDot &&
@@ -3487,7 +3486,7 @@ impl<'a> Parser<'a> {
                         let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
                                 seq_sep_none(), |p| p.parse_token_tree()));
                         let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
-                        pat = PatMac(codemap::Spanned {node: mac,
+                        pat = PatKind::Mac(codemap::Spanned {node: mac,
                                                        span: mk_sp(lo, self.last_span.hi)});
                     } else {
                         // Parse ident @ pat
@@ -3513,7 +3512,7 @@ impl<'a> Parser<'a> {
                         let begin = self.mk_expr(lo, hi, ExprKind::Path(qself, path), None);
                         self.bump();
                         let end = try!(self.parse_pat_range_end());
-                        pat = PatRange(begin, end);
+                        pat = PatKind::Range(begin, end);
                       }
                       token::OpenDelim(token::Brace) => {
                          if qself.is_some() {
@@ -3523,7 +3522,7 @@ impl<'a> Parser<'a> {
                         self.bump();
                         let (fields, etc) = try!(self.parse_pat_fields());
                         self.bump();
-                        pat = PatStruct(path, fields, etc);
+                        pat = PatKind::Struct(path, fields, etc);
                       }
                       token::OpenDelim(token::Paren) => {
                         if qself.is_some() {
@@ -3535,22 +3534,22 @@ impl<'a> Parser<'a> {
                             self.bump();
                             self.bump();
                             try!(self.expect(&token::CloseDelim(token::Paren)));
-                            pat = PatEnum(path, None);
+                            pat = PatKind::TupleStruct(path, None);
                         } else {
                             let args = try!(self.parse_enum_variant_seq(
                                     &token::OpenDelim(token::Paren),
                                     &token::CloseDelim(token::Paren),
                                     seq_sep_trailing_allowed(token::Comma),
                                     |p| p.parse_pat()));
-                            pat = PatEnum(path, Some(args));
+                            pat = PatKind::TupleStruct(path, Some(args));
                         }
                       }
                       _ => {
                         pat = match qself {
                             // Parse qualified path
-                            Some(qself) => PatQPath(qself, path),
+                            Some(qself) => PatKind::QPath(qself, path),
                             // Parse nullary enum
-                            None => PatEnum(path, Some(vec![]))
+                            None => PatKind::Path(path)
                         };
                       }
                     }
@@ -3560,9 +3559,9 @@ impl<'a> Parser<'a> {
                 let begin = try!(self.parse_pat_literal_maybe_minus());
                 if self.eat(&token::DotDotDot) {
                     let end = try!(self.parse_pat_range_end());
-                    pat = PatRange(begin, end);
+                    pat = PatKind::Range(begin, end);
                 } else {
-                    pat = PatLit(begin);
+                    pat = PatKind::Lit(begin);
                 }
             }
           }
@@ -3581,7 +3580,7 @@ impl<'a> Parser<'a> {
     /// error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&mut self,
                        binding_mode: ast::BindingMode)
-                       -> PResult<'a, ast::Pat_> {
+                       -> PResult<'a, PatKind> {
         if !self.token.is_plain_ident() {
             let span = self.span;
             let tok_str = self.this_token_to_string();
@@ -3610,7 +3609,7 @@ impl<'a> Parser<'a> {
                 "expected identifier, found enum pattern"))
         }
 
-        Ok(PatIdent(binding_mode, name, sub))
+        Ok(PatKind::Ident(binding_mode, name, sub))
     }
 
     /// Parse a local variable declaration
