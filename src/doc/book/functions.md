@@ -68,7 +68,7 @@ You get this error:
 
 ```text
 expected one of `!`, `:`, or `@`, found `)`
-fn print_number(x, y) {
+fn print_sum(x, y) {
 ```
 
 This is a deliberate design decision. While full-program inference is possible,
