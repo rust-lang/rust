@@ -9,7 +9,7 @@ use rustc::middle::ty;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use std::borrow::Cow;
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro, expr_block,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, walk_ptrs_ty};
@@ -353,7 +353,7 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                 let (indexed, indexed_extent) = visitor.indexed
                                      .into_iter()
                                      .next()
-                                     .expect("Len was nonzero, but no contents found");
+                                     .unwrap_or_else(|| unreachable!() /* len == 1 */);
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 let pat_extent = cx.tcx.region_maps.var_scope(pat.id);
