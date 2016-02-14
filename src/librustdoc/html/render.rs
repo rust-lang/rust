@@ -1501,11 +1501,17 @@ impl<'a> Item<'a> {
                           true, |component| {
                 path.push(component.to_string());
             });
-            Some(format!("{root}src/{krate}/{path}.html#{href}",
-                         root = self.cx.root_path,
-                         krate = self.cx.layout.krate,
-                         path = path.join("/"),
-                         href = href))
+            // If the span points into an external macro the
+            // source-file will be bogus, i.e `<foo macros>`
+            if Path::new(&self.item.source.filename).is_file() {
+                Some(format!("{root}src/{krate}/{path}.html#{href}",
+                             root = self.cx.root_path,
+                             krate = self.cx.layout.krate,
+                             path = path.join("/"),
+                             href = href))
+            } else {
+                None
+            }
 
         // If this item is not part of the local crate, then things get a little
         // trickier. We don't actually know the span of the external item, but
