@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::middle::subst::Subst;
 use rustc::middle::ty::TypeVariants;
 use rustc::middle::ty::fast_reject::simplify_type;
 use rustc::middle::ty;
@@ -70,16 +71,17 @@ impl LintPass for Derive {
 
 impl LateLintPass for Derive {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
-        let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
+        
 
         if_let_chain! {[
-            let ItemImpl(_, _, ref ast_generics, Some(ref trait_ref), ref ast_ty, _) = item.node,
-            let Some(&ty) = ast_ty_to_ty_cache.get(&ast_ty.id)
+            let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node
         ], {
+
+            let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
             if item.attrs.iter().any(is_automatically_derived) {
                 check_hash_peq(cx, item.span, trait_ref, ty);
             }
-            else if !ast_generics.is_lt_parameterized() {
+            else {
                 check_copy_clone(cx, item, trait_ref, ty);
             }
         }}
@@ -132,8 +134,9 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>,
                               trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
     if match_path(&trait_ref.path, &CLONE_TRAIT_PATH) {
         let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
+        let subst_ty = ty.subst(cx.tcx, &parameter_environment.free_substs);
 
-        if ty.moves_by_default(&parameter_environment, item.span) {
+        if subst_ty.moves_by_default(&parameter_environment, item.span) {
             return; // ty is not Copy
         }
 
