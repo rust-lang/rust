@@ -297,11 +297,11 @@ declare_lint! {
     pub NEW_RET_NO_SELF, Warn, "not returning `Self` in a `new` method"
 }
 
-/// **What it does:** This lint checks for string methods that receive a single-character `str` as an argument, e.g. `_.split("x")`
+/// **What it does:** This lint checks for string methods that receive a single-character `str` as an argument, e.g. `_.split("x")`.
 ///
-/// **Why is this bad?** Performing these methods using a `str` may be slower than using a `char`
+/// **Why is this bad?** Performing these methods using a `str` may be slower than using a `char`.
 ///
-/// **Known problems:** Does not catch multi-byte unicode characters
+/// **Known problems:** Does not catch multi-byte unicode characters.
 ///
 /// **Example:** `_.split("x")` could be `_.split('x')`
 declare_lint! {
@@ -846,7 +846,7 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &Expr, arg: &Expr) {
             let hint = snippet(cx, expr.span, "..").replace(&format!("\"{}\"", r), &format!("'{}'", r));
             span_lint_and_then(cx,
                                SINGLE_CHAR_PATTERN,
-                               expr.span,
+                               arg.span,
                                "single-character string constant used as pattern",
                                |db| {
                                    db.span_suggestion(expr.span, "try using a char instead:", hint);
