@@ -366,7 +366,7 @@ impl LateLintPass for MethodsPass {
             return;
         }
 
-        if let ItemImpl(_, _, _, None, ref ty, ref items) = item.node {
+        if let ItemImpl(_, _, _, None, _, ref items) = item.node {
             for implitem in items {
                 let name = implitem.name;
                 if let ImplItemKind::Method(ref sig, _) = implitem.node {
@@ -387,6 +387,7 @@ impl LateLintPass for MethodsPass {
                     }
 
                     // check conventions w.r.t. conversion method names and predicates
+                    let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
                     let is_copy = is_copy(cx, &ty, &item);
                     for &(ref conv, self_kinds) in &CONVENTIONS {
                         if conv.check(&name.as_str()) &&
@@ -412,12 +413,13 @@ impl LateLintPass for MethodsPass {
                     if &name.as_str() == &"new" {
                         let returns_self = if let FunctionRetTy::Return(ref ret_ty) = sig.decl.output {
                             let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
-                            let ty = ast_ty_to_ty_cache.get(&ty.id);
                             let ret_ty = ast_ty_to_ty_cache.get(&ret_ty.id);
 
-                            match (ty, ret_ty) {
-                                (Some(&ty), Some(&ret_ty)) => ret_ty.walk().any(|t| t == ty),
-                                _ => false,
+                            if let Some(&ret_ty) = ret_ty {
+                                ret_ty.walk().any(|t| t == ty)
+                            }
+                            else {
+                                false
                             }
                         }
                         else {
@@ -983,12 +985,7 @@ fn is_bool(ty: &Ty) -> bool {
     false
 }
 
-fn is_copy(cx: &LateContext, ast_ty: &Ty, item: &Item) -> bool {
-    match cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
-        None => false,
-        Some(ty) => {
-            let env = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
-            !ty.subst(cx.tcx, &env.free_substs).moves_by_default(&env, ast_ty.span)
-        }
-    }
+fn is_copy<'a, 'ctx>(cx: &LateContext<'a, 'ctx>, ty: ty::Ty<'ctx>, item: &Item) -> bool {
+    let env = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
+    !ty.subst(cx.tcx, &env.free_substs).moves_by_default(&env, item.span)
 }

@@ -35,6 +35,17 @@ impl Clone for Qux {
     fn clone(&self) -> Self { Qux }
 }
 
+// See #666
+#[derive(Copy)]
+struct Lt<'a> {
+    a: &'a u8,
+}
+
+impl<'a> Clone for Lt<'a> {
+//~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+    fn clone(&self) -> Self { unimplemented!() }
+}
+
 // Ok, `Clone` cannot be derived because of the big array
 #[derive(Copy)]
 struct BigArray {
