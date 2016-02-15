@@ -1,4 +1,5 @@
 use rustc::lint::*;
+use rustc::middle::ty::TypeVariants;
 use rustc::middle::ty::fast_reject::simplify_type;
 use rustc::middle::ty;
 use rustc_front::hir::*;
@@ -6,7 +7,6 @@ use syntax::ast::{Attribute, MetaItemKind};
 use syntax::codemap::Span;
 use utils::{CLONE_TRAIT_PATH, HASH_PATH};
 use utils::{match_path, span_lint_and_then};
-use rustc::middle::ty::TypeVariants;
 
 /// **What it does:** This lint warns about deriving `Hash` but implementing `PartialEq`
 /// explicitly.
@@ -73,14 +73,14 @@ impl LateLintPass for Derive {
         let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
 
         if_let_chain! {[
-            let ItemImpl(_, _, _, Some(ref trait_ref), ref ast_ty, _) = item.node,
+            let ItemImpl(_, _, ref ast_generics, Some(ref trait_ref), ref ast_ty, _) = item.node,
             let Some(&ty) = ast_ty_to_ty_cache.get(&ast_ty.id)
         ], {
             if item.attrs.iter().any(is_automatically_derived) {
                 check_hash_peq(cx, item.span, trait_ref, ty);
             }
-            else {
-                check_copy_clone(cx, item.span, trait_ref, ty);
+            else if !ast_generics.is_lt_parameterized() {
+                check_copy_clone(cx, item, trait_ref, ty);
             }
         }}
     }
@@ -127,11 +127,13 @@ fn check_hash_peq(cx: &LateContext, span: Span, trait_ref: &TraitRef, ty: ty::Ty
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
+fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>,
+                              item: &Item,
+                              trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
     if match_path(&trait_ref.path, &CLONE_TRAIT_PATH) {
-        let parameter_environment = cx.tcx.empty_parameter_environment();
+        let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
 
-        if ty.moves_by_default(&parameter_environment, span) {
+        if ty.moves_by_default(&parameter_environment, item.span) {
             return; // ty is not Copy
         }
 
@@ -160,10 +162,10 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref:
 
         span_lint_and_then(cx,
                            DERIVE_HASH_NOT_EQ,
-                           span,
+                           item.span,
                            "you are implementing `Clone` explicitly on a `Copy` type",
                            |db| {
-                               db.span_note(span, "consider deriving `Clone` or removing `Copy`");
+                               db.span_note(item.span, "consider deriving `Clone` or removing `Copy`");
                            });
     }
 }
