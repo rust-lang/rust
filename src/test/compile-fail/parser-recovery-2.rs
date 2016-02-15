@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Test that we can recover from mismatched braces in the parser.
 
-fn foo() { //~ HELP did you mean to close this delimiter?
-  match Some(x) {
-      Some(y) => { panic!(); }
-      None => { panic!(); }
+trait Foo {
+    fn bar() {
+        let x = foo(); //~ ERROR unresolved name `foo`
+    ) //~ ERROR incorrect close delimiter: `)`
 }
 
-fn bar() {
-    let mut i = 0;
-    while (i < 1000) {}
+fn main() {
+    let x = y.;  //~ ERROR unexpected token
+                 //~^ ERROR unresolved name `y`
 }
-
-fn main() {} //~ ERROR this file contains an un-closed delimiter

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Test that we can recover from missing braces in the parser.
 
-extern {
-    fn printf(...); //~ ERROR: variadic function must be declared with at least one named argument
-    fn printf(..., foo: isize); //~ ERROR: `...` must be last in argument list for variadic function
+trait Foo {
+    fn bar() {
+        let x = foo(); //~ ERROR unresolved name `foo`
+
 }
 
-fn main() {}
+fn main() {
+    let x = y.;  //~ ERROR unexpected token
+                 //~^ ERROR unresolved name `y`
+} //~ ERROR this file contains an un-closed delimiter
