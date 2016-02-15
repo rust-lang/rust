@@ -379,6 +379,10 @@ Examples of integer literals of various forms:
 0usize;                            // type usize
 ```
 
+Note that the Rust syntax considers `-1i8` as an application of the [unary minus
+operator](#unary-operator-expressions) to an integer literal `1i8`, rather than
+a single integer literal.
+
 ##### Floating-point literals
 
 A _floating-point literal_ has one of two forms:
@@ -2776,7 +2780,9 @@ Rust defines the following unary operators. They are all written as prefix opera
 before the expression they apply to.
 
 * `-`
-  : Negation. May only be applied to numeric types.
+  : Negation. Signed integer types and floating-point types support negation. It
+    is an error to apply negation to unsigned types; for example, the compiler
+    rejects `-1u32`.
 * `*`
   : Dereference. When applied to a [pointer](#pointer-types) it denotes the
     pointed-to location. For pointers to mutable locations, the resulting
