@@ -82,7 +82,7 @@ define PREPARE_MAN
 
 endef
 
-PREPARE_TOOLS = $(filter-out compiletest rustbook error-index-generator, $(TOOLS))
+PREPARE_TOOLS = $(filter-out compiletest rustbook error_index_generator, $(TOOLS))
 
 
 # $(1) is tool
