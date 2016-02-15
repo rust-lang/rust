@@ -17,7 +17,7 @@ pub use self::ExprOrMethodCall::*;
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
-use llvm::{True, False, Bool, OperandBundleDef};
+use llvm::{True, OperandBundleDef};
 use middle::cfg;
 use middle::def::Def;
 use middle::def_id::DefId;
@@ -858,7 +858,7 @@ pub fn C_undef(t: Type) -> ValueRef {
 
 pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     unsafe {
-        llvm::LLVMConstInt(t.to_ref(), u, sign_extend as Bool)
+        llvm::LLVMConstInt(t.to_ref(), u, sign_extend.into())
     }
 }
 
@@ -951,7 +951,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         let sc = llvm::LLVMConstStringInContext(cx.llcx(),
                                                 s.as_ptr() as *const c_char,
                                                 s.len() as c_uint,
-                                                !null_terminated as Bool);
+                                                (!null_terminated).into());
 
         let gsym = token::gensym("str");
         let sym = format!("str{}", gsym.0);
@@ -983,7 +983,7 @@ pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) ->
     unsafe {
         llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,
-                                       packed as Bool)
+                                       packed.into())
     }
 }
 
@@ -1068,14 +1068,14 @@ pub fn const_to_opt_uint(v: ValueRef) -> Option<u64> {
 
 pub fn is_undef(val: ValueRef) -> bool {
     unsafe {
-        llvm::LLVMIsUndef(val) != False
+        llvm::LLVMIsUndef(val).as_bool()
     }
 }
 
 #[allow(dead_code)] // potentially useful
 pub fn is_null(val: ValueRef) -> bool {
     unsafe {
-        llvm::LLVMIsNull(val) != False
+        llvm::LLVMIsNull(val).as_bool()
     }
 }
 

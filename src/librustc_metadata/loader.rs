@@ -223,7 +223,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::util::common;
 
 use rustc_llvm as llvm;
-use rustc_llvm::{False, ObjectFile, mk_section_iter};
+use rustc_llvm::{ObjectFile, mk_section_iter};
 use rustc_llvm::archive_ro::ArchiveRO;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
@@ -798,7 +798,7 @@ fn get_metadata_section_imp(target: &Target, filename: &Path)
             }
         };
         let si = mk_section_iter(of.llof);
-        while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
+        while ! llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi).as_bool() {
             let mut name_buf = ptr::null();
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
             let name = slice::from_raw_parts(name_buf as *const u8,

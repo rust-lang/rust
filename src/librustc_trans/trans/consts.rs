@@ -12,7 +12,7 @@
 use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
-use llvm::{InternalLinkage, ValueRef, Bool, True};
+use llvm::{InternalLinkage, ValueRef, True};
 use middle::const_qualif::ConstQualif;
 use middle::cstore::LOCAL_CRATE;
 use middle::const_eval::{self, ConstVal, ConstEvalErr};
@@ -743,11 +743,11 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     let repr = adt::represent_type(cx, t_expr);
                     let discr = adt::const_get_discrim(cx, &repr, v);
                     let iv = C_integral(cx.int_type(), discr.0, false);
-                    let s = adt::is_discr_signed(&repr) as Bool;
+                    let s = adt::is_discr_signed(&repr).into();
                     llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
                 },
                 (CastTy::Int(_), CastTy::Int(_)) => {
-                    let s = t_expr.is_signed() as Bool;
+                    let s = t_expr.is_signed().into();
                     llvm::LLVMConstIntCast(v, llty.to_ref(), s)
                 },
                 (CastTy::Int(_), CastTy::Float) => {

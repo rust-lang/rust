@@ -1028,7 +1028,7 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) ->
 
     unsafe {
         let global = llvm::LLVMIsAGlobalVariable(ptr);
-        if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
+        if !global.is_null() && llvm::LLVMIsGlobalConstant(global).as_bool() {
             let val = llvm::LLVMGetInitializer(global);
             if !val.is_null() {
                 return to_arg_ty(cx, val, t);
@@ -2984,7 +2984,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
                 // We only care about external declarations (not definitions)
                 // and available_externally definitions.
                 if !(linkage == llvm::ExternalLinkage as c_uint &&
-                     llvm::LLVMIsDeclaration(val) != 0) &&
+                     llvm::LLVMIsDeclaration(val).as_bool()) &&
                    !(linkage == llvm::AvailableExternallyLinkage as c_uint) {
                     continue;
                 }
@@ -3003,7 +3003,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
                 // We only care about external definitions.
                 if !(llvm::LLVMGetLinkage(val) == llvm::ExternalLinkage as c_uint &&
-                     llvm::LLVMIsDeclaration(val) == 0) {
+                     ! llvm::LLVMIsDeclaration(val).as_bool()) {
                     continue;
                 }
 
@@ -3041,7 +3041,7 @@ fn create_imps(cx: &SharedCrateContext) {
                                        .filter(|&val| {
                                            llvm::LLVMGetLinkage(val) ==
                                            llvm::ExternalLinkage as c_uint &&
-                                           llvm::LLVMIsDeclaration(val) == 0
+                                           ! llvm::LLVMIsDeclaration(val).as_bool()
                                        })
                                        .collect();
 
@@ -3166,7 +3166,7 @@ pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
         static INIT: Once = Once::new();
         static mut POISONED: bool = false;
         INIT.call_once(|| {
-            if llvm::LLVMStartMultithreaded() != 1 {
+            if ! llvm::LLVMStartMultithreaded().as_bool() {
                 // use an extra bool to make sure that all future usage of LLVM
                 // cannot proceed despite the Once not running more than once.
                 POISONED = true;

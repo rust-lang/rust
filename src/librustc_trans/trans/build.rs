@@ -115,7 +115,7 @@ pub fn Switch(cx: Block, v: ValueRef, else_: BasicBlockRef, num_cases: usize)
 
 pub fn AddCase(s: ValueRef, on_val: ValueRef, dest: BasicBlockRef) {
     unsafe {
-        if llvm::LLVMIsUndef(s) == llvm::True { return; }
+        if llvm::LLVMIsUndef(s).as_bool() { return; }
         llvm::LLVMAddCase(s, on_val, dest);
     }
 }
@@ -871,7 +871,7 @@ pub fn Phi(cx: Block, ty: Type, vals: &[ValueRef],
 
 pub fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     unsafe {
-        if llvm::LLVMIsUndef(phi) == llvm::True { return; }
+        if llvm::LLVMIsUndef(phi).as_bool() { return; }
         llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
     }
 }

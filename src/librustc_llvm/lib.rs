@@ -70,10 +70,27 @@ pub mod archive_ro;
 pub mod diagnostic;
 
 pub type Opcode = u32;
-pub type Bool = c_uint;
 
-pub const True: Bool = 1 as Bool;
-pub const False: Bool = 0 as Bool;
+mod bool_impl {
+    extern crate libc;
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct Bool(libc::c_uint);
+
+    pub const True: Bool = Bool(1);
+    pub const False: Bool = Bool(0);
+
+    impl Bool {
+        pub fn as_bool(self) -> bool { 0 != self.0 }
+    }
+
+    impl From<bool> for Bool {
+        fn from(b: bool) -> Self { if b { True } else { False } }
+    }
+}
+
+pub use bool_impl::{Bool, True, False};
 
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
@@ -2196,13 +2213,13 @@ pub fn SetDLLStorageClass(global: ValueRef, class: DLLStorageClassTypes) {
 
 pub fn SetUnnamedAddr(global: ValueRef, unnamed: bool) {
     unsafe {
-        LLVMSetUnnamedAddr(global, unnamed as Bool);
+        LLVMSetUnnamedAddr(global, unnamed.into());
     }
 }
 
 pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
     unsafe {
-        LLVMSetThreadLocal(global, is_thread_local as Bool);
+        LLVMSetThreadLocal(global, is_thread_local.into());
     }
 }
 
@@ -2453,4 +2470,17 @@ impl Drop for OperandBundleDef {
 #[cfg(not(cargobuild))]
 mod llvmdeps {
     include! { env!("CFG_LLVM_LINKAGE_FILE") }
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate libc;
+
+    use super::Bool;
+
+    #[test]
+    fn test_bool_size() {
+        use std::mem;
+        assert!(mem::size_of::<libc::c_uint>() == mem::size_of::<Bool>());
+    }
 }
