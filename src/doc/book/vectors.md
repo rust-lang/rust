@@ -11,14 +11,20 @@ let v = vec![1, 2, 3, 4, 5]; // v: Vec<i32>
 ```
 
 (Notice that unlike the `println!` macro we’ve used in the past, we use square
-brackets `[]` with `vec!` macro. Rust allows you to use either in either situation,
-this is just convention.)
+brackets `[]` with `vec!` macro. Rust allows you to use either in either
+situation, this is just convention.)
 
 There’s an alternate form of `vec!` for repeating an initial value:
 
 ```rust
 let v = vec![0; 10]; // ten zeroes
 ```
+
+Vectors store their contents as contiguous arrays of `T` on the heap. This means
+that they must be able to know the size of `T` at compile time (that is, how
+many bytes are needed to store a `T`?). The size of some things can't be known
+at compile time. For these you'll have to store a pointer to that thing:
+thankfully, the [`Box`][box] type works perfectly for this.
 
 ## Accessing elements
 
@@ -113,6 +119,7 @@ Vectors have many more useful methods, which you can read about in [their
 API documentation][vec].
 
 [vec]: ../std/vec/index.html
+[box]: ../std/boxed/index.html
 [generic]: generics.html
 [panic]: concurrency.html#panics
 [get]: http://doc.rust-lang.org/std/vec/struct.Vec.html#method.get
