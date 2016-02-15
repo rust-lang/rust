@@ -77,9 +77,9 @@ fn test_ops() {
     check(ONE, &binop(BiMul, litone.clone(), litone.clone()));
     check(ONE, &binop(BiDiv, litone.clone(), litone.clone()));
 
-    let half_any = Constant::Float("0.5".into(), FloatWidth::FwAny);
-    let half32 = Constant::Float("0.5".into(), FloatWidth::Fw32);
-    let half64 = Constant::Float("0.5".into(), FloatWidth::Fw64);
+    let half_any = Constant::Float("0.5".into(), FloatWidth::Any);
+    let half32 = Constant::Float("0.5".into(), FloatWidth::F32);
+    let half64 = Constant::Float("0.5".into(), FloatWidth::F64);
 
     assert_eq!(half_any, half32);
     assert_eq!(half_any, half64);

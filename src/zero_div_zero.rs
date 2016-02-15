@@ -47,8 +47,8 @@ impl LateLintPass for ZeroDivZeroPass {
                 // since we're about to suggest a use of std::f32::NaN or std::f64::NaN,
                 // match the precision of the literals that are given.
                 let float_type = match (lhs_width, rhs_width) {
-                    (FloatWidth::Fw64, _)
-                    | (_, FloatWidth::Fw64) => "f64",
+                    (FloatWidth::F64, _)
+                    | (_, FloatWidth::F64) => "f64",
                     _ => "f32"
                 };
                 span_help_and_lint(cx, ZERO_DIVIDED_BY_ZERO, expr.span,

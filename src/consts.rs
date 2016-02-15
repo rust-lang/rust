@@ -15,16 +15,16 @@ use syntax::ptr::P;
 
 #[derive(Debug, Copy, Clone)]
 pub enum FloatWidth {
-    Fw32,
-    Fw64,
-    FwAny,
+    F32,
+    F64,
+    Any,
 }
 
 impl From<FloatTy> for FloatWidth {
     fn from(ty: FloatTy) -> FloatWidth {
         match ty {
-            FloatTy::F32 => FloatWidth::Fw32,
-            FloatTy::F64 => FloatWidth::Fw64,
+            FloatTy::F32 => FloatWidth::F32,
+            FloatTy::F64 => FloatWidth::F64,
         }
     }
 }
@@ -200,7 +200,7 @@ fn lit_to_constant(lit: &LitKind) -> Constant {
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(value, ty) => Constant::Int(value, ty, Sign::Plus),
         LitKind::Float(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
-        LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::FwAny),
+        LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::Any),
         LitKind::Bool(b) => Constant::Bool(b),
     }
 }
