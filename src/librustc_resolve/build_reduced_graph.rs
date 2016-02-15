@@ -707,9 +707,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
         }
 
-        module_.unresolved_imports
-               .borrow_mut()
-               .push(ImportDirective::new(module_path, subclass, span, id, is_public, shadowable));
+        let directive =
+            ImportDirective::new(module_path, subclass, span, id, is_public, shadowable);
+        let directive = self.resolver.arenas.alloc_import_directive(directive);
+        module_.unresolved_imports.borrow_mut().push(directive);
         self.unresolved_imports += 1;
     }
 }
