@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 //! Translate the completed AST to the LLVM IR.
 //!
 //! Some functions here, such as trans_block and trans_expr, return a value --
@@ -29,8 +30,7 @@ pub use self::ValueOrigin::*;
 use super::CrateTranslation;
 use super::ModuleTranslation;
 
-use back::link::mangle_exported_name;
-use back::link;
+use back::{link, symbol_names};
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
@@ -2421,10 +2421,11 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
 }
 
 pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               id: ast::NodeId,
-                               ty: Ty<'tcx>,
+                               instance: Instance<'tcx>,
                                attrs: &[ast::Attribute])
                                -> String {
+    let id = ccx.tcx().map.as_local_node_id(instance.def).unwrap();
+
     match ccx.external_srcs().borrow().get(&id) {
         Some(&did) => {
             let sym = ccx.sess().cstore.item_symbol(did);
@@ -2438,16 +2439,16 @@ pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Use provided name
         Some(name) => name.to_string(),
         _ => {
-            let path = ccx.tcx().map.def_path_from_id(id);
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
+                let path = ccx.tcx().map.def_path_from_id(id);
                 path.last().unwrap().data.to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.to_string(),
                     None => {
                         // Usual name mangling
-                        mangle_exported_name(ccx, path, ty, id)
+                        symbol_names::exported_name(ccx, &instance)
                     }
                 }
             }

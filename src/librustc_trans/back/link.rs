@@ -24,11 +24,9 @@ use middle::cstore::{self, CrateStore, LinkMeta};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::def_id::DefId;
 use middle::dependency_format::Linkage;
-use middle::ty::{Ty, TyCtxt};
-use rustc::front::map::DefPath;
-use trans::{CrateContext, CrateTranslation, gensym_name};
+use middle::ty::TyCtxt;
+use trans::CrateTranslation;
 use util::common::time;
-use util::sha2::{Digest, Sha256};
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
@@ -38,16 +36,14 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Read, Write};
-use std::iter::once;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 use flate;
-use serialize::hex::ToHex;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token::{self, InternedString};
+use syntax::parse::token::InternedString;
 use syntax::attr::AttrMetaMethods;
 
 use rustc_front::hir;
@@ -195,49 +191,9 @@ pub fn build_link_meta(sess: &Session,
     return r;
 }
 
-fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
-    let output = symbol_hasher.result_bytes();
-    // 64 bits should be enough to avoid collisions.
-    output[.. 8].to_hex().to_string()
-}
-
 pub fn def_to_string(_tcx: &TyCtxt, did: DefId) -> String {
     format!("{}:{}", did.krate, did.index.as_usize())
 }
-
-// This calculates STH for a symbol, as defined above
-fn symbol_hash<'tcx>(tcx: &TyCtxt<'tcx>,
-                     symbol_hasher: &mut Sha256,
-                     t: Ty<'tcx>,
-                     link_meta: &LinkMeta)
-                     -> String {
-    // NB: do *not* use abbrevs here as we want the symbol names
-    // to be independent of one another in the crate.
-
-    symbol_hasher.reset();
-    symbol_hasher.input_str(&link_meta.crate_name);
-    symbol_hasher.input_str("-");
-    symbol_hasher.input_str(link_meta.crate_hash.as_str());
-    symbol_hasher.input_str(&tcx.sess.crate_disambiguator.borrow()[..]);
-    symbol_hasher.input_str("-");
-    symbol_hasher.input(&tcx.sess.cstore.encode_type(tcx, t, def_to_string));
-    // Prefix with 'h' so that it never blends into adjacent digits
-    let mut hash = String::from("h");
-    hash.push_str(&truncated_hash_result(symbol_hasher));
-    hash
-}
-
-fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> String {
-    if let Some(h) = ccx.type_hashcodes().borrow().get(&t) {
-        return h.to_string()
-    }
-
-    let mut symbol_hasher = ccx.symbol_hasher().borrow_mut();
-    let hash = symbol_hash(ccx.tcx(), &mut *symbol_hasher, t, ccx.link_meta());
-    ccx.type_hashcodes().borrow_mut().insert(t, hash.clone());
-    hash
-}
-
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
@@ -322,53 +278,6 @@ pub fn mangle<PI: Iterator<Item=InternedString>>(path: PI, hash: Option<&str>) -
 
     n.push('E'); // End name-sequence.
     n
-}
-
-pub fn exported_name(path: DefPath, hash: &str) -> String {
-    let path = path.into_iter()
-                   .map(|e| e.data.as_interned_str());
-    mangle(path, Some(hash))
-}
-
-pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: DefPath,
-                                      t: Ty<'tcx>, id: ast::NodeId) -> String {
-    let mut hash = get_symbol_hash(ccx, t);
-
-    // Paths can be completely identical for different nodes,
-    // e.g. `fn foo() { { fn a() {} } { fn a() {} } }`, so we
-    // generate unique characters from the node id. For now
-    // hopefully 3 characters is enough to avoid collisions.
-    const EXTRA_CHARS: &'static str =
-        "abcdefghijklmnopqrstuvwxyz\
-         ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-         0123456789";
-    let id = id as usize;
-    let extra1 = id % EXTRA_CHARS.len();
-    let id = id / EXTRA_CHARS.len();
-    let extra2 = id % EXTRA_CHARS.len();
-    let id = id / EXTRA_CHARS.len();
-    let extra3 = id % EXTRA_CHARS.len();
-    hash.push(EXTRA_CHARS.as_bytes()[extra1] as char);
-    hash.push(EXTRA_CHARS.as_bytes()[extra2] as char);
-    hash.push(EXTRA_CHARS.as_bytes()[extra3] as char);
-
-    exported_name(path, &hash[..])
-}
-
-pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                      t: Ty<'tcx>,
-                                                      name: &str) -> String {
-    let path = [token::intern(&t.to_string()).as_str(), gensym_name(name).as_str()];
-    let hash = get_symbol_hash(ccx, t);
-    mangle(path.iter().cloned(), Some(&hash[..]))
-}
-
-pub fn mangle_internal_name_by_path_and_seq(path: DefPath, flav: &str) -> String {
-    let names =
-        path.into_iter()
-            .map(|e| e.data.as_interned_str())
-            .chain(once(gensym_name(flav).as_str())); // append unique version of "flav"
-    mangle(names, None)
 }
 
 pub fn get_linker(sess: &Session) -> (String, Command) {
