@@ -515,7 +515,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Some(hir_map::NodeImplItem(&hir::ImplItem {
             ref attrs, id, span, node: hir::ImplItemKind::Method(..), ..
         })) => {
-            let sym = exported_name(ccx, id, ty, attrs);
+            let sym = exported_name(ccx, instance, attrs);
 
             if declare::get_defined_value(ccx, &sym).is_some() {
                 ccx.sess().span_fatal(span,
