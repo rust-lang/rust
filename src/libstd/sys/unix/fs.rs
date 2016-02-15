@@ -26,9 +26,10 @@ use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 
 #[cfg(target_os = "linux")]
-use libc::{stat64, fstat64, lstat64};
+use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64};
 #[cfg(not(target_os = "linux"))]
-use libc::{stat as stat64, fstat as fstat64, lstat as lstat64};
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
+           ftruncate as ftruncate64};
 
 pub struct File(FileDesc);
 
@@ -443,7 +444,7 @@ impl File {
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         try!(cvt_r(|| unsafe {
-            libc::ftruncate(self.0.raw(), size as libc::off_t)
+            ftruncate64(self.0.raw(), size as off64_t)
         }));
         Ok(())
     }
