@@ -12,20 +12,21 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "llvm/IR/Module.h"
+#include "llvm/Pass.h"
+#include "llvm/IR/Function.h"
 
 using namespace llvm;
 
 namespace {
 
-  class TestLLVMPass : public ModulePass {
+  class TestLLVMPass : public FunctionPass {
 
   public:
 
     static char ID;
-    TestLLVMPass() : ModulePass(ID) { }
+    TestLLVMPass() : FunctionPass(ID) { }
 
-    bool runOnModule(Module &M) override;
+    bool runOnFunction(Function &F) override;
 
     const char *getPassName() const override {
       return "Some LLVM pass";
@@ -35,15 +36,15 @@ namespace {
 
 }
 
-bool TestLLVMPass::runOnModule(Module &M) {
+bool TestLLVMPass::runOnFunction(Function &F) {
   // A couple examples of operations that previously caused segmentation faults
   // https://github.com/rust-lang/rust/issues/31067
 
-  for (auto F = M.begin(); F != M.end(); ++F) {
+  for (auto N = F.begin(); N != F.end(); ++N) {
     /* code */
   }
 
-  LLVMContext &C = M.getContext();
+  LLVMContext &C = F.getContext();
   IntegerType *Int8Ty  = IntegerType::getInt8Ty(C);
   PointerType::get(Int8Ty, 0);
   return true;
@@ -52,4 +53,4 @@ bool TestLLVMPass::runOnModule(Module &M) {
 char TestLLVMPass::ID = 0;
 
 static RegisterPass<TestLLVMPass> RegisterAFLPass(
-  "some-llvm-pass", "Some LLVM pass");
+  "some-llvm-function-pass", "Some LLVM pass");
