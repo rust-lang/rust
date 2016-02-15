@@ -135,14 +135,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
-        PatKind::Enum(..) | PatKind::Ident(..)
+        PatKind::Path(..) | PatKind::Ident(..)
                 if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
-            if let PatKind::Enum(ref path, ref subpats) = pat.node {
-                if !(subpats.is_some() && subpats.as_ref().unwrap().is_empty()) {
-                    bad_struct_kind_err(tcx.sess, pat, path, false);
-                    return;
-                }
-            }
             if let Some(pat_def) = tcx.def_map.borrow().get(&pat.id) {
                 let const_did = pat_def.def_id();
                 let const_scheme = tcx.lookup_item_type(const_did);
@@ -206,10 +200,11 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let path = hir_util::ident_to_path(path.span, path.node);
             check_pat_enum(pcx, pat, &path, Some(&[]), expected, false);
         }
-        PatKind::Enum(ref path, ref subpats) => {
-            let subpats = subpats.as_ref().map(|v| &v[..]);
-            let is_tuple_struct_pat = !(subpats.is_some() && subpats.unwrap().is_empty());
-            check_pat_enum(pcx, pat, path, subpats, expected, is_tuple_struct_pat);
+        PatKind::TupleStruct(ref path, ref subpats) => {
+            check_pat_enum(pcx, pat, path, subpats.as_ref().map(|v| &v[..]), expected, true);
+        }
+        PatKind::Path(ref path) => {
+            check_pat_enum(pcx, pat, path, None, expected, false);
         }
         PatKind::QPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);

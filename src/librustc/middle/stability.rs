@@ -598,8 +598,8 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
     };
     match pat.node {
         // Foo(a, b, c)
-        // A Variant(..) pattern `PatKind::Enum(_, None)` doesn't have to be recursed into.
-        PatKind::Enum(_, Some(ref pat_fields)) => {
+        // A Variant(..) pattern `PatKind::TupleStruct(_, None)` doesn't have to be recursed into.
+        PatKind::TupleStruct(_, Some(ref pat_fields)) => {
             for (field, struct_field) in pat_fields.iter().zip(&v.fields) {
                 maybe_do_stability_check(tcx, struct_field.did, field.span, cb)
             }

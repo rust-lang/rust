@@ -79,7 +79,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 PatternKind::Range { lo: lo, hi: hi }
             },
 
-            PatKind::Enum(..) | PatKind::Ident(..) | PatKind::QPath(..)
+            PatKind::Path(..) | PatKind::Ident(..) | PatKind::QPath(..)
                 if pat_is_resolved_const(&self.cx.tcx.def_map.borrow(), pat) =>
             {
                 let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
@@ -179,11 +179,11 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 }
             }
 
-            PatKind::Ident(..) => {
+            PatKind::Ident(..) | PatKind::Path(..) => {
                 self.variant_or_leaf(pat, vec![])
             }
 
-            PatKind::Enum(_, ref opt_subpatterns) => {
+            PatKind::TupleStruct(_, ref opt_subpatterns) => {
                 let subpatterns =
                     opt_subpatterns.iter()
                                    .flat_map(|v| v.iter())

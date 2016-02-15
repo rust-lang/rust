@@ -343,7 +343,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
                 _ => unreachable!()
             };
             let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect();
-            PatKind::Enum(path, Some(pats))
+            PatKind::TupleStruct(path, Some(pats))
         }
 
         hir::ExprStruct(ref path, ref fields, None) => {
@@ -366,10 +366,8 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
         hir::ExprPath(_, ref path) => {
             let opt_def = tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def());
             match opt_def {
-                Some(Def::Struct(..)) =>
-                    PatKind::Struct(path.clone(), hir::HirVec::new(), false),
-                Some(Def::Variant(..)) =>
-                    PatKind::Enum(path.clone(), None),
+                Some(Def::Struct(..)) | Some(Def::Variant(..)) =>
+                    PatKind::Path(path.clone()),
                 Some(Def::Const(def_id)) |
                 Some(Def::AssociatedConst(def_id)) => {
                     let expr = lookup_const_by_id(tcx, def_id, Some(expr.id), None).unwrap();

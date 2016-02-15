@@ -1748,18 +1748,19 @@ impl<'a> State<'a> {
                     None => (),
                 }
             }
-            PatKind::Enum(ref path, ref args_) => {
+            PatKind::TupleStruct(ref path, ref args_) => {
                 try!(self.print_path(path, true, 0));
                 match *args_ {
                     None => try!(word(&mut self.s, "(..)")),
                     Some(ref args) => {
-                        if !args.is_empty() {
-                            try!(self.popen());
-                            try!(self.commasep(Inconsistent, &args[..], |s, p| s.print_pat(&p)));
-                            try!(self.pclose());
-                        }
+                        try!(self.popen());
+                        try!(self.commasep(Inconsistent, &args[..], |s, p| s.print_pat(&p)));
+                        try!(self.pclose());
                     }
                 }
+            }
+            PatKind::Path(ref path) => {
+                try!(self.print_path(path, true, 0));
             }
             PatKind::QPath(ref qself, ref path) => {
                 try!(self.print_qpath(path, qself, false));

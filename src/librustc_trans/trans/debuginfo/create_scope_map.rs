@@ -239,7 +239,7 @@ fn walk_pattern(cx: &CrateContext,
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
         }
 
-        PatKind::Enum(_, ref sub_pats_opt) => {
+        PatKind::TupleStruct(_, ref sub_pats_opt) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             if let Some(ref sub_pats) = *sub_pats_opt {
@@ -249,7 +249,7 @@ fn walk_pattern(cx: &CrateContext,
             }
         }
 
-        PatKind::QPath(..) => {
+        PatKind::Path(..) | PatKind::QPath(..) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
         }
 

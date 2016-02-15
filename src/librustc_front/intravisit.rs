@@ -468,11 +468,14 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     match pattern.node {
-        PatKind::Enum(ref path, ref opt_children) => {
+        PatKind::TupleStruct(ref path, ref opt_children) => {
             visitor.visit_path(path, pattern.id);
             if let Some(ref children) = *opt_children {
                 walk_list!(visitor, visit_pat, children);
             }
+        }
+        PatKind::Path(ref path) => {
+            visitor.visit_path(path, pattern.id);
         }
         PatKind::QPath(ref qself, ref path) => {
             visitor.visit_ty(&qself.ty);

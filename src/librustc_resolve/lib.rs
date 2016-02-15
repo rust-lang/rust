@@ -2473,7 +2473,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                PatKind::Enum(ref path, _) => {
+                PatKind::TupleStruct(ref path, _) | PatKind::Path(ref path) => {
                     // This must be an enum variant, struct or const.
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             None,
@@ -2484,13 +2484,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // qualified paths should be in PatKind::QPath.
                         TypecheckRequired =>
                             self.session.span_bug(path.span,
-                                                  "resolve_possibly_assoc_item claimed
-                                     \
-                                                   that a path in PatKind::Enum requires typecheck
-                                     \
-                                                   to resolve, but qualified paths should be
-                                     \
-                                                   PatKind::QPath"),
+                                                  "resolve_possibly_assoc_item claimed that a path \
+                                                   in PatKind::Path or PatKind::TupleStruct \
+                                                   requires typecheck to resolve, but qualified \
+                                                   paths should be PatKind::QPath"),
                         ResolveAttempt(resolution) => resolution,
                     };
                     if let Some(path_res) = resolution {
