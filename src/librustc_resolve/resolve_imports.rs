@@ -172,7 +172,7 @@ impl<'a> NameResolution<'a> {
 struct ImportResolvingError<'a> {
     /// Module where the error happened
     source_module: Module<'a>,
-    import_directive: ImportDirective,
+    import_directive: &'a ImportDirective,
     span: Span,
     help: String,
 }
@@ -249,7 +249,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         let path = import_path_to_string(&e.import_directive.module_path,
-                                         e.import_directive.subclass);
+                                         &e.import_directive.subclass);
 
         resolve_error(self.resolver,
                       e.span,
@@ -608,7 +608,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     }
 }
 
-fn import_path_to_string(names: &[Name], subclass: ImportDirectiveSubclass) -> String {
+fn import_path_to_string(names: &[Name], subclass: &ImportDirectiveSubclass) -> String {
     if names.is_empty() {
         import_directive_subclass_to_string(subclass)
     } else {
@@ -619,8 +619,8 @@ fn import_path_to_string(names: &[Name], subclass: ImportDirectiveSubclass) -> S
     }
 }
 
-fn import_directive_subclass_to_string(subclass: ImportDirectiveSubclass) -> String {
-    match subclass {
+fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> String {
+    match *subclass {
         SingleImport { source, .. } => source.to_string(),
         GlobImport => "*".to_string(),
     }

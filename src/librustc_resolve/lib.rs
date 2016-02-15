@@ -812,7 +812,7 @@ pub struct ModuleS<'a> {
     extern_crate_id: Option<NodeId>,
 
     resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
-    unresolved_imports: RefCell<Vec<ImportDirective>>,
+    unresolved_imports: RefCell<Vec<&'a ImportDirective>>,
 
     // The module children of this node, including normal modules and anonymous modules.
     // Anonymous children are pseudo-modules that are implicitly created around items
@@ -1167,6 +1167,13 @@ pub struct Resolver<'a, 'tcx: 'a> {
 pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
+    import_directives: arena::TypedArena<ImportDirective>,
+}
+
+impl<'a> ResolverArenas<'a> {
+    fn alloc_import_directive(&'a self, import_directive: ImportDirective) -> &'a ImportDirective {
+        self.import_directives.alloc(import_directive)
+    }
 }
 
 #[derive(PartialEq)]
@@ -1234,6 +1241,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ResolverArenas {
             modules: arena::TypedArena::new(),
             name_bindings: arena::TypedArena::new(),
+            import_directives: arena::TypedArena::new(),
         }
     }
 
