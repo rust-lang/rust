@@ -15,12 +15,14 @@
 extern crate rustc;
 extern crate rustc_plugin;
 
-#[link(name = "llvm-pass", kind = "static")]
+#[link(name = "llvm-function-pass", kind = "static")]
+#[link(name = "llvm-module-pass", kind = "static")]
 extern {}
 
 use rustc_plugin::registry::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_llvm_pass("some-llvm-pass");
+    reg.register_llvm_pass("some-llvm-function-pass");
+    reg.register_llvm_pass("some-llvm-module-pass");
 }
