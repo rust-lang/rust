@@ -359,6 +359,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             // These items live in both the type and value namespaces.
             ItemStruct(ref struct_def, _) => {
+                let modifiers = match !struct_def.is_struct() {
+                    true => modifiers | DefModifiers::LINKED_NAMESPACES,
+                    false => modifiers,
+                };
+
                 // Define a name in the type namespace.
                 let def = Def::Struct(self.ast_map.local_def_id(item.id));
                 self.define(parent, name, TypeNS, (def, sp, modifiers));
@@ -434,7 +439,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         // Variants are always treated as importable to allow them to be glob used.
         // All variants are defined in both type and value namespaces as future-proofing.
-        let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE | variant_modifiers;
+        let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE | variant_modifiers |
+                        DefModifiers::LINKED_NAMESPACES;
         let def = Def::Variant(item_id, self.ast_map.local_def_id(variant.node.data.id()));
 
         self.define(parent, name, ValueNS, (def, variant.span, modifiers));
@@ -523,7 +529,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                        final_ident);
                 // Variants are always treated as importable to allow them to be glob used.
                 // All variants are defined in both type and value namespaces as future-proofing.
-                let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE;
+                let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE |
+                                DefModifiers::LINKED_NAMESPACES;
                 self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
                 self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
                 if self.session.cstore.variant_kind(variant_id) == Some(VariantKind::Struct) {
@@ -577,8 +584,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 debug!("(building reduced graph for external crate) building type and value for \
                         {}",
                        final_ident);
+                let ctor_def_id = self.session.cstore.struct_ctor_def_id(def_id);
+                let modifiers = match ctor_def_id {
+                    Some(_) => modifiers | DefModifiers::LINKED_NAMESPACES,
+                    None => modifiers,
+                };
+
                 self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
-                if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
+                if let Some(ctor_def_id) = ctor_def_id {
                     let def = Def::Struct(ctor_def_id);
                     self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
                 }

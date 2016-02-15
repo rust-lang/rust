@@ -873,6 +873,17 @@ impl<'a> ModuleS<'a> {
     // Define the name or return the existing binding if there is a collision.
     fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
                         -> Result<(), &'a NameBinding<'a>> {
+        // If binding is glob imported and is an item that defines both namespaces,
+        // it will be shadowed by an existing non-imported item in either namespace.
+        if binding.defined_with(DefModifiers::GLOB_IMPORTED | DefModifiers::LINKED_NAMESPACES) {
+            for &ns in &[ValueNS, TypeNS] {
+                match self.children.borrow().get(&(name, ns)).cloned().unwrap_or_default().binding {
+                    Some(binding) if !binding.is_import() => return Ok(()),
+                    _ => {}
+                }
+            }
+        }
+
         let mut children = self.children.borrow_mut();
         let resolution = children.entry((name, ns)).or_insert_with(Default::default);
 
@@ -989,6 +1000,9 @@ bitflags! {
         const PRIVATE_VARIANT = 1 << 2,
         const PRELUDE = 1 << 3,
         const GLOB_IMPORTED = 1 << 4,
+        // A binding for a name in a namespace has this flag if the name is defined in both
+        // namespaces by the same non-import item (i.e. by a tuple struct, unit struct, or variant).
+        const LINKED_NAMESPACES = 1 << 5,
     }
 }
 

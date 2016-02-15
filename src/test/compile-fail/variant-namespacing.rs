@@ -11,14 +11,14 @@
 // aux-build:variant-namespacing.rs
 
 extern crate variant_namespacing;
-pub use variant_namespacing::XE::*;
+pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
 //~^ ERROR import `XStruct` conflicts with type in this module
 //~| ERROR import `XStruct` conflicts with value in this module
 //~| ERROR import `XTuple` conflicts with type in this module
 //~| ERROR import `XTuple` conflicts with value in this module
 //~| ERROR import `XUnit` conflicts with type in this module
 //~| ERROR import `XUnit` conflicts with value in this module
-pub use E::*;
+pub use E::{Struct, Tuple, Unit};
 //~^ ERROR import `Struct` conflicts with type in this module
 //~| ERROR import `Struct` conflicts with value in this module
 //~| ERROR import `Tuple` conflicts with type in this module
