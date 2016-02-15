@@ -22,7 +22,7 @@ fn main() {
         print!("Hello ");
     } else { //~ERROR: this `else { if .. }`
              //~| HELP try
-             //~| SUGGESTION else if y == "world"
+             //~| SUGGESTION } else if y == "world"
         if y == "world" {
             println!("world!")
         }
@@ -32,7 +32,7 @@ fn main() {
         print!("Hello ");
     } else { //~ERROR this `else { if .. }`
              //~| HELP try
-             //~| SUGGESTION else if y == "world"
+             //~| SUGGESTION } else if y == "world"
         if y == "world" {
             println!("world")
         }

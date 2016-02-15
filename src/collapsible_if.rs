@@ -66,9 +66,7 @@ fn check_if(cx: &LateContext, e: &Expr) {
                                    COLLAPSIBLE_IF,
                                    block.span,
                                    "this `else { if .. }` block can be collapsed", |db| {
-                    db.span_suggestion(block.span, "try",
-                                       format!("else {}",
-                                               snippet_block(cx, else_.span, "..")));
+                    db.span_suggestion(block.span, "try", snippet_block(cx, else_.span, "..").into_owned());
                 });
             }}
         } else if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
