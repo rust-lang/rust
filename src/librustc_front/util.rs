@@ -32,7 +32,7 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool
             PatKind::Struct(_, ref fields, _) => {
                 fields.iter().all(|field| walk_pat_(&field.node.pat, it))
             }
-            PatKind::Enum(_, Some(ref s)) | PatKind::Tup(ref s) => {
+            PatKind::TupleStruct(_, Some(ref s)) | PatKind::Tup(ref s) => {
                 s.iter().all(|p| walk_pat_(&p, it))
             }
             PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
@@ -47,7 +47,8 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool
             PatKind::Lit(_) |
             PatKind::Range(_, _) |
             PatKind::Ident(_, _, _) |
-            PatKind::Enum(_, _) |
+            PatKind::TupleStruct(..) |
+            PatKind::Path(..) |
             PatKind::QPath(_, _) => {
                 true
             }

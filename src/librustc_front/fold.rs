@@ -972,9 +972,12 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                              sub.map(|x| folder.fold_pat(x)))
                 }
                 PatKind::Lit(e) => PatKind::Lit(folder.fold_expr(e)),
-                PatKind::Enum(pth, pats) => {
-                    PatKind::Enum(folder.fold_path(pth),
+                PatKind::TupleStruct(pth, pats) => {
+                    PatKind::TupleStruct(folder.fold_path(pth),
                             pats.map(|pats| pats.move_map(|x| folder.fold_pat(x))))
+                }
+                PatKind::Path(pth) => {
+                    PatKind::Path(folder.fold_path(pth))
                 }
                 PatKind::QPath(qself, pth) => {
                     let qself = QSelf { ty: folder.fold_ty(qself.ty), ..qself };

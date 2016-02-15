@@ -932,7 +932,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
             // Patterns which bind no fields are allowable (the path is check
             // elsewhere).
-            PatKind::Enum(_, Some(ref fields)) => {
+            PatKind::TupleStruct(_, Some(ref fields)) => {
                 match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(def, _) => {
                         for (i, field) in fields.iter().enumerate() {

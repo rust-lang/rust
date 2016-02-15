@@ -377,7 +377,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
                 hir::MatchSource::ForLoopDesugar => {
                     // `witnesses[0]` has the form `Some(<head>)`, peel off the `Some`
                     let witness = match witnesses[0].node {
-                        PatKind::Enum(_, Some(ref pats)) => match &pats[..] {
+                        PatKind::TupleStruct(_, Some(ref pats)) => match &pats[..] {
                             [ref pat] => &**pat,
                             _ => unreachable!(),
                         },
@@ -466,7 +466,7 @@ impl<'map> ast_util::IdVisitingOperation for RenamingRecorder<'map> {
 impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         return match pat.node {
-            PatKind::Ident(..) | PatKind::Enum(..) | PatKind::QPath(..) => {
+            PatKind::Ident(..) | PatKind::Path(..) | PatKind::QPath(..) => {
                 let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
                     Some(Def::AssociatedConst(did)) |
@@ -534,22 +534,28 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
 
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
             let v = adt.variant_of_ctor(ctor);
-            if let VariantKind::Struct = v.kind() {
-                let field_pats: hir::HirVec<_> = v.fields.iter()
-                    .zip(pats)
-                    .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
-                    .map(|(field, pat)| Spanned {
-                        span: DUMMY_SP,
-                        node: hir::FieldPat {
-                            name: field.name,
-                            pat: pat,
-                            is_shorthand: false,
-                        }
-                    }).collect();
-                let has_more_fields = field_pats.len() < pats_len;
-                PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
-            } else {
-                PatKind::Enum(def_to_path(cx.tcx, v.did), Some(pats.collect()))
+            match v.kind() {
+                VariantKind::Struct => {
+                    let field_pats: hir::HirVec<_> = v.fields.iter()
+                        .zip(pats)
+                        .filter(|&(_, ref pat)| pat.node != PatKind::Wild)
+                        .map(|(field, pat)| Spanned {
+                            span: DUMMY_SP,
+                            node: hir::FieldPat {
+                                name: field.name,
+                                pat: pat,
+                                is_shorthand: false,
+                            }
+                        }).collect();
+                    let has_more_fields = field_pats.len() < pats_len;
+                    PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
+                }
+                VariantKind::Tuple => {
+                    PatKind::TupleStruct(def_to_path(cx.tcx, v.did), Some(pats.collect()))
+                }
+                VariantKind::Unit => {
+                    PatKind::Path(def_to_path(cx.tcx, v.did))
+                }
             }
         }
 
@@ -769,34 +775,20 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                     left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
     let pat = raw_pat(p);
     match pat.node {
-        PatKind::Ident(..) =>
-            match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
+        PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) | PatKind::Ident(..) =>
+            match cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def() {
+                Def::Const(..) | Def::AssociatedConst(..) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(Def::Struct(..)) => vec!(Single),
-                Some(Def::Variant(_, id)) => vec!(Variant(id)),
-                _ => vec!()
-            },
-        PatKind::Enum(..) =>
-            match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
-                    cx.tcx.sess.span_bug(pat.span, "const pattern should've \
-                                                    been rewritten"),
-                Some(Def::Variant(_, id)) => vec!(Variant(id)),
-                _ => vec!(Single)
+                Def::Struct(..) | Def::TyAlias(..) => vec![Single],
+                Def::Variant(_, id) => vec![Variant(id)],
+                Def::Local(..) => vec![],
+                def => cx.tcx.sess.span_bug(pat.span, &format!("pat_constructors: unexpected \
+                                                                definition {:?}", def)),
             },
         PatKind::QPath(..) =>
             cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                             been rewritten"),
-        PatKind::Struct(..) =>
-            match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
-                    cx.tcx.sess.span_bug(pat.span, "const pattern should've \
-                                                    been rewritten"),
-                Some(Def::Variant(_, id)) => vec!(Variant(id)),
-                _ => vec!(Single)
-            },
         PatKind::Lit(ref expr) =>
             vec!(ConstantValue(eval_const_expr(cx.tcx, &expr))),
         PatKind::Range(ref lo, ref hi) =>
@@ -880,22 +872,21 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         PatKind::Wild =>
             Some(vec![DUMMY_WILD_PAT; arity]),
 
-        PatKind::Ident(_, _, _) => {
-            let opt_def = cx.tcx.def_map.borrow().get(&pat_id).map(|d| d.full_def());
-            match opt_def {
-                Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) =>
+        PatKind::Path(..) | PatKind::Ident(..) => {
+            let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
+            match def {
+                Def::Const(..) | Def::AssociatedConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
-                Some(Def::Variant(_, id)) => if *constructor == Variant(id) {
-                    Some(vec!())
-                } else {
-                    None
-                },
-                _ => Some(vec![DUMMY_WILD_PAT; arity])
+                Def::Variant(_, id) if *constructor != Variant(id) => None,
+                Def::Variant(..) | Def::Struct(..) => Some(Vec::new()),
+                Def::Local(..) => Some(vec![DUMMY_WILD_PAT; arity]),
+                _ => cx.tcx.sess.span_bug(pat_span, &format!("specialize: unexpected \
+                                                              definition {:?}", def)),
             }
         }
 
-        PatKind::Enum(_, ref args) => {
+        PatKind::TupleStruct(_, ref args) => {
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             match def {
                 Def::Const(..) | Def::AssociatedConst(..) =>

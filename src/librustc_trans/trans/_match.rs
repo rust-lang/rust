@@ -665,7 +665,8 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             PatKind::Lit(ref l) => {
                 ConstantValue(ConstantExpr(&l), debug_loc)
             }
-            PatKind::Ident(..) | PatKind::Enum(..) | PatKind::Struct(..) => {
+            PatKind::Ident(..) | PatKind::Path(..) |
+            PatKind::TupleStruct(..) | PatKind::Struct(..) => {
                 // This is either an enum variant or a variable binding.
                 let opt_def = tcx.def_map.borrow().get(&cur.id).map(|d| d.full_def());
                 match opt_def {
@@ -798,16 +799,11 @@ fn any_irrefutable_adt_pat(tcx: &ty::ctxt, m: &[Match], col: usize) -> bool {
         let pat = br.pats[col];
         match pat.node {
             PatKind::Tup(_) => true,
-            PatKind::Struct(..) => {
-                match tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                    Some(Def::Variant(..)) => false,
-                    _ => true,
-                }
-            }
-            PatKind::Enum(..) | PatKind::Ident(_, _, None) => {
-                match tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-                    Some(Def::Struct(..)) => true,
-                    _ => false
+            PatKind::Struct(..) | PatKind::TupleStruct(..) |
+            PatKind::Path(..) | PatKind::Ident(_, _, None) => {
+                match tcx.def_map.borrow().get(&pat.id).unwrap().full_def() {
+                    Def::Struct(..) | Def::TyAlias(..) => true,
+                    _ => false,
                 }
             }
             _ => false
@@ -1849,7 +1845,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx = bind_irrefutable_pat(bcx, &inner_pat, val, cleanup_scope);
             }
         }
-        PatKind::Enum(_, ref sub_pats) => {
+        PatKind::TupleStruct(_, ref sub_pats) => {
             let opt_def = bcx.tcx().def_map.borrow().get(&pat.id).map(|d| d.full_def());
             match opt_def {
                 Some(Def::Variant(enum_id, var_id)) => {
@@ -2013,7 +2009,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         cleanup_scope)
                 });
         }
-        PatKind::QPath(..) | PatKind::Wild | PatKind::Lit(_) |
+        PatKind::Path(..) | PatKind::QPath(..) | PatKind::Wild | PatKind::Lit(_) |
         PatKind::Range(_, _) => ()
     }
     return bcx;

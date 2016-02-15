@@ -100,7 +100,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
         match pat.node {
             PatKind::Ident(_, _, None) |
-            PatKind::Enum(_, None) |
+            PatKind::TupleStruct(_, None) |
+            PatKind::Path(..) |
             PatKind::QPath(..) |
             PatKind::Lit(..) |
             PatKind::Range(..) |
@@ -115,7 +116,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(pat.id, &[subpat_exit])
             }
 
-            PatKind::Enum(_, Some(ref subpats)) |
+            PatKind::TupleStruct(_, Some(ref subpats)) |
             PatKind::Tup(ref subpats) => {
                 let pats_exit = self.pats_all(subpats.iter(), pred);
                 self.add_ast_node(pat.id, &[pats_exit])

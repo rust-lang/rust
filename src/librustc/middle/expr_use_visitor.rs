@@ -1070,7 +1070,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             let tcx = typer.tcx;
 
             match pat.node {
-                PatKind::Enum(_, _) | PatKind::QPath(..) |
+                PatKind::TupleStruct(..) | PatKind::Path(..) | PatKind::QPath(..) |
                 PatKind::Ident(_, _, None) | PatKind::Struct(..) => {
                     match def_map.get(&pat.id).map(|d| d.full_def()) {
                         None => {

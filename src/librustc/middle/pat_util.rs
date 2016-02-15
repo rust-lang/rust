@@ -35,7 +35,8 @@ pub fn pat_id_map(dm: &RefCell<DefMap>, pat: &hir::Pat) -> PatIdMap {
 pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
         PatKind::Lit(_) | PatKind::Range(_, _) | PatKind::QPath(..) => true,
-        PatKind::Enum(_, _) |
+        PatKind::TupleStruct(..) |
+        PatKind::Path(..) |
         PatKind::Ident(_, _, None) |
         PatKind::Struct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
@@ -50,11 +51,12 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        PatKind::Enum(_, _) |
+        PatKind::TupleStruct(..) |
+        PatKind::Path(..) |
         PatKind::Ident(_, _, None) |
         PatKind::Struct(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
-                Some(Def::Variant(..)) | Some(Def::Struct(..)) => true,
+                Some(Def::Variant(..)) | Some(Def::Struct(..)) | Some(Def::TyAlias(..)) => true,
                 _ => false
             }
         }
@@ -64,7 +66,7 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        PatKind::Ident(_, _, None) | PatKind::Enum(..) | PatKind::QPath(..) => {
+        PatKind::Ident(_, _, None) | PatKind::Path(..) | PatKind::QPath(..) => {
             match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => true,
                 _ => false
@@ -78,7 +80,7 @@ pub fn pat_is_const(dm: &DefMap, pat: &hir::Pat) -> bool {
 // returned instead of a panic.
 pub fn pat_is_resolved_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     match pat.node {
-        PatKind::Ident(_, _, None) | PatKind::Enum(..) | PatKind::QPath(..) => {
+        PatKind::Ident(_, _, None) | PatKind::Path(..) | PatKind::QPath(..) => {
             match dm.get(&pat.id)
                     .and_then(|d| if d.depth == 0 { Some(d.base_def) }
                                   else { None } ) {
@@ -224,7 +226,8 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
     let mut variants = vec![];
     walk_pat(pat, |p| {
         match p.node {
-            PatKind::Enum(_, _) |
+            PatKind::TupleStruct(..) |
+            PatKind::Path(..) |
             PatKind::Ident(_, _, None) |
             PatKind::Struct(..) => {
                 match dm.get(&p.id) {

@@ -1209,7 +1209,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             None
         };
 
-        // Note: This goes up here (rather than within the PatKind::Enum arm
+        // Note: This goes up here (rather than within the PatKind::TupleStruct arm
         // alone) because struct patterns can refer to struct types or
         // to struct variants within enums.
         let cmt = match opt_def {
@@ -1226,10 +1226,10 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             // _
           }
 
-          PatKind::Enum(_, None) => {
+          PatKind::TupleStruct(_, None) => {
             // variant(..)
           }
-          PatKind::Enum(_, Some(ref subpats)) => {
+          PatKind::TupleStruct(_, Some(ref subpats)) => {
             match opt_def {
                 Some(Def::Variant(..)) => {
                     // variant(x, y, z)
@@ -1267,16 +1267,12 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          PatKind::QPath(..) => {
-              // Lone constant: ignore
+          PatKind::Path(..) | PatKind::QPath(..) | PatKind::Ident(_, _, None) => {
+              // Lone constant, or unit variant or identifier: ignore
           }
 
           PatKind::Ident(_, _, Some(ref subpat)) => {
               try!(self.cat_pattern_(cmt, &subpat, op));
-          }
-
-          PatKind::Ident(_, _, None) => {
-              // nullary variant or identifier: ignore
           }
 
           PatKind::Struct(_, ref field_pats, _) => {

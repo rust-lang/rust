@@ -921,12 +921,12 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
             }
             PatKind::Lit(ref e) => hir::PatKind::Lit(lower_expr(lctx, e)),
             PatKind::TupleStruct(ref pth, ref pats) => {
-                hir::PatKind::Enum(lower_path(lctx, pth),
+                hir::PatKind::TupleStruct(lower_path(lctx, pth),
                              pats.as_ref()
                                  .map(|pats| pats.iter().map(|x| lower_pat(lctx, x)).collect()))
             }
             PatKind::Path(ref pth) => {
-                hir::PatKind::Enum(lower_path(lctx, pth), Some(hir::HirVec::new()))
+                hir::PatKind::Path(lower_path(lctx, pth))
             }
             PatKind::QPath(ref qself, ref pth) => {
                 let qself = hir::QSelf {
@@ -1750,7 +1750,11 @@ fn pat_enum(lctx: &LoweringContext,
             path: hir::Path,
             subpats: hir::HirVec<P<hir::Pat>>)
             -> P<hir::Pat> {
-    let pt = hir::PatKind::Enum(path, Some(subpats));
+    let pt = if subpats.is_empty() {
+        hir::PatKind::Path(path)
+    } else {
+        hir::PatKind::TupleStruct(path, Some(subpats))
+    };
     pat(lctx, span, pt)
 }
 
