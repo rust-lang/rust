@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-17718.rs
+// aux-build:issue-17718-aux.rs
 
 
 #![feature(core)]
 #![feature(const_fn)]
 
-extern crate issue_17718 as other;
+extern crate issue_17718_aux as other;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 

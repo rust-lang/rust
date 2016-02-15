@@ -29,8 +29,7 @@ pub use self::ValueOrigin::*;
 use super::CrateTranslation;
 use super::ModuleTranslation;
 
-use back::link::mangle_exported_name;
-use back::{link, abi};
+use back::{link, abi, symbol_names};
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
@@ -2732,16 +2731,17 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Use provided name
         Some(name) => name.to_string(),
         _ => {
-            let path = ccx.tcx().map.def_path_from_id(id);
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
+                let path = ccx.tcx().map.def_path_from_id(id);
                 path.last().unwrap().data.to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.to_string(),
                     None => {
                         // Usual name mangling
-                        mangle_exported_name(ccx, path, ty, id)
+                        let def_id = ccx.tcx().map.local_def_id(id);
+                        symbol_names::exported_name(ccx, def_id, &[ty])
                     }
                 }
             }
@@ -2764,7 +2764,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val: id={} item={:?}", id, item);
     let val = match item {
         hir_map::NodeItem(i) => {
-            let ty = ccx.tcx().node_id_to_type(i.id);
+            let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(i.id));
             let sym = || exported_name(ccx, id, ty, &i.attrs);
 
             let v = match i.node {
@@ -2836,7 +2836,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match ni.node {
                 hir::ForeignItemFn(..) => {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
-                    let ty = ccx.tcx().node_id_to_type(ni.id);
+                    let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(ni.id));
                     let name = foreign::link_name(&ni);
                     foreign::register_foreign_item_fn(ccx, abi, ty, &name, &ni.attrs)
                 }
@@ -2854,7 +2854,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 v.node.data.fields()
             };
             assert!(!fields.is_empty());
-            let ty = ccx.tcx().node_id_to_type(id);
+            let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(id));
             let parent = ccx.tcx().map.get_parent(id);
             let enm = ccx.tcx().map.expect_item(parent);
             let sym = exported_name(ccx, id, ty, &enm.attrs);
@@ -2878,7 +2878,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             };
             let parent = ccx.tcx().map.get_parent(id);
             let struct_item = ccx.tcx().map.expect_item(parent);
-            let ty = ccx.tcx().node_id_to_type(ctor_id);
+            let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(ctor_id));
             let sym = exported_name(ccx, id, ty, &struct_item.attrs);
             let llfn = register_fn(ccx, struct_item.span, sym, ctor_id, ty);
             attributes::inline(llfn, attributes::InlineAttr::Hint);
@@ -2908,7 +2908,7 @@ fn register_method(ccx: &CrateContext,
                    attrs: &[ast::Attribute],
                    span: Span)
                    -> ValueRef {
-    let mty = ccx.tcx().node_id_to_type(id);
+    let mty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(id));
 
     let sym = exported_name(ccx, id, mty, &attrs);
 

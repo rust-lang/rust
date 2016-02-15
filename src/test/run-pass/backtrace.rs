@@ -51,7 +51,7 @@ fn runtest(me: &str) {
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.stderr).unwrap();
-    assert!(s.contains("stack backtrace") && s.contains(" - foo"),
+    assert!(s.contains("stack backtrace") && s.contains(" - backtrace::foo"),
             "bad output: {}", s);
 
     // Make sure the stack trace is *not* printed
@@ -61,7 +61,7 @@ fn runtest(me: &str) {
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.stderr).unwrap();
-    assert!(!s.contains("stack backtrace") && !s.contains(" - foo"),
+    assert!(!s.contains("stack backtrace") && !s.contains(" - backtrace::foo"),
             "bad output2: {}", s);
 
     // Make sure a stack trace is printed
@@ -71,7 +71,7 @@ fn runtest(me: &str) {
     let s = str::from_utf8(&out.stderr).unwrap();
     // loosened the following from double::h to double:: due to
     // spurious failures on mac, 32bit, optimized
-    assert!(s.contains("stack backtrace") && s.contains(" - double"),
+    assert!(s.contains("stack backtrace") && s.contains(" - backtrace::double"),
             "bad output3: {}", s);
 
     // Make sure a stack trace isn't printed too many times
