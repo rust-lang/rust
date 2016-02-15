@@ -845,13 +845,18 @@ pub struct ModuleS<'a> {
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
+
+    arenas: &'a ResolverArenas<'a>,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-
-    fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool, is_public: bool) -> Self {
+    fn new(parent_link: ParentLink<'a>,
+           def: Option<Def>,
+           external: bool,
+           is_public: bool,
+           arenas: &'a ResolverArenas<'a>) -> Self {
         ModuleS {
             parent_link: parent_link,
             def: def,
@@ -865,6 +870,7 @@ impl<'a> ModuleS<'a> {
             pub_count: Cell::new(0),
             pub_glob_count: Cell::new(0),
             populated: Cell::new(!external),
+            arenas: arenas
         }
     }
 
@@ -881,8 +887,9 @@ impl<'a> ModuleS<'a> {
     }
 
     // Define the name or return the existing binding if there is a collision.
-    fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
+    fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
                         -> Result<(), &'a NameBinding<'a>> {
+        let binding = self.arenas.alloc_name_binding(binding);
         let mut children = self.resolutions.borrow_mut();
         let resolution = children.entry((name, ns)).or_insert_with(Default::default);
 
@@ -896,6 +903,11 @@ impl<'a> ModuleS<'a> {
         }
 
         resolution.try_define(binding)
+    }
+
+    fn add_import_directive(&self, import_directive: ImportDirective) {
+        let import_directive = self.arenas.alloc_import_directive(import_directive);
+        self.unresolved_imports.borrow_mut().push(import_directive);
     }
 
     fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
@@ -995,14 +1007,14 @@ bitflags! {
 }
 
 // Records a possibly-private value, type, or module definition.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     modifiers: DefModifiers,
     kind: NameBindingKind<'a>,
     span: Option<Span>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum NameBindingKind<'a> {
     Def(Def),
     Module(Module<'a>),
@@ -1171,6 +1183,12 @@ pub struct ResolverArenas<'a> {
 }
 
 impl<'a> ResolverArenas<'a> {
+    fn alloc_module(&'a self, module: ModuleS<'a>) -> Module<'a> {
+        self.modules.alloc(module)
+    }
+    fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
+        self.name_bindings.alloc(name_binding)
+    }
     fn alloc_import_directive(&'a self, import_directive: ImportDirective) -> &'a ImportDirective {
         self.import_directives.alloc(import_directive)
     }
@@ -1189,8 +1207,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
            arenas: &'a ResolverArenas<'a>)
            -> Resolver<'a, 'tcx> {
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
-        let graph_root = ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, true);
-        let graph_root = arenas.modules.alloc(graph_root);
+        let graph_root =
+            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, true, arenas);
+        let graph_root = arenas.alloc_module(graph_root);
 
         Resolver {
             session: session,
@@ -1250,11 +1269,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                   def: Option<Def>,
                   external: bool,
                   is_public: bool) -> Module<'a> {
-        self.arenas.modules.alloc(ModuleS::new(parent_link, def, external, is_public))
-    }
-
-    fn new_name_binding(&self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
-        self.arenas.name_bindings.alloc(name_binding)
+        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, is_public, self.arenas))
     }
 
     fn new_extern_crate_module(&self,
@@ -1263,7 +1278,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                is_public: bool,
                                local_node_id: NodeId)
                                -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), false, is_public);
+        let mut module = ModuleS::new(parent_link, Some(def), false, is_public, self.arenas);
         module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }
