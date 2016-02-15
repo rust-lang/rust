@@ -56,7 +56,7 @@ pub struct Registry<'a> {
     pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
-    pub mir_passes: Vec<Box<mir::transform::MirMapPass>>,
+    pub mir_passes: Vec<Box<for<'p> mir::transform::MirMapPass<'p>>>,
 
     #[doc(hidden)]
     pub lint_groups: HashMap<&'static str, Vec<LintId>>,
@@ -141,7 +141,7 @@ impl<'a> Registry<'a> {
     }
 
     /// Register a MIR pass
-    pub fn register_mir_pass(&mut self, pass: Box<mir::transform::MirMapPass>) {
+    pub fn register_mir_pass(&mut self, pass: Box<for<'p> mir::transform::MirMapPass<'p>>) {
         self.mir_passes.push(pass);
     }
 

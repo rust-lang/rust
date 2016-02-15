@@ -8,46 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use mir::repr::{Mir, BasicBlockData, BasicBlock};
+use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use middle::ty::ctxt;
 
 /// Contains various metadata about the pass.
 pub trait Pass {
-    /// Ordering of the pass. Lower value runs the pass earlier.
-    fn priority(&self) -> usize;
     // Possibly also `fn name()` and `fn should_run(Session)` etc.
 }
 
 /// Pass which inspects the whole MirMap.
-pub trait MirMapPass: Pass {
-    fn run_pass<'tcx>(&mut self, tcx: &ctxt<'tcx>, map: &mut MirMap<'tcx>);
+pub trait MirMapPass<'tcx>: Pass {
+    fn run_pass(&mut self, tcx: &ctxt<'tcx>, map: &mut MirMap<'tcx>);
 }
 
 /// Pass which only inspects MIR of distinct functions.
-pub trait MirPass: Pass {
-    fn run_pass<'tcx>(&mut self, tcx: &ctxt<'tcx>, mir: &mut Mir<'tcx>);
+pub trait MirPass<'tcx>: Pass {
+    fn run_pass(&mut self, tcx: &ctxt<'tcx>, mir: &mut Mir<'tcx>);
 }
 
-/// Pass which only inspects basic blocks in MIR.
-///
-/// Invariant: The blocks are considered to be fully self-contained for the purposes of this pass –
-/// the pass may not change the list of successors of the block or apply any transformations to
-/// blocks based on the information collected during earlier runs of the pass.
-pub trait MirBlockPass: Pass {
-    fn run_pass<'tcx>(&mut self, tcx: &ctxt<'tcx>, bb: BasicBlock, data: &mut BasicBlockData<'tcx>);
-}
-
-impl<T: MirBlockPass> MirPass for T {
-    fn run_pass<'tcx>(&mut self, tcx: &ctxt<'tcx>, mir: &mut Mir<'tcx>) {
-        for (i, basic_block) in mir.basic_blocks.iter_mut().enumerate() {
-            MirBlockPass::run_pass(self, tcx, BasicBlock::new(i), basic_block);
-        }
-    }
-}
-
-impl<T: MirPass> MirMapPass for T {
-    fn run_pass<'tcx>(&mut self, tcx: &ctxt<'tcx>, map: &mut MirMap<'tcx>) {
+impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
+    fn run_pass(&mut self, tcx: &ctxt<'tcx>, map: &mut MirMap<'tcx>) {
         for (_, mir) in &mut map.map {
             MirPass::run_pass(self, tcx, mir);
         }
@@ -56,7 +37,7 @@ impl<T: MirPass> MirMapPass for T {
 
 /// A manager for MIR passes.
 pub struct Passes {
-    passes: Vec<Box<MirMapPass>>
+    passes: Vec<Box<for<'tcx> MirMapPass<'tcx>>>
 }
 
 impl Passes {
@@ -68,19 +49,18 @@ impl Passes {
     }
 
     pub fn run_passes<'tcx>(&mut self, tcx: &ctxt<'tcx>, map: &mut MirMap<'tcx>) {
-        self.passes.sort_by_key(|e| e.priority());
         for pass in &mut self.passes {
             pass.run_pass(tcx, map);
         }
     }
 
-    pub fn push_pass(&mut self, pass: Box<MirMapPass>) {
+    pub fn push_pass(&mut self, pass: Box<for<'a> MirMapPass<'a>>) {
         self.passes.push(pass);
     }
 }
 
-impl ::std::iter::Extend<Box<MirMapPass>> for Passes {
-    fn extend<I: IntoIterator<Item=Box<MirMapPass>>>(&mut self, it: I) {
+impl ::std::iter::Extend<Box<for<'a> MirMapPass<'a>>> for Passes {
+    fn extend<I: IntoIterator<Item=Box<for <'a> MirMapPass<'a>>>>(&mut self, it: I) {
         self.passes.extend(it);
     }
 }

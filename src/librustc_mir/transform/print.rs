@@ -28,14 +28,10 @@ use std::fs::File;
 pub struct MirPrint;
 
 impl Pass for MirPrint {
-    fn priority(&self) -> usize {
-        // This is a late pass, because we usually want to see the Mir post-passes.
-        !100
-    }
 }
 
-impl MirMapPass for MirPrint {
-    fn run_pass<'tcx>(&mut self, tcx: &ty::ctxt<'tcx>, map: &mut MirMap<'tcx>) {
+impl<'tcx> MirMapPass<'tcx> for MirPrint {
+    fn run_pass(&mut self, tcx: &ty::ctxt<'tcx>, map: &mut MirMap<'tcx>) {
         let _task = tcx.map.dep_graph.in_task(DepNode::MirPrintPass);
         for (node_id, mir) in &map.map {
             for attr in tcx.map.attrs(*node_id) {

@@ -28,19 +28,14 @@ pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
 
 pub struct EraseRegions;
 
-impl MirPass for EraseRegions {
-    fn run_pass<'tcx>(&mut self, tcx: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+impl<'tcx> MirPass<'tcx> for EraseRegions {
+    fn run_pass(&mut self, tcx: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 
 }
 
 impl Pass for EraseRegions {
-    fn priority(&self) -> usize {
-        // We want this pass to run as late as possible in transformation chain, so we give it a
-        // very high priority number.
-        !50
-    }
 }
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {

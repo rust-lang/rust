@@ -18,14 +18,11 @@ use rustc::mir::transform::{MirPass, Pass};
 pub struct SimplifyCfg;
 
 impl Pass for SimplifyCfg {
-    fn priority(&self) -> usize {
-        50
-    }
 }
 
-impl MirPass for SimplifyCfg {
-    fn run_pass<'tcx>(&mut self, tcx: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
-        let mut dbr_pass = DeadBlockRemoval::new(self);
+impl<'tcx> MirPass<'tcx> for SimplifyCfg {
+    fn run_pass(&mut self, tcx: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+        let mut dbr_pass = DeadBlockRemoval;
         let mut changed = true;
         while changed {
             changed = self.simplify_branches(mir);
@@ -119,22 +116,13 @@ impl SimplifyCfg {
 ///
 /// You want to schedule this pass just after any pass which might introduce unreachable blocks.
 /// This pass is very cheap and might improve the run-time of other not-so-cheap passes.
-pub struct DeadBlockRemoval(usize);
-
-impl DeadBlockRemoval {
-    fn new(run_after: &Pass) -> DeadBlockRemoval {
-        DeadBlockRemoval(run_after.priority() + 1)
-    }
-}
+pub struct DeadBlockRemoval;
 
 impl Pass for DeadBlockRemoval {
-    fn priority(&self) -> usize {
-        self.0
-    }
 }
 
-impl MirPass for DeadBlockRemoval {
-    fn run_pass<'tcx>(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+impl<'tcx> MirPass<'tcx> for DeadBlockRemoval {
+    fn run_pass(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
         let mut seen = vec![false; mir.basic_blocks.len()];
 
         // These blocks are always required.
@@ -159,14 +147,10 @@ impl MirPass for DeadBlockRemoval {
 pub struct CompactMir;
 
 impl Pass for CompactMir {
-    fn priority(&self) -> usize {
-        // We want this pass to run very late, so we give it a very high priority number.
-        !10
-    }
 }
 
-impl MirPass for CompactMir {
-    fn run_pass<'tcx>(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+impl<'tcx> MirPass<'tcx> for CompactMir {
+    fn run_pass(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
         self.visit_mir(mir);
     }
 }
