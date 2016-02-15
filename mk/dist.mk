@@ -52,7 +52,7 @@ PKG_FILES := \
       doc                                      \
       driver                                   \
       etc                                      \
-      error-index-generator                    \
+      error_index_generator                    \
       $(foreach crate,$(CRATES),lib$(crate))   \
       libcollectionstest                       \
       libcoretest                              \
