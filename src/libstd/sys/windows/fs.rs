@@ -30,7 +30,11 @@ pub struct File { handle: Handle }
 
 #[derive(Clone)]
 pub struct FileAttr {
-    data: c::WIN32_FILE_ATTRIBUTE_DATA,
+    attributes: c::DWORD,
+    creation_time: c::FILETIME,
+    last_access_time: c::FILETIME,
+    last_write_time: c::FILETIME,
+    file_size: u64,
     reparse_tag: c::DWORD,
 }
 
@@ -142,14 +146,11 @@ impl DirEntry {
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
         Ok(FileAttr {
-            data: c::WIN32_FILE_ATTRIBUTE_DATA {
-                dwFileAttributes: self.data.dwFileAttributes,
-                ftCreationTime: self.data.ftCreationTime,
-                ftLastAccessTime: self.data.ftLastAccessTime,
-                ftLastWriteTime: self.data.ftLastWriteTime,
-                nFileSizeHigh: self.data.nFileSizeHigh,
-                nFileSizeLow: self.data.nFileSizeLow,
-            },
+            attributes: self.data.dwFileAttributes,
+            creation_time: self.data.ftCreationTime,
+            last_access_time: self.data.ftLastAccessTime,
+            last_write_time: self.data.ftLastWriteTime,
+            file_size: ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64),
             reparse_tag: if self.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                     // reserved unless this is a reparse point
                     self.data.dwReserved0
@@ -290,14 +291,11 @@ impl File {
             try!(cvt(c::GetFileInformationByHandle(self.handle.raw(),
                                                    &mut info)));
             let mut attr = FileAttr {
-                data: c::WIN32_FILE_ATTRIBUTE_DATA {
-                    dwFileAttributes: info.dwFileAttributes,
-                    ftCreationTime: info.ftCreationTime,
-                    ftLastAccessTime: info.ftLastAccessTime,
-                    ftLastWriteTime: info.ftLastWriteTime,
-                    nFileSizeHigh: info.nFileSizeHigh,
-                    nFileSizeLow: info.nFileSizeLow,
-                },
+                attributes: info.dwFileAttributes,
+                creation_time: info.ftCreationTime,
+                last_access_time: info.ftLastAccessTime,
+                last_write_time: info.ftLastWriteTime,
+                file_size: ((info.nFileSizeHigh as u64) << 32) | (info.nFileSizeLow as u64),
                 reparse_tag: 0,
             };
             if attr.is_reparse_point() {
@@ -420,45 +418,45 @@ impl fmt::Debug for File {
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
-        ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64)
+        self.file_size
     }
 
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { attrs: self.data.dwFileAttributes }
+        FilePermissions { attrs: self.attributes }
     }
 
-    pub fn attrs(&self) -> u32 { self.data.dwFileAttributes as u32 }
+    pub fn attrs(&self) -> u32 { self.attributes as u32 }
 
     pub fn file_type(&self) -> FileType {
-        FileType::new(self.data.dwFileAttributes, self.reparse_tag)
+        FileType::new(self.attributes, self.reparse_tag)
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.data.ftLastWriteTime))
+        Ok(SystemTime::from(self.last_write_time))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.data.ftLastAccessTime))
+        Ok(SystemTime::from(self.last_access_time))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.data.ftCreationTime))
+        Ok(SystemTime::from(self.creation_time))
     }
 
     pub fn modified_u64(&self) -> u64 {
-        to_u64(&self.data.ftLastWriteTime)
+        to_u64(&self.last_write_time)
     }
 
     pub fn accessed_u64(&self) -> u64 {
-        to_u64(&self.data.ftLastAccessTime)
+        to_u64(&self.last_access_time)
     }
 
     pub fn created_u64(&self) -> u64 {
-        to_u64(&self.data.ftCreationTime)
+        to_u64(&self.creation_time)
     }
 
     fn is_reparse_point(&self) -> bool {
-        self.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
+        self.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
     }
 }
 
