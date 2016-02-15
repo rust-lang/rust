@@ -198,7 +198,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         copies::IFS_SAME_COND,
         copies::MATCH_SAME_ARMS,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
-        derive::DERIVE_HASH_NOT_EQ,
+        derive::DERIVE_HASH_XOR_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,
         drop_ref::DROP_REF,
         entry::MAP_ENTRY,
