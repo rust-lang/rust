@@ -11,7 +11,7 @@
 
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
-use llvm::{InternalLinkage, ValueRef, Bool, True};
+use llvm::{InternalLinkage, ValueRef, True};
 use middle::const_qualif::ConstQualif;
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, lookup_const_by_id, ErrKind};
 use rustc_const_eval::eval_repeat_count;
@@ -756,11 +756,11 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     let repr = adt::represent_type(cx, t_expr);
                     let discr = adt::const_get_discrim(&repr, v);
                     let iv = C_integral(cx.int_type(), discr.0, false);
-                    let s = adt::is_discr_signed(&repr) as Bool;
+                    let s = llvm::as_llvm_bool(adt::is_discr_signed(&repr));
                     llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
                 },
                 (CastTy::Int(_), CastTy::Int(_)) => {
-                    let s = t_expr.is_signed() as Bool;
+                    let s = llvm::as_llvm_bool(t_expr.is_signed());
                     llvm::LLVMConstIntCast(v, llty.to_ref(), s)
                 },
                 (CastTy::Int(_), CastTy::Float) => {

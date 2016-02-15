@@ -73,6 +73,11 @@ pub type Bool = c_uint;
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
 
+#[inline(always)]
+pub fn as_bool(b: Bool) -> bool { False != b }
+#[inline(always)]
+pub fn as_llvm_bool(b: bool) -> Bool { b as Bool }
+
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 #[derive(Copy, Clone, PartialEq)]
@@ -2178,13 +2183,13 @@ pub fn SetDLLStorageClass(global: ValueRef, class: DLLStorageClassTypes) {
 
 pub fn SetUnnamedAddr(global: ValueRef, unnamed: bool) {
     unsafe {
-        LLVMSetUnnamedAddr(global, unnamed as Bool);
+        LLVMSetUnnamedAddr(global, as_llvm_bool(unnamed));
     }
 }
 
 pub fn set_thread_local(global: ValueRef, is_thread_local: bool) {
     unsafe {
-        LLVMSetThreadLocal(global, is_thread_local as Bool);
+        LLVMSetThreadLocal(global, as_llvm_bool(is_thread_local));
     }
 }
 
@@ -2442,4 +2447,19 @@ impl Drop for OperandBundleDef {
 #[cfg(not(cargobuild))]
 mod llvmdeps {
     include! { env!("CFG_LLVM_LINKAGE_FILE") }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{True, False};
+
+    #[test]
+    fn test_bool_cast() {
+        assert_eq!( True, super::as_llvm_bool(true));
+        assert_eq!(False, super::as_llvm_bool(false));
+
+        assert!( super::as_bool(True));
+        assert!( super::as_bool(12345));
+        assert!(!super::as_bool(False));
+    }
 }

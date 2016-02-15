@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm;
-use llvm::{TypeRef, Bool, False, True, TypeKind};
+use llvm::{TypeRef, False, True, TypeKind};
 use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use context::CrateContext;
@@ -171,7 +171,7 @@ impl Type {
         let els: &[TypeRef] = Type::to_ref_slice(els);
         ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr(),
                                           els.len() as c_uint,
-                                          packed as Bool))
+                                          llvm::as_llvm_bool(packed)))
     }
 
     pub fn named_struct(ccx: &CrateContext, name: &str) -> Type {
@@ -215,7 +215,7 @@ impl Type {
         let slice: &[TypeRef] = Type::to_ref_slice(els);
         unsafe {
             llvm::LLVMStructSetBody(self.to_ref(), slice.as_ptr(),
-                                    els.len() as c_uint, packed as Bool)
+                                    els.len() as c_uint, llvm::as_llvm_bool(packed))
         }
     }
 
@@ -231,9 +231,11 @@ impl Type {
     }
 
     pub fn is_packed(&self) -> bool {
-        unsafe {
-            llvm::LLVMIsPackedStruct(self.to_ref()) == True
-        }
+        llvm::as_bool(
+            unsafe {
+                llvm::LLVMIsPackedStruct(self.to_ref())
+            }
+        )
     }
 
     pub fn element_type(&self) -> Type {

@@ -172,7 +172,7 @@ impl ExecutionEngine {
 
             let res = unsafe { llvm::LLVMRustLoadDynamicLibrary(cs.as_ptr()) };
 
-            if res == 0 {
+            if !llvm::as_bool(res) {
                 panic!("Failed to load crate {:?}: {}",
                     path.display(), llvm_error());
             }
