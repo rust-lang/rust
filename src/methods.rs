@@ -299,7 +299,7 @@ declare_lint! {
 
 /// **What it does:** This lint checks for string methods that receive a single-character `str` as an argument, e.g. `_.split("x")`.
 ///
-/// **Why is this bad?** Performing these methods using a `str` may be slower than using a `char`.
+/// **Why is this bad?** Performing these methods using a `char` is faster than using a `str`.
 ///
 /// **Known problems:** Does not catch multi-byte unicode characters.
 ///
