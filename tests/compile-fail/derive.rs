@@ -4,6 +4,8 @@
 #![deny(warnings)]
 #![allow(dead_code)]
 
+use std::hash::{Hash, Hasher};
+
 #[derive(PartialEq, Hash)]
 struct Foo;
 
@@ -25,6 +27,14 @@ struct Baz;
 
 impl PartialEq<Baz> for Baz {
     fn eq(&self, _: &Baz) -> bool { true }
+}
+
+#[derive(PartialEq)]
+struct Bah;
+
+impl Hash for Bah {
+//~^ ERROR you are implementing `Hash` explicitly but have derived `PartialEq`
+    fn hash<H: Hasher>(&self, _: &mut H) {}
 }
 
 #[derive(Copy)]

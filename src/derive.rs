@@ -32,7 +32,7 @@ use utils::{match_path, span_lint_and_then};
 /// }
 /// ```
 declare_lint! {
-    pub DERIVE_HASH_NOT_EQ,
+    pub DERIVE_HASH_XOR_EQ,
     Warn,
     "deriving `Hash` but implementing `PartialEq` explicitly"
 }
@@ -65,7 +65,7 @@ pub struct Derive;
 
 impl LintPass for Derive {
     fn get_lints(&self) -> LintArray {
-        lint_array!(EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_NOT_EQ)
+        lint_array!(EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ)
     }
 }
 
@@ -75,19 +75,25 @@ impl LateLintPass for Derive {
             let ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node
         ], {
             let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(item.id)).ty;
-            if item.attrs.iter().any(is_automatically_derived) {
-                check_hash_peq(cx, item.span, trait_ref, ty);
-            }
-            else {
+            let is_automatically_derived = item.attrs.iter().any(is_automatically_derived);
+
+            check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
+
+            if !is_automatically_derived {
                 check_copy_clone(cx, item, trait_ref, ty);
             }
         }}
     }
 }
 
-/// Implementation of the `DERIVE_HASH_NOT_EQ` lint.
-fn check_hash_peq(cx: &LateContext, span: Span, trait_ref: &TraitRef, ty: ty::Ty) {
-    // If `item` is an automatically derived `Hash` implementation
+/// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
+fn check_hash_peq(
+    cx: &LateContext,
+    span: Span,
+    trait_ref: &TraitRef,
+    ty: ty::Ty,
+    hash_is_automatically_derived: bool
+) {
     if_let_chain! {[
         match_path(&trait_ref.path, &HASH_PATH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
@@ -103,14 +109,25 @@ fn check_hash_peq(cx: &LateContext, span: Span, trait_ref: &TraitRef, ty: ty::Ty
             let Some(impl_ids) = peq_impls.get(&simpl_ty)
         ], {
             for &impl_id in impl_ids {
+                let peq_is_automatically_derived = cx.tcx.get_attrs(impl_id).iter().any(is_automatically_derived);
+
+                if peq_is_automatically_derived == hash_is_automatically_derived {
+                    return;
+                }
+
                 let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
 
                 // Only care about `impl PartialEq<Foo> for Foo`
-                if trait_ref.input_types()[0] == ty &&
-                  !cx.tcx.get_attrs(impl_id).iter().any(is_automatically_derived) {
+                if trait_ref.input_types()[0] == ty {
+                    let mess = if peq_is_automatically_derived {
+                        "you are implementing `Hash` explicitly but have derived `PartialEq`"
+                    } else {
+                        "you are deriving `Hash` but have implemented `PartialEq` explicitly"
+                    };
+
                     span_lint_and_then(
-                        cx, DERIVE_HASH_NOT_EQ, span,
-                        "you are deriving `Hash` but have implemented `PartialEq` explicitly",
+                        cx, DERIVE_HASH_XOR_EQ, span,
+                        mess,
                         |db| {
                         if let Some(node_id) = cx.tcx.map.as_local_node_id(impl_id) {
                             db.span_note(
