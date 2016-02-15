@@ -59,8 +59,8 @@ RUSTBOOK_EXE = $(HBIN2_H_$(CFG_BUILD))/rustbook$(X_$(CFG_BUILD))
 # ./configure
 RUSTBOOK = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(RUSTBOOK_EXE)
 
-# The error-index-generator executable...
-ERR_IDX_GEN_EXE = $(HBIN2_H_$(CFG_BUILD))/error-index-generator$(X_$(CFG_BUILD))
+# The error_index_generator executable...
+ERR_IDX_GEN_EXE = $(HBIN2_H_$(CFG_BUILD))/error_index_generator$(X_$(CFG_BUILD))
 ERR_IDX_GEN = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(ERR_IDX_GEN_EXE)
 ERR_IDX_GEN_MD = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(ERR_IDX_GEN_EXE) markdown
 
@@ -221,9 +221,9 @@ error-index: doc/error-index.html
 # Metadata used to generate the index is created as a side effect of
 # the build so this depends on every crate being up to date.
 doc/error-index.html: $(ERR_IDX_GEN_EXE) $(CSREQ$(2)_T_$(CFG_BUILD)_H_$(CFG_BUILD)) | doc/
-	$(Q)$(call E, error-index-generator: $@)
+	$(Q)$(call E, error_index_generator: $@)
 	$(Q)$(ERR_IDX_GEN)
 
 doc/error-index.md: $(ERR_IDX_GEN_EXE) $(CSREQ$(2)_T_$(CFG_BUILD)_H_$(CFG_BUILD)) | doc/
-	$(Q)$(call E, error-index-generator: $@)
+	$(Q)$(call E, error_index_generator: $@)
 	$(Q)$(ERR_IDX_GEN_MD)

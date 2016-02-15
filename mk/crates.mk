@@ -59,7 +59,7 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_data_structures rustc_front rustc_platform_intrinsics \
                 rustc_plugin rustc_metadata rustc_passes
 HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros
-TOOLS := compiletest rustdoc rustc rustbook error-index-generator
+TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
 DEPS_alloc := core libc alloc_system
@@ -120,12 +120,12 @@ TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc
 TOOL_DEPS_rustc := rustc_driver
 TOOL_DEPS_rustbook := std rustdoc
-TOOL_DEPS_error-index-generator := rustdoc syntax serialize
+TOOL_DEPS_error_index_generator := rustdoc syntax serialize
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustbook := $(S)src/rustbook/main.rs
-TOOL_SOURCE_error-index-generator := $(S)src/error-index-generator/main.rs
+TOOL_SOURCE_error_index_generator := $(S)src/error_index_generator/main.rs
 
 ONLY_RLIB_core := 1
 ONLY_RLIB_libc := 1
