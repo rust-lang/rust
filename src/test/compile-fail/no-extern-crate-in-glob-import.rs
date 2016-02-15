@@ -14,7 +14,7 @@
 extern crate core;
 
 mod T {
-    use super::*;
+    pub use super::*;
 }
 
 fn main() {
