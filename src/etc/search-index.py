@@ -127,7 +127,7 @@ class Item:
             item = klass._index_map[data[0]]()
         except KeyError as e:
             path = data[2] or crate._items[-1].path
-            if data[4]:
+            if data[4] is not None:
                 try:
                     path += "::" + crate.paths[data[4]][1]
                 except IndexError:
