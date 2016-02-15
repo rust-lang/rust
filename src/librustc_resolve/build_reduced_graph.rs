@@ -98,14 +98,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
         where T: ToNameBinding<'b>
     {
-        let _ = parent.try_define_child(name, ns, self.new_name_binding(def.to_name_binding()));
+        let _ = parent.try_define_child(name, ns, def.to_name_binding());
     }
 
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
-        let binding = self.new_name_binding(def.to_name_binding());
-        let old_binding = match parent.try_define_child(name, ns, binding) {
+        let binding = def.to_name_binding();
+        let old_binding = match parent.try_define_child(name, ns, binding.clone()) {
             Ok(()) => return,
             Err(old_binding) => old_binding,
         };
@@ -709,8 +709,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         let directive =
             ImportDirective::new(module_path, subclass, span, id, is_public, shadowable);
-        let directive = self.resolver.arenas.alloc_import_directive(directive);
-        module_.unresolved_imports.borrow_mut().push(directive);
+        module_.add_import_directive(directive);
         self.unresolved_imports += 1;
     }
 }

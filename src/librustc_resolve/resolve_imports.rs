@@ -236,15 +236,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // If it's a single failed import then create a "fake" import
         // resolution for it so that later resolve stages won't complain.
         if let SingleImport { target, .. } = e.import_directive.subclass {
-            let dummy_binding = self.resolver.new_name_binding(NameBinding {
+            let dummy_binding = self.resolver.arenas.alloc_name_binding(NameBinding {
                 modifiers: DefModifiers::PRELUDE,
                 kind: NameBindingKind::Def(Def::Err),
                 span: None,
             });
-            let dummy_binding =
-                self.resolver.new_name_binding(e.import_directive.import(dummy_binding, None));
+            let dummy_binding = e.import_directive.import(dummy_binding, None);
 
-            let _ = e.source_module.try_define_child(target, ValueNS, dummy_binding);
+            let _ = e.source_module.try_define_child(target, ValueNS, dummy_binding.clone());
             let _ = e.source_module.try_define_child(target, TypeNS, dummy_binding);
         }
 
@@ -534,9 +533,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
               name: Name,
               ns: Namespace,
               binding: NameBinding<'b>) {
-        let binding = self.resolver.new_name_binding(binding);
-        if let Err(old_binding) = parent.try_define_child(name, ns, binding) {
-            self.report_conflict(name, ns, binding, old_binding);
+        if let Err(old_binding) = parent.try_define_child(name, ns, binding.clone()) {
+            self.report_conflict(name, ns, &binding, old_binding);
         } else if binding.is_public() { // Add to the export map
             if let (Some(parent_def_id), Some(def)) = (parent.def_id(), binding.def()) {
                 let parent_node_id = self.resolver.ast_map.as_local_node_id(parent_def_id).unwrap();
@@ -549,8 +547,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     fn report_conflict(&mut self,
                        name: Name,
                        ns: Namespace,
-                       binding: &'b NameBinding<'b>,
-                       old_binding: &'b NameBinding<'b>) {
+                       binding: &NameBinding,
+                       old_binding: &NameBinding) {
         // Error on the second of two conflicting imports
         if old_binding.is_import() && binding.is_import() &&
            old_binding.span.unwrap().lo > binding.span.unwrap().lo {
