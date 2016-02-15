@@ -16,7 +16,7 @@ use utils::{match_path, span_lint_and_then};
 /// an explicitely defined `PartialEq`. In particular, the following must hold for any type:
 ///
 /// ```rust
-/// k1 == k2 -> hash(k1) == hash(k2)
+/// k1 == k2 ⇒ hash(k1) == hash(k2)
 /// ```
 ///
 /// **Known problems:** None.
@@ -161,7 +161,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>,
         }
 
         span_lint_and_then(cx,
-                           DERIVE_HASH_NOT_EQ,
+                           EXPL_IMPL_CLONE_ON_COPY,
                            item.span,
                            "you are implementing `Clone` explicitly on a `Copy` type",
                            |db| {
