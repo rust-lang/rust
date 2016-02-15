@@ -62,8 +62,8 @@ impl SocketAddr {
     #[stable(feature = "ip_addr", since = "1.7.0")]
     pub fn ip(&self) -> IpAddr {
         match *self {
-            SocketAddr::V4(ref a) => IpAddr::V4(*a.ip()),
-            SocketAddr::V6(ref a) => IpAddr::V6(*a.ip()),
+            SocketAddr::V4(ref a) => IpAddr::V4(a.ip()),
+            SocketAddr::V6(ref a) => IpAddr::V6(a.ip()),
         }
     }
 
@@ -113,11 +113,7 @@ impl SocketAddrV4 {
 
     /// Returns the IP address associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ip(&self) -> &Ipv4Addr {
-        unsafe {
-            &*(&self.inner.sin_addr as *const c::in_addr as *const Ipv4Addr)
-        }
-    }
+    pub fn ip(&self) -> Ipv4Addr { FromInner::from_inner(self.inner.sin_addr) }
 
     /// Change the IP address associated with this socket address.
     #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
@@ -152,11 +148,7 @@ impl SocketAddrV6 {
 
     /// Returns the IP address associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ip(&self) -> &Ipv6Addr {
-        unsafe {
-            &*(&self.inner.sin6_addr as *const c::in6_addr as *const Ipv6Addr)
-        }
-    }
+    pub fn ip(&self) -> Ipv6Addr { FromInner::from_inner(self.inner.sin6_addr) }
 
     /// Change the IP address associated with this socket address.
     #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
@@ -559,9 +551,9 @@ mod tests {
         fn ip6(low: u16) -> Ipv6Addr { Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, low) }
 
         let mut v4 = SocketAddrV4::new(ip4(11), 80);
-        assert_eq!(v4.ip(), &ip4(11));
+        assert_eq!(v4.ip(), ip4(11));
         v4.set_ip(ip4(12));
-        assert_eq!(v4.ip(), &ip4(12));
+        assert_eq!(v4.ip(), ip4(12));
 
         let mut addr = SocketAddr::V4(v4);
         assert_eq!(addr.ip(), IpAddr::V4(ip4(12)));
@@ -571,9 +563,9 @@ mod tests {
         assert_eq!(addr.ip(), IpAddr::V6(ip6(14)));
 
         let mut v6 = SocketAddrV6::new(ip6(1), 80, 0, 0);
-        assert_eq!(v6.ip(), &ip6(1));
+        assert_eq!(v6.ip(), ip6(1));
         v6.set_ip(ip6(2));
-        assert_eq!(v6.ip(), &ip6(2));
+        assert_eq!(v6.ip(), ip6(2));
 
         let mut addr = SocketAddr::V6(v6);
         assert_eq!(addr.ip(), IpAddr::V6(ip6(2)));
