@@ -798,12 +798,12 @@ pub struct ModuleS<'a> {
     is_public: bool,
     is_extern_crate: bool,
 
-    children: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
+    resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
     imports: RefCell<Vec<ImportDirective>>,
 
-    // The anonymous children of this node. Anonymous children are pseudo-
-    // modules that are implicitly created around items contained within
-    // blocks.
+    // The module children of this node, including normal modules and anonymous modules.
+    // Anonymous children are pseudo-modules that are implicitly created around items
+    // contained within blocks.
     //
     // For example, if we have this:
     //
@@ -815,7 +815,7 @@ pub struct ModuleS<'a> {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    anonymous_children: RefCell<NodeMap<Module<'a>>>,
+    module_children: RefCell<NodeMap<Module<'a>>>,
 
     shadowed_traits: RefCell<Vec<&'a NameBinding<'a>>>,
 
@@ -846,9 +846,9 @@ impl<'a> ModuleS<'a> {
             def: def,
             is_public: is_public,
             is_extern_crate: false,
-            children: RefCell::new(HashMap::new()),
+            resolutions: RefCell::new(HashMap::new()),
             imports: RefCell::new(Vec::new()),
-            anonymous_children: RefCell::new(NodeMap()),
+            module_children: RefCell::new(NodeMap()),
             shadowed_traits: RefCell::new(Vec::new()),
             glob_count: Cell::new(0),
             pub_count: Cell::new(0),
@@ -863,7 +863,7 @@ impl<'a> ModuleS<'a> {
         let glob_count =
             if allow_private_imports { self.glob_count.get() } else { self.pub_glob_count.get() };
 
-        self.children.borrow().get(&(name, ns)).cloned().unwrap_or_default().result(glob_count)
+        self.resolutions.borrow().get(&(name, ns)).cloned().unwrap_or_default().result(glob_count)
             .and_then(|binding| {
                 let allowed = allow_private_imports || !binding.is_import() || binding.is_public();
                 if allowed { Success(binding) } else { Failed(None) }
@@ -873,7 +873,7 @@ impl<'a> ModuleS<'a> {
     // Define the name or return the existing binding if there is a collision.
     fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
                         -> Result<(), &'a NameBinding<'a>> {
-        let mut children = self.children.borrow_mut();
+        let mut children = self.resolutions.borrow_mut();
         let resolution = children.entry((name, ns)).or_insert_with(Default::default);
 
         // FIXME #31379: We can use methods from imported traits shadowed by non-import items
@@ -889,29 +889,21 @@ impl<'a> ModuleS<'a> {
     }
 
     fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        let mut children = self.children.borrow_mut();
+        let mut children = self.resolutions.borrow_mut();
         children.entry((name, ns)).or_insert_with(Default::default).outstanding_references += 1;
     }
 
     fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        match self.children.borrow_mut().get_mut(&(name, ns)).unwrap().outstanding_references {
+        match self.resolutions.borrow_mut().get_mut(&(name, ns)).unwrap().outstanding_references {
             0 => panic!("No more outstanding references!"),
             ref mut outstanding_references => { *outstanding_references -= 1; }
         }
     }
 
     fn for_each_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        for (&(name, ns), name_resolution) in self.children.borrow().iter() {
+        for (&(name, ns), name_resolution) in self.resolutions.borrow().iter() {
             name_resolution.binding.map(|binding| f(name, ns, binding));
         }
-    }
-
-    fn for_each_local_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        self.for_each_child(|name, ns, name_binding| {
-            if !name_binding.is_import() && !name_binding.is_extern_crate() {
-                f(name, ns, name_binding)
-            }
-        })
     }
 
     fn def_id(&self) -> Option<DefId> {
@@ -1640,20 +1632,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Descend into children and anonymous children.
-        build_reduced_graph::populate_module_if_necessary(self, module_);
-
-        module_.for_each_local_child(|_, _, child_node| {
-            match child_node.module() {
-                None => {
-                    // Continue.
-                }
-                Some(child_module) => {
-                    self.report_unresolved_imports(child_module);
-                }
-            }
-        });
-
-        for (_, module_) in module_.anonymous_children.borrow().iter() {
+        for (_, module_) in module_.module_children.borrow().iter() {
             self.report_unresolved_imports(module_);
         }
     }
@@ -1676,32 +1655,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope<F>(&mut self, name: Option<Name>, f: F)
+    fn with_scope<F>(&mut self, id: NodeId, f: F)
         where F: FnOnce(&mut Resolver)
     {
         let orig_module = self.current_module;
 
         // Move down in the graph.
-        match name {
-            None => {
-                // Nothing to do.
-            }
-            Some(name) => {
-                build_reduced_graph::populate_module_if_necessary(self, &orig_module);
-
-                if let Success(name_binding) = orig_module.resolve_name(name, TypeNS, false) {
-                    match name_binding.module() {
-                        None => {
-                            debug!("!!! (with scope) didn't find module for `{}` in `{}`",
-                                   name,
-                                   module_to_string(orig_module));
-                        }
-                        Some(module) => {
-                            self.current_module = module;
-                        }
-                    }
-                }
-            }
+        if let Some(module) = orig_module.module_children.borrow().get(&id) {
+            self.current_module = module;
         }
 
         f(self);
@@ -1825,7 +1786,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemMod(_) | ItemForeignMod(_) => {
-                self.with_scope(Some(name), |this| {
+                self.with_scope(item.id, |this| {
                     intravisit::walk_item(this, item);
                 });
             }
@@ -2261,7 +2222,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
         let anonymous_module =
-            orig_module.anonymous_children.borrow().get(&block.id).map(|module| *module);
+            orig_module.module_children.borrow().get(&block.id).map(|module| *module);
 
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
