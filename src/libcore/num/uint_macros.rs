@@ -10,7 +10,7 @@
 
 #![doc(hidden)]
 
-macro_rules! uint_module { ($T:ty, $T_SIGNED:ty, $bits:expr) => (
+macro_rules! uint_module { ($T:ty, $bits:expr) => (
 
 #[unstable(feature = "num_bits_bytes",
            reason = "may want to be an associated function",
