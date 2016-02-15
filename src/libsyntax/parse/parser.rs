@@ -3254,7 +3254,7 @@ impl<'a> Parser<'a> {
                     if self.token == token::CloseDelim(token::Brace) {
                         self.bump();
                     }
-                    return Ok(self.mk_expr(lo, hi, ExprMatch(discriminant, arms), attrs));
+                    return Ok(self.mk_expr(lo, hi, ExprKind::Match(discriminant, arms), attrs));
                 }
             }
         }
@@ -3772,7 +3772,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a statement. may include decl.
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_().map(P))
+        Ok(self.parse_stmt_())
     }
 
     // Eat tokens until we can be relatively sure we reached the end of the
