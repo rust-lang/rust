@@ -15,7 +15,7 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, dirent, c_int, off_t, mode_t};
+use libc::{self, dirent, c_int, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -26,10 +26,10 @@ use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 
 #[cfg(target_os = "linux")]
-use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64};
+use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64};
 #[cfg(not(target_os = "linux"))]
 use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
-           ftruncate as ftruncate64};
+           ftruncate as ftruncate64, lseek as lseek64};
 
 pub struct File(FileDesc);
 
@@ -461,11 +461,11 @@ impl File {
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, pos) = match pos {
-            SeekFrom::Start(off) => (libc::SEEK_SET, off as off_t),
-            SeekFrom::End(off) => (libc::SEEK_END, off as off_t),
-            SeekFrom::Current(off) => (libc::SEEK_CUR, off as off_t),
+            SeekFrom::Start(off) => (libc::SEEK_SET, off as off64_t),
+            SeekFrom::End(off) => (libc::SEEK_END, off as off64_t),
+            SeekFrom::Current(off) => (libc::SEEK_CUR, off as off64_t),
         };
-        let n = try!(cvt(unsafe { libc::lseek(self.0.raw(), pos, whence) }));
+        let n = try!(cvt(unsafe { lseek64(self.0.raw(), pos, whence) }));
         Ok(n as u64)
     }
 
