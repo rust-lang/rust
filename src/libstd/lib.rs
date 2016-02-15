@@ -221,6 +221,7 @@
 #![feature(char_internals)]
 #![feature(collections)]
 #![feature(collections_bound)]
+#![feature(collections_range)]
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]

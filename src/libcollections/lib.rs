@@ -32,6 +32,7 @@
 #![feature(alloc)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(collections_range)]
 #![feature(core_intrinsics)]
 #![feature(decode_utf16)]
 #![feature(drop_in_place)]
@@ -89,7 +90,6 @@ pub mod borrow;
 pub mod enum_set;
 pub mod fmt;
 pub mod linked_list;
-pub mod range;
 pub mod slice;
 pub mod str;
 pub mod string;

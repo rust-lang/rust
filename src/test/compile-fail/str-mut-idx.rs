@@ -15,8 +15,8 @@ fn mutate(s: &mut str) {
     //~^ ERROR `core::marker::Sized` is not implemented for the type `str`
     //~| ERROR `core::marker::Sized` is not implemented for the type `str`
     s[1usize] = bot();
-    //~^ ERROR `core::ops::Index<usize>` is not implemented for the type `str`
-    //~| ERROR `core::ops::IndexMut<usize>` is not implemented for the type `str`
+    //~^ ERROR `core::ops::RangeArgument<usize>` is not implemented for the type `usize`
+    //~| ERROR `core::marker::Sized` is not implemented for the type `str`
 }
 
 pub fn main() {}

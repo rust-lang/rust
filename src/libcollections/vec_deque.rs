@@ -22,7 +22,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::iter::{repeat, FromIterator};
 use core::mem;
-use core::ops::{Index, IndexMut};
+use core::ops::{Index, IndexMut, RangeArgument};
 use core::ptr;
 use core::slice;
 
@@ -30,8 +30,6 @@ use core::hash::{Hash, Hasher};
 use core::cmp;
 
 use alloc::raw_vec::RawVec;
-
-use super::range::RangeArgument;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1

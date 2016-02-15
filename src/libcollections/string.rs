@@ -59,7 +59,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Add};
+use core::ops::{self, Add, RangeArgument};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
@@ -68,7 +68,6 @@ use rustc_unicode::str as unicode_str;
 
 #[allow(deprecated)]
 use borrow::{Cow, IntoCow};
-use range::RangeArgument;
 use str::{self, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
@@ -1571,68 +1570,20 @@ impl<'a> Add<&'a str> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::Range<usize>> for String {
+impl<R: RangeArgument<usize>> ops::Index<R> for String {
     type Output = str;
 
     #[inline]
-    fn index(&self, index: ops::Range<usize>) -> &str {
-        &self[..][index]
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeTo<usize>> for String {
-    type Output = str;
-
-    #[inline]
-    fn index(&self, index: ops::RangeTo<usize>) -> &str {
-        &self[..][index]
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeFrom<usize>> for String {
-    type Output = str;
-
-    #[inline]
-    fn index(&self, index: ops::RangeFrom<usize>) -> &str {
-        &self[..][index]
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeFull> for String {
-    type Output = str;
-
-    #[inline]
-    fn index(&self, _index: ops::RangeFull) -> &str {
-        unsafe { str::from_utf8_unchecked(&self.vec) }
+    fn index(&self, index: R) -> &str {
+        &(**self)[index]
     }
 }
 
 #[stable(feature = "derefmut_for_string", since = "1.2.0")]
-impl ops::IndexMut<ops::Range<usize>> for String {
+impl<R: RangeArgument<usize>> ops::IndexMut<R> for String {
     #[inline]
-    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
-        &mut self[..][index]
-    }
-}
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
-impl ops::IndexMut<ops::RangeTo<usize>> for String {
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
-        &mut self[..][index]
-    }
-}
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
-impl ops::IndexMut<ops::RangeFrom<usize>> for String {
-    #[inline]
-    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
-        &mut self[..][index]
-    }
-}
-#[stable(feature = "derefmut_for_string", since = "1.2.0")]
-impl ops::IndexMut<ops::RangeFull> for String {
-    #[inline]
-    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
-        unsafe { mem::transmute(&mut *self.vec) }
+    fn index_mut(&mut self, index: R) -> &mut str {
+        &mut (**self)[index]
     }
 }
 
