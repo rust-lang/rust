@@ -46,7 +46,7 @@ mod imp {
     use super::Handler;
     use mem;
     use ptr;
-    use libc::{sigaltstack, SIGSTKSZ};
+    use libc::{sigaltstack, SIGSTKSZ, SS_DISABLE};
     use libc::{sigaction, SIGBUS, SIG_DFL,
                SA_SIGINFO, SA_ONSTACK, sighandler_t};
     use libc;
@@ -169,13 +169,32 @@ mod imp {
     }
 
     pub unsafe fn make_handler() -> Handler {
-        let stack = get_stack();
-        sigaltstack(&stack, ptr::null_mut());
-        Handler { _data: stack.ss_sp as *mut libc::c_void }
+        let mut stack = mem::zeroed();
+        sigaltstack(ptr::null(), &mut stack);
+        // Configure alternate signal stack, if one is not already set.
+        if stack.ss_flags & SS_DISABLE != 0 {
+            stack = get_stack();
+            sigaltstack(&stack, ptr::null_mut());
+            Handler { _data: stack.ss_sp as *mut libc::c_void }
+        } else {
+            Handler { _data: ptr::null_mut() }
+        }
     }
 
     pub unsafe fn drop_handler(handler: &mut Handler) {
-        munmap(handler._data, SIGSTKSZ);
+        if !handler._data.is_null() {
+            let stack =  libc::stack_t {
+                ss_sp: ptr::null_mut(),
+                ss_flags: SS_DISABLE,
+                // Workaround for bug in MacOS implementation of sigaltstack
+                // UNIX2003 which returns ENOMEM when disabling a stack while
+                // passing ss_size smaller than MINSIGSTKSZ. According to POSIX
+                // both ss_sp and ss_size should be ignored in this case.
+                ss_size: SIGSTKSZ,
+            };
+            sigaltstack(&stack, ptr::null_mut());
+            munmap(handler._data, SIGSTKSZ);
+        }
     }
 }
 
