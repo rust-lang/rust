@@ -30,11 +30,11 @@ impl Bar {
 /* !search-index
 {
     "assoc_consts": {
-        "assoc_consts::BAR": [
-            "Constant"
-        ],
         "assoc_consts::Bar": [
             "Struct"
+        ],
+        "assoc_consts::Bar<Struct>::BAR": [
+            "AssociatedConst"
         ],
         "assoc_consts::Foo": [
             "Trait"

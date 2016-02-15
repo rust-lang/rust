@@ -35,7 +35,7 @@ pub fn foo() {}
     "hidden_line": {
         "hidden_line::foo": [
             "Function()",
-        "The '# ' lines should be removed from the output, but the #[derive] should be\nretained."
+"The &#39;# &#39; lines should be removed from the output, but the #[derive] should be\nretained."
         ]
     }
 }
