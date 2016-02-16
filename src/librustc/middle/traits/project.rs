@@ -11,8 +11,9 @@
 //! Code for projecting associated types out of trait references.
 
 use super::elaborate_predicates;
-use super::get_impl_item_or_default;
 use super::report_overflow_error;
+use super::specialization_graph;
+use super::translate_substs;
 use super::Obligation;
 use super::ObligationCause;
 use super::PredicateObligation;
@@ -22,13 +23,17 @@ use super::VtableClosureData;
 use super::VtableImplData;
 use super::util;
 
+use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, RegionEscape, HasTypeFlags, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_front::hir;
 use syntax::parse::token;
+use syntax::ast;
 use util::common::FN_OUTPUT_NAME;
+
+use std::rc::Rc;
 
 pub type PolyProjectionObligation<'tcx> =
     Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
@@ -568,7 +573,49 @@ fn project_type<'cx,'tcx>(
 
     assert!(candidates.vec.len() <= 1);
 
-    match candidates.vec.pop() {
+    let possible_candidate = candidates.vec.pop().and_then(|candidate| {
+        // In Any (i.e. trans) mode, all projections succeed;
+        // otherwise, we need to be sensitive to `default` and
+        // specialization.
+        if !selcx.projection_mode().any() {
+            if let ProjectionTyCandidate::Impl(ref impl_data) = candidate {
+                if let Some(node_item) = assoc_ty_def(selcx,
+                                                      impl_data.impl_def_id,
+                                                      obligation.predicate.item_name) {
+                    if node_item.node.is_from_trait() {
+                        if node_item.item.ty.is_some() {
+                            // If the associated type has a default from the
+                            // trait, that should be considered `default` and
+                            // hence not projected.
+                            //
+                            // Note, however, that we allow a projection from
+                            // the trait specifically in the case that the trait
+                            // does *not* give a default. This is purely to
+                            // avoid spurious errors: the situation can only
+                            // arise when *no* impl in the specialization chain
+                            // has provided a definition for the type. When we
+                            // confirm the candidate, we'll turn the projection
+                            // into a TyError, since the actual error will be
+                            // reported in `check_impl_items_against_trait`.
+                            return None;
+                        }
+                    } else if node_item.item.defaultness.is_default() {
+                        return None;
+                    }
+                } else {
+                    // Normally this situation could only arise througha
+                    // compiler bug, but at coherence-checking time we only look
+                    // at the topmost impl (we don't even consider the trait
+                    // itself) for the definition -- so we can fail to find a
+                    // definition of the type even if it exists.
+                    return None;
+                }
+            }
+        }
+        Some(candidate)
+    });
+
+    match possible_candidate {
         Some(candidate) => {
             let (ty, obligations) = confirm_candidate(selcx, obligation, candidate);
             Ok(ProjectedTy::Progress(ty, obligations))
@@ -744,28 +791,6 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
 
     match vtable {
         super::VtableImpl(data) => {
-            if data.substs.types.needs_infer() {
-                let assoc_ty_opt = get_impl_item_or_default(selcx.tcx(), data.impl_def_id, |cand| {
-                    if let &ty::TypeTraitItem(ref assoc_ty) = cand {
-                        if assoc_ty.name == obligation.predicate.item_name {
-                            return Some(assoc_ty.defaultness);
-                        }
-                    }
-                    None
-                });
-
-                if let Some((defaultness, source)) = assoc_ty_opt {
-                    if !source.is_from_trait() && defaultness == hir::Defaultness::Default {
-                        // FIXME: is it OK to not mark as ambiguous?
-                        return Ok(());
-                    }
-                } else {
-                    selcx.tcx().sess.span_bug(obligation.cause.span,
-                                              &format!("No associated type for {:?}",
-                                                       obligation_trait_ref));
-                }
-            }
-
             debug!("assemble_candidates_from_impls: impl candidate {:?}",
                    data);
 
@@ -967,29 +992,59 @@ fn confirm_impl_candidate<'cx,'tcx>(
 {
     let VtableImplData { substs, nested, impl_def_id } = impl_vtable;
 
-    get_impl_item_or_default(selcx.tcx(), impl_def_id, |cand| {
-        if let &ty::TypeTraitItem(ref assoc_ty) = cand {
-            if assoc_ty.name == obligation.predicate.item_name {
-                if let Some(ty) = assoc_ty.ty {
-                    return Some(ty)
-                } else {
-                    // This means that the impl is missing a definition for the
-                    // associated type. This error will be reported by the type
-                    // checker method `check_impl_items_against_trait`, so here
-                    // we just return TyError.
-                    debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
-                           assoc_ty.name,
-                           obligation.predicate.trait_ref);
-                    return Some(selcx.tcx().types.err);
+    let tcx = selcx.tcx();
+    let trait_ref = obligation.predicate.trait_ref;
+    let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_name);
+
+    match assoc_ty {
+        Some(node_item) => {
+            let ty = node_item.item.ty.unwrap_or_else(|| {
+                // This means that the impl is missing a definition for the
+                // associated type. This error will be reported by the type
+                // checker method `check_impl_items_against_trait`, so here we
+                // just return TyError.
+                debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
+                       node_item.item.name,
+                       obligation.predicate.trait_ref);
+                tcx.types.err
+            });
+            let substs = translate_substs(tcx, impl_def_id, substs, node_item.node);
+            (ty.subst(tcx, &substs), nested)
+        }
+        None => {
+            tcx.sess.span_bug(obligation.cause.span,
+                              &format!("No associated type for {:?}", trait_ref));
+        }
+    }
+}
+
+/// Locate the definition of an associated type in the specialization hierarchy,
+/// starting from the given impl.
+///
+/// Based on the "projection mode", this lookup may in fact only examine the
+/// topmost impl. See the comments for `ProjectionMode` for more details.
+fn assoc_ty_def<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>, impl_def_id: DefId, assoc_ty_name: ast::Name)
+                           -> Option<specialization_graph::NodeItem<Rc<ty::AssociatedType<'tcx>>>>
+{
+    let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
+
+    if selcx.projection_mode().topmost() {
+        let impl_node = specialization_graph::Node::Impl(impl_def_id);
+        for item in impl_node.items(selcx.tcx()) {
+            if let ty::TypeTraitItem(assoc_ty) = item {
+                if assoc_ty.name == assoc_ty_name {
+                    return Some(specialization_graph::NodeItem {
+                        node: specialization_graph::Node::Impl(impl_def_id),
+                        item: assoc_ty,
+                    });
                 }
             }
         }
         None
-    }).map(|(ty, source)| {
-        (ty.subst(selcx.tcx(), &source.translate_substs(selcx.tcx(), substs)), nested)
-    }).unwrap_or_else(|| {
-        selcx.tcx().sess.span_bug(obligation.cause.span,
-                                  &format!("No associated type for {:?}",
-                                           obligation.predicate.trait_ref));
-    })
+    } else {
+        selcx.tcx().lookup_trait_def(trait_def_id)
+            .ancestors(impl_def_id)
+            .type_defs(selcx.tcx(), assoc_ty_name)
+            .next()
+    }
 }

@@ -127,7 +127,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc_front::intravisit::{self, Visitor};
 use rustc_front::hir;
-use rustc_front::hir::{Visibility, PatKind, Defaultness};
+use rustc_front::hir::{Visibility, PatKind};
 use rustc_front::print::pprust;
 use rustc_back::slice;
 
@@ -864,33 +864,56 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     check_bare_fn(ccx, &sig.decl, body, id, span, fty, param_env);
 }
 
-fn check_specialization_validity<'tcx, F>(tcx: &ty::ctxt<'tcx>,
-                                          impl_id: DefId,
-                                          impl_item: &hir::ImplItem,
-                                          f: F)
-    where F: FnMut(&ty::ImplOrTraitItem<'tcx>) -> Option<hir::Defaultness>
+fn report_forbidden_specialization(tcx: &ty::ctxt,
+                                   impl_item: &hir::ImplItem,
+                                   parent_impl: DefId)
 {
-    let parent_item_opt = traits::get_parent_impl_item(tcx, impl_id, f);
-    if let Some((Defaultness::Final, parent_impl)) = parent_item_opt {
-        let mut err = struct_span_err!(
-            tcx.sess, impl_item.span, E0520,
-            "item `{}` is provided by an implementation that \
-             specializes another, but the item in the parent \
-             implementations is not marked `default` and so it \
-             cannot be specialized.",
-            impl_item.name);
+    let mut err = struct_span_err!(
+        tcx.sess, impl_item.span, E0520,
+        "item `{}` is provided by an implementation that specializes \
+         another, but the item in the parent implementations is not \
+         marked `default` and so it cannot be specialized.",
+        impl_item.name);
 
-        match tcx.span_of_impl(parent_impl) {
-            Ok(span) => {
-                err.span_note(span, "parent implementation is here:");
-            }
-            Err(cname) => {
-                err.note(&format!("parent implementation is in crate `{}`", cname));
-            }
+    match tcx.span_of_impl(parent_impl) {
+        Ok(span) => {
+            err.span_note(span, "parent implementation is here:");
         }
-
-        err.emit();
+        Err(cname) => {
+            err.note(&format!("parent implementation is in crate `{}`", cname));
+        }
     }
+
+    err.emit();
+}
+
+fn check_specialization_validity<'tcx>(tcx: &ty::ctxt<'tcx>, trait_def: &ty::TraitDef<'tcx>,
+                                       impl_id: DefId, impl_item: &hir::ImplItem)
+{
+    let ancestors = trait_def.ancestors(impl_id);
+
+    let parent = match impl_item.node {
+        hir::ImplItemKind::Const(..) => {
+            ancestors.const_defs(tcx, impl_item.name).skip(1).next()
+                .map(|node_item| node_item.map(|parent| parent.defaultness))
+        }
+        hir::ImplItemKind::Method(..) => {
+            ancestors.fn_defs(tcx, impl_item.name).skip(1).next()
+                .map(|node_item| node_item.map(|parent| parent.defaultness))
+
+        }
+        hir::ImplItemKind::Type(_) => {
+            ancestors.type_defs(tcx, impl_item.name).skip(1).next()
+                .map(|node_item| node_item.map(|parent| parent.defaultness))
+        }
+    };
+
+    if let Some(parent) = parent {
+        if parent.item.is_final() {
+            report_forbidden_specialization(tcx, impl_item, parent.node.def_id());
+        }
+    }
+
 }
 
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -898,8 +921,14 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_id: DefId,
                                             impl_trait_ref: &ty::TraitRef<'tcx>,
                                             impl_items: &[hir::ImplItem]) {
-    // Locate trait methods
+    // If the trait reference itself is erroneous (so the compilation is going
+    // to fail), skip checking the items here -- the `impl_item` table in `tcx`
+    // isn't populated for such impls.
+    if impl_trait_ref.references_error() { return; }
+
+    // Locate trait definition and items
     let tcx = ccx.tcx;
+    let trait_def = tcx.lookup_trait_def(impl_trait_ref.def_id);
     let trait_items = tcx.trait_items(impl_trait_ref.def_id);
     let mut overridden_associated_type = None;
 
@@ -910,6 +939,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         let ty_trait_item = trait_items.iter()
             .find(|ac| ac.name() == ty_impl_item.name());
 
+        // Check that impl definition matches trait definition
         if let Some(ty_trait_item) = ty_trait_item {
             match impl_item.node {
                 hir::ImplItemKind::Const(..) => {
@@ -932,15 +962,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_const.name,
                                   impl_trait_ref)
                     }
-
-                    check_specialization_validity(ccx.tcx, impl_id, impl_item, |cand| {
-                        if let &ty::ConstTraitItem(ref trait_const) = cand {
-                            if trait_const.name == impl_item.name {
-                                return Some(trait_const.defaultness);
-                            }
-                        }
-                        None
-                    });
                 }
                 hir::ImplItemKind::Method(ref sig, ref body) => {
                     check_trait_fn_not_const(ccx, impl_item.span, sig.constness);
@@ -964,15 +985,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_method.name,
                                   impl_trait_ref)
                     }
-
-                    check_specialization_validity(ccx.tcx, impl_id, impl_item, |cand| {
-                        if let &ty::MethodTraitItem(ref meth) = cand {
-                            if meth.name == impl_method.name {
-                                return Some(meth.defaultness);
-                            }
-                        }
-                        None
-                    });
                 }
                 hir::ImplItemKind::Type(_) => {
                     let impl_type = match ty_impl_item {
@@ -991,18 +1003,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   impl_type.name,
                                   impl_trait_ref)
                     }
-
-                    check_specialization_validity(ccx.tcx, impl_id, impl_item, |cand| {
-                        if let &ty::TypeTraitItem(ref at) = cand {
-                            if at.name == impl_item.name {
-                                return Some(at.defaultness);
-                            }
-                        }
-                        None
-                    });
                 }
             }
         }
+
+        check_specialization_validity(tcx, trait_def, impl_id, impl_item);
     }
 
     // Check for missing items from trait
@@ -1011,9 +1016,13 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let mut invalidated_items = Vec::new();
     let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in trait_items.iter() {
+        let is_implemented;
+        let is_provided;
+
         match *trait_item {
             ty::ConstTraitItem(ref associated_const) => {
-                let is_implemented = impl_items.iter().any(|ii| {
+                is_provided = associated_const.has_value;
+                is_implemented = impl_items.iter().any(|ii| {
                     match ii.node {
                         hir::ImplItemKind::Const(..) => {
                             ii.name == associated_const.name
@@ -1021,57 +1030,30 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         _ => false,
                     }
                 });
-                let is_provided = associated_const.has_value;
-
-                if !is_implemented {
-                    if !is_provided {
-                        missing_items.push(associated_const.name);
-                    } else if associated_type_overridden {
-                        invalidated_items.push(associated_const.name);
-                    }
-                }
             }
             ty::MethodTraitItem(ref trait_method) => {
-                let search_result = traits::get_impl_item_or_default(tcx, impl_id, |cand| {
-                    if let &ty::MethodTraitItem(ref meth) = cand {
-                        if meth.name == trait_method.name {
-                            return Some(());
-                        }
-                    }
-                    None
-                });
-
-                if let Some((_, source)) = search_result {
-                    if source.is_from_trait() {
-                        let is_provided =
-                            provided_methods.iter().any(|m| m.name == trait_method.name);
-                        if !is_provided {
-                            missing_items.push(trait_method.name);
-                        } else if associated_type_overridden {
-                            invalidated_items.push(trait_method.name);
-                        }
-                    }
-                } else {
-                    missing_items.push(trait_method.name);
-                }
+                is_provided = provided_methods.iter().any(|m| m.name == trait_method.name);
+                is_implemented = trait_def.ancestors(impl_id)
+                    .fn_defs(tcx, trait_method.name)
+                    .next()
+                    .map(|node_item| !node_item.node.is_from_trait())
+                    .unwrap_or(false);
             }
             ty::TypeTraitItem(ref trait_assoc_ty) => {
-                let search_result = traits::get_impl_item_or_default(tcx, impl_id, |cand| {
-                    if let &ty::TypeTraitItem(ref assoc_ty) = cand {
-                        if assoc_ty.name == trait_assoc_ty.name && assoc_ty.ty.is_some() {
-                            return Some(());
-                        }
-                    }
-                    None
-                });
+                is_provided = trait_assoc_ty.ty.is_some();
+                is_implemented = trait_def.ancestors(impl_id)
+                    .type_defs(tcx, trait_assoc_ty.name)
+                    .next()
+                    .map(|node_item| !node_item.node.is_from_trait())
+                    .unwrap_or(false);
+            }
+        }
 
-                if let Some((_, source)) = search_result {
-                    if source.is_from_trait() && associated_type_overridden {
-                        invalidated_items.push(trait_assoc_ty.name);
-                    }
-                } else {
-                    missing_items.push(trait_assoc_ty.name);
-                }
+        if !is_implemented {
+            if !is_provided {
+                missing_items.push(trait_item.name());
+            } else if associated_type_overridden {
+                invalidated_items.push(trait_item.name());
             }
         }
     }

@@ -10,7 +10,7 @@
 
 use dep_graph::DepNode;
 use middle::def_id::DefId;
-use middle::traits;
+use middle::traits::{self, specialization_graph};
 use middle::ty;
 use middle::ty::fast_reject;
 use middle::ty::{Ty, TyCtxt, TraitRef};
@@ -61,7 +61,7 @@ pub struct TraitDef<'tcx> {
     blanket_impls: RefCell<Vec<DefId>>,
 
     /// The specialization order for impls of this trait.
-    pub specialization_graph: RefCell<traits::SpecializationGraph>,
+    pub specialization_graph: RefCell<traits::specialization_graph::Graph>,
 
     /// Various flags
     pub flags: Cell<TraitFlags>
@@ -83,7 +83,7 @@ impl<'tcx> TraitDef<'tcx> {
             nonblanket_impls: RefCell::new(FnvHashMap()),
             blanket_impls: RefCell::new(vec![]),
             flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS),
-            specialization_graph: RefCell::new(traits::SpecializationGraph::new()),
+            specialization_graph: RefCell::new(traits::specialization_graph::Graph::new()),
         }
     }
 
@@ -170,7 +170,7 @@ impl<'tcx> TraitDef<'tcx> {
     /// Records a trait-to-implementation mapping for a non-local impl.
     ///
     /// The `parent_impl` is the immediately-less-specialized impl, or the
-    /// trait's def ID if the impl is maximally-specialized -- information that
+    /// trait's def ID if the impl is is not a specialization -- information that
     /// should be pulled from the metadata.
     pub fn record_remote_impl(&self,
                               tcx: &TyCtxt<'tcx>,
@@ -201,10 +201,8 @@ impl<'tcx> TraitDef<'tcx> {
             .insert(tcx, impl_def_id)
     }
 
-    /// Returns the immediately less specialized impl, if any.
-    pub fn parent_of_impl(&self, impl_def_id: DefId) -> Option<DefId> {
-        let parent = self.specialization_graph.borrow().parent(impl_def_id);
-        if parent == self.trait_ref.def_id { None } else { Some(parent) }
+    pub fn ancestors<'a>(&'a self, of_impl: DefId) -> specialization_graph::Ancestors<'a, 'tcx> {
+        specialization_graph::ancestors(self, of_impl)
     }
 
         pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &TyCtxt<'tcx>, mut f: F)  {

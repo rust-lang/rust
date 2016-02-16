@@ -486,21 +486,19 @@ pub fn get_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
     assert!(!substs.types.needs_infer());
 
-    traits::get_impl_item_or_default(tcx, impl_def_id, |cand| {
-        if let &ty::MethodTraitItem(ref meth) = cand {
-            if meth.name == name {
-                return Some(meth.clone())
+    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+
+    match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
+        Some(node_item) => {
+            ImplMethod {
+                method: node_item.item,
+                substs: traits::translate_substs(tcx, impl_def_id, substs, node_item.node),
+                is_provided: node_item.node.is_from_trait(),
             }
         }
-        None
-    }).map(|(meth, source)| {
-        ImplMethod {
-            method: meth,
-            substs: source.translate_substs(tcx, substs),
-            is_provided: source.is_from_trait(),
+        None => {
+            tcx.sess.bug(&format!("method {:?} not found in {:?}", name, impl_def_id))
         }
-    }).unwrap_or_else(|| {
-        tcx.sess.bug(&format!("method {:?} not found in {:?}",
-                              name, impl_def_id))
-    })
+    }
 }

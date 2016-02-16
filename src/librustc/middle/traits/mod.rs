@@ -45,13 +45,11 @@ pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::is_vtable_safe_method;
-pub use self::select::EvaluationCache;
-pub use self::select::SelectionContext;
-pub use self::select::SelectionCache;
+pub use self::select::{EvaluationCache, SelectionContextBuilder, build_selcx};
+pub use self::select::{ProjectionMode, SelectionContext, SelectionCache};
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
-pub use self::specialize::{Overlap, SpecializationGraph, specializes};
-pub use self::specialize::{ItemSource, get_impl_item_or_default, get_parent_impl_item};
+pub use self::specialize::{Overlap, specialization_graph, specializes, translate_substs};
 pub use self::util::elaborate_predicates;
 pub use self::util::get_vtable_index_of_object_method;
 pub use self::util::trait_ref_for_builtin_bound;

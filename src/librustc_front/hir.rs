@@ -1053,6 +1053,16 @@ pub enum Defaultness {
     Final,
 }
 
+impl Defaultness {
+    pub fn is_final(&self) -> bool {
+        *self == Defaultness::Final
+    }
+
+    pub fn is_default(&self) -> bool {
+        *self == Defaultness::Default
+    }
+}
+
 impl fmt::Display for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(match *self {
