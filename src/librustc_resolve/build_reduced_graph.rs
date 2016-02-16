@@ -295,14 +295,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     let module = self.new_extern_crate_module(parent_link, def, is_public, item.id);
                     self.define(parent, name, TypeNS, (module, sp));
 
-                    if is_public {
-                        let export = Export { name: name, def_id: def_id };
-                        if let Some(def_id) = parent.def_id() {
-                            let node_id = self.resolver.ast_map.as_local_node_id(def_id).unwrap();
-                            self.export_map.entry(node_id).or_insert(Vec::new()).push(export);
-                        }
-                    }
-
                     self.build_reduced_graph_for_external_crate(module);
                 }
                 parent
