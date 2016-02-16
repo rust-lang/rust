@@ -100,6 +100,13 @@ fn main() {
         }
         cfg.flag(flag);
     }
+
+    for component in &components[..] {
+        let mut flag = String::from("-DLLVM_COMPONENT_");
+        flag.push_str(&component.to_uppercase());
+        cfg.flag(&flag);
+    }
+
     cfg.file("../rustllvm/ExecutionEngineWrapper.cpp")
        .file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
