@@ -822,10 +822,19 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
 
                 try!(write!(f, "{}", bare_fn.sig.0));
+                try!(ty::tls::with(|tcx| {
+                    write!(f, " {{{}", tcx.item_path_str(def_id))
+                }));
 
-                write!(f, " {{{}}}", ty::tls::with(|tcx| {
-                    tcx.item_path_str(def_id)
-                }))
+                let tps = substs.types.get_slice(subst::FnSpace);
+                if tps.len() >= 1 {
+                    try!(write!(f, "::<{}", tps[0]));
+                    for &ty in &tps[1..] {
+                        try!(write!(f, ", {}", ty));
+                    }
+                    try!(write!(f, ">"));
+                }
+                write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
                 if bare_fn.unsafety == hir::Unsafety::Unsafe {
