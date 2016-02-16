@@ -86,8 +86,10 @@ pub fn id<T>(x: T) -> T { (x as T) }
 pub fn use_id() {
     let _ =
         ((id::<[i32; (3 as usize)]> as
-             fn([i32; 3]) -> [i32; 3] {id})(([(1 as i32), (2 as i32),
-                                              (3 as i32)] as [i32; 3])) as
+             fn([i32; 3]) -> [i32; 3] {id::<[i32; 3]>})(([(1 as i32),
+                                                          (2 as i32),
+                                                          (3 as i32)] as
+                                                            [i32; 3])) as
             [i32; 3]);
 }
 fn main() { }
