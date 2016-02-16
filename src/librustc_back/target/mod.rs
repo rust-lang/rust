@@ -65,12 +65,13 @@ mod windows_msvc_base;
 
 macro_rules! supported_targets {
     ( $(($triple:expr, $module:ident)),+ ) => (
+        $(mod $module;)*
+
         /// List of supported targets
         pub const TARGETS: &'static [&'static str] = &[$($triple),*];
 
         // this would use a match if stringify! were allowed in pattern position
         fn load_specific(target: &str) -> Option<Target> {
-            $(mod $module;)*
             let target = target.replace("-", "_");
             if false { }
             $(
