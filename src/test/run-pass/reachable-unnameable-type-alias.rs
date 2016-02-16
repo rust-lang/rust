@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-16734.rs
+#![feature(staged_api)]
+#![stable(feature = "a", since = "b")]
 
-extern crate issue_16734;
-
-fn main() {
-    let res = issue_16734::public_function_returning_unnameable_type()
-                                .method_of_unnameable_type();
-    assert_eq!(res, "Hello!");
+mod inner_private_module {
+    // UnnameableTypeAlias isn't marked as reachable, so no stability annotation is required here
+    pub type UnnameableTypeAlias = u8;
 }
+
+#[stable(feature = "a", since = "b")]
+pub fn f() -> inner_private_module::UnnameableTypeAlias {
+    0
+}
+
+fn main() {}
