@@ -11,8 +11,11 @@
 use dep_graph::DepGraph;
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, TypeFoldable};
-use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
+use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, UndoLog, Error};
+use rustc_data_structures::undoable::{Undoable, UndoableTracker, Undoer};
+use std::cell::RefCell;
 use std::iter;
+use std::rc::Rc;
 use syntax::ast;
 use util::common::ErrorReported;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
@@ -31,6 +34,9 @@ use super::select::SelectionContext;
 use super::Unimplemented;
 use super::util::predicate_for_builtin_bound;
 
+pub type ObligationForestUndoLog<'tcx> = UndoLog<PendingPredicateObligation<'tcx>,
+                                                 LocalFulfilledPredicates<'tcx>>;
+
 pub struct GlobalFulfilledPredicates<'tcx> {
     set: FnvHashSet<ty::PolyTraitPredicate<'tcx>>,
     dep_graph: DepGraph,
@@ -38,7 +44,8 @@ pub struct GlobalFulfilledPredicates<'tcx> {
 
 #[derive(Debug)]
 pub struct LocalFulfilledPredicates<'tcx> {
-    set: FnvHashSet<ty::Predicate<'tcx>>
+    set: FnvHashSet<ty::Predicate<'tcx>>,
+    log: Option<(Rc<RefCell<ObligationForestUndoLog<'tcx>>>, usize)>,
 }
 
 /// The fulfillment context is used to drive trait resolution.  It
@@ -109,6 +116,12 @@ pub struct PendingPredicateObligation<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub stalled_on: Vec<Ty<'tcx>>,
 }
+
+#[derive(Debug)]
+pub enum LocalFulfilledPredicatesAction<'tcx> {
+    Add { key: ty::Predicate<'tcx> }
+}
+
 
 impl<'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
@@ -670,11 +683,19 @@ fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
 impl<'tcx> LocalFulfilledPredicates<'tcx> {
     pub fn new() -> LocalFulfilledPredicates<'tcx> {
         LocalFulfilledPredicates {
-            set: FnvHashSet()
+            set: FnvHashSet(),
+            log: None,
         }
     }
 
     fn is_duplicate_or_add(&mut self, key: &ty::Predicate<'tcx>) -> bool {
+        let insert_result = self.set.insert(key.clone());
+        if insert_result {
+            if let Some((ref log, id)) = self.log {
+                (*log).borrow_mut().push_action(
+                    id, LocalFulfilledPredicatesAction::Add { key: key.clone() });
+            }
+        }
         // For a `LocalFulfilledPredicates`, if we find a match, we
         // don't need to add a read edge to the dep-graph. This is
         // because it means that the predicate has already been
@@ -682,7 +703,26 @@ impl<'tcx> LocalFulfilledPredicates<'tcx> {
         // containing task will already have an edge. (Here we are
         // assuming each `FulfillmentContext` only gets used from one
         // task; but to do otherwise makes no sense)
-        !self.set.insert(key.clone())
+        !insert_result
+    }
+}
+
+impl<'tcx> Undoer for LocalFulfilledPredicatesAction<'tcx> {
+    type Undoable = LocalFulfilledPredicates<'tcx>;
+    fn undo(self, predicates: &mut LocalFulfilledPredicates<'tcx>) {
+        match self {
+            LocalFulfilledPredicatesAction::Add { key } => {
+                assert!(predicates.set.remove(&key));
+            }
+        }
+    }
+}
+
+impl<'tcx> Undoable for LocalFulfilledPredicates<'tcx> {
+    type Undoer = LocalFulfilledPredicatesAction<'tcx>;
+    type Tracker = ObligationForestUndoLog<'tcx>;
+    fn register_tracker(&mut self, log: Rc<RefCell<Self::Tracker>>, id: usize) {
+        self.log = Some((log, id));
     }
 }
 

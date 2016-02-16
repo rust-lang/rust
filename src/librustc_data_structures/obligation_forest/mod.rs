@@ -15,8 +15,14 @@
 //! in the first place). See README.md for a general overview of how
 //! to use this class.
 
+#![allow(dead_code)]
+
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::mem;
+use std::rc::Rc;
+
+use undoable::{Undoable, UndoableTracker, Undoer};
 
 mod node_index;
 use self::node_index::NodeIndex;
@@ -28,7 +34,8 @@ use self::tree_index::TreeIndex;
 #[cfg(test)]
 mod test;
 
-pub struct ObligationForest<O,T> {
+
+pub struct ObligationForest<O, T: Undoable> {
     /// The list of obligations. In between calls to
     /// `process_obligations`, this list only contains nodes in the
     /// `Pending` or `Success` state (with a non-zero number of
@@ -42,19 +49,28 @@ pub struct ObligationForest<O,T> {
     /// at a higher index than its parent. This is needed by the
     /// backtrace iterator (which uses `split_at`).
     nodes: Vec<Node<O>>,
+
+    /// The list of per-tree data.
     trees: Vec<Tree<T>>,
-    snapshots: Vec<usize>
+
+    log: Rc<RefCell<UndoLog<O, T>>>,
 }
 
+#[derive(Debug)]
+pub struct UndoLog<O, T: Undoable>(Vec<LogItem<O, T>>);
+
+#[derive(Debug)]
 pub struct Snapshot {
-    len: usize,
+    log_len: usize,
 }
 
+#[derive(Debug)]
 struct Tree<T> {
     root: NodeIndex,
     state: T,
 }
 
+#[derive(Debug)]
 struct Node<O> {
     state: NodeState<O>,
     parent: Option<NodeIndex>,
@@ -85,6 +101,43 @@ enum NodeState<O> {
 }
 
 #[derive(Debug)]
+enum LogItem<O, T: Undoable> {
+    /// Any push of a new node, whether it's a root or not. If it's a
+    /// root, then we can assume that at this point in the log a new
+    /// tree state had been pushed as well.
+    PushPending,
+    PendingIntoError {
+        at: NodeIndex,
+        old_obligation: O,
+    },
+    PendingIntoSuccess {
+        at: NodeIndex
+    },
+    SuccessIntoError {
+        at: NodeIndex,
+        old_obligation: O,
+        old_num_incomplete_children: usize,
+    },
+    /// Because each tree has interesting state, each tree needs some
+    /// record of its state at a snapshot. Instead of combining all
+    /// that state into one snapshot item (which'd end up being a
+    /// list of some kind) we just shove it into the same log as all
+    /// other ObligationForest modifications. We know where an actual
+    /// OF snapshot begins via the Snapshot structure (passed back to
+    /// user code) keeping track of our location in the log.
+    EnterSnapshot,
+    TreeModify {
+        tree: TreeIndex,
+        undoer: T::Undoer,
+    },
+    /// A placeholder in the log for operations that, for some
+    /// reason, effectively became no-ops. For the OF, it is what
+    /// replaces a EnterSnapshot when that snapshot is committed and
+    /// the OF is still in at least one snapshot.
+    NoOp,
+}
+
+#[derive(Debug)]
 pub struct Outcome<O,E> {
     /// Obligations that were completely evaluated, including all
     /// (transitive) subobligations.
@@ -108,12 +161,12 @@ pub struct Error<O,E> {
     pub backtrace: Vec<O>,
 }
 
-impl<O: Debug, T: Debug> ObligationForest<O, T> {
+impl<O: Debug + Clone, T: Debug + Undoable<Tracker=UndoLog<O, T>>> ObligationForest<O, T> {
     pub fn new() -> ObligationForest<O, T> {
         ObligationForest {
             trees: vec![],
             nodes: vec![],
-            snapshots: vec![]
+            log: Rc::new(RefCell::new(UndoLog(vec![]))),
         }
     }
 
@@ -124,53 +177,90 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
     }
 
     pub fn start_snapshot(&mut self) -> Snapshot {
-        self.snapshots.push(self.trees.len());
-        Snapshot { len: self.snapshots.len() }
+        let log = &mut self.log.borrow_mut().0;
+        let result = Snapshot { log_len: log.len() };
+        log.push(LogItem::EnterSnapshot);
+        result
     }
 
     pub fn commit_snapshot(&mut self, snapshot: Snapshot) {
-        assert_eq!(snapshot.len, self.snapshots.len());
-        let trees_len = self.snapshots.pop().unwrap();
-        assert!(self.trees.len() >= trees_len);
+        self.expect_top_snapshot_at(snapshot.log_len);
+        let log = &mut self.log.borrow_mut().0;
+        if snapshot.log_len == 0 {
+            log.clear();
+        } else {
+            for i in snapshot.log_len..log.len() {
+                let into_noop = match &log[i] {
+                    &LogItem::EnterSnapshot => true,
+                    _ => false,
+                };
+                if into_noop {
+                    mem::replace(&mut log[i], LogItem::NoOp);
+                }
+            }
+        }
     }
 
     pub fn rollback_snapshot(&mut self, snapshot: Snapshot) {
-        // Check that we are obeying stack discipline.
-        assert_eq!(snapshot.len, self.snapshots.len());
-        let trees_len = self.snapshots.pop().unwrap();
-
-        // If nothing happened in snapshot, done.
-        if self.trees.len() == trees_len {
-            return;
+        self.expect_top_snapshot_at(snapshot.log_len);
+        let log = &mut self.log.borrow_mut().0;
+        while log.len() > snapshot.log_len {
+            match log.pop().unwrap() {
+                LogItem::PushPending => {
+                    let node = self.nodes.pop().unwrap();
+                    if self.trees[node.tree.get()].root.get() == self.nodes.len() {
+                        // We just popped a root; we should also pop the associated tree
+                        self.trees.pop().unwrap();
+                    }
+                },
+                LogItem::PendingIntoError { at, old_obligation } => {
+                    self.nodes[at.get()].state.error_into_pending(old_obligation);
+                },
+                LogItem::PendingIntoSuccess { at } => {
+                    self.nodes[at.get()].state.success_into_pending();
+                    let mut parent = self.nodes[at.get()].parent;
+                    // now walk the parents of the node, incrementing num_incomplete_children if
+                    // need be.
+                    while let Some(index) = parent {
+                        match &mut self.nodes[index.get()].state {
+                            &mut NodeState::Success  {
+                                num_incomplete_children: ref mut num @ 0,
+                                ..
+                            } => { *num += 1; },
+                            &mut NodeState::Success { .. } => break,
+                            &mut NodeState::Pending { .. } |
+                            &mut NodeState::Error => panic!(),
+                        }
+                        parent = self.nodes[index.get()].parent;
+                    }
+                },
+                LogItem::SuccessIntoError { at, old_obligation, old_num_incomplete_children } => {
+                    self.nodes[at.get()].state.error_into_success(
+                        old_obligation, old_num_incomplete_children);
+                },
+                LogItem::EnterSnapshot => { assert!(log.len() == snapshot.log_len); },
+                LogItem::TreeModify { tree, undoer } => {
+                    undoer.undo(&mut self.trees[tree.get()].state);
+                }
+                LogItem::NoOp => {},
+            }
         }
-
-        // Find root of first tree; because nothing can happen in a
-        // snapshot but pushing trees, all nodes after that should be
-        // roots of other trees as well
-        let first_root_index = self.trees[trees_len].root.get();
-        debug_assert!(
-            self.nodes[first_root_index..]
-                .iter()
-                .zip(first_root_index..)
-                .all(|(root, root_index)| self.trees[root.tree.get()].root.get() == root_index));
-
-        // Pop off tree/root pairs pushed during snapshot.
-        self.trees.truncate(trees_len);
-        self.nodes.truncate(first_root_index);
     }
 
     pub fn in_snapshot(&self) -> bool {
-        !self.snapshots.is_empty()
+        self.log.borrow().in_snapshot()
     }
 
     /// Adds a new tree to the forest.
     ///
     /// This CAN be done during a snapshot.
-    pub fn push_tree(&mut self, obligation: O, tree_state: T) {
+    pub fn push_tree(&mut self, obligation: O, mut tree_state: T) {
         let index = NodeIndex::new(self.nodes.len());
         let tree = TreeIndex::new(self.trees.len());
+        tree_state.register_tracker(self.log.clone(), self.trees.len());
         self.trees.push(Tree { root: index, state: tree_state });
         self.nodes.push(Node::new(tree, None, obligation));
+        self.log_maybe(|| Some(LogItem::PushPending));
     }
 
     /// Convert all remaining obligations to the given error.
@@ -193,7 +283,7 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
     }
 
     /// Returns the set of obligations that are in a pending state.
-    pub fn pending_obligations(&self) -> Vec<O> where O: Clone {
+    pub fn pending_obligations(&self) -> Vec<O> {
         self.nodes.iter()
                   .filter_map(|n| match n.state {
                       NodeState::Pending { ref obligation } => Some(obligation),
@@ -204,15 +294,13 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
     }
 
     /// Process the obligations.
-    ///
-    /// This CANNOT be unrolled (presently, at least).
     pub fn process_obligations<E,F>(&mut self, mut action: F) -> Outcome<O,E>
         where E: Debug, F: FnMut(&mut O, &mut T, Backtrace<O>) -> Result<Option<Vec<O>>, E>
     {
         debug!("process_obligations(len={})", self.nodes.len());
-        assert!(!self.in_snapshot()); // cannot unroll this action
 
         let mut errors = vec![];
+        let mut successes = vec![];
         let mut stalled = true;
 
         // We maintain the invariant that the list is in pre-order, so
@@ -224,7 +312,13 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
         // encountered an error.
 
         for index in 0..self.nodes.len() {
-            debug_assert!(!self.nodes[index].is_popped());
+            if self.in_snapshot() {
+                if self.nodes[index].is_popped() {
+                    continue;
+                }
+            } else {
+                assert!(!self.nodes[index].is_popped());
+            }
             self.inherit_error(index);
 
             debug!("process_obligations: node {} == {:?}",
@@ -252,7 +346,7 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
                 Ok(Some(children)) => {
                     // if we saw a Some(_) result, we are not (yet) stalled
                     stalled = false;
-                    self.success(index, children);
+                    self.success(index, children, &mut successes);
                 }
                 Err(err) => {
                     let backtrace = self.backtrace(index);
@@ -262,12 +356,14 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
         }
 
         // Now we have to compress the result
-        let successful_obligations = self.compress();
+        if !self.in_snapshot() {
+            self.compress();
+        }
 
         debug!("process_obligations: complete");
 
         Outcome {
-            completed: successful_obligations,
+            completed: successes,
             errors: errors,
             stalled: stalled,
         }
@@ -279,14 +375,14 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
     /// `index` to indicate that a child has completed
     /// successfully. Otherwise, adds new nodes to represent the child
     /// work.
-    fn success(&mut self, index: usize, children: Vec<O>) {
+    fn success(&mut self, index: usize, children: Vec<O>, successes: &mut Vec<O>) {
         debug!("success(index={}, children={:?})", index, children);
 
         let num_incomplete_children = children.len();
 
         if num_incomplete_children == 0 {
             // if there is no work left to be done, decrement parent's ref count
-            self.update_parent(index);
+            self.update_parent(index, successes);
         } else {
             // create child work
             let tree_index = self.nodes[index].tree;
@@ -294,24 +390,25 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
             self.nodes.extend(
                 children.into_iter()
                         .map(|o| Node::new(tree_index, Some(node_index), o)));
+            self.log_maybe(|| (0..num_incomplete_children).map(|_| LogItem::PushPending));
         }
 
-        // change state from `Pending` to `Success`, temporarily swapping in `Error`
-        let state = mem::replace(&mut self.nodes[index].state, NodeState::Error);
-        self.nodes[index].state = match state {
-            NodeState::Pending { obligation } =>
-                NodeState::Success { obligation: obligation,
-                                     num_incomplete_children: num_incomplete_children },
-            NodeState::Success { .. } |
-            NodeState::Error =>
-                unreachable!()
-        };
+        // change state from `Pending` to `Success`
+        self.nodes[index].state.pending_into_success(num_incomplete_children);
+        self.log_maybe(|| Some(LogItem::PendingIntoSuccess { at: NodeIndex::new(index) }));
     }
 
     /// Decrements the ref count on the parent of `child`; if the
     /// parent's ref count then reaches zero, proceeds recursively.
-    fn update_parent(&mut self, child: usize) {
+    fn update_parent(&mut self, child: usize, successes: &mut Vec<O>) {
         debug!("update_parent(child={})", child);
+        match &self.nodes[child].state {
+            &NodeState::Pending { ref obligation } |
+            &NodeState::Success { ref obligation, .. } => {
+                successes.push(obligation.clone());
+            },
+            &NodeState::Error => unreachable!(),
+        }
         if let Some(parent) = self.nodes[child].parent {
             let parent = parent.get();
             match self.nodes[parent].state {
@@ -323,7 +420,7 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
                 }
                 _ => unreachable!(),
             }
-            self.update_parent(parent);
+            self.update_parent(parent, successes);
         }
     }
 
@@ -335,7 +432,22 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
         let tree = self.nodes[child].tree;
         let root = self.trees[tree.get()].root;
         if let NodeState::Error = self.nodes[root.get()].state {
-            self.nodes[child].state = NodeState::Error;
+            match mem::replace(&mut self.nodes[child].state, NodeState::Error) {
+                NodeState::Pending { obligation } => {
+                    self.log_maybe(|| Some(LogItem::PendingIntoError {
+                        at: NodeIndex::new(child),
+                        old_obligation: obligation
+                    }));
+                },
+                NodeState::Success { obligation, num_incomplete_children } => {
+                    self.log_maybe(|| Some(LogItem::SuccessIntoError {
+                        at: NodeIndex::new(child),
+                        old_obligation: obligation,
+                        old_num_incomplete_children: num_incomplete_children
+                    }));
+                },
+                NodeState::Error => {},
+            }
         }
     }
 
@@ -349,10 +461,21 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
         loop {
             let state = mem::replace(&mut self.nodes[p].state, NodeState::Error);
             match state {
-                NodeState::Pending { obligation } |
-                NodeState::Success { obligation, .. } => {
+                NodeState::Pending { obligation } => {
+                    self.log_maybe(|| Some(LogItem::PendingIntoError {
+                        at: NodeIndex::new(p),
+                        old_obligation: obligation.clone(),
+                    }));
                     trace.push(obligation);
-                }
+                },
+                NodeState::Success { obligation, num_incomplete_children } => {
+                    self.log_maybe(|| Some(LogItem::SuccessIntoError {
+                        at: NodeIndex::new(p),
+                        old_obligation: obligation.clone(),
+                        old_num_incomplete_children: num_incomplete_children,
+                    }));
+                    trace.push(obligation);
+                },
                 NodeState::Error => {
                     // we should not encounter an error, because if
                     // there was an error in the ancestors, it should
@@ -374,7 +497,7 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
     /// the indices and hence invalidates any outstanding
     /// indices. Cannot be used during a transaction.
     fn compress(&mut self) -> Vec<O> {
-        assert!(!self.in_snapshot()); // didn't write code to unroll this action
+        assert!(!self.in_snapshot());
         let mut node_rewrites: Vec<_> = (0..self.nodes.len()).collect();
         let mut tree_rewrites: Vec<_> = (0..self.trees.len()).collect();
 
@@ -456,6 +579,26 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
 
         successful
     }
+
+    fn expect_top_snapshot_at(&self, at: usize) {
+        let log = &self.log.borrow().0;
+        match &log[at] {
+            &LogItem::EnterSnapshot => {},
+            _ => panic!("missing snapshot at index {}", at),
+        }
+        for i in (at + 1)..log.len() {
+            match &log[i] {
+                &LogItem::EnterSnapshot => panic!("snapshot at {} is not topmost", at),
+                _ => {}
+            }
+        }
+    }
+
+    fn log_maybe<F: FnOnce() -> I, I: IntoIterator<Item=LogItem<O, T>>>(&mut self, mk_log: F) {
+        if self.in_snapshot() {
+            self.log.borrow_mut().0.extend(mk_log());
+        }
+    }
 }
 
 impl<O> Node<O> {
@@ -473,6 +616,61 @@ impl<O> Node<O> {
             NodeState::Success { num_incomplete_children, .. } => num_incomplete_children == 0,
             NodeState::Error => true,
         }
+    }
+}
+
+impl<O> NodeState<O> {
+    // The following are helper methods to help enforce constraints on transitions.
+
+    fn pending_into_success(&mut self, num_incomplete_children: usize) {
+        let result = match mem::replace(self, NodeState::Error) {
+            NodeState::Pending { obligation } => NodeState::Success {
+                obligation: obligation,
+                num_incomplete_children: num_incomplete_children,
+            },
+            _ => unreachable!()
+        };
+        mem::replace(self, result);
+    }
+    fn pending_into_error(&mut self) {
+        match self {
+            &mut NodeState::Pending { .. } => {},
+            _ => unreachable!(),
+        };
+        mem::replace(self, NodeState::Error);
+    }
+    fn success_into_error(&mut self) {
+        match self {
+            &mut NodeState::Success { .. } => {},
+            _ => unreachable!(),
+        };
+        mem::replace(self, NodeState::Error);
+    }
+    fn success_into_pending(&mut self) {
+        let result = match mem::replace(self, NodeState::Error) {
+            NodeState::Success { obligation, .. } => NodeState::Pending {
+                obligation: obligation,
+            },
+            _ => unreachable!()
+        };
+        mem::replace(self, result);
+    }
+    fn error_into_pending(&mut self, obligation: O) {
+        match self {
+            &mut NodeState::Error => {},
+            _ => unreachable!()
+        }
+        mem::replace(self, NodeState::Pending { obligation: obligation });
+    }
+    fn error_into_success(&mut self, obligation: O, num_incomplete_children: usize) {
+        match self {
+            &mut NodeState::Error => {},
+            _ => unreachable!()
+        }
+        mem::replace(self, NodeState::Success {
+            obligation: obligation,
+            num_incomplete_children: num_incomplete_children
+        });
     }
 }
 
@@ -506,6 +704,24 @@ impl<'b, O> Iterator for Backtrace<'b, O> {
             }
         } else {
             None
+        }
+    }
+}
+
+impl<O, T: Undoable> UndoLog<O, T> {
+    fn in_snapshot(&self) -> bool {
+        !self.0.is_empty()
+    }
+}
+
+impl<O, T: Undoable> UndoableTracker for UndoLog<O, T> {
+    type Undoable = T;
+    fn push_action(&mut self, id: usize, undoer: T::Undoer) {
+        if self.in_snapshot() {
+            self.0.push(LogItem::TreeModify {
+                tree: TreeIndex::new(id),
+                undoer: undoer,
+            });
         }
     }
 }

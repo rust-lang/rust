@@ -8,7 +8,235 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{ObligationForest, Outcome, Error};
+use std::cell::RefCell;
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
+use std::rc::Rc;
+
+use super::{ObligationForest, UndoLog, Outcome, Error};
+use super::super::undoable::{Undoable, UndoableTracker, Undoer};
+
+
+#[derive(Debug)]
+pub struct TestTreeStateUndoer { old_value: usize }
+impl Undoer for TestTreeStateUndoer {
+    type Undoable = TestTreeState;
+    fn undo(self, state: &mut TestTreeState) {
+        state.value = self.old_value;
+    }
+}
+
+#[derive(Debug)]
+pub struct TestTreeState {
+    id: Option<usize>,
+    tracker: Option<Rc<RefCell<UndoLog<&'static str, TestTreeState>>>>,
+    value: usize,
+}
+impl Undoable for TestTreeState {
+    type Undoer = TestTreeStateUndoer;
+    type Tracker = UndoLog<&'static str, TestTreeState>;
+    fn register_tracker(
+        &mut self, tracker: Rc<RefCell<UndoLog<&'static str, TestTreeState>>>, id: usize)
+    {
+        self.id = Some(id);
+        self.tracker = Some(tracker);
+    }
+}
+impl TestTreeState {
+    fn new(value: usize) -> TestTreeState {
+        TestTreeState { id: None, tracker: None, value: value }
+    }
+    fn set(&mut self, value: usize) {
+        let mut tracker = self.tracker.as_ref().unwrap().borrow_mut();
+        tracker.push_action(self.id.unwrap(), TestTreeStateUndoer { old_value: self.value });
+        self.value = value;
+    }
+}
+
+#[test]
+fn push_snap_push_snap_modify_commit_rollback() {
+    let mut forest = ObligationForest::new();
+    forest.push_tree("A", TestTreeState::new(0));
+    forest.push_tree("B", TestTreeState::new(1));
+    forest.push_tree("C", TestTreeState::new(2));
+
+    let snap0 = forest.start_snapshot();
+    forest.push_tree("D", TestTreeState::new(3));
+
+    let snap1 = forest.start_snapshot();
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            match *obligation {
+                "A" => {
+                    assert_eq!(tree.value, 0);
+                    tree.set(4);
+                    Ok(Some(vec!["A.1", "A.2", "A.3"]))
+                },
+                "B" => {
+                    assert_eq!(tree.value, 1);
+                    tree.set(5);
+                    Err("B is for broken")
+                },
+                "C" => {
+                    assert_eq!(tree.value, 2);
+                    tree.set(6);
+                    Ok(Some(vec![]))
+                },
+                "D" => {
+                    assert_eq!(tree.value, 3);
+                    Ok(Some(vec!["D.1"]))
+                }
+                _ => unreachable!(),
+            }
+        });
+    assert_eq!(ok, vec!["C"]);
+    assert_eq!(err, vec![Error { error: "B is for broken",
+                                 backtrace: vec!["B"] }]);
+
+    forest.commit_snapshot(snap1);
+
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            match *obligation {
+                "A.1" => {
+                    assert_eq!(tree.value, 4);
+                    Ok(Some(vec![]))
+                },
+                "A.2" => {
+                    assert_eq!(tree.value, 4);
+                    Err("A.2 broke too")
+                },
+                "A.3" => {
+                    assert_eq!(tree.value, 4);
+                    Ok(Some(vec!["A.3.1"]))
+                },
+                "D.1" => {
+                    assert_eq!(tree.value, 3);
+                    Ok(Some(vec![]))
+                }
+                _ => unreachable!(),
+            }
+        });
+    assert_eq!(BTreeSet::from_iter(ok), BTreeSet::from_iter(vec!["A.1", "D.1", "D"]));
+    assert_eq!(err, vec![Error { error: "A.2 broke too",
+                                 backtrace: vec!["A.2", "A"] }]);
+
+    forest.rollback_snapshot(snap0);
+
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            match *obligation {
+                "A" => {
+                    assert_eq!(tree.value, 0);
+                    Ok(Some(vec!["A.1", "A.2", "A.3"]))
+                },
+                "B" => {
+                    assert_eq!(tree.value, 1);
+                    Err("B is for broken")
+                },
+                "C" => {
+                    assert_eq!(tree.value, 2);
+                    Ok(Some(vec![]))
+                },
+                _ => unreachable!(),
+            }
+        });
+    assert_eq!(ok, vec!["C"]);
+    assert_eq!(err, vec![Error { error: "B is for broken",
+                                 backtrace: vec!["B"] }]);
+}
+
+#[test]
+fn push_snap_modify_rollback() {
+    let mut forest = ObligationForest::new();
+    forest.push_tree("A", TestTreeState::new(0));
+    forest.push_tree("B", TestTreeState::new(1));
+    forest.push_tree("C", TestTreeState::new(2));
+
+    let snap0 = forest.start_snapshot();
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            match *obligation {
+                "A" => {
+                    assert_eq!(tree.value, 0);
+                    tree.set(3);
+                    Ok(Some(vec!["A.1", "A.2", "A.3"]))
+                },
+                "B" => {
+                    assert_eq!(tree.value, 1);
+                    tree.set(4);
+                    Err("B is for broken")
+                },
+                "C" => {
+                    assert_eq!(tree.value, 2);
+                    tree.set(5);
+                    Ok(Some(vec![]))
+                },
+                _ => unreachable!(),
+            }
+        });
+    assert_eq!(ok, vec!["C"]);
+    assert_eq!(err, vec![Error { error: "B is for broken",
+                                 backtrace: vec!["B"] }]);
+
+    let _ =
+        forest.process_obligations(|obligation, tree, _| {
+            match *obligation {
+                "A.1" => {
+                    assert_eq!(tree.value, 3);
+                    Ok(None)
+                },
+                "A.2" => {
+                    assert_eq!(tree.value, 3);
+                    Err("A.2 broke too")
+                },
+                "A.3" => {
+                    assert_eq!(tree.value, 3);
+                    Ok(Some(vec!["A.3.1"]))
+                },
+                _ => unreachable!(),
+            }
+        });
+
+    forest.rollback_snapshot(snap0);
+
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(|obligation, tree, _| {
+            match *obligation {
+                "A" => {
+                    assert_eq!(tree.value, 0);
+                    Ok(Some(vec!["A.1", "A.2", "A.3"]))
+                },
+                "B" => {
+                    assert_eq!(tree.value, 1);
+                    Err("B is for broken")
+                },
+                "C" => {
+                    assert_eq!(tree.value, 2);
+                    Ok(Some(vec![]))
+                },
+                _ => unreachable!(),
+            }
+        });
+    assert_eq!(ok, vec!["C"]);
+    assert_eq!(err, vec![Error { error: "B is for broken",
+                                 backtrace: vec!["B"] }]);
+}
+
+#[derive(Debug)]
+pub struct StrUndoer;
+impl Undoer for StrUndoer {
+    type Undoable = &'static str;
+    fn undo(self, _: &mut &'static str) {}
+}
+
+impl Undoable for &'static str {
+    type Undoer = StrUndoer;
+    type Tracker = UndoLog<&'static str, &'static str>;
+    fn register_tracker(&mut self, _: Rc<RefCell<Self::Tracker>>, _: usize) {
+        // noop
+    }
+}
 
 #[test]
 fn push_pop() {
@@ -124,7 +352,7 @@ fn success_in_grandchildren() {
                 _ => unreachable!(),
             }
         });
-    assert_eq!(ok, vec!["A.3", "A.1"]);
+    assert_eq!(BTreeSet::from_iter(ok), BTreeSet::from_iter(vec!["A.3", "A.1"]));
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
