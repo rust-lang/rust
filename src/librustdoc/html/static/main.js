@@ -580,6 +580,9 @@
                         displayPath = "";
                         href = rootPath + item.path.replace(/::/g, '/') +
                                '/' + type + '.' + name + '.html';
+                    } else if (type === "externcrate") {
+                        displayPath = "";
+                        href = rootPath + name + '/index.html';
                     } else if (item.parent !== undefined) {
                         var myparent = item.parent;
                         var anchor = '#' + type + '.' + name;
@@ -677,6 +680,16 @@
             var searchWords = [];
             for (var crate in rawSearchIndex) {
                 if (!rawSearchIndex.hasOwnProperty(crate)) { continue; }
+
+                searchWords.push(crate);
+                searchIndex.push({
+                    crate: crate,
+                    ty: 1, // == ExternCrate
+                    name: crate,
+                    path: "",
+                    desc: rawSearchIndex[crate].doc,
+                    type: null,
+                });
 
                 // an array of [(Number) item type,
                 //              (String) name,
