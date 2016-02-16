@@ -1,3 +1,5 @@
+% Rustc UX guidelines
+
 Don't forget the user. Whether human or another program, such as an IDE, a
 good user experience with the compiler goes a long way into making developer
 lives better. We don't want users to be baffled by compiler output or

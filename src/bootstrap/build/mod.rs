@@ -33,6 +33,7 @@ mod channel;
 mod clean;
 mod compile;
 mod config;
+mod doc;
 mod flags;
 mod native;
 mod sanity;
@@ -133,6 +134,7 @@ impl Build {
         self.update_submodules();
 
         for target in step::all(self) {
+            let doc_out = self.out.join(&target.target).join("doc");
             match target.src {
                 Llvm { _dummy } => {
                     native::llvm(self, target.target);
@@ -149,6 +151,21 @@ impl Build {
                 Rustc { stage } => {
                     println!("ok, rustc stage{} in {}", stage, target.target);
                 }
+                DocBook { stage } => {
+                    doc::rustbook(self, stage, target.target, "book", &doc_out);
+                }
+                DocNomicon { stage } => {
+                    doc::rustbook(self, stage, target.target, "nomicon",
+                                  &doc_out);
+                }
+                DocStyle { stage } => {
+                    doc::rustbook(self, stage, target.target, "style",
+                                  &doc_out);
+                }
+                DocStandalone { stage } => {
+                    doc::standalone(self, stage, target.target, &doc_out);
+                }
+                Doc { .. } => {} // pseudo-step
             }
         }
     }
