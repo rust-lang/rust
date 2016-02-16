@@ -245,7 +245,7 @@ fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     } else {
         let (declaration, aext_link) = unsafe {
             let linkage = llvm::LLVMGetLinkage(val);
-            (llvm::LLVMIsDeclaration(val) != 0,
+            (llvm::LLVMIsDeclaration(val).as_bool(),
              linkage == llvm::AvailableExternallyLinkage as c_uint)
         };
         debug!("get_defined_value: found {:?} value (declaration: {}, \
