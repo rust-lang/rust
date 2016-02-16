@@ -18,6 +18,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
+#![feature(borrow_state)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -832,6 +833,9 @@ pub struct ModuleS<'a> {
 
     shadowed_traits: RefCell<Vec<&'a NameBinding<'a>>>,
 
+    glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective)>>,
+    resolved_globs: RefCell<(Vec<Module<'a>> /* public */, Vec<Module<'a>> /* private */)>,
+
     // The number of unresolved globs that this module exports.
     glob_count: Cell<usize>,
 
@@ -866,6 +870,8 @@ impl<'a> ModuleS<'a> {
             unresolved_imports: RefCell::new(Vec::new()),
             module_children: RefCell::new(NodeMap()),
             shadowed_traits: RefCell::new(Vec::new()),
+            glob_importers: RefCell::new(Vec::new()),
+            resolved_globs: RefCell::new((Vec::new(), Vec::new())),
             glob_count: Cell::new(0),
             pub_count: Cell::new(0),
             pub_glob_count: Cell::new(0),
@@ -874,52 +880,9 @@ impl<'a> ModuleS<'a> {
         }
     }
 
-    fn resolve_name(&self, name: Name, ns: Namespace, allow_private_imports: bool)
-                    -> ResolveResult<&'a NameBinding<'a>> {
-        let glob_count =
-            if allow_private_imports { self.glob_count.get() } else { self.pub_glob_count.get() };
-
-        self.resolutions.borrow().get(&(name, ns)).cloned().unwrap_or_default().result(glob_count)
-            .and_then(|binding| {
-                let allowed = allow_private_imports || !binding.is_import() || binding.is_public();
-                if allowed { Success(binding) } else { Failed(None) }
-            })
-    }
-
-    // Define the name or return the existing binding if there is a collision.
-    fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
-                        -> Result<(), &'a NameBinding<'a>> {
-        let binding = self.arenas.alloc_name_binding(binding);
-        let mut children = self.resolutions.borrow_mut();
-        let resolution = children.entry((name, ns)).or_insert_with(Default::default);
-
-        // FIXME #31379: We can use methods from imported traits shadowed by non-import items
-        if let Some(old_binding) = resolution.binding {
-            if !old_binding.is_import() && binding.is_import() {
-                if let Some(Def::Trait(_)) = binding.def() {
-                    self.shadowed_traits.borrow_mut().push(binding);
-                }
-            }
-        }
-
-        resolution.try_define(binding)
-    }
-
     fn add_import_directive(&self, import_directive: ImportDirective) {
         let import_directive = self.arenas.alloc_import_directive(import_directive);
         self.unresolved_imports.borrow_mut().push(import_directive);
-    }
-
-    fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        let mut children = self.resolutions.borrow_mut();
-        children.entry((name, ns)).or_insert_with(Default::default).outstanding_references += 1;
-    }
-
-    fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        match self.resolutions.borrow_mut().get_mut(&(name, ns)).unwrap().outstanding_references {
-            0 => panic!("No more outstanding references!"),
-            ref mut outstanding_references => { *outstanding_references -= 1; }
-        }
     }
 
     fn for_each_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
