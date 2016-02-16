@@ -50,18 +50,21 @@ mod prim_bool { }
 /// [`String`]: string/struct.String.html
 ///
 /// As always, remember that a human intuition for 'character' may not map to
-/// Unicode's definitions. For example, emoji symbols such as '❤️' are more than
-/// one byte; ❤️ in particular is six:
+/// Unicode's definitions. For example, emoji symbols such as '❤️' can be more
+/// than one Unicode code point; this ❤️ in particular is two:
 ///
 /// ```
 /// let s = String::from("❤️");
 ///
-/// // six bytes times one byte for each element
-/// assert_eq!(6, s.len() * std::mem::size_of::<u8>());
+/// // we get two chars out of a single ❤️
+/// let mut iter = s.chars();
+/// assert_eq!(Some('\u{2764}'), iter.next());
+/// assert_eq!(Some('\u{fe0f}'), iter.next());
+/// assert_eq!(None, iter.next());
 /// ```
 ///
-/// This also means it won't fit into a `char`, and so trying to create a
-/// literal with `let heart = '❤️';` gives an error:
+/// This means it won't fit into a `char`. Trying to create a literal with
+/// `let heart = '❤️';` gives an error:
 ///
 /// ```text
 /// error: character literal may only contain one codepoint: '❤
@@ -69,8 +72,8 @@ mod prim_bool { }
 ///             ^~
 /// ```
 ///
-/// Another implication of this is that if you want to do per-`char`acter
-/// processing, it can end up using a lot more memory:
+/// Another implication of the 4-byte fixed size of a `char`, is that
+/// per-`char`acter processing can end up using a lot more memory:
 ///
 /// ```
 /// let s = String::from("love: ❤️");
@@ -78,19 +81,6 @@ mod prim_bool { }
 ///
 /// assert_eq!(12, s.len() * std::mem::size_of::<u8>());
 /// assert_eq!(32, v.len() * std::mem::size_of::<char>());
-/// ```
-///
-/// Or may give you results you may not expect:
-///
-/// ```
-/// let s = String::from("❤️");
-///
-/// let mut iter = s.chars();
-///
-/// // we get two chars out of a single ❤️
-/// assert_eq!(Some('\u{2764}'), iter.next());
-/// assert_eq!(Some('\u{fe0f}'), iter.next());
-/// assert_eq!(None, iter.next());
 /// ```
 mod prim_char { }
 
