@@ -1047,6 +1047,7 @@ impl<'a> NameBinding<'a> {
 
     fn def_and_lp(&self) -> (Def, LastPrivate) {
         let def = self.def().unwrap();
+        if let Def::Err = def { return (def, LastMod(AllPublic)) }
         (def, LastMod(if self.is_public() { AllPublic } else { DependsOn(def.def_id()) }))
     }
 
