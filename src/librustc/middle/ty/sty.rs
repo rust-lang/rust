@@ -129,9 +129,7 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type.
-    /// FIXME: Does this need to include substitutions?
-    /// `g::<i32>` and `g::<u32>` should have different types.
-    TyFnDef(DefId, &'tcx BareFnTy<'tcx>),
+    TyFnDef(DefId, &'tcx Substs<'tcx>, &'tcx BareFnTy<'tcx>),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     /// FIXME: This is currently also used to represent the callee of a method;
@@ -1142,7 +1140,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
         match self.sty {
-            TyFnDef(_, ref f) | TyFnPtr(ref f) => &f.sig,
+            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => &f.sig,
             _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
@@ -1150,7 +1148,7 @@ impl<'tcx> TyS<'tcx> {
     /// Returns the ABI of the given function.
     pub fn fn_abi(&self) -> abi::Abi {
         match self.sty {
-            TyFnDef(_, ref f) | TyFnPtr(ref f) => f.abi,
+            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => f.abi,
             _ => panic!("Ty::fn_abi() called on non-fn type"),
         }
     }

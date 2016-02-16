@@ -41,7 +41,6 @@ use std::borrow::Borrow;
 use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::special_idents;
@@ -946,28 +945,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_fn_def(&self, def_id: DefId,
+                     substs: &'tcx Substs<'tcx>,
                      fty: BareFnTy<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyFnDef(def_id, self.mk_bare_fn(fty)))
+        self.mk_ty(TyFnDef(def_id, substs, self.mk_bare_fn(fty)))
     }
 
     pub fn mk_fn_ptr(&self, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyFnPtr(self.mk_bare_fn(fty)))
-    }
-
-    pub fn mk_ctor_fn(&self,
-                      def_id: DefId,
-                      input_tys: &[Ty<'tcx>],
-                      output: Ty<'tcx>) -> Ty<'tcx> {
-        let input_args = input_tys.iter().cloned().collect();
-        self.mk_fn_def(def_id, BareFnTy {
-            unsafety: hir::Unsafety::Normal,
-            abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: input_args,
-                output: ty::FnConverging(output),
-                variadic: false
-            })
-        })
     }
 
     pub fn mk_trait(&self,

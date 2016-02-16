@@ -434,7 +434,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            param_env: ty::ParameterEnvironment<'a, 'tcx>)
 {
     match raw_fty.sty {
-        ty::TyFnDef(_, ref fn_ty) => {
+        ty::TyFnDef(_, _, ref fn_ty) => {
             let tables = RefCell::new(ty::Tables::empty());
             let inh = Inherited::new(ccx.tcx, &tables, param_env);
 

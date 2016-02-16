@@ -13,7 +13,7 @@
 
 use astconv::AstConv;
 use intrinsics;
-use middle::subst;
+use middle::subst::{self, Substs};
 use middle::ty::FnSig;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::fold::TypeFolder;
@@ -34,7 +34,12 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &TyCtxt<'tcx>, it: &hir::ForeignItem,
                                    inputs: Vec<ty::Ty<'tcx>>,
                                    output: ty::FnOutput<'tcx>) {
     let def_id = tcx.map.local_def_id(it.id);
-    let fty = tcx.mk_fn_def(def_id, ty::BareFnTy {
+    let i_ty = tcx.lookup_item_type(def_id);
+
+    let mut substs = Substs::empty();
+    substs.types = i_ty.generics.types.map(|def| tcx.mk_param_from_def(def));
+
+    let fty = tcx.mk_fn_def(def_id, tcx.mk_substs(substs), ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: abi,
         sig: ty::Binder(FnSig {
@@ -43,7 +48,6 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &TyCtxt<'tcx>, it: &hir::ForeignItem,
             variadic: false,
         }),
     });
-    let i_ty = tcx.lookup_item_type(def_id);
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
         span_err!(tcx.sess, it.span, E0094,

@@ -429,7 +429,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyFnDef(_, &ty::BareFnTy { ref sig, .. }) |
+            ty::TyFnDef(_, _, &ty::BareFnTy { ref sig, .. }) |
             ty::TyFnPtr(&ty::BareFnTy { ref sig, .. }) => {
                 self.add_constraints_from_sig(generics, sig, variance);
             }

@@ -600,7 +600,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                               def_id: DefId)
                                               -> bool {
             if !match ccx.tcx().lookup_item_type(def_id).ty.sty {
-                ty::TyFnDef(def_id, _) => {
+                ty::TyFnDef(def_id, _, _) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
                     // translation item. Same for FFI functions.
@@ -1291,7 +1291,7 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              &trait_data.bounds.projection_bounds,
                              output);
         },
-        ty::TyFnDef(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+        ty::TyFnDef(_, _, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
         ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");

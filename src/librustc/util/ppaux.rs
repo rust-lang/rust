@@ -812,7 +812,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
                 write!(f, ")")
             }
-            TyFnDef(def_id, ref bare_fn) => {
+            TyFnDef(def_id, substs, ref bare_fn) => {
                 if bare_fn.unsafety == hir::Unsafety::Unsafe {
                     try!(write!(f, "unsafe "));
                 }

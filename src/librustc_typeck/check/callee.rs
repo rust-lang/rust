@@ -225,7 +225,7 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let error_fn_sig;
 
     let fn_sig = match callee_ty.sty {
-        ty::TyFnDef(_, &ty::BareFnTy {ref sig, ..}) |
+        ty::TyFnDef(_, _, &ty::BareFnTy {ref sig, ..}) |
         ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => {
             sig
         }

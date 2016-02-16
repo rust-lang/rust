@@ -38,7 +38,7 @@ enum AbiStyle {
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     fn abi_style(&self, fn_ty: Ty<'tcx>) -> AbiStyle {
         match fn_ty.sty {
-            ty::TyFnDef(_, ref f) | ty::TyFnPtr(ref f) => {
+            ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
                 // We do not translate intrinsics here (they shouldn’t be functions)
                 assert!(f.abi != Abi::RustIntrinsic && f.abi != Abi::PlatformIntrinsic);
 

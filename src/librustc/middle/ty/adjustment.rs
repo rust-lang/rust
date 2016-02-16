@@ -155,7 +155,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 match *adjustment {
                     AdjustReifyFnPointer => {
                         match self.sty {
-                            ty::TyFnDef(_, b) => {
+                            ty::TyFnDef(_, _, b) => {
                                 cx.mk_ty(ty::TyFnPtr(b))
                             }
                             _ => {

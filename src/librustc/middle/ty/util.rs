@@ -514,13 +514,9 @@ impl<'tcx> TyCtxt<'tcx> {
                         region(state, *r);
                         mt(state, m);
                     }
-                    TyFnDef(def_id, ref b) => {
+                    TyFnDef(def_id, _, _) => {
                         byte!(14);
                         hash!(def_id);
-                        hash!(b.unsafety);
-                        hash!(b.abi);
-                        fn_sig(state, &b.sig);
-                        return false;
                     }
                     TyFnPtr(ref b) => {
                         byte!(15);

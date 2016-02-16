@@ -157,8 +157,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                 }
             }
             Def::Fn(did) if match expr_ty.sty {
-                ty::TyFnDef(_, ref f) => f.abi == Abi::RustIntrinsic ||
-                                         f.abi == Abi::PlatformIntrinsic,
+                ty::TyFnDef(_, _, ref f) => f.abi == Abi::RustIntrinsic ||
+                                            f.abi == Abi::PlatformIntrinsic,
                 _ => false
             } => {
                 let substs = common::node_id_substs(bcx.ccx(),
@@ -290,13 +290,13 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
-    let (opt_def_id, sig) =
+    let (opt_def_id_and_substs, sig) =
         match bare_fn_ty.sty {
-            ty::TyFnDef(def_id,
+            ty::TyFnDef(def_id, substs,
                         &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
                                         abi: Abi::Rust,
                                         ref sig }) => {
-                (Some(def_id), sig)
+                (Some((def_id, substs)), sig)
             }
             ty::TyFnPtr(&ty::BareFnTy { unsafety: hir::Unsafety::Normal,
                                         abi: Abi::Rust,
@@ -322,8 +322,8 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
             variadic: false
         })
     };
-    let tuple_fn_ty = match opt_def_id {
-        Some(def_id) => tcx.mk_fn_def(def_id, bare_tuple_fn),
+    let tuple_fn_ty = match opt_def_id_and_substs {
+        Some((def_id, substs)) => tcx.mk_fn_def(def_id, substs, bare_tuple_fn),
         None => tcx.mk_fn_ptr(bare_tuple_fn),
     };
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
@@ -615,7 +615,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee.ty.sty {
-        ty::TyFnDef(_, ref f) | ty::TyFnPtr(ref f) => {
+        ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
             let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
             let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
             (f.abi, sig.output)

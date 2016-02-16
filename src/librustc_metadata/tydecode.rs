@@ -380,7 +380,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'F' => {
                 let def_id = self.parse_def();
-                return tcx.mk_fn_def(def_id, self.parse_bare_fn_ty());
+                let substs = self.tcx.mk_substs(self.parse_substs());
+                return tcx.mk_fn_def(def_id, substs, self.parse_bare_fn_ty());
             }
             'G' => {
                 return tcx.mk_fn_ptr(self.parse_bare_fn_ty());

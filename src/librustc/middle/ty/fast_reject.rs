@@ -83,7 +83,7 @@ pub fn simplify_type(tcx: &TyCtxt,
         ty::TyTuple(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))
         }
-        ty::TyFnDef(_, ref f) | ty::TyFnPtr(ref f) => {
+        ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
             Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
         ty::TyProjection(_) | ty::TyParam(_) => {
