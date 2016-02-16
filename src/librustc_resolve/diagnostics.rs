@@ -94,8 +94,8 @@ mod bar {
 "##,
 
 E0253: r##"
-Attempt was made to import an unimportable value. This can happen when
-trying to import a method from a trait. An example of this error:
+Attempt was made to import an unimportable value. This can happen when trying
+to import a method from a trait. An example of this error:
 
 ```compile_fail
 mod foo {
@@ -149,10 +149,10 @@ fn main() {}
 "##,
 
 E0259: r##"
-The name chosen for an external crate conflicts with another external crate that
-has been imported into the current module.
+The name chosen for an external crate conflicts with another external crate
+that has been imported into the current module.
 
-Wrong example:
+Erroneous code example:
 
 ```compile_fail
 extern crate a;
@@ -251,8 +251,8 @@ https://doc.rust-lang.org/reference.html#types
 "##,
 
 E0364: r##"
-Private items cannot be publicly re-exported.  This error indicates that
-you attempted to `pub use` a type or value that was not itself public.
+Private items cannot be publicly re-exported.  This error indicates that you
+attempted to `pub use` a type or value that was not itself public.
 
 Here is an example that demonstrates the error:
 
@@ -275,15 +275,15 @@ mod foo {
 pub use foo::X;
 ```
 
-See the 'Use Declarations' section of the reference for more information
-on this topic:
+See the 'Use Declarations' section of the reference for more information on
+this topic:
 
 https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0365: r##"
-Private modules cannot be publicly re-exported.  This error indicates
-that you attempted to `pub use` a module that was not itself public.
+Private modules cannot be publicly re-exported. This error indicates that you
+attempted to `pub use` a module that was not itself public.
 
 Here is an example that demonstrates the error:
 
@@ -313,8 +313,8 @@ https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0401: r##"
-Inner items do not inherit type parameters from the functions they are
-embedded in. For example, this will not compile:
+Inner items do not inherit type parameters from the functions they are embedded
+in. For example, this will not compile:
 
 ```compile_fail
 fn foo<T>(x: T) {
@@ -543,16 +543,15 @@ impl Bar {
 "##,
 
 E0411: r##"
-The `Self` keyword was used outside an impl or a trait. Erroneous
-code example:
+The `Self` keyword was used outside an impl or a trait. Erroneous code example:
 
 ```compile_fail
 <Self>::foo; // error: use of `Self` outside of an impl or trait
 ```
 
-The `Self` keyword represents the current type, which explains why it
-can only be used inside an impl or a trait. It gives access to the
-associated items of a type:
+The `Self` keyword represents the current type, which explains why it can only
+be used inside an impl or a trait. It gives access to the associated items of a
+type:
 
 ```
 trait Foo {
@@ -564,7 +563,7 @@ trait Baz : Foo {
 }
 ```
 
-However, be careful when two types has a common associated type:
+However, be careful when two types have a common associated type:
 
 ```compile_fail
 trait Foo {
@@ -581,8 +580,8 @@ trait Baz : Foo + Foo2 {
 }
 ```
 
-This problem can be solved by specifying from which trait we want
-to use the `Bar` type:
+This problem can be solved by specifying from which trait we want to use the
+`Bar` type:
 
 ```
 trait Foo {
@@ -604,16 +603,20 @@ An undeclared type name was used. Example of erroneous codes:
 
 ```compile_fail
 impl Something {} // error: use of undeclared type name `Something`
+
 // or:
+
 trait Foo {
     fn bar(N); // error: use of undeclared type name `N`
 }
+
 // or:
+
 fn foo(x: T) {} // error: use of undeclared type name `T`
 ```
 
-To fix this error, please verify you didn't misspell the type name,
-you did declare it or imported it into the scope. Examples:
+To fix this error, please verify you didn't misspell the type name, you did
+declare it or imported it into the scope. Examples:
 
 ```
 struct Something;
@@ -635,8 +638,8 @@ fn foo<T>(x: T) {} // ok!
 "##,
 
 E0413: r##"
-A declaration shadows an enum variant or unit-like struct in scope.
-Example of erroneous code:
+A declaration shadows an enum variant or unit-like struct in scope. Example of
+erroneous code:
 
 ```compile_fail
 struct Foo;
@@ -666,8 +669,7 @@ The goal here is to avoid a conflict of names.
 "##,
 
 E0415: r##"
-More than one function parameter have the same name. Example of erroneous
-code:
+More than one function parameter have the same name. Example of erroneous code:
 
 ```compile_fail
 fn foo(f: i32, f: i32) {} // error: identifier `f` is bound more than
@@ -682,8 +684,7 @@ fn foo(f: i32, g: i32) {} // ok!
 "##,
 
 E0416: r##"
-An identifier is bound more than once in a pattern. Example of erroneous
-code:
+An identifier is bound more than once in a pattern. Example of erroneous code:
 
 ```compile_fail
 match (1, 2) {
@@ -739,8 +740,7 @@ match 0 {
 "##,
 
 E0419: r##"
-An unknown enum variant, struct or const was used. Example of
-erroneous code:
+An unknown enum variant, struct or const was used. Example of erroneous code:
 
 ```compile_fail
 match 0 {
@@ -766,8 +766,8 @@ match Something::NotFoo {
 "##,
 
 E0422: r##"
-You are trying to use an identifier that is either undefined or not a
-struct. For instance:
+You are trying to use an identifier that is either undefined or not a struct.
+For instance:
 
 ``` compile_fail
 fn main () {
@@ -785,13 +785,13 @@ fn main () {
 }
 ```
 
-In this case, `foo` is defined, but is not a struct, so Rust can't use
-it as one.
+In this case, `foo` is defined, but is not a struct, so Rust can't use it as
+one.
 "##,
 
 E0423: r##"
-A `struct` variant name was used like a function name. Example of
-erroneous code:
+A `struct` variant name was used like a function name. Example of erroneous
+code:
 
 ```compile_fail
 struct Foo { a: bool};
@@ -801,8 +801,8 @@ let f = Foo();
 //        it like a function name
 ```
 
-Please verify you didn't misspell the name of what you actually wanted
-to use here. Example:
+Please verify you didn't misspell the name of what you actually wanted to use
+here. Example:
 
 ```
 fn Foo() -> u32 { 0 }
@@ -851,6 +851,7 @@ something_that_doesnt_exist::foo;
 // error: unresolved name `something_that_doesnt_exist::foo`
 
 // or:
+
 trait Foo {
     fn bar() {
         Self; // error: unresolved name `Self`
@@ -858,6 +859,7 @@ trait Foo {
 }
 
 // or:
+
 let x = unknown_variable;  // error: unresolved name `unknown_variable`
 ```
 
@@ -941,7 +943,7 @@ use something::self; // ok!
 "##,
 
 E0431: r##"
-`self` import was made. Erroneous code example:
+An invalid `self` import was made. Erroneous code example:
 
 ```compile_fail
 use {self}; // error: `self` import can only appear in an import list with a
