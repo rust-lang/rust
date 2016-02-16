@@ -502,7 +502,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     None
                 };
 
-                self.define(module_, target, ns, directive.import(binding, privacy_error));
+                let imported_binding = directive.import(binding, privacy_error);
+                let conflict = module_.try_define_child(target, ns, imported_binding);
+                if let Err(old_binding) = conflict {
+                    self.report_conflict(target, ns, &directive.import(binding, None), old_binding);
+                }
             }
             module_.decrement_outstanding_references_for(target, ns);
         }
@@ -613,7 +617,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         for (&(name, ns), resolution) in target_module.resolutions.borrow().iter() {
             if let Some(Success(binding)) = resolution.try_result() {
                 if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
-                    self.define(module_, name, ns, directive.import(binding, None));
+                    let _ = module_.try_define_child(name, ns, directive.import(binding, None));
                 }
             }
         }
@@ -629,16 +633,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         debug!("(resolving glob import) successfully resolved import");
         return Success(());
-    }
-
-    fn define(&mut self,
-              parent: Module<'b>,
-              name: Name,
-              ns: Namespace,
-              binding: NameBinding<'b>) {
-        if let Err(old_binding) = parent.try_define_child(name, ns, binding.clone()) {
-            self.report_conflict(name, ns, &binding, old_binding);
-        }
     }
 
     fn report_conflict(&mut self,
