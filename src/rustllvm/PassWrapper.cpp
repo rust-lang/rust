@@ -97,6 +97,75 @@ LLVMRustAddPass(LLVMPassManagerRef PM, Pass *pass) {
     pm->add(pass);
 }
 
+#ifdef LLVM_COMPONENT_X86
+#define SUBTARGET_X86 SUBTARGET(X86)
+#else
+#define SUBTARGET_X86
+#endif
+
+#ifdef LLVM_COMPONENT_ARM
+#define SUBTARGET_ARM SUBTARGET(ARM)
+#else
+#define SUBTARGET_ARM
+#endif
+
+#ifdef LLVM_COMPONENT_AARCH64
+#define SUBTARGET_AARCH64 SUBTARGET(AArch64)
+#else
+#define SUBTARGET_AARCH64
+#endif
+
+#ifdef LLVM_COMPONENT_MIPS
+#define SUBTARGET_MIPS SUBTARGET(Mips)
+#else
+#define SUBTARGET_MIPS
+#endif
+
+#ifdef LLVM_COMPONENT_POWERPC
+#define SUBTARGET_PPC SUBTARGET(PPC)
+#else
+#define SUBTARGET_PPC
+#endif
+
+#define GEN_SUBTARGETS    \
+        SUBTARGET_X86     \
+        SUBTARGET_ARM     \
+        SUBTARGET_AARCH64 \
+        SUBTARGET_MIPS    \
+        SUBTARGET_PPC
+
+#define SUBTARGET(x) namespace llvm {                \
+    extern const SubtargetFeatureKV x##FeatureKV[];  \
+    extern const SubtargetFeatureKV x##SubTypeKV[];  \
+  }
+
+GEN_SUBTARGETS
+#undef SUBTARGET
+
+extern "C" bool
+LLVMRustHasFeature(LLVMTargetMachineRef TM,
+		   const char *feature) {
+    TargetMachine *Target = unwrap(TM);
+    const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+    const FeatureBitset &Bits = MCInfo->getFeatureBits();
+    const llvm::SubtargetFeatureKV *FeatureEntry;
+
+#define SUBTARGET(x)                                        \
+    if (MCInfo->isCPUStringValid(x##SubTypeKV[0].Key)) {    \
+        FeatureEntry = x##FeatureKV;                       \
+    } else
+
+    GEN_SUBTARGETS {
+        return false;
+    }
+#undef SUBTARGET
+
+    while (strcmp(feature, FeatureEntry->Key) != 0)
+        FeatureEntry++;
+
+    return (Bits & FeatureEntry->Value) == FeatureEntry->Value;
+}
+
 extern "C" LLVMTargetMachineRef
 LLVMRustCreateTargetMachine(const char *triple,
                             const char *cpu,

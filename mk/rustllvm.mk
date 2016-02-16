@@ -43,6 +43,9 @@ $$(RT_OUTPUT_DIR_$(1))/$$(call CFG_STATIC_LIB_NAME_$(1),rustllvm): \
 	@$$(call E, link: $$@)
 	$$(Q)$$(call CFG_CREATE_ARCHIVE_$(1),$$@) $$^
 
+RUSTLLVM_COMPONENTS_$(1) = $$(shell echo $$(LLVM_ALL_COMPONENTS_$(1)) |\
+	tr 'a-z-' 'A-Z_'| sed -e 's/^ //;s/\([^ ]*\)/\-DLLVM_COMPONENT_\1/g')
+
 # On MSVC we need to double-escape arguments that llvm-config printed which
 # start with a '/'. The shell we're running in will auto-translate the argument
 # `/foo` to `C:/msys64/foo` but we really want it to be passed through as `/foo`
@@ -51,6 +54,7 @@ $(1)/rustllvm/%.o: $(S)src/rustllvm/%.cpp $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@,) \
 		$$(subst  /,//,$$(LLVM_CXXFLAGS_$(1))) \
+		$$(RUSTLLVM_COMPONENTS_$(1)) \
 		$$(EXTRA_RUSTLLVM_CXXFLAGS_$(1)) \
 		$$(RUSTLLVM_INCS_$(1)) \
 		$$<

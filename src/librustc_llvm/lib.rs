@@ -2013,6 +2013,9 @@ extern {
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> PassRef;
     pub fn LLVMRustAddPass(PM: PassManagerRef, Pass: PassRef);
 
+    pub fn LLVMRustHasFeature(T: TargetMachineRef,
+                              s: *const c_char) -> bool;
+
     pub fn LLVMRustCreateTargetMachine(Triple: *const c_char,
                                        CPU: *const c_char,
                                        Features: *const c_char,
