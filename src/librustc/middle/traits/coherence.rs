@@ -10,6 +10,7 @@
 
 //! See `README.md` for high-level documentation
 
+use super::build_selcx;
 use super::{SelectionContext, Obligation, ObligationCause};
 use super::util;
 
@@ -36,7 +37,7 @@ pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
            impl1_def_id,
            impl2_def_id);
 
-    let selcx = &mut SelectionContext::intercrate(infcx);
+    let selcx = &mut build_selcx(infcx).project_topmost().intercrate().build();
     overlap(selcx, impl1_def_id, impl2_def_id)
 }
 

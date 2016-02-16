@@ -60,7 +60,7 @@ which includes three bits of information:
   `process_obligations` would simply yield back further ambiguous
   results. This is used by the `FulfillmentContext` to decide when it
   has reached a steady state.
-  
+
 #### Snapshots
 
 The `ObligationForest` supports a limited form of snapshots; see
@@ -79,5 +79,3 @@ parent and (for convenience) its root (which may be itself). It also
 has a current state, described by `NodeState`. After each
 processing step, we compress the vector to remove completed and error
 nodes, which aren't needed anymore.
-
-  

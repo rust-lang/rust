@@ -128,7 +128,8 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
 
-                let _task = self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
+                let _task = self.tcx.dep_graph.in_task(
+                    DepNode::CoherenceOverlapCheck(trait_def_id));
 
                 let def = self.tcx.lookup_trait_def(trait_def_id);
 
@@ -161,7 +162,8 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                             err.span_note(span, "conflicting implementation is here:");
                         }
                         Err(cname) => {
-                            err.note(&format!("conflicting implementation in crate `{}`", cname));
+                            err.note(&format!("conflicting implementation in crate `{}`",
+                                              cname));
                         }
                     }
 

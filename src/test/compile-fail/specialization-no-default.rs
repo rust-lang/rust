@@ -65,7 +65,7 @@ impl<T: Clone> Baz for T {
 }
 
 impl Baz for i32 {
-    fn baz(&self) {}
+    fn baz(&self) {} //~ ERROR E0520
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,7 @@ impl<T: Clone> Redundant for T {
 }
 
 impl Redundant for i32 {
-    default fn redundant(&self) {}
+    default fn redundant(&self) {} //~ ERROR E0520
 }
 
 fn main() {}
