@@ -15,7 +15,7 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, dirent, c_int, off_t, mode_t};
+use libc::{self, c_int, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -26,9 +26,12 @@ use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 
 #[cfg(target_os = "linux")]
-use libc::{stat64, fstat64, lstat64};
+use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
 #[cfg(not(target_os = "linux"))]
-use libc::{stat as stat64, fstat as fstat64, lstat as lstat64};
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
+           ftruncate as ftruncate64, lseek as lseek64, dirent as dirent64, open as open64};
+#[cfg(not(any(target_os = "linux", target_os = "solaris")))]
+use libc::{readdir_r as readdir64_r};
 
 pub struct File(FileDesc);
 
@@ -48,7 +51,7 @@ unsafe impl Send for Dir {}
 unsafe impl Sync for Dir {}
 
 pub struct DirEntry {
-    entry: dirent,
+    entry: dirent64,
     root: Arc<PathBuf>,
     // We need to store an owned copy of the directory name
     // on Solaris because a) it uses a zero-length array to
@@ -223,7 +226,7 @@ impl Iterator for ReadDir {
             };
             let mut entry_ptr = ptr::null_mut();
             loop {
-                if libc::readdir_r(self.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
+                if readdir64_r(self.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
                     return Some(Err(Error::last_os_error()))
                 }
                 if entry_ptr.is_null() {
@@ -394,7 +397,7 @@ impl File {
                     try!(opts.get_creation_mode()) |
                     (opts.custom_flags as c_int & !libc::O_ACCMODE);
         let fd = try!(cvt_r(|| unsafe {
-            libc::open(path.as_ptr(), flags, opts.mode as c_int)
+            open64(path.as_ptr(), flags, opts.mode as c_int)
         }));
         let fd = FileDesc::new(fd);
 
@@ -443,7 +446,7 @@ impl File {
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
         try!(cvt_r(|| unsafe {
-            libc::ftruncate(self.0.raw(), size as libc::off_t)
+            ftruncate64(self.0.raw(), size as off64_t)
         }));
         Ok(())
     }
@@ -460,11 +463,11 @@ impl File {
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, pos) = match pos {
-            SeekFrom::Start(off) => (libc::SEEK_SET, off as off_t),
-            SeekFrom::End(off) => (libc::SEEK_END, off as off_t),
-            SeekFrom::Current(off) => (libc::SEEK_CUR, off as off_t),
+            SeekFrom::Start(off) => (libc::SEEK_SET, off as off64_t),
+            SeekFrom::End(off) => (libc::SEEK_END, off as off64_t),
+            SeekFrom::Current(off) => (libc::SEEK_CUR, off as off64_t),
         };
-        let n = try!(cvt(unsafe { libc::lseek(self.0.raw(), pos, whence) }));
+        let n = try!(cvt(unsafe { lseek64(self.0.raw(), pos, whence) }));
         Ok(n as u64)
     }
 
