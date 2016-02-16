@@ -20,8 +20,8 @@ This error suggests that the expression arm corresponding to the noted pattern
 will never be reached as for all possible values of the expression being
 matched, one of the preceding patterns will match.
 
-This means that perhaps some of the preceding patterns are too general, this one
-is too specific or the ordering is incorrect.
+This means that perhaps some of the preceding patterns are too general, this
+one is too specific or the ordering is incorrect.
 
 For example, the following `match` block has too many arms:
 
@@ -104,28 +104,86 @@ E0004: r##"
 This error indicates that the compiler cannot guarantee a matching pattern for
 one or more possible inputs to a match expression. Guaranteed matches are
 required in order to assign values to match expressions, or alternatively,
-determine the flow of execution.
+determine the flow of execution. Erroneous code example:
+
+```compile_fail
+enum Terminator {
+    HastaLaVistaBaby,
+    TalkToMyHand,
+}
+
+let x = Terminator::HastaLaVistaBaby;
+
+match x { // error: non-exhaustive patterns: `HastaLaVistaBaby` not covered
+    Terminator::TalkToMyHand => {}
+}
+```
 
 If you encounter this error you must alter your patterns so that every possible
 value of the input type is matched. For types with a small number of variants
 (like enums) you should probably cover all cases explicitly. Alternatively, the
 underscore `_` wildcard pattern can be added after all other patterns to match
-"anything else".
+"anything else". Example:
+
+```
+enum Terminator {
+    HastaLaVistaBaby,
+    TalkToMyHand,
+}
+
+let x = Terminator::HastaLaVistaBaby;
+
+match x {
+    Terminator::TalkToMyHand => {}
+    Terminator::HastaLaVistaBaby => {}
+}
+
+// or:
+
+match x {
+    Terminator::TalkToMyHand => {}
+    _ => {}
+}
+```
 "##,
 
 E0005: r##"
 Patterns used to bind names must be irrefutable, that is, they must guarantee
-that a name will be extracted in all cases. If you encounter this error you
-probably need to use a `match` or `if let` to deal with the possibility of
-failure.
+that a name will be extracted in all cases. Erroneous code example:
+
+```compile_fail
+let x = Some(1);
+let Some(y) = x;
+// error: refutable pattern in local binding: `None` not covered
+```
+
+If you encounter this error you probably need to use a `match` or `if let` to
+deal with the possibility of failure. Example:
+
+```compile_fail
+let x = Some(1);
+
+match x {
+    Some(y) => {
+        // do something
+    },
+    None => {}
+}
+
+// or:
+
+if let Some(y) = x {
+    // do something
+}
+```
 "##,
 
 E0007: r##"
 This error indicates that the bindings in a match arm would require a value to
-be moved into more than one location, thus violating unique ownership. Code like
-the following is invalid as it requires the entire `Option<String>` to be moved
-into a variable called `op_string` while simultaneously requiring the inner
-String to be moved into a variable called `s`.
+be moved into more than one location, thus violating unique ownership. Code
+like the following is invalid as it requires the entire `Option<String>` to be
+moved into a variable called `op_string` while simultaneously requiring the
+inner `String` to be moved into a variable called `s`.
 
 ```compile_fail
 let x = Some("s".to_string());
@@ -180,7 +238,7 @@ by-ref.
 
 This limitation may be removed in a future version of Rust.
 
-Wrong example:
+Erroneous code example:
 
 ```compile_fail
 struct X { x: (), }
@@ -264,7 +322,7 @@ trait Foo where Self: Sized {
 }
 ```
 
-we cannot create an object of type `Box<Foo>` or `&Foo` since in this case
+We cannot create an object of type `Box<Foo>` or `&Foo` since in this case
 `Self` would not be `Sized`.
 
 Generally, `Self : Sized` is used to indicate that the trait should not be used
@@ -294,7 +352,7 @@ impl Trait for u8 {
 ```
 
 (Note that `&self` and `&mut self` are okay, it's additional `Self` types which
-cause this problem)
+cause this problem.)
 
 In such a case, the compiler cannot predict the return type of `foo()` in a
 situation like the following:
@@ -573,15 +631,15 @@ type X = u32; // ok!
 "##,
 
 E0133: r##"
-Using unsafe functionality, is potentially dangerous and disallowed
-by safety checks. Examples:
+Using unsafe functionality is potentially dangerous and disallowed by safety
+checks. Examples:
 
-- Dereferencing raw pointers
-- Calling functions via FFI
-- Calling functions marked unsafe
+* Dereferencing raw pointers
+* Calling functions via FFI
+* Calling functions marked unsafe
 
-These safety checks can be relaxed for a section of the code
-by wrapping the unsafe instructions with an `unsafe` block. For instance:
+These safety checks can be relaxed for a section of the code by wrapping the
+unsafe instructions with an `unsafe` block. For instance:
 
 ```
 unsafe fn f() { return; }
@@ -1039,14 +1097,16 @@ let y = match x {
 println!("{}", y);
 ```
 
-In the previous example, the print statement was never reached when the wildcard
-match arm was hit, so we were okay with `foo()` not returning an integer that we
-could set to `y`. But in this example, `foo()` actually does return control, so
-the print statement will be executed with an uninitialized value.
+In the previous example, the print statement was never reached when the
+wildcard match arm was hit, so we were okay with `foo()` not returning an
+integer that we could set to `y`. But in this example, `foo()` actually does
+return control, so the print statement will be executed with an uninitialized
+value.
 
 Obviously we cannot have functions which are allowed to be used in such
 positions and yet can return control. So, if you are defining a function that
-returns `!`, make sure that there is no way for it to actually finish executing.
+returns `!`, make sure that there is no way for it to actually finish
+executing.
 "##,
 
 E0271: r##"
@@ -1206,19 +1266,19 @@ trait Index<Idx> { ... }
 foo(true); // `bool` does not implement `Index<u8>`
 ```
 
-there will be an error about `bool` not implementing `Index<u8>`, followed by a
+There will be an error about `bool` not implementing `Index<u8>`, followed by a
 note saying "the type `bool` cannot be indexed by `u8`".
 
-As you can see, you can specify type parameters in curly braces for substitution
-with the actual types (using the regular format string syntax) in a given
-situation. Furthermore, `{Self}` will substitute to the type (in this case,
-`bool`) that we tried to use.
+As you can see, you can specify type parameters in curly braces for
+substitution with the actual types (using the regular format string syntax) in
+a given situation. Furthermore, `{Self}` will substitute to the type (in this
+case, `bool`) that we tried to use.
 
 This error appears when the curly braces contain an identifier which doesn't
-match with any of the type parameters or the string `Self`. This might happen if
-you misspelled a type parameter, or if you intended to use literal curly braces.
-If it is the latter, escape the curly braces with a second curly brace of the
-same type; e.g. a literal `{` is `{{`
+match with any of the type parameters or the string `Self`. This might happen
+if you misspelled a type parameter, or if you intended to use literal curly
+braces. If it is the latter, escape the curly braces with a second curly brace
+of the same type; e.g. a literal `{` is `{{`.
 "##,
 
 E0273: r##"
@@ -1239,10 +1299,10 @@ foo(true); // `bool` does not implement `Index<u8>`
 there will be an error about `bool` not implementing `Index<u8>`, followed by a
 note saying "the type `bool` cannot be indexed by `u8`".
 
-As you can see, you can specify type parameters in curly braces for substitution
-with the actual types (using the regular format string syntax) in a given
-situation. Furthermore, `{Self}` will substitute to the type (in this case,
-`bool`) that we tried to use.
+As you can see, you can specify type parameters in curly braces for
+substitution with the actual types (using the regular format string syntax) in
+a given situation. Furthermore, `{Self}` will substitute to the type (in this
+case, `bool`) that we tried to use.
 
 This error appears when the curly braces do not contain an identifier. Please
 add one of the same name as a type parameter. If you intended to use literal
@@ -1274,8 +1334,8 @@ trait.
 
 E0275: r##"
 This error occurs when there was a recursive trait requirement that overflowed
-before it could be evaluated. Often this means that there is unbounded recursion
-in resolving some type bounds.
+before it could be evaluated. Often this means that there is unbounded
+recursion in resolving some type bounds.
 
 For example, in the following code:
 
@@ -1288,9 +1348,9 @@ impl<T> Foo for T where Bar<T>: Foo {}
 ```
 
 To determine if a `T` is `Foo`, we need to check if `Bar<T>` is `Foo`. However,
-to do this check, we need to determine that `Bar<Bar<T>>` is `Foo`. To determine
-this, we check if `Bar<Bar<Bar<T>>>` is `Foo`, and so on. This is clearly a
-recursive requirement that can't be resolved directly.
+to do this check, we need to determine that `Bar<Bar<T>>` is `Foo`. To
+determine this, we check if `Bar<Bar<Bar<T>>>` is `Foo`, and so on. This is
+clearly a recursive requirement that can't be resolved directly.
 
 Consider changing your trait bounds so that they're less self-referential.
 "##,
@@ -1336,7 +1396,7 @@ fn main() {
     // we now call the method with the i32 type, which doesn't implement
     // the Foo trait
     some_func(5i32); // error: the trait `Foo` is not implemented for the
-                     //     type `i32`
+                     //        type `i32`
 }
 ```
 
@@ -1564,7 +1624,9 @@ borrows were allowed:
 ```compile_fail
 match Some(()) {
     None => { },
-    option if option.take().is_none() => { /* impossible, option is `Some` */ },
+    option if option.take().is_none() => {
+        /* impossible, option is `Some` */
+    },
     Some(_) => { } // When the previous match failed, the option became `None`.
 }
 ```
@@ -1615,12 +1677,29 @@ See also https://github.com/rust-lang/rust/issues/14587
 
 E0306: r##"
 In an array literal `[x; N]`, `N` is the number of elements in the array. This
-number cannot be negative.
+must be an unsigned integer. Erroneous code example:
+
+```compile_fail
+let x = [0i32; true]; // error: expected positive integer for repeat count,
+                      //        found boolean
+```
+
+Working example:
+
+```
+let x = [0i32; 2];
+```
 "##,
 
 E0307: r##"
-The length of an array is part of its type. For this reason, this length must be
-a compile-time constant.
+The length of an array is part of its type. For this reason, this length must
+be a compile-time constant. Erroneous code example:
+
+```compile_fail
+    let len = 10;
+    let x = [0i32; len]; // error: expected constant integer for repeat count,
+                         //        found variable
+```
 "##,
 
 E0308: r##"
@@ -1713,24 +1792,22 @@ struct Foo<T: 'static> {
 "##,
 
 E0398: r##"
-In Rust 1.3, the default object lifetime bounds are expected to
-change, as described in RFC #1156 [1]. You are getting a warning
-because the compiler thinks it is possible that this change will cause
-a compilation error in your code. It is possible, though unlikely,
-that this is a false alarm.
+In Rust 1.3, the default object lifetime bounds are expected to change, as
+described in RFC #1156 [1]. You are getting a warning because the compiler
+thinks it is possible that this change will cause a compilation error in your
+code. It is possible, though unlikely, that this is a false alarm.
 
-The heart of the change is that where `&'a Box<SomeTrait>` used to
-default to `&'a Box<SomeTrait+'a>`, it now defaults to `&'a
-Box<SomeTrait+'static>` (here, `SomeTrait` is the name of some trait
-type). Note that the only types which are affected are references to
-boxes, like `&Box<SomeTrait>` or `&[Box<SomeTrait>]`.  More common
-types like `&SomeTrait` or `Box<SomeTrait>` are unaffected.
+The heart of the change is that where `&'a Box<SomeTrait>` used to default to
+`&'a Box<SomeTrait+'a>`, it now defaults to `&'a Box<SomeTrait+'static>` (here,
+`SomeTrait` is the name of some trait type). Note that the only types which are
+affected are references to boxes, like `&Box<SomeTrait>` or
+`&[Box<SomeTrait>]`. More common types like `&SomeTrait` or `Box<SomeTrait>`
+are unaffected.
 
-To silence this warning, edit your code to use an explicit bound.
-Most of the time, this means that you will want to change the
-signature of a function that you are calling. For example, if
-the error is reported on a call like `foo(x)`, and `foo` is
-defined as follows:
+To silence this warning, edit your code to use an explicit bound. Most of the
+time, this means that you will want to change the signature of a function that
+you are calling. For example, if the error is reported on a call like `foo(x)`,
+and `foo` is defined as follows:
 
 ```ignore
 fn foo(arg: &Box<SomeTrait>) { ... }
@@ -1742,8 +1819,8 @@ You might change it to:
 fn foo<'a>(arg: &Box<SomeTrait+'a>) { ... }
 ```
 
-This explicitly states that you expect the trait object `SomeTrait` to
-contain references (with a maximum lifetime of `'a`).
+This explicitly states that you expect the trait object `SomeTrait` to contain
+references (with a maximum lifetime of `'a`).
 
 [1]: https://github.com/rust-lang/rfcs/pull/1156
 "##,
@@ -1812,8 +1889,8 @@ Also, for now, it is not possible to write deprecation messages either.
 "##,
 
 E0517: r##"
-This error indicates that a `#[repr(..)]` attribute was placed on an unsupported
-item.
+This error indicates that a `#[repr(..)]` attribute was placed on an
+unsupported item.
 
 Examples of erroneous code:
 
@@ -1829,29 +1906,29 @@ struct Foo {bar: bool, baz: bool}
 
 #[repr(C)]
 impl Foo {
-    ...
+    // ...
 }
 ```
 
- - The `#[repr(C)]` attribute can only be placed on structs and enums
- - The `#[repr(packed)]` and `#[repr(simd)]` attributes only work on structs
- - The `#[repr(u8)]`, `#[repr(i16)]`, etc attributes only work on enums
+* The `#[repr(C)]` attribute can only be placed on structs and enums.
+* The `#[repr(packed)]` and `#[repr(simd)]` attributes only work on structs.
+* The `#[repr(u8)]`, `#[repr(i16)]`, etc attributes only work on enums.
 
 These attributes do not work on typedefs, since typedefs are just aliases.
 
 Representations like `#[repr(u8)]`, `#[repr(i64)]` are for selecting the
-discriminant size for C-like enums (when there is no associated data, e.g. `enum
-Color {Red, Blue, Green}`), effectively setting the size of the enum to the size
-of the provided type. Such an enum can be cast to a value of the same type as
-well. In short, `#[repr(u8)]` makes the enum behave like an integer with a
-constrained set of allowed values.
+discriminant size for C-like enums (when there is no associated data, e.g.
+`enum Color {Red, Blue, Green}`), effectively setting the size of the enum to
+the size of the provided type. Such an enum can be cast to a value of the same
+type as well. In short, `#[repr(u8)]` makes the enum behave like an integer
+with a constrained set of allowed values.
 
 Only C-like enums can be cast to numerical primitives, so this attribute will
 not apply to structs.
 
 `#[repr(packed)]` reduces padding to make the struct size smaller. The
-representation of enums isn't strictly defined in Rust, and this attribute won't
-work on enums.
+representation of enums isn't strictly defined in Rust, and this attribute
+won't work on enums.
 
 `#[repr(simd)]` will give a struct consisting of a homogenous series of machine
 types (i.e. `u8`, `i32`, etc) a representation that permits vectorization via
@@ -1860,8 +1937,8 @@ single list of data.
 "##,
 
 E0518: r##"
-This error indicates that an `#[inline(..)]` attribute was incorrectly placed on
-something other than a function or method.
+This error indicates that an `#[inline(..)]` attribute was incorrectly placed
+on something other than a function or method.
 
 Examples of erroneous code:
 
@@ -1871,7 +1948,7 @@ struct Foo;
 
 #[inline(never)]
 impl Foo {
-    ...
+    // ...
 }
 ```
 
