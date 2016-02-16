@@ -52,7 +52,7 @@ use std::sync::Arc;
 
 use externalfiles::ExternalHtml;
 
-use serialize::json::{self, ToJson};
+use serialize::json::as_json;
 use syntax::{abi, ast};
 use syntax::feature_gate::UnstableFeatures;
 use rustc::middle::cstore::LOCAL_CRATE;
@@ -534,8 +534,8 @@ pub fn run(mut krate: clean::Crate,
     cx.krate(krate)
 }
 
+/// Build the search index from the collected metadata
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
-    // Build the search index from the collected metadata
     let mut nodeid_to_pathid = HashMap::new();
     let mut pathid_to_nodeid = Vec::new();
     {
@@ -582,7 +582,13 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 
     // Collect the index into a string
     let mut w = io::Cursor::new(Vec::new());
-    write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name).unwrap();
+    let krate_doc = krate.module.as_ref().map(|module| {
+        Escape(&shorter(module.doc_value())).to_string()
+    }).unwrap_or("".to_owned());
+
+    write!(&mut w, r#"searchIndex[{}] = {{doc: {}, "items":["#,
+                   as_json(&krate.name),
+                   as_json(&krate_doc)).unwrap();
 
     let mut lastpath = "".to_string();
     for (i, item) in cache.search_index.iter().enumerate() {
@@ -598,9 +604,9 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
         if i > 0 {
             write!(&mut w, ",").unwrap();
         }
-        write!(&mut w, r#"[{},"{}","{}",{}"#,
-               item.ty as usize, item.name, path,
-               item.desc.to_json().to_string()).unwrap();
+        write!(&mut w, "[{},{},{},{}",
+               item.ty as usize,
+               as_json(&item.name), as_json(&path), as_json(&item.desc)).unwrap();
         match item.parent {
             Some(nodeid) => {
                 let pathid = *nodeid_to_pathid.get(&nodeid).unwrap();
@@ -693,7 +699,7 @@ fn write_shared(cx: &Context,
                 if !line.starts_with(key) {
                     continue
                 }
-                if line.starts_with(&format!("{}['{}']", key, krate)) {
+                if line.starts_with(&format!(r#"{}["{}"]"#, key, krate)) {
                     continue
                 }
                 ret.push(line.to_string());
@@ -1387,7 +1393,7 @@ impl Context {
                         let js_dst = this.dst.join("sidebar-items.js");
                         let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
                         try_err!(write!(&mut js_out, "initSidebarItems({});",
-                                    json::as_json(&items)), &js_dst);
+                                    as_json(&items)), &js_dst);
                     }
 
                     for item in m.items {
