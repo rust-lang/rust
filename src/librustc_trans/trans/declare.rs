@@ -106,7 +106,7 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
 
     let function_type; // placeholder so that the memory ownership works out ok
     let (sig, abi, env) = match fn_type.sty {
-        ty::TyFnDef(_, f) |
+        ty::TyFnDef(_, _, f) |
         ty::TyFnPtr(f) => {
             (&f.sig, f.abi, None)
         }

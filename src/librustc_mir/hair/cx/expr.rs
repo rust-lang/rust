@@ -61,7 +61,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     let method = method_callee(cx, self, ty::MethodCall::expr(self.id));
 
                     let sig = match method.ty.sty {
-                        ty::TyFnDef(_, fn_ty) => &fn_ty.sig,
+                        ty::TyFnDef(_, _, fn_ty) => &fn_ty.sig,
                         _ => cx.tcx.sess.span_bug(self.span, "type of method is not an fn")
                     };
 

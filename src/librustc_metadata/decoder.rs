@@ -472,7 +472,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                    variant.name,
                    ctor_ty);
             let field_tys = match ctor_ty.sty {
-                ty::TyFnDef(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
                     ref inputs, ..
                 }), ..}) => {
                     // tuple-struct constructors don't have escaping regions
@@ -988,7 +988,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
             let predicates = doc_predicates(item_doc, tcx, cdata, tag_method_ty_generics);
             let ity = tcx.lookup_item_type(def_id).ty;
             let fty = match ity.sty {
-                ty::TyFnDef(_, fty) => fty.clone(),
+                ty::TyFnDef(_, _, fty) => fty.clone(),
                 _ => tcx.sess.bug(&format!(
                     "the type {:?} of the method {:?} is not a function?",
                     ity, name))
@@ -1582,7 +1582,7 @@ pub fn is_extern_item(cdata: Cmd, id: DefIndex, tcx: &TyCtxt) -> bool {
             let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
             let no_generics = generics.types.is_empty();
             match ty.sty {
-                ty::TyFnDef(_, fn_ty) | ty::TyFnPtr(fn_ty)
+                ty::TyFnDef(_, _, fn_ty) | ty::TyFnPtr(fn_ty)
                     if fn_ty.abi != Abi::Rust => return no_generics,
                 _ => no_generics,
             }

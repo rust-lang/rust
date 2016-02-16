@@ -568,11 +568,13 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             }
         }
 
-        (&ty::TyFnDef(a_def_id, a_fty), &ty::TyFnDef(b_def_id, b_fty))
+        (&ty::TyFnDef(a_def_id, a_substs, a_fty),
+         &ty::TyFnDef(b_def_id, b_substs, b_fty))
             if a_def_id == b_def_id =>
         {
+            let substs = try!(relate_substs(relation, None, a_substs, b_substs));
             let fty = try!(relation.relate(a_fty, b_fty));
-            Ok(tcx.mk_fn_def(a_def_id, fty))
+            Ok(tcx.mk_fn_def(a_def_id, tcx.mk_substs(substs), fty))
         }
 
         (&ty::TyFnPtr(a_fty), &ty::TyFnPtr(b_fty)) =>

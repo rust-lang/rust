@@ -259,7 +259,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableObject(ref data) => {
             let idx = traits::get_vtable_index_of_object_method(bcx.tcx(), data, method_id);
             if let Some(self_expr) = self_expr {
-                if let ty::TyFnDef(_, ref fty) = monomorphize_type(bcx, method_ty).sty {
+                if let ty::TyFnDef(_, _, ref fty) = monomorphize_type(bcx, method_ty).sty {
                     let ty = opaque_method_ty(bcx.tcx(), fty);
                     return trans_trait_callee(bcx, ty, idx, self_expr, arg_cleanup_scope);
                 }

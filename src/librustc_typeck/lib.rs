@@ -103,7 +103,7 @@ use dep_graph::DepNode;
 use front::map as hir_map;
 use middle::def::Def;
 use middle::infer::{self, TypeOrigin};
-use middle::subst;
+use middle::subst::Substs;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use session::{config, CompileResult};
 use util::common::time;
@@ -128,7 +128,7 @@ pub mod coherence;
 pub mod variance;
 
 pub struct TypeAndSubsts<'tcx> {
-    pub substs: subst::Substs<'tcx>,
+    pub substs: Substs<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
@@ -236,7 +236,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let main_def_id = tcx.map.local_def_id(main_id);
-            let se_ty = tcx.mk_fn_def(main_def_id, ty::BareFnTy {
+            let substs = tcx.mk_substs(Substs::empty());
+            let se_ty = tcx.mk_fn_def(main_def_id, substs, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -282,7 +283,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = tcx.mk_fn_def(ccx.tcx.map.local_def_id(start_id), ty::BareFnTy {
+            let start_def_id = ccx.tcx.map.local_def_id(start_id);
+            let substs = tcx.mk_substs(Substs::empty());
+            let se_ty = tcx.mk_fn_def(start_def_id, substs, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {

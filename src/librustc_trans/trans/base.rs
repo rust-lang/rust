@@ -906,7 +906,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      -> ValueRef {
     let name = ccx.sess().cstore.item_symbol(did);
     match t.sty {
-        ty::TyFnDef(_, ref fn_ty) => {
+        ty::TyFnDef(_, _, ref fn_ty) => {
             match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
                 Abi::Rust | Abi::RustCall => {
                     get_extern_rust_fn(ccx, t, &name[..], did)
@@ -2610,7 +2610,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          node_id: ast::NodeId,
                          node_type: Ty<'tcx>)
                          -> ValueRef {
-    if let ty::TyFnDef(_, ref f) = node_type.sty {
+    if let ty::TyFnDef(_, _, ref f) = node_type.sty {
         if f.abi != Abi::Rust && f.abi != Abi::RustCall {
             ccx.sess().span_bug(sp,
                                 &format!("only the `{}` or `{}` calling conventions are valid \
@@ -2915,7 +2915,7 @@ fn register_method(ccx: &CrateContext,
 
     let sym = exported_name(ccx, id, mty, &attrs);
 
-    if let ty::TyFnDef(_, ref f) = mty.sty {
+    if let ty::TyFnDef(_, _, ref f) = mty.sty {
         let llfn = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
             register_fn(ccx, span, sym, id, mty)
         } else {

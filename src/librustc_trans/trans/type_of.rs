@@ -153,7 +153,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // Given a function type and a count of ty params, construct an llvm type
 pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) -> Type {
     match fty.sty {
-        ty::TyFnDef(_, ref f) | ty::TyFnPtr(ref f) => {
+        ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
             if f.abi == Abi::Rust || f.abi == Abi::RustCall {
