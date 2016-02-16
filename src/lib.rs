@@ -241,6 +241,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::OR_FUN_CALL,
         methods::SEARCH_IS_SOME,
         methods::SHOULD_IMPLEMENT_TRAIT,
+        methods::SINGLE_CHAR_PATTERN,
         methods::STR_TO_STRING,
         methods::STRING_TO_STRING,
         methods::WRONG_SELF_CONVENTION,

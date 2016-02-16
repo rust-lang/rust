@@ -104,7 +104,7 @@ impl EarlyLintPass for MiscEarly {
             if let PatIdent(_, sp_ident, None) = arg.pat.node {
                 let arg_name = sp_ident.node.to_string();
 
-                if arg_name.starts_with("_") {
+                if arg_name.starts_with('_') {
                     if let Some(correspondance) = registered_names.get(&arg_name[1..]) {
                         span_lint(cx,
                                   DUPLICATE_UNDERSCORE_ARGUMENT,

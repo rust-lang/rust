@@ -8,7 +8,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 121 lints included in this crate:
+There are 122 lints included in this crate:
 
 name                                                                                                           | default | meaning
 ---------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -104,6 +104,7 @@ name                                                                            
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                                     | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
 [shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                           | allow   | The name is re-bound without even using the original value
 [should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)               | warn    | defining a method that should be implementing a std trait
+[single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                     | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                   | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                         | allow   | a match statement with a two arms where the second arm's pattern is a wildcard; recommends `if let` instead
 [str_to_string](https://github.com/Manishearth/rust-clippy/wiki#str_to_string)                                 | warn    | using `to_string()` on a str, which should be `to_owned()`

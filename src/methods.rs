@@ -1,4 +1,6 @@
 use rustc::lint::*;
+use rustc::middle::const_eval::{ConstVal, eval_const_expr_partial};
+use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::middle::subst::{Subst, TypeSpace};
 use rustc::middle::ty;
 use rustc_front::hir::*;
@@ -295,6 +297,20 @@ declare_lint! {
     pub NEW_RET_NO_SELF, Warn, "not returning `Self` in a `new` method"
 }
 
+/// **What it does:** This lint checks for string methods that receive a single-character `str` as an argument, e.g. `_.split("x")`.
+///
+/// **Why is this bad?** Performing these methods using a `char` is faster than using a `str`.
+///
+/// **Known problems:** Does not catch multi-byte unicode characters.
+///
+/// **Example:** `_.split("x")` could be `_.split('x')`
+declare_lint! {
+    pub SINGLE_CHAR_PATTERN,
+    Warn,
+    "using a single-character str where a char could be used, e.g. \
+     `_.split(\"x\")`"
+}
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
@@ -312,7 +328,8 @@ impl LintPass for MethodsPass {
                     CHARS_NEXT_CMP,
                     CLONE_ON_COPY,
                     CLONE_DOUBLE_REF,
-                    NEW_RET_NO_SELF)
+                    NEW_RET_NO_SELF,
+                    SINGLE_CHAR_PATTERN)
     }
 }
 
@@ -350,6 +367,11 @@ impl LateLintPass for MethodsPass {
                 if args.len() == 1 && name.node.as_str() == "clone" {
                     lint_clone_on_copy(cx, expr);
                     lint_clone_double_ref(cx, expr, &args[0]);
+                }
+                for &(method, pos) in &PATTERN_METHODS {
+                    if name.node.as_str() == method && args.len() > pos {
+                        lint_single_char_pattern(cx, expr, &args[pos]);
+                    }
                 }
             }
             ExprBinary(op, ref lhs, ref rhs) if op.node == BiEq || op.node == BiNe => {
@@ -819,6 +841,22 @@ fn lint_chars_next(cx: &LateContext, expr: &Expr, chain: &Expr, other: &Expr, eq
     false
 }
 
+/// lint for length-1 `str`s for methods in `PATTERN_METHODS`
+fn lint_single_char_pattern(cx: &LateContext, expr: &Expr, arg: &Expr) {
+    if let Ok(ConstVal::Str(r)) = eval_const_expr_partial(cx.tcx, arg, ExprTypeChecked, None) {
+        if r.len() == 1 {
+            let hint = snippet(cx, expr.span, "..").replace(&format!("\"{}\"", r), &format!("'{}'", r));
+            span_lint_and_then(cx,
+                               SINGLE_CHAR_PATTERN,
+                               arg.span,
+                               "single-character string constant used as pattern",
+                               |db| {
+                                   db.span_suggestion(expr.span, "try using a char instead:", hint);
+                               });
+        }
+    }
+}
+
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     if !match_type(cx, ty, &RESULT_PATH) {
@@ -888,6 +926,28 @@ const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30
     ("shr", 2, SelfKind::Value, OutType::Any, "std::ops::Shr"),
     ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const PATTERN_METHODS: [(&'static str, usize); 17] = [
+    ("contains", 1),
+    ("starts_with", 1),
+    ("ends_with", 1),
+    ("find", 1),
+    ("rfind", 1),
+    ("split", 1),
+    ("rsplit", 1),
+    ("split_terminator", 1),
+    ("rsplit_terminator", 1),
+    ("splitn", 2),
+    ("rsplitn", 2),
+    ("matches", 1),
+    ("rmatches", 1),
+    ("match_indices", 1),
+    ("rmatch_indices", 1),
+    ("trim_left_matches", 1),
+    ("trim_right_matches", 1),
+];
+
 
 #[derive(Clone, Copy)]
 enum SelfKind {
