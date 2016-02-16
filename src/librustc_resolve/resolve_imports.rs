@@ -211,7 +211,7 @@ impl<'a> ::ModuleS<'a> {
         let (ref mut public_globs, ref mut private_globs) = *self.resolved_globs.borrow_mut();
 
         // Check if the public globs are determined
-        if self.pub_glob_count.get() > 0 {
+        if public_globs.len() < self.public_glob_count.get() {
             return Indeterminate;
         }
         for module in public_globs.iter() {
@@ -225,7 +225,7 @@ impl<'a> ::ModuleS<'a> {
         }
 
         // Check if the private globs are determined
-        if self.glob_count.get() > 0 {
+        if private_globs.len() < self.private_glob_count.get() {
             return Indeterminate;
         }
         for module in private_globs.iter() {
@@ -322,23 +322,19 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
             if self.resolver.unresolved_imports == 0 {
                 debug!("(resolving imports) success");
-                self.finalize_resolutions(self.resolver.graph_root);
+                self.finalize_resolutions(self.resolver.graph_root, false);
                 break;
             }
 
             if self.resolver.unresolved_imports == prev_unresolved_imports {
                 // resolving failed
-                self.finalize_resolutions(self.resolver.graph_root);
-                if errors.len() > 0 {
-                    for e in errors {
-                        self.import_resolving_error(e)
-                    }
-                } else {
-                    // Report unresolved imports only if no hard error was already reported
-                    // to avoid generating multiple errors on the same import.
-                    // Imports that are still indeterminate at this point are actually blocked
-                    // by errored imports, so there is no point reporting them.
-                    self.resolver.report_unresolved_imports(self.resolver.graph_root);
+                // Report unresolved imports only if no hard error was already reported
+                // to avoid generating multiple errors on the same import.
+                // Imports that are still indeterminate at this point are actually blocked
+                // by errored imports, so there is no point reporting them.
+                self.finalize_resolutions(self.resolver.graph_root, errors.len() == 0);
+                for e in errors {
+                    self.import_resolving_error(e)
                 }
                 break;
             }
@@ -444,16 +440,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // Decrement the count of unresolved imports.
                 assert!(self.resolver.unresolved_imports >= 1);
                 self.resolver.unresolved_imports -= 1;
-
-                if let GlobImport = import_directive.subclass {
-                    module_.dec_glob_count();
-                    if import_directive.is_public {
-                        module_.dec_pub_glob_count();
-                    }
-                }
-                if import_directive.is_public {
-                    module_.dec_pub_count();
-                }
                 Success(())
             })
     }
@@ -697,10 +683,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     }
 
     // Miscellaneous post-processing, including recording reexports, recording shadowed traits,
-    // reporting conflicts, and reporting the PRIVATE_IN_PUBLIC lint.
-    fn finalize_resolutions(&mut self, module: Module<'b>) {
+    // reporting conflicts, reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
+    fn finalize_resolutions(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
         // Since import resolution is finished, globs will not define any more names.
-        module.pub_glob_count.set(0); module.glob_count.set(0);
+        module.public_glob_count.set(0); module.private_glob_count.set(0);
         *module.resolved_globs.borrow_mut() = (Vec::new(), Vec::new());
 
         let mut reexports = Vec::new();
@@ -743,8 +729,15 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
         }
 
+        if report_unresolved_imports {
+            for import in module.unresolved_imports.borrow().iter() {
+                resolve_error(self.resolver, import.span, ResolutionError::UnresolvedImport(None));
+                break;
+            }
+        }
+
         for (_, child) in module.module_children.borrow().iter() {
-            self.finalize_resolutions(child);
+            self.finalize_resolutions(child, report_unresolved_imports);
         }
     }
 }
