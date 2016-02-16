@@ -676,10 +676,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                               id: NodeId,
                               is_public: bool,
                               shadowable: Shadowable) {
-        if is_public {
-            module_.inc_pub_count();
-        }
-
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
 
@@ -691,11 +687,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the
                 // module's exports ahead of time.
-
-                module_.inc_glob_count();
-                if is_public {
-                    module_.inc_pub_glob_count();
-                }
+                module_.inc_glob_count(is_public)
             }
         }
 

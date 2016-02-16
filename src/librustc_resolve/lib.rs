@@ -836,14 +836,11 @@ pub struct ModuleS<'a> {
     glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective)>>,
     resolved_globs: RefCell<(Vec<Module<'a>> /* public */, Vec<Module<'a>> /* private */)>,
 
-    // The number of unresolved globs that this module exports.
-    glob_count: Cell<usize>,
+    // The number of public glob imports in this module.
+    public_glob_count: Cell<usize>,
 
-    // The number of unresolved pub imports (both regular and globs) in this module
-    pub_count: Cell<usize>,
-
-    // The number of unresolved pub glob imports in this module
-    pub_glob_count: Cell<usize>,
+    // The number of private glob imports in this module.
+    private_glob_count: Cell<usize>,
 
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
@@ -872,9 +869,8 @@ impl<'a> ModuleS<'a> {
             shadowed_traits: RefCell::new(Vec::new()),
             glob_importers: RefCell::new(Vec::new()),
             resolved_globs: RefCell::new((Vec::new(), Vec::new())),
-            glob_count: Cell::new(0),
-            pub_count: Cell::new(0),
-            pub_glob_count: Cell::new(0),
+            public_glob_count: Cell::new(0),
+            private_glob_count: Cell::new(0),
             populated: Cell::new(!external),
             arenas: arenas
         }
@@ -918,26 +914,9 @@ impl<'a> ModuleS<'a> {
         }
     }
 
-    pub fn inc_glob_count(&self) {
-        self.glob_count.set(self.glob_count.get() + 1);
-    }
-    pub fn dec_glob_count(&self) {
-        assert!(self.glob_count.get() > 0);
-        self.glob_count.set(self.glob_count.get() - 1);
-    }
-    pub fn inc_pub_count(&self) {
-        self.pub_count.set(self.pub_count.get() + 1);
-    }
-    pub fn dec_pub_count(&self) {
-        assert!(self.pub_count.get() > 0);
-        self.pub_count.set(self.pub_count.get() - 1);
-    }
-    pub fn inc_pub_glob_count(&self) {
-        self.pub_glob_count.set(self.pub_glob_count.get() + 1);
-    }
-    pub fn dec_pub_glob_count(&self) {
-        assert!(self.pub_glob_count.get() > 0);
-        self.pub_glob_count.set(self.pub_glob_count.get() - 1);
+    fn inc_glob_count(&self, is_public: bool) {
+        let glob_count = if is_public { &self.public_glob_count } else { &self.private_glob_count };
+        glob_count.set(glob_count.get() + 1);
     }
 }
 
@@ -1610,18 +1589,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Success(binding)
         })
-    }
-
-    fn report_unresolved_imports(&mut self, module_: Module<'a>) {
-        for import in module_.unresolved_imports.borrow().iter() {
-            resolve_error(self, import.span, ResolutionError::UnresolvedImport(None));
-            break;
-        }
-
-        // Descend into children and anonymous children.
-        for (_, module_) in module_.module_children.borrow().iter() {
-            self.report_unresolved_imports(module_);
-        }
     }
 
     // AST resolution
