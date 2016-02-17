@@ -29,6 +29,10 @@ pub enum ArgKind {
     /// Pass the argument directly using the normal converted
     /// LLVM type or by coercing to another specified type
     Direct,
+    /// Extend the argument for ABI requirements. The signedness
+    /// of the argument is required to select the appropriate
+    /// extension method
+    Extend,
     /// Pass the argument indirectly via a hidden pointer
     Indirect,
     /// Ignore the argument (useful for empty struct)
@@ -85,12 +89,26 @@ impl ArgType {
         }
     }
 
+    pub fn extend(ty: Type) -> ArgType {
+        ArgType {
+            kind: Extend,
+            ty: ty,
+            cast: None,
+            pad: None,
+            attr: None,
+        }
+    }
+
     pub fn is_indirect(&self) -> bool {
         return self.kind == Indirect;
     }
 
     pub fn is_ignore(&self) -> bool {
         return self.kind == Ignore;
+    }
+
+    pub fn is_extend(&self) -> bool {
+        return self.kind == Extend;
     }
 }
 
