@@ -334,6 +334,82 @@ impl<T: 'static> LocalKey<T> {
 }
 
 #[doc(hidden)]
+#[cfg(target_thread_local)]
+pub mod fast {
+    use cell::{Cell, UnsafeCell};
+    use fmt;
+    use mem;
+    use ptr;
+    use sys::fast_thread_local::{register_dtor, requires_move_before_drop};
+
+    pub struct Key<T> {
+        inner: UnsafeCell<Option<T>>,
+
+        // Metadata to keep track of the state of the destructor. Remember that
+        // these variables are thread-local, not global.
+        dtor_registered: Cell<bool>,
+        dtor_running: Cell<bool>,
+    }
+
+    impl<T> fmt::Debug for Key<T> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.pad("Key { .. }")
+        }
+    }
+
+    unsafe impl<T> ::marker::Sync for Key<T> { }
+
+    impl<T> Key<T> {
+        pub const fn new() -> Key<T> {
+            Key {
+                inner: UnsafeCell::new(None),
+                dtor_registered: Cell::new(false),
+                dtor_running: Cell::new(false)
+            }
+        }
+
+        pub fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
+            unsafe {
+                if mem::needs_drop::<T>() && self.dtor_running.get() {
+                    return None
+                }
+                self.register_dtor();
+            }
+            Some(&self.inner)
+        }
+
+        unsafe fn register_dtor(&self) {
+            if !mem::needs_drop::<T>() || self.dtor_registered.get() {
+                return
+            }
+
+            register_dtor(self as *const _ as *mut u8,
+                          destroy_value::<T>);
+            self.dtor_registered.set(true);
+        }
+    }
+
+    unsafe extern fn destroy_value<T>(ptr: *mut u8) {
+        let ptr = ptr as *mut Key<T>;
+        // Right before we run the user destructor be sure to flag the
+        // destructor as running for this thread so calls to `get` will return
+        // `None`.
+        (*ptr).dtor_running.set(true);
+
+        // Some implementations may require us to move the value before we drop
+        // it as it could get re-initialized in-place during destruction.
+        //
+        // Hence, we use `ptr::read` on those platforms (to move to a "safe"
+        // location) instead of drop_in_place.
+        if requires_move_before_drop() {
+            ptr::read((*ptr).inner.get());
+        } else {
+            ptr::drop_in_place((*ptr).inner.get());
+        }
+    }
+}
+
+#[doc(hidden)]
 pub mod os {
     use cell::{Cell, UnsafeCell};
     use fmt;
@@ -378,8 +454,8 @@ pub mod os {
                     return Some(&(*ptr).value);
                 }
 
-                // If the lookup returned null, we haven't initialized our own local
-                // copy, so do that now.
+                // If the lookup returned null, we haven't initialized our own
+                // local copy, so do that now.
                 let ptr: Box<Value<T>> = box Value {
                     key: self,
                     value: UnsafeCell::new(None),
@@ -391,7 +467,7 @@ pub mod os {
         }
     }
 
-    pub unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
+    unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
         // ensure that any future calls to `get` for this thread will return
