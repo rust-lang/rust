@@ -341,12 +341,11 @@ fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let mptr = Load(bcx, GEPi(bcx, llvtable, &[vtable_index + VTABLE_OFFSET]));
-    let llcallee_ty = type_of_fn_from_ty(ccx, opaque_fn_ty);
 
     Callee {
         bcx: bcx,
         data: TraitItem(MethodData {
-            llfn: PointerCast(bcx, mptr, llcallee_ty.ptr_to()),
+            llfn: PointerCast(bcx, mptr, type_of(ccx, opaque_fn_ty)),
             llself: PointerCast(bcx, llself, Type::i8p(ccx)),
         }),
         ty: opaque_fn_ty
