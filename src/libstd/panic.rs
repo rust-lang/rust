@@ -193,6 +193,12 @@ impl<T> AssertRecoverSafe<T> {
     pub fn new(t: T) -> AssertRecoverSafe<T> {
         AssertRecoverSafe(t)
     }
+
+    /// Consumes the `AssertRecoverSafe`, returning the wrapped value.
+    #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
+    pub fn into_inner(self) -> T {
+        self.0
+    }
 }
 
 impl<T> Deref for AssertRecoverSafe<T> {
