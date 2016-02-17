@@ -139,7 +139,7 @@ Now consider the following code fragment:
 ```rust
 let v = vec![1, 2, 3];
 
-let v2 = v;
+let mut v2 = v;
 ```
 
 The first line allocates memory for the vector object `v` on the stack like
@@ -167,7 +167,7 @@ For example if we truncated the vector to just two elements through `v2`:
 
 ```rust
 # let v = vec![1, 2, 3];
-# let v2 = v;
+# let mut v2 = v;
 v2.truncate(2);
 ```
 
