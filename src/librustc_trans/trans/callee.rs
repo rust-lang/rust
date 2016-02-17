@@ -446,14 +446,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
         // Should be either intra-crate or inlined.
         assert_eq!(def_id.krate, LOCAL_CRATE);
 
-        let opt_ref_id = match node {
-            ExprId(id) => if id != 0 { Some(id) } else { None },
-            MethodCallKey(_) => None,
-        };
-
         let substs = tcx.mk_substs(substs);
         let (val, fn_ty, must_cast) =
-            monomorphize::monomorphic_fn(ccx, def_id, substs, opt_ref_id);
+            monomorphize::monomorphic_fn(ccx, def_id, substs);
         if must_cast && node != ExprId(0) {
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)
