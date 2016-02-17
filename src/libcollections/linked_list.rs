@@ -21,13 +21,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use alloc::boxed::Box;
+use alloc::boxed::{Box, IntermediateBox};
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::iter::FromIterator;
 use core::mem;
-use core::ptr::Shared;
+use core::ops::{BoxPlace, InPlace, Place, Placer};
+use core::ptr::{self, Shared};
 
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -660,6 +661,56 @@ impl<T> LinkedList<T> {
 
         second_part
     }
+
+    /// Returns a place for insertion at the front of the list.
+    ///
+    /// Using this method with placement syntax is equivalent to [`push_front`]
+    /// (#method.push_front), but may be more efficient.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(collection_placement)]
+    /// #![feature(placement_in_syntax)]
+    ///
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut list = LinkedList::new();
+    /// list.front_place() <- 2;
+    /// list.front_place() <- 4;
+    /// assert!(list.iter().eq(&[4, 2]));
+    /// ```
+    #[unstable(feature = "collection_placement",
+               reason = "method name and placement protocol are subject to change",
+               issue = "30172")]
+    pub fn front_place(&mut self) -> FrontPlace<T> {
+        FrontPlace { list: self, node: IntermediateBox::make_place() }
+    }
+
+    /// Returns a place for insertion at the back of the list.
+    ///
+    /// Using this method with placement syntax is equivalent to [`push_back`](#method.push_back),
+    /// but may be more efficient.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(collection_placement)]
+    /// #![feature(placement_in_syntax)]
+    ///
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut list = LinkedList::new();
+    /// list.back_place() <- 2;
+    /// list.back_place() <- 4;
+    /// assert!(list.iter().eq(&[2, 4]));
+    /// ```
+    #[unstable(feature = "collection_placement",
+               reason = "method name and placement protocol are subject to change",
+               issue = "30172")]
+    pub fn back_place(&mut self) -> BackPlace<T> {
+        BackPlace { list: self, node: IntermediateBox::make_place() }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -981,6 +1032,101 @@ impl<A: Hash> Hash for LinkedList<A> {
         for elt in self {
             elt.hash(state);
         }
+    }
+}
+
+unsafe fn finalize<T>(node: IntermediateBox<Node<T>>) -> Box<Node<T>> {
+    let mut node = node.finalize();
+    ptr::write(&mut node.next, None);
+    ptr::write(&mut node.prev, Rawlink::none());
+    node
+}
+
+/// A place for insertion at the front of a `LinkedList`.
+///
+/// See [`LinkedList::front_place`](struct.LinkedList.html#method.front_place) for details.
+#[must_use = "places do nothing unless written to with `<-` syntax"]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
+pub struct FrontPlace<'a, T: 'a> {
+    list: &'a mut LinkedList<T>,
+    node: IntermediateBox<Node<T>>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Placer<T> for FrontPlace<'a, T> {
+    type Place = Self;
+
+    fn make_place(self) -> Self {
+        self
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Place<T> for FrontPlace<'a, T> {
+    fn pointer(&mut self) -> *mut T {
+        unsafe { &mut (*self.node.pointer()).value }
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> InPlace<T> for FrontPlace<'a, T> {
+    type Owner = ();
+
+    unsafe fn finalize(self) {
+        let FrontPlace { list, node } = self;
+        list.push_front_node(finalize(node));
+    }
+}
+
+/// A place for insertion at the back of a `LinkedList`.
+///
+/// See [`LinkedList::back_place`](struct.LinkedList.html#method.back_place) for details.
+#[must_use = "places do nothing unless written to with `<-` syntax"]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
+pub struct BackPlace<'a, T: 'a> {
+    list: &'a mut LinkedList<T>,
+    node: IntermediateBox<Node<T>>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Placer<T> for BackPlace<'a, T> {
+    type Place = Self;
+
+    fn make_place(self) -> Self {
+        self
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Place<T> for BackPlace<'a, T> {
+    fn pointer(&mut self) -> *mut T {
+        unsafe { &mut (*self.node.pointer()).value }
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> InPlace<T> for BackPlace<'a, T> {
+    type Owner = ();
+
+    unsafe fn finalize(self) {
+        let BackPlace { list, node } = self;
+        list.push_back_node(finalize(node));
     }
 }
 
