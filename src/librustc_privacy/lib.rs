@@ -33,7 +33,7 @@ use self::FieldName::*;
 use std::cmp;
 use std::mem::replace;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::{self, Visitor};
 
 use rustc::dep_graph::DepNode;
@@ -920,7 +920,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         if self.in_foreign { return }
 
         match pattern.node {
-            hir::PatStruct(_, ref fields, _) => {
+            PatKind::Struct(_, ref fields, _) => {
                 let adt = self.tcx.pat_ty(pattern).ty_adt_def().unwrap();
                 let def = self.tcx.def_map.borrow().get(&pattern.id).unwrap().full_def();
                 let variant = adt.variant_of_def(def);
@@ -932,11 +932,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
             // Patterns which bind no fields are allowable (the path is check
             // elsewhere).
-            hir::PatEnum(_, Some(ref fields)) => {
+            PatKind::TupleStruct(_, Some(ref fields)) => {
                 match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(def, _) => {
                         for (i, field) in fields.iter().enumerate() {
-                            if let hir::PatWild = field.node {
+                            if let PatKind::Wild = field.node {
                                 continue
                             }
                             self.check_field(field.span,

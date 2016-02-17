@@ -80,8 +80,7 @@ use rustc_front::hir::{ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
 use rustc_front::hir::{ItemFn, ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use rustc_front::hir::Local;
-use rustc_front::hir::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
-use rustc_front::hir::{PatRange, PatStruct, Path, PrimTy};
+use rustc_front::hir::{Pat, PatKind, Path, PrimTy};
 use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
 use rustc_front::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
 use rustc_front::util::walk_pat;
@@ -2323,8 +2322,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let pat_id = pattern.id;
         walk_pat(pattern, |pattern| {
             match pattern.node {
-                PatIdent(binding_mode, ref path1, ref at_rhs) => {
-                    // The meaning of PatIdent with no type parameters
+                PatKind::Ident(binding_mode, ref path1, ref at_rhs) => {
+                    // The meaning of PatKind::Ident with no type parameters
                     // depends on whether an enum variant or unit-like struct
                     // with that name is in scope. The probing lookup has to
                     // be careful not to emit spurious errors. Only matching
@@ -2435,7 +2434,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
-                PatEnum(ref path, _) => {
+                PatKind::TupleStruct(ref path, _) | PatKind::Path(ref path) => {
                     // This must be an enum variant, struct or const.
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             None,
@@ -2443,16 +2442,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                             ValueNS,
                                                                             false) {
                         // The below shouldn't happen because all
-                        // qualified paths should be in PatQPath.
+                        // qualified paths should be in PatKind::QPath.
                         TypecheckRequired =>
                             self.session.span_bug(path.span,
-                                                  "resolve_possibly_assoc_item claimed
-                                     \
-                                                   that a path in PatEnum requires typecheck
-                                     \
-                                                   to resolve, but qualified paths should be
-                                     \
-                                                   PatQPath"),
+                                                  "resolve_possibly_assoc_item claimed that a path \
+                                                   in PatKind::Path or PatKind::TupleStruct \
+                                                   requires typecheck to resolve, but qualified \
+                                                   paths should be PatKind::QPath"),
                         ResolveAttempt(resolution) => resolution,
                     };
                     if let Some(path_res) = resolution {
@@ -2511,7 +2507,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     intravisit::walk_path(self, path);
                 }
 
-                PatQPath(ref qself, ref path) => {
+                PatKind::QPath(ref qself, ref path) => {
                     // Associated constants only.
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             Some(qself),
@@ -2566,7 +2562,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     intravisit::walk_pat(self, pattern);
                 }
 
-                PatStruct(ref path, _, _) => {
+                PatKind::Struct(ref path, _, _) => {
                     match self.resolve_path(pat_id, path, 0, TypeNS, false) {
                         Some(definition) => {
                             self.record_def(pattern.id, definition);
@@ -2585,7 +2581,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     intravisit::walk_path(self, path);
                 }
 
-                PatLit(_) | PatRange(..) => {
+                PatKind::Lit(_) | PatKind::Range(..) => {
                     intravisit::walk_pat(self, pattern);
                 }
 

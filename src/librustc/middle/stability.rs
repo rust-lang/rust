@@ -31,7 +31,7 @@ use syntax::attr::{self, Stability, Deprecation, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
-use rustc_front::hir::{Item, Generics, StructField, Variant};
+use rustc_front::hir::{Item, Generics, StructField, Variant, PatKind};
 use rustc_front::intravisit::{self, Visitor};
 
 use std::mem::replace;
@@ -598,14 +598,14 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
     };
     match pat.node {
         // Foo(a, b, c)
-        // A Variant(..) pattern `hir::PatEnum(_, None)` doesn't have to be recursed into.
-        hir::PatEnum(_, Some(ref pat_fields)) => {
+        // A Variant(..) pattern `PatKind::TupleStruct(_, None)` doesn't have to be recursed into.
+        PatKind::TupleStruct(_, Some(ref pat_fields)) => {
             for (field, struct_field) in pat_fields.iter().zip(&v.fields) {
                 maybe_do_stability_check(tcx, struct_field.did, field.span, cb)
             }
         }
         // Foo { a, b, c }
-        hir::PatStruct(_, ref pat_fields, _) => {
+        PatKind::Struct(_, ref pat_fields, _) => {
             for field in pat_fields {
                 let did = v.field_named(field.node.name).did;
                 maybe_do_stability_check(tcx, did, field.span, cb);

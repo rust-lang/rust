@@ -16,7 +16,7 @@ use middle::ty;
 use syntax::ast;
 use syntax::ptr::P;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -99,35 +99,36 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
         match pat.node {
-            hir::PatIdent(_, _, None) |
-            hir::PatEnum(_, None) |
-            hir::PatQPath(..) |
-            hir::PatLit(..) |
-            hir::PatRange(..) |
-            hir::PatWild => {
+            PatKind::Ident(_, _, None) |
+            PatKind::TupleStruct(_, None) |
+            PatKind::Path(..) |
+            PatKind::QPath(..) |
+            PatKind::Lit(..) |
+            PatKind::Range(..) |
+            PatKind::Wild => {
                 self.add_ast_node(pat.id, &[pred])
             }
 
-            hir::PatBox(ref subpat) |
-            hir::PatRegion(ref subpat, _) |
-            hir::PatIdent(_, _, Some(ref subpat)) => {
+            PatKind::Box(ref subpat) |
+            PatKind::Ref(ref subpat, _) |
+            PatKind::Ident(_, _, Some(ref subpat)) => {
                 let subpat_exit = self.pat(&subpat, pred);
                 self.add_ast_node(pat.id, &[subpat_exit])
             }
 
-            hir::PatEnum(_, Some(ref subpats)) |
-            hir::PatTup(ref subpats) => {
+            PatKind::TupleStruct(_, Some(ref subpats)) |
+            PatKind::Tup(ref subpats) => {
                 let pats_exit = self.pats_all(subpats.iter(), pred);
                 self.add_ast_node(pat.id, &[pats_exit])
             }
 
-            hir::PatStruct(_, ref subpats, _) => {
+            PatKind::Struct(_, ref subpats, _) => {
                 let pats_exit =
                     self.pats_all(subpats.iter().map(|f| &f.node.pat), pred);
                 self.add_ast_node(pat.id, &[pats_exit])
             }
 
-            hir::PatVec(ref pre, ref vec, ref post) => {
+            PatKind::Vec(ref pre, ref vec, ref post) => {
                 let pre_exit = self.pats_all(pre.iter(), pred);
                 let vec_exit = self.pats_all(vec.iter(), pre_exit);
                 let post_exit = self.pats_all(post.iter(), vec_exit);
