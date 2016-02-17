@@ -347,7 +347,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 if item_level.is_some() {
                     self.reach().visit_generics(generics);
                     for field in struct_def.fields() {
-                        if field.node.kind.visibility() == hir::Public {
+                        if self.get(field.node.id).is_some() {
                             self.reach().visit_struct_field(field);
                         }
                     }
@@ -360,7 +360,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 if item_level.is_some() {
                     self.reach().visit_generics(generics);
                     for impl_item in impl_items {
-                        if impl_item.vis == hir::Public {
+                        if self.get(impl_item.id).is_some() {
                             self.reach().visit_impl_item(impl_item);
                         }
                     }
