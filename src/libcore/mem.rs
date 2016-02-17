@@ -571,9 +571,25 @@ pub const POST_DROP_USIZE: usize = POST_DROP_U64 as usize;
 /// ```
 /// use std::mem;
 ///
-/// let one = unsafe { mem::transmute_copy(&1) };
+/// #[repr(packed)]
+/// struct Foo {
+///     bar: u8,
+/// }
 ///
-/// assert_eq!(1, one);
+/// let foo_slice = [10u8];
+///
+/// unsafe {
+///     // Copy the data from 'foo_slice' and treat it as a 'Foo'
+///     let mut foo_struct: Foo = mem::transmute_copy(&foo_slice);
+///     assert_eq!(foo_struct.bar, 10);
+///
+///     // Modify the copied data
+///     foo_struct.bar = 20;
+///     assert_eq!(foo_struct.bar, 20);
+/// }
+///
+/// // The contents of 'foo_slice' should not have changed
+/// assert_eq!(foo_slice, [10]);
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
