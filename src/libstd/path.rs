@@ -1582,8 +1582,10 @@ impl Path {
 
     /// Returns a path that, when joined onto `base`, yields `self`.
     ///
+    /// # Errors
+    ///
     /// If `base` is not a prefix of `self` (i.e. `starts_with`
-    /// returns false), then `relative_from` returns `None`.
+    /// returns `false`), returns `Err`.
     #[stable(since = "1.7.0", feature = "path_strip_prefix")]
     pub fn strip_prefix<'a, P: ?Sized>(&'a self, base: &'a P)
                                        -> Result<&'a Path, StripPrefixError>
