@@ -205,8 +205,8 @@ let f = Bar::Foo{ a: 0, b: 0 }; // error: field `b` of struct `Bar::Foo`
                                 //        is private
 ```
 
-To fix this error, please ensure that all the fields of the struct, or
-implement a function for easy instantiation. Examples:
+To fix this error, please ensure that all the fields of the struct are public,
+or implement a function for easy instantiation. Examples:
 
 ```
 mod Bar {
