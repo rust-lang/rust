@@ -30,7 +30,7 @@ use super::type_variable::{BiTo};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 
 pub struct Bivariate<'a, 'tcx: 'a> {
     fields: CombineFields<'a, 'tcx>
@@ -74,7 +74,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({:?}, {:?})", self.tag(),
                a, b);
-        if a == b { return Ok(a); }
+        if a == b { return Ok(RelateOk::from(a)); }
 
         let infcx = self.fields.infcx;
         let a = infcx.type_variables.borrow().replace_if_possible(a);
@@ -82,17 +82,15 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
         match (&a.sty, &b.sty) {
             (&ty::TyInfer(TyVar(a_id)), &ty::TyInfer(TyVar(b_id))) => {
                 infcx.type_variables.borrow_mut().relate_vars(a_id, BiTo, b_id);
-                Ok(a)
+                Ok(RelateOk::from(a))
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                try!(self.fields.instantiate(b, BiTo, a_id));
-                Ok(a)
+                self.fields.instantiate(b, BiTo, a_id).map_value(|_| a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                try!(self.fields.instantiate(a, BiTo, b_id));
-                Ok(a)
+                self.fields.instantiate(a, BiTo, b_id).map_value(|_| a)
             }
 
             _ => {
@@ -102,7 +100,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
     }
 
     fn regions(&mut self, a: ty::Region, _: ty::Region) -> RelateResult<'tcx, ty::Region> {
-        Ok(a)
+        Ok(RelateOk::from(a))
     }
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
@@ -111,7 +109,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
     {
         let a1 = self.tcx().erase_late_bound_regions(a);
         let b1 = self.tcx().erase_late_bound_regions(b);
-        let c = try!(self.relate(&a1, &b1));
-        Ok(ty::Binder(c))
+        self.relate(&a1, &b1).map_value(|c| ty::Binder(c))
     }
 }

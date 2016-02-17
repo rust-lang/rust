@@ -33,7 +33,7 @@ use middle::ty::{TyVid, IntVid, FloatVid};
 use middle::ty::{self, Ty};
 use middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
-use middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell, Ref};
 use std::fmt;
@@ -385,7 +385,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                   a_is_expected: bool,
                                   a: Ty<'tcx>,
                                   b: Ty<'tcx>)
-                                  -> Ty<'tcx>
+                                  -> RelateResult<'tcx, Ty<'tcx>>
 {
     debug!("common_supertype({:?}, {:?})",
            a, b);
@@ -397,10 +397,10 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 
     let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).relate(&a, &b));
     match result {
-        Ok(t) => t,
+        Ok(t) => Ok(t),
         Err(ref err) => {
             cx.report_and_explain_type_error(trace, err);
-            cx.tcx.types.err
+            Ok(RelateOk::from(cx.tcx.types.err))
         }
     }
 }
@@ -426,7 +426,7 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
-        cx.sub(true, trace).relate(&a, &b).map(|_| ())
+        cx.sub(true, trace).relate(&a, &b).map_value(|_| ())
     })
 }
 
@@ -835,7 +835,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_types({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.sub(a_is_expected, trace).relate(&a, &b).map_value(|_| ())
         })
     }
 
@@ -848,7 +848,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.equate(a_is_expected, trace).relate(&a, &b).map_value(|_| ())
         })
     }
 
@@ -867,7 +867,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.equate(a_is_expected, trace).relate(&a, &b).map_value(|_| ())
         })
     }
 
@@ -886,7 +886,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.sub(a_is_expected, trace).relate(&a, &b).map_value(|_| ())
         })
     }
 
@@ -909,7 +909,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         /*! See `higher_ranked::leak_check` */
 
         match higher_ranked::leak_check(self, skol_map, snapshot) {
-            Ok(()) => Ok(()),
+            Ok(()) => Ok(RelateOk::from(())),
             Err((br, r)) => Err(TypeError::RegionsInsufficientlyPolymorphic(br, r))
         }
     }
@@ -934,8 +934,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = TypeOrigin::EquatePredicate(span);
-            let () = try!(mk_eqty(self, false, origin, a, b));
-            self.leak_check(&skol_map, snapshot)
+            mk_eqty(self, false, origin, a, b)
+                .and_then_with(|_| self.leak_check(&skol_map, snapshot))
         })
     }
 
@@ -1426,7 +1426,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values: Types(expected_found(true, e, e))
             };
             self.equate(true, trace).relate(a, b)
-        }).map(|_| ())
+        }).map_value(|_| ())
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {

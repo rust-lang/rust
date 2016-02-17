@@ -45,7 +45,7 @@ use middle::ty::{IntType, UintType};
 use middle::ty::{self, Ty};
 use middle::ty::error::TypeError;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
-use middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateOk, RelateResult, TypeRelation};
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -74,7 +74,7 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
                       .borrow_mut()
                       .unify_var_var(a_id, b_id)
                       .map_err(|e| int_unification_error(a_is_expected, e)));
-            Ok(a)
+            Ok(RelateOk::from(a))
         }
         (&ty::TyInfer(ty::IntVar(v_id)), &ty::TyInt(v)) => {
             unify_integral_variable(infcx, a_is_expected, v_id, IntType(v))
@@ -95,7 +95,7 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
                       .borrow_mut()
                       .unify_var_var(a_id, b_id)
                       .map_err(|e| float_unification_error(relation.a_is_expected(), e)));
-            Ok(a)
+            Ok(RelateOk::from(a))
         }
         (&ty::TyInfer(ty::FloatVar(v_id)), &ty::TyFloat(v)) => {
             unify_float_variable(infcx, a_is_expected, v_id, v)
@@ -129,8 +129,8 @@ fn unify_integral_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
          .unify_var_value(vid, val)
          .map_err(|e| int_unification_error(vid_is_expected, e)));
     match val {
-        IntType(v) => Ok(infcx.tcx.mk_mach_int(v)),
-        UintType(v) => Ok(infcx.tcx.mk_mach_uint(v)),
+        IntType(v) => Ok(RelateOk::from(infcx.tcx.mk_mach_int(v))),
+        UintType(v) => Ok(RelateOk::from(infcx.tcx.mk_mach_uint(v))),
     }
 }
 
@@ -145,7 +145,7 @@ fn unify_float_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
          .borrow_mut()
          .unify_var_value(vid, val)
          .map_err(|e| float_unification_error(vid_is_expected, e)));
-    Ok(infcx.tcx.mk_mach_float(val))
+    Ok(RelateOk::from(infcx.tcx.mk_mach_float(val)))
 }
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
@@ -187,6 +187,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                        -> RelateResult<'tcx, ()>
     {
         let mut stack = Vec::new();
+        let mut obligations = Vec::new();
         stack.push((a_ty, dir, b_vid));
         loop {
             // For each turn of the loop, we extract a tuple
@@ -224,10 +225,11 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                 Some(t) => t, // ...already instantiated.
                 None => {     // ...not yet instantiated:
                     // Generalize type if necessary.
-                    let generalized_ty = try!(match dir {
-                        EqTo => self.generalize(a_ty, b_vid, false),
-                        BiTo | SupertypeOf | SubtypeOf => self.generalize(a_ty, b_vid, true),
-                    });
+                    let RelateOk { value: generalized_ty, obligations: new_obligations } =
+                        try!(match dir {
+                            EqTo => self.generalize(a_ty, b_vid, false),
+                            BiTo | SupertypeOf | SubtypeOf => self.generalize(a_ty, b_vid, true),
+                        });
                     debug!("instantiate(a_ty={:?}, dir={:?}, \
                                         b_vid={:?}, generalized_ty={:?})",
                            a_ty, dir, b_vid,
@@ -236,6 +238,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                         .borrow_mut()
                         .instantiate_and_push(
                             b_vid, generalized_ty, &mut stack);
+                    obligations.extend(new_obligations);
                     generalized_ty
                 }
             };
@@ -247,15 +250,16 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // relations wind up attributed to the same spans. We need
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
-            try!(match dir {
+            let RelateOk { obligations: new_obligations, .. } = try!(match dir {
                 BiTo => self.bivariate().relate(&a_ty, &b_ty),
                 EqTo => self.equate().relate(&a_ty, &b_ty),
                 SubtypeOf => self.sub().relate(&a_ty, &b_ty),
                 SupertypeOf => self.sub().relate_with_variance(ty::Contravariant, &a_ty, &b_ty),
             });
+            obligations.extend(new_obligations);
         }
 
-        Ok(())
+        Ok(RelateOk { value: (), obligations: obligations })
     }
 
     /// Attempts to generalize `ty` for the type variable `for_vid`.  This checks for cycle -- that
@@ -279,7 +283,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         if generalize.cycle_detected {
             Err(TypeError::CyclicTy)
         } else {
-            Ok(u)
+            Ok(RelateOk::from(u))
         }
     }
 }
@@ -370,7 +374,7 @@ impl<'tcx, T:Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'t
         F: FnOnce() -> TypeError<'tcx>,
     {
         self.clone().and_then(|s| {
-            if s == t {
+            if s.value == t {
                 self.clone()
             } else {
                 Err(f())

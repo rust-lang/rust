@@ -34,7 +34,7 @@ use super::InferCtxt;
 
 use middle::ty::TyVar;
 use middle::ty::{self, Ty};
-use middle::ty::relate::{RelateResult, TypeRelation};
+use middle::ty::relate::{RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 
 pub trait LatticeDir<'f,'tcx> : TypeRelation<'f,'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
@@ -56,7 +56,7 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
            b);
 
     if a == b {
-        return Ok(a);
+        return Ok(RelateOk::from(a));
     }
 
     let infcx = this.infcx();
@@ -66,15 +66,13 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
         (&ty::TyInfer(TyVar(..)), &ty::TyInfer(TyVar(..)))
             if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
             let v = infcx.next_diverging_ty_var();
-            try!(this.relate_bound(v, a, b));
-            Ok(v)
+            this.relate_bound(v, a, b).map_value(|_| v)
         }
 
         (&ty::TyInfer(TyVar(..)), _) |
         (_, &ty::TyInfer(TyVar(..))) => {
             let v = infcx.next_ty_var();
-            try!(this.relate_bound(v, a, b));
-            Ok(v)
+            this.relate_bound(v, a, b).map_value(|_| v)
         }
 
         _ => {

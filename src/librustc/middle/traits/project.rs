@@ -25,6 +25,7 @@ use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
+use middle::ty::relate::RelateOk;
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
 
@@ -97,7 +98,14 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
         match project_and_unify_type(selcx, &skol_obligation) {
             Ok(result) => {
                 match infcx.leak_check(&skol_map, snapshot) {
-                    Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, &result)),
+                    Ok(RelateOk { obligations, .. }) => Ok({
+                        if let Some(mut x) = infcx.plug_leaks(skol_map, snapshot, &result) {
+                            x.extend(obligations);
+                            Some(x)
+                        } else {
+                            None
+                        }
+                    }),
                     Err(e) => Err(MismatchedProjectionTypes { err: e }),
                 }
             }
@@ -121,7 +129,7 @@ fn project_and_unify_type<'cx,'tcx>(
     debug!("project_and_unify_type(obligation={:?})",
            obligation);
 
-    let Normalized { value: normalized_ty, obligations } =
+    let Normalized { value: normalized_ty, mut obligations } =
         match opt_normalize_projection_type(selcx,
                                             obligation.predicate.projection_ty.clone(),
                                             obligation.cause.clone(),
@@ -140,7 +148,10 @@ fn project_and_unify_type<'cx,'tcx>(
     let infcx = selcx.infcx();
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
     match infer::mk_eqty(infcx, true, origin, normalized_ty, obligation.predicate.ty) {
-        Ok(()) => Ok(Some(obligations)),
+        Ok(RelateOk { obligations: mk_obligations, .. }) => {
+            obligations.extend(mk_obligations);
+            Ok(Some(obligations))
+        },
         Err(err) => Err(MismatchedProjectionTypes { err: err }),
     }
 }
@@ -185,10 +196,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
                    ret_type);
             let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let obligation_ty = obligation.predicate.ty;
-            match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
-                Ok(()) => { }
-                Err(_) => { /* ignore errors */ }
-            }
+            let _ = infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type);
         }
         _ => { }
     }
@@ -921,7 +929,8 @@ fn confirm_param_env_candidate<'cx,'tcx>(
                               origin,
                               obligation.predicate.trait_ref.clone(),
                               projection.projection_ty.trait_ref.clone()) {
-        Ok(()) => { }
+        // Do RelateOk predicates need to be propagated here?
+        Ok(_) => { }
         Err(e) => {
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,

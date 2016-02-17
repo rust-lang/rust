@@ -15,7 +15,7 @@ use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
 use middle::ty::{self, Ty};
-use middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'a, 'tcx: 'a> {
@@ -60,7 +60,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
                b);
 
         let origin = Subtype(self.fields.trace.clone());
-        Ok(self.fields.infcx.region_vars.lub_regions(origin, a, b))
+        Ok(RelateOk::from(self.fields.infcx.region_vars.lub_regions(origin, a, b)))
     }
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
@@ -78,8 +78,8 @@ impl<'a, 'tcx> LatticeDir<'a,'tcx> for Lub<'a, 'tcx> {
 
     fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub();
-        try!(sub.relate(&a, &v));
-        try!(sub.relate(&b, &v));
-        Ok(())
+        sub.relate(&a, &v)
+            .and_then_with(|_| sub.relate(&b, &v))
+            .and_then_with(|_| Ok(RelateOk::from(())))
     }
 }

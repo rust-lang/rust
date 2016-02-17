@@ -15,7 +15,7 @@ use super::type_variable::{EqTo};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'a, 'tcx: 'a> {
@@ -47,7 +47,7 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({:?}, {:?})", self.tag(),
                a, b);
-        if a == b { return Ok(a); }
+        if a == b { return Ok(RelateOk::from(a)); }
 
         let infcx = self.fields.infcx;
         let a = infcx.type_variables.borrow().replace_if_possible(a);
@@ -55,22 +55,19 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
         match (&a.sty, &b.sty) {
             (&ty::TyInfer(TyVar(a_id)), &ty::TyInfer(TyVar(b_id))) => {
                 infcx.type_variables.borrow_mut().relate_vars(a_id, EqTo, b_id);
-                Ok(a)
+                Ok(RelateOk::from(a))
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                try!(self.fields.instantiate(b, EqTo, a_id));
-                Ok(a)
+                self.fields.instantiate(b, EqTo, a_id).map_value(|_| a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                try!(self.fields.instantiate(a, EqTo, b_id));
-                Ok(a)
+                self.fields.instantiate(a, EqTo, b_id).map_value(|_| a)
             }
 
             _ => {
-                try!(combine::super_combine_tys(self.fields.infcx, self, a, b));
-                Ok(a)
+                combine::super_combine_tys(self.fields.infcx, self, a, b).map_value(|_| a)
             }
         }
     }
@@ -82,14 +79,14 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
                b);
         let origin = Subtype(self.fields.trace.clone());
         self.fields.infcx.region_vars.make_eqregion(origin, a, b);
-        Ok(a)
+        Ok(RelateOk::from(a))
     }
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'a, 'tcx>
     {
-        try!(self.fields.higher_ranked_sub(a, b));
-        self.fields.higher_ranked_sub(b, a)
+        self.fields.higher_ranked_sub(a, b)
+            .and_then_with(|_| self.fields.higher_ranked_sub(b, a))
     }
 }

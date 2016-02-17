@@ -16,7 +16,7 @@ use super::combine::CombineFields;
 
 use middle::ty::{self, Binder, TypeFoldable};
 use middle::ty::error::TypeError;
-use middle::ty::relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -97,7 +97,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             debug!("higher_ranked_sub: OK result={:?}",
                    result);
 
-            Ok(ty::Binder(result))
+            Ok(result).map_value(|r| ty::Binder(r))
         });
     }
 
@@ -117,7 +117,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                     span, HigherRankedType, b);
 
             // Collect constraints.
-            let result0 =
+            let RelateOk { value: result0, obligations } =
                 try!(self.lub().relate(&a_with_fresh, &b_with_fresh));
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
@@ -138,7 +138,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(RelateOk { value: ty::Binder(result1), obligations: obligations })
         });
 
         fn generalize_region(infcx: &InferCtxt,
@@ -211,7 +211,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             let b_vars = var_ids(self, &b_map);
 
             // Collect constraints.
-            let result0 =
+            let RelateOk { value: result0, obligations } =
                 try!(self.glb().relate(&a_with_fresh, &b_with_fresh));
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
@@ -234,7 +234,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(RelateOk { value: ty::Binder(result1), obligations: obligations })
         });
 
         fn generalize_region(infcx: &InferCtxt,
