@@ -97,7 +97,7 @@ impl ReturnPass {
                 let StmtKind::Decl(ref decl, _) = stmt.node,
                 let DeclKind::Local(ref local) = decl.node,
                 let Some(ref initexpr) = local.init,
-                let PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
+                let PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node,
                 let ExprKind::Path(_, ref path) = retexpr.node,
                 match_path_ast(path, &[&id.name.as_str()])
             ], {

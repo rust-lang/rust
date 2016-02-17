@@ -43,7 +43,7 @@ impl LintPass for MiscEarly {
 
 impl EarlyLintPass for MiscEarly {
     fn check_pat(&mut self, cx: &EarlyContext, pat: &Pat) {
-        if let PatStruct(ref npat, ref pfields, _) = pat.node {
+        if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
             let type_name = match npat.segments.last() {
                 Some(elem) => format!("{}", elem.identifier.name),
@@ -51,7 +51,7 @@ impl EarlyLintPass for MiscEarly {
             };
 
             for field in pfields {
-                if field.node.pat.node == PatWild {
+                if field.node.pat.node == PatKind::Wild {
                     wilds += 1;
                 }
             }
@@ -67,14 +67,14 @@ impl EarlyLintPass for MiscEarly {
                 let mut normal = vec![];
 
                 for field in pfields {
-                    if field.node.pat.node != PatWild {
+                    if field.node.pat.node != PatKind::Wild {
                         if let Ok(n) = cx.sess().codemap().span_to_snippet(field.span) {
                             normal.push(n);
                         }
                     }
                 }
                 for field in pfields {
-                    if field.node.pat.node == PatWild {
+                    if field.node.pat.node == PatKind::Wild {
                         wilds -= 1;
                         if wilds > 0 {
                             span_lint(cx,
@@ -101,7 +101,7 @@ impl EarlyLintPass for MiscEarly {
         let mut registered_names: HashMap<String, Span> = HashMap::new();
 
         for ref arg in &decl.inputs {
-            if let PatIdent(_, sp_ident, None) = arg.pat.node {
+            if let PatKind::Ident(_, sp_ident, None) = arg.pat.node {
                 let arg_name = sp_ident.node.to_string();
 
                 if arg_name.starts_with('_') {
