@@ -466,7 +466,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             let ref_ty = monomorphize::apply_param_substs(tcx,
                                                           param_substs,
                                                           &ref_ty);
-            let llptrty = type_of::type_of_fn_from_ty(ccx, ref_ty).ptr_to();
+            let llptrty = type_of::type_of(ccx, ref_ty);
             if llptrty != common::val_ty(val) {
                 let val = consts::ptrcast(val, llptrty);
                 return Datum::new(val, ref_ty, Rvalue::new(ByValue));
@@ -513,8 +513,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     // This can occur on either a crate-local or crate-external
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
-    let llty = type_of::type_of_fn_from_ty(ccx, fn_type);
-    let llptrty = llty.ptr_to();
+    let llptrty = type_of::type_of(ccx, fn_type);
     if common::val_ty(val) != llptrty {
         debug!("trans_fn_ref_with_substs(): casting pointer!");
         val = consts::ptrcast(val, llptrty);
