@@ -1157,9 +1157,10 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// If the map did not have this key present, `None` is returned.
     ///
-    /// If the map did have this key present, the key is not updated, the
-    /// value is updated and the old value is returned.
-    /// See the [module-level documentation] for more.
+    /// If the map did have this key present, the value is updated, and the old
+    /// value is returned. The key is not updated, though; this matters for
+    /// types that can be `==` without being identical. See the [module-level
+    /// documentation] for more.
     ///
     /// [module-level documentation]: index.html#insert-and-complex-keys
     ///
