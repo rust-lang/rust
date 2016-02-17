@@ -18,6 +18,8 @@
                               definitions")]
 #![allow(deprecated)]
 
+use os::raw::c_long;
+
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
@@ -49,17 +51,17 @@ pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_rdev: u32,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_atime: i64,
+    pub st_atime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_atime_nsec: i64,
+    pub st_atime_nsec: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_mtime: i64,
+    pub st_mtime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_mtime_nsec: i64,
+    pub st_mtime_nsec: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_ctime: i64,
+    pub st_ctime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_ctime_nsec: i64,
+    pub st_ctime_nsec: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_size: i64,
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -73,7 +75,7 @@ pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_lspare: i32,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_birthtime: i64,
+    pub st_birthtime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_birthtime_nsec: i64,
+    pub st_birthtime_nsec: c_long,
 }
