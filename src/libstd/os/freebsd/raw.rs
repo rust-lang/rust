@@ -78,4 +78,7 @@ pub struct stat {
     pub st_birthtime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_birthtime_nsec: c_long,
+    #[cfg(target_arch = "x86")]
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub __unused: [u8; 8],
 }
