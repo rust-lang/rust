@@ -80,6 +80,8 @@ pub struct ArgType {
     /// Only later will `original_ty` aka `%Foo` be used in the LLVM function
     /// pointer type, without ever having introspected it.
     pub ty: Type,
+    /// Signedness for integer types, None for other types
+    pub signedness: Option<bool>,
     /// Coerced LLVM Type
     pub cast: Option<Type>,
     /// Dummy argument, which is emitted before the real argument
@@ -94,6 +96,7 @@ impl ArgType {
             kind: ArgKind::Direct,
             original_ty: original_ty,
             ty: ty,
+            signedness: None,
             cast: None,
             pad: None,
             attrs: llvm::Attributes::default()
@@ -121,6 +124,19 @@ impl ArgType {
     pub fn ignore(&mut self) {
         assert_eq!(self.kind, ArgKind::Direct);
         self.kind = ArgKind::Ignore;
+    }
+
+    pub fn extend_integer_width_to(&mut self, bits: u64) {
+        // Only integers have signedness
+        if let Some(signed) = self.signedness {
+            if self.ty.int_width() < bits {
+                self.attrs.set(if signed {
+                    llvm::Attribute::SExt
+                } else {
+                    llvm::Attribute::ZExt
+                });
+            }
+        }
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -268,6 +284,9 @@ impl FnType {
             } else {
                 let mut arg = ArgType::new(type_of::type_of(ccx, ty),
                                            type_of::sizing_type_of(ccx, ty));
+                if ty.is_integral() {
+                    arg.signedness = Some(ty.is_signed());
+                }
                 if llsize_of_real(ccx, arg.ty) == 0 {
                     // For some forsaken reason, x86_64-pc-windows-gnu
                     // doesn't ignore zero-sized struct arguments.
