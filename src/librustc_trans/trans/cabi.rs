@@ -149,7 +149,6 @@ pub fn compute_abi_info(ccx: &CrateContext,
         "powerpc" => cabi_powerpc::compute_abi_info(ccx, atys, rty, ret_def),
         "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, atys, rty, ret_def),
         "asmjs" => cabi_asmjs::compute_abi_info(ccx, atys, rty, ret_def),
-        a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a)
-                              ),
+        a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a)),
     }
 }
