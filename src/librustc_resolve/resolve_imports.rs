@@ -252,47 +252,28 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     fn resolve_imports_for_module(&mut self,
                                   module: Module<'b>,
                                   errors: &mut Vec<ImportResolvingError<'b>>) {
-        if module.all_imports_resolved() {
-            debug!("(resolving imports for module) all imports resolved for {}",
-                   module_to_string(&module));
-            return;
-        }
+        let mut imports = Vec::new();
+        let mut unresolved_imports = module.unresolved_imports.borrow_mut();
+        ::std::mem::swap(&mut imports, &mut unresolved_imports);
 
-        let mut imports = module.imports.borrow_mut();
-        let import_count = imports.len();
-        let mut indeterminate_imports = Vec::new();
-        while module.resolved_import_count.get() + indeterminate_imports.len() < import_count {
-            let import_index = module.resolved_import_count.get();
-            match self.resolve_import_for_module(module, &imports[import_index]) {
-                ResolveResult::Failed(err) => {
-                    let import_directive = &imports[import_index];
+        for import_directive in imports {
+            match self.resolve_import_for_module(module, &import_directive) {
+                Failed(err) => {
                     let (span, help) = match err {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new()),
                     };
                     errors.push(ImportResolvingError {
                         source_module: module,
-                        import_directive: import_directive.clone(),
+                        import_directive: import_directive,
                         span: span,
                         help: help,
                     });
-                    module.resolved_import_count.set(module.resolved_import_count.get() + 1);
-                    continue;
                 }
-                ResolveResult::Indeterminate => {}
-                ResolveResult::Success(()) => {
-                    // count success
-                    module.resolved_import_count
-                          .set(module.resolved_import_count.get() + 1);
-                    continue;
-                }
+                Indeterminate => unresolved_imports.push(import_directive),
+                Success(()) => {}
             }
-            // This resolution was not successful, keep it for later
-            indeterminate_imports.push(imports.swap_remove(import_index));
-
         }
-
-        imports.extend(indeterminate_imports);
     }
 
     /// Attempts to resolve the given import. The return value indicates
