@@ -79,7 +79,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let did = inline::maybe_instantiate_inline(bcx.ccx(), did);
 
         if !substs.types.is_empty() || is_named_tuple_constructor(bcx.tcx(), did) {
-            let (val, fn_ty, _) = monomorphize::monomorphic_fn(bcx.ccx(), did, substs, None);
+            let (val, fn_ty, _) = monomorphize::monomorphic_fn(bcx.ccx(), did, substs);
             // FIXME: cast fnptr to proper type if necessary
             OperandRef {
                 ty: fn_ty,
