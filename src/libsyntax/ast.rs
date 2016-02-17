@@ -580,7 +580,7 @@ pub enum PatKind {
     /// An associated const named using the qualified path `<T>::CONST` or
     /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
     /// referred to as simply `T::CONST`, in which case they will end up as
-    /// PatKind::Enum, and the resolver will have to sort that out.
+    /// PatKind::Path, and the resolver will have to sort that out.
     QPath(QSelf, Path),
 
     /// A tuple pattern `(a, b)`

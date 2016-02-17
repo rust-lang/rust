@@ -52,7 +52,7 @@ use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 
 use rustc_front::hir;
-use rustc_front::hir::{ItemImpl, ItemTrait};
+use rustc_front::hir::{ItemImpl, ItemTrait, PatKind};
 use rustc_front::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
@@ -1945,7 +1945,7 @@ impl<'tcx> ctxt<'tcx> {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
-                    hir::PatIdent(_, ref path1, _) => path1.node.name.as_str(),
+                    PatKind::Ident(_, ref path1, _) => path1.node.name.as_str(),
                     _ => {
                         self.sess.bug(&format!("Variable id {} maps to {:?}, not local", id, pat));
                     },

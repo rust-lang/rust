@@ -22,7 +22,7 @@ use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap};
 
 use rustc_front;
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 
 // This procedure builds the *scope map* for a given function, which maps any
 // given ast::NodeId in the function's AST to the correct DIScope metadata instance.
@@ -163,7 +163,7 @@ fn walk_pattern(cx: &CrateContext,
     // ast_util::walk_pat() here because we have to visit *all* nodes in
     // order to put them into the scope map. The above functions don't do that.
     match pat.node {
-        hir::PatIdent(_, ref path1, ref sub_pat_opt) => {
+        PatKind::Ident(_, ref path1, ref sub_pat_opt) => {
 
             // Check if this is a binding. If so we need to put it on the
             // scope stack and maybe introduce an artificial scope
@@ -235,11 +235,11 @@ fn walk_pattern(cx: &CrateContext,
             }
         }
 
-        hir::PatWild => {
+        PatKind::Wild => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
         }
 
-        hir::PatEnum(_, ref sub_pats_opt) => {
+        PatKind::TupleStruct(_, ref sub_pats_opt) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             if let Some(ref sub_pats) = *sub_pats_opt {
@@ -249,11 +249,11 @@ fn walk_pattern(cx: &CrateContext,
             }
         }
 
-        hir::PatQPath(..) => {
+        PatKind::Path(..) | PatKind::QPath(..) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
         }
 
-        hir::PatStruct(_, ref field_pats, _) => {
+        PatKind::Struct(_, ref field_pats, _) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             for &codemap::Spanned {
@@ -264,7 +264,7 @@ fn walk_pattern(cx: &CrateContext,
             }
         }
 
-        hir::PatTup(ref sub_pats) => {
+        PatKind::Tup(ref sub_pats) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             for sub_pat in sub_pats {
@@ -272,23 +272,23 @@ fn walk_pattern(cx: &CrateContext,
             }
         }
 
-        hir::PatBox(ref sub_pat) | hir::PatRegion(ref sub_pat, _) => {
+        PatKind::Box(ref sub_pat) | PatKind::Ref(ref sub_pat, _) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
             walk_pattern(cx, &sub_pat, scope_stack, scope_map);
         }
 
-        hir::PatLit(ref exp) => {
+        PatKind::Lit(ref exp) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
             walk_expr(cx, &exp, scope_stack, scope_map);
         }
 
-        hir::PatRange(ref exp1, ref exp2) => {
+        PatKind::Range(ref exp1, ref exp2) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
             walk_expr(cx, &exp1, scope_stack, scope_map);
             walk_expr(cx, &exp2, scope_stack, scope_map);
         }
 
-        hir::PatVec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
+        PatKind::Vec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
             scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
             for sub_pat in front_sub_pats {

@@ -24,7 +24,7 @@ use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
 
 use hir;
-use hir::{Crate, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use hir::{Crate, PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 
 use std::io::{self, Write, Read};
 
@@ -1727,8 +1727,8 @@ impl<'a> State<'a> {
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
         match pat.node {
-            hir::PatWild => try!(word(&mut self.s, "_")),
-            hir::PatIdent(binding_mode, ref path1, ref sub) => {
+            PatKind::Wild => try!(word(&mut self.s, "_")),
+            PatKind::Ident(binding_mode, ref path1, ref sub) => {
                 match binding_mode {
                     hir::BindByRef(mutbl) => {
                         try!(self.word_nbsp("ref"));
@@ -1748,23 +1748,24 @@ impl<'a> State<'a> {
                     None => (),
                 }
             }
-            hir::PatEnum(ref path, ref args_) => {
+            PatKind::TupleStruct(ref path, ref args_) => {
                 try!(self.print_path(path, true, 0));
                 match *args_ {
                     None => try!(word(&mut self.s, "(..)")),
                     Some(ref args) => {
-                        if !args.is_empty() {
-                            try!(self.popen());
-                            try!(self.commasep(Inconsistent, &args[..], |s, p| s.print_pat(&p)));
-                            try!(self.pclose());
-                        }
+                        try!(self.popen());
+                        try!(self.commasep(Inconsistent, &args[..], |s, p| s.print_pat(&p)));
+                        try!(self.pclose());
                     }
                 }
             }
-            hir::PatQPath(ref qself, ref path) => {
+            PatKind::Path(ref path) => {
+                try!(self.print_path(path, true, 0));
+            }
+            PatKind::QPath(ref qself, ref path) => {
                 try!(self.print_qpath(path, qself, false));
             }
-            hir::PatStruct(ref path, ref fields, etc) => {
+            PatKind::Struct(ref path, ref fields, etc) => {
                 try!(self.print_path(path, true, 0));
                 try!(self.nbsp());
                 try!(self.word_space("{"));
@@ -1789,7 +1790,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(word(&mut self.s, "}"));
             }
-            hir::PatTup(ref elts) => {
+            PatKind::Tup(ref elts) => {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p)));
                 if elts.len() == 1 {
@@ -1797,32 +1798,32 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
-            hir::PatBox(ref inner) => {
+            PatKind::Box(ref inner) => {
                 try!(word(&mut self.s, "box "));
                 try!(self.print_pat(&inner));
             }
-            hir::PatRegion(ref inner, mutbl) => {
+            PatKind::Ref(ref inner, mutbl) => {
                 try!(word(&mut self.s, "&"));
                 if mutbl == hir::MutMutable {
                     try!(word(&mut self.s, "mut "));
                 }
                 try!(self.print_pat(&inner));
             }
-            hir::PatLit(ref e) => try!(self.print_expr(&e)),
-            hir::PatRange(ref begin, ref end) => {
+            PatKind::Lit(ref e) => try!(self.print_expr(&e)),
+            PatKind::Range(ref begin, ref end) => {
                 try!(self.print_expr(&begin));
                 try!(space(&mut self.s));
                 try!(word(&mut self.s, "..."));
                 try!(self.print_expr(&end));
             }
-            hir::PatVec(ref before, ref slice, ref after) => {
+            PatKind::Vec(ref before, ref slice, ref after) => {
                 try!(word(&mut self.s, "["));
                 try!(self.commasep(Inconsistent, &before[..], |s, p| s.print_pat(&p)));
                 if let Some(ref p) = *slice {
                     if !before.is_empty() {
                         try!(self.word_space(","));
                     }
-                    if p.node != hir::PatWild {
+                    if p.node != PatKind::Wild {
                         try!(self.print_pat(&p));
                     }
                     try!(word(&mut self.s, ".."));
@@ -1945,7 +1946,7 @@ impl<'a> State<'a> {
             let m = match explicit_self {
                 &hir::SelfStatic => hir::MutImmutable,
                 _ => match decl.inputs[0].pat.node {
-                    hir::PatIdent(hir::BindByValue(m), _, _) => m,
+                    PatKind::Ident(hir::BindByValue(m), _, _) => m,
                     _ => hir::MutImmutable,
                 },
             };
@@ -2210,7 +2211,7 @@ impl<'a> State<'a> {
             hir::TyInfer if is_closure => try!(self.print_pat(&input.pat)),
             _ => {
                 match input.pat.node {
-                    hir::PatIdent(_, ref path1, _) if
+                    PatKind::Ident(_, ref path1, _) if
                         path1.node.name ==
                             parse::token::special_idents::invalid.name => {
                         // Do nothing.

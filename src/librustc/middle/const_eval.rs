@@ -30,7 +30,7 @@ use session::Session;
 
 use graphviz::IntoCow;
 use syntax::ast;
-use rustc_front::hir::Expr;
+use rustc_front::hir::{Expr, PatKind};
 use rustc_front::hir;
 use rustc_front::intravisit::FnKind;
 use syntax::codemap::Span;
@@ -325,7 +325,7 @@ impl ConstVal {
 pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat> {
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
-            hir::PatTup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect()),
+            PatKind::Tup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect()),
 
         hir::ExprCall(ref callee, ref args) => {
             let def = *tcx.def_map.borrow().get(&callee.id).unwrap();
@@ -337,13 +337,13 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
                 Def::Variant(_, variant_did) => def_to_path(tcx, variant_did),
                 Def::Fn(..) => return P(hir::Pat {
                     id: expr.id,
-                    node: hir::PatLit(P(expr.clone())),
+                    node: PatKind::Lit(P(expr.clone())),
                     span: span,
                 }),
                 _ => unreachable!()
             };
             let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect();
-            hir::PatEnum(path, Some(pats))
+            PatKind::TupleStruct(path, Some(pats))
         }
 
         hir::ExprStruct(ref path, ref fields, None) => {
@@ -355,21 +355,19 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
                     is_shorthand: false,
                 },
             }).collect();
-            hir::PatStruct(path.clone(), field_pats, false)
+            PatKind::Struct(path.clone(), field_pats, false)
         }
 
         hir::ExprVec(ref exprs) => {
             let pats = exprs.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect();
-            hir::PatVec(pats, None, hir::HirVec::new())
+            PatKind::Vec(pats, None, hir::HirVec::new())
         }
 
         hir::ExprPath(_, ref path) => {
             let opt_def = tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def());
             match opt_def {
-                Some(Def::Struct(..)) =>
-                    hir::PatStruct(path.clone(), hir::HirVec::new(), false),
-                Some(Def::Variant(..)) =>
-                    hir::PatEnum(path.clone(), None),
+                Some(Def::Struct(..)) | Some(Def::Variant(..)) =>
+                    PatKind::Path(path.clone()),
                 Some(Def::Const(def_id)) |
                 Some(Def::AssociatedConst(def_id)) => {
                     let expr = lookup_const_by_id(tcx, def_id, Some(expr.id), None).unwrap();
@@ -379,7 +377,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
             }
         }
 
-        _ => hir::PatLit(P(expr.clone()))
+        _ => PatKind::Lit(P(expr.clone()))
     };
     P(hir::Pat { id: expr.id, node: pat, span: span })
 }

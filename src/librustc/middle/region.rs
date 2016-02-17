@@ -32,7 +32,7 @@ use syntax::ast::{self, NodeId};
 
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor, FnKind};
-use rustc_front::hir::{Block, Item, FnDecl, Arm, Pat, Stmt, Expr, Local};
+use rustc_front::hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 use rustc_front::util::stmt_id;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
@@ -755,7 +755,7 @@ fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &hir::Pat) {
     // If this is a binding (or maybe a binding, I'm too lazy to check
     // the def map) then record the lifetime of that binding.
     match pat.node {
-        hir::PatIdent(..) => {
+        PatKind::Ident(..) => {
             record_var_lifetime(visitor, pat.id, pat.span);
         }
         _ => { }
@@ -958,24 +958,24 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
     ///        | box P&
     fn is_binding_pat(pat: &hir::Pat) -> bool {
         match pat.node {
-            hir::PatIdent(hir::BindByRef(_), _, _) => true,
+            PatKind::Ident(hir::BindByRef(_), _, _) => true,
 
-            hir::PatStruct(_, ref field_pats, _) => {
+            PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))
             }
 
-            hir::PatVec(ref pats1, ref pats2, ref pats3) => {
+            PatKind::Vec(ref pats1, ref pats2, ref pats3) => {
                 pats1.iter().any(|p| is_binding_pat(&p)) ||
                 pats2.iter().any(|p| is_binding_pat(&p)) ||
                 pats3.iter().any(|p| is_binding_pat(&p))
             }
 
-            hir::PatEnum(_, Some(ref subpats)) |
-            hir::PatTup(ref subpats) => {
+            PatKind::TupleStruct(_, Some(ref subpats)) |
+            PatKind::Tup(ref subpats) => {
                 subpats.iter().any(|p| is_binding_pat(&p))
             }
 
-            hir::PatBox(ref subpat) => {
+            PatKind::Box(ref subpat) => {
                 is_binding_pat(&subpat)
             }
 

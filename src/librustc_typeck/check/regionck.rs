@@ -101,7 +101,7 @@ use std::mem;
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::util as hir_util;
 
 use self::SubjectNode::Subject;
@@ -1190,14 +1190,14 @@ fn link_pattern<'t, 'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     let _ = mc.cat_pattern(discr_cmt, root_pat, |mc, sub_cmt, sub_pat| {
             match sub_pat.node {
                 // `ref x` pattern
-                hir::PatIdent(hir::BindByRef(mutbl), _, _) => {
+                PatKind::Ident(hir::BindByRef(mutbl), _, _) => {
                     link_region_from_node_type(
                         rcx, sub_pat.span, sub_pat.id,
                         mutbl, sub_cmt);
                 }
 
                 // `[_, ..slice, _]` pattern
-                hir::PatVec(_, Some(ref slice_pat), _) => {
+                PatKind::Vec(_, Some(ref slice_pat), _) => {
                     match mc.cat_slice_pattern(sub_cmt, &slice_pat) {
                         Ok((slice_cmt, slice_mutbl, slice_r)) => {
                             link_region(rcx, sub_pat.span, &slice_r,
