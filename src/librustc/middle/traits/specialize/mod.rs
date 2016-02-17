@@ -64,9 +64,35 @@ pub fn translate_substs<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// When we have selected one impl, but are actually using item definitions from
 /// a parent impl providing a default, we need a way to translate between the
 /// type parameters of the two impls. Here the `source_impl` is the one we've
-/// selected, and `source_substs` is a substitution of its generics (and possibly
-/// some relevant `FnSpace` variables as well). And `target_impl` is the impl
-/// we're actually going to get the definition from.
+/// selected, and `source_substs` is a substitution of its generics (and
+/// possibly some relevant `FnSpace` variables as well). And `target_impl` is
+/// the impl we're actually going to get the definition from. The resulting
+/// substitution will map from `target_impl`'s generics to `source_impl`'s
+/// generics as instantiated by `source_subst`.
+///
+/// For example, consider the following scenario:
+///
+/// ```rust
+/// trait Foo { ... }
+/// impl<T, U> Foo for (T, U) { ... }  // target impl
+/// impl<V> Foo for (V, V) { ... }     // source impl
+/// ```
+///
+/// Suppose we have selected "source impl" with `V` instantiated with `u32`.
+/// This function will produce a substitution with `T` and `U` both mapping to `u32`.
+///
+/// Where clauses add some trickiness here, because they can be used to "define"
+/// an argument indirectly:
+///
+/// ```rust
+/// impl<'a, I, T: 'a> Iterator for Cloned<I>
+///    where I: Iterator<Item=&'a T>, T: Clone
+/// ```
+///
+/// In a case like this, the substitution for `T` is determined indirectly,
+/// through associated type projection. We deal with such cases by using
+/// *fulfillment* to relate the two impls, requiring that all projections are
+/// resolved.
 fn translate_substs_between_impls<'tcx>(tcx: &ty::ctxt<'tcx>,
                                         source_impl: DefId,
                                         source_substs: Substs<'tcx>,
