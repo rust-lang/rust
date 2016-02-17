@@ -131,6 +131,7 @@ fn ty_size(ty: Type, align_fn: TyAlignFn) -> usize {
 
 fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType, align_fn: TyAlignFn) {
     if is_reg_ty(ret.ty) {
+        ret.extend_integer_width_to(32);
         return;
     }
     let size = ty_size(ret.ty, align_fn);
@@ -150,6 +151,7 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType, align_fn: TyAlignFn) {
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, align_fn: TyAlignFn) {
     if is_reg_ty(arg.ty) {
+        arg.extend_integer_width_to(32);
         return;
     }
     let align = align_fn(arg.ty);

@@ -86,6 +86,14 @@ fn ty_size(ty: Type) -> usize {
     }
 }
 
+fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
+    if is_reg_ty(ret.ty) {
+        ret.extend_integer_width_to(32);
+    } else {
+        ret.make_indirect(ccx);
+    }
+}
+
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
     let orig_offset = *offset;
     let size = ty_size(arg.ty) * 8;
@@ -98,6 +106,8 @@ fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
     if !is_reg_ty(arg.ty) {
         arg.cast = Some(struct_ty(ccx, arg.ty));
         arg.pad = padding_ty(ccx, align, orig_offset);
+    } else {
+        arg.extend_integer_width_to(32);
     }
 }
 
@@ -146,8 +156,8 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
 }
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
-    if !fty.ret.is_ignore() && !is_reg_ty(fty.ret.ty) {
-        fty.ret.make_indirect(ccx);
+    if !fty.ret.is_ignore() {
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
     let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };
