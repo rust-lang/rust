@@ -683,8 +683,14 @@ enum Destination {
 impl Destination {
     fn from_stderr() -> Destination {
         match term::stderr() {
-            Some(t) => Terminal(t),
-            None    => Raw(Box::new(io::stderr())),
+            Some(t) => {
+                if t.supports_color() {
+                    Terminal(t)
+                } else {
+                    Raw(Box::new(io::stderr()))
+                }
+            }
+            None => Raw(Box::new(io::stderr())),
         }
     }
 

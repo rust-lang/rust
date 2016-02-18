@@ -230,7 +230,9 @@ impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
                          ("sgr", &[Param::Number(0)]),
                          ("op", &[])]
                             .iter()
-                            .filter_map(|&(cap, params)| self.ti.strings.get(cap).map(|c| (c, params)))
+                            .filter_map(|&(cap, params)| {
+                                self.ti.strings.get(cap).map(|c| (c, params))
+                            })
                             .next() {
             Some((op, params)) => {
                 match expand(op, params, &mut Variables::new()) {
