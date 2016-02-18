@@ -133,6 +133,7 @@ pub enum DLLStorageClassTypes {
 }
 
 bitflags! {
+    #[derive(Debug)]
     flags Attribute : u64 {
         const ZExt            = 1 << 0,
         const SExt            = 1 << 1,

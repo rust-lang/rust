@@ -234,9 +234,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
     };
 
-    debug!("--> mapped t={:?} to llsizingty={}",
-            t,
-            cx.tn().type_to_string(llsizingty));
+    debug!("--> mapped t={:?} to llsizingty={:?}", t, llsizingty);
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
     llsizingty
@@ -314,12 +312,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     if t != t_norm {
         let llty = in_memory_type_of(cx, t_norm);
-        debug!("--> normalized {:?} {:?} to {:?} {:?} llty={}",
-                t,
-                t,
-                t_norm,
-                t_norm,
-                cx.tn().type_to_string(llty));
+        debug!("--> normalized {:?} to {:?} llty={:?}", t, t_norm, llty);
         cx.lltypes().borrow_mut().insert(t, llty);
         return llty;
     }
@@ -440,9 +433,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyError => cx.sess().bug("type_of with TyError"),
     };
 
-    debug!("--> mapped t={:?} to llty={}",
-            t,
-            cx.tn().type_to_string(llty));
+    debug!("--> mapped t={:?} to llty={:?}", t, llty);
 
     cx.lltypes().borrow_mut().insert(t, llty);
 

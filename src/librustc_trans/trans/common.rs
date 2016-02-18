@@ -37,6 +37,7 @@ use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
+use trans::value::Value;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::traits::{self, SelectionContext, ProjectionMode};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
@@ -652,14 +653,6 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         }
     }
 
-    pub fn val_to_string(&self, val: ValueRef) -> String {
-        self.ccx().tn().val_to_string(val)
-    }
-
-    pub fn llty_str(&self, ty: Type) -> String {
-        self.ccx().tn().type_to_string(ty)
-    }
-
     pub fn to_str(&self) -> String {
         format!("[block {:p}]", self)
     }
@@ -765,10 +758,6 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     pub fn mir(&self) -> &'blk Mir<'tcx> {
         self.bcx.mir()
-    }
-
-    pub fn val_to_string(&self, val: ValueRef) -> String {
-        self.bcx.val_to_string(val)
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
@@ -1028,15 +1017,15 @@ pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
+pub fn const_get_elt(v: ValueRef, us: &[c_uint])
               -> ValueRef {
     unsafe {
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
-        debug!("const_get_elt(v={}, us={:?}, r={})",
-               cx.tn().val_to_string(v), us, cx.tn().val_to_string(r));
+        debug!("const_get_elt(v={:?}, us={:?}, r={:?})",
+               Value(v), us, Value(r));
 
-        return r;
+        r
     }
 }
 

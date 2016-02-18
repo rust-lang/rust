@@ -152,9 +152,8 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             els: Option<&hir::Expr>,
                             dest: expr::Dest)
                             -> Block<'blk, 'tcx> {
-    debug!("trans_if(bcx={}, if_id={}, cond={:?}, thn={}, dest={})",
-           bcx.to_str(), if_id, cond, thn.id,
-           dest.to_string(bcx.ccx()));
+    debug!("trans_if(bcx={}, if_id={}, cond={:?}, thn={}, dest={:?})",
+           bcx.to_str(), if_id, cond, thn.id, dest);
     let _icx = push_ctxt("trans_if");
 
     if bcx.unreachable.get() {

@@ -53,7 +53,6 @@ mod foreign;
 mod glue;
 mod inline;
 mod intrinsic;
-mod llrepr;
 mod machine;
 mod _match;
 mod meth;

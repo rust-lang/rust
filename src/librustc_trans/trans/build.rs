@@ -20,6 +20,7 @@ use syntax::codemap::Span;
 
 use trans::builder::Builder;
 use trans::type_::Type;
+use trans::value::Value;
 use trans::debuginfo::DebugLoc;
 
 use libc::{c_uint, c_char};
@@ -146,9 +147,11 @@ pub fn Invoke(cx: Block,
     }
     check_not_terminated(cx);
     terminate(cx, "Invoke");
-    debug!("Invoke({} with arguments ({}))",
-           cx.val_to_string(fn_),
-           args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().join(", "));
+    debug!("Invoke({:?} with arguments ({}))",
+           Value(fn_),
+           args.iter().map(|a| {
+                format!("{:?}", Value(*a))
+           }).collect::<Vec<String>>().join(", "));
     debug_loc.apply(cx.fcx);
     let bundle = cx.lpad().and_then(|b| b.bundle());
     B(cx).invoke(fn_, args, then, catch, bundle, attributes)

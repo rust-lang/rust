@@ -30,6 +30,7 @@ use trans::declare;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
+use trans::value::Value;
 use trans::Disr;
 use middle::subst::Substs;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
@@ -405,8 +406,8 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     // to use a different vtable. In that case, we want to
                     // load out the original data pointer so we can repackage
                     // it.
-                    (const_get_elt(cx, llconst, &[abi::FAT_PTR_ADDR as u32]),
-                     Some(const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32])))
+                    (const_get_elt(llconst, &[abi::FAT_PTR_ADDR as u32]),
+                     Some(const_get_elt(llconst, &[abi::FAT_PTR_EXTRA as u32])))
                 } else {
                     (llconst, None)
                 };
@@ -595,17 +596,15 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */
             let (te1, ty) = try!(const_expr(cx, &e1, param_substs, fn_args, trueconst));
-            debug!("const_expr_unadjusted: te1={}, ty={:?}",
-                   cx.tn().val_to_string(te1),
-                   ty);
+            debug!("const_expr_unadjusted: te1={:?}, ty={:?}",
+                   Value(te1), ty);
             assert!(!ty.is_simd());
             let is_float = ty.is_fp();
             let signed = ty.is_signed();
 
             let (te2, ty2) = try!(const_expr(cx, &e2, param_substs, fn_args, trueconst));
-            debug!("const_expr_unadjusted: te2={}, ty={:?}",
-                   cx.tn().val_to_string(te2),
-                   ty2);
+            debug!("const_expr_unadjusted: te2={:?}, ty={:?}",
+                   Value(te2), ty2);
 
             try!(check_binary_expr_validity(cx, e, ty, te1, te2, trueconst));
 
@@ -689,8 +688,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let (arr, len) = match bt.sty {
                 ty::TyArray(_, u) => (bv, C_uint(cx, u)),
                 ty::TySlice(..) | ty::TyStr => {
-                    let e1 = const_get_elt(cx, bv, &[0]);
-                    (load_const(cx, e1, bt), const_get_elt(cx, bv, &[1]))
+                    let e1 = const_get_elt(bv, &[0]);
+                    (load_const(cx, e1, bt), const_get_elt(bv, &[1]))
                 },
                 ty::TyRef(_, mt) => match mt.ty.sty {
                     ty::TyArray(_, u) => {
@@ -725,7 +724,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                           "const index-expr is out of bounds");
                 C_undef(val_ty(arr).element_type())
             } else {
-                const_get_elt(cx, arr, &[iv as c_uint])
+                const_get_elt(arr, &[iv as c_uint])
             }
         },
         hir::ExprCast(ref base, _) => {
@@ -741,10 +740,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let t_cast_inner =
                     t_cast.builtin_deref(true, ty::NoPreference).expect("cast to non-pointer").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, t_cast_inner).ptr_to();
-                let addr = ptrcast(const_get_elt(cx, v, &[abi::FAT_PTR_ADDR as u32]),
+                let addr = ptrcast(const_get_elt(v, &[abi::FAT_PTR_ADDR as u32]),
                                    ptr_ty);
                 if type_is_fat_ptr(cx.tcx(), t_cast) {
-                    let info = const_get_elt(cx, v, &[abi::FAT_PTR_EXTRA as u32]);
+                    let info = const_get_elt(v, &[abi::FAT_PTR_EXTRA as u32]);
                     return Ok(C_struct(cx, &[addr, info], false))
                 } else {
                     return Ok(addr);
@@ -756,7 +755,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             ) {
                 (CastTy::Int(IntTy::CEnum), CastTy::Int(_)) => {
                     let repr = adt::represent_type(cx, t_expr);
-                    let discr = adt::const_get_discrim(cx, &repr, v);
+                    let discr = adt::const_get_discrim(&repr, v);
                     let iv = C_integral(cx.int_type(), discr.0, false);
                     let s = adt::is_discr_signed(&repr) as Bool;
                     llvm::LLVMConstIntCast(iv, llty.to_ref(), s)

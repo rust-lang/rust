@@ -948,9 +948,9 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     if need_invoke(bcx) {
-        debug!("invoking {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
+        debug!("invoking {:?} at {:?}", Value(llfn), bcx.llbb);
         for &llarg in llargs {
-            debug!("arg: {}", bcx.val_to_string(llarg));
+            debug!("arg: {:?}", Value(llarg));
         }
         let normal_bcx = bcx.fcx.new_temp_block("normal-return");
         let landing_pad = bcx.fcx.get_landing_pad();
@@ -964,9 +964,9 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               debug_loc);
         return (llresult, normal_bcx);
     } else {
-        debug!("calling {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
+        debug!("calling {:?} at {:?}", Value(llfn), bcx.llbb);
         for &llarg in llargs {
-            debug!("arg: {}", bcx.val_to_string(llarg));
+            debug!("arg: {:?}", Value(llarg));
         }
 
         let llresult = Call(bcx, llfn, &llargs[..], Some(attributes), debug_loc);
@@ -1058,10 +1058,7 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
         return;
     }
 
-    debug!("store_ty: {} : {:?} <- {}",
-           cx.val_to_string(dst),
-           t,
-           cx.val_to_string(v));
+    debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
         Store(cx,
@@ -2030,8 +2027,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("trans_closure: monomorphized_arg_type: {:?}",
                monomorphized_arg_type);
     }
-    debug!("trans_closure: function lltype: {}",
-           bcx.fcx.ccx.tn().val_to_string(bcx.fcx.llfn));
+    debug!("trans_closure: function lltype: {:?}", Value(bcx.fcx.llfn));
 
     let has_tupled_arg = match closure_env {
         closure::ClosureEnv::NotClosure => abi == Abi::RustCall,

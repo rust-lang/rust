@@ -129,7 +129,9 @@ use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::glue;
 use middle::region;
 use trans::type_::Type;
+use trans::value::Value;
 use middle::ty::{Ty, TyCtxt};
+
 use std::fmt;
 use syntax::ast;
 
@@ -401,9 +403,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             ptr: val,
         };
 
-        debug!("schedule_lifetime_end({:?}, val={})",
-               cleanup_scope,
-               self.ccx.tn().val_to_string(val));
+        debug!("schedule_lifetime_end({:?}, val={:?})",
+               cleanup_scope, Value(val));
 
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }
@@ -426,9 +427,9 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             drop_hint: drop_hint,
         };
 
-        debug!("schedule_drop_mem({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
+        debug!("schedule_drop_mem({:?}, val={:?}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
-               self.ccx.tn().val_to_string(val),
+               Value(val),
                ty,
                drop.fill_on_drop,
                drop.skip_dtor);
@@ -454,10 +455,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             drop_hint: drop_hint,
         };
 
-        debug!("schedule_drop_and_fill_mem({:?}, val={}, ty={:?},
+        debug!("schedule_drop_and_fill_mem({:?}, val={:?}, ty={:?},
                 fill_on_drop={}, skip_dtor={}, has_drop_hint={})",
                cleanup_scope,
-               self.ccx.tn().val_to_string(val),
+               Value(val),
                ty,
                drop.fill_on_drop,
                drop.skip_dtor,
@@ -488,9 +489,9 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             drop_hint: None,
         };
 
-        debug!("schedule_drop_adt_contents({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
+        debug!("schedule_drop_adt_contents({:?}, val={:?}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
-               self.ccx.tn().val_to_string(val),
+               Value(val),
                ty,
                drop.fill_on_drop,
                drop.skip_dtor);
@@ -514,9 +515,9 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             drop_hint: None,
         });
 
-        debug!("schedule_drop_immediate({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
+        debug!("schedule_drop_immediate({:?}, val={:?}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
-               self.ccx.tn().val_to_string(val),
+               Value(val),
                ty,
                drop.fill_on_drop,
                drop.skip_dtor);
@@ -532,10 +533,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            content_ty: Ty<'tcx>) {
         let drop = box FreeValue { ptr: val, heap: heap, content_ty: content_ty };
 
-        debug!("schedule_free_value({:?}, val={}, heap={:?})",
-               cleanup_scope,
-               self.ccx.tn().val_to_string(val),
-               heap);
+        debug!("schedule_free_value({:?}, val={:?}, heap={:?})",
+               cleanup_scope, Value(val), heap);
 
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }

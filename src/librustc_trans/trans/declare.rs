@@ -129,7 +129,7 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
     let llfty = type_of::type_of_rust_fn(ccx, env, &sig, abi);
-    debug!("declare_rust_fn llfty={}", ccx.tn().type_to_string(llfty));
+    debug!("declare_rust_fn llfty={:?}", llfty);
 
     // it is ok to directly access sig.0.output because we erased all
     // late-bound-regions above

@@ -38,8 +38,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let val = if common::type_is_immediate(ccx, ty) {
             OperandValue::Immediate(val)
         } else if common::type_is_fat_ptr(bcx.tcx(), ty) {
-            let data = common::const_get_elt(ccx, val, &[abi::FAT_PTR_ADDR as u32]);
-            let extra = common::const_get_elt(ccx, val, &[abi::FAT_PTR_EXTRA as u32]);
+            let data = common::const_get_elt(val, &[abi::FAT_PTR_ADDR as u32]);
+            let extra = common::const_get_elt(val, &[abi::FAT_PTR_EXTRA as u32]);
             OperandValue::FatPtr(data, extra)
         } else {
             OperandValue::Ref(val)

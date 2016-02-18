@@ -27,6 +27,7 @@ use trans::declare;
 use trans::expr;
 use trans::monomorphize::{MonoId};
 use trans::type_of::*;
+use trans::value::Value;
 use trans::Disr;
 use middle::ty;
 use session::config::FullDebugInfo;
@@ -146,7 +147,7 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if let Some(&llfn) = ccx.closure_vals().borrow().get(&mono_id) {
         debug!("get_or_create_closure_declaration(): found closure {:?}: {:?}",
-               mono_id, ccx.tn().val_to_string(llfn));
+               mono_id, Value(llfn));
         return llfn;
     }
 
@@ -160,10 +161,8 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     attributes::inline(llfn, attributes::InlineAttr::Hint);
 
     debug!("get_or_create_declaration_if_closure(): inserting new \
-            closure {:?} (type {}): {:?}",
-           mono_id,
-           ccx.tn().type_to_string(val_ty(llfn)),
-           ccx.tn().val_to_string(llfn));
+            closure {:?}: {:?}",
+           mono_id, Value(llfn));
     ccx.closure_vals().borrow_mut().insert(mono_id, llfn);
 
     llfn
@@ -278,11 +277,8 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let tcx = ccx.tcx();
 
     debug!("trans_closure_adapter_shim(llfn_closure_kind={:?}, \
-           trait_closure_kind={:?}, \
-           llfn={})",
-           llfn_closure_kind,
-           trait_closure_kind,
-           ccx.tn().val_to_string(llfn));
+           trait_closure_kind={:?}, llfn={:?})",
+           llfn_closure_kind, trait_closure_kind, Value(llfn));
 
     match (llfn_closure_kind, trait_closure_kind) {
         (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
@@ -324,10 +320,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     llreffn: ValueRef)
     -> ValueRef
 {
-    debug!("trans_fn_once_adapter_shim(closure_def_id={:?}, substs={:?}, llreffn={})",
-           closure_def_id,
-           substs,
-           ccx.tn().val_to_string(llreffn));
+    debug!("trans_fn_once_adapter_shim(closure_def_id={:?}, substs={:?}, llreffn={:?})",
+           closure_def_id, substs, Value(llreffn));
 
     let tcx = ccx.tcx();
     let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
@@ -391,8 +385,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                                   env_datum.to_lvalue_datum_in_scope(bcx, "self",
                                                                      self_scope_id));
 
-    debug!("trans_fn_once_adapter_shim: env_datum={}",
-           bcx.val_to_string(env_datum.val));
+    debug!("trans_fn_once_adapter_shim: env_datum={:?}",
+           Value(env_datum.val));
     llargs[self_idx] = env_datum.val;
 
     let dest =

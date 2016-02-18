@@ -24,7 +24,7 @@ use trans::cabi_mips;
 use trans::cabi_asmjs;
 use trans::type_::Type;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ArgKind {
     /// Pass the argument directly using the normal converted
     /// LLVM type or by coercing to another specified type
@@ -39,7 +39,7 @@ pub enum ArgKind {
 /// should be passed to or returned from a function
 ///
 /// This is borrowed from clang's ABIInfo.h
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct ArgType {
     pub kind: ArgKind,
     /// Original LLVM type
