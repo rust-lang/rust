@@ -175,13 +175,13 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, ty::Ty<'tcx>> {
     fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<InternedString, ty::Ty<'tcx>>) {
         match pat.node {
-            PatBox(ref pat) | PatRegion(ref pat, _) => bindings_impl(cx, pat, map),
-            PatEnum(_, Some(ref pats)) => {
+            PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
+            PatKind::TupleStruct(_, Some(ref pats)) => {
                 for pat in pats {
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatIdent(_, ref ident, ref as_pat) => {
+            PatKind::Ident(_, ref ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.node.name.as_str()) {
                     v.insert(cx.tcx.pat_ty(pat));
                 }
@@ -189,17 +189,17 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, as_pat, map);
                 }
             },
-            PatStruct(_, ref fields, _) => {
+            PatKind::Struct(_, ref fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, &pat.node.pat, map);
                 }
             }
-            PatTup(ref fields) => {
+            PatKind::Tup(ref fields) => {
                 for pat in fields {
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatVec(ref lhs, ref mid, ref rhs) => {
+            PatKind::Vec(ref lhs, ref mid, ref rhs) => {
                 for pat in lhs {
                     bindings_impl(cx, pat, map);
                 }
@@ -210,7 +210,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatEnum(..) | PatLit(..) | PatQPath(..) | PatRange(..) | PatWild => (),
+            PatKind::TupleStruct(..) | PatKind::Lit(..) | PatKind::QPath(..) | PatKind::Range(..) | PatKind::Wild | PatKind::Path(..) => (),
         }
     }
 

@@ -67,7 +67,7 @@ impl LateLintPass for ShadowPass {
 fn check_fn(cx: &LateContext, decl: &FnDecl, block: &Block) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
-        if let PatIdent(_, ident, _) = arg.pat.node {
+        if let PatKind::Ident(_, ident, _) = arg.pat.node {
             bindings.push((ident.node.unhygienic_name, ident.span))
         }
     }
@@ -119,7 +119,7 @@ fn is_binding(cx: &LateContext, pat: &Pat) -> bool {
 fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bindings: &mut Vec<(Name, Span)>) {
     // TODO: match more stuff / destructuring
     match pat.node {
-        PatIdent(_, ref ident, ref inner) => {
+        PatKind::Ident(_, ref ident, ref inner) => {
             let name = ident.node.unhygienic_name;
             if is_binding(cx, pat) {
                 let mut new_binding = true;
@@ -140,7 +140,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
             }
         }
         // PatEnum(Path, Option<Vec<P<Pat>>>),
-        PatStruct(_, ref pfields, _) => {
+        PatKind::Struct(_, ref pfields, _) => {
             if let Some(ref init_struct) = *init {
                 if let ExprStruct(_, ref efields, _) = init_struct.node {
                     for field in pfields {
@@ -161,7 +161,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
                 }
             }
         }
-        PatTup(ref inner) => {
+        PatKind::Tup(ref inner) => {
             if let Some(ref init_tup) = *init {
                 if let ExprTup(ref tup) = init_tup.node {
                     for (i, p) in inner.iter().enumerate() {
@@ -178,7 +178,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
                 }
             }
         }
-        PatBox(ref inner) => {
+        PatKind::Box(ref inner) => {
             if let Some(ref initp) = *init {
                 if let ExprBox(ref inner_init) = initp.node {
                     check_pat(cx, inner, &Some(&**inner_init), span, bindings);
@@ -189,7 +189,7 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span, bind
                 check_pat(cx, inner, init, span, bindings);
             }
         }
-        PatRegion(ref inner, _) => check_pat(cx, inner, init, span, bindings),
+        PatKind::Ref(ref inner, _) => check_pat(cx, inner, init, span, bindings),
         // PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
         _ => (),
     }

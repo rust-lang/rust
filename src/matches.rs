@@ -157,7 +157,7 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 }
 
 fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
-    if arms[1].pats[0].node == PatWild {
+    if arms[1].pats[0].node == PatKind::Wild {
         let lint = if els.is_some() {
             SINGLE_MATCH_ELSE
         } else {
@@ -192,15 +192,15 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
     ];
 
     let path = match arms[1].pats[0].node {
-        PatEnum(ref path, Some(ref inner)) => {
+        PatKind::TupleStruct(ref path, Some(ref inner)) => {
             // contains any non wildcard patterns? e.g. Err(err)
-            if inner.iter().any(|pat| if let PatWild = pat.node { false } else { true }) {
+            if inner.iter().any(|pat| if let PatKind::Wild = pat.node { false } else { true }) {
                 return;
             }
             path.to_string()
         },
-        PatEnum(ref path, None) => path.to_string(),
-        PatIdent(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
+        PatKind::TupleStruct(ref path, None) => path.to_string(),
+        PatKind::Ident(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
         _ => return,
     };
 
@@ -235,7 +235,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if cx.tcx.expr_ty(ex).sty == ty::TyBool {
         let sugg = if arms.len() == 2 && arms[0].pats.len() == 1 {
             // no guards
-            let exprs = if let PatLit(ref arm_bool) = arms[0].pats[0].node {
+            let exprs = if let PatKind::Lit(ref arm_bool) = arms[0].pats[0].node {
                 if let ExprLit(ref lit) = arm_bool.node {
                     match lit.node {
                         LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
@@ -334,7 +334,7 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
             if let Arm { ref pats, guard: None, .. } = *arm {
                 Some(pats.iter().filter_map(|pat| {
                     if_let_chain! {[
-                        let PatRange(ref lhs, ref rhs) = pat.node,
+                        let PatKind::Range(ref lhs, ref rhs) = pat.node,
                         let Ok(lhs) = eval_const_expr_partial(cx.tcx, &lhs, ExprTypeChecked, None),
                         let Ok(rhs) = eval_const_expr_partial(cx.tcx, &rhs, ExprTypeChecked, None)
                     ], {
@@ -342,7 +342,7 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                     }}
 
                     if_let_chain! {[
-                        let PatLit(ref value) = pat.node,
+                        let PatKind::Lit(ref value) = pat.node,
                         let Ok(value) = eval_const_expr_partial(cx.tcx, &value, ExprTypeChecked, None)
                     ], {
                         return Some(SpannedRange { span: pat.span, node: (value.clone(), value) });
@@ -424,8 +424,8 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
                      .flat_map(|a| &a.pats)
                      .map(|p| {
                          match p.node {
-                             PatRegion(..) => Some(true),  // &-patterns
-                             PatWild => Some(false),   // an "anything" wildcard is also fine
+                             PatKind::Ref(..) => Some(true),  // &-patterns
+                             PatKind::Wild => Some(false),   // an "anything" wildcard is also fine
                              _ => None,                    // any other pattern is not fine
                          }
                      })
