@@ -70,6 +70,7 @@ pub enum DepNode {
     IntrinsicCheck(DefId),
     MatchCheck(DefId),
     MirMapConstruction(DefId),
+    MirPrintPass,
     BorrowCheck(DefId),
     RvalueCheck(DefId),
     Reachability,

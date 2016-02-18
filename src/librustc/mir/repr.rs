@@ -204,7 +204,7 @@ impl Debug for BasicBlock {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// BasicBlock and Terminator
+// BasicBlockData and Terminator
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {

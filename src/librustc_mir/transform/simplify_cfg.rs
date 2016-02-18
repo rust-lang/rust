@@ -9,37 +9,30 @@
 // except according to those terms.
 
 use rustc::middle::const_eval::ConstVal;
+use rustc::middle::ty;
 use rustc::mir::repr::*;
+use rustc::mir::visit::MutVisitor;
 use transform::util;
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{MirPass, Pass};
 
 pub struct SimplifyCfg;
 
-impl SimplifyCfg {
-    pub fn new() -> SimplifyCfg {
-        SimplifyCfg
-    }
+impl Pass for SimplifyCfg {
+}
 
-    fn remove_dead_blocks(&self, mir: &mut Mir) {
-        let mut seen = vec![false; mir.basic_blocks.len()];
-
-        // These blocks are always required.
-        seen[START_BLOCK.index()] = true;
-        seen[END_BLOCK.index()] = true;
-
-        let mut worklist = vec![START_BLOCK];
-        while let Some(bb) = worklist.pop() {
-            for succ in mir.basic_block_data(bb).terminator().successors().iter() {
-                if !seen[succ.index()] {
-                    seen[succ.index()] = true;
-                    worklist.push(*succ);
-                }
-            }
+impl<'tcx> MirPass<'tcx> for SimplifyCfg {
+    fn run_pass(&mut self, tcx: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+        let mut dbr_pass = DeadBlockRemoval;
+        let mut changed = true;
+        while changed {
+            changed = self.simplify_branches(mir);
+            changed |= self.remove_goto_chains(mir);
+            dbr_pass.run_pass(tcx, mir);
         }
-
-        util::retain_basic_blocks(mir, &seen);
     }
+}
 
+impl SimplifyCfg {
     fn remove_goto_chains(&self, mir: &mut Mir) -> bool {
 
         // Find the target at the end of the jump chain, return None if there is a loop
@@ -83,6 +76,7 @@ impl SimplifyCfg {
         changed
     }
 
+    // FIXME: This transformation should be interleaved with the constant-propagation pass.
     fn simplify_branches(&self, mir: &mut Mir) -> bool {
         let mut changed = false;
 
@@ -118,15 +112,81 @@ impl SimplifyCfg {
     }
 }
 
-impl MirPass for SimplifyCfg {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &::rustc::middle::ty::ctxt<'tcx>) {
-        let mut changed = true;
-        while changed {
-            changed = self.simplify_branches(mir);
-            changed |= self.remove_goto_chains(mir);
-            self.remove_dead_blocks(mir);
+/// Remove all the unreachable blocks.
+///
+/// You want to schedule this pass just after any pass which might introduce unreachable blocks.
+/// This pass is very cheap and might improve the run-time of other not-so-cheap passes.
+pub struct DeadBlockRemoval;
+
+impl Pass for DeadBlockRemoval {
+}
+
+impl<'tcx> MirPass<'tcx> for DeadBlockRemoval {
+    fn run_pass(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+        let mut seen = vec![false; mir.basic_blocks.len()];
+
+        // These blocks are always required.
+        seen[START_BLOCK.index()] = true;
+        seen[END_BLOCK.index()] = true;
+
+        let mut worklist = vec![START_BLOCK];
+        while let Some(bb) = worklist.pop() {
+            for succ in mir.basic_block_data(bb).terminator().successors().iter() {
+                if !seen[succ.index()] {
+                    seen[succ.index()] = true;
+                    worklist.push(*succ);
+                }
+            }
         }
-        // FIXME: Should probably be moved into some kind of pass manager
+
+        util::retain_basic_blocks(mir, &seen);
+    }
+}
+
+/// Reduce the memory allocated by a MIR graph.
+pub struct CompactMir;
+
+impl Pass for CompactMir {
+}
+
+impl<'tcx> MirPass<'tcx> for CompactMir {
+    fn run_pass(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+        self.visit_mir(mir);
+    }
+}
+
+impl<'tcx> MutVisitor<'tcx> for CompactMir {
+    fn visit_mir(&mut self, mir: &mut Mir<'tcx>) {
         mir.basic_blocks.shrink_to_fit();
+        mir.var_decls.shrink_to_fit();
+        mir.arg_decls.shrink_to_fit();
+        mir.temp_decls.shrink_to_fit();
+        self.super_mir(mir);
+    }
+
+    fn visit_basic_block_data(&mut self, b: BasicBlock, data: &mut BasicBlockData) {
+        data.statements.shrink_to_fit();
+        self.super_basic_block_data(b, data);
+    }
+
+    fn visit_terminator(&mut self, b: BasicBlock, terminator: &mut Terminator) {
+        match *terminator {
+            Terminator::Switch { ref mut targets, .. } => targets.shrink_to_fit(),
+            Terminator::SwitchInt { ref mut values, ref mut targets, .. } => {
+                values.shrink_to_fit();
+                targets.shrink_to_fit();
+            },
+            Terminator::Call { ref mut args, .. } => args.shrink_to_fit(),
+            _ => {/* nothing to do */}
+        }
+        self.super_terminator(b, terminator);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &mut Rvalue) {
+        match *rvalue {
+            Rvalue::Aggregate(_, ref mut operands) => operands.shrink_to_fit(),
+            _ => { /* nothing to do */ }
+        }
+        self.super_rvalue(rvalue);
     }
 }
