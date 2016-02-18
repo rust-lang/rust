@@ -235,6 +235,20 @@ impl<'tcx> CastCheck<'tcx> {
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty),
                                       CastTy::from_ty(self.cast_ty)) {
             (Some(t_from), Some(t_cast)) => (t_from, t_cast),
+            // Function item types may need to be reified before casts.
+            (None, Some(t_cast)) => {
+                if let ty::TyFnDef(_, _, f) = self.expr_ty.sty {
+                    // Attempt a coercion to a fn pointer type.
+                    let res = coercion::mk_assignty(fcx, &self.expr,
+                        self.expr_ty, fcx.tcx().mk_ty(ty::TyFnPtr(f)));
+                    if !res.is_ok() {
+                        return Err(CastError::NonScalar);
+                    }
+                    (FnPtr, t_cast)
+                } else {
+                    return Err(CastError::NonScalar);
+                }
+            }
             _ => {
                 return Err(CastError::NonScalar)
             }
