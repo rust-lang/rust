@@ -1,7 +1,7 @@
-- Feature Name: net2_mutators
+- Feature Name: `net2_mutators`
 - Start Date: 2016-01-12
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#1461](https://github.com/rust-lang/rfcs/pull/1461)
+- Rust Issue: [rust-lang/rust#31766](https://github.com/rust-lang/rust/issues/31766)
 
 # Summary
 [summary]: #summary
