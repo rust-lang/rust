@@ -13,9 +13,9 @@ use utils::STRING_PATH;
 
 /// **What it does:** This lint matches code of the form `x = x + y` (without `let`!).
 ///
-/// **Why is this bad?** Because this expression needs another copy as opposed to `x.push_str(y)` (in practice LLVM will usually elide it, though). Despite [llogiq](https://github.com/llogiq)'s reservations, this lint also is `allow` by default, as some people opine that it's more readable.
+/// **Why is this bad?** It's not really bad, but some people think that the `.push_str(_)` method is more readable.
 ///
-/// **Known problems:** None. Well apart from the lint being `allow` by default. :smile:
+/// **Known problems:** None.
 ///
 /// **Example:**
 ///
