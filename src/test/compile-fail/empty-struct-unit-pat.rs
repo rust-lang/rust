@@ -12,7 +12,6 @@
 
 // aux-build:empty-struct.rs
 
-#![feature(rustc_attrs)]
 // remove prior feature after warning cycle and promoting warnings to errors
 #![feature(braced_empty_structs)]
 
@@ -26,8 +25,7 @@ enum E {
 }
 
 // remove attribute after warning cycle and promoting warnings to errors
-#[rustc_error]
-fn main() { //~ ERROR: compilation successful
+fn main() {
     let e2 = Empty2;
     let e4 = E::Empty4;
     let xe2 = XEmpty2;
@@ -41,12 +39,12 @@ fn main() { //~ ERROR: compilation successful
     //     XEmpty2() => () // ERROR `XEmpty2` does not name a tuple variant or a tuple struct
     // }
     match e2 {
-        Empty2(..) => () //~ WARN `Empty2` does not name a tuple variant or a tuple struct
-            //~^ WARN hard error
+        Empty2(..) => () //~ ERROR `Empty2` does not name a tuple variant or a tuple struct
+            //~^ ERROR hard error
     }
     match xe2 {
-        XEmpty2(..) => () //~ WARN `XEmpty2` does not name a tuple variant or a tuple struct
-            //~^ WARN hard error
+        XEmpty2(..) => () //~ ERROR `XEmpty2` does not name a tuple variant or a tuple struct
+            //~^ ERROR hard error
     }
     // Rejected by parser as yet
     // match e4 {
@@ -57,12 +55,12 @@ fn main() { //~ ERROR: compilation successful
     //     _ => {},
     // }
     match e4 {
-        E::Empty4(..) => () //~ WARN `E::Empty4` does not name a tuple variant or a tuple struct
-            //~^ WARN hard error
+        E::Empty4(..) => () //~ ERROR `E::Empty4` does not name a tuple variant or a tuple struct
+            //~^ ERROR hard error
     }
     match xe4 {
-        XE::XEmpty4(..) => (), //~ WARN `XE::XEmpty4` does not name a tuple variant or a tuple
-            //~^ WARN hard error
+        XE::XEmpty4(..) => (), //~ ERROR `XE::XEmpty4` does not name a tuple variant or a tuple
+            //~^ ERROR hard error
         _ => {},
     }
 }
