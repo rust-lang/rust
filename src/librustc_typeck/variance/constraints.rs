@@ -1,0 +1,553 @@
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Constraint construction and representation
+//!
+//! The second pass over the AST determines the set of constraints.
+//! We walk the set of items and, for each member, generate new constraints.
+
+use dep_graph::DepTrackingMapConfig;
+use middle::def_id::DefId;
+use middle::resolve_lifetime as rl;
+use middle::subst;
+use middle::subst::ParamSpace;
+use middle::ty::{self, Ty};
+use middle::ty::maps::ItemVariances;
+use rustc::front::map as hir_map;
+use syntax::ast;
+use rustc_front::hir;
+use rustc_front::intravisit::Visitor;
+
+use super::terms::*;
+use super::terms::VarianceTerm::*;
+use super::terms::ParamKind::*;
+use super::xform::*;
+
+pub struct ConstraintContext<'a, 'tcx: 'a> {
+    pub terms_cx: TermsContext<'a, 'tcx>,
+
+    // These are pointers to common `ConstantTerm` instances
+    covariant: VarianceTermPtr<'a>,
+    contravariant: VarianceTermPtr<'a>,
+    invariant: VarianceTermPtr<'a>,
+    bivariant: VarianceTermPtr<'a>,
+
+    pub constraints: Vec<Constraint<'a>> ,
+}
+
+/// Declares that the variable `decl_id` appears in a location with
+/// variance `variance`.
+#[derive(Copy, Clone)]
+pub struct Constraint<'a> {
+    pub inferred: InferredIndex,
+    pub variance: &'a VarianceTerm<'a>,
+}
+
+pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
+                                            -> ConstraintContext<'a, 'tcx>
+{
+    let tcx = terms_cx.tcx;
+    let covariant = terms_cx.arena.alloc(ConstantTerm(ty::Covariant));
+    let contravariant = terms_cx.arena.alloc(ConstantTerm(ty::Contravariant));
+    let invariant = terms_cx.arena.alloc(ConstantTerm(ty::Invariant));
+    let bivariant = terms_cx.arena.alloc(ConstantTerm(ty::Bivariant));
+    let mut constraint_cx = ConstraintContext {
+        terms_cx: terms_cx,
+        covariant: covariant,
+        contravariant: contravariant,
+        invariant: invariant,
+        bivariant: bivariant,
+        constraints: Vec::new(),
+    };
+
+    // See README.md for a discussion on dep-graph management.
+    tcx.visit_all_items_in_krate(|def_id| ItemVariances::to_dep_node(&def_id),
+                                 &mut constraint_cx);
+
+    constraint_cx
+}
+
+impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
+    fn visit_item(&mut self, item: &hir::Item) {
+        let tcx = self.terms_cx.tcx;
+        let did = tcx.map.local_def_id(item.id);
+
+        debug!("visit_item item={}", tcx.map.node_to_string(item.id));
+
+        match item.node {
+            hir::ItemEnum(..) | hir::ItemStruct(..) => {
+                let scheme = tcx.lookup_item_type(did);
+
+                // Not entirely obvious: constraints on structs/enums do not
+                // affect the variance of their type parameters. See discussion
+                // in comment at top of module.
+                //
+                // self.add_constraints_from_generics(&scheme.generics);
+
+                for field in tcx.lookup_adt_def(did).all_fields() {
+                    self.add_constraints_from_ty(&scheme.generics,
+                                                 field.unsubst_ty(),
+                                                 self.covariant);
+                }
+            }
+            hir::ItemTrait(..) => {
+                let trait_def = tcx.lookup_trait_def(did);
+                self.add_constraints_from_trait_ref(&trait_def.generics,
+                                                    trait_def.trait_ref,
+                                                    self.invariant);
+            }
+
+            hir::ItemExternCrate(_) |
+            hir::ItemUse(_) |
+            hir::ItemStatic(..) |
+            hir::ItemConst(..) |
+            hir::ItemFn(..) |
+            hir::ItemMod(..) |
+            hir::ItemForeignMod(..) |
+            hir::ItemTy(..) |
+            hir::ItemImpl(..) |
+            hir::ItemDefaultImpl(..) => {
+            }
+        }
+    }
+}
+
+/// Is `param_id` a lifetime according to `map`?
+fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
+    match map.find(param_id) {
+        Some(hir_map::NodeLifetime(..)) => true, _ => false
+    }
+}
+
+impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+        self.terms_cx.tcx
+    }
+
+    fn inferred_index(&self, param_id: ast::NodeId) -> InferredIndex {
+        match self.terms_cx.inferred_map.get(&param_id) {
+            Some(&index) => index,
+            None => {
+                self.tcx().sess.bug(&format!(
+                        "no inferred index entry for {}",
+                        self.tcx().map.node_to_string(param_id)));
+            }
+        }
+    }
+
+    fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
+        let tcx = self.terms_cx.tcx;
+        assert!(is_lifetime(&tcx.map, param_id));
+        match tcx.named_region_map.get(&param_id) {
+            Some(&rl::DefEarlyBoundRegion(_, _, lifetime_decl_id))
+                => lifetime_decl_id,
+            Some(_) => panic!("should not encounter non early-bound cases"),
+
+            // The lookup should only fail when `param_id` is
+            // itself a lifetime binding: use it as the decl_id.
+            None    => param_id,
+        }
+
+    }
+
+    /// Is `param_id` a type parameter for which we infer variance?
+    fn is_to_be_inferred(&self, param_id: ast::NodeId) -> bool {
+        let result = self.terms_cx.inferred_map.contains_key(&param_id);
+
+        // To safe-guard against invalid inferred_map constructions,
+        // double-check if variance is inferred at some use of a type
+        // parameter (by inspecting parent of its binding declaration
+        // to see if it is introduced by a type or by a fn/impl).
+
+        let check_result = |this:&ConstraintContext| -> bool {
+            let tcx = this.terms_cx.tcx;
+            let decl_id = this.find_binding_for_lifetime(param_id);
+            // Currently only called on lifetimes; double-checking that.
+            assert!(is_lifetime(&tcx.map, param_id));
+            let parent_id = tcx.map.get_parent(decl_id);
+            let parent = tcx.map.find(parent_id).unwrap_or_else(
+                || panic!("tcx.map missing entry for id: {}", parent_id));
+
+            let is_inferred;
+            macro_rules! cannot_happen { () => { {
+                panic!("invalid parent: {} for {}",
+                      tcx.map.node_to_string(parent_id),
+                      tcx.map.node_to_string(param_id));
+            } } }
+
+            match parent {
+                hir_map::NodeItem(p) => {
+                    match p.node {
+                        hir::ItemTy(..) |
+                        hir::ItemEnum(..) |
+                        hir::ItemStruct(..) |
+                        hir::ItemTrait(..)   => is_inferred = true,
+                        hir::ItemFn(..)      => is_inferred = false,
+                        _                    => cannot_happen!(),
+                    }
+                }
+                hir_map::NodeTraitItem(..)   => is_inferred = false,
+                hir_map::NodeImplItem(..)    => is_inferred = false,
+                _                            => cannot_happen!(),
+            }
+
+            return is_inferred;
+        };
+
+        assert_eq!(result, check_result(self));
+
+        return result;
+    }
+
+    /// Returns a variance term representing the declared variance of the type/region parameter
+    /// with the given id.
+    fn declared_variance(&self,
+                         param_def_id: DefId,
+                         item_def_id: DefId,
+                         kind: ParamKind,
+                         space: ParamSpace,
+                         index: usize)
+                         -> VarianceTermPtr<'a> {
+        assert_eq!(param_def_id.krate, item_def_id.krate);
+
+        if let Some(param_node_id) = self.tcx().map.as_local_node_id(param_def_id) {
+            // Parameter on an item defined within current crate:
+            // variance not yet inferred, so return a symbolic
+            // variance.
+            let InferredIndex(index) = self.inferred_index(param_node_id);
+            self.terms_cx.inferred_infos[index].term
+        } else {
+            // Parameter on an item defined within another crate:
+            // variance already inferred, just look it up.
+            let variances = self.tcx().item_variances(item_def_id);
+            let variance = match kind {
+                TypeParam => *variances.types.get(space, index),
+                RegionParam => *variances.regions.get(space, index),
+            };
+            self.constant_term(variance)
+        }
+    }
+
+    fn add_constraint(&mut self,
+                      InferredIndex(index): InferredIndex,
+                      variance: VarianceTermPtr<'a>) {
+        debug!("add_constraint(index={}, variance={:?})",
+                index, variance);
+        self.constraints.push(Constraint { inferred: InferredIndex(index),
+                                           variance: variance });
+    }
+
+    fn contravariant(&mut self,
+                     variance: VarianceTermPtr<'a>)
+                     -> VarianceTermPtr<'a> {
+        self.xform(variance, self.contravariant)
+    }
+
+    fn invariant(&mut self,
+                 variance: VarianceTermPtr<'a>)
+                 -> VarianceTermPtr<'a> {
+        self.xform(variance, self.invariant)
+    }
+
+    fn constant_term(&self, v: ty::Variance) -> VarianceTermPtr<'a> {
+        match v {
+            ty::Covariant => self.covariant,
+            ty::Invariant => self.invariant,
+            ty::Contravariant => self.contravariant,
+            ty::Bivariant => self.bivariant,
+        }
+    }
+
+    fn xform(&mut self,
+             v1: VarianceTermPtr<'a>,
+             v2: VarianceTermPtr<'a>)
+             -> VarianceTermPtr<'a> {
+        match (*v1, *v2) {
+            (_, ConstantTerm(ty::Covariant)) => {
+                // Applying a "covariant" transform is always a no-op
+                v1
+            }
+
+            (ConstantTerm(c1), ConstantTerm(c2)) => {
+                self.constant_term(c1.xform(c2))
+            }
+
+            _ => {
+                &*self.terms_cx.arena.alloc(TransformTerm(v1, v2))
+            }
+        }
+    }
+
+    fn add_constraints_from_trait_ref(&mut self,
+                                      generics: &ty::Generics<'tcx>,
+                                      trait_ref: ty::TraitRef<'tcx>,
+                                      variance: VarianceTermPtr<'a>) {
+        debug!("add_constraints_from_trait_ref: trait_ref={:?} variance={:?}",
+               trait_ref,
+               variance);
+
+        let trait_def = self.tcx().lookup_trait_def(trait_ref.def_id);
+
+        // This edge is actually implied by the call to
+        // `lookup_trait_def`, but I'm trying to be future-proof. See
+        // README.md for a discussion on dep-graph management.
+        self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
+
+        self.add_constraints_from_substs(
+            generics,
+            trait_ref.def_id,
+            trait_def.generics.types.as_slice(),
+            trait_def.generics.regions.as_slice(),
+            trait_ref.substs,
+            variance);
+    }
+
+    /// Adds constraints appropriate for an instance of `ty` appearing
+    /// in a context with the generics defined in `generics` and
+    /// ambient variance `variance`
+    fn add_constraints_from_ty(&mut self,
+                               generics: &ty::Generics<'tcx>,
+                               ty: Ty<'tcx>,
+                               variance: VarianceTermPtr<'a>) {
+        debug!("add_constraints_from_ty(ty={:?}, variance={:?})",
+               ty,
+               variance);
+
+        match ty.sty {
+            ty::TyBool |
+            ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
+            ty::TyFloat(_) | ty::TyStr => {
+                /* leaf type -- noop */
+            }
+
+            ty::TyClosure(..) => {
+                self.tcx().sess.bug("Unexpected closure type in variance computation");
+            }
+
+            ty::TyRef(region, ref mt) => {
+                let contra = self.contravariant(variance);
+                self.add_constraints_from_region(generics, *region, contra);
+                self.add_constraints_from_mt(generics, mt, variance);
+            }
+
+            ty::TyBox(typ) | ty::TyArray(typ, _) | ty::TySlice(typ) => {
+                self.add_constraints_from_ty(generics, typ, variance);
+            }
+
+
+            ty::TyRawPtr(ref mt) => {
+                self.add_constraints_from_mt(generics, mt, variance);
+            }
+
+            ty::TyTuple(ref subtys) => {
+                for &subty in subtys {
+                    self.add_constraints_from_ty(generics, subty, variance);
+                }
+            }
+
+            ty::TyEnum(def, substs) |
+            ty::TyStruct(def, substs) => {
+                let item_type = self.tcx().lookup_item_type(def.did);
+
+                // This edge is actually implied by the call to
+                // `lookup_trait_def`, but I'm trying to be future-proof. See
+                // README.md for a discussion on dep-graph management.
+                self.tcx().dep_graph.read(ItemVariances::to_dep_node(&def.did));
+
+                // All type parameters on enums and structs should be
+                // in the TypeSpace.
+                assert!(item_type.generics.types.is_empty_in(subst::SelfSpace));
+                assert!(item_type.generics.types.is_empty_in(subst::FnSpace));
+                assert!(item_type.generics.regions.is_empty_in(subst::SelfSpace));
+                assert!(item_type.generics.regions.is_empty_in(subst::FnSpace));
+
+                self.add_constraints_from_substs(
+                    generics,
+                    def.did,
+                    item_type.generics.types.get_slice(subst::TypeSpace),
+                    item_type.generics.regions.get_slice(subst::TypeSpace),
+                    substs,
+                    variance);
+            }
+
+            ty::TyProjection(ref data) => {
+                let trait_ref = &data.trait_ref;
+                let trait_def = self.tcx().lookup_trait_def(trait_ref.def_id);
+
+                // This edge is actually implied by the call to
+                // `lookup_trait_def`, but I'm trying to be future-proof. See
+                // README.md for a discussion on dep-graph management.
+                self.tcx().dep_graph.read(ItemVariances::to_dep_node(&trait_ref.def_id));
+
+                self.add_constraints_from_substs(
+                    generics,
+                    trait_ref.def_id,
+                    trait_def.generics.types.as_slice(),
+                    trait_def.generics.regions.as_slice(),
+                    trait_ref.substs,
+                    variance);
+            }
+
+            ty::TyTrait(ref data) => {
+                let poly_trait_ref =
+                    data.principal_trait_ref_with_self_ty(self.tcx(),
+                                                          self.tcx().types.err);
+
+                // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
+                let contra = self.contravariant(variance);
+                self.add_constraints_from_region(generics, data.bounds.region_bound, contra);
+
+                // Ignore the SelfSpace, it is erased.
+                self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
+
+                let projections = data.projection_bounds_with_self_ty(self.tcx(),
+                                                                      self.tcx().types.err);
+                for projection in &projections {
+                    self.add_constraints_from_ty(generics, projection.0.ty, self.invariant);
+                }
+            }
+
+            ty::TyParam(ref data) => {
+                let def_id = generics.types.get(data.space, data.idx as usize).def_id;
+                let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
+                match self.terms_cx.inferred_map.get(&node_id) {
+                    Some(&index) => {
+                        self.add_constraint(index, variance);
+                    }
+                    None => {
+                        // We do not infer variance for type parameters
+                        // declared on methods. They will not be present
+                        // in the inferred_map.
+                    }
+                }
+            }
+
+            ty::TyBareFn(_, &ty::BareFnTy { ref sig, .. }) => {
+                self.add_constraints_from_sig(generics, sig, variance);
+            }
+
+            ty::TyError => {
+                // we encounter this when walking the trait references for object
+                // types, where we use TyError as the Self type
+            }
+
+            ty::TyInfer(..) => {
+                self.tcx().sess.bug(
+                    &format!("unexpected type encountered in \
+                              variance inference: {}", ty));
+            }
+        }
+    }
+
+    /// Adds constraints appropriate for a nominal type (enum, struct,
+    /// object, etc) appearing in a context with ambient variance `variance`
+    fn add_constraints_from_substs(&mut self,
+                                   generics: &ty::Generics<'tcx>,
+                                   def_id: DefId,
+                                   type_param_defs: &[ty::TypeParameterDef<'tcx>],
+                                   region_param_defs: &[ty::RegionParameterDef],
+                                   substs: &subst::Substs<'tcx>,
+                                   variance: VarianceTermPtr<'a>) {
+        debug!("add_constraints_from_substs(def_id={:?}, substs={:?}, variance={:?})",
+               def_id,
+               substs,
+               variance);
+
+        for p in type_param_defs {
+            let variance_decl =
+                self.declared_variance(p.def_id, def_id, TypeParam,
+                                       p.space, p.index as usize);
+            let variance_i = self.xform(variance, variance_decl);
+            let substs_ty = *substs.types.get(p.space, p.index as usize);
+            debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
+                   variance_decl, variance_i);
+            self.add_constraints_from_ty(generics, substs_ty, variance_i);
+        }
+
+        for p in region_param_defs {
+            let variance_decl =
+                self.declared_variance(p.def_id, def_id,
+                                       RegionParam, p.space, p.index as usize);
+            let variance_i = self.xform(variance, variance_decl);
+            let substs_r = *substs.regions().get(p.space, p.index as usize);
+            self.add_constraints_from_region(generics, substs_r, variance_i);
+        }
+    }
+
+    /// Adds constraints appropriate for a function with signature
+    /// `sig` appearing in a context with ambient variance `variance`
+    fn add_constraints_from_sig(&mut self,
+                                generics: &ty::Generics<'tcx>,
+                                sig: &ty::PolyFnSig<'tcx>,
+                                variance: VarianceTermPtr<'a>) {
+        let contra = self.contravariant(variance);
+        for &input in &sig.0.inputs {
+            self.add_constraints_from_ty(generics, input, contra);
+        }
+        if let ty::FnConverging(result_type) = sig.0.output {
+            self.add_constraints_from_ty(generics, result_type, variance);
+        }
+    }
+
+    /// Adds constraints appropriate for a region appearing in a
+    /// context with ambient variance `variance`
+    fn add_constraints_from_region(&mut self,
+                                   generics: &ty::Generics<'tcx>,
+                                   region: ty::Region,
+                                   variance: VarianceTermPtr<'a>) {
+        match region {
+            ty::ReEarlyBound(ref data) => {
+                let def_id =
+                    generics.regions.get(data.space, data.index as usize).def_id;
+                let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
+                if self.is_to_be_inferred(node_id) {
+                    let index = self.inferred_index(node_id);
+                    self.add_constraint(index, variance);
+                }
+            }
+
+            ty::ReStatic => { }
+
+            ty::ReLateBound(..) => {
+                // We do not infer variance for region parameters on
+                // methods or in fn types.
+            }
+
+            ty::ReFree(..) | ty::ReScope(..) | ty::ReVar(..) |
+            ty::ReSkolemized(..) | ty::ReEmpty => {
+                // We don't expect to see anything but 'static or bound
+                // regions when visiting member types or method types.
+                self.tcx()
+                    .sess
+                    .bug(&format!("unexpected region encountered in variance \
+                                  inference: {:?}",
+                                 region));
+            }
+        }
+    }
+
+    /// Adds constraints appropriate for a mutability-type pair
+    /// appearing in a context with ambient variance `variance`
+    fn add_constraints_from_mt(&mut self,
+                               generics: &ty::Generics<'tcx>,
+                               mt: &ty::TypeAndMut<'tcx>,
+                               variance: VarianceTermPtr<'a>) {
+        match mt.mutbl {
+            hir::MutMutable => {
+                let invar = self.invariant(variance);
+                self.add_constraints_from_ty(generics, mt.ty, invar);
+            }
+
+            hir::MutImmutable => {
+                self.add_constraints_from_ty(generics, mt.ty, variance);
+            }
+        }
+    }
+}

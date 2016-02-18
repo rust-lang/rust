@@ -325,7 +325,17 @@ impl<'ast> Map<'ast> {
                     return DepNode::Krate,
 
                 NotPresent =>
-                    panic!("Walking parents from `{}` led to `NotPresent` at `{}`", id0, id),
+                    // Some nodes, notably struct fields, are not
+                    // present in the map for whatever reason, but
+                    // they *do* have def-ids. So if we encounter an
+                    // empty hole, check for that case.
+                    return self.opt_local_def_id(id)
+                               .map(|def_id| DepNode::Hir(def_id))
+                               .unwrap_or_else(|| {
+                                   panic!("Walking parents from `{}` \
+                                           led to `NotPresent` at `{}`",
+                                          id0, id)
+                               }),
             }
         }
     }
