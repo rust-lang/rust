@@ -27,8 +27,8 @@ pub fn foo<T: Foo> (t: T) {} // same error
 ```
 
 To solve this error, please ensure that the trait is also public. The trait
-can be made inaccessible if necessary by placing it into a private inner module,
-but it still has to be marked with `pub`. Example:
+can be made inaccessible if necessary by placing it into a private inner
+module, but it still has to be marked with `pub`. Example:
 
 ```ignore
 pub trait Foo { // we set the Foo trait public
@@ -55,8 +55,8 @@ mod Foo {
 ```
 
 To solve this error, please ensure that the type is also public. The type
-can be made inaccessible if necessary by placing it into a private inner module,
-but it still has to be marked with `pub`.
+can be made inaccessible if necessary by placing it into a private inner
+module, but it still has to be marked with `pub`.
 Example:
 
 ```
@@ -165,7 +165,7 @@ let f = Bar::Foo(0); // error: cannot invoke tuple struct constructor with
 ```
 
 To solve this issue, please ensure that all of the fields of the tuple struct
-are public. Alternatively, provide a new() method to the tuple struct to
+are public. Alternatively, provide a `new()` method to the tuple struct to
 construct it from a given inner value. Example:
 
 ```
