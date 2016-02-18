@@ -603,7 +603,7 @@ impl ExactSizeIterator for ArgsOs {
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
-    /// A string describing the architecture of the CPU that this is currently
+    /// A string describing the architecture of the CPU that is currently
     /// in use.
     ///
     /// Some possible values:
