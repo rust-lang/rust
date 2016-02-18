@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(match_of_unit_variant_via_paren_dotdot)]
+
 enum E {
     A,
     B,
