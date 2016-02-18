@@ -2051,7 +2051,7 @@ impl<'a> IntoIterator for &'a Path {
     fn into_iter(self) -> Iter<'a> { self.iter() }
 }
 
-macro_rules! impl_eq {
+macro_rules! impl_cmp {
     ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "partialeq_path", since = "1.6.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
@@ -2065,14 +2065,29 @@ macro_rules! impl_eq {
             fn eq(&self, other: &$lhs) -> bool { <Path as PartialEq>::eq(self, other) }
         }
 
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
+                <Path as PartialOrd>::partial_cmp(self, other)
+            }
+        }
+
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
+                <Path as PartialOrd>::partial_cmp(self, other)
+            }
+        }
     }
 }
 
-impl_eq!(PathBuf, Path);
-impl_eq!(PathBuf, &'a Path);
-impl_eq!(Cow<'a, Path>, Path);
-impl_eq!(Cow<'a, Path>, &'b Path);
-impl_eq!(Cow<'a, Path>, PathBuf);
+impl_cmp!(PathBuf, Path);
+impl_cmp!(PathBuf, &'a Path);
+impl_cmp!(Cow<'a, Path>, Path);
+impl_cmp!(Cow<'a, Path>, &'b Path);
+impl_cmp!(Cow<'a, Path>, PathBuf);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {
