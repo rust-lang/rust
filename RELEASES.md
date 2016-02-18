@@ -94,11 +94,11 @@ Misc
   the `-Z unstable-options` flag.
 * [When running tests with `--test`, rustdoc will pass `--cfg`
   arguments to the compiler][1.7dt].
-* [The compiler is built with RPATH information by default][1.7rp].
+* [The compiler is built with RPATH information by default][1.7rpa].
   This means that it will be possible to run `rustc` when installed in
   unusual configurations without configuring the dynamic linker search
   path explicitly.
-* [`rustc` passes `--enable-new-dtags` to GNU ld][1.7dt]. This makes
+* [`rustc` passes `--enable-new-dtags` to GNU ld][1.7dta]. This makes
   any RPATH entries (emitted with `-C rpath`) *not* take precedence
   over `LD_LIBRARY_PATH`.
 
@@ -132,7 +132,7 @@ Compatibility Notes
 [1.7cp]: https://github.com/rust-lang/cargo/pull/2224
 [1.7d]: https://github.com/rust-lang/rust/pull/30724
 [1.7dt]: https://github.com/rust-lang/rust/pull/30372
-[1.7dt]: https://github.com/rust-lang/rust/pull/30394
+[1.7dta]: https://github.com/rust-lang/rust/pull/30394
 [1.7f]: https://github.com/rust-lang/rust/pull/30672
 [1.7h]: https://github.com/rust-lang/rust/pull/30818
 [1.7j]: https://github.com/rust-lang/rust/pull/30711
@@ -140,7 +140,7 @@ Compatibility Notes
 [1.7m]: https://github.com/rust-lang/rust/pull/30381
 [1.7p]: https://github.com/rust-lang/rust/pull/30681
 [1.7rp]: https://github.com/rust-lang/rust/pull/29498
-[1.7rp]: https://github.com/rust-lang/rust/pull/30353
+[1.7rpa]: https://github.com/rust-lang/rust/pull/30353
 [1.7rr]: https://github.com/rust-lang/cargo/pull/2279
 [1.7sf]: https://github.com/rust-lang/rust/pull/30389
 [1.7utf8]: https://github.com/rust-lang/rust/pull/30740
