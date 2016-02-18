@@ -24,19 +24,19 @@ While all of these variants are identical on x86, they can allow more efficient 
 # Detailed design
 [design]: #detailed-design
 
-Since `compare_and_swap` is stable, we can't simply add a second memory ordering parameter to it. This RFC proposes deprecating the `compare_and_swap` function and replacing it with `compare_exchange_strong` and `compare_exchange_weak`, which match the names of the equivalent C++11 functions.
+Since `compare_and_swap` is stable, we can't simply add a second memory ordering parameter to it. This RFC proposes deprecating the `compare_and_swap` function and replacing it with `compare_exchange` and `compare_exchange_weak`, which match the names of the equivalent C++11 functions (with the `_strong` suffix removed).
 
-## `compare_exchange_strong`
+## `compare_exchange`
 
 A new method is instead added to atomic types:
 
 ```rust
-fn compare_exchange_strong(&self, current: T, new: T, success: Ordering, failure: Ordering) -> T;
+fn compare_exchange(&self, current: T, new: T, success: Ordering, failure: Ordering) -> T;
 ```
 
 The restrictions on the failure ordering are the same as C++11: only `SeqCst`, `Acquire` and `Relaxed` are allowed and it must be equal or weaker than the success ordering. Passing an invalid memory ordering will result in a panic, although this can often be optimized away since the ordering is usually statically known.
 
-The documentation for the original `compare_and_swap` is updated to say that it is equivalent to `compare_exchange_strong` with the following mapping for memory orders:
+The documentation for the original `compare_and_swap` is updated to say that it is equivalent to `compare_exchange` with the following mapping for memory orders:
 
 Original | Success | Failure
 -------- | ------- | -------
@@ -54,7 +54,7 @@ A new method is instead added to atomic types:
 fn compare_exchange_weak(&self, current: T, new: T, success: Ordering, failure: Ordering) -> (T, bool);
 ```
 
-`compare_exchange_strong` does not need to return a success flag because it can be inferred by checking if the returned value is equal to the expected one. This is not possible for `compare_exchange_weak` because it is allowed to fail spuriously, which means that it could fail to perform the swap even though the returned value is equal to the expected one.
+`compare_exchange` does not need to return a success flag because it can be inferred by checking if the returned value is equal to the expected one. This is not possible for `compare_exchange_weak` because it is allowed to fail spuriously, which means that it could fail to perform the swap even though the returned value is equal to the expected one.
 
 A lock free algorithm using a loop would use the returned bool to determine whether to break out of the loop, and if not, use the returned value for the next iteration of the loop.
 
