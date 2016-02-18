@@ -74,23 +74,17 @@ mod signatures {
     fn indirect(x: WillChanges) { }
 }
 
-// these are invalid dependencies, though sometimes we create edges
-// anyway.
 mod invalid_signatures {
     use WontChange;
 
-    // FIXME due to the variance pass having overly conservative edges,
-    // we incorrectly think changes are needed here
-    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
+    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path
+    #[rustc_then_this_would_need(CollectItem)] //~ ERROR no path
     trait A {
         fn do_something_else_twice(x: WontChange);
     }
 
-    // FIXME due to the variance pass having overly conservative edges,
-    // we incorrectly think changes are needed here
-    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(CollectItem)] //~ ERROR OK
+    #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path
+    #[rustc_then_this_would_need(CollectItem)] //~ ERROR no path
     fn b(x: WontChange) { }
 
     #[rustc_then_this_would_need(ItemSignature)] //~ ERROR no path from `WillChange`
