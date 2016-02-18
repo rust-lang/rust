@@ -161,6 +161,54 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
 
+/// Performs a volatile read of the value from `src` without moving it. This
+/// leaves the memory in `src` unchanged.
+///
+/// Volatile operations are intended to act on I/O memory, and are guaranteed
+/// to not be elided or reordered by the compiler across other volatile
+/// operations. See the LLVM documentation on [[volatile]].
+///
+/// [volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+///
+/// # Safety
+///
+/// Beyond accepting a raw pointer, this is unsafe because it semantically
+/// moves the value out of `src` without preventing further usage of `src`.
+/// If `T` is not `Copy`, then care must be taken to ensure that the value at
+/// `src` is not used before the data is overwritten again (e.g. with `write`,
+/// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
+/// because it will attempt to drop the value previously at `*src`.
+#[inline]
+#[unstable(feature = "volatile", reason = "recently added", issue = "31756")]
+pub unsafe fn read_volatile<T>(src: *const T) -> T {
+    intrinsics::volatile_load(src)
+}
+
+/// Performs a volatile write of a memory location with the given value without
+/// reading or dropping the old value.
+///
+/// Volatile operations are intended to act on I/O memory, and are guaranteed
+/// to not be elided or reordered by the compiler across other volatile
+/// operations. See the LLVM documentation on [[volatile]].
+///
+/// [volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+///
+/// # Safety
+///
+/// This operation is marked unsafe because it accepts a raw pointer.
+///
+/// It does not drop the contents of `dst`. This is safe, but it could leak
+/// allocations or resources, so care must be taken not to overwrite an object
+/// that should be dropped.
+///
+/// This is appropriate for initializing uninitialized memory, or overwriting
+/// memory that has previously been `read` from.
+#[inline]
+#[unstable(feature = "volatile", reason = "recently added", issue = "31756")]
+pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+    intrinsics::volatile_store(dst, src);
+}
+
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
     /// Returns true if the pointer is null.
