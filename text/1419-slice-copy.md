@@ -1,7 +1,7 @@
 - Feature Name: slice\_copy\_from
 - Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1419](https://github.com/rust-lang/rfcs/pull/1419)
+- Rust Issue: [rust-lang/rust#31755](https://github.com/rust-lang/rust/issues/31755)
 
 # Summary
 [summary]: #summary
