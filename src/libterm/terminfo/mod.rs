@@ -205,11 +205,11 @@ impl<T: Write + Send> Terminal for TerminfoTerminal<T> {
         self.out.write_all(&cmd).and(Ok(true))
     }
 
-    fn get_ref<'a>(&'a self) -> &'a T {
+    fn get_ref(&self) -> &T {
         &self.out
     }
 
-    fn get_mut<'a>(&'a mut self) -> &'a mut T {
+    fn get_mut(&mut self) -> &mut T {
         &mut self.out
     }
 

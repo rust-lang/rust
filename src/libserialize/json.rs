@@ -1227,7 +1227,7 @@ impl<'a> Index<&'a str>  for Json {
 impl Index<usize> for Json {
     type Output = Json;
 
-    fn index<'a>(&'a self, idx: usize) -> &'a Json {
+    fn index(&self, idx: usize) -> &Json {
         match *self {
             Json::Array(ref v) => &v[idx],
             _ => panic!("can only index Json with usize if it is an array")
@@ -1309,7 +1309,7 @@ impl Stack {
     /// Provides access to the StackElement at a given index.
     /// lower indices are at the bottom of the stack while higher indices are
     /// at the top.
-    pub fn get<'l>(&'l self, idx: usize) -> StackElement<'l> {
+    pub fn get(&self, idx: usize) -> StackElement {
         match self.stack[idx] {
             InternalIndex(i) => StackElement::Index(i),
             InternalKey(start, size) => {
@@ -1351,7 +1351,7 @@ impl Stack {
     }
 
     /// Returns the top-most element (if any).
-    pub fn top<'l>(&'l self) -> Option<StackElement<'l>> {
+    pub fn top(&self) -> Option<StackElement> {
         match self.stack.last() {
             None => None,
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
@@ -1463,7 +1463,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
     /// Provides access to the current position in the logical structure of the
     /// JSON stream.
-    pub fn stack<'l>(&'l self) -> &'l Stack {
+    pub fn stack(&self) -> &Stack {
         &self.stack
     }
 

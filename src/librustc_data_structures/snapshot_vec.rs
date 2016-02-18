@@ -91,14 +91,14 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
         len
     }
 
-    pub fn get<'a>(&'a self, index: usize) -> &'a D::Value {
+    pub fn get(&self, index: usize) -> &D::Value {
         &self.values[index]
     }
 
     /// Returns a mutable pointer into the vec; whatever changes you make here cannot be undone
     /// automatically, so you should be sure call `record()` with some sort of suitable undo
     /// action.
-    pub fn get_mut<'a>(&'a mut self, index: usize) -> &'a mut D::Value {
+    pub fn get_mut(&mut self, index: usize) -> &mut D::Value {
         &mut self.values[index]
     }
 
