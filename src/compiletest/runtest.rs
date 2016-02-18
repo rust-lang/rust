@@ -1214,6 +1214,21 @@ fn exec_compiled_test(config: &Config, props: &TestProps,
     }
 }
 
+fn compute_aux_test_paths(config: &Config,
+                          testpaths: &TestPaths,
+                          rel_ab: &str)
+                          -> TestPaths
+{
+    let abs_ab = config.aux_base.join(rel_ab);
+    TestPaths {
+        file: abs_ab,
+        base: testpaths.base.clone(),
+        relative_dir: Path::new(rel_ab).parent()
+                                       .map(|p| p.to_path_buf())
+                                       .unwrap_or_else(|| PathBuf::new())
+    }
+}
+
 fn compose_and_run_compiler(config: &Config, props: &TestProps,
                             testpaths: &TestPaths, args: ProcArgs,
                             input: Option<String>) -> ProcRes {
@@ -1501,9 +1516,11 @@ fn output_testname(filepath: &Path) -> PathBuf {
     PathBuf::from(filepath.file_stem().unwrap())
 }
 
-fn output_base_name(config: &Config, testfile: &Path) -> PathBuf {
-    config.build_base
-        .join(&output_testname(testfile))
+fn output_base_name(config: &Config, testpaths: &TestPaths) -> PathBuf {
+    let dir = config.build_base.join(&testpaths.relative_dir);
+    fs::create_dir_all(&dir).unwrap();
+    dir
+        .join(&output_testname(&testpaths.file))
         .with_extension(&config.stage_id)
 }
 
