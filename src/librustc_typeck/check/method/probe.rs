@@ -20,8 +20,8 @@ use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
 use middle::ty::{self, NoPreference, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
-use middle::infer;
-use middle::infer::{InferCtxt, TypeOrigin};
+use middle::ty::error::{TypeError};
+use middle::infer::{InferCtxt, TypeOrigin, InferOk};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 use rustc_front::hir;
@@ -1133,8 +1133,14 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
-    fn make_sub_ty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>) -> infer::UnitResult<'tcx> {
+    fn make_sub_ty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>) -> Result<(), TypeError<'tcx>> {
         self.infcx().sub_types(false, TypeOrigin::Misc(DUMMY_SP), sub, sup)
+            .map(|InferOk { value, obligations }| {
+                for obligation in obligations {
+                    self.fcx.register_predicate(obligation);
+                }
+                value
+            })
     }
 
     fn has_applicable_self(&self, item: &ty::ImplOrTraitItem) -> bool {

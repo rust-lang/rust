@@ -88,8 +88,7 @@ use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
-use middle::infer;
-use middle::infer::{TypeOrigin, type_variable};
+use middle::infer::{self, TypeOrigin, type_variable, InferOk};
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
@@ -1206,6 +1205,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self.inh.infcx
     }
 
+    pub fn fulfillment_cx(&self) -> &RefCell<traits::FulfillmentContext<'tcx>> {
+        &self.inh.fulfillment_cx
+    }
+
     pub fn param_env(&self) -> &ty::ParameterEnvironment<'a,'tcx> {
         &self.inh.infcx.parameter_environment
     }
@@ -1246,6 +1249,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("resolve_type_vars_if_possible: ty={:?}", ty);
         ty
+    }
+
+    pub fn common_supertype(&self,
+                            origin: TypeOrigin,
+                            a_is_expected: bool,
+                            a: Ty<'tcx>,
+                            b: Ty<'tcx>)
+                            -> Ty<'tcx>
+    {
+        let InferOk { value, obligations } = infer::common_supertype(
+            self.infcx(), origin, a_is_expected, a, b);
+        for obligation in obligations {
+            self.register_predicate(obligation);
+        }
+        value
     }
 
     fn record_deferred_call_resolution(&self,
@@ -1593,6 +1611,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sup: Ty<'tcx>)
                     -> Result<(), TypeError<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
+            .map(|InferOk { value, obligations }| {
+                for obligation in obligations {
+                    self.register_predicate(obligation);
+                }
+                value
+            })
     }
 
     pub fn mk_eqty(&self,
@@ -1602,6 +1626,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    sup: Ty<'tcx>)
                    -> Result<(), TypeError<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
+            .map(|InferOk { value, obligations }| {
+                for obligation in obligations {
+                    self.register_predicate(obligation);
+                }
+                value
+            })
     }
 
     pub fn mk_subr(&self,
@@ -1885,9 +1915,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Neither => {
                                 if let Some(default) = default_map.get(ty) {
                                     let default = default.clone();
-                                    match infer::mk_eqty(self.infcx(), false,
-                                                         TypeOrigin::Misc(default.origin_span),
-                                                         ty, default.ty) {
+                                    match self.mk_eqty(false,
+                                                       TypeOrigin::Misc(default.origin_span),
+                                                       ty, default.ty) {
                                         Ok(()) => {}
                                         Err(_) => {
                                             conflicts.push((*ty, default));
@@ -1978,9 +2008,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Neither => {
                         if let Some(default) = default_map.get(ty) {
                             let default = default.clone();
-                            match infer::mk_eqty(self.infcx(), false,
-                                                 TypeOrigin::Misc(default.origin_span),
-                                                 ty, default.ty) {
+                            match self.mk_eqty(false,
+                                               TypeOrigin::Misc(default.origin_span),
+                                               ty, default.ty) {
                                 Ok(()) => {}
                                 Err(_) => {
                                     result = Some(default);
@@ -2880,18 +2910,16 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             Some(ref else_expr) => {
                 check_expr_with_expectation(fcx, &else_expr, expected);
                 let else_ty = fcx.expr_ty(&else_expr);
-                infer::common_supertype(fcx.infcx(),
-                                        TypeOrigin::IfExpression(sp),
-                                        true,
-                                        then_ty,
-                                        else_ty)
+                fcx.common_supertype(TypeOrigin::IfExpression(sp),
+                                     true,
+                                     then_ty,
+                                     else_ty)
             }
             None => {
-                infer::common_supertype(fcx.infcx(),
-                                        TypeOrigin::IfExpressionWithNoElse(sp),
-                                        false,
-                                        then_ty,
-                                        fcx.tcx().mk_nil())
+                fcx.common_supertype(TypeOrigin::IfExpressionWithNoElse(sp),
+                                     false,
+                                     then_ty,
+                                     fcx.tcx().mk_nil())
             }
         };
 
@@ -3696,11 +3724,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                   Some(fcx.tcx().types.err)
               }
               (Some(t_start), Some(t_end)) => {
-                  Some(infer::common_supertype(fcx.infcx(),
-                                               TypeOrigin::RangeExpression(expr.span),
-                                               true,
-                                               t_start,
-                                               t_end))
+                  Some(fcx.common_supertype(TypeOrigin::RangeExpression(expr.span),
+                                            true,
+                                            t_start,
+                                            t_end))
               }
               _ => None
           };

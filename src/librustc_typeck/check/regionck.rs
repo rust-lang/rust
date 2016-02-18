@@ -92,7 +92,7 @@ use middle::region::{self, CodeExtent};
 use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, Ty, MethodCall, TypeFoldable};
-use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound};
+use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound, InferOk};
 use middle::pat_util;
 use middle::ty::adjustment;
 use middle::ty::wf::ImpliedBound;
@@ -1846,7 +1846,12 @@ fn declared_projection_bounds_from_trait<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
 
                 // check whether this predicate applies to our current projection
                 match infer::mk_eqty(infcx, false, TypeOrigin::Misc(span), ty, outlives.0) {
-                    Ok(()) => { Ok(outlives.1) }
+                    Ok(InferOk { obligations, .. }) => {
+                        for obligation in obligations {
+                            fcx.register_predicate(obligation);
+                        }
+                        Ok(outlives.1)
+                    }
                     Err(_) => { Err(()) }
                 }
             });

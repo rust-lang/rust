@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::free_region::FreeRegionMap;
-use middle::infer::{self, TypeOrigin};
+use middle::infer::{self, TypeOrigin, InferOk};
 use middle::traits;
 use middle::ty::{self};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace};
@@ -323,8 +323,12 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         debug!("compare_impl_method: trait_fty={:?}",
                trait_fty);
 
-        try!(infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty));
+        let InferOk { obligations, .. } =
+            try!(infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty));
 
+        for obligation in obligations {
+            fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+        }
         infcx.leak_check(&skol_map, snapshot)
     });
 
@@ -475,7 +479,10 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
     });
 
     match err {
-        Ok(()) => { }
+        Ok(InferOk { obligations, .. }) =>
+            for obligation in obligations {
+                fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+            },
         Err(terr) => {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_ty,
