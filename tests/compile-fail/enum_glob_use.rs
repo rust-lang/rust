@@ -17,4 +17,8 @@ mod blurg {
     pub use std::cmp::Ordering::*; // ok, re-export
 }
 
+mod tests {
+    use super::*;
+}
+
 fn main() {}

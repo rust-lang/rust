@@ -44,9 +44,11 @@ impl EnumGlobUse {
         if let ItemUse(ref item_use) = item.node {
             if let ViewPath_::ViewPathGlob(_) = item_use.node {
                 let def = cx.tcx.def_map.borrow()[&item.id];
-                if let Some(NodeItem(it)) = cx.tcx.map.get_if_local(def.def_id()) {
-                    if let ItemEnum(..) = it.node {
-                        span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
+                if let Some(node_id) = cx.tcx.map.as_local_node_id(def.def_id()) {
+                    if let Some(NodeItem(it)) = cx.tcx.map.find(node_id) {
+                        if let ItemEnum(..) = it.node {
+                            span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
+                        }
                     }
                 } else {
                     if let Some(dp) = cx.sess().cstore.def_path(def.def_id()).last() {
