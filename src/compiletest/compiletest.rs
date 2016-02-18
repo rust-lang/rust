@@ -284,6 +284,16 @@ fn collect_tests_from_dir(config: &Config,
                           relative_dir_path: &Path,
                           tests: &mut Vec<test::TestDescAndFn>)
                           -> io::Result<()> {
+    // Ignore directories that contain a file
+    // `compiletest-ignore-dir`.
+    for file in try!(fs::read_dir(dir)) {
+        let file = try!(file);
+        if file.file_name() == *"compiletest-ignore-dir" {
+            return Ok(());
+        }
+    }
+
+    let dirs = try!(fs::read_dir(dir));
     for file in dirs {
         let file = try!(file);
         let file_path = file.path();
@@ -295,6 +305,13 @@ fn collect_tests_from_dir(config: &Config,
                 relative_dir: relative_dir_path.to_path_buf(),
             };
             tests.push(make_test(config, &paths))
+        } else if file_path.is_dir() {
+            let relative_file_path = relative_dir_path.join(file.file_name());
+            try!(collect_tests_from_dir(config,
+                                        base,
+                                        &file_path,
+                                        &relative_file_path,
+                                        tests));
         }
     }
     Ok(())
@@ -338,17 +355,15 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     }
 }
 
-pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
-
-    // Try to elide redundant long paths
-    fn shorten(path: &Path) -> String {
-        let filename = path.file_name().unwrap().to_str();
-        let p = path.parent().unwrap();
-        let dir = p.file_name().unwrap().to_str();
-        format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
-    }
-
-    test::DynTestName(format!("[{}] {}", config.mode, shorten(testfile)))
+pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
+    // Convert a complete path to something like
+    //
+    //    run-pass/foo/bar/baz.rs
+    let path =
+        PathBuf::from(config.mode.to_string())
+        .join(&testpaths.relative_dir)
+        .join(&testpaths.file.file_name().unwrap());
+    test::DynTestName(format!("[{}] {}", config.mode, path.display()))
 }
 
 pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
