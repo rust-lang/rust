@@ -98,27 +98,29 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let InstantiatedMethodSig {
             method_sig, all_substs, method_predicates
         } = self.instantiate_method_sig(&pick, all_substs);
+        let all_substs = self.tcx().mk_substs(all_substs);
         let method_self_ty = method_sig.inputs[0];
 
         // Unify the (adjusted) self type with what the method expects.
         self.unify_receivers(self_ty, method_self_ty);
 
         // Create the method type
+        let def_id = pick.item.def_id();
         let method_ty = pick.item.as_opt_method().unwrap();
-        let fty = self.tcx().mk_fn_ptr(ty::BareFnTy {
+        let fty = self.tcx().mk_fn_def(def_id, all_substs, ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: method_ty.fty.unsafety,
             abi: method_ty.fty.abi.clone(),
         });
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        self.add_obligations(fty, &all_substs, &method_predicates);
+        self.add_obligations(fty, all_substs, &method_predicates);
 
         // Create the final `MethodCallee`.
         let callee = ty::MethodCallee {
-            def_id: pick.item.def_id(),
+            def_id: def_id,
             ty: fty,
-            substs: self.tcx().mk_substs(all_substs)
+            substs: all_substs
         };
         // If this is an `&mut self` method, bias the receiver
         // expression towards mutability (this will switch
@@ -457,7 +459,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn fixup_derefs_on_method_receiver_if_necessary(&self,
                                                     method_callee: &ty::MethodCallee) {
         let sig = match method_callee.ty.sty {
-            ty::TyFnPtr(ref f) => f.sig.clone(),
+            ty::TyFnDef(_, _, ref f) => f.sig.clone(),
             _ => return,
         };
 
