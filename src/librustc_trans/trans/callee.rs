@@ -47,6 +47,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
+use trans::value::Value;
 use trans::Disr;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_front::hir;
@@ -615,8 +616,8 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let llret_ty = common::val_ty(llretslot);
                 if llformal_ret_ty != llret_ty {
                     // this could happen due to e.g. subtyping
-                    debug!("casting actual return type ({}) to match formal ({})",
-                        bcx.llty_str(llret_ty), bcx.llty_str(llformal_ret_ty));
+                    debug!("casting actual return type ({:?}) to match formal ({:?})",
+                        llret_ty, llformal_ret_ty);
                     llretslot = PointerCast(bcx, llretslot, llformal_ret_ty);
                 }
                 llargs.push(llretslot);
@@ -926,12 +927,11 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_datum({:?})",
-           formal_arg_ty);
+    debug!("trans_arg_datum({:?})", formal_arg_ty);
 
     let arg_datum_ty = arg_datum.ty;
 
-    debug!("   arg datum: {}", arg_datum.to_string(bcx.ccx()));
+    debug!("   arg datum: {:?}", arg_datum);
 
     let mut val = if common::type_is_fat_ptr(bcx.tcx(), arg_datum_ty) &&
                      !bcx.fcx.type_needs_drop(arg_datum_ty) {
@@ -956,14 +956,14 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     if type_of::arg_is_indirect(ccx, formal_arg_ty) && formal_arg_ty != arg_datum_ty {
         // this could happen due to e.g. subtyping
         let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
-        debug!("casting actual type ({}) to match formal ({})",
-               bcx.val_to_string(val), bcx.llty_str(llformal_arg_ty));
+        debug!("casting actual type ({:?}) to match formal ({:?})",
+               Value(val), llformal_arg_ty);
         debug!("Rust types: {:?}; {:?}", arg_datum_ty,
                                      formal_arg_ty);
         val = PointerCast(bcx, val, llformal_arg_ty);
     }
 
-    debug!("--- trans_arg_datum passing {}", bcx.val_to_string(val));
+    debug!("--- trans_arg_datum passing {:?}", Value(val));
 
     if common::type_is_fat_ptr(bcx.tcx(), formal_arg_ty) {
         llargs.push(Load(bcx, expr::get_dataptr(bcx, val)));

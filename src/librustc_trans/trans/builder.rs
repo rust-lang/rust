@@ -18,6 +18,7 @@ use trans::base;
 use trans::common::*;
 use trans::machine::llalign_of_pref;
 use trans::type_::Type;
+use trans::value::Value;
 use util::nodemap::FnvHashMap;
 use libc::{c_uint, c_char};
 
@@ -169,10 +170,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                   -> ValueRef {
         self.count_insn("invoke");
 
-        debug!("Invoke {} with args ({})",
-               self.ccx.tn().val_to_string(llfn),
+        debug!("Invoke {:?} with args ({})",
+               Value(llfn),
                args.iter()
-                   .map(|&v| self.ccx.tn().val_to_string(v))
+                   .map(|&v| format!("{:?}", Value(v)))
                    .collect::<Vec<String>>()
                    .join(", "));
 
@@ -497,9 +498,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
-        debug!("Store {} -> {}",
-               self.ccx.tn().val_to_string(val),
-               self.ccx.tn().val_to_string(ptr));
+        debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store");
         unsafe {
@@ -508,9 +507,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
-        debug!("Store {} -> {}",
-               self.ccx.tn().val_to_string(val),
-               self.ccx.tn().val_to_string(ptr));
+        debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store.volatile");
         unsafe {
@@ -521,9 +518,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn atomic_store(&self, val: ValueRef, ptr: ValueRef, order: AtomicOrdering) {
-        debug!("Store {} -> {}",
-               self.ccx.tn().val_to_string(val),
-               self.ccx.tn().val_to_string(ptr));
+        debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         self.count_insn("store.atomic");
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
@@ -796,11 +791,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                          else          { llvm::False };
 
         let argtys = inputs.iter().map(|v| {
-            debug!("Asm Input Type: {}", self.ccx.tn().val_to_string(*v));
+            debug!("Asm Input Type: {:?}", Value(*v));
             val_ty(*v)
         }).collect::<Vec<_>>();
 
-        debug!("Asm Output Type: {}", self.ccx.tn().type_to_string(output));
+        debug!("Asm Output Type: {:?}", output);
         let fty = Type::func(&argtys[..], &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(
@@ -814,10 +809,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 attributes: Option<AttrBuilder>) -> ValueRef {
         self.count_insn("call");
 
-        debug!("Call {} with args ({})",
-               self.ccx.tn().val_to_string(llfn),
+        debug!("Call {:?} with args ({})",
+               Value(llfn),
                args.iter()
-                   .map(|&v| self.ccx.tn().val_to_string(v))
+                   .map(|&v| format!("{:?}", Value(v)))
                    .collect::<Vec<String>>()
                    .join(", "));
 
@@ -838,11 +833,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if expected_ty != actual_ty {
                 self.ccx.sess().bug(
                     &format!(
-                        "Type mismatch in function call of {}.  Expected {} for param {}, got {}",
-                        self.ccx.tn().val_to_string(llfn),
-                        self.ccx.tn().type_to_string(expected_ty),
-                        i,
-                        self.ccx.tn().type_to_string(actual_ty)));
+                        "Type mismatch in function call of {:?}. \
+                         Expected {:?} for param {}, got {:?}",
+                        Value(llfn),
+                        expected_ty, i, actual_ty));
 
             }
         }

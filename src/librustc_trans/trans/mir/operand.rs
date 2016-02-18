@@ -15,8 +15,11 @@ use trans::adt;
 use trans::base;
 use trans::common::{self, Block, BlockAndBuilder};
 use trans::datum;
+use trans::value::Value;
 use trans::Disr;
 use trans::glue;
+
+use std::fmt;
 
 use super::{MirContext, TempRef, drop};
 use super::lvalue::LvalueRef;
@@ -53,6 +56,25 @@ pub struct OperandRef<'tcx> {
     pub ty: Ty<'tcx>
 }
 
+impl<'tcx> fmt::Debug for OperandRef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.val {
+            OperandValue::Ref(r) => {
+                write!(f, "OperandRef(Ref({:?}) @ {:?})",
+                       Value(r), self.ty)
+            }
+            OperandValue::Immediate(i) => {
+                write!(f, "OperandRef(Immediate({:?}) @ {:?})",
+                       Value(i), self.ty)
+            }
+            OperandValue::FatPtr(a, d) => {
+                write!(f, "OperandRef(FatPtr({:?}, {:?}) @ {:?})",
+                       Value(a), Value(d), self.ty)
+            }
+        }
+    }
+}
+
 impl<'tcx> OperandRef<'tcx> {
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
@@ -60,25 +82,6 @@ impl<'tcx> OperandRef<'tcx> {
         match self.val {
             OperandValue::Immediate(s) => s,
             _ => unreachable!()
-        }
-    }
-
-    pub fn repr<'bcx>(self, bcx: &BlockAndBuilder<'bcx, 'tcx>) -> String {
-        match self.val {
-            OperandValue::Ref(r) => {
-                format!("OperandRef(Ref({}) @ {:?})",
-                        bcx.val_to_string(r), self.ty)
-            }
-            OperandValue::Immediate(i) => {
-                format!("OperandRef(Immediate({}) @ {:?})",
-                        bcx.val_to_string(i), self.ty)
-            }
-            OperandValue::FatPtr(a, d) => {
-                format!("OperandRef(FatPtr({}, {}) @ {:?})",
-                        bcx.val_to_string(a),
-                        bcx.val_to_string(d),
-                        self.ty)
-            }
         }
     }
 
@@ -100,7 +103,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                       ty: Ty<'tcx>)
                       -> OperandRef<'tcx>
     {
-        debug!("trans_load: {} @ {:?}", bcx.val_to_string(llval), ty);
+        debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
         let val = match datum::appropriate_rvalue_mode(bcx.ccx(), ty) {
             datum::ByValue => {
@@ -164,7 +167,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                          lldest: ValueRef,
                          operand: OperandRef<'tcx>)
     {
-        debug!("store_operand: operand={}", operand.repr(bcx));
+        debug!("store_operand: operand={:?}", operand);
         bcx.with_block(|bcx| self.store_operand_direct(bcx, lldest, operand))
     }
 

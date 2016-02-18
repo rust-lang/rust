@@ -37,6 +37,7 @@ use trans::machine::*;
 use trans::monomorphize;
 use trans::type_of::{type_of, sizing_type_of, align_of};
 use trans::type_::Type;
+use trans::value::Value;
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -374,14 +375,14 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
                                          -> (ValueRef, ValueRef) {
-    debug!("calculate size of DST: {}; with lost info: {}",
-           t, bcx.val_to_string(info));
+    debug!("calculate size of DST: {}; with lost info: {:?}",
+           t, Value(info));
     if type_is_sized(bcx.tcx(), t) {
         let sizing_type = sizing_type_of(bcx.ccx(), t);
         let size = llsize_of_alloc(bcx.ccx(), sizing_type);
         let align = align_of(bcx.ccx(), t);
-        debug!("size_and_align_of_dst t={} info={} size: {} align: {}",
-               t, bcx.val_to_string(info), size, align);
+        debug!("size_and_align_of_dst t={} info={:?} size: {} align: {}",
+               t, Value(info), size, align);
         let size = C_uint(bcx.ccx(), size);
         let align = C_uint(bcx.ccx(), align);
         return (size, align);
@@ -394,7 +395,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             assert!(!t.is_simd());
             let repr = adt::represent_type(ccx, t);
             let sizing_type = adt::sizing_type_context_of(ccx, &repr, true);
-            debug!("DST {} sizing_type: {}", t, sizing_type.to_string());
+            debug!("DST {} sizing_type: {:?}", t, sizing_type);
             let sized_size = llsize_of_alloc(ccx, sizing_type.prefix());
             let sized_align = llalign_of_min(ccx, sizing_type.prefix());
             debug!("DST {} statically sized prefix size: {} align: {}",

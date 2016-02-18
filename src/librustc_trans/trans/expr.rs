@@ -69,6 +69,7 @@ use trans::glue;
 use trans::machine;
 use trans::tvec;
 use trans::type_of;
+use trans::value::Value;
 use trans::Disr;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
@@ -85,6 +86,7 @@ use rustc_front::hir;
 
 use syntax::{ast, codemap};
 use syntax::parse::token::InternedString;
+use std::fmt;
 use std::mem;
 
 // Destinations
@@ -98,11 +100,11 @@ pub enum Dest {
     Ignore,
 }
 
-impl Dest {
-    pub fn to_string(&self, ccx: &CrateContext) -> String {
+impl fmt::Debug for Dest {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            SaveIn(v) => format!("SaveIn({})", ccx.tn().val_to_string(v)),
-            Ignore => "Ignore".to_string()
+            SaveIn(v) => write!(f, "SaveIn({:?})", Value(v)),
+            Ignore => f.write_str("Ignore")
         }
     }
 }
@@ -377,10 +379,8 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         Some(adj) => { adj }
     };
-    debug!("unadjusted datum for expr {:?}: {} adjustment={:?}",
-           expr,
-           datum.to_string(bcx.ccx()),
-           adjustment);
+    debug!("unadjusted datum for expr {:?}: {:?} adjustment={:?}",
+           expr, datum, adjustment);
     match adjustment {
         AdjustReifyFnPointer => {
             match datum.ty.sty {
@@ -452,7 +452,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
     }
-    debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
+    debug!("after adjustments, datum={:?}", datum);
     DatumBlock::new(bcx, datum)
 }
 
@@ -462,9 +462,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               target: Datum<'tcx, Rvalue>)
                               -> Block<'blk, 'tcx> {
     let mut bcx = bcx;
-    debug!("coerce_unsized({} -> {})",
-           source.to_string(bcx.ccx()),
-           target.to_string(bcx.ccx()));
+    debug!("coerce_unsized({:?} -> {:?})", source, target);
 
     match (&source.ty.sty, &target.ty.sty) {
         (&ty::TyBox(a), &ty::TyBox(b)) |
@@ -854,8 +852,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
-            debug!("trans_index: base {}", bcx.val_to_string(base));
-            debug!("trans_index: len {}", bcx.val_to_string(len));
+            debug!("trans_index: base {:?}", Value(base));
+            debug!("trans_index: len {:?}", Value(len));
 
             let bounds_check = ICmp(bcx,
                                     llvm::IntUGE,
@@ -1279,8 +1277,8 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         nid));
                 }
             };
-            debug!("take_local(nid={}, v={}, ty={})",
-                   nid, bcx.val_to_string(datum.val), datum.ty);
+            debug!("take_local(nid={}, v={:?}, ty={})",
+                   nid, Value(datum.val), datum.ty);
             datum
         }
         _ => {
@@ -1829,12 +1827,10 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let lhs = unpack_datum!(bcx, trans(bcx, lhs));
             let lhs = unpack_datum!(bcx, lhs.to_rvalue_datum(bcx, "binop_lhs"));
-            debug!("trans_binary (expr {}): lhs={}",
-                   expr.id, lhs.to_string(ccx));
+            debug!("trans_binary (expr {}): lhs={:?}", expr.id, lhs);
             let rhs = unpack_datum!(bcx, trans(bcx, rhs));
             let rhs = unpack_datum!(bcx, rhs.to_rvalue_datum(bcx, "binop_rhs"));
-            debug!("trans_binary (expr {}): rhs={}",
-                   expr.id, rhs.to_string(ccx));
+            debug!("trans_binary (expr {}): rhs={:?}", expr.id, rhs);
 
             if type_is_fat_ptr(ccx.tcx(), lhs.ty) {
                 assert!(type_is_fat_ptr(ccx.tcx(), rhs.ty),
@@ -2085,10 +2081,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           -> DatumBlock<'blk, 'tcx, Expr> {
     let ccx = bcx.ccx();
 
-    debug!("deref_once(expr={:?}, datum={}, method_call={:?})",
-           expr,
-           datum.to_string(ccx),
-           method_call);
+    debug!("deref_once(expr={:?}, datum={:?}, method_call={:?})",
+           expr, datum, method_call);
 
     let mut bcx = bcx;
 
@@ -2175,8 +2169,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    debug!("deref_once(expr={}, method_call={:?}, result={})",
-           expr.id, method_call, r.datum.to_string(ccx));
+    debug!("deref_once(expr={}, method_call={:?}, result={:?})",
+           expr.id, method_call, r.datum);
 
     return r;
 }

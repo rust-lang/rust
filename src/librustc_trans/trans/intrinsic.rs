@@ -1552,7 +1552,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
                 let arg_idx = i;
-                let val = const_get_elt(bcx.ccx(), vector, &[i as libc::c_uint]);
+                let val = const_get_elt(vector, &[i as libc::c_uint]);
                 let c = const_to_opt_uint(val);
                 match c {
                     None => {

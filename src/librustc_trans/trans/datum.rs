@@ -101,6 +101,7 @@ use trans::cleanup;
 use trans::cleanup::{CleanupMethods, DropHintDatum, DropHintMethods};
 use trans::expr;
 use trans::tvec;
+use trans::value::Value;
 use middle::ty::Ty;
 
 use std::fmt;
@@ -111,7 +112,7 @@ use syntax::codemap::DUMMY_SP;
 /// describes where the value is stored, what Rust type the value has,
 /// whether it is addressed by reference, and so forth. Please refer
 /// the section on datums in `README.md` for more details.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `kind` below.
@@ -122,6 +123,13 @@ pub struct Datum<'tcx, K> {
 
     /// Indicates whether this is by-ref or by-value.
     pub kind: K,
+}
+
+impl<'tcx, K: fmt::Debug> fmt::Debug for Datum<'tcx, K> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Datum({:?}, {:?}, {:?})",
+               Value(self.val), self.ty, self.kind)
+    }
 }
 
 pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
@@ -311,8 +319,8 @@ pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     // Very subtle: potentially initialize the scratch memory at point where it is alloca'ed.
     // (See discussion at Issue 30530.)
     let scratch = alloc_ty_init(bcx, ty, zero, name);
-    debug!("lvalue_scratch_datum scope={:?} scratch={} ty={:?}",
-           scope, bcx.ccx().tn().val_to_string(scratch), ty);
+    debug!("lvalue_scratch_datum scope={:?} scratch={:?} ty={:?}",
+           scope, Value(scratch), ty);
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
     let bcx = populate(arg, bcx, scratch);
@@ -351,8 +359,8 @@ fn add_rvalue_clean<'a, 'tcx>(mode: RvalueMode,
                               scope: cleanup::ScopeId,
                               val: ValueRef,
                               ty: Ty<'tcx>) {
-    debug!("add_rvalue_clean scope={:?} val={} ty={:?}",
-           scope, fcx.ccx.tn().val_to_string(val), ty);
+    debug!("add_rvalue_clean scope={:?} val={:?} ty={:?}",
+           scope, Value(val), ty);
     match mode {
         ByValue => { fcx.schedule_drop_immediate(scope, val, ty); }
         ByRef => {
@@ -617,7 +625,7 @@ impl<'tcx> Datum<'tcx, Expr> {
                                  name: &str,
                                  expr_id: ast::NodeId)
                                  -> DatumBlock<'blk, 'tcx, Lvalue> {
-        debug!("to_lvalue_datum self: {}", self.to_string(bcx.ccx()));
+        debug!("to_lvalue_datum self: {:?}", self);
 
         self.match_kind(
             |l| DatumBlock::new(bcx, l),
@@ -765,14 +773,6 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
         assert!(!self.ty
                      .moves_by_default(&bcx.tcx().empty_parameter_environment(), DUMMY_SP));
         self.shallow_copy_raw(bcx, dst)
-    }
-
-    #[allow(dead_code)] // useful for debugging
-    pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("Datum({}, {:?}, {:?})",
-                ccx.tn().val_to_string(self.val),
-                self.ty,
-                self.kind)
     }
 
     /// See the `appropriate_rvalue_mode()` function

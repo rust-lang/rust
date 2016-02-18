@@ -27,6 +27,7 @@ use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
 use trans::tvec;
+use trans::value::Value;
 use trans::Disr;
 
 use super::MirContext;
@@ -40,9 +41,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         rvalue: &mir::Rvalue<'tcx>)
                         -> BlockAndBuilder<'bcx, 'tcx>
     {
-        debug!("trans_rvalue(dest.llval={}, rvalue={:?})",
-               bcx.val_to_string(dest.llval),
-               rvalue);
+        debug!("trans_rvalue(dest.llval={:?}, rvalue={:?})",
+               Value(dest.llval), rvalue);
 
         match *rvalue {
            mir::Rvalue::Use(ref operand) => {
@@ -193,7 +193,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref operand, cast_ty) => {
                 let operand = self.trans_operand(&bcx, operand);
-                debug!("cast operand is {}", operand.repr(&bcx));
+                debug!("cast operand is {:?}", operand);
                 let cast_ty = bcx.monomorphize(&cast_ty);
 
                 let val = match *kind {
@@ -237,8 +237,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             }
                             OperandValue::Ref(_) => {
                                 bcx.sess().bug(
-                                    &format!("by-ref operand {} in trans_rvalue_operand",
-                                             operand.repr(&bcx)));
+                                    &format!("by-ref operand {:?} in trans_rvalue_operand",
+                                             operand));
                             }
                         }
                     }
