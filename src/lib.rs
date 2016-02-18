@@ -158,7 +158,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box vec::UselessVec);
     reg.register_late_lint_pass(box drop_ref::DropRefPass);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
-    reg.register_late_lint_pass(box regex::RegexPass);
+    reg.register_late_lint_pass(box regex::RegexPass::default());
     reg.register_late_lint_pass(box copies::CopyAndPaste);
 
     reg.register_lint_group("clippy_pedantic", vec![
