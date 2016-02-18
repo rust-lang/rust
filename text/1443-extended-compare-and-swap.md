@@ -1,7 +1,7 @@
-- Feature Name: extended_compare_and_swap
+- Feature Name: `extended_compare_and_swap`
 - Start Date: 2016-1-5
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1443](https://github.com/rust-lang/rfcs/pull/1443)
+- Rust Issue: [rust-lang/rust#31767](https://github.com/rust-lang/rust/issues/31767)
 
 # Summary
 [summary]: #summary
