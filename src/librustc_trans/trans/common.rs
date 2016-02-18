@@ -767,6 +767,10 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     {
         self.bcx.monomorphize(value)
     }
+
+    pub fn set_lpad(&self, lpad: Option<LandingPad>) {
+        self.bcx.lpad.set(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
+    }
 }
 
 impl<'blk, 'tcx> Deref for BlockAndBuilder<'blk, 'tcx> {

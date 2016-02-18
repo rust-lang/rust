@@ -10,7 +10,6 @@
 
 #![feature(rustc_attrs)]
 
-// ignore-msvc: FIXME(#30941)
 // error-pattern:diverging_fn called
 // error-pattern:0 dropped
 

@@ -22,7 +22,7 @@ extern crate rustc_front;
 use build;
 use graphviz;
 use pretty;
-use transform::simplify_cfg;
+use transform::{simplify_cfg, no_landing_pads};
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
@@ -148,6 +148,7 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
             Ok(mut mir) => {
+                no_landing_pads::NoLandingPads.run_on_mir(&mut mir, self.tcx);
                 simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir, self.tcx);
 
                 let meta_item_list = self.attr
