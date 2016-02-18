@@ -9,7 +9,6 @@
 // except according to those terms.
 #![feature(rustc_attrs)]
 
-// ignore-msvc: FIXME(#30941)
 // error-pattern:panic 1
 // error-pattern:drop 2
 use std::io::{self, Write};

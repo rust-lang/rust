@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{BasicBlockRef, ValueRef};
+use llvm::{BasicBlockRef, ValueRef, OperandBundleDef};
 use rustc::middle::ty;
 use rustc::mir::repr as mir;
 use syntax::abi::Abi;
@@ -34,6 +34,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let mut bcx = self.bcx(bb);
         let data = self.mir.basic_block_data(bb);
 
+        // MSVC SEH bits
+        let (cleanup_pad, cleanup_bundle) = if let Some((cp, cb)) = self.make_cleanup_pad(bb) {
+            (Some(cp), Some(cb))
+        } else {
+            (None, None)
+        };
+        let funclet_br = |bcx: BlockAndBuilder, llbb: BasicBlockRef| if let Some(cp) = cleanup_pad {
+            bcx.cleanup_ret(cp, Some(llbb));
+        } else {
+            bcx.br(llbb);
+        };
+
         for statement in &data.statements {
             bcx = self.trans_statement(bcx, statement);
         }
@@ -41,8 +53,21 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         debug!("trans_block: terminator: {:?}", data.terminator());
 
         match *data.terminator() {
+            mir::Terminator::Resume => {
+                if let Some(cleanup_pad) = cleanup_pad {
+                    bcx.cleanup_ret(cleanup_pad, None);
+                } else {
+                    let ps = self.get_personality_slot(&bcx);
+                    let lp = bcx.load(ps);
+                    bcx.with_block(|bcx| {
+                        base::call_lifetime_end(bcx, ps);
+                        base::trans_unwind_resume(bcx, lp);
+                    });
+                }
+            }
+
             mir::Terminator::Goto { target } => {
-                bcx.br(self.llblock(target));
+                funclet_br(bcx, self.llblock(target));
             }
 
             mir::Terminator::If { ref cond, targets: (true_bb, false_bb) } => {
@@ -85,19 +110,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
             }
 
-            mir::Terminator::Resume => {
-                let ps = self.get_personality_slot(&bcx);
-                let lp = bcx.load(ps);
-                bcx.with_block(|bcx| {
-                    base::call_lifetime_end(bcx, ps);
-                    base::trans_unwind_resume(bcx, lp);
-                });
-            }
-
             mir::Terminator::Return => {
                 let return_ty = bcx.monomorphize(&self.mir.return_ty);
                 bcx.with_block(|bcx| {
-                    base::build_return_block(bcx.fcx, bcx, return_ty, DebugLoc::None);
+                    base::build_return_block(self.fcx, bcx, return_ty, DebugLoc::None);
                 })
             }
 
@@ -106,7 +122,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let ty = lvalue.ty.to_ty(bcx.tcx());
                 // Double check for necessity to drop
                 if !glue::type_needs_drop(bcx.tcx(), ty) {
-                    bcx.br(self.llblock(target));
+                    funclet_br(bcx, self.llblock(target));
                     return;
                 }
                 let drop_fn = glue::get_drop_glue(bcx.ccx(), ty);
@@ -123,11 +139,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                &[llvalue],
                                self.llblock(target),
                                unwind.llbb(),
-                               None,
+                               cleanup_bundle.as_ref(),
                                None);
                 } else {
-                    bcx.call(drop_fn, &[llvalue], None, None);
-                    bcx.br(self.llblock(target));
+                    bcx.call(drop_fn, &[llvalue], cleanup_bundle.as_ref(), None);
+                    funclet_br(bcx, self.llblock(target));
                 }
             }
 
@@ -180,11 +196,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                 }
 
-                let avoid_invoke = bcx.with_block(|bcx| base::avoid_invoke(bcx));
                 // Many different ways to call a function handled here
-                match (is_foreign, avoid_invoke, cleanup, destination) {
+                match (is_foreign, cleanup, destination) {
                     // The two cases below are the only ones to use LLVM’s `invoke`.
-                    (false, false, &Some(cleanup), &None) => {
+                    (false, &Some(cleanup), &None) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
@@ -192,14 +207,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                    &llargs[..],
                                    unreachable_blk.llbb,
                                    landingpad.llbb(),
-                                   None,
+                                   cleanup_bundle.as_ref(),
                                    Some(attrs));
                     },
-                    (false, false, &Some(cleanup), &Some((_, success))) => {
+                    (false, &Some(cleanup), &Some((_, success))) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let (target, postinvoke) = if must_copy_dest {
-                            (bcx.fcx().new_block("", None).build(), Some(self.bcx(success)))
+                            (self.fcx.new_block("", None).build(), Some(self.bcx(success)))
                         } else {
                             (self.bcx(success), None)
                         };
@@ -207,7 +222,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                    &llargs[..],
                                                    target.llbb(),
                                                    landingpad.llbb(),
-                                                   None,
+                                                   cleanup_bundle.as_ref(),
                                                    Some(attrs));
                         if let Some(postinvoketarget) = postinvoke {
                             // We translate the copy into a temporary block. The temporary block is
@@ -242,14 +257,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             target.br(postinvoketarget.llbb());
                         }
                     },
-                    (false, _, _, &None) => {
-                        bcx.call(callee.immediate(), &llargs[..], None, Some(attrs));
+                    (false, _, &None) => {
+                        bcx.call(callee.immediate(),
+                                 &llargs[..],
+                                 cleanup_bundle.as_ref(),
+                                 Some(attrs));
                         bcx.unreachable();
                     }
-                    (false, _, _, &Some((_, target))) => {
+                    (false, _, &Some((_, target))) => {
                         let llret = bcx.call(callee.immediate(),
                                              &llargs[..],
-                                             None,
+                                             cleanup_bundle.as_ref(),
                                              Some(attrs));
                         if must_copy_dest {
                             let (ret_dest, ret_ty) = ret_dest_ty
@@ -258,10 +276,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 base::store_ty(bcx, llret, ret_dest.llval, ret_ty);
                             });
                         }
-                        bcx.br(self.llblock(target));
+                        funclet_br(bcx, self.llblock(target));
                     }
                     // Foreign functions
-                    (true, _, _, destination) => {
+                    (true, _, destination) => {
                         let (dest, _) = ret_dest_ty
                             .expect("return destination is not set");
                         bcx = bcx.map_block(|bcx| {
@@ -274,7 +292,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                        debugloc)
                         });
                         if let Some((_, target)) = *destination {
-                            bcx.br(self.llblock(target));
+                            funclet_br(bcx, self.llblock(target));
                         }
                     },
                 }
@@ -297,11 +315,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
+    /// Create a landingpad wrapper around the given Block.
+    ///
+    /// No-op in MSVC SEH scheme.
     fn make_landing_pad(&mut self,
                         cleanup: BlockAndBuilder<'bcx, 'tcx>)
                         -> BlockAndBuilder<'bcx, 'tcx>
     {
-        // FIXME(#30941) this doesn't handle msvc-style exceptions
+        if base::wants_msvc_seh(cleanup.sess()) {
+            return cleanup;
+        }
         let bcx = self.fcx.new_block("cleanup", None).build();
         let ccx = bcx.ccx();
         let llpersonality = self.fcx.eh_personality();
@@ -312,6 +335,31 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         bcx.store(llretval, slot);
         bcx.br(cleanup.llbb());
         bcx
+    }
+
+    /// Create prologue cleanuppad instruction under MSVC SEH handling scheme.
+    ///
+    /// Also handles setting some state for the original trans and creating an operand bundle for
+    /// function calls.
+    fn make_cleanup_pad(&mut self, bb: mir::BasicBlock) -> Option<(ValueRef, OperandBundleDef)> {
+        let bcx = self.bcx(bb);
+        let data = self.mir.basic_block_data(bb);
+        let use_funclets = base::wants_msvc_seh(bcx.sess()) && data.is_cleanup;
+        let cleanup_pad = if use_funclets {
+            bcx.set_personality_fn(self.fcx.eh_personality());
+            Some(bcx.cleanup_pad(None, &[]))
+        } else {
+            None
+        };
+        // Set the landingpad global-state for old translator, so it knows about the SEH used.
+        bcx.set_lpad(if let Some(cleanup_pad) = cleanup_pad {
+            Some(common::LandingPad::msvc(cleanup_pad))
+        } else if data.is_cleanup {
+            Some(common::LandingPad::gnu())
+        } else {
+            None
+        });
+        cleanup_pad.map(|f| (f, OperandBundleDef::new("funclet", &[f])))
     }
 
     fn unreachable_block(&mut self) -> Block<'bcx, 'tcx> {
