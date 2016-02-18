@@ -69,9 +69,7 @@ impl<'tcx> CastTy<'tcx> {
                 Some(CastTy::Int(IntTy::CEnum)),
             ty::TyRawPtr(ref mt) => Some(CastTy::Ptr(mt)),
             ty::TyRef(_, ref mt) => Some(CastTy::RPtr(mt)),
-            // FIXME: Treating TyFnDef as a pointer here is a bit dubious;
-            // we should be coercing the operand to an actual pointer.
-            ty::TyFnDef(..) | ty::TyFnPtr(..) => Some(CastTy::FnPtr),
+            ty::TyFnPtr(..) => Some(CastTy::FnPtr),
             _ => None,
         }
     }
