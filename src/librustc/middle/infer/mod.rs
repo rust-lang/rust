@@ -385,7 +385,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                   a_is_expected: bool,
                                   a: Ty<'tcx>,
                                   b: Ty<'tcx>)
-                                  -> RelateResult<'tcx, Ty<'tcx>>
+                                  -> RelateOk<'tcx, Ty<'tcx>>
 {
     debug!("common_supertype({:?}, {:?})",
            a, b);
@@ -397,10 +397,10 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 
     let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).relate(&a, &b));
     match result {
-        Ok(t) => Ok(t),
+        Ok(t) => t,
         Err(ref err) => {
             cx.report_and_explain_type_error(trace, err);
-            Ok(RelateOk::from(cx.tcx.types.err))
+            RelateOk::from(cx.tcx.types.err)
         }
     }
 }
