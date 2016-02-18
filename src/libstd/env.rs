@@ -534,7 +534,7 @@ pub struct ArgsOs { inner: os_imp::Args }
 /// # Panics
 ///
 /// The returned iterator will panic during iteration if any argument to the
-/// process is not valid unicode. If this is not desired it is recommended to
+/// process is not valid unicode. If this is not desired,
 /// use the `args_os` function instead.
 ///
 /// # Examples
