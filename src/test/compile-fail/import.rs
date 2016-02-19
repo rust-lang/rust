@@ -15,5 +15,10 @@ use zed::baz;
 
 mod zed {
     pub fn bar() { println!("bar"); }
+    use foo; //~ ERROR unresolved import
 }
-fn main() { bar(); }
+
+fn main() {
+    zed::foo(); //~ ERROR unresolved name
+    bar();
+}
