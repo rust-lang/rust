@@ -1,7 +1,7 @@
 use rustc::middle::{const_eval, def_id, ty};
 use rustc::middle::cstore::CrateStore;
 use rustc::mir::repr::{self as mir, Mir};
-use rustc_mir::mir_map::MirMap;
+use rustc::mir::mir_map::MirMap;
 use syntax::ast::Attribute;
 use syntax::attr::AttrMetaMethods;
 
@@ -154,10 +154,6 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                         let value = self.eval_rvalue(rvalue);
                         self.write_pointer(ptr, value);
                     }
-
-                    mir::StatementKind::Drop(_kind, ref _lv) => {
-                        // TODO
-                    },
                 }
             }
 
@@ -167,14 +163,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 mir::Terminator::Return => break,
                 mir::Terminator::Goto { target } => block = target,
 
-                mir::Terminator::Call { ref func, ref args, ref kind } => {
-                    let ptr = kind.destination().map(|dest| self.eval_lvalue(dest));
+                mir::Terminator::Call { ref func, ref args, ref destination, .. } => {
+                    let ptr = destination.as_ref().map(|&(ref lv, _)| self.eval_lvalue(lv));
                     let func_val = self.eval_operand(func);
 
                     if let Value::Func(def_id) = func_val {
                         let mir_data;
                         let mir = match self.tcx.map.as_local_node_id(def_id) {
-                            Some(node_id) => self.mir_map.get(&node_id).unwrap(),
+                            Some(node_id) => self.mir_map.map.get(&node_id).unwrap(),
                             None => {
                                 let cstore = &self.tcx.sess.cstore;
                                 mir_data = cstore.maybe_get_item_mir(self.tcx, def_id).unwrap();
@@ -187,11 +183,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
                         self.call(mir, &arg_vals, ptr);
 
-                        match *kind {
-                            mir::CallKind::Converging { target: success_target, .. } |
-                            mir::CallKind::ConvergingCleanup { targets: (success_target, _), .. }
-                            => { block = success_target; }
-                            _ => {}
+                        if let Some((_, target)) = *destination {
+                            block = target;
                         }
                     } else {
                         panic!("tried to call a non-function value: {:?}", func_val);
@@ -223,6 +216,11 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     } else {
                         panic!("Switch on non-Adt value: {:?}", discr_val);
                     }
+                }
+
+                mir::Terminator::Drop { target, .. } => {
+                    // TODO: Handle destructors and dynamic drop.
+                    block = target;
                 }
 
                 mir::Terminator::Resume => unimplemented!(),
@@ -403,7 +401,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 }
 
 pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>) {
-    for (&id, mir) in mir_map {
+    for (&id, mir) in &mir_map.map {
         for attr in tcx.map.attrs(id) {
             if attr.check_name("miri_run") {
                 let item = tcx.map.expect_item(id);
