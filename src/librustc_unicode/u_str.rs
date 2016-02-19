@@ -30,9 +30,9 @@ pub trait UnicodeStr {
     fn split_whitespace<'a>(&'a self) -> SplitWhitespace<'a>;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
-    fn trim<'a>(&'a self) -> &'a str;
-    fn trim_left<'a>(&'a self) -> &'a str;
-    fn trim_right<'a>(&'a self) -> &'a str;
+    fn trim(&self) -> &str;
+    fn trim_left(&self) -> &str;
+    fn trim_right(&self) -> &str;
 }
 
 impl UnicodeStr for str {
