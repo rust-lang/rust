@@ -218,6 +218,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 kind: NameBindingKind::Def(Def::Err),
                 span: None,
             });
+            let dummy_binding =
+                self.resolver.new_name_binding(e.import_directive.import(dummy_binding));
 
             let _ = e.source_module.try_define_child(target, ValueNS, dummy_binding);
             let _ = e.source_module.try_define_child(target, TypeNS, dummy_binding);

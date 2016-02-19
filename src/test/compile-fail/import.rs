@@ -19,6 +19,6 @@ mod zed {
 }
 
 fn main() {
-    zed::foo(); // Check that this does not panic. Ideally, it would be a privacy error.
+    zed::foo(); //~ ERROR unresolved name
     bar();
 }
