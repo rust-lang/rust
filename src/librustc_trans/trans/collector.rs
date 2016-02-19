@@ -819,9 +819,10 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             nested: _ }) =>
         {
             let callee_substs = impl_substs.with_method_from(&rcvr_substs);
-            let impl_method = tcx.get_impl_method(impl_did,
-                                                  tcx.mk_substs(callee_substs),
-                                                  trait_method.name);
+            let impl_method = meth::get_impl_method(tcx,
+                                                    impl_did,
+                                                    tcx.mk_substs(callee_substs),
+                                                    trait_method.name);
             Some((impl_method.method.def_id, impl_method.substs))
         }
         // If we have a closure or a function pointer, we will also encounter
@@ -1160,9 +1161,10 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
                     // The substitutions we have are on the impl, so we grab
                     // the method type from the impl to substitute into.
-                    let mth = tcx.get_impl_method(impl_def_id,
-                                                  callee_substs,
-                                                  default_impl.name);
+                    let mth = meth::get_impl_method(tcx,
+                                                    impl_def_id,
+                                                    callee_substs.clone(),
+                                                    default_impl.name);
 
                     assert!(mth.is_provided);
 
