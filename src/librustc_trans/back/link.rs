@@ -822,14 +822,20 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     ab.update_symbols();
     ab.build();
 
-    if !all_native_libs.is_empty() {
-        sess.note_without_error("link against the following native artifacts when linking against \
+    report_link_line(sess, all_native_libs);
+}
+
+fn report_link_line(sess: &Session, native_libs: Vec<(NativeLibraryKind, String)>) {
+    if !native_libs.is_empty() {
+        sess.note_without_error(
+            "link against the following native artifacts when linking against \
                                  this static library");
-        sess.note_without_error("the order and any duplication can be significant on some \
+        sess.note_without_error(
+            "the order and any duplication can be significant on some \
                                  platforms, and so may need to be preserved");
     }
 
-    for &(kind, ref lib) in &all_native_libs {
+    for &(kind, ref lib) in &native_libs {
         let name = match kind {
             NativeLibraryKind::NativeStatic => "static library",
             NativeLibraryKind::NativeUnknown => "library",
