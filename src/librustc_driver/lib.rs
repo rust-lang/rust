@@ -529,7 +529,19 @@ impl RustcDefaultCalls {
             return Compilation::Continue;
         }
 
-        let attrs = input.map(|input| panictry!(parse_crate_attrs(sess, input)));
+        let attrs = match input {
+            None => None,
+            Some(input) => {
+                let result = parse_crate_attrs(sess, input);
+                match result {
+                    Ok(attrs) => Some(attrs),
+                    Err(mut parse_error) => {
+                        parse_error.emit();
+                        return Compilation::Stop;
+                    }
+                }
+            }
+        };
         for req in &sess.opts.prints {
             match *req {
                 PrintRequest::TargetList => {
