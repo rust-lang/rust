@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Interfaces to the operating system provided random number
-//! generators.
-
 pub use self::imp::OsRng;
 
 #[cfg(all(unix, not(target_os = "ios"), not(target_os = "openbsd")))]
@@ -125,17 +122,6 @@ mod imp {
                       target_arch = "powerpc64"))))]
     fn is_getrandom_available() -> bool { false }
 
-    /// A random number generator that retrieves randomness straight from
-    /// the operating system. Platform sources:
-    ///
-    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
-    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
-    ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
-    ///
-    /// This does not block.
     pub struct OsRng {
         inner: OsRngInner,
     }
@@ -189,17 +175,6 @@ mod imp {
     use sys::os::errno;
     use rand::Rng;
 
-    /// A random number generator that retrieves randomness straight from
-    /// the operating system. Platform sources:
-    ///
-    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
-    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
-    ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
-    ///
-    /// This does not block.
     pub struct OsRng {
         // dummy field to ensure that this struct cannot be constructed outside
         // of this module
@@ -246,17 +221,6 @@ mod imp {
     use rand::Rng;
     use libc::{c_int, size_t};
 
-    /// A random number generator that retrieves randomness straight from
-    /// the operating system. Platform sources:
-    ///
-    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
-    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
-    ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
-    ///
-    /// This does not block.
     pub struct OsRng {
         // dummy field to ensure that this struct cannot be constructed outside
         // of this module
@@ -304,136 +268,6 @@ mod imp {
                 panic!("couldn't generate random bytes: {}",
                        io::Error::last_os_error());
             }
-        }
-    }
-}
-
-#[cfg(windows)]
-mod imp {
-    use io;
-    use mem;
-    use rand::Rng;
-    use sys::c;
-
-    /// A random number generator that retrieves randomness straight from
-    /// the operating system. Platform sources:
-    ///
-    /// - Unix-like systems (Linux, Android, Mac OSX): read directly from
-    ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
-    /// - Windows: calls `CryptGenRandom`, using the default cryptographic
-    ///   service provider with the `PROV_RSA_FULL` type.
-    /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
-    /// - OpenBSD: uses the `getentropy(2)` system call.
-    ///
-    /// This does not block.
-    pub struct OsRng {
-        hcryptprov: c::HCRYPTPROV
-    }
-
-    impl OsRng {
-        /// Create a new `OsRng`.
-        pub fn new() -> io::Result<OsRng> {
-            let mut hcp = 0;
-            let ret = unsafe {
-                c::CryptAcquireContextA(&mut hcp, 0 as c::LPCSTR, 0 as c::LPCSTR,
-                                        c::PROV_RSA_FULL,
-                                        c::CRYPT_VERIFYCONTEXT | c::CRYPT_SILENT)
-            };
-
-            if ret == 0 {
-                Err(io::Error::last_os_error())
-            } else {
-                Ok(OsRng { hcryptprov: hcp })
-            }
-        }
-    }
-
-    impl Rng for OsRng {
-        fn next_u32(&mut self) -> u32 {
-            let mut v = [0; 4];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
-        }
-        fn next_u64(&mut self) -> u64 {
-            let mut v = [0; 8];
-            self.fill_bytes(&mut v);
-            unsafe { mem::transmute(v) }
-        }
-        fn fill_bytes(&mut self, v: &mut [u8]) {
-            let ret = unsafe {
-                c::CryptGenRandom(self.hcryptprov, v.len() as c::DWORD,
-                                  v.as_mut_ptr())
-            };
-            if ret == 0 {
-                panic!("couldn't generate random bytes: {}",
-                       io::Error::last_os_error());
-            }
-        }
-    }
-
-    impl Drop for OsRng {
-        fn drop(&mut self) {
-            let ret = unsafe {
-                c::CryptReleaseContext(self.hcryptprov, 0)
-            };
-            if ret == 0 {
-                panic!("couldn't release context: {}",
-                       io::Error::last_os_error());
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use sync::mpsc::channel;
-    use rand::Rng;
-    use super::OsRng;
-    use thread;
-
-    #[test]
-    fn test_os_rng() {
-        let mut r = OsRng::new().unwrap();
-
-        r.next_u32();
-        r.next_u64();
-
-        let mut v = [0; 1000];
-        r.fill_bytes(&mut v);
-    }
-
-    #[test]
-    fn test_os_rng_tasks() {
-
-        let mut txs = vec!();
-        for _ in 0..20 {
-            let (tx, rx) = channel();
-            txs.push(tx);
-
-            thread::spawn(move|| {
-                // wait until all the threads are ready to go.
-                rx.recv().unwrap();
-
-                // deschedule to attempt to interleave things as much
-                // as possible (XXX: is this a good test?)
-                let mut r = OsRng::new().unwrap();
-                thread::yield_now();
-                let mut v = [0; 1000];
-
-                for _ in 0..100 {
-                    r.next_u32();
-                    thread::yield_now();
-                    r.next_u64();
-                    thread::yield_now();
-                    r.fill_bytes(&mut v);
-                    thread::yield_now();
-                }
-            });
-        }
-
-        // start all the threads
-        for tx in &txs {
-            tx.send(()).unwrap();
         }
     }
 }
