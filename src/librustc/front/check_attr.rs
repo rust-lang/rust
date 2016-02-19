@@ -101,6 +101,7 @@ impl<'a, 'v> Visitor<'v> for CheckAttrVisitor<'a> {
         for attr in &item.attrs {
             self.check_attribute(attr, target);
         }
+        visit::walk_item(self, item);
     }
 }
 
