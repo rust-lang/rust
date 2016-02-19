@@ -84,7 +84,13 @@ pub fn compile_input(sess: &Session,
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
         let (outputs, expanded_crate, id) = {
-            let krate = panictry!(phase_1_parse_input(sess, cfg, input));
+            let krate = match phase_1_parse_input(sess, cfg, input) {
+                Ok(krate) => krate,
+                Err(mut parse_error) => {
+                    parse_error.emit();
+                    return Err(1);
+                }
+            };
 
             controller_entry_point!(after_parse,
                                     sess,
