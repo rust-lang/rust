@@ -1290,7 +1290,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      span: Span,
                                      lp: LastPrivate)
                                      -> ResolveResult<(Module<'a>, LastPrivate)> {
-        fn search_parent_externals<'a>(needle: Name, module: Module<'a>) -> Option<Module<'a>> {
+        fn search_parent_externals(needle: Name, module: Module) -> Option<Module> {
             match module.resolve_name(needle, TypeNS, false) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
                 _ => match module.parent_link {
@@ -3514,10 +3514,10 @@ fn path_names_to_string(path: &Path, depth: usize) -> String {
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
-fn module_to_string<'a>(module: Module<'a>) -> String {
+fn module_to_string(module: Module) -> String {
     let mut names = Vec::new();
 
-    fn collect_mod<'a>(names: &mut Vec<ast::Name>, module: Module<'a>) {
+    fn collect_mod(names: &mut Vec<ast::Name>, module: Module) {
         match module.parent_link {
             NoParentLink => {}
             ModuleParentLink(ref module, name) => {
