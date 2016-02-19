@@ -405,8 +405,12 @@ pub fn compute_abi_info(ccx: &CrateContext,
                                 None)
             }
         } else {
-            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-            ArgType::direct(ty, None, None, attr)
+            // Extend integer types that are < 32 bits wide
+            if ty.kind() == Integer && ty.int_width() < 32 {
+                ArgType::extend(ty)
+            } else {
+                ArgType::direct(ty, None, None, None)
+            }
         }
     }
 

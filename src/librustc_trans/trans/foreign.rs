@@ -214,7 +214,7 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let llfn = get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), name, cc, llfn_ty, fty);
     attributes::unwind(llfn, false);
-    add_argument_attributes(&tys, llfn);
+    argument_attributes(&tys).apply_llfn(llfn);
     attributes::from_fn_attrs(ccx, attrs, llfn);
     llfn
 }
@@ -367,7 +367,15 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         attrs.arg(1, llvm::Attribute::NoAlias)
              .arg(1, llvm::Attribute::NoCapture)
              .arg(1, llvm::DereferenceableAttribute(llret_sz));
-    };
+    } else if fn_type.ret_ty.is_extend() {
+        if let ty::FnConverging(result_ty) = fn_sig.output {
+            if result_ty.is_signed() {
+                attrs.arg(0, llvm::Attribute::SExt);
+            } else {
+                attrs.arg(0, llvm::Attribute::ZExt);
+            }
+        }
+    }
 
     // Add attributes that depend on the concrete foreign ABI
     let mut arg_idx = if fn_type.ret_ty.is_indirect() { 1 } else { 0 };
@@ -377,15 +385,24 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     arg_idx += 1;
-    for arg_ty in &fn_type.arg_tys {
-        if arg_ty.is_ignore() {
+    for (abi_arg, arg_ty) in fn_type.arg_tys.iter().zip(fn_sig.inputs.iter()) {
+        if abi_arg.is_ignore() {
             continue;
         }
         // skip padding
-        if arg_ty.pad.is_some() { arg_idx += 1; }
+        if abi_arg.pad.is_some() { arg_idx += 1; }
 
-        if let Some(attr) = arg_ty.attr {
+        if let Some(attr) = abi_arg.attr {
             attrs.arg(arg_idx, attr);
+        }
+
+        if abi_arg.is_extend() {
+            debug!("Extending Arg {}", arg_idx);
+            if arg_ty.is_signed() {
+                attrs.arg(arg_idx, llvm::Attribute::SExt);
+            } else {
+                attrs.arg(arg_idx, llvm::Attribute::ZExt);
+            }
         }
 
         arg_idx += 1;
@@ -549,7 +566,7 @@ pub fn decl_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
     let llfn = declare::declare_fn(ccx, name, cconv, llfn_ty,
                                    ty::FnConverging(ccx.tcx().mk_nil()));
-    add_argument_attributes(&tys, llfn);
+    argument_attributes(&tys).apply_llfn(llfn);
     debug!("decl_rust_fn_with_foreign_abi(llfn_ty={}, llfn={})",
            ccx.tn().type_to_string(llfn_ty), ccx.tn().val_to_string(llfn));
     llfn
@@ -572,7 +589,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
     let tys = foreign_types_for_fn_ty(ccx, t);
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
     let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty);
-    add_argument_attributes(&tys, llfn);
+    argument_attributes(&tys).apply_llfn(llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={}, llfn_ty={}, llfn={})",
            node_id, ccx.tn().type_to_string(llfn_ty), ccx.tn().val_to_string(llfn));
     llfn
@@ -844,7 +861,8 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Perform the call itself
         debug!("calling llrustfn = {}, t = {:?}",
                ccx.tn().val_to_string(llrustfn), t);
-        let attributes = attributes::from_fn_type(ccx, t);
+        let mut attributes = attributes::from_fn_type(ccx, t);
+        attributes.merge(argument_attributes(tys));
         let llrust_ret_val = builder.call(llrustfn, &llrust_args,
                                           None, Some(attributes));
 
@@ -1024,37 +1042,60 @@ pub fn lltype_for_foreign_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     lltype_for_fn_from_foreign_types(ccx, &foreign_types_for_fn_ty(ccx, ty))
 }
 
-fn add_argument_attributes(tys: &ForeignTypes,
-                           llfn: ValueRef) {
-    let mut i = if tys.fn_ty.ret_ty.is_indirect() {
-        1
+fn argument_attributes(tys: &ForeignTypes) -> llvm::AttrBuilder {
+    let foreign_fn_ty = &tys.fn_ty;
+    let fn_sig = &tys.fn_sig;
+
+    let mut attrs = llvm::AttrBuilder::new();
+
+    let mut idx = if foreign_fn_ty.ret_ty.is_indirect() {
+        2
     } else {
-        0
+        1
     };
 
-    match tys.fn_ty.ret_ty.attr {
-        Some(attr) => unsafe {
-            llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr.bits() as u64);
-        },
-        None => {}
+    if let Some(attr) = foreign_fn_ty.ret_ty.attr {
+        if foreign_fn_ty.ret_ty.is_indirect() {
+            attrs.arg(1, attr);
+        } else {
+            attrs.ret(attr);
+        }
     }
 
-    i += 1;
+    if foreign_fn_ty.ret_ty.is_extend() {
+        if let ty::FnConverging(ret_ty) = fn_sig.output {
+            if ret_ty.is_signed() {
+                attrs.ret(llvm::Attribute::SExt);
+            } else {
+                attrs.ret(llvm::Attribute::ZExt);
+            }
+        }
+    }
 
-    for &arg_ty in &tys.fn_ty.arg_tys {
-        if arg_ty.is_ignore() {
+    let args = foreign_fn_ty.arg_tys.iter().zip(
+        fn_sig.inputs.iter());
+
+    for (abi_arg, arg_ty) in args {
+        if abi_arg.is_ignore() {
             continue;
         }
-        // skip padding
-        if arg_ty.pad.is_some() { i += 1; }
 
-        match arg_ty.attr {
-            Some(attr) => unsafe {
-                llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr.bits() as u64);
-            },
-            None => ()
+        if abi_arg.pad.is_some() { idx += 1; }
+
+        if let Some(attr) = abi_arg.attr {
+            attrs.arg(idx, attr);
         }
 
-        i += 1;
+        if abi_arg.is_extend() {
+            if arg_ty.is_signed() {
+                attrs.arg(idx, llvm::Attribute::SExt);
+            } else {
+                attrs.arg(idx, llvm::Attribute::ZExt);
+            }
+        }
+
+        idx += 1;
     }
+
+    attrs
 }

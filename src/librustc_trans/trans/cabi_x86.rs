@@ -56,8 +56,11 @@ pub fn compute_abi_info(ccx: &CrateContext,
             }
         }
     } else {
-        let attr = if rty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        ret_ty = ArgType::direct(rty, None, None, attr);
+        ret_ty = if rty.kind() == Integer && rty.int_width() < 32 {
+            ArgType::extend(rty)
+        } else {
+            ArgType::direct(rty, None, None, None)
+        };
     }
 
     for &t in atys {
@@ -71,8 +74,11 @@ pub fn compute_abi_info(ccx: &CrateContext,
                 }
             }
             _ => {
-                let attr = if t == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-                ArgType::direct(t, None, None, attr)
+                if t.kind() == Integer && t.int_width() < 32 {
+                    ArgType::extend(t)
+                } else {
+                    ArgType::direct(t, None, None, None)
+                }
             }
         };
         arg_tys.push(ty);

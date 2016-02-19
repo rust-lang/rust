@@ -261,6 +261,12 @@ impl AttrBuilder {
         }
     }
 
+    pub fn merge(&mut self, other: AttrBuilder) {
+        for attr in other.attrs {
+            self.attrs.push(attr);
+        }
+    }
+
     pub fn arg<'a, T: AttrHelper + 'static>(&'a mut self, idx: usize, a: T) -> &'a mut AttrBuilder {
         self.attrs.push((idx, box a as Box<AttrHelper+'static>));
         self
