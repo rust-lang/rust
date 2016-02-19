@@ -121,6 +121,10 @@ pub trait Write {
                 self.0.write_str(s)
             }
 
+            fn write_char(&mut self, c: char) -> Result {
+                self.0.write_char(c)
+            }
+
             fn write_fmt(&mut self, args: Arguments) -> Result {
                 self.0.write_fmt(args)
             }
