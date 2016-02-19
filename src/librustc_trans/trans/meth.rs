@@ -381,7 +381,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     impl_id: DefId,
                                     substs: &'tcx subst::Substs<'tcx>)
-                                    -> Vec<Option<ty::util::ImplMethod<'tcx>>>
+                                    -> Vec<Option<ImplMethod<'tcx>>>
 {
     let tcx = ccx.tcx();
 
@@ -488,12 +488,13 @@ pub fn get_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
             ImplMethod {
                 method: node_item.item,
-                substs: traits::translate_substs(tcx, impl_def_id, substs, node_item.node),
+                substs: traits::translate_substs(&infcx, impl_def_id, substs, node_item.node),
                 is_provided: node_item.node.is_from_trait(),
             }
         }

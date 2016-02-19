@@ -105,6 +105,7 @@ impl Graph {
                     } else if ge && !le {
                         // possible_sibling specializes the impl
                         *slot = impl_def_id;
+                        self.parent.insert(impl_def_id, parent);
                         self.parent.insert(possible_sibling, impl_def_id);
                         // we have to defer the insertion, because we can't
                         // relinquish the borrow of `self.children`

@@ -17,7 +17,8 @@
 // See traits/README.md for a bit more detail on how specialization
 // fits together with the rest of the trait machinery.
 
-use super::{util, build_selcx, SelectionContext};
+use super::{build_selcx, SelectionContext, FulfillmentContext};
+use super::util::{fresh_type_vars_for_impl, impl_trait_ref_and_oblig};
 
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
@@ -40,117 +41,90 @@ pub struct Overlap<'a, 'tcx: 'a> {
 /// Given a subst for the requested impl, translate it to a subst
 /// appropriate for the actual item definition (whether it be in that impl,
 /// a parent impl, or the trait).
-pub fn translate_substs<'tcx>(tcx: &ty::ctxt<'tcx>,
-                              from_impl: DefId,
-                              from_impl_substs: Substs<'tcx>,
-                              to_node: specialization_graph::Node)
-                              -> Substs<'tcx> {
-    match to_node {
-        specialization_graph::Node::Impl(to_impl) => {
+// When we have selected one impl, but are actually using item definitions from
+// a parent impl providing a default, we need a way to translate between the
+// type parameters of the two impls. Here the `source_impl` is the one we've
+// selected, and `source_substs` is a substitution of its generics (and
+// possibly some relevant `FnSpace` variables as well). And `target_node` is
+// the impl/trait we're actually going to get the definition from. The resulting
+// substitution will map from `target_node`'s generics to `source_impl`'s
+// generics as instantiated by `source_subst`.
+//
+// For example, consider the following scenario:
+//
+// ```rust
+// trait Foo { ... }
+// impl<T, U> Foo for (T, U) { ... }  // target impl
+// impl<V> Foo for (V, V) { ... }     // source impl
+// ```
+//
+// Suppose we have selected "source impl" with `V` instantiated with `u32`.
+// This function will produce a substitution with `T` and `U` both mapping to `u32`.
+//
+// Where clauses add some trickiness here, because they can be used to "define"
+// an argument indirectly:
+//
+// ```rust
+// impl<'a, I, T: 'a> Iterator for Cloned<I>
+//    where I: Iterator<Item=&'a T>, T: Clone
+// ```
+//
+// In a case like this, the substitution for `T` is determined indirectly,
+// through associated type projection. We deal with such cases by using
+// *fulfillment* to relate the two impls, requiring that all projections are
+// resolved.
+pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                  source_impl: DefId,
+                                  source_substs: Substs<'tcx>,
+                                  target_node: specialization_graph::Node)
+                                  -> Substs<'tcx>
+{
+    let source_trait_ref = infcx.tcx
+                                .impl_trait_ref(source_impl)
+                                .unwrap()
+                                .subst(infcx.tcx, &source_substs);
+
+    // translate the Self and TyParam parts of the substitution, since those
+    // vary across impls
+    let target_substs = match target_node {
+        specialization_graph::Node::Impl(target_impl) => {
             // no need to translate if we're targetting the impl we started with
-            if from_impl == to_impl {
-                return from_impl_substs;
+            if source_impl == target_impl {
+                return source_substs;
             }
 
-            translate_substs_between_impls(tcx, from_impl, from_impl_substs, to_impl)
-
+            fulfill_implication(infcx, source_trait_ref, target_impl).unwrap_or_else(|_| {
+                infcx.tcx
+                     .sess
+                     .bug("When translating substitutions for specialization, the expected \
+                           specializaiton failed to hold")
+            })
         }
-        specialization_graph::Node::Trait(..) => {
-            translate_substs_from_impl_to_trait(tcx, from_impl, from_impl_substs)
-        }
-    }
+        specialization_graph::Node::Trait(..) => source_trait_ref.substs.clone(),
+    };
+
+    // retain erasure mode
+    // NB: this must happen before inheriting method generics below
+    let target_substs = if source_substs.regions.is_erased() {
+        target_substs.erase_regions()
+    } else {
+        target_substs
+    };
+
+    // directly inherent the method generics, since those do not vary across impls
+    target_substs.with_method_from_subst(&source_substs)
 }
 
-/// When we have selected one impl, but are actually using item definitions from
-/// a parent impl providing a default, we need a way to translate between the
-/// type parameters of the two impls. Here the `source_impl` is the one we've
-/// selected, and `source_substs` is a substitution of its generics (and
-/// possibly some relevant `FnSpace` variables as well). And `target_impl` is
-/// the impl we're actually going to get the definition from. The resulting
-/// substitution will map from `target_impl`'s generics to `source_impl`'s
-/// generics as instantiated by `source_subst`.
-///
-/// For example, consider the following scenario:
-///
-/// ```rust
-/// trait Foo { ... }
-/// impl<T, U> Foo for (T, U) { ... }  // target impl
-/// impl<V> Foo for (V, V) { ... }     // source impl
-/// ```
-///
-/// Suppose we have selected "source impl" with `V` instantiated with `u32`.
-/// This function will produce a substitution with `T` and `U` both mapping to `u32`.
-///
-/// Where clauses add some trickiness here, because they can be used to "define"
-/// an argument indirectly:
-///
-/// ```rust
-/// impl<'a, I, T: 'a> Iterator for Cloned<I>
-///    where I: Iterator<Item=&'a T>, T: Clone
-/// ```
-///
-/// In a case like this, the substitution for `T` is determined indirectly,
-/// through associated type projection. We deal with such cases by using
-/// *fulfillment* to relate the two impls, requiring that all projections are
-/// resolved.
-fn translate_substs_between_impls<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                        source_impl: DefId,
-                                        source_substs: Substs<'tcx>,
-                                        target_impl: DefId)
-                                        -> Substs<'tcx> {
 
-    // We need to build a subst that covers all the generics of
-    // `target_impl`. Start by introducing fresh infer variables:
-    let target_generics = tcx.lookup_item_type(target_impl).generics;
-    let mut infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-    let mut target_substs = infcx.fresh_substs_for_generics(DUMMY_SP, &target_generics);
-    if source_substs.regions.is_erased() {
-        target_substs = target_substs.erase_regions()
-    }
+fn skolemizing_subst_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                        impl_def_id: DefId)
+                                        -> Substs<'tcx>
+{
+    let impl_generics = infcx.tcx.lookup_item_type(impl_def_id).generics;
 
-    if !fulfill_implication(&mut infcx,
-                            source_impl,
-                            source_substs.clone(),
-                            target_impl,
-                            target_substs.clone()) {
-        tcx.sess
-           .bug("When translating substitutions for specialization, the expected specializaiton \
-                 failed to hold")
-    }
+    let types = impl_generics.types.map(|def| infcx.tcx.mk_param_from_def(def));
 
-    // Now resolve the *substitution* we built for the target earlier, replacing
-    // the inference variables inside with whatever we got from fulfillment. We
-    // also carry along any FnSpace substitutions, which don't need to be
-    // adjusted when mapping from one impl to another.
-    infcx.resolve_type_vars_if_possible(&target_substs)
-         .with_method_from_subst(&source_substs)
-}
-
-/// When we've selected an impl but need to use an item definition provided by
-/// the trait itself, we need to translate the substitution applied to the impl
-/// to one that makes sense for the trait.
-fn translate_substs_from_impl_to_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                             source_impl: DefId,
-                                             source_substs: Substs<'tcx>)
-                                             -> Substs<'tcx> {
-
-    let source_trait_ref = tcx.impl_trait_ref(source_impl).unwrap().subst(tcx, &source_substs);
-
-    let mut new_substs = source_trait_ref.substs.clone();
-    if source_substs.regions.is_erased() {
-        new_substs = new_substs.erase_regions()
-    }
-
-    // Carry any FnSpace substitutions along; they don't need to be adjusted
-    new_substs.with_method_from_subst(&source_substs)
-}
-
-fn skolemizing_subst_for_impl<'a>(tcx: &ty::ctxt<'a>, impl_def_id: DefId) -> Substs<'a> {
-    let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
-
-    let types = impl_generics.types.map(|def| tcx.mk_param_from_def(def));
-
-    // FIXME: figure out what we actually want here
+    // TODO: figure out what we actually want here
     let regions = impl_generics.regions.map(|_| ty::Region::ReStatic);
     // |d| infcx.next_region_var(infer::RegionVariableOrigin::EarlyBoundRegion(span, d.name)));
 
@@ -170,101 +144,101 @@ pub fn specializes(tcx: &ty::ctxt, impl1_def_id: DefId, impl2_def_id: DefId) -> 
     // We determine whether there's a subset relationship by:
     //
     // - skolemizing impl1,
-    // - instantiating impl2 with fresh inference variables,
     // - assuming the where clauses for impl1,
+    // - instantiating impl2 with fresh inference variables,
     // - unifying,
     // - attempting to prove the where clauses for impl2
     //
-    // The last three steps are essentially checking for an implication between two impls
-    // after appropriate substitutions. This is what `fulfill_implication` checks for.
+    // The last three steps are encapsulated in `fulfill_implication`.
     //
     // See RFC 1210 for more details and justification.
 
     let mut infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
 
-    let impl1_substs = skolemizing_subst_for_impl(tcx, impl1_def_id);
-    let impl2_substs = util::fresh_type_vars_for_impl(&infcx, DUMMY_SP, impl2_def_id);
-
-    fulfill_implication(&mut infcx,
-                        impl1_def_id,
-                        impl1_substs,
-                        impl2_def_id,
-                        impl2_substs)
-}
-
-/// Does impl1 (instantiated with the impl1_substs) imply impl2
-/// (instantiated with impl2_substs)?
-///
-/// Mutates the `infcx` in two ways:
-/// - by adding the obligations of impl1 to the parameter environment
-/// - via fulfillment, so that if the implication holds the various unifications
-fn fulfill_implication<'a, 'tcx>(infcx: &mut InferCtxt<'a, 'tcx>,
-                                 impl1_def_id: DefId,
-                                 impl1_substs: Substs<'tcx>,
-                                 impl2_def_id: DefId,
-                                 impl2_substs: Substs<'tcx>)
-                                 -> bool {
-    let tcx = &infcx.tcx;
-
+    // Skiolemize impl1: we want to prove that "for all types matched by impl1,
+    // those types are also matched by impl2".
+    let impl1_substs = skolemizing_subst_for_impl(&infcx, impl1_def_id);
     let (impl1_trait_ref, impl1_obligations) = {
         let selcx = &mut SelectionContext::new(&infcx);
-        util::impl_trait_ref_and_oblig(selcx, impl1_def_id, &impl1_substs)
+        impl_trait_ref_and_oblig(selcx, impl1_def_id, &impl1_substs)
     };
 
+    // Add impl1's obligations as assumptions to the environment.
     let impl1_predicates: Vec<_> = impl1_obligations.iter()
                                                     .cloned()
                                                     .map(|oblig| oblig.predicate)
                                                     .collect();
-
     infcx.parameter_environment = ty::ParameterEnvironment {
         tcx: tcx,
         free_substs: impl1_substs,
-        implicit_region_bound: ty::ReEmpty, // FIXME: is this OK?
+        implicit_region_bound: ty::ReEmpty, // TODO: is this OK?
         caller_bounds: impl1_predicates,
         selection_cache: traits::SelectionCache::new(),
         evaluation_cache: traits::EvaluationCache::new(),
-        free_id_outlive: region::DUMMY_CODE_EXTENT, // FIXME: is this OK?
+        free_id_outlive: region::DUMMY_CODE_EXTENT, // TODO: is this OK?
     };
 
-    let selcx = &mut build_selcx(&infcx).project_topmost().build();
-    let (impl2_trait_ref, impl2_obligations) = util::impl_trait_ref_and_oblig(selcx,
-                                                                              impl2_def_id,
-                                                                              &impl2_substs);
+    // Attempt to prove that impl2 applies, given all of the above.
+    fulfill_implication(&infcx, impl1_trait_ref, impl2_def_id).is_ok()
+}
 
-    // do the impls unify? If not, no specialization.
-    if let Err(_) = infer::mk_eq_trait_refs(&infcx,
-                                            true,
-                                            TypeOrigin::Misc(DUMMY_SP),
-                                            impl1_trait_ref,
-                                            impl2_trait_ref) {
-        debug!("fulfill_implication: {:?} does not unify with {:?}",
-               impl1_trait_ref,
-               impl2_trait_ref);
-        return false;
-    }
+/// Attempt to fulfill all obligations of `target_impl` after unification with
+/// `source_trait_ref`. If successful, returns a substitution for *all* the
+/// generics of `target_impl`, including both those needed to unify with
+/// `source_trait_ref` and those whose identity is determined via a where
+/// clause in the impl.
+fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                 source_trait_ref: ty::TraitRef<'tcx>,
+                                 target_impl: DefId)
+                                 -> Result<Substs<'tcx>, ()>
+{
+    infcx.probe(|_| {
+        let selcx = &mut build_selcx(&infcx).project_topmost().build();
+        let target_substs = fresh_type_vars_for_impl(&infcx, DUMMY_SP, target_impl);
+        let (target_trait_ref, obligations) = impl_trait_ref_and_oblig(selcx,
+                                                                       target_impl,
+                                                                       &target_substs);
 
-    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+        // do the impls unify? If not, no specialization.
+        if let Err(_) = infer::mk_eq_trait_refs(&infcx,
+                                                true,
+                                                TypeOrigin::Misc(DUMMY_SP),
+                                                source_trait_ref,
+                                                target_trait_ref) {
+            debug!("fulfill_implication: {:?} does not unify with {:?}",
+                   source_trait_ref,
+                   target_trait_ref);
+            return Err(());
+        }
 
-    // attempt to prove all of the predicates for impl2 given those for impl1
-    // (which are packed up in penv)
+        // attempt to prove all of the predicates for impl2 given those for impl1
+        // (which are packed up in penv)
 
-    for oblig in impl2_obligations.into_iter() {
-        fulfill_cx.register_predicate_obligation(&infcx, oblig);
-    }
+        let mut fulfill_cx = FulfillmentContext::new();
+        for oblig in obligations.into_iter() {
+            fulfill_cx.register_predicate_obligation(&infcx, oblig);
+        }
 
-    if let Err(errors) = infer::drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()) {
-        // no dice!
-        debug!("fulfill_implication: for impls on {:?} and {:?}, could not fulfill: {:?} given \
-                {:?}",
-               impl1_trait_ref,
-               impl2_trait_ref,
-               errors,
-               infcx.parameter_environment.caller_bounds);
-        false
-    } else {
-        debug!("fulfill_implication: an impl for {:?} specializes {:?} (`where` clauses elided)",
-               impl1_trait_ref,
-               impl2_trait_ref);
-        true
-    }
+        if let Err(errors) = infer::drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()) {
+            // no dice!
+            debug!("fulfill_implication: for impls on {:?} and {:?}, could not fulfill: {:?} \
+                    given {:?}",
+                   source_trait_ref,
+                   target_trait_ref,
+                   errors,
+                   infcx.parameter_environment.caller_bounds);
+            Err(())
+        } else {
+            debug!("fulfill_implication: an impl for {:?} specializes {:?} (`where` clauses \
+                    elided)",
+                   source_trait_ref,
+                   target_trait_ref);
+
+            // Now resolve the *substitution* we built for the target earlier, replacing
+            // the inference variables inside with whatever we got from fulfillment.
+
+            // TODO: should this use `fully_resolve` instead?
+            Ok(infcx.resolve_type_vars_if_possible(&target_substs))
+        }
+    })
 }
