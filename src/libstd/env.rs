@@ -528,7 +528,7 @@ pub struct ArgsOs { inner: os_imp::Args }
 /// via the command line).
 ///
 /// The first element is traditionally the path to the executable, but it can be
-/// set to arbitrary text, and it may not even exist, so this property should
+/// set to arbitrary text, and may not even exist. This means this property should
 /// not be relied upon for security purposes.
 ///
 /// # Panics
