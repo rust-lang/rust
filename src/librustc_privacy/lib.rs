@@ -833,7 +833,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             NamedField(name) => format!("field `{}` of {} is private",
                                         name, struct_desc),
             UnnamedField(idx) => format!("field #{} of {} is private",
-                                         idx + 1, struct_desc),
+                                         idx, struct_desc),
         };
         span_err!(self.tcx.sess, span, E0451,
                   "{}", &msg[..]);
