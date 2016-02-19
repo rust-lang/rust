@@ -241,9 +241,6 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i as usize)),
 
             mir::Lvalue::Projection(ref proj) => {
-                // proj.base: Lvalue
-                // proj.elem: ProjectionElem<Operand>
-
                 let base_ptr = self.eval_lvalue(&proj.base);
 
                 match proj.elem {
