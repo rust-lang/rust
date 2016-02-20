@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use mir::repr::Mir;
-use middle::ty::ctxt;
+use middle::infer::InferCtxt;
 
 pub trait MirPass {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, tcx: &ctxt<'tcx>);
+    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, infcx: &InferCtxt<'a, 'tcx>);
 }

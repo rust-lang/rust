@@ -139,7 +139,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                           .collect();
                 block.and(Rvalue::Aggregate(AggregateKind::Closure(closure_id, substs), upvars))
             }
-            ExprKind::Adt { adt_def, variant_index, substs, fields, base } => { // see (*) above
+            ExprKind::Adt {
+                adt_def, variant_index, substs, fields, base
+            } => { // see (*) above
                 // first process the set of fields that were provided
                 // (evaluating them in order given by user)
                 let fields_map: FnvHashMap<_, _> =
@@ -147,25 +149,24 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                           .map(|f| (f.name, unpack!(block = this.as_operand(block, f.expr))))
                           .collect();
 
-                // if base expression is given, evaluate it now
-                let base = base.map(|base| unpack!(block = this.as_lvalue(block, base)));
-
-                // get list of all fields that we will need
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
-                // for the actual values we use, take either the
-                // expr the user specified or, if they didn't
-                // specify something for this field name, create a
-                // path relative to the base (which must have been
-                // supplied, or the IR is internally
-                // inconsistent).
-                let fields: Vec<_> =
+                let fields = if let Some(FruInfo { base, field_types }) = base {
+                    let base = unpack!(block = this.as_lvalue(block, base));
+
+                    // MIR does not natively support FRU, so for each
+                    // base-supplied field, generate an operand that
+                    // reads it from the base.
                     field_names.into_iter()
-                               .map(|n| match fields_map.get(&n) {
-                                   Some(v) => v.clone(),
-                                   None => Operand::Consume(base.clone().unwrap().field(n)),
-                               })
-                               .collect();
+                        .zip(field_types.into_iter())
+                        .map(|(n, ty)| match fields_map.get(&n) {
+                            Some(v) => v.clone(),
+                            None => Operand::Consume(base.clone().field(n, ty))
+                        })
+                        .collect()
+                } else {
+                    field_names.iter().map(|n| fields_map[n].clone()).collect()
+                };
 
                 block.and(Rvalue::Aggregate(AggregateKind::Adt(adt_def, variant_index, substs),
                                             fields))

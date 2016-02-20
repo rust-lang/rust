@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc::middle::const_eval::ConstVal;
+use rustc::middle::infer;
 use rustc::mir::repr::*;
 use transform::util;
 use rustc::mir::transform::MirPass;
@@ -119,7 +120,7 @@ impl SimplifyCfg {
 }
 
 impl MirPass for SimplifyCfg {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &::rustc::middle::ty::ctxt<'tcx>) {
+    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &infer::InferCtxt<'a, 'tcx>) {
         let mut changed = true;
         while changed {
             changed = self.simplify_branches(mir);

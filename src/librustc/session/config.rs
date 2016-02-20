@@ -138,6 +138,7 @@ pub struct Options {
     pub no_trans: bool,
     pub error_format: ErrorOutputType,
     pub treat_err_as_bug: bool,
+    pub mir_opt_level: usize,
 
     /// if true, build up the dep-graph
     pub build_dep_graph: bool,
@@ -254,6 +255,7 @@ pub fn basic_options() -> Options {
         parse_only: false,
         no_trans: false,
         treat_err_as_bug: false,
+        mir_opt_level: 1,
         build_dep_graph: false,
         dump_dep_graph: false,
         no_analysis: false,
@@ -655,6 +657,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "show spans for compiler debugging (expr|pat|ty)"),
     print_trans_items: Option<String> = (None, parse_opt_string,
           "print the result of the translation item collection pass"),
+    mir_opt_level: Option<usize> = (None, parse_opt_uint,
+          "set the MIR optimization level (0-3)"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -988,6 +992,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
     let treat_err_as_bug = debugging_opts.treat_err_as_bug;
+    let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(1);
     let incremental_compilation = debugging_opts.incr_comp;
     let dump_dep_graph = debugging_opts.dump_dep_graph;
     let no_analysis = debugging_opts.no_analysis;
@@ -1166,6 +1171,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         parse_only: parse_only,
         no_trans: no_trans,
         treat_err_as_bug: treat_err_as_bug,
+        mir_opt_level: mir_opt_level,
         build_dep_graph: incremental_compilation || dump_dep_graph,
         dump_dep_graph: dump_dep_graph,
         no_analysis: no_analysis,

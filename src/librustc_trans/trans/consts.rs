@@ -40,7 +40,7 @@ use trans::type_of;
 use trans::Disr;
 use middle::subst::Substs;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
-use middle::ty::adjustment::AdjustUnsafeFnPointer;
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use middle::ty::{self, Ty};
 use middle::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
@@ -354,7 +354,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }
-        Some(AdjustUnsafeFnPointer) => {
+        Some(AdjustUnsafeFnPointer) | Some(AdjustMutToConstPointer) => {
             // purely a type-level thing
         }
         Some(AdjustDerefRef(adj)) => {

@@ -67,7 +67,7 @@ use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use middle::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
-use middle::ty::adjustment::{AdjustUnsafeFnPointer};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use middle::ty::{self, LvaluePreference, TypeAndMut, Ty};
 use middle::ty::fold::TypeFoldable;
 use middle::ty::error::TypeError;
@@ -427,6 +427,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 autoref: Some(AutoUnsafe(mutbl_b)),
                 unsize: None
             })))
+        } else if mt_a.mutbl != mutbl_b {
+            Ok(Some(AdjustMutToConstPointer))
         } else {
             Ok(None)
         }
