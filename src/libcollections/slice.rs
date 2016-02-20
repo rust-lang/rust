@@ -406,8 +406,8 @@ impl<T> [T] {
         core_slice::SliceExt::windows(self, size)
     }
 
-    /// Returns an iterator over `size` slices of the slice at a
-    /// time. The chunks do not overlap. If `size` does not divide the
+    /// Returns an iterator over `size` elements of the slice at a
+    /// time. The chunks are slices and do not overlap. If `size` does not divide the
     /// length of the slice, then the last chunk will not have length
     /// `size`.
     ///
@@ -432,8 +432,8 @@ impl<T> [T] {
         core_slice::SliceExt::chunks(self, size)
     }
 
-    /// Returns an iterator over `chunk_size` slices of the slice at a time.
-    /// The chunks are mutable and do not overlap. If `chunk_size` does
+    /// Returns an iterator over `chunk_size` elements of the slice at a time.
+    /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last chunk will not
     /// have length `chunk_size`.
     ///
