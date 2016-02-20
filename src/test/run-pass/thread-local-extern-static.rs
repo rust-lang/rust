@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:thread-local-extern-static.rs
+
 #![feature(thread_local)]
 
 extern crate thread_local_extern_static;
