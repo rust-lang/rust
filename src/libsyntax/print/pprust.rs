@@ -11,7 +11,7 @@
 pub use self::AnnNode::*;
 
 use abi::{self, Abi};
-use ast::{self, TokenTree, BlockCheckMode};
+use ast::{self, TokenTree, BlockCheckMode, PatKind};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use attr::ThinAttributesExt;
@@ -2457,8 +2457,8 @@ impl<'a> State<'a> {
         /* Pat isn't normalized, but the beauty of it
          is that it doesn't matter */
         match pat.node {
-            ast::PatWild => try!(word(&mut self.s, "_")),
-            ast::PatIdent(binding_mode, ref path1, ref sub) => {
+            PatKind::Wild => try!(word(&mut self.s, "_")),
+            PatKind::Ident(binding_mode, ref path1, ref sub) => {
                 match binding_mode {
                     ast::BindingMode::ByRef(mutbl) => {
                         try!(self.word_nbsp("ref"));
@@ -2478,24 +2478,25 @@ impl<'a> State<'a> {
                     None => ()
                 }
             }
-            ast::PatEnum(ref path, ref args_) => {
+            PatKind::TupleStruct(ref path, ref args_) => {
                 try!(self.print_path(path, true, 0));
                 match *args_ {
                     None => try!(word(&mut self.s, "(..)")),
                     Some(ref args) => {
-                        if !args.is_empty() {
-                            try!(self.popen());
-                            try!(self.commasep(Inconsistent, &args[..],
-                                              |s, p| s.print_pat(&p)));
-                            try!(self.pclose());
-                        }
+                        try!(self.popen());
+                        try!(self.commasep(Inconsistent, &args[..],
+                                          |s, p| s.print_pat(&p)));
+                        try!(self.pclose());
                     }
                 }
             }
-            ast::PatQPath(ref qself, ref path) => {
+            PatKind::Path(ref path) => {
+                try!(self.print_path(path, true, 0));
+            }
+            PatKind::QPath(ref qself, ref path) => {
                 try!(self.print_qpath(path, qself, false));
             }
-            ast::PatStruct(ref path, ref fields, etc) => {
+            PatKind::Struct(ref path, ref fields, etc) => {
                 try!(self.print_path(path, true, 0));
                 try!(self.nbsp());
                 try!(self.word_space("{"));
@@ -2518,7 +2519,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(word(&mut self.s, "}"));
             }
-            ast::PatTup(ref elts) => {
+            PatKind::Tup(ref elts) => {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent,
                                    &elts[..],
@@ -2528,32 +2529,32 @@ impl<'a> State<'a> {
                 }
                 try!(self.pclose());
             }
-            ast::PatBox(ref inner) => {
+            PatKind::Box(ref inner) => {
                 try!(word(&mut self.s, "box "));
                 try!(self.print_pat(&inner));
             }
-            ast::PatRegion(ref inner, mutbl) => {
+            PatKind::Ref(ref inner, mutbl) => {
                 try!(word(&mut self.s, "&"));
                 if mutbl == ast::Mutability::Mutable {
                     try!(word(&mut self.s, "mut "));
                 }
                 try!(self.print_pat(&inner));
             }
-            ast::PatLit(ref e) => try!(self.print_expr(&e)),
-            ast::PatRange(ref begin, ref end) => {
+            PatKind::Lit(ref e) => try!(self.print_expr(&**e)),
+            PatKind::Range(ref begin, ref end) => {
                 try!(self.print_expr(&begin));
                 try!(space(&mut self.s));
                 try!(word(&mut self.s, "..."));
                 try!(self.print_expr(&end));
             }
-            ast::PatVec(ref before, ref slice, ref after) => {
+            PatKind::Vec(ref before, ref slice, ref after) => {
                 try!(word(&mut self.s, "["));
                 try!(self.commasep(Inconsistent,
                                    &before[..],
                                    |s, p| s.print_pat(&p)));
                 if let Some(ref p) = *slice {
                     if !before.is_empty() { try!(self.word_space(",")); }
-                    if p.node != ast::PatWild {
+                    if p.node != PatKind::Wild {
                         try!(self.print_pat(&p));
                     }
                     try!(word(&mut self.s, ".."));
@@ -2564,7 +2565,7 @@ impl<'a> State<'a> {
                                    |s, p| s.print_pat(&p)));
                 try!(word(&mut self.s, "]"));
             }
-            ast::PatMac(ref m) => try!(self.print_mac(m, token::Paren)),
+            PatKind::Mac(ref m) => try!(self.print_mac(m, token::Paren)),
         }
         self.ann.post(self, NodePat(pat))
     }
@@ -2671,7 +2672,7 @@ impl<'a> State<'a> {
             let m = match *explicit_self {
                 ast::SelfKind::Static => ast::Mutability::Immutable,
                 _ => match decl.inputs[0].pat.node {
-                    ast::PatIdent(ast::BindingMode::ByValue(m), _, _) => m,
+                    PatKind::Ident(ast::BindingMode::ByValue(m), _, _) => m,
                     _ => ast::Mutability::Immutable
                 }
             };
@@ -2962,7 +2963,7 @@ impl<'a> State<'a> {
             ast::TyKind::Infer if is_closure => try!(self.print_pat(&input.pat)),
             _ => {
                 match input.pat.node {
-                    ast::PatIdent(_, ref path1, _) if
+                    PatKind::Ident(_, ref path1, _) if
                         path1.node.name ==
                             parse::token::special_idents::invalid.name => {
                         // Do nothing.

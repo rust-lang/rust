@@ -12,6 +12,7 @@ use alloc::heap::{allocate, deallocate, EMPTY};
 
 use cmp;
 use hash::{Hash, Hasher, BuildHasher};
+use intrinsics::needs_drop;
 use marker;
 use mem::{align_of, size_of};
 use mem;
@@ -1009,7 +1010,9 @@ impl<K, V> Drop for RawTable<K, V> {
         // dropping empty tables such as on resize.
         // Also avoid double drop of elements that have been already moved out.
         unsafe {
-            for _ in self.rev_move_buckets() {}
+            if needs_drop::<(K, V)>() { // avoid linear runtime for types that don't need drop
+                for _ in self.rev_move_buckets() {}
+            }
         }
 
         let hashes_size = self.capacity * size_of::<u64>();

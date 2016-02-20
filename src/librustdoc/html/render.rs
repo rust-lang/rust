@@ -554,7 +554,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
                         path: fqp[..fqp.len() - 1].join("::"),
-                        desc: shorter(item.doc_value()),
+                        desc: Escape(&shorter(item.doc_value())).to_string(),
                         parent: Some(did),
                         search_type: get_index_search_type(&item, parent_basename),
                     });
@@ -1065,7 +1065,7 @@ impl DocFolder for Cache {
                             ty: shortty(&item),
                             name: s.to_string(),
                             path: path.join("::").to_string(),
-                            desc: shorter(item.doc_value()),
+                            desc: Escape(&shorter(item.doc_value())).to_string(),
                             parent: parent,
                             search_type: get_index_search_type(&item, parent_basename),
                         });
@@ -1501,11 +1501,17 @@ impl<'a> Item<'a> {
                           true, |component| {
                 path.push(component.to_string());
             });
-            Some(format!("{root}src/{krate}/{path}.html#{href}",
-                         root = self.cx.root_path,
-                         krate = self.cx.layout.krate,
-                         path = path.join("/"),
-                         href = href))
+            // If the span points into an external macro the
+            // source-file will be bogus, i.e `<foo macros>`
+            if Path::new(&self.item.source.filename).is_file() {
+                Some(format!("{root}src/{krate}/{path}.html#{href}",
+                             root = self.cx.root_path,
+                             krate = self.cx.layout.krate,
+                             path = path.join("/"),
+                             href = href))
+            } else {
+                None
+            }
 
         // If this item is not part of the local crate, then things get a little
         // trickier. We don't actually know the span of the external item, but
@@ -1653,8 +1659,8 @@ fn shorter<'a>(s: Option<&'a str>) -> String {
 
 #[inline]
 fn plain_summary_line(s: Option<&str>) -> String {
-    let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line(&line[..])
+    let md = markdown::plain_summary_line(s.unwrap_or(""));
+    shorter(Some(&md)).replace("\n", " ")
 }
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
@@ -1781,6 +1787,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 } else {
                     String::new()
                 };
+                let doc_value = myitem.doc_value().unwrap_or("");
                 try!(write!(w, "
                     <tr class='{stab} module-item'>
                         <td><a class='{class}' href='{href}'
@@ -1792,7 +1799,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ",
                 name = *myitem.name.as_ref().unwrap(),
                 stab_docs = stab_docs,
-                docs = Markdown(&shorter(myitem.doc_value())),
+                docs = shorter(Some(&Markdown(doc_value).to_string())),
                 class = shortty(myitem),
                 stab = myitem.stability_class(),
                 href = item_path(myitem),
@@ -2550,25 +2557,25 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
-                let id = derive_id(format!("assoc_type.{}", name));
+                let id = derive_id(format!("associatedtype.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(write!(w, "type {} = {}", name, tydef.type_));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
-                let id = derive_id(format!("assoc_const.{}", name));
+                let id = derive_id(format!("associatedconstant.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(assoc_const(w, item, ty, default.as_ref()));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::ConstantItem(ref c) => {
-                let id = derive_id(format!("assoc_const.{}", name));
+                let id = derive_id(format!("associatedconstant.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(assoc_const(w, item, &c.type_, Some(&c.expr)));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
-                let id = derive_id(format!("assoc_type.{}", name));
+                let id = derive_id(format!("associatedtype.{}", name));
                 try!(write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item)));
                 try!(assoc_type(w, item, bounds, default));
                 try!(write!(w, "</code></h4>\n"));

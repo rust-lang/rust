@@ -27,7 +27,7 @@ use middle::mem_categorization as mc;
 use middle::ty;
 use middle::ty::adjustment;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 
 use syntax::ast;
 use syntax::ptr::P;
@@ -946,9 +946,9 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             let def_map = &self.tcx().def_map;
             if pat_util::pat_is_binding(&def_map.borrow(), pat) {
                 match pat.node {
-                    hir::PatIdent(hir::BindByRef(_), _, _) =>
+                    PatKind::Ident(hir::BindByRef(_), _, _) =>
                         mode.lub(BorrowingMatch),
-                    hir::PatIdent(hir::BindByValue(_), _, _) => {
+                    PatKind::Ident(hir::BindByValue(_), _, _) => {
                         match copy_or_move(self.typer, &cmt_pat, PatBindingMove) {
                             Copy => mode.lub(CopyingMatch),
                             Move(_) => mode.lub(MovingMatch),
@@ -1002,14 +1002,14 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
                 // It is also a borrow or copy/move of the value being matched.
                 match pat.node {
-                    hir::PatIdent(hir::BindByRef(m), _, _) => {
+                    PatKind::Ident(hir::BindByRef(m), _, _) => {
                         if let ty::TyRef(&r, _) = pat_ty.sty {
                             let bk = ty::BorrowKind::from_mutbl(m);
                             delegate.borrow(pat.id, pat.span, cmt_pat,
                                             r, bk, RefBinding);
                         }
                     }
-                    hir::PatIdent(hir::BindByValue(_), _, _) => {
+                    PatKind::Ident(hir::BindByValue(_), _, _) => {
                         let mode = copy_or_move(typer, &cmt_pat, PatBindingMove);
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
@@ -1022,7 +1022,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 }
             } else {
                 match pat.node {
-                    hir::PatVec(_, Some(ref slice_pat), _) => {
+                    PatKind::Vec(_, Some(ref slice_pat), _) => {
                         // The `slice_pat` here creates a slice into
                         // the original vector.  This is effectively a
                         // borrow of the elements of the vector being
@@ -1070,8 +1070,8 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             let tcx = typer.tcx;
 
             match pat.node {
-                hir::PatEnum(_, _) | hir::PatQPath(..) |
-                hir::PatIdent(_, _, None) | hir::PatStruct(..) => {
+                PatKind::TupleStruct(..) | PatKind::Path(..) | PatKind::QPath(..) |
+                PatKind::Ident(_, _, None) | PatKind::Struct(..) => {
                     match def_map.get(&pat.id).map(|d| d.full_def()) {
                         None => {
                             // no definition found: pat is not a
@@ -1134,15 +1134,15 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                     }
                 }
 
-                hir::PatIdent(_, _, Some(_)) => {
+                PatKind::Ident(_, _, Some(_)) => {
                     // Do nothing; this is a binding (not an enum
                     // variant or struct), and the cat_pattern call
                     // will visit the substructure recursively.
                 }
 
-                hir::PatWild | hir::PatTup(..) | hir::PatBox(..) |
-                hir::PatRegion(..) | hir::PatLit(..) | hir::PatRange(..) |
-                hir::PatVec(..) => {
+                PatKind::Wild | PatKind::Tup(..) | PatKind::Box(..) |
+                PatKind::Ref(..) | PatKind::Lit(..) | PatKind::Range(..) |
+                PatKind::Vec(..) => {
                     // Similarly, each of these cases does not
                     // correspond to an enum variant or struct, so we
                     // do not do any `matched_pat` calls for these

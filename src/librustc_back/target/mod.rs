@@ -65,12 +65,13 @@ mod windows_msvc_base;
 
 macro_rules! supported_targets {
     ( $(($triple:expr, $module:ident)),+ ) => (
+        $(mod $module;)*
+
         /// List of supported targets
         pub const TARGETS: &'static [&'static str] = &[$($triple),*];
 
         // this would use a match if stringify! were allowed in pattern position
         fn load_specific(target: &str) -> Option<Target> {
-            $(mod $module;)*
             let target = target.replace("-", "_");
             if false { }
             $(
@@ -89,6 +90,7 @@ macro_rules! supported_targets {
 supported_targets! {
     ("x86_64-unknown-linux-gnu", x86_64_unknown_linux_gnu),
     ("i686-unknown-linux-gnu", i686_unknown_linux_gnu),
+    ("i586-unknown-linux-gnu", i586_unknown_linux_gnu),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
     ("mipsel-unknown-linux-gnu", mipsel_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),

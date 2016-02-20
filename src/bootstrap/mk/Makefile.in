@@ -21,3 +21,6 @@ BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py $(BOOTSTRAP_
 
 all:
 	$(Q)$(BOOTSTRAP)
+
+clean:
+	$(Q)$(BOOTSTRAP) --clean

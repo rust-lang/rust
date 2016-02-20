@@ -30,7 +30,11 @@ pub struct File { handle: Handle }
 
 #[derive(Clone)]
 pub struct FileAttr {
-    data: c::WIN32_FILE_ATTRIBUTE_DATA,
+    attributes: c::DWORD,
+    creation_time: c::FILETIME,
+    last_access_time: c::FILETIME,
+    last_write_time: c::FILETIME,
+    file_size: u64,
     reparse_tag: c::DWORD,
 }
 
@@ -142,15 +146,17 @@ impl DirEntry {
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
         Ok(FileAttr {
-            data: c::WIN32_FILE_ATTRIBUTE_DATA {
-                dwFileAttributes: self.data.dwFileAttributes,
-                ftCreationTime: self.data.ftCreationTime,
-                ftLastAccessTime: self.data.ftLastAccessTime,
-                ftLastWriteTime: self.data.ftLastWriteTime,
-                nFileSizeHigh: self.data.nFileSizeHigh,
-                nFileSizeLow: self.data.nFileSizeLow,
-            },
-            reparse_tag: self.data.dwReserved0,
+            attributes: self.data.dwFileAttributes,
+            creation_time: self.data.ftCreationTime,
+            last_access_time: self.data.ftLastAccessTime,
+            last_write_time: self.data.ftLastWriteTime,
+            file_size: ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64),
+            reparse_tag: if self.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                    // reserved unless this is a reparse point
+                    self.data.dwReserved0
+                } else {
+                    0
+                },
         })
     }
 }
@@ -240,15 +246,6 @@ impl OpenOptions {
 }
 
 impl File {
-    fn open_reparse_point(path: &Path, write: bool) -> io::Result<File> {
-        let mut opts = OpenOptions::new();
-        opts.read(!write);
-        opts.write(write);
-        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT |
-                          c::FILE_FLAG_BACKUP_SEMANTICS);
-        File::open(path, &opts)
-    }
-
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = try!(to_u16s(path));
         let handle = unsafe {
@@ -294,14 +291,11 @@ impl File {
             try!(cvt(c::GetFileInformationByHandle(self.handle.raw(),
                                                    &mut info)));
             let mut attr = FileAttr {
-                data: c::WIN32_FILE_ATTRIBUTE_DATA {
-                    dwFileAttributes: info.dwFileAttributes,
-                    ftCreationTime: info.ftCreationTime,
-                    ftLastAccessTime: info.ftLastAccessTime,
-                    ftLastWriteTime: info.ftLastWriteTime,
-                    nFileSizeHigh: info.nFileSizeHigh,
-                    nFileSizeLow: info.nFileSizeLow,
-                },
+                attributes: info.dwFileAttributes,
+                creation_time: info.ftCreationTime,
+                last_access_time: info.ftLastAccessTime,
+                last_write_time: info.ftLastWriteTime,
+                file_size: ((info.nFileSizeHigh as u64) << 32) | (info.nFileSizeLow as u64),
                 reparse_tag: 0,
             };
             if attr.is_reparse_point() {
@@ -371,19 +365,34 @@ impl File {
     fn readlink(&self) -> io::Result<PathBuf> {
         let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
         let (_bytes, buf) = try!(self.reparse_point(&mut space));
-        if buf.ReparseTag != c::IO_REPARSE_TAG_SYMLINK {
-            return Err(io::Error::new(io::ErrorKind::Other, "not a symlink"))
-        }
-
         unsafe {
-            let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
-                    &buf.rest as *const _ as *const _;
-            let path_buffer = &(*info).PathBuffer as *const _ as *const u16;
-            let subst_off = (*info).SubstituteNameOffset / 2;
+            let (path_buffer, subst_off, subst_len, relative) = match buf.ReparseTag {
+                c::IO_REPARSE_TAG_SYMLINK => {
+                    let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
+                        &buf.rest as *const _ as *const _;
+                    (&(*info).PathBuffer as *const _ as *const u16,
+                     (*info).SubstituteNameOffset / 2,
+                     (*info).SubstituteNameLength / 2,
+                     (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0)
+                },
+                c::IO_REPARSE_TAG_MOUNT_POINT => {
+                    let info: *const c::MOUNT_POINT_REPARSE_BUFFER =
+                        &buf.rest as *const _ as *const _;
+                    (&(*info).PathBuffer as *const _ as *const u16,
+                     (*info).SubstituteNameOffset / 2,
+                     (*info).SubstituteNameLength / 2,
+                     false)
+                },
+                _ => return Err(io::Error::new(io::ErrorKind::Other,
+                                               "Unsupported reparse point type"))
+            };
             let subst_ptr = path_buffer.offset(subst_off as isize);
-            let subst_len = (*info).SubstituteNameLength / 2;
-            let subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
-
+            let mut subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
+            // Absolute paths start with an NT internal namespace prefix `\??\`
+            // We should not let it leak through.
+            if !relative && subst.starts_with(&[92u16, 63u16, 63u16, 92u16]) {
+                subst = &subst[4..];
+            }
             Ok(PathBuf::from(OsString::from_wide(subst)))
         }
     }
@@ -409,45 +418,45 @@ impl fmt::Debug for File {
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
-        ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64)
+        self.file_size
     }
 
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { attrs: self.data.dwFileAttributes }
+        FilePermissions { attrs: self.attributes }
     }
 
-    pub fn attrs(&self) -> u32 { self.data.dwFileAttributes as u32 }
+    pub fn attrs(&self) -> u32 { self.attributes as u32 }
 
     pub fn file_type(&self) -> FileType {
-        FileType::new(self.data.dwFileAttributes, self.reparse_tag)
+        FileType::new(self.attributes, self.reparse_tag)
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.data.ftLastWriteTime))
+        Ok(SystemTime::from(self.last_write_time))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.data.ftLastAccessTime))
+        Ok(SystemTime::from(self.last_access_time))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(self.data.ftCreationTime))
+        Ok(SystemTime::from(self.creation_time))
     }
 
     pub fn modified_u64(&self) -> u64 {
-        to_u64(&self.data.ftLastWriteTime)
+        to_u64(&self.last_write_time)
     }
 
     pub fn accessed_u64(&self) -> u64 {
-        to_u64(&self.data.ftLastAccessTime)
+        to_u64(&self.last_access_time)
     }
 
     pub fn created_u64(&self) -> u64 {
-        to_u64(&self.data.ftCreationTime)
+        to_u64(&self.creation_time)
     }
 
     fn is_reparse_point(&self) -> bool {
-        self.data.dwFileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
+        self.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
     }
 }
 
@@ -577,8 +586,15 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     rmdir(path)
 }
 
-pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let file = try!(File::open_reparse_point(p, false));
+pub fn readlink(path: &Path) -> io::Result<PathBuf> {
+    // Open the link with no access mode, instead of generic read.
+    // By default FILE_LIST_DIRECTORY is denied for the junction "C:\Documents and Settings", so
+    // this is needed for a common case.
+    let mut opts = OpenOptions::new();
+    opts.access_mode(0);
+    opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT |
+                      c::FILE_FLAG_BACKUP_SEMANTICS);
+    let file = try!(File::open(&path, &opts));
     file.readlink()
 }
 
@@ -605,42 +621,23 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let attr = try!(lstat(p));
-
-    // If this is a reparse point, then we need to reopen the file to get the
-    // actual destination. We also pass the FILE_FLAG_BACKUP_SEMANTICS flag to
-    // ensure that we can open directories (this path may be a directory
-    // junction). Once the file is opened we ask the opened handle what its
-    // metadata information is.
-    if attr.is_reparse_point() {
-        let mut opts = OpenOptions::new();
-        // No read or write permissions are necessary
-        opts.access_mode(0);
-        // This flag is so we can open directories too
-        opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
-        let file = try!(File::open(p, &opts));
-        file.file_attr()
-    } else {
-        Ok(attr)
-    }
+pub fn stat(path: &Path) -> io::Result<FileAttr> {
+    let mut opts = OpenOptions::new();
+    // No read or write permissions are necessary
+    opts.access_mode(0);
+    // This flag is so we can open directories too
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
+    let file = try!(File::open(path, &opts));
+    file.file_attr()
 }
 
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let u16s = try!(to_u16s(p));
-    unsafe {
-        let mut attr: FileAttr = mem::zeroed();
-        try!(cvt(c::GetFileAttributesExW(u16s.as_ptr(),
-                                         c::GetFileExInfoStandard,
-                                         &mut attr.data as *mut _ as *mut _)));
-        if attr.is_reparse_point() {
-            attr.reparse_tag = File::open_reparse_point(p, false).and_then(|f| {
-                let mut b = [0; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-                f.reparse_point(&mut b).map(|(_, b)| b.ReparseTag)
-            }).unwrap_or(0);
-        }
-        Ok(attr)
-    }
+pub fn lstat(path: &Path) -> io::Result<FileAttr> {
+    let mut opts = OpenOptions::new();
+    // No read or write permissions are necessary
+    opts.access_mode(0);
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
+    let file = try!(File::open(path, &opts));
+    file.file_attr()
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
@@ -709,7 +706,12 @@ pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::R
 fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
     try!(d.mkdir(&junction));
-    let f = try!(File::open_reparse_point(junction, true));
+
+    let mut opts = OpenOptions::new();
+    opts.write(true);
+    opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT |
+                      c::FILE_FLAG_BACKUP_SEMANTICS);
+    let f = try!(File::open(junction, &opts));
     let h = f.handle().raw();
 
     unsafe {

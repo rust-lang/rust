@@ -30,6 +30,7 @@ macro_rules! t {
 
 mod cc;
 mod channel;
+mod clean;
 mod compile;
 mod config;
 mod flags;
@@ -121,6 +122,10 @@ impl Build {
         }
         #[cfg(not(windows))] fn setup_job() {}
         setup_job();
+
+        if self.flags.clean {
+            return clean::clean(self);
+        }
 
         cc::find(self);
         sanity::check(self);

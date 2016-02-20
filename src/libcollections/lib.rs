@@ -45,6 +45,8 @@
 #![feature(nonzero)]
 #![feature(num_bits_bytes)]
 #![feature(pattern)]
+#![feature(placement_in)]
+#![feature(placement_new_protocol)]
 #![feature(shared)]
 #![feature(slice_bytes)]
 #![feature(slice_patterns)]

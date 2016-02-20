@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 enum BtNode {
     Node(u32,Box<BtNode>,Box<BtNode>),
     Leaf(u32),

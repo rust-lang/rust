@@ -286,6 +286,8 @@ use std::sync::mpsc;
 fn main() {
     let data = Arc::new(Mutex::new(0));
 
+    // `tx` is the "transmitter" or "sender"
+    // `rx` is the "receiver"
     let (tx, rx) = mpsc::channel();
 
     for _ in 0..10 {

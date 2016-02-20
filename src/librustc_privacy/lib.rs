@@ -33,7 +33,7 @@ use self::FieldName::*;
 use std::cmp;
 use std::mem::replace;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::{self, Visitor};
 
 use rustc::dep_graph::DepNode;
@@ -169,6 +169,10 @@ struct EmbargoVisitor<'a, 'tcx: 'a> {
     changed: bool,
 }
 
+struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
+    ev: &'b mut EmbargoVisitor<'a, 'tcx>,
+}
+
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn ty_level(&self, ty: &hir::Ty) -> Option<AccessLevel> {
         if let hir::TyPath(..) = ty.node {
@@ -214,6 +218,10 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
             old_level
         }
     }
+
+    fn reach<'b>(&'b mut self) -> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
+        ReachEverythingInTheInterfaceVisitor { ev: self }
+    }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
@@ -245,10 +253,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             }
         };
 
-        // Update id of the item itself
+        // Update level of the item itself
         let item_level = self.update(item.id, inherited_item_level);
 
-        // Update ids of nested things
+        // Update levels of nested things
         match item.node {
             hir::ItemEnum(ref def, _) => {
                 for variant in &def.variants {
@@ -292,19 +300,72 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
-            hir::ItemTy(ref ty, _) if item_level.is_some() => {
-                if let hir::TyPath(..) = ty.node {
-                    match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
-                        Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {},
-                        def => {
-                            if let Some(node_id) = self.tcx.map.as_local_node_id(def.def_id()) {
-                                self.update(node_id, Some(AccessLevel::Reachable));
-                            }
+            _ => {}
+        }
+
+        // Mark all items in interfaces of reachable items as reachable
+        match item.node {
+            // The interface is empty
+            hir::ItemExternCrate(..) => {}
+            // All nested items are checked by visit_item
+            hir::ItemMod(..) => {}
+            // Reexports are handled in visit_mod
+            hir::ItemUse(..) => {}
+            // Visit everything
+            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
+            hir::ItemTrait(..) | hir::ItemTy(..) | hir::ItemImpl(_, _, _, Some(..), _, _) => {
+                if item_level.is_some() {
+                    self.reach().visit_item(item);
+                }
+            }
+            // Visit everything, but enum variants have their own levels
+            hir::ItemEnum(ref def, ref generics) => {
+                if item_level.is_some() {
+                    self.reach().visit_generics(generics);
+                }
+                for variant in &def.variants {
+                    if self.get(variant.node.data.id()).is_some() {
+                        for field in variant.node.data.fields() {
+                            self.reach().visit_struct_field(field);
+                        }
+                        // Corner case: if the variant is reachable, but its
+                        // enum is not, make the enum reachable as well.
+                        self.update(item.id, Some(AccessLevel::Reachable));
+                    }
+                }
+            }
+            // Visit everything, but foreign items have their own levels
+            hir::ItemForeignMod(ref foreign_mod) => {
+                for foreign_item in &foreign_mod.items {
+                    if self.get(foreign_item.id).is_some() {
+                        self.reach().visit_foreign_item(foreign_item);
+                    }
+                }
+            }
+            // Visit everything except for private fields
+            hir::ItemStruct(ref struct_def, ref generics) => {
+                if item_level.is_some() {
+                    self.reach().visit_generics(generics);
+                    for field in struct_def.fields() {
+                        if self.get(field.node.id).is_some() {
+                            self.reach().visit_struct_field(field);
                         }
                     }
                 }
             }
-            _ => {}
+            // The interface is empty
+            hir::ItemDefaultImpl(..) => {}
+            // Visit everything except for private impl items
+            hir::ItemImpl(_, _, ref generics, None, _, ref impl_items) => {
+                if item_level.is_some() {
+                    self.reach().visit_generics(generics);
+                    for impl_item in impl_items {
+                        if self.get(impl_item.id).is_some() {
+                            self.reach().visit_impl_item(impl_item);
+                        }
+                    }
+                }
+            }
         }
 
         let orig_level = self.prev_level;
@@ -345,6 +406,68 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
     fn visit_macro_def(&mut self, md: &'v hir::MacroDef) {
         self.update(md.id, Some(AccessLevel::Public));
     }
+}
+
+impl<'b, 'a, 'tcx: 'a> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
+    // Make the type hidden under a type alias reachable
+    fn reach_aliased_type(&mut self, item: &hir::Item, path: &hir::Path) {
+        if let hir::ItemTy(ref ty, ref generics) = item.node {
+            // See `fn is_public_type_alias` for details
+            self.visit_ty(ty);
+            let provided_params = path.segments.last().unwrap().parameters.types().len();
+            for ty_param in &generics.ty_params[provided_params..] {
+                if let Some(ref default_ty) = ty_param.default {
+                    self.visit_ty(default_ty);
+                }
+            }
+        }
+    }
+}
+
+impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &hir::Ty) {
+        if let hir::TyPath(_, ref path) = ty.node {
+            let def = self.ev.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
+            match def {
+                Def::Struct(def_id) | Def::Enum(def_id) | Def::TyAlias(def_id) |
+                Def::Trait(def_id) | Def::AssociatedTy(def_id, _) => {
+                    if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+                        let item = self.ev.tcx.map.expect_item(node_id);
+                        if let Def::TyAlias(..) = def {
+                            // Type aliases are substituted. Associated type aliases are not
+                            // substituted yet, but ideally they should be.
+                            if self.ev.get(item.id).is_none() {
+                                self.reach_aliased_type(item, path);
+                            }
+                        } else {
+                            self.ev.update(item.id, Some(AccessLevel::Reachable));
+                        }
+                    }
+                }
+
+                _ => {}
+            }
+        }
+
+        intravisit::walk_ty(self, ty);
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &hir::TraitRef) {
+        let def_id = self.ev.tcx.trait_ref_to_def_id(trait_ref);
+        if let Some(node_id) = self.ev.tcx.map.as_local_node_id(def_id) {
+            let item = self.ev.tcx.map.expect_item(node_id);
+            self.ev.update(item.id, Some(AccessLevel::Reachable));
+        }
+
+        intravisit::walk_trait_ref(self, trait_ref);
+    }
+
+    // Don't recurse into function bodies
+    fn visit_block(&mut self, _: &hir::Block) {}
+    // Don't recurse into expressions in array sizes or const initializers
+    fn visit_expr(&mut self, _: &hir::Expr) {}
+    // Don't recurse into patterns in function arguments
+    fn visit_pat(&mut self, _: &hir::Pat) {}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -710,7 +833,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             NamedField(name) => format!("field `{}` of {} is private",
                                         name, struct_desc),
             UnnamedField(idx) => format!("field #{} of {} is private",
-                                         idx + 1, struct_desc),
+                                         idx, struct_desc),
         };
         span_err!(self.tcx.sess, span, E0451,
                   "{}", &msg[..]);
@@ -920,7 +1043,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         if self.in_foreign { return }
 
         match pattern.node {
-            hir::PatStruct(_, ref fields, _) => {
+            PatKind::Struct(_, ref fields, _) => {
                 let adt = self.tcx.pat_ty(pattern).ty_adt_def().unwrap();
                 let def = self.tcx.def_map.borrow().get(&pattern.id).unwrap().full_def();
                 let variant = adt.variant_of_def(def);
@@ -932,11 +1055,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
             // Patterns which bind no fields are allowable (the path is check
             // elsewhere).
-            hir::PatEnum(_, Some(ref fields)) => {
+            PatKind::TupleStruct(_, Some(ref fields)) => {
                 match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(def, _) => {
                         for (i, field) in fields.iter().enumerate() {
-                            if let hir::PatWild = field.node {
+                            if let PatKind::Wild = field.node {
                                 continue
                             }
                             self.check_field(field.span,

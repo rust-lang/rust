@@ -10,7 +10,7 @@
 
 use dep_graph::DepGraph;
 use middle::infer::InferCtxt;
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TypeFoldable, ToPolyTraitRef};
 use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
 use std::iter;
 use syntax::ast;
@@ -133,7 +133,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
     {
-        debug!("normalize_associated_type(projection_ty={:?})",
+        debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
 
         assert!(!projection_ty.has_escaping_regions());
@@ -147,7 +147,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             self.register_predicate_obligation(infcx, obligation);
         }
 
-        debug!("normalize_associated_type: result={:?}", normalized.value);
+        debug!("normalize_projection_type: result={:?}", normalized.value);
 
         normalized.value
     }
@@ -185,11 +185,11 @@ impl<'tcx> FulfillmentContext<'tcx> {
         assert!(!obligation.has_escaping_regions());
 
         if self.is_duplicate_or_add(infcx.tcx, &obligation.predicate) {
-            debug!("register_predicate({:?}) -- already seen, skip", obligation);
+            debug!("register_predicate_obligation({:?}) -- already seen, skip", obligation);
             return;
         }
 
-        debug!("register_predicate({:?})", obligation);
+        debug!("register_predicate_obligation({:?})", obligation);
         let obligation = PendingPredicateObligation {
             obligation: obligation,
             stalled_on: vec![]
@@ -274,7 +274,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         let mut errors = Vec::new();
 
         loop {
-            debug!("select_where_possible: starting another iteration");
+            debug!("select: starting another iteration");
 
             // Process pending obligations.
             let outcome = {
@@ -287,7 +287,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                                                      region_obligations))
             };
 
-            debug!("select_where_possible: outcome={:?}", outcome);
+            debug!("select: outcome={:?}", outcome);
 
             // these are obligations that were proven to be true.
             for pending_obligation in outcome.completed {
@@ -417,6 +417,21 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     }
 }
 
+
+/// Return the set of type variables contained in a trait ref
+fn trait_ref_type_vars<'a, 'tcx>(selcx: &mut SelectionContext<'a, 'tcx>,
+                                 t: ty::PolyTraitRef<'tcx>) -> Vec<Ty<'tcx>>
+{
+    t.skip_binder() // ok b/c this check doesn't care about regions
+     .input_types()
+     .iter()
+     .map(|t| selcx.infcx().resolve_type_vars_if_possible(t))
+     .filter(|t| t.has_infer_types())
+     .flat_map(|t| t.walk())
+     .filter(|t| match t.sty { ty::TyInfer(_) => true, _ => false })
+     .collect()
+}
+
 /// Processes a predicate obligation and returns either:
 /// - `Ok(Some(v))` if the predicate is true, presuming that `v` are also true
 /// - `Ok(None)` if we don't have enough info to be sure
@@ -433,7 +448,7 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
     // doing more work yet
     if !pending_obligation.stalled_on.is_empty() {
         if pending_obligation.stalled_on.iter().all(|&ty| {
-            let resolved_ty = selcx.infcx().resolve_type_vars_if_possible(&ty);
+            let resolved_ty = selcx.infcx().shallow_resolve(&ty);
             resolved_ty == ty // nothing changed here
         }) {
             debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
@@ -493,14 +508,7 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                     // of its type, and those types are resolved at
                     // the same time.
                     pending_obligation.stalled_on =
-                        data.skip_binder() // ok b/c this check doesn't care about regions
-                        .input_types()
-                        .iter()
-                        .map(|t| selcx.infcx().resolve_type_vars_if_possible(t))
-                        .filter(|t| t.has_infer_types())
-                        .flat_map(|t| t.walk())
-                        .filter(|t| match t.sty { ty::TyInfer(_) => true, _ => false })
-                        .collect();
+                        trait_ref_type_vars(selcx, data.to_poly_trait_ref());
 
                     debug!("process_predicate: pending obligation {:?} now stalled on {:?}",
                            selcx.infcx().resolve_type_vars_if_possible(obligation),
@@ -568,6 +576,11 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         ty::Predicate::Projection(ref data) => {
             let project_obligation = obligation.with(data.clone());
             match project::poly_project_and_unify_type(selcx, &project_obligation) {
+                Ok(None) => {
+                    pending_obligation.stalled_on =
+                        trait_ref_type_vars(selcx, data.to_poly_trait_ref());
+                    Ok(None)
+                }
                 Ok(v) => Ok(v),
                 Err(e) => Err(CodeProjectionError(e))
             }
@@ -582,8 +595,14 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
 
         ty::Predicate::WellFormed(ty) => {
-            Ok(ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
-                                   ty, obligation.cause.span))
+            match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
+                                      ty, obligation.cause.span) {
+                None => {
+                    pending_obligation.stalled_on = vec![ty];
+                    Ok(None)
+                }
+                s => Ok(s)
+            }
         }
     }
 }

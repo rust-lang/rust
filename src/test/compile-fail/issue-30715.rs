@@ -25,7 +25,7 @@ macro_rules! parallel {
 fn main() {
     parallel! {
         for i in 0..n {
-            x += i; //~ ERROR no rules expected the token `+=`
-        }
+            x += i; //~ ERROR expected `:`, found `+=`
+        } //~ ERROR unexpected end of macro invocation
     }
 }

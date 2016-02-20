@@ -127,8 +127,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
     tmp
 }
 
-/// Variant of read_and_zero that writes the specific drop-flag byte
-/// (which may be more appropriate than zero).
+#[allow(missing_docs)]
 #[inline(always)]
 #[unstable(feature = "filling_drop",
            reason = "may play a larger role in std::ptr future extensions",

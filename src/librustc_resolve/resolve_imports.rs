@@ -218,6 +218,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 kind: NameBindingKind::Def(Def::Err),
                 span: None,
             });
+            let dummy_binding =
+                self.resolver.new_name_binding(e.import_directive.import(dummy_binding));
 
             let _ = e.source_module.try_define_child(target, ValueNS, dummy_binding);
             let _ = e.source_module.try_define_child(target, TypeNS, dummy_binding);
@@ -243,19 +245,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         errors.extend(self.resolve_imports_for_module(module_));
         self.resolver.current_module = orig_module;
 
-        build_reduced_graph::populate_module_if_necessary(self.resolver, module_);
-        module_.for_each_local_child(|_, _, child_node| {
-            match child_node.module() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    errors.extend(self.resolve_imports_for_module_subtree(child_module));
-                }
-            }
-        });
-
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        for (_, child_module) in module_.module_children.borrow().iter() {
             errors.extend(self.resolve_imports_for_module_subtree(child_module));
         }
 
@@ -404,6 +394,23 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         match (&value_result, &type_result) {
+            (&Indeterminate, _) | (_, &Indeterminate) => return Indeterminate,
+            (&Failed(_), &Failed(_)) => {
+                let children = target_module.resolutions.borrow();
+                let names = children.keys().map(|&(ref name, _)| name);
+                let lev_suggestion = match find_best_match_for_name(names, &source.as_str(), None) {
+                    Some(name) => format!(". Did you mean to use `{}`?", name),
+                    None => "".to_owned(),
+                };
+                let msg = format!("There is no `{}` in `{}`{}",
+                                  source,
+                                  module_to_string(target_module), lev_suggestion);
+                return Failed(Some((directive.span, msg)));
+            }
+            _ => (),
+        }
+
+        match (&value_result, &type_result) {
             (&Success(name_binding), _) if !name_binding.is_import() &&
                                            directive.is_public &&
                                            !name_binding.is_public() => {
@@ -435,23 +442,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
 
             _ => {}
-        }
-
-        match (&value_result, &type_result) {
-            (&Indeterminate, _) | (_, &Indeterminate) => return Indeterminate,
-            (&Failed(_), &Failed(_)) => {
-                let children = target_module.children.borrow();
-                let names = children.keys().map(|&(ref name, _)| name);
-                let lev_suggestion = match find_best_match_for_name(names, &source.as_str(), None) {
-                    Some(name) => format!(". Did you mean to use `{}`?", name),
-                    None => "".to_owned(),
-                };
-                let msg = format!("There is no `{}` in `{}`{}",
-                                  source,
-                                  module_to_string(target_module), lev_suggestion);
-                return Failed(Some((directive.span, msg)));
-            }
-            _ => (),
         }
 
         for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
@@ -524,6 +514,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
         target_module.for_each_child(|name, ns, binding| {
             if !binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) { return }
+            if binding.is_extern_crate() { return }
             self.define(module_, name, ns, directive.import(binding));
 
             if ns == TypeNS && directive.is_public &&

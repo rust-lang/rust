@@ -2152,6 +2152,26 @@ mod tests {
     }
 
     #[test]
+    fn read_link() {
+        if cfg!(windows) {
+            // directory symlink
+            assert_eq!(check!(fs::read_link(r"C:\Users\All Users")).to_str().unwrap(),
+                       r"C:\ProgramData");
+            // junction
+            assert_eq!(check!(fs::read_link(r"C:\Users\Default User")).to_str().unwrap(),
+                       r"C:\Users\Default");
+            // junction with special permissions
+            assert_eq!(check!(fs::read_link(r"C:\Documents and Settings\")).to_str().unwrap(),
+                       r"C:\Users");
+        }
+        let tmpdir = tmpdir();
+        let link = tmpdir.join("link");
+        if !got_symlink_permission(&tmpdir) { return };
+        check!(symlink_file(&"foo", &link));
+        assert_eq!(check!(fs::read_link(&link)).to_str().unwrap(), "foo");
+    }
+
+    #[test]
     fn readlink_not_symlink() {
         let tmpdir = tmpdir();
         match fs::read_link(tmpdir.path()) {

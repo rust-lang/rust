@@ -17,7 +17,7 @@ use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::FnKind;
 
 #[derive(PartialEq)]
@@ -272,7 +272,7 @@ impl LateLintPass for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
-        if let &hir::PatIdent(_, ref path1, _) = &p.node {
+        if let &PatKind::Ident(_, ref path1, _) = &p.node {
             let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
             if let Some(Def::Local(..)) = def {
                 self.check_snake_case(cx, "variable", &path1.node.name.as_str(), Some(p.span));
@@ -362,7 +362,7 @@ impl LateLintPass for NonUpperCaseGlobals {
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
-            (&hir::PatIdent(_, ref path1, _), Some(Def::Const(..))) => {
+            (&PatKind::Ident(_, ref path1, _), Some(Def::Const(..))) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
                                                       path1.node.name, p.span);
             }

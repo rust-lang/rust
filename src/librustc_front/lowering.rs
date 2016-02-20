@@ -913,26 +913,29 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
     P(hir::Pat {
         id: p.id,
         node: match p.node {
-            PatWild => hir::PatWild,
-            PatIdent(ref binding_mode, pth1, ref sub) => {
-                hir::PatIdent(lower_binding_mode(lctx, binding_mode),
+            PatKind::Wild => hir::PatKind::Wild,
+            PatKind::Ident(ref binding_mode, pth1, ref sub) => {
+                hir::PatKind::Ident(lower_binding_mode(lctx, binding_mode),
                               respan(pth1.span, lower_ident(lctx, pth1.node)),
                               sub.as_ref().map(|x| lower_pat(lctx, x)))
             }
-            PatLit(ref e) => hir::PatLit(lower_expr(lctx, e)),
-            PatEnum(ref pth, ref pats) => {
-                hir::PatEnum(lower_path(lctx, pth),
+            PatKind::Lit(ref e) => hir::PatKind::Lit(lower_expr(lctx, e)),
+            PatKind::TupleStruct(ref pth, ref pats) => {
+                hir::PatKind::TupleStruct(lower_path(lctx, pth),
                              pats.as_ref()
                                  .map(|pats| pats.iter().map(|x| lower_pat(lctx, x)).collect()))
             }
-            PatQPath(ref qself, ref pth) => {
+            PatKind::Path(ref pth) => {
+                hir::PatKind::Path(lower_path(lctx, pth))
+            }
+            PatKind::QPath(ref qself, ref pth) => {
                 let qself = hir::QSelf {
                     ty: lower_ty(lctx, &qself.ty),
                     position: qself.position,
                 };
-                hir::PatQPath(qself, lower_path(lctx, pth))
+                hir::PatKind::QPath(qself, lower_path(lctx, pth))
             }
-            PatStruct(ref pth, ref fields, etc) => {
+            PatKind::Struct(ref pth, ref fields, etc) => {
                 let pth = lower_path(lctx, pth);
                 let fs = fields.iter()
                                .map(|f| {
@@ -946,22 +949,24 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
                                    }
                                })
                                .collect();
-                hir::PatStruct(pth, fs, etc)
+                hir::PatKind::Struct(pth, fs, etc)
             }
-            PatTup(ref elts) => hir::PatTup(elts.iter().map(|x| lower_pat(lctx, x)).collect()),
-            PatBox(ref inner) => hir::PatBox(lower_pat(lctx, inner)),
-            PatRegion(ref inner, mutbl) => {
-                hir::PatRegion(lower_pat(lctx, inner), lower_mutability(lctx, mutbl))
+            PatKind::Tup(ref elts) => {
+                hir::PatKind::Tup(elts.iter().map(|x| lower_pat(lctx, x)).collect())
             }
-            PatRange(ref e1, ref e2) => {
-                hir::PatRange(lower_expr(lctx, e1), lower_expr(lctx, e2))
+            PatKind::Box(ref inner) => hir::PatKind::Box(lower_pat(lctx, inner)),
+            PatKind::Ref(ref inner, mutbl) => {
+                hir::PatKind::Ref(lower_pat(lctx, inner), lower_mutability(lctx, mutbl))
             }
-            PatVec(ref before, ref slice, ref after) => {
-                hir::PatVec(before.iter().map(|x| lower_pat(lctx, x)).collect(),
+            PatKind::Range(ref e1, ref e2) => {
+                hir::PatKind::Range(lower_expr(lctx, e1), lower_expr(lctx, e2))
+            }
+            PatKind::Vec(ref before, ref slice, ref after) => {
+                hir::PatKind::Vec(before.iter().map(|x| lower_pat(lctx, x)).collect(),
                             slice.as_ref().map(|x| lower_pat(lctx, x)),
                             after.iter().map(|x| lower_pat(lctx, x)).collect())
             }
-            PatMac(_) => panic!("Shouldn't exist here"),
+            PatKind::Mac(_) => panic!("Shouldn't exist here"),
         },
         span: p.span,
     })
@@ -1745,7 +1750,11 @@ fn pat_enum(lctx: &LoweringContext,
             path: hir::Path,
             subpats: hir::HirVec<P<hir::Pat>>)
             -> P<hir::Pat> {
-    let pt = hir::PatEnum(path, Some(subpats));
+    let pt = if subpats.is_empty() {
+        hir::PatKind::Path(path)
+    } else {
+        hir::PatKind::TupleStruct(path, Some(subpats))
+    };
     pat(lctx, span, pt)
 }
 
@@ -1758,7 +1767,7 @@ fn pat_ident_binding_mode(lctx: &LoweringContext,
                           ident: hir::Ident,
                           bm: hir::BindingMode)
                           -> P<hir::Pat> {
-    let pat_ident = hir::PatIdent(bm,
+    let pat_ident = hir::PatKind::Ident(bm,
                                   Spanned {
                                       span: span,
                                       node: ident,
@@ -1768,10 +1777,10 @@ fn pat_ident_binding_mode(lctx: &LoweringContext,
 }
 
 fn pat_wild(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
-    pat(lctx, span, hir::PatWild)
+    pat(lctx, span, hir::PatKind::Wild)
 }
 
-fn pat(lctx: &LoweringContext, span: Span, pat: hir::Pat_) -> P<hir::Pat> {
+fn pat(lctx: &LoweringContext, span: Span, pat: hir::PatKind) -> P<hir::Pat> {
     P(hir::Pat {
         id: lctx.next_id(),
         node: pat,

@@ -28,6 +28,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::errors::{ColorConfig, Handler};
 use syntax::parse;
+use syntax::parse::lexer::Reader;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -509,7 +510,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     link_args: Option<Vec<String>> = (None, parse_opt_list,
         "extra arguments to pass to the linker (space separated)"),
     link_dead_code: bool = (false, parse_bool,
-        "let the linker strip dead coded (turning it on can be used for code coverage)"),
+        "don't let linker strip dead code (turning it on can be used for code coverage)"),
     lto: bool = (false, parse_bool,
         "perform LLVM link-time optimizations"),
     target_cpu: Option<String> = (None, parse_opt_string,
@@ -906,10 +907,19 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
-        parse::parse_meta_from_source_str("cfgspec".to_string(),
-                                          s.to_string(),
-                                          Vec::new(),
-                                          &parse::ParseSess::new())
+        let sess = parse::ParseSess::new();
+        let mut parser = parse::new_parser_from_source_str(&sess,
+                                                           Vec::new(),
+                                                           "cfgspec".to_string(),
+                                                           s.to_string());
+        let meta_item = panictry!(parser.parse_meta_item());
+
+        if !parser.reader.is_eof() {
+            early_error(ErrorOutputType::default(), &format!("invalid --cfg argument: {}",
+                                                             s))
+        }
+
+        meta_item
     }).collect::<ast::CrateConfig>()
 }
 

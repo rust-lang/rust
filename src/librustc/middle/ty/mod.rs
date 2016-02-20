@@ -52,7 +52,7 @@ use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 
 use rustc_front::hir;
-use rustc_front::hir::{ItemImpl, ItemTrait};
+use rustc_front::hir::{ItemImpl, ItemTrait, PatKind};
 use rustc_front::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
@@ -917,7 +917,7 @@ impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
 
 impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        self.map_bound_ref(|trait_pred| trait_pred.trait_ref.clone())
+        self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
     }
 }
 
@@ -928,7 +928,7 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyProjectionPredicate<'tcx> {
         // This is because here `self` has a `Binder` and so does our
         // return value, so we are preserving the number of binding
         // levels.
-        ty::Binder(self.0.projection_ty.trait_ref.clone())
+        ty::Binder(self.0.projection_ty.trait_ref)
     }
 }
 
@@ -1945,7 +1945,7 @@ impl<'tcx> ctxt<'tcx> {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
-                    hir::PatIdent(_, ref path1, _) => path1.node.name.as_str(),
+                    PatKind::Ident(_, ref path1, _) => path1.node.name.as_str(),
                     _ => {
                         self.sess.bug(&format!("Variable id {} maps to {:?}, not local", id, pat));
                     },

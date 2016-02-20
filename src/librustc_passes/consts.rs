@@ -41,7 +41,7 @@ use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;
 
-use rustc_front::hir;
+use rustc_front::hir::{self, PatKind};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::feature_gate::UnstableFeatures;
@@ -249,9 +249,9 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         let ty = self.tcx.node_id_to_type(e.id);
         let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
-        let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
-        fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        match fulfill_cx.select_all_or_error(&infcx) {
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
+        match fulfillment_cx.select_all_or_error(&infcx) {
             Ok(()) => { },
             Err(ref errors) => {
                 traits::report_fulfillment_errors(&infcx, errors);
@@ -322,10 +322,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, p: &hir::Pat) {
         match p.node {
-            hir::PatLit(ref lit) => {
+            PatKind::Lit(ref lit) => {
                 self.global_expr(Mode::Const, &lit);
             }
-            hir::PatRange(ref start, ref end) => {
+            PatKind::Range(ref start, ref end) => {
                 self.global_expr(Mode::Const, &start);
                 self.global_expr(Mode::Const, &end);
 

@@ -419,46 +419,49 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     match pattern.node {
-        PatEnum(ref path, ref opt_children) => {
+        PatKind::TupleStruct(ref path, ref opt_children) => {
             visitor.visit_path(path, pattern.id);
             if let Some(ref children) = *opt_children {
                 walk_list!(visitor, visit_pat, children);
             }
         }
-        PatQPath(ref qself, ref path) => {
+        PatKind::Path(ref path) => {
+            visitor.visit_path(path, pattern.id);
+        }
+        PatKind::QPath(ref qself, ref path) => {
             visitor.visit_ty(&qself.ty);
             visitor.visit_path(path, pattern.id)
         }
-        PatStruct(ref path, ref fields, _) => {
+        PatKind::Struct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
             for field in fields {
                 visitor.visit_ident(field.span, field.node.ident);
                 visitor.visit_pat(&field.node.pat)
             }
         }
-        PatTup(ref tuple_elements) => {
+        PatKind::Tup(ref tuple_elements) => {
             walk_list!(visitor, visit_pat, tuple_elements);
         }
-        PatBox(ref subpattern) |
-        PatRegion(ref subpattern, _) => {
+        PatKind::Box(ref subpattern) |
+        PatKind::Ref(ref subpattern, _) => {
             visitor.visit_pat(subpattern)
         }
-        PatIdent(_, ref pth1, ref optional_subpattern) => {
+        PatKind::Ident(_, ref pth1, ref optional_subpattern) => {
             visitor.visit_ident(pth1.span, pth1.node);
             walk_list!(visitor, visit_pat, optional_subpattern);
         }
-        PatLit(ref expression) => visitor.visit_expr(expression),
-        PatRange(ref lower_bound, ref upper_bound) => {
+        PatKind::Lit(ref expression) => visitor.visit_expr(expression),
+        PatKind::Range(ref lower_bound, ref upper_bound) => {
             visitor.visit_expr(lower_bound);
             visitor.visit_expr(upper_bound)
         }
-        PatWild => (),
-        PatVec(ref prepatterns, ref slice_pattern, ref postpatterns) => {
+        PatKind::Wild => (),
+        PatKind::Vec(ref prepatterns, ref slice_pattern, ref postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);
             walk_list!(visitor, visit_pat, postpatterns);
         }
-        PatMac(ref mac) => visitor.visit_mac(mac),
+        PatKind::Mac(ref mac) => visitor.visit_mac(mac),
     }
 }
 

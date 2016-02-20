@@ -767,6 +767,10 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     {
         self.bcx.monomorphize(value)
     }
+
+    pub fn set_lpad(&self, lpad: Option<LandingPad>) {
+        self.bcx.lpad.set(lpad.map(|p| &*self.fcx().lpad_arena.alloc(p)))
+    }
 }
 
 impl<'blk, 'tcx> Deref for BlockAndBuilder<'blk, 'tcx> {
@@ -1159,7 +1163,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
     // inference of the impl's type parameters.
-    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+    let mut fulfill_cx = traits::FulfillmentContext::new();
     let vtable = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
@@ -1188,7 +1192,7 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let tcx = ccx.tcx();
     let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
     let mut selcx = traits::SelectionContext::new(&infcx);
-    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
+    let mut fulfill_cx = traits::FulfillmentContext::new();
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: predicates, obligations } =
         traits::normalize(&mut selcx, cause.clone(), &predicates);

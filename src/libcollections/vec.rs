@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A growable list type with heap-allocated contents, written `Vec<T>` but
-//! pronounced 'vector.'
+//! A contiguous growable array type with heap-allocated contents, written
+//! `Vec<T>` but pronounced 'vector.'
 //!
 //! Vectors have `O(1)` indexing, amortized `O(1)` push (to the end) and
 //! `O(1)` pop (from the end).
@@ -78,7 +78,7 @@ use borrow::{Cow, IntoCow};
 
 use super::range::RangeArgument;
 
-/// A growable list type, written `Vec<T>` but pronounced 'vector.'
+/// A contiguous growable array type, written `Vec<T>` but pronounced 'vector.'
 ///
 /// # Examples
 ///
@@ -528,7 +528,7 @@ impl<T> Vec<T> {
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
-    /// elements after position `i` one position to the right.
+    /// elements after it to the right.
     ///
     /// # Panics
     ///
@@ -570,7 +570,7 @@ impl<T> Vec<T> {
     }
 
     /// Removes and returns the element at position `index` within the vector,
-    /// shifting all elements after position `index` one position to the left.
+    /// shifting all elements after it to the left.
     ///
     /// # Panics
     ///

@@ -79,7 +79,7 @@ use middle::def::Def;
 use middle::ty::adjustment;
 use middle::ty::{self, Ty};
 
-use rustc_front::hir::{MutImmutable, MutMutable};
+use rustc_front::hir::{MutImmutable, MutMutable, PatKind};
 use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -305,7 +305,7 @@ impl MutabilityCategory {
     fn from_local(tcx: &ty::ctxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
             ast_map::NodeLocal(p) => match p.node {
-                hir::PatIdent(bind_mode, _, _) => {
+                PatKind::Ident(bind_mode, _, _) => {
                     if bind_mode == hir::BindByValue(hir::MutMutable) {
                         McDeclared
                     } else {
@@ -396,7 +396,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         // *being borrowed* is.  But ideally we would put in a more
         // fundamental fix to this conflated use of the node id.
         let ret_ty = match pat.node {
-            hir::PatIdent(hir::BindByRef(_), _, _) => {
+            PatKind::Ident(hir::BindByRef(_), _, _) => {
                 // a bind-by-ref means that the base_ty will be the type of the ident itself,
                 // but what we want here is the type of the underlying value being borrowed.
                 // So peel off one-level, turning the &T into T.
@@ -1209,7 +1209,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             None
         };
 
-        // Note: This goes up here (rather than within the PatEnum arm
+        // Note: This goes up here (rather than within the PatKind::TupleStruct arm
         // alone) because struct patterns can refer to struct types or
         // to struct variants within enums.
         let cmt = match opt_def {
@@ -1222,14 +1222,14 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         };
 
         match pat.node {
-          hir::PatWild => {
+          PatKind::Wild => {
             // _
           }
 
-          hir::PatEnum(_, None) => {
+          PatKind::TupleStruct(_, None) => {
             // variant(..)
           }
-          hir::PatEnum(_, Some(ref subpats)) => {
+          PatKind::TupleStruct(_, Some(ref subpats)) => {
             match opt_def {
                 Some(Def::Variant(..)) => {
                     // variant(x, y, z)
@@ -1267,19 +1267,15 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          hir::PatQPath(..) => {
-              // Lone constant: ignore
+          PatKind::Path(..) | PatKind::QPath(..) | PatKind::Ident(_, _, None) => {
+              // Lone constant, or unit variant or identifier: ignore
           }
 
-          hir::PatIdent(_, _, Some(ref subpat)) => {
+          PatKind::Ident(_, _, Some(ref subpat)) => {
               try!(self.cat_pattern_(cmt, &subpat, op));
           }
 
-          hir::PatIdent(_, _, None) => {
-              // nullary variant or identifier: ignore
-          }
-
-          hir::PatStruct(_, ref field_pats, _) => {
+          PatKind::Struct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for fp in field_pats {
                 let field_ty = try!(self.pat_ty(&fp.node.pat)); // see (*2)
@@ -1288,7 +1284,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          hir::PatTup(ref subpats) => {
+          PatKind::Tup(ref subpats) => {
             // (p1, ..., pN)
             for (i, subpat) in subpats.iter().enumerate() {
                 let subpat_ty = try!(self.pat_ty(&subpat)); // see (*2)
@@ -1300,15 +1296,15 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          hir::PatBox(ref subpat) | hir::PatRegion(ref subpat, _) => {
+          PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
             // box p1, &p1, &mut p1.  we can ignore the mutability of
-            // PatRegion since that information is already contained
+            // PatKind::Ref since that information is already contained
             // in the type.
             let subcmt = try!(self.cat_deref(pat, cmt, 0, None));
               try!(self.cat_pattern_(subcmt, &subpat, op));
           }
 
-          hir::PatVec(ref before, ref slice, ref after) => {
+          PatKind::Vec(ref before, ref slice, ref after) => {
               let context = InteriorOffsetKind::Pattern;
               let vec_cmt = try!(self.deref_vec(pat, cmt, context));
               let elt_cmt = try!(self.cat_index(pat, vec_cmt, context));
@@ -1325,7 +1321,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               }
           }
 
-          hir::PatLit(_) | hir::PatRange(_, _) => {
+          PatKind::Lit(_) | PatKind::Range(_, _) => {
               /*always ok*/
           }
         }

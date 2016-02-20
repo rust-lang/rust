@@ -528,13 +528,13 @@ pub struct ArgsOs { inner: os_imp::Args }
 /// via the command line).
 ///
 /// The first element is traditionally the path to the executable, but it can be
-/// set to arbitrary text, and it may not even exist, so this property should
+/// set to arbitrary text, and may not even exist. This means this property should
 /// not be relied upon for security purposes.
 ///
 /// # Panics
 ///
 /// The returned iterator will panic during iteration if any argument to the
-/// process is not valid unicode. If this is not desired it is recommended to
+/// process is not valid unicode. If this is not desired,
 /// use the `args_os` function instead.
 ///
 /// # Examples
@@ -603,7 +603,7 @@ impl ExactSizeIterator for ArgsOs {
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
-    /// A string describing the architecture of the CPU that this is currently
+    /// A string describing the architecture of the CPU that is currently
     /// in use.
     ///
     /// Some possible values:

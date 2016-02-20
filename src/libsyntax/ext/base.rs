@@ -11,7 +11,7 @@
 pub use self::SyntaxExtension::*;
 
 use ast;
-use ast::Name;
+use ast::{Name, PatKind};
 use codemap;
 use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
 use errors::DiagnosticBuilder;
@@ -307,7 +307,7 @@ impl MacResult for MacEager {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
-                    node: ast::PatLit(e),
+                    node: PatKind::Lit(e),
                 }));
             }
         }
@@ -359,7 +359,7 @@ impl DummyResult {
     pub fn raw_pat(sp: Span) -> ast::Pat {
         ast::Pat {
             id: ast::DUMMY_NODE_ID,
-            node: ast::PatWild,
+            node: PatKind::Wild,
             span: sp,
         }
     }
@@ -760,7 +760,12 @@ impl<'a> ExtCtxt<'a> {
                               err: &mut DiagnosticBuilder<'a>) {
         let names = &self.syntax_env.names;
         if let Some(suggestion) = find_best_match_for_name(names.iter(), name, None) {
-            err.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
+            if suggestion != name {
+                err.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
+            } else {
+                err.fileline_help(span, &format!("have you added the `#[macro_use]` on the \
+                                                  module/import?"));
+            }
         }
     }
 }
