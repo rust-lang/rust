@@ -132,7 +132,7 @@ declare_lint! {
 
 declare_lint! {
     pub MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
-    Warn,
+    Deny,
     "unit struct or enum variant erroneously allowed to match via path::ident(..)"
 }
 
