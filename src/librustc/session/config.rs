@@ -107,6 +107,14 @@ impl OutputType {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum Sanitize {
+    Address,
+    Leak,
+    Memory,
+    Thread,
+}
+
 #[derive(Clone)]
 pub struct Options {
     // The crate config requested for the session, which may be combined
@@ -389,11 +397,13 @@ macro_rules! options {
             Some("a space-separated list of passes, or `all`");
         pub const parse_opt_uint: Option<&'static str> =
             Some("a number");
+        pub const parse_sanitize: Option<&'static str> =
+            Some("one of: `address`, `leak`, `memory`, or `thread`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitize};
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -497,6 +507,22 @@ macro_rules! options {
                 }
             }
         }
+
+        fn parse_sanitize(slot: &mut Option<Sanitize>, v: Option<&str>) -> bool {
+            if let Some(s) = v {
+                let sanitize = match s {
+                    "address" => Sanitize::Address,
+                    "leak"    => Sanitize::Leak,
+                    "memory"  => Sanitize::Memory,
+                    "thread"  => Sanitize::Thread,
+                    _ => return false,
+                };
+                *slot = Some(sanitize);
+                true
+            } else {
+                false
+            }
+        }
     }
 ) }
 
@@ -563,7 +589,6 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     inline_threshold: Option<usize> = (None, parse_opt_uint,
         "set the inlining threshold for"),
 }
-
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          build_debugging_options, "Z", "debugging",
@@ -655,6 +680,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "show spans for compiler debugging (expr|pat|ty)"),
     print_trans_items: Option<String> = (None, parse_opt_string,
           "print the result of the translation item collection pass"),
+    sanitize: Option<Sanitize> = (None, parse_sanitize,
+          "choose the sanitizer to use"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -699,6 +726,18 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
     }
+
+    sess.opts.debugging_opts.sanitize.map(|s| {
+        let name = match s {
+            Sanitize::Address => "address",
+            Sanitize::Leak    => "leak",
+            Sanitize::Memory  => "memory",
+            Sanitize::Thread  => "thread"
+        };
+        ret.push(mk(InternedString::new("sanitize"),
+                    InternedString::new(name)));
+    });
+
     return ret;
 }
 

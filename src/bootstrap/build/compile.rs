@@ -37,6 +37,29 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
     t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
                      libdir.join(staticlib("compiler-rt", target))));
 
+    // Non-portable hack that copies sanitizer runtime libraries.
+    let runtimes = ["asan", "lsan", "msan", "tsan"];
+    for runtime in runtimes.iter() {
+        let arch = target.split('-').next().unwrap();
+        let llvm_lib_name = staticlib(&format!("clang_rt.{}-{}", runtime, arch), target);
+        let llvm_dir = build.compiler_rt_out(target)
+                            .join("build").join("lib").join("linux");
+
+        // Avoid potential confusion with runtime libraries used by other
+        // compilers by appending rustc to library name.
+        let rust_lib_name = staticlib(&format!("rustc_{}", runtime), target);
+
+        let llvm_path = llvm_dir.join(&llvm_lib_name);
+        let rust_path = libdir.join(&rust_lib_name);
+        match fs::hard_link(&llvm_path, &rust_path) {
+            Err(e) => {
+                println!("Ignored runtime library {}: {}", runtime, e);
+                continue
+            }
+            Ok(_) => {},
+        }
+    }
+
     build_startup_objects(build, target, &libdir);
 
     let out_dir = build.cargo_out(stage, &host, true, target);

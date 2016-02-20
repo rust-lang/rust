@@ -15,6 +15,7 @@ use super::rpath;
 use super::msvc;
 use super::svh::Svh;
 use session::config;
+use session::config::Sanitize;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputType};
 use session::filesearch;
@@ -857,35 +858,44 @@ fn link_natively(sess: &Session, dylib: bool,
     let (pname, mut cmd) = get_linker(sess);
     cmd.env("PATH", command_path(sess));
 
-    let root = sess.target_filesearch(PathKind::Native).get_lib_path();
-    cmd.args(&sess.target.target.options.pre_link_args);
-
-    let pre_link_objects = if dylib {
-        &sess.target.target.options.pre_link_objects_dll
-    } else {
-        &sess.target.target.options.pre_link_objects_exe
-    };
-    for obj in pre_link_objects {
-        cmd.arg(root.join(obj));
-    }
-
     {
         let mut linker = if sess.target.target.options.is_like_msvc {
             Box::new(MsvcLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
         } else {
             Box::new(GnuLinker { cmd: &mut cmd, sess: &sess }) as Box<Linker>
         };
+
+        // Sanitizer runtimes go first if any.
+        let needs_sanitizers_runtime_deps = link_sanitizers(sess, dylib, &mut *linker);
+
+        let root = sess.target_filesearch(PathKind::Native).get_lib_path();
+        linker.args(&sess.target.target.options.pre_link_args);
+
+        let pre_link_objects = if dylib {
+            &sess.target.target.options.pre_link_objects_dll
+        } else {
+            &sess.target.target.options.pre_link_objects_exe
+        };
+        for obj in pre_link_objects {
+            linker.add_object(&root.join(obj));
+        }
+
         link_args(&mut *linker, sess, dylib, tmpdir,
                   objects, out_filename, trans, outputs);
         if !sess.target.target.options.no_compiler_rt {
             linker.link_staticlib("compiler-rt");
         }
+
+        linker.args(&sess.target.target.options.late_link_args);
+        for obj in &sess.target.target.options.post_link_objects {
+            linker.add_object(&root.join(obj));
+        }
+        linker.args(&sess.target.target.options.post_link_args);
+
+        if needs_sanitizers_runtime_deps {
+            link_sanitizers_runtime_deps(sess, &mut *linker);
+        }
     }
-    cmd.args(&sess.target.target.options.late_link_args);
-    for obj in &sess.target.target.options.post_link_objects {
-        cmd.arg(root.join(obj));
-    }
-    cmd.args(&sess.target.target.options.post_link_args);
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);
@@ -939,6 +949,34 @@ fn link_natively(sess: &Session, dylib: bool,
     }
 }
 
+fn link_sanitizers(sess: &Session, dylib: bool, linker: &mut Linker) -> bool {
+    // Sanitizer runtimes are linked into final executable only.
+    if dylib { return false; }
+
+    sess.opts.debugging_opts.sanitize.map(|s| {
+        let runtime = match s {
+            Sanitize::Address => "rustc_asan",
+            Sanitize::Leak    => "rustc_lsan",
+            Sanitize::Memory  => "rustc_msan",
+            Sanitize::Thread  => "rustc_tsan",
+        };
+        linker.link_whole_staticlib(runtime, &[]);
+    });
+    true
+}
+
+fn link_sanitizers_runtime_deps(sess: &Session, linker: &mut Linker) {
+    // Make sure that sanitizers runtime dependencies are always linked in.
+    // This avoids potential problems when using --as-needed.
+    linker.args(&["-Wl,--no-as-needed".to_owned()]);
+    linker.link_dylib("pthread");
+    linker.link_dylib("rt");
+    linker.link_dylib("m");
+    if sess.target.target.target_os != "freebsd" {
+        linker.link_dylib("dl");
+    }
+}
+
 fn link_args(cmd: &mut Linker,
              sess: &Session,
              dylib: bool,
@@ -982,7 +1020,7 @@ fn link_args(cmd: &mut Linker,
 
     let used_link_args = sess.cstore.used_link_args();
 
-    if !dylib && t.options.position_independent_executables {
+    if !dylib && t.options.position_independent_executables && sanitizer_support_pie(sess) {
         let empty_vec = Vec::new();
         let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
@@ -1077,6 +1115,16 @@ fn link_args(cmd: &mut Linker,
         cmd.args(args);
     }
     cmd.args(&used_link_args);
+}
+
+// Checks if sanitizer supports position independent executables.
+fn sanitizer_support_pie(sess: &Session) -> bool {
+    // Thread sanitizer does not support memory mapping changes introduced in
+    // Linux kernel 4.1.2 and will fail with following error when run:
+    // FATAL: ThreadSanitizer: unexpected memory mapping
+    //
+    // Issue on thread sanitizer bugtracker: https://github.com/google/sanitizers/issues/503
+    sess.opts.debugging_opts.sanitize != Some(Sanitize::Thread)
 }
 
 // # Native library linking

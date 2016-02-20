@@ -113,7 +113,7 @@ pub fn compiler_rt(build: &Build, target: &str) {
     let dst = build.compiler_rt_out(target);
     let arch = target.split('-').next().unwrap();
     let mode = if build.config.rust_optimize {"Release"} else {"Debug"};
-    let (dir, build_target, libname) = if target.contains("linux") {
+    let (dir, mut build_target, libname) = if target.contains("linux") {
         let os = if target.contains("android") {"-android"} else {""};
         let target = format!("clang_rt.builtins-{}{}", arch, os);
         ("linux".to_string(), target.clone(), target)
@@ -130,6 +130,15 @@ pub fn compiler_rt(build: &Build, target: &str) {
     } else {
         panic!("can't get os from target: {}", target)
     };
+    let build_sanitizers = if build.config.compiler_rt_sanitizers {
+        // Leverage compiler-rt build system to compile only sanitizers
+        // supported on given target.
+        build_target = "all".to_string();
+        "ON"
+    } else {
+        "OFF"
+    };
+
     let output = dst.join("build/lib").join(dir)
                     .join(staticlib(&libname, target));
     build.compiler_rt_built.borrow_mut().insert(target.to_string(),
@@ -142,6 +151,7 @@ pub fn compiler_rt(build: &Build, target: &str) {
     let build_llvm_config = build.llvm_out(&build.config.build)
                                  .join("bin")
                                  .join(exe("llvm-config", &build.config.build));
+
     let mut cfg = cmake::Config::new(build.src.join("src/compiler-rt"));
     cfg.target(target)
        .host(&build.config.build)
@@ -149,7 +159,7 @@ pub fn compiler_rt(build: &Build, target: &str) {
        .profile(mode)
        .define("LLVM_CONFIG_PATH", build_llvm_config)
        .define("COMPILER_RT_DEFAULT_TARGET_TRIPLE", target)
-       .define("COMPILER_RT_BUILD_SANITIZERS", "OFF")
+       .define("COMPILER_RT_BUILD_SANITIZERS", build_sanitizers)
        .define("COMPILER_RT_BUILD_EMUTLS", "OFF")
        .define("CMAKE_C_COMPILER", build.cc(target))
        .build_target(&build_target);

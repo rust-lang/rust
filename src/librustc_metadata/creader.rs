@@ -639,16 +639,27 @@ impl<'a> CrateReader<'a> {
         // prefer-dynamic`, then we interpret this as a *Rust* dynamic library
         // is being produced so we use the exe allocator instead.
         //
-        // What this boils down to is:
+        // If some sanitizer is enabled, then we prefer to use library allocator
+        // as sanitizers work by intercepting calls to standard memory
+        // allocation routines (i.e., malloc and friends). If non-standard
+        // memory allocation routines would be used, then sanitizers would be
+        // completly unaware of memory allocations, which considerably limits
+        // their utility (or in some cases just don't work at all).
+        //
+        // What this boils down to is following. If sanitizers are enabled, use
+        // system malloc, otherwise:
         //
         // * Binaries use jemalloc
         // * Staticlibs and Rust dylibs use system malloc
         // * Rust dylibs used as dependencies to rust use jemalloc
-        let name = if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
+        let use_lib_alloc = (need_lib_alloc && !self.sess.opts.cg.prefer_dynamic)
+                            || self.sess.opts.debugging_opts.sanitize.is_some();
+        let name = if use_lib_alloc {
             &self.sess.target.target.options.lib_allocation_crate
         } else {
             &self.sess.target.target.options.exe_allocation_crate
         };
+
         let (cnum, data, _) = self.resolve_crate(&None, name, name, None,
                                                  codemap::DUMMY_SP,
                                                  PathKind::Crate, false);

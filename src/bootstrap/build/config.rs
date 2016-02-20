@@ -43,6 +43,9 @@ pub struct Config {
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
 
+    // compiler-rt options
+    pub compiler_rt_sanitizers: bool,
+
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: u32,
@@ -87,6 +90,7 @@ pub struct Target {
 struct TomlConfig {
     build: Option<Build>,
     llvm: Option<Llvm>,
+    compiler_rt: Option<CompilerRt>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
 }
@@ -111,6 +115,12 @@ struct Llvm {
     optimize: Option<bool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
+}
+
+/// TOML representation of how the compiler-rt build is configured.
+#[derive(RustcDecodable, Default)]
+struct CompilerRt {
+    sanitizers: Option<bool>,
 }
 
 /// TOML representation of how the Rust build is configured.
@@ -206,6 +216,9 @@ impl Config {
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
         }
+        if let Some(ref compiler_rt) = toml.compiler_rt {
+            set(&mut config.compiler_rt_sanitizers, compiler_rt.sanitizers);
+        }
         if let Some(ref rust) = toml.rust {
             set(&mut config.rust_debug_assertions, rust.debug_assertions);
             set(&mut config.rust_debuginfo, rust.debuginfo);
@@ -286,6 +299,7 @@ impl Config {
                 ("OPTIMIZE_LLVM", self.llvm_optimize),
                 ("LLVM_VERSION_CHECK", self.llvm_version_check),
                 ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
+                ("SANITIZERS", self.compiler_rt_sanitizers),
                 ("OPTIMIZE", self.rust_optimize),
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
