@@ -233,12 +233,12 @@ unsafe fn unregister_dtor(key: Key) -> bool {
 
 #[link_section = ".CRT$XLB"]
 #[linkage = "external"]
-#[allow(warnings)]
+#[allow(dead_code, unused_variables)]
 pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD,
                                                         c::LPVOID) =
         on_tls_callback;
 
-#[allow(warnings)]
+#[allow(dead_code, unused_variables)]
 unsafe extern "system" fn on_tls_callback(h: c::LPVOID,
                                           dwReason: c::DWORD,
                                           pv: c::LPVOID) {
