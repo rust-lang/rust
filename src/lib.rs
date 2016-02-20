@@ -163,6 +163,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
     reg.register_late_lint_pass(box regex::RegexPass::default());
     reg.register_late_lint_pass(box copies::CopyAndPaste);
+    reg.register_late_lint_pass(box format::FormatMacLint);
 
     reg.register_lint_group("clippy_pedantic", vec![
         enum_glob_use::ENUM_GLOB_USE,
@@ -209,6 +210,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
+        format::USELESS_FORMAT,
         identity_op::IDENTITY_OP,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         len_zero::LEN_WITHOUT_IS_EMPTY,
