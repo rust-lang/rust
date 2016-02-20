@@ -95,12 +95,12 @@ pub enum Cow<'a, B: ?Sized + 'a>
 {
     /// Borrowed data.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Borrowed(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a B),
+    Borrowed(#[stable(feature = "rust1", since = "1.0.0")] &'a B),
 
     /// Owned data.
     #[stable(feature = "rust1", since = "1.0.0")]
     Owned(
-        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] <B as ToOwned>::Owned
+        #[stable(feature = "rust1", since = "1.0.0")] <B as ToOwned>::Owned
     ),
 }
 

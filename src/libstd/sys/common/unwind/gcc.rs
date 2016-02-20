@@ -41,7 +41,6 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     }
 }
 
-#[cfg(not(stage0))]
 pub fn payload() -> *mut u8 {
     0 as *mut u8
 }
