@@ -1327,97 +1327,101 @@ then
     fi
 fi
 
-step_msg "making directories"
+if [ -z "$CFG_ENABLE_RUSTBUILD" ]; then
 
-for i in \
-    doc doc/std doc/extra \
-    dl tmp dist
-do
-    make_dir $i
-done
+  step_msg "making directories"
 
-for t in $CFG_HOST
-do
-    make_dir $t/llvm
-done
-
-for t in $CFG_HOST
-do
-    make_dir $t/rustllvm
-done
-
-for t in $CFG_TARGET
-do
-  make_dir $t/rt
-  for s in 0 1 2 3
+  for i in \
+      doc doc/std doc/extra \
+      dl tmp dist
   do
-    make_dir $t/rt/stage$s
-    make_dir $t/rt/jemalloc
-    make_dir $t/rt/compiler-rt
-    for i in                                          \
-      isaac sync test \
-      arch/i386 arch/x86_64 arch/arm arch/aarch64 arch/mips arch/powerpc
+      make_dir $i
+  done
+
+  for t in $CFG_HOST
+  do
+      make_dir $t/llvm
+  done
+
+  for t in $CFG_HOST
+  do
+      make_dir $t/rustllvm
+  done
+
+  for t in $CFG_TARGET
+  do
+    make_dir $t/rt
+    for s in 0 1 2 3
     do
-      make_dir $t/rt/stage$s/$i
+      make_dir $t/rt/stage$s
+      make_dir $t/rt/jemalloc
+      make_dir $t/rt/compiler-rt
+      for i in                                          \
+        isaac sync test \
+        arch/i386 arch/x86_64 arch/arm arch/aarch64 arch/mips arch/powerpc
+      do
+        make_dir $t/rt/stage$s/$i
+      done
     done
   done
-done
 
-for h in $CFG_HOST
-do
-    for t in $CFG_TARGET
-    do
-        # host bin dir stage0
-        make_dir $h/stage0/bin
+  for h in $CFG_HOST
+  do
+      for t in $CFG_TARGET
+      do
+          # host bin dir stage0
+          make_dir $h/stage0/bin
 
-        # host lib dir stage0
-        make_dir $h/stage0/lib
+          # host lib dir stage0
+          make_dir $h/stage0/lib
 
-        # host test dir stage0
-        make_dir $h/stage0/test
+          # host test dir stage0
+          make_dir $h/stage0/test
 
-        # target bin dir stage0
-        make_dir $h/stage0/lib/rustlib/$t/bin
+          # target bin dir stage0
+          make_dir $h/stage0/lib/rustlib/$t/bin
 
-        # target lib dir stage0
-        make_dir $h/stage0/lib/rustlib/$t/lib
+          # target lib dir stage0
+          make_dir $h/stage0/lib/rustlib/$t/lib
 
-        for i in 1 2 3
-        do
-            # host bin dir
-            make_dir $h/stage$i/bin
+          for i in 1 2 3
+          do
+              # host bin dir
+              make_dir $h/stage$i/bin
 
-            # host lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE
+              # host lib dir
+              make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE
 
-            # host test dir
-            make_dir $h/stage$i/test
+              # host test dir
+              make_dir $h/stage$i/test
 
-            # target bin dir
-            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/bin
+              # target bin dir
+              make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/bin
 
-            # target lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/lib
-        done
-    done
+              # target lib dir
+              make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/lib
+          done
+      done
 
-    make_dir $h/test/run-pass
-    make_dir $h/test/run-pass-valgrind
-    make_dir $h/test/run-pass-fulldeps
-    make_dir $h/test/run-fail
-    make_dir $h/test/run-fail-fulldeps
-    make_dir $h/test/compile-fail
-    make_dir $h/test/parse-fail
-    make_dir $h/test/compile-fail-fulldeps
-    make_dir $h/test/bench
-    make_dir $h/test/perf
-    make_dir $h/test/pretty
-    make_dir $h/test/debuginfo-gdb
-    make_dir $h/test/debuginfo-lldb
-    make_dir $h/test/codegen
-    make_dir $h/test/codegen-units
-    make_dir $h/test/rustdoc
-done
+      make_dir $h/test/run-pass
+      make_dir $h/test/run-pass-valgrind
+      make_dir $h/test/run-pass-fulldeps
+      make_dir $h/test/run-fail
+      make_dir $h/test/run-fail-fulldeps
+      make_dir $h/test/compile-fail
+      make_dir $h/test/parse-fail
+      make_dir $h/test/compile-fail-fulldeps
+      make_dir $h/test/bench
+      make_dir $h/test/perf
+      make_dir $h/test/pretty
+      make_dir $h/test/debuginfo-gdb
+      make_dir $h/test/debuginfo-lldb
+      make_dir $h/test/codegen
+      make_dir $h/test/codegen-units
+      make_dir $h/test/rustdoc
+  done
+
+fi
 
 # Configure submodules
 step_msg "configuring submodules"
