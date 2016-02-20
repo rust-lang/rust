@@ -279,6 +279,10 @@ pub struct TargetOptions {
     pub lib_allocation_crate: String,
     pub exe_allocation_crate: String,
 
+    /// Flag indicating whether hardware floating point support is available for
+    /// this target.
+    pub has_floating_point: bool,
+
     /// Flag indicating whether ELF TLS (e.g. #[thread_local]) is available for
     /// this target.
     pub has_elf_tls: bool,
@@ -332,6 +336,7 @@ impl Default for TargetOptions {
             lib_allocation_crate: "alloc_system".to_string(),
             exe_allocation_crate: "alloc_system".to_string(),
             allow_asm: true,
+            has_floating_point: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
         }
@@ -437,6 +442,7 @@ impl Target {
         key!(is_like_windows, bool);
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
+        key!(has_floating_point, bool);
         key!(no_compiler_rt, bool);
         key!(no_default_libraries, bool);
         key!(pre_link_args, list);
