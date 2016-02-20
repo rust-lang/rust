@@ -46,9 +46,9 @@ pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_nlink: u32,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_uid: u32,
+    pub st_uid: uid_t,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_gid: u32,
+    pub st_gid: gid_t,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_rdev: u64,
     #[stable(feature = "raw_ext", since = "1.1.0")]
