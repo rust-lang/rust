@@ -269,6 +269,10 @@
 #![feature(vec_push_all)]
 #![feature(zero_one)]
 
+// Issue# 30592: Systematically use alloc_system during stage0 since jemalloc
+// might be unavailable or disabled
+#![cfg_attr(stage0, feature(alloc_system))]
+
 // Don't link to std. We are std.
 #![no_std]
 
@@ -294,6 +298,9 @@ extern crate collections as core_collections;
 extern crate alloc;
 extern crate rustc_unicode;
 extern crate libc;
+
+#[cfg(stage0)]
+extern crate alloc_system;
 
 // Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;
