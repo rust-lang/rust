@@ -102,6 +102,58 @@ impl OsString {
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.push_slice(&s.as_ref().inner)
     }
+
+    /// Creates a new `OsString` with the given capacity. The string will be
+    /// able to hold exactly `capacity` bytes without reallocating. If
+    /// `capacity` is 0, the string will not allocate.
+    ///
+    /// See main `OsString` documentation information about encoding.
+    #[unstable(feature = "osstring_simple_functions",
+               reason = "recently added", issue = "29453")]
+    pub fn with_capacity(capacity: usize) -> OsString {
+        OsString {
+            inner: Buf::with_capacity(capacity)
+        }
+    }
+
+    /// Truncates the `OsString` to zero length.
+    #[unstable(feature = "osstring_simple_functions",
+               reason = "recently added", issue = "29453")]
+    pub fn clear(&mut self) {
+        self.inner.clear()
+    }
+
+    /// Returns the number of bytes this `OsString` can hold without
+    /// reallocating.
+    ///
+    /// See `OsString` introduction for information about encoding.
+    #[unstable(feature = "osstring_simple_functions",
+               reason = "recently added", issue = "29453")]
+    pub fn capacity(&self) -> usize {
+        self.inner.capacity()
+    }
+
+    /// Reserves capacity for at least `additional` more bytes to be inserted
+    /// in the given `OsString`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    #[unstable(feature = "osstring_simple_functions",
+               reason = "recently added", issue = "29453")]
+    pub fn reserve(&mut self, additional: usize) {
+        self.inner.reserve(additional)
+    }
+
+    /// Reserves the minimum capacity for exactly `additional` more bytes to be
+    /// inserted in the given `OsString`. Does nothing if the capacity is
+    /// already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// minimal. Prefer reserve if future insertions are expected.
+    #[unstable(feature = "osstring_simple_functions",
+               reason = "recently added", issue = "29453")]
+    pub fn reserve_exact(&mut self, additional: usize) {
+        self.inner.reserve_exact(additional)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -277,6 +329,22 @@ impl OsStr {
         self.to_bytes().and_then(|b| CString::new(b).ok())
     }
 
+    /// Checks whether the `OsStr` is empty.
+    #[unstable(feature = "osstring_simple_functions",
+               reason = "recently added", issue = "29453")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.inner.is_empty()
+    }
+
+    /// Returns the number of bytes in this `OsStr`.
+    ///
+    /// See `OsStr` introduction for information about encoding.
+    #[unstable(feature = "osstring_simple_functions",
+               reason = "recently added", issue = "29453")]
+    pub fn len(&self) -> usize {
+        self.inner.inner.len()
+    }
+
     /// Gets the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is private, to avoid
@@ -412,5 +480,115 @@ impl IntoInner<Buf> for OsString {
 impl AsInner<Slice> for OsStr {
     fn as_inner(&self) -> &Slice {
         &self.inner
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sys_common::{AsInner, IntoInner};
+
+    #[test]
+    fn test_os_string_with_capacity() {
+        let os_string = OsString::with_capacity(0);
+        assert_eq!(0, os_string.inner.into_inner().capacity());
+
+        let os_string = OsString::with_capacity(10);
+        assert_eq!(10, os_string.inner.into_inner().capacity());
+
+        let mut os_string = OsString::with_capacity(0);
+        os_string.push("abc");
+        assert!(os_string.inner.into_inner().capacity() >= 3);
+    }
+
+    #[test]
+    fn test_os_string_clear() {
+        let mut os_string = OsString::from("abc");
+        assert_eq!(3, os_string.inner.as_inner().len());
+
+        os_string.clear();
+        assert_eq!(&os_string, "");
+        assert_eq!(0, os_string.inner.as_inner().len());
+    }
+
+    #[test]
+    fn test_os_string_capacity() {
+        let os_string = OsString::with_capacity(0);
+        assert_eq!(0, os_string.capacity());
+
+        let os_string = OsString::with_capacity(10);
+        assert_eq!(10, os_string.capacity());
+
+        let mut os_string = OsString::with_capacity(0);
+        os_string.push("abc");
+        assert!(os_string.capacity() >= 3);
+    }
+
+    #[test]
+    fn test_os_string_reserve() {
+        let mut os_string = OsString::new();
+        assert_eq!(os_string.capacity(), 0);
+
+        os_string.reserve(2);
+        assert!(os_string.capacity() >= 2);
+
+        for _ in 0..16 {
+            os_string.push("a");
+        }
+
+        assert!(os_string.capacity() >= 16);
+        os_string.reserve(16);
+        assert!(os_string.capacity() >= 32);
+
+        os_string.push("a");
+
+        os_string.reserve(16);
+        assert!(os_string.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_os_string_reserve_exact() {
+        let mut os_string = OsString::new();
+        assert_eq!(os_string.capacity(), 0);
+
+        os_string.reserve_exact(2);
+        assert!(os_string.capacity() >= 2);
+
+        for _ in 0..16 {
+            os_string.push("a");
+        }
+
+        assert!(os_string.capacity() >= 16);
+        os_string.reserve_exact(16);
+        assert!(os_string.capacity() >= 32);
+
+        os_string.push("a");
+
+        os_string.reserve_exact(16);
+        assert!(os_string.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_os_str_is_empty() {
+        let mut os_string = OsString::new();
+        assert!(os_string.is_empty());
+
+        os_string.push("abc");
+        assert!(!os_string.is_empty());
+
+        os_string.clear();
+        assert!(os_string.is_empty());
+    }
+
+    #[test]
+    fn test_os_str_len() {
+        let mut os_string = OsString::new();
+        assert_eq!(0, os_string.len());
+
+        os_string.push("abc");
+        assert_eq!(3, os_string.len());
+
+        os_string.clear();
+        assert_eq!(0, os_string.len());
     }
 }
