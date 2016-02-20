@@ -245,13 +245,13 @@ impl LateLintPass for LoopsPass {
                     let mut other_stuff = block.stmts
                                                .iter()
                                                .skip(1)
-                                               .map(|stmt| format!("{}", snippet(cx, stmt.span, "..")))
-                                               .collect::<Vec<String>>();
+                                               .map(|stmt| snippet(cx, stmt.span, ".."))
+                                               .collect::<Vec<Cow<_>>>();
                     if inner_stmt_expr.is_some() {
                         // if we have a statement which has a match,
                         if let Some(ref expr) = block.expr {
                             // then collect the expression (without semicolon) below it
-                            other_stuff.push(format!("{}", snippet(cx, expr.span, "..")));
+                            other_stuff.push(snippet(cx, expr.span, ".."));
                         }
                     }
 

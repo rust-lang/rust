@@ -45,10 +45,7 @@ impl EarlyLintPass for MiscEarly {
     fn check_pat(&mut self, cx: &EarlyContext, pat: &Pat) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
-            let type_name = match npat.segments.last() {
-                Some(elem) => format!("{}", elem.identifier.name),
-                None => String::new(),
-            };
+            let type_name = npat.segments.last().expect("A path must have at least one segment").identifier.name;
 
             for field in pfields {
                 if field.node.pat.node == PatKind::Wild {
