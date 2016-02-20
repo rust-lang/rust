@@ -22,7 +22,7 @@
 //! copy of that function in my mingw install (maybe it was broken?). Instead,
 //! this takes the route of using StackWalk64 in order to walk the stack.
 
-#![allow(dead_code, deprecated)]
+#![allow(deprecated)] // dynamic_lib
 
 use io::prelude::*;
 
@@ -51,12 +51,6 @@ mod printing;
 #[path = "printing/gnu.rs"]
 mod printing;
 
-type SymFromAddrFn =
-    extern "system" fn(c::HANDLE, u64, *mut u64,
-                       *mut c::SYMBOL_INFO) -> c::BOOL;
-type SymGetLineFromAddr64Fn =
-    extern "system" fn(c::HANDLE, u64, *mut u32,
-                       *mut c::IMAGEHLP_LINE64) -> c::BOOL;
 type SymInitializeFn =
     extern "system" fn(c::HANDLE, *mut c_void,
                        c::BOOL) -> c::BOOL;
