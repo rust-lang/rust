@@ -18,7 +18,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
-#![feature(borrow_state)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -810,7 +809,7 @@ pub struct ModuleS<'a> {
     is_extern_crate: bool,
 
     resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
-    imports: RefCell<Vec<ImportDirective>>,
+    unresolved_imports: RefCell<Vec<ImportDirective>>,
 
     // The module children of this node, including normal modules and anonymous modules.
     // Anonymous children are pseudo-modules that are implicitly created around items
@@ -839,9 +838,6 @@ pub struct ModuleS<'a> {
     // The number of unresolved pub glob imports in this module
     pub_glob_count: Cell<usize>,
 
-    // The index of the import we're resolving.
-    resolved_import_count: Cell<usize>,
-
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
@@ -859,13 +855,12 @@ impl<'a> ModuleS<'a> {
             is_public: is_public,
             is_extern_crate: false,
             resolutions: RefCell::new(HashMap::new()),
-            imports: RefCell::new(Vec::new()),
+            unresolved_imports: RefCell::new(Vec::new()),
             module_children: RefCell::new(NodeMap()),
             shadowed_traits: RefCell::new(Vec::new()),
             glob_count: Cell::new(0),
             pub_count: Cell::new(0),
             pub_glob_count: Cell::new(0),
-            resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
         }
     }
@@ -933,15 +928,6 @@ impl<'a> ModuleS<'a> {
         match self.def {
             Some(Def::Trait(_)) => true,
             _ => false,
-        }
-    }
-
-    fn all_imports_resolved(&self) -> bool {
-        if self.imports.borrow_state() == ::std::cell::BorrowState::Writing {
-            // it is currently being resolved ! so nope
-            false
-        } else {
-            self.imports.borrow().len() == self.resolved_import_count.get()
         }
     }
 
@@ -1635,13 +1621,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn report_unresolved_imports(&mut self, module_: Module<'a>) {
-        let index = module_.resolved_import_count.get();
-        let imports = module_.imports.borrow();
-        let import_count = imports.len();
-        if index != import_count {
-            resolve_error(self,
-                          (*imports)[index].span,
-                          ResolutionError::UnresolvedImport(None));
+        for import in module_.unresolved_imports.borrow().iter() {
+            resolve_error(self, import.span, ResolutionError::UnresolvedImport(None));
+            break;
         }
 
         // Descend into children and anonymous children.
