@@ -17,6 +17,7 @@ use vec::Vec;
 use str;
 use string::String;
 use mem;
+use sys_common::{AsInner, IntoInner};
 
 #[derive(Clone, Hash)]
 pub struct Buf {
@@ -39,9 +40,49 @@ impl Debug for Buf {
     }
 }
 
+impl IntoInner<Vec<u8>> for Buf {
+    fn into_inner(self) -> Vec<u8> {
+        self.inner
+    }
+}
+
+impl AsInner<[u8]> for Buf {
+    fn as_inner(&self) -> &[u8] {
+        &self.inner
+    }
+}
+
+
 impl Buf {
     pub fn from_string(s: String) -> Buf {
         Buf { inner: s.into_bytes() }
+    }
+
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Buf {
+        Buf {
+            inner: Vec::with_capacity(capacity)
+        }
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.inner.clear()
+    }
+
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.inner.capacity()
+    }
+
+    #[inline]
+    pub fn reserve(&mut self, additional: usize) {
+        self.inner.reserve(additional)
+    }
+
+    #[inline]
+    pub fn reserve_exact(&mut self, additional: usize) {
+        self.inner.reserve_exact(additional)
     }
 
     pub fn as_slice(&self) -> &Slice {
