@@ -589,7 +589,7 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
         span_lint(cx,
                   EXTEND_FROM_SLICE,
                   expr.span,
-                  &format!("use of `extend` to extend a Vec by a slice"))
+                  &"use of `extend` to extend a Vec by a slice")
             .span_suggestion(expr.span,
                              "try this",
                              format!("{}.extend_from_slice({}{})",
