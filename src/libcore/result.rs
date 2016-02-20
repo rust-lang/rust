@@ -250,11 +250,11 @@ use option::Option::{self, None, Some};
 pub enum Result<T, E> {
     /// Contains the success value
     #[stable(feature = "rust1", since = "1.0.0")]
-    Ok(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] T),
+    Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
 
     /// Contains the error value
     #[stable(feature = "rust1", since = "1.0.0")]
-    Err(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] E)
+    Err(#[stable(feature = "rust1", since = "1.0.0")] E)
 }
 
 /////////////////////////////////////////////////////////////////////////////

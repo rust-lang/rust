@@ -65,35 +65,6 @@ const RUST_PANIC: c::DWORD = 0x00525354;
 
 pub use self::imp::*;
 
-#[cfg(stage0)]
-mod imp {
-    use prelude::v1::*;
-    use any::Any;
-
-    pub unsafe fn panic(_data: Box<Any + Send + 'static>) -> ! {
-        rtabort!("cannot unwind SEH in stage0")
-    }
-
-    pub unsafe fn cleanup(_ptr: *mut u8) -> Box<Any + Send + 'static> {
-        rtabort!("can't cleanup SEH in stage0")
-    }
-
-    #[lang = "msvc_try_filter"]
-    #[linkage = "external"]
-    unsafe extern fn __rust_try_filter() -> i32 {
-        0
-    }
-
-    #[lang = "eh_unwind_resume"]
-    #[unwind]
-    unsafe extern fn rust_eh_unwind_resume(_ptr: *mut u8) -> ! {
-        rtabort!("can't resume unwind SEH in stage0")
-    }
-    #[lang = "eh_personality_catch"]
-    unsafe extern fn rust_eh_personality_catch() {}
-}
-
-#[cfg(not(stage0))]
 mod imp {
     use prelude::v1::*;
 
