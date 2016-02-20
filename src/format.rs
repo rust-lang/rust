@@ -44,14 +44,14 @@ impl LateLintPass for FormatMacLint {
                         // ensure the format argument is `{}` ie. Display with no fancy option
                         check_arg_is_display(&args[1])
                     ], {
-                        span_lint(cx, USELESS_FORMAT, span, &"useless use of `format!`");
+                        span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                     }}
                 }
                 // `format!("foo")` expansion contains `match () { () => [], }`
                 ExprMatch(ref matchee, _, _) => {
                     if let ExprTup(ref tup) = matchee.node {
                         if tup.is_empty() {
-                            span_lint(cx, USELESS_FORMAT, span, &"useless use of `format!`");
+                            span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                         }
                     }
                 }

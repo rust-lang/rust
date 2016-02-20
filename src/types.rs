@@ -496,7 +496,7 @@ fn check_type(cx: &LateContext, ty: &Ty) {
         span_lint(cx,
                   TYPE_COMPLEXITY,
                   ty.span,
-                  &"very complex type used. Consider factoring parts into `type` definitions");
+                  "very complex type used. Consider factoring parts into `type` definitions");
     }
 }
 

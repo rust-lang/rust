@@ -317,8 +317,8 @@ impl LateLintPass for LoopsPass {
                     span_lint(cx,
                               UNUSED_COLLECT,
                               expr.span,
-                              &"you are collect()ing an iterator and throwing away the result. \
-                                Consider using an explicit for loop to exhaust the iterator");
+                              "you are collect()ing an iterator and throwing away the result. \
+                               Consider using an explicit for loop to exhaust the iterator");
                 }
             }
         }

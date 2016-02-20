@@ -105,7 +105,7 @@ impl LateLintPass for RegexPass {
                         Ok(r) => {
                             if let Some(repl) = is_trivial_regex(&r) {
                                 span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
-                                                   &"trivial regex",
+                                                   "trivial regex",
                                                    &format!("consider using {}", repl));
                             }
                         }
@@ -123,7 +123,7 @@ impl LateLintPass for RegexPass {
                     Ok(r) => {
                         if let Some(repl) = is_trivial_regex(&r) {
                             span_help_and_lint(cx, TRIVIAL_REGEX, args[0].span,
-                                               &"trivial regex",
+                                               "trivial regex",
                                                &format!("consider using {}", repl));
                         }
                     }
