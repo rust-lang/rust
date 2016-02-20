@@ -418,25 +418,28 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                              len: Operand<'tcx>,
                              span: Span) {
         // fn(&(filename: &'static str, line: u32), index: usize, length: usize) -> !
+        let region = ty::ReStatic; // FIXME(mir-borrowck): use a better region?
         let func = self.lang_function(lang_items::PanicBoundsCheckFnLangItem);
-        let args = func.ty.fn_args();
-        let ref_ty = args.skip_binder()[0];
-        let (region, tup_ty) = if let ty::TyRef(region, tyandmut) = ref_ty.sty {
-            (region, tyandmut.ty)
+        let args = self.hir.tcx().replace_late_bound_regions(&func.ty.fn_args(), |_| region).0;
+
+        let ref_ty = args[0];
+        let tup_ty = if let ty::TyRef(_, tyandmut) = ref_ty.sty {
+            tyandmut.ty
         } else {
             self.hir.span_bug(span, &format!("unexpected panic_bound_check type: {:?}", func.ty));
         };
+
         let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
         let (file, line) = self.span_to_fileline_args(span);
         let elems = vec![Operand::Constant(file), Operand::Constant(line)];
         // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
         // icache with cold branch code), however to achieve that we either have to rely on rvalue
         // promotion or have some way, in MIR, to create constants.
-        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (file_arg, line_arg);
+        self.cfg.push_assign(block, span, &tuple, // tuple = (file_arg, line_arg);
                              Rvalue::Aggregate(AggregateKind::Tuple, elems));
         // FIXME: is this region really correct here?
-        self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
-                             Rvalue::Ref(*region, BorrowKind::Unique, tuple));
+        self.cfg.push_assign(block, span, &tuple_ref, // tuple_ref = &tuple;
+                             Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
         self.cfg.terminate(block, Terminator::Call {
             func: Operand::Constant(func),
@@ -449,18 +452,21 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// Create diverge cleanup and branch to it from `block`.
     pub fn panic(&mut self, block: BasicBlock, msg: &'static str, span: Span) {
         // fn(&(msg: &'static str filename: &'static str, line: u32)) -> !
+        let region = ty::ReStatic; // FIXME(mir-borrowck): use a better region?
         let func = self.lang_function(lang_items::PanicFnLangItem);
-        let args = func.ty.fn_args();
-        let ref_ty = args.skip_binder()[0];
-        let (region, tup_ty) = if let ty::TyRef(region, tyandmut) = ref_ty.sty {
-            (region, tyandmut.ty)
+        let args = self.hir.tcx().replace_late_bound_regions(&func.ty.fn_args(), |_| region).0;
+
+        let ref_ty = args[0];
+        let tup_ty = if let ty::TyRef(_, tyandmut) = ref_ty.sty {
+            tyandmut.ty
         } else {
             self.hir.span_bug(span, &format!("unexpected panic type: {:?}", func.ty));
         };
+
         let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
         let (file, line) = self.span_to_fileline_args(span);
         let message = Constant {
-            span: DUMMY_SP,
+            span: span,
             ty: self.hir.tcx().mk_static_str(),
             literal: self.hir.str_literal(intern_and_get_ident(msg))
         };
@@ -470,11 +476,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
         // icache with cold branch code), however to achieve that we either have to rely on rvalue
         // promotion or have some way, in MIR, to create constants.
-        self.cfg.push_assign(block, DUMMY_SP, &tuple, // tuple = (message_arg, file_arg, line_arg);
+        self.cfg.push_assign(block, span, &tuple, // tuple = (message_arg, file_arg, line_arg);
                              Rvalue::Aggregate(AggregateKind::Tuple, elems));
         // FIXME: is this region really correct here?
-        self.cfg.push_assign(block, DUMMY_SP, &tuple_ref, // tuple_ref = &tuple;
-                             Rvalue::Ref(*region, BorrowKind::Unique, tuple));
+        self.cfg.push_assign(block, span, &tuple_ref, // tuple_ref = &tuple;
+                             Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
         self.cfg.terminate(block, Terminator::Call {
             func: Operand::Constant(func),
@@ -505,11 +511,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     fn span_to_fileline_args(&mut self, span: Span) -> (Constant<'tcx>, Constant<'tcx>) {
         let span_lines = self.hir.tcx().sess.codemap().lookup_char_pos(span.lo);
         (Constant {
-            span: DUMMY_SP,
+            span: span,
             ty: self.hir.tcx().mk_static_str(),
             literal: self.hir.str_literal(intern_and_get_ident(&span_lines.file.name))
         }, Constant {
-            span: DUMMY_SP,
+            span: span,
             ty: self.hir.tcx().types.u32,
             literal: self.hir.usize_literal(span_lines.line)
         })

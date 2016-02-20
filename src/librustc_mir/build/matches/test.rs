@@ -404,7 +404,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             subpatterns.iter()
                        .map(|subpattern| {
                            // e.g., `(x as Variant).0`
-                           let lvalue = downcast_lvalue.clone().field(subpattern.field);
+                           let lvalue = downcast_lvalue.clone().field(subpattern.field,
+                                                                      subpattern.field_ty());
                            // e.g., `(x as Variant).0 @ P1`
                            MatchPair::new(lvalue, &subpattern.pattern)
                        });

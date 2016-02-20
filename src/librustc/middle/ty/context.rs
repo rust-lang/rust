@@ -131,6 +131,12 @@ pub struct Tables<'tcx> {
     /// equivalents. This table is not used in trans (since regions
     /// are erased there) and hence is not serialized to metadata.
     pub liberated_fn_sigs: NodeMap<ty::FnSig<'tcx>>,
+
+    /// For each FRU expression, record the normalized types of the fields
+    /// of the struct - this is needed because it is non-trivial to
+    /// normalize while preserving regions. This table is used only in
+    /// MIR construction and hence is not serialized to metadata.
+    pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
 }
 
 impl<'tcx> Tables<'tcx> {
@@ -144,6 +150,7 @@ impl<'tcx> Tables<'tcx> {
             closure_tys: DefIdMap(),
             closure_kinds: DefIdMap(),
             liberated_fn_sigs: NodeMap(),
+            fru_field_types: NodeMap()
         }
     }
 

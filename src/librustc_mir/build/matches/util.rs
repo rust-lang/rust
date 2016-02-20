@@ -21,7 +21,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                    -> Vec<MatchPair<'pat, 'tcx>> {
         subpatterns.iter()
                    .map(|fieldpat| {
-                       let lvalue = lvalue.clone().field(fieldpat.field);
+                       let lvalue = lvalue.clone().field(fieldpat.field,
+                                                         fieldpat.field_ty());
                        MatchPair::new(lvalue, &fieldpat.pattern)
                    })
                    .collect()

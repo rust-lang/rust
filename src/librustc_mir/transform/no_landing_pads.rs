@@ -11,7 +11,7 @@
 //! This pass removes the unwind branch of all the terminators when the no-landing-pads option is
 //! specified.
 
-use rustc::middle::ty;
+use rustc::middle::infer;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::MirPass;
@@ -41,8 +41,9 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
 }
 
 impl MirPass for NoLandingPads {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, tcx: &ty::ctxt<'tcx>) {
-        if tcx.sess.no_landing_pads() {
+    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>,
+                            infcx: &infer::InferCtxt<'a, 'tcx>) {
+        if infcx.tcx.sess.no_landing_pads() {
             self.visit_mir(mir);
         }
     }

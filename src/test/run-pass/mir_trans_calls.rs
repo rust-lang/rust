@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, unboxed_closures, fn_traits)]
 
 #[rustc_mir]
 fn test1(a: isize, b: (i32, i32), c: &[i32]) -> (isize, (i32, i32), &[i32]) {
@@ -117,6 +117,27 @@ fn test_fn_impl(f: &&Fn(i32, i32) -> i32, x: i32, y: i32) -> i32 {
     f(x, y)
 }
 
+#[rustc_mir]
+fn test_fn_direct_call<F>(f: &F, x: i32, y: i32) -> i32
+    where F: Fn(i32, i32) -> i32
+{
+    f.call((x, y))
+}
+
+#[rustc_mir]
+fn test_fn_const_call<F>(f: &F) -> i32
+    where F: Fn(i32, i32) -> i32
+{
+    f.call((100, -1))
+}
+
+#[rustc_mir]
+fn test_fn_nil_call<F>(f: &F) -> i32
+    where F: Fn() -> i32
+{
+    f()
+}
+
 fn main() {
     assert_eq!(test1(1, (2, 3), &[4, 5, 6]), (1, (2, 3), &[4, 5, 6][..]));
     assert_eq!(test2(98), 98);
@@ -128,9 +149,14 @@ fn main() {
     assert_eq!(test8(), 2);
     assert_eq!(test9(), 41 + 42 * 43);
 
-    let closure = |x: i32, y: i32| { x + y };
-    assert_eq!(test_closure(&closure, 100, 1), 101);
+    let r = 3;
+    let closure = |x: i32, y: i32| { r*(x + (y*2)) };
+    assert_eq!(test_fn_const_call(&closure), 294);
+    assert_eq!(test_closure(&closure, 100, 1), 306);
     let function_object = &closure as &Fn(i32, i32) -> i32;
-    assert_eq!(test_fn_object(function_object, 100, 2), 102);
-    assert_eq!(test_fn_impl(&function_object, 100, 3), 103);
+    assert_eq!(test_fn_object(function_object, 100, 2), 312);
+    assert_eq!(test_fn_impl(&function_object, 100, 3), 318);
+    assert_eq!(test_fn_direct_call(&closure, 100, 4), 324);
+
+    assert_eq!(test_fn_nil_call(&(|| 42)), 42);
 }
