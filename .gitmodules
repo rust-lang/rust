@@ -16,4 +16,4 @@
 	url = https://github.com/rust-lang/rust-installer.git
 [submodule "src/liblibc"]
 	path = src/liblibc
-	url = https://github.com/rust-lang-nursery/libc.git
+	url = https://github.com/rust-lang/libc.git
