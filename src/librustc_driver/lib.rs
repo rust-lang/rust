@@ -621,16 +621,12 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
     }
 }
 
-fn usage(verbose: bool, include_unstable_options: bool) {
+fn usage(verbose: bool) {
     let groups = if verbose {
-        config::rustc_optgroups()
+        config::optgroups()
     } else {
-        config::rustc_short_optgroups()
+        config::short_optgroups()
     };
-    let groups: Vec<_> = groups.into_iter()
-                               .filter(|x| include_unstable_options || x.is_stable())
-                               .map(|x| x.opt_group)
-                               .collect();
     let message = format!("Usage: rustc [OPTIONS] INPUT");
     let extra_help = if verbose {
         ""
@@ -826,68 +822,18 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     let _binary = args.remove(0);
 
     if args.is_empty() {
-        // user did not write `-v` nor `-Z unstable-options`, so do not
-        // include that extra information.
-        usage(false, false);
+        // user did not write `-v`, so do not include that extra information.
+        usage(false);
         return None;
     }
 
-    fn allows_unstable_options(matches: &getopts::Matches) -> bool {
-        let r = matches.opt_strs("Z");
-        r.iter().any(|x| *x == "unstable-options")
-    }
-
-    fn parse_all_options(args: &Vec<String>) -> getopts::Matches {
-        let all_groups: Vec<getopts::OptGroup> = config::rustc_optgroups()
-                                                     .into_iter()
-                                                     .map(|x| x.opt_group)
-                                                     .collect();
-        match getopts::getopts(&args[..], &all_groups) {
-            Ok(m) => {
-                if !allows_unstable_options(&m) {
-                    // If -Z unstable-options was not specified, verify that
-                    // no unstable options were present.
-                    for opt in config::rustc_optgroups().into_iter().filter(|x| !x.is_stable()) {
-                        let opt_name = if !opt.opt_group.long_name.is_empty() {
-                            &opt.opt_group.long_name
-                        } else {
-                            &opt.opt_group.short_name
-                        };
-                        if m.opt_present(opt_name) {
-                            early_error(ErrorOutputType::default(),
-                                        &format!("use of unstable option '{}' requires -Z \
-                                                  unstable-options",
-                                                 opt_name));
-                        }
-                    }
-                }
-                m
-            }
-            Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
-        }
-    }
-
-    // As a speed optimization, first try to parse the command-line using just
-    // the stable options.
     let matches = match getopts::getopts(&args[..], &config::optgroups()) {
-        Ok(ref m) if allows_unstable_options(m) => {
-            // If -Z unstable-options was specified, redo parsing with the
-            // unstable options to ensure that unstable options are defined
-            // in the returned getopts::Matches.
-            parse_all_options(&args)
-        }
         Ok(m) => m,
-        Err(_) => {
-            // redo option parsing, including unstable options this time,
-            // in anticipation that the mishandled option was one of the
-            // unstable ones.
-            parse_all_options(&args)
-        }
+        Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
     };
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(matches.opt_present("verbose"),
-              allows_unstable_options(&matches));
+        usage(matches.opt_present("verbose"));
         return None;
     }
 
