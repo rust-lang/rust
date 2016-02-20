@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
+
 thread_local!(static FOO: Foo = Foo);
 thread_local!(static BAR: Bar = Bar(1));
 thread_local!(static BAZ: Baz = Baz);
