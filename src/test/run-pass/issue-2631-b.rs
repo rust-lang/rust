@@ -11,8 +11,6 @@
 
 // aux-build:issue-2631-a.rs
 
-// pretty-expanded FIXME #23616
-
 extern crate req;
 
 use req::request;
