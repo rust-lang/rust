@@ -42,7 +42,7 @@ pub mod foo2 {
 fn test_glob2() {
     use foo2::*;
 
-    let _x: Box<Bar>;  //~ ERROR use of undeclared type name `Bar`
+    let _x: Box<Bar>;  //~ ERROR type name `Bar` is undefined or not in scope
 }
 
 // neither public
@@ -58,7 +58,7 @@ fn test_glob3() {
     use foo3::*;
 
     Bar();  //~ ERROR unresolved name `Bar`
-    let _x: Box<Bar>;  //~ ERROR  use of undeclared type name `Bar`
+    let _x: Box<Bar>;  //~ ERROR  type name `Bar` is undefined or not in scope
 }
 
 fn main() {

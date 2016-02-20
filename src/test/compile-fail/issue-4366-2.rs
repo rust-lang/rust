@@ -23,7 +23,7 @@ mod a {
     pub mod sub {
         use a::b::*;
         fn sub() -> bar { 1 }
-        //~^ ERROR: undeclared type name
+        //~^ ERROR: type name `bar` is undefined or not in scope
     }
 }
 

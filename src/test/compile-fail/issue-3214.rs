@@ -11,7 +11,7 @@
 fn foo<T>() {
     struct foo {
         x: T, //~ ERROR can't use type parameters from outer function;
-        //~^ ERROR use of undeclared type name
+        //~^ ERROR type name `T` is undefined or not in scope
     }
 
     impl<T> Drop for foo<T> {
