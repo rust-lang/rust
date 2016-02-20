@@ -19,7 +19,7 @@ use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind};
-use {names_to_string, module_to_string};
+use module_to_string;
 use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use resolve_imports::Shadowable;
@@ -682,7 +682,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                               id: NodeId,
                               is_public: bool,
                               shadowable: Shadowable) {
-        module_.imports
+        module_.unresolved_imports
                .borrow_mut()
                .push(ImportDirective::new(module_path, subclass, span, id, is_public, shadowable));
         self.unresolved_imports += 1;
@@ -696,9 +696,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         match subclass {
             SingleImport(target, _) => {
-                debug!("(building import directive) building import directive: {}::{}",
-                       names_to_string(&module_.imports.borrow().last().unwrap().module_path),
-                       target);
                 module_.increment_outstanding_references_for(target, ValueNS);
                 module_.increment_outstanding_references_for(target, TypeNS);
             }

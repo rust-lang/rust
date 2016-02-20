@@ -173,13 +173,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     fn resolve_imports(&mut self) {
         let mut i = 0;
         let mut prev_unresolved_imports = 0;
+        let mut errors = Vec::new();
+
         loop {
             debug!("(resolving imports) iteration {}, {} imports left",
                    i,
                    self.resolver.unresolved_imports);
 
-            let module_root = self.resolver.graph_root;
-            let errors = self.resolve_imports_for_module_subtree(module_root);
+            self.resolve_imports_for_module_subtree(self.resolver.graph_root, &mut errors);
 
             if self.resolver.unresolved_imports == 0 {
                 debug!("(resolving imports) success");
@@ -197,7 +198,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     // to avoid generating multiple errors on the same import.
                     // Imports that are still indeterminate at this point are actually blocked
                     // by errored imports, so there is no point reporting them.
-                    self.resolver.report_unresolved_imports(module_root);
+                    self.resolver.report_unresolved_imports(self.resolver.graph_root);
                 }
                 break;
             }
@@ -236,67 +237,45 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     /// Attempts to resolve imports for the given module and all of its
     /// submodules.
     fn resolve_imports_for_module_subtree(&mut self,
-                                          module_: Module<'b>)
-                                          -> Vec<ImportResolvingError<'b>> {
-        let mut errors = Vec::new();
+                                          module_: Module<'b>,
+                                          errors: &mut Vec<ImportResolvingError<'b>>) {
         debug!("(resolving imports for module subtree) resolving {}",
                module_to_string(&module_));
         let orig_module = replace(&mut self.resolver.current_module, module_);
-        errors.extend(self.resolve_imports_for_module(module_));
+        self.resolve_imports_for_module(module_, errors);
         self.resolver.current_module = orig_module;
 
         for (_, child_module) in module_.module_children.borrow().iter() {
-            errors.extend(self.resolve_imports_for_module_subtree(child_module));
+            self.resolve_imports_for_module_subtree(child_module, errors);
         }
-
-        errors
     }
 
     /// Attempts to resolve imports for the given module only.
-    fn resolve_imports_for_module(&mut self, module: Module<'b>) -> Vec<ImportResolvingError<'b>> {
-        let mut errors = Vec::new();
+    fn resolve_imports_for_module(&mut self,
+                                  module: Module<'b>,
+                                  errors: &mut Vec<ImportResolvingError<'b>>) {
+        let mut imports = Vec::new();
+        let mut unresolved_imports = module.unresolved_imports.borrow_mut();
+        ::std::mem::swap(&mut imports, &mut unresolved_imports);
 
-        if module.all_imports_resolved() {
-            debug!("(resolving imports for module) all imports resolved for {}",
-                   module_to_string(&module));
-            return errors;
-        }
-
-        let mut imports = module.imports.borrow_mut();
-        let import_count = imports.len();
-        let mut indeterminate_imports = Vec::new();
-        while module.resolved_import_count.get() + indeterminate_imports.len() < import_count {
-            let import_index = module.resolved_import_count.get();
-            match self.resolve_import_for_module(module, &imports[import_index]) {
-                ResolveResult::Failed(err) => {
-                    let import_directive = &imports[import_index];
+        for import_directive in imports {
+            match self.resolve_import_for_module(module, &import_directive) {
+                Failed(err) => {
                     let (span, help) = match err {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new()),
                     };
                     errors.push(ImportResolvingError {
                         source_module: module,
-                        import_directive: import_directive.clone(),
+                        import_directive: import_directive,
                         span: span,
                         help: help,
                     });
                 }
-                ResolveResult::Indeterminate => {}
-                ResolveResult::Success(()) => {
-                    // count success
-                    module.resolved_import_count
-                          .set(module.resolved_import_count.get() + 1);
-                    continue;
-                }
+                Indeterminate => unresolved_imports.push(import_directive),
+                Success(()) => {}
             }
-            // This resolution was not successful, keep it for later
-            indeterminate_imports.push(imports.swap_remove(import_index));
-
         }
-
-        imports.extend(indeterminate_imports);
-
-        errors
     }
 
     /// Attempts to resolve the given import. The return value indicates
@@ -564,6 +543,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                        ns: Namespace,
                        binding: &'b NameBinding<'b>,
                        old_binding: &'b NameBinding<'b>) {
+        // Error on the second of two conflicting imports
+        if old_binding.is_import() && binding.is_import() &&
+           old_binding.span.unwrap().lo > binding.span.unwrap().lo {
+            self.report_conflict(name, ns, old_binding, binding);
+            return;
+        }
+
         if old_binding.is_extern_crate() {
             let msg = format!("import `{0}` conflicts with imported crate \
                                in this module (maybe you meant `use {0}::*`?)",
