@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn foo(self);
-}
+// Tests that the `vec!` macro does not overflow the stack when it is
+// given data larger than the stack.
 
-impl<'a> Foo for &'a [isize] {
-    fn foo(self) {}
-}
+const LEN: usize = 1 << 15;
 
-pub fn main() {
-    let items = vec!( 3, 5, 1, 2, 4 );
-    items.foo();
+use std::thread::Builder;
+
+fn main() {
+    assert!(Builder::new().stack_size(LEN / 2).spawn(|| {
+        let vec = vec![[0; LEN]];
+        assert_eq!(vec.len(), 1);
+    }).unwrap().join().is_ok());
 }
