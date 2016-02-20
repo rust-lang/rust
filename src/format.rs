@@ -1,11 +1,14 @@
+use rustc::front::map::Node::NodeItem;
 use rustc::lint::*;
 use rustc_front::hir::*;
-use utils::{is_expn_of, span_lint};
+use syntax::ast::LitKind;
+use utils::{DISPLAY_FMT_METHOD_PATH, FMT_ARGUMENTS_NEWV1_PATH};
+use utils::{is_expn_of, match_path, span_lint};
 
 /// **What it does:** This lints about use of `format!("string literal with no argument")`.
 ///
 /// **Why is this bad?** There is no point of doing that. If you want a `String` you can use
-/// `to_owned` on the string literal. The even worst `&format!("foo")` is often encountered in the
+/// `to_owned` on the string literal. The even worse `&format!("foo")` is often encountered in the
 /// wild.
 ///
 /// **Known problems:** None.
@@ -28,13 +31,82 @@ impl LintPass for FormatMacLint {
 
 impl LateLintPass for FormatMacLint {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        // `format!("foo")` expansion contains `match () { () => [], }`
-        if let ExprMatch(ref matchee, _, _) = expr.node {
-            if let ExprTup(ref tup) = matchee.node {
-                if tup.is_empty() && is_expn_of(cx, expr.span, "format").is_some() {
-                    span_lint(cx, USELESS_FORMAT, expr.span, &"useless use of `format!`");
+        if let Some(span) = is_expn_of(cx, expr.span, "format") {
+            match expr.node {
+                // `format!("{}", foo)` expansion
+                ExprCall(ref fun, ref args) => {
+                    if_let_chain!{[
+                        let ExprPath(_, ref path) = fun.node,
+                        args.len() == 2,
+                        match_path(path, &FMT_ARGUMENTS_NEWV1_PATH),
+                        // ensure the format string is `"{..}"` with only one argument and no text
+                        check_static_str(cx, &args[0]),
+                        // ensure the format argument is `{}` ie. Display with no fancy option
+                        check_arg_is_display(&args[1])
+                    ], {
+                        span_lint(cx, USELESS_FORMAT, span, &"useless use of `format!`");
+                    }}
                 }
+                // `format!("foo")` expansion contains `match () { () => [], }`
+                ExprMatch(ref matchee, _, _) => {
+                    if let ExprTup(ref tup) = matchee.node {
+                        if tup.is_empty() {
+                            span_lint(cx, USELESS_FORMAT, span, &"useless use of `format!`");
+                        }
+                    }
+                }
+                _ => (),
             }
         }
     }
+}
+
+/// Checks if the expressions matches
+/// ```
+/// { static __STATIC_FMTSTR: &[""] = _; __STATIC_FMTSTR }
+/// ```
+fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
+    if_let_chain! {[
+        let ExprBlock(ref block) = expr.node,
+        block.stmts.len() == 1,
+        let StmtDecl(ref decl, _) = block.stmts[0].node,
+        let DeclItem(ref decl) = decl.node,
+        let Some(NodeItem(decl)) = cx.tcx.map.find(decl.id),
+        decl.name.as_str() == "__STATIC_FMTSTR",
+        let ItemStatic(_, _, ref expr) = decl.node,
+        let ExprAddrOf(_, ref expr) = expr.node, // &[""]
+        let ExprVec(ref expr) = expr.node,
+        expr.len() == 1,
+        let ExprLit(ref lit) = expr[0].node,
+        let LitKind::Str(ref lit, _) = lit.node,
+        lit.is_empty()
+    ], {
+        return true;
+    }}
+
+    false
+}
+
+/// Checks if the expressions matches
+/// ```
+/// &match (&42,) {
+///     (__arg0,) => [::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Display::fmt)],
+/// })
+/// ```
+fn check_arg_is_display(expr: &Expr) -> bool {
+    if_let_chain! {[
+        let ExprAddrOf(_, ref expr) = expr.node,
+        let ExprMatch(_, ref arms, _) = expr.node,
+        arms.len() == 1,
+        let ExprVec(ref exprs) = arms[0].body.node,
+        exprs.len() == 1,
+        let ExprCall(_, ref args) = exprs[0].node,
+        args.len() == 2,
+        let ExprPath(None, ref path) = args[1].node,
+        match_path(path, &DISPLAY_FMT_METHOD_PATH)
+    ], {
+        return true;
+    }}
+
+    false
 }

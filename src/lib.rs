@@ -56,6 +56,7 @@ pub mod enum_variants;
 pub mod eq_op;
 pub mod escape;
 pub mod eta_reduction;
+pub mod format;
 pub mod identity_op;
 pub mod items_after_statements;
 pub mod len_zero;
