@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![feature(thread_local)]
+#![crate_type = "lib"]
 
+#[no_mangle]
 #[thread_local]
 pub static FOO: u32 = 3;
