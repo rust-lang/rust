@@ -1086,6 +1086,7 @@ extern "system" {
     pub fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
 
     #[unwind]
+    #[cfg(any(target_arch = "x86_64", target_env = "msvc"))]
     pub fn RaiseException(dwExceptionCode: DWORD,
                           dwExceptionFlags: DWORD,
                           nNumberOfArguments: DWORD,
