@@ -73,7 +73,7 @@ impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
         unsafe {
-            &*(self.as_inner().as_inner() as *const libc::stat64
+            &*(self.as_inner().as_inner() as *const libc::stat
                                           as *const raw::stat)
         }
     }
