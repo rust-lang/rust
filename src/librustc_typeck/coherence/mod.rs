@@ -385,11 +385,12 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
 
+            let origin = TypeOrigin::Misc(span);
             let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
                 if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
-                    infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
-                                                  target, &ty::error::TypeError::Mutability);
+                    infcx.report_mismatched_types(origin, mk_ptr(mt_b.ty),
+                                                  target, ty::error::TypeError::Mutability);
                 }
                 (mt_a.ty, mt_b.ty, unsize_trait, None)
             };
@@ -418,7 +419,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                         return;
                     }
 
-                    let origin = TypeOrigin::Misc(span);
                     let fields = &def_a.struct_variant().fields;
                     let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
                         let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
