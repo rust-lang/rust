@@ -454,7 +454,7 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          -> UnitResult<'tcx>
 {
     debug!("mk_eqty({:?} <: {:?})", a, b);
-    cx.commit_if_ok(|_| cx.eq_types(a_is_expected, origin, a, b))
+    cx.eq_types(a_is_expected, origin, a, b)
 }
 
 pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -466,7 +466,7 @@ pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 {
     debug!("mk_eq_trait_refs({:?} <: {:?})",
            a, b);
-    cx.commit_if_ok(|_| cx.eq_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+    cx.eq_trait_refs(a_is_expected, origin, a, b)
 }
 
 pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -478,7 +478,7 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 {
     debug!("mk_sub_poly_trait_refs({:?} <: {:?})",
            a, b);
-    cx.commit_if_ok(|_| cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+    cx.sub_poly_trait_refs(a_is_expected, origin, a, b)
 }
 
 fn expected_found<T>(a_is_expected: bool,
