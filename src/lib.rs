@@ -168,7 +168,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box entry::HashMapLint);
     reg.register_late_lint_pass(box ranges::StepByZero);
     reg.register_late_lint_pass(box types::CastPass);
-    reg.register_late_lint_pass(box types::TypeComplexityPass);
+    reg.register_late_lint_pass(box types::TypeComplexityPass::new(conf.type_complexity_threshold));
     reg.register_late_lint_pass(box matches::MatchPass);
     reg.register_late_lint_pass(box misc::PatternPass);
     reg.register_late_lint_pass(box minmax::MinMaxPass);
