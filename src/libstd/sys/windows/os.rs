@@ -72,14 +72,23 @@ pub fn error_string(errnum: i32) -> String {
 }
 
 pub struct Env {
+    inner: EnvSlices,
+}
+
+// This is a sub-iterator for `Env` to avoid allocating `OsString`s when not
+// needed, by separating the iteration over the `LPWCH` from constructing the
+// result strings this allows methods on `Env` such as `nth` to avoid allocations.
+struct EnvSlices {
     base: c::LPWCH,
     cur: c::LPWCH,
 }
 
-impl Iterator for Env {
-    type Item = (OsString, OsString);
+impl Iterator for EnvSlices {
+    // These aren't really 'static, but that's required to avoid some unwanted
+    // lifetime definitions. The slices have the same lifetime as this iterator.
+    type Item = (&'static [u16], &'static [u16]);
 
-    fn next(&mut self) -> Option<(OsString, OsString)> {
+    fn next(&mut self) -> Option<(&'static [u16], &'static [u16])> {
         loop {
             unsafe {
                 if *self.cur == 0 { return None }
@@ -100,16 +109,37 @@ impl Iterator for Env {
                     Some(p) => p,
                     None => continue,
                 };
-                return Some((
-                    OsStringExt::from_wide(&s[..pos]),
-                    OsStringExt::from_wide(&s[pos+1..]),
-                ))
+                return Some((&s[..pos], &s[pos+1..]))
             }
         }
     }
 }
 
-impl Drop for Env {
+impl Env {
+    fn convert((a, b): (&'static [u16], &'static [u16])) -> (OsString, OsString) {
+        (OsStringExt::from_wide(a), OsStringExt::from_wide(b))
+    }
+}
+
+impl Iterator for Env {
+    type Item = (OsString, OsString);
+
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        self.inner.next().map(Self::convert)
+    }
+
+    fn count(self) -> usize { self.inner.count() }
+
+    fn nth(&mut self, n: usize) -> Option<(OsString, OsString)> {
+        self.inner.nth(n).map(Self::convert)
+    }
+
+    fn last(self) -> Option<(OsString, OsString)> {
+        self.inner.last().map(Self::convert)
+    }
+}
+
+impl Drop for EnvSlices {
     fn drop(&mut self) {
         unsafe { c::FreeEnvironmentStringsW(self.base); }
     }
@@ -122,7 +152,7 @@ pub fn env() -> Env {
             panic!("failure getting env string from OS: {}",
                    io::Error::last_os_error());
         }
-        Env { base: ch, cur: ch }
+        Env { inner: EnvSlices { base: ch, cur: ch } }
     }
 }
 
