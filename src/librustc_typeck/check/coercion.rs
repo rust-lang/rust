@@ -435,12 +435,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 }
 
-pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                             expr: &hir::Expr,
-                             a: Ty<'tcx>,
-                             b: Ty<'tcx>)
-                             -> RelateResult<'tcx, ()> {
-    debug!("mk_assignty({:?} -> {:?})", a, b);
+pub fn try<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                     expr: &hir::Expr,
+                     a: Ty<'tcx>,
+                     b: Ty<'tcx>)
+                     -> RelateResult<'tcx, ()> {
+    debug!("coercion::try({:?} -> {:?})", a, b);
     let mut unsizing_obligations = vec![];
     let adjustment = try!(indent(|| {
         fcx.infcx().commit_if_ok(|_| {

@@ -239,7 +239,7 @@ impl<'tcx> CastCheck<'tcx> {
             (None, Some(t_cast)) => {
                 if let ty::TyFnDef(_, _, f) = self.expr_ty.sty {
                     // Attempt a coercion to a fn pointer type.
-                    let res = coercion::mk_assignty(fcx, &self.expr,
+                    let res = coercion::try(fcx, &self.expr,
                         self.expr_ty, fcx.tcx().mk_ty(ty::TyFnPtr(f)));
                     if !res.is_ok() {
                         return Err(CastError::NonScalar);
@@ -390,14 +390,7 @@ impl<'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) -> bool {
-        if let Ok(()) = coercion::mk_assignty(fcx,
-                                              &self.expr,
-                                              self.expr_ty,
-                                              self.cast_ty) {
-            true
-        } else {
-            false
-        }
+        coercion::try(fcx, &self.expr, self.expr_ty, self.cast_ty).is_ok()
     }
 
 }
