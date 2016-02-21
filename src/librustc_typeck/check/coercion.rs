@@ -96,12 +96,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(None) // No coercion required.
     }
 
-    fn unpack_actual_value<T, F>(&self, a: Ty<'tcx>, f: F) -> T where
-        F: FnOnce(Ty<'tcx>) -> T,
-    {
-        f(self.fcx.infcx().shallow_resolve(a))
-    }
-
     fn coerce(&self,
               expr_a: &hir::Expr,
               a: Ty<'tcx>,
@@ -353,22 +347,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
          * into a closure or a `proc`.
          */
 
-        self.unpack_actual_value(b, |b| {
-            debug!("coerce_from_fn_pointer(a={:?}, b={:?})",
-                   a, b);
+        let b = self.fcx.infcx().shallow_resolve(b);
+        debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
 
-            if let ty::TyFnPtr(fn_ty_b) = b.sty {
-                match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
-                    (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
-                        let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
-                        try!(self.subtype(unsafe_a, b));
-                        return Ok(Some(AdjustUnsafeFnPointer));
-                    }
-                    _ => {}
+        if let ty::TyFnPtr(fn_ty_b) = b.sty {
+            match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
+                (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
+                    let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
+                    try!(self.subtype(unsafe_a, b));
+                    return Ok(Some(AdjustUnsafeFnPointer));
                 }
+                _ => {}
             }
-            self.subtype(a, b)
-        })
+        }
+        self.subtype(a, b)
     }
 
     fn coerce_from_fn_item(&self,
@@ -381,19 +373,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
          * into a closure or a `proc`.
          */
 
-        self.unpack_actual_value(b, |b| {
-            debug!("coerce_from_fn_item(a={:?}, b={:?})",
-                   a, b);
+        let b = self.fcx.infcx().shallow_resolve(b);
+        debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
-            match b.sty {
-                ty::TyFnPtr(_) => {
-                    let a_fn_pointer = self.tcx().mk_ty(ty::TyFnPtr(fn_ty_a));
-                    try!(self.subtype(a_fn_pointer, b));
-                    Ok(Some(AdjustReifyFnPointer))
-                }
-                _ => self.subtype(a, b)
+        match b.sty {
+            ty::TyFnPtr(_) => {
+                let a_fn_pointer = self.tcx().mk_ty(ty::TyFnPtr(fn_ty_a));
+                try!(self.subtype(a_fn_pointer, b));
+                Ok(Some(AdjustReifyFnPointer))
             }
-        })
+            _ => self.subtype(a, b)
+        }
     }
 
     fn coerce_unsafe_ptr(&self,
