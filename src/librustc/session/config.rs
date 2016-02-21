@@ -69,6 +69,7 @@ pub enum OutputType {
     Object,
     Exe,
     DepInfo,
+    LinkFlagsLd,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,7 +88,8 @@ impl OutputType {
     fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
         match *self {
             OutputType::Exe |
-            OutputType::DepInfo => true,
+            OutputType::DepInfo |
+            OutputType::LinkFlagsLd => true,
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
@@ -103,6 +105,7 @@ impl OutputType {
             OutputType::Object => "obj",
             OutputType::Exe => "link",
             OutputType::DepInfo => "dep-info",
+            OutputType::LinkFlagsLd => "link-flags-ld",
         }
     }
 }
@@ -210,6 +213,7 @@ impl OutputFilenames {
             OutputType::LlvmAssembly => base.with_extension("ll"),
             OutputType::Object => base.with_extension("o"),
             OutputType::DepInfo => base.with_extension("d"),
+            OutputType::LinkFlagsLd => base.with_extension("ldflags"),
             OutputType::Exe => base,
         }
     }
@@ -884,7 +888,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                "NAME"),
         opt::multi_s("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
+                 "[asm|llvm-bc|llvm-ir|obj|link|link-flags-ld|dep-info]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout",
                  "[crate-name|file-names|sysroot|target-list]"),
@@ -1059,6 +1063,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     "llvm-bc" => OutputType::Bitcode,
                     "obj" => OutputType::Object,
                     "link" => OutputType::Exe,
+                    "link-flags-ld" => OutputType::LinkFlagsLd,
                     "dep-info" => OutputType::DepInfo,
                     part => {
                         early_error(error_format, &format!("unknown emission type: `{}`",
