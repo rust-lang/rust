@@ -82,13 +82,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_bitflags"
-version = "0.0.0"
-dependencies = [
- "core 0.0.0",
-]
-
-[[package]]
 name = "rustc_unicode"
 version = "0.0.0"
 dependencies = [
@@ -108,7 +101,6 @@ dependencies = [
  "gcc 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",
  "rand 0.0.0",
- "rustc_bitflags 0.0.0",
  "rustc_unicode 0.0.0",
 ]
 

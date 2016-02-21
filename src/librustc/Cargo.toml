@@ -17,6 +17,7 @@ graphviz = { path = "../libgraphviz" }
 log = { path = "../liblog" }
 rbml = { path = "../librbml" }
 rustc_back = { path = "../librustc_back" }
+rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_front = { path = "../librustc_front" }
 rustc_llvm = { path = "../librustc_llvm" }

@@ -11,6 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 log = { path = "../liblog" }
 rustc = { path = "../librustc" }
+rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_front = { path = "../librustc_front" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
