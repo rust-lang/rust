@@ -119,7 +119,31 @@ impl FileAttr {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "macos")))]
+#[cfg(target_os = "netbsd")]
+impl FileAttr {
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_mtime as libc::time_t,
+            tv_nsec: self.stat.st_mtimensec as libc::c_long,
+        }))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_atime as libc::time_t,
+            tv_nsec: self.stat.st_atimensec as libc::c_long,
+        }))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_birthtime as libc::time_t,
+            tv_nsec: self.stat.st_birthtimensec as libc::c_long,
+        }))
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "netbsd")))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
