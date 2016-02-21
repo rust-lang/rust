@@ -1351,18 +1351,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn report_mismatched_types(&self,
-                                   span: Span,
+                                   origin: TypeOrigin,
                                    expected: Ty<'tcx>,
                                    actual: Ty<'tcx>,
-                                   err: &TypeError<'tcx>) {
+                                   err: TypeError<'tcx>) {
         let trace = TypeTrace {
-            origin: TypeOrigin::Misc(span),
+            origin: origin,
             values: Types(ExpectedFound {
                 expected: expected,
                 found: actual
             })
         };
-        self.report_and_explain_type_error(trace, err);
+        self.report_and_explain_type_error(trace, &err);
     }
 
     pub fn report_conflicting_default_types(&self,

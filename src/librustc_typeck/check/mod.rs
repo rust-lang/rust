@@ -1622,14 +1622,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.infcx().type_error_struct(sp, mk_msg, actual_ty, err)
     }
 
-    pub fn report_mismatched_types(&self,
-                                   sp: Span,
-                                   e: Ty<'tcx>,
-                                   a: Ty<'tcx>,
-                                   err: &TypeError<'tcx>) {
-        self.infcx().report_mismatched_types(sp, e, a, err)
-    }
-
     /// Registers an obligation for checking later, during regionck, that the type `ty` must
     /// outlive the region `r`.
     pub fn register_region_obligation(&self,
