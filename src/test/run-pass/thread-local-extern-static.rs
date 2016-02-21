@@ -11,11 +11,12 @@
 // aux-build:thread-local-extern-static.rs
 
 #![feature(thread_local)]
+#![feature(cfg_target_thread_local)]
 
 extern crate thread_local_extern_static;
 
 extern {
-    #[thread_local]
+    #[cfg_attr(target_thread_local, thread_local)]
     static FOO: u32;
 }
 
