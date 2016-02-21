@@ -92,15 +92,8 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(unsize)]
 
-// Issue# 30592: Systematically use alloc_system during stage0 since jemalloc
-// might be unavailable or disabled
-#![cfg_attr(stage0, feature(alloc_system))]
-
 #![cfg_attr(not(test), feature(raw, fn_traits, placement_new_protocol))]
 #![cfg_attr(test, feature(test, rustc_private, box_heap))]
-
-#[cfg(stage0)]
-extern crate alloc_system;
 
 // Allow testing this library
 
