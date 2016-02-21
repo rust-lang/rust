@@ -168,41 +168,41 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     /// Check whether two patterns are the same.
     pub fn eq_pat(&self, left: &Pat, right: &Pat) -> bool {
         match (&left.node, &right.node) {
-            (&PatBox(ref l), &PatBox(ref r)) => {
+            (&PatKind::Box(ref l), &PatKind::Box(ref r)) => {
                 self.eq_pat(l, r)
             }
-            (&PatEnum(ref lp, ref la), &PatEnum(ref rp, ref ra)) => {
+            (&PatKind::TupleStruct(ref lp, ref la), &PatKind::TupleStruct(ref rp, ref ra)) => {
                 self.eq_path(lp, rp) &&
                     both(la, ra, |l, r| {
                         over(l, r, |l, r| self.eq_pat(l, r))
                     })
             }
-            (&PatIdent(ref lb, ref li, ref lp), &PatIdent(ref rb, ref ri, ref rp)) => {
+            (&PatKind::Ident(ref lb, ref li, ref lp), &PatKind::Ident(ref rb, ref ri, ref rp)) => {
                 lb == rb && li.node.name.as_str() == ri.node.name.as_str() &&
                     both(lp, rp, |l, r| self.eq_pat(l, r))
             }
-            (&PatLit(ref l), &PatLit(ref r)) => {
+            (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => {
                 self.eq_expr(l, r)
             }
-            (&PatQPath(ref ls, ref lp), &PatQPath(ref rs, ref rp)) => {
+            (&PatKind::QPath(ref ls, ref lp), &PatKind::QPath(ref rs, ref rp)) => {
                 self.eq_qself(ls, rs) && self.eq_path(lp, rp)
             }
-            (&PatTup(ref l), &PatTup(ref r)) => {
+            (&PatKind::Tup(ref l), &PatKind::Tup(ref r)) => {
                 over(l, r, |l, r| self.eq_pat(l, r))
             }
-            (&PatRange(ref ls, ref le), &PatRange(ref rs, ref re)) => {
+            (&PatKind::Range(ref ls, ref le), &PatKind::Range(ref rs, ref re)) => {
                 self.eq_expr(ls, rs) &&
                     self.eq_expr(le, re)
             }
-            (&PatRegion(ref le, ref lm), &PatRegion(ref re, ref rm)) => {
+            (&PatKind::Ref(ref le, ref lm), &PatKind::Ref(ref re, ref rm)) => {
                 lm == rm && self.eq_pat(le, re)
             }
-            (&PatVec(ref ls, ref li, ref le), &PatVec(ref rs, ref ri, ref re)) => {
+            (&PatKind::Vec(ref ls, ref li, ref le), &PatKind::Vec(ref rs, ref ri, ref re)) => {
                 over(ls, rs, |l, r| self.eq_pat(l, r)) &&
                     over(le, re, |l, r| self.eq_pat(l, r)) &&
                     both(li, ri, |l, r| self.eq_pat(l, r))
             }
-            (&PatWild, &PatWild) => true,
+            (&PatKind::Wild, &PatKind::Wild) => true,
             _ => false,
         }
     }

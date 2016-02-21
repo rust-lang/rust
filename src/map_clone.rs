@@ -108,8 +108,8 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
 
 fn get_arg_name(pat: &Pat) -> Option<Ident> {
     match pat.node {
-        PatIdent(_, ident, None) => Some(ident.node),
-        PatRegion(ref subpat, _) => get_arg_name(subpat),
+        PatKind::Ident(_, ident, None) => Some(ident.node),
+        PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
         _ => None,
     }
 }

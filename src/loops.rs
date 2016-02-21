@@ -288,7 +288,7 @@ impl LateLintPass for LoopsPass {
         }
         if let ExprMatch(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.node {
             let pat = &arms[0].pats[0].node;
-            if let (&PatEnum(ref path, Some(ref pat_args)),
+            if let (&PatKind::TupleStruct(ref path, Some(ref pat_args)),
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 if let Some(lhs_constructor) = path.segments.last() {
@@ -338,7 +338,7 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
     if let ExprRange(Some(ref l), ref r) = arg.node {
         // the var must be a single name
-        if let PatIdent(_, ref ident, _) = pat.node {
+        if let PatKind::Ident(_, ref ident, _) = pat.node {
 
             let mut visitor = VarVisitor {
                 cx: cx,
@@ -584,7 +584,7 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
 
 // Check for the FOR_KV_MAP lint.
 fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let PatTup(ref pat) = pat.node {
+    if let PatKind::Tup(ref pat) = pat.node {
         if pat.len() == 2 {
 
             let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
@@ -622,10 +622,10 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
 }
 
 // Return true if the pattern is a `PatWild` or an ident prefixed with '_'.
-fn pat_is_wild(pat: &Pat_, body: &Expr) -> bool {
+fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
     match *pat {
-        PatWild => true,
-        PatIdent(_, ident, None) if ident.node.name.as_str().starts_with('_') => {
+        PatKind::Wild => true,
+        PatKind::Ident(_, ident, None) if ident.node.name.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
                 var: ident.node,
                 used: false,
@@ -668,7 +668,7 @@ fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
             let Some(ref loopexpr) = block.expr,
             let ExprMatch(_, ref innerarms, MatchSource::ForLoopDesugar) = loopexpr.node,
             innerarms.len() == 2 && innerarms[0].pats.len() == 1,
-            let PatEnum(_, Some(ref somepats)) = innerarms[0].pats[0].node,
+            let PatKind::TupleStruct(_, Some(ref somepats)) = innerarms[0].pats[0].node,
             somepats.len() == 1
         ], {
             return Some((&somepats[0],
@@ -909,7 +909,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
         // Look for declarations of the variable
         if let DeclLocal(ref local) = decl.node {
             if local.pat.id == self.var_id {
-                if let PatIdent(_, ref ident, _) = local.pat.node {
+                if let PatKind::Ident(_, ref ident, _) = local.pat.node {
                     self.name = Some(ident.node.name);
 
                     self.state = if let Some(ref init) = local.init {

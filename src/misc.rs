@@ -45,7 +45,7 @@ impl LateLintPass for TopLevelRefPass {
             return;
         }
         for ref arg in &decl.inputs {
-            if let PatIdent(BindByRef(_), _, _) = arg.pat.node {
+            if let PatKind::Ident(BindByRef(_), _, _) = arg.pat.node {
                 span_lint(cx,
                           TOPLEVEL_REF_ARG,
                           arg.pat.span,
@@ -58,7 +58,7 @@ impl LateLintPass for TopLevelRefPass {
             [
             let StmtDecl(ref d, _) = s.node,
             let DeclLocal(ref l) = d.node,
-            let PatIdent(BindByRef(_), i, None) = l.pat.node,
+            let PatKind::Ident(BindByRef(_), i, None) = l.pat.node,
             let Some(ref init) = l.init
             ], {
                 let tyopt = if let Some(ref ty) = l.ty {
@@ -345,8 +345,8 @@ impl LintPass for PatternPass {
 
 impl LateLintPass for PatternPass {
     fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
-        if let PatIdent(_, ref ident, Some(ref right)) = pat.node {
-            if right.node == PatWild {
+        if let PatKind::Ident(_, ref ident, Some(ref right)) = pat.node {
+            if right.node == PatKind::Wild {
                 cx.span_lint(REDUNDANT_PATTERN,
                              pat.span,
                              &format!("the `{} @ _` pattern can be written as just `{}`",
