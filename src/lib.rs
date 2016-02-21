@@ -18,6 +18,8 @@ extern crate rustc;
 #[macro_use]
 extern crate rustc_front;
 
+extern crate toml;
+
 // Only for the compile time checking of paths
 extern crate core;
 extern crate collections;
@@ -35,6 +37,7 @@ extern crate rustc_plugin;
 
 use rustc_plugin::Registry;
 
+mod conf;
 pub mod consts;
 #[macro_use]
 pub mod utils;
@@ -107,6 +110,27 @@ mod reexport {
 #[plugin_registrar]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn plugin_registrar(reg: &mut Registry) {
+    let conferr = match conf::conf_file(reg.args()) {
+        Ok(Some(file_name)) => {
+            conf::read_conf(&file_name, true)
+        }
+        Ok(None) => {
+            conf::read_conf("Clippy.toml", false)
+        }
+        Err((err, span)) => {
+            reg.sess.struct_span_err(span, err).emit();
+            return;
+        }
+    };
+
+    let conf = match conferr {
+        Ok(conf) => conf,
+        Err(err) => {
+            reg.sess.struct_err(&format!("error reading Clippy's configuration file: {}", err)).emit();
+            return;
+        }
+    };
+
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
     reg.register_late_lint_pass(box misc::CmpNan);
@@ -157,7 +181,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box map_clone::MapClonePass);
     reg.register_late_lint_pass(box temporary_assignment::TemporaryAssignmentPass);
     reg.register_late_lint_pass(box transmute::UselessTransmute);
-    reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(25));
+    reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
     reg.register_late_lint_pass(box escape::EscapePass);
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
