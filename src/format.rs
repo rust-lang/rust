@@ -5,15 +5,16 @@ use syntax::ast::LitKind;
 use utils::{DISPLAY_FMT_METHOD_PATH, FMT_ARGUMENTS_NEWV1_PATH};
 use utils::{is_expn_of, match_path, span_lint};
 
-/// **What it does:** This lints about use of `format!("string literal with no argument")`.
+/// **What it does:** This lints about use of `format!("string literal with no argument")` and
+/// `format!("{}", foo)`.
 ///
 /// **Why is this bad?** There is no point of doing that. If you want a `String` you can use
-/// `to_owned` on the string literal. The even worse `&format!("foo")` is often encountered in the
-/// wild.
+/// `to_owned` on the string literal or expression. The even worse `&format!("foo")` is often
+/// encountered in the wild.
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `format!("foo")`
+/// **Examples:** `format!("foo")` and `format!("{}", foo)`
 declare_lint! {
     pub USELESS_FORMAT,
     Warn,
