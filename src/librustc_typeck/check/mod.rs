@@ -1701,6 +1701,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // FIXME(arielb1): use this instead of field.ty everywhere
+    // Only for fields! Returns <none> for methods>
+    // Indifferent to privacy flags
     pub fn field_ty(&self,
                     span: Span,
                     field: ty::FieldDef<'tcx>,
@@ -1711,8 +1713,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                            &field.ty(self.tcx(), substs))
     }
 
-    // Only for fields! Returns <none> for methods>
-    // Indifferent to privacy flags
     fn check_casts(&self) {
         let mut deferred_cast_checks = self.inh.deferred_cast_checks.borrow_mut();
         for cast in deferred_cast_checks.drain(..) {
@@ -3511,7 +3511,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = fcx.inh.deferred_cast_checks.borrow_mut();
-            let cast_check = cast::CastCheck::new((**e).clone(), t_expr, t_cast, expr.span);
+            let cast_check = cast::CastCheck::new(e, t_expr, t_cast, expr.span);
             deferred_cast_checks.push(cast_check);
         }
       }
