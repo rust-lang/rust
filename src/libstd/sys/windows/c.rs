@@ -20,6 +20,7 @@ use ptr;
 
 #[repr(simd)]
 #[repr(C)]
+#[cfg(target_arch = "x86_64")]
 struct u64x2(u64, u64);
 
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
@@ -246,17 +247,17 @@ pub const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_NONCONTINUABLE: DWORD = 0x1;   // Noncontinuable exception
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_UNWINDING: DWORD = 0x2;        // Unwind is in progress
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_EXIT_UNWIND: DWORD = 0x4;      // Exit unwind is in progress
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_TARGET_UNWIND: DWORD = 0x20;   // Target unwind in progress
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_COLLIDED_UNWIND: DWORD = 0x40; // Collided exception handler call
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING |
                                     EXCEPTION_EXIT_UNWIND |
                                     EXCEPTION_TARGET_UNWIND |
@@ -774,11 +775,11 @@ pub struct in6_addr {
     pub s6_addr: [u8; 16],
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub enum UNWIND_HISTORY_TABLE {}
 
 #[repr(C)]
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub struct RUNTIME_FUNCTION {
     pub BeginAddress: DWORD,
     pub EndAddress: DWORD,
@@ -786,7 +787,7 @@ pub struct RUNTIME_FUNCTION {
 }
 
 #[repr(C)]
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub struct DISPATCHER_CONTEXT {
     pub ControlPc: LPVOID,
     pub ImageBase: LPVOID,
@@ -1089,7 +1090,7 @@ extern "system" {
                           dwExceptionFlags: DWORD,
                           nNumberOfArguments: DWORD,
                           lpArguments: *const ULONG_PTR);
-    #[cfg(target_env = "gnu")]
+    #[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
     pub fn RtlUnwindEx(TargetFrame: LPVOID,
                        TargetIp: LPVOID,
                        ExceptionRecord: *const EXCEPTION_RECORD,
