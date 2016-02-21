@@ -407,6 +407,11 @@ impl Iterator for Env {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    fn count(self) -> usize { self.iter.count() }
+    fn nth(&mut self, n: usize) -> Option<(OsString, OsString)> {
+        self.iter.nth(n)
+    }
+    fn last(self) -> Option<(OsString, OsString)> { self.iter.last() }
 }
 
 #[cfg(target_os = "macos")]
