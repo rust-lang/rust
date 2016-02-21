@@ -7,6 +7,3 @@ version = "0.0.0"
 name = "term"
 path = "lib.rs"
 crate-type = ["dylib", "rlib"]
-
-[dependencies]
-log = { path = "../liblog" }

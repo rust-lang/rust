@@ -12,5 +12,6 @@ crate-type = ["dylib"]
 log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
 rustc = { path = "../librustc" }
+rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_front = { path = "../librustc_front" }
 arena = { path = "../libarena" }
