@@ -157,7 +157,8 @@ mod imp {
               target_os = "macos",
               target_os = "bitrig",
               target_os = "netbsd",
-              target_os = "openbsd"))]
+              target_os = "openbsd",
+              target_os = "solaris"))]
     unsafe fn get_stack() -> libc::stack_t {
         libc::stack_t { ss_sp: get_stackp(), ss_flags: 0, ss_size: SIGSTKSZ }
     }
