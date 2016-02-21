@@ -48,6 +48,8 @@ PKG_FILES := \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
     $(addprefix $(S)src/,                      \
+      bootstrap                                \
+      build_helper                             \
       compiletest                              \
       doc                                      \
       driver                                   \
@@ -60,6 +62,7 @@ PKG_FILES := \
       rt                                       \
       rtstartup                                \
       rustllvm                                 \
+      rustc                                    \
       snapshots.txt                            \
       rust-installer                           \
       rustbook                                 \
