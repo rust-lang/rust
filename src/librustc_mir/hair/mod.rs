@@ -229,7 +229,7 @@ pub enum ExprKind<'tcx> {
         variant_index: usize,
         substs: &'tcx Substs<'tcx>,
         fields: Vec<FieldExprRef<'tcx>>,
-        base: Option<ExprRef<'tcx>>,
+        base: Option<FruInfo<'tcx>>
     },
     Closure {
         closure_id: DefId,
@@ -254,6 +254,12 @@ pub enum ExprRef<'tcx> {
 pub struct FieldExprRef<'tcx> {
     pub name: Field,
     pub expr: ExprRef<'tcx>,
+}
+
+#[derive(Clone, Debug)]
+pub struct FruInfo<'tcx> {
+    pub base: ExprRef<'tcx>,
+    pub field_types: Vec<Ty<'tcx>>
 }
 
 #[derive(Clone, Debug)]

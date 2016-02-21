@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f<T>() -> bool {
-    struct S(T); //~ ERROR use of undeclared type name `T`
+    struct S(T); //~ ERROR type name `T` is undefined or not in scope
     //~^ ERROR can't use type parameters from outer function; try using
 
     true

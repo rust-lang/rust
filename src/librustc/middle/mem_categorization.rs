@@ -430,6 +430,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
 
                     adjustment::AdjustReifyFnPointer |
                     adjustment::AdjustUnsafeFnPointer |
+                    adjustment::AdjustMutToConstPointer |
                     adjustment::AdjustDerefRef(_) => {
                         debug!("cat_expr({:?}): {:?}",
                                adjustment,

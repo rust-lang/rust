@@ -12,8 +12,8 @@
 
 #![no_implicit_prelude]
 
-use qux::*; //~ERROR a type named `Baz` has already been imported in this module
-use foo::*;
+use qux::*;
+use foo::*; //~ERROR a type named `Baz` has already been imported in this module
 
 mod foo {
     pub type Baz = isize;

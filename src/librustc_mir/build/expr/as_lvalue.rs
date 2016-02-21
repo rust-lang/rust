@@ -41,7 +41,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
             ExprKind::Field { lhs, name } => {
                 let lvalue = unpack!(block = this.as_lvalue(block, lhs));
-                let lvalue = lvalue.field(name);
+                let lvalue = lvalue.field(name, expr.ty);
                 block.and(lvalue)
             }
             ExprKind::Deref { arg } => {

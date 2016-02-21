@@ -258,7 +258,7 @@ done:
     io::stdin().read_line(&mut guess).expect("failed to read line");
 ```
 
-But that gets hard to read. So we’ve split it up, three lines for three method
+But that gets hard to read. So we’ve split it up, two lines for two method
 calls. We already talked about `read_line()`, but what about `expect()`? Well,
 we already mentioned that `read_line()` puts what the user types into the `&mut
 String` we pass it. But it also returns a value: in this case, an
@@ -644,7 +644,7 @@ So far, that hasn’t mattered, and so Rust defaults to an `i32`. However, here,
 Rust doesn’t know how to compare the `guess` and the `secret_number`. They
 need to be the same type. Ultimately, we want to convert the `String` we
 read as input into a real number type, for comparison. We can do that
-with three more lines. Here’s our new program:
+with two more lines. Here’s our new program:
 
 ```rust,ignore
 extern crate rand;

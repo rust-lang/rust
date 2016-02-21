@@ -610,7 +610,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                adjustment::AdjustReifyFnPointer=> {
+                adjustment::AdjustReifyFnPointer => {
                     this.emit_enum_variant("AdjustReifyFnPointer", 1, 0, |_| Ok(()))
                 }
 
@@ -620,8 +620,14 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     })
                 }
 
+                adjustment::AdjustMutToConstPointer => {
+                    this.emit_enum_variant("AdjustMutToConstPointer", 3, 0, |_| {
+                        Ok(())
+                    })
+                }
+
                 adjustment::AdjustDerefRef(ref auto_deref_ref) => {
-                    this.emit_enum_variant("AdjustDerefRef", 3, 2, |this| {
+                    this.emit_enum_variant("AdjustDerefRef", 4, 2, |this| {
                         this.emit_enum_variant_arg(0,
                             |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
                     })
@@ -1002,12 +1008,14 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_auto_adjustment<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                     -> adjustment::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
-            let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer", "AdjustDerefRef"];
+            let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer",
+                            "AdjustMutToConstPointer", "AdjustDerefRef"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     1 => adjustment::AdjustReifyFnPointer,
                     2 => adjustment::AdjustUnsafeFnPointer,
-                    3 => {
+                    3 => adjustment::AdjustMutToConstPointer,
+                    4 => {
                         let auto_deref_ref: adjustment::AutoDerefRef =
                             this.read_enum_variant_arg(0,
                                 |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();

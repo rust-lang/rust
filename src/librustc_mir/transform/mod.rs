@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod clear_dead_blocks;
 pub mod simplify_cfg;
 pub mod erase_regions;
 pub mod no_landing_pads;
+pub mod type_check;
 mod util;

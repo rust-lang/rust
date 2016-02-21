@@ -43,6 +43,7 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &hir::Expr) {
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
     wbcx.visit_liberated_fn_sigs();
+    wbcx.visit_fru_field_types();
 }
 
 pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
@@ -64,6 +65,7 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
     wbcx.visit_liberated_fn_sigs();
+    wbcx.visit_fru_field_types();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -305,6 +307,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         adjustment::AdjustReifyFnPointer
                     }
 
+                    adjustment::AdjustMutToConstPointer => {
+                        adjustment::AdjustMutToConstPointer
+                    }
+
                     adjustment::AdjustUnsafeFnPointer => {
                         adjustment::AdjustUnsafeFnPointer
                     }
@@ -367,6 +373,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_fru_field_types(&self) {
+        for (&node_id, ftys) in self.fcx.inh.tables.borrow().fru_field_types.iter() {
+            let ftys = self.resolve(ftys, ResolvingFieldTypes(node_id));
+            self.tcx().tables.borrow_mut().fru_field_types.insert(node_id, ftys);
+        }
+    }
+
     fn resolve<T:TypeFoldable<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
         t.fold_with(&mut Resolver::new(self.fcx, reason))
     }
@@ -383,6 +396,7 @@ enum ResolveReason {
     ResolvingUpvar(ty::UpvarId),
     ResolvingClosure(DefId),
     ResolvingFnSig(ast::NodeId),
+    ResolvingFieldTypes(ast::NodeId)
 }
 
 impl ResolveReason {
@@ -395,6 +409,9 @@ impl ResolveReason {
                 tcx.expr_span(upvar_id.closure_expr_id)
             }
             ResolvingFnSig(id) => {
+                tcx.map.span(id)
+            }
+            ResolvingFieldTypes(id) => {
                 tcx.map.span(id)
             }
             ResolvingClosure(did) => {
@@ -474,14 +491,14 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                               "cannot determine a type for this closure")
                 }
 
-                ResolvingFnSig(id) => {
+                ResolvingFnSig(id) | ResolvingFieldTypes(id) => {
                     // any failures here should also fail when
                     // resolving the patterns, closure types, or
                     // something else.
                     let span = self.reason.span(self.tcx);
                     self.tcx.sess.delay_span_bug(
                         span,
-                        &format!("cannot resolve some aspect of fn sig for {:?}", id));
+                        &format!("cannot resolve some aspect of data for {:?}", id));
                 }
             }
         }

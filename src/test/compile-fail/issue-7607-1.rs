@@ -12,7 +12,7 @@ struct Foo {
     x: isize
 }
 
-impl Fo { //~ ERROR use of undeclared type name `Fo`
+impl Fo { //~ ERROR type name `Fo` is undefined or not in scope
     fn foo() {}
 }
 

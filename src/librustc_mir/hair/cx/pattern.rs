@@ -314,3 +314,20 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
         }
     }
 }
+
+impl<'tcx> FieldPattern<'tcx> {
+    pub fn field_ty(&self) -> Ty<'tcx> {
+        debug!("field_ty({:?},ty={:?})", self, self.pattern.ty);
+        let r = match *self.pattern.kind {
+            PatternKind::Binding { mode: BindingMode::ByRef(..), ..} => {
+                match self.pattern.ty.sty {
+                    ty::TyRef(_, mt) => mt.ty,
+                    _ => unreachable!()
+                }
+            }
+            _ => self.pattern.ty
+        };
+        debug!("field_ty -> {:?}", r);
+        r
+    }
+}

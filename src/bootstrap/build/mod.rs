@@ -160,24 +160,25 @@ impl Build {
         if fs::metadata(self.src.join(".git")).is_err() {
             return
         }
-        let out = output(Command::new("git").arg("submodule").arg("status"));
+        let git_submodule = || {
+            let mut cmd = Command::new("git");
+            cmd.current_dir(&self.src).arg("submodule");
+            return cmd
+        };
+        let out = output(git_submodule().arg("status"));
         if !out.lines().any(|l| l.starts_with("+") || l.starts_with("-")) {
             return
         }
 
-        self.run(Command::new("git").arg("submodule").arg("sync"));
-        self.run(Command::new("git").arg("submodule").arg("init"));
-        self.run(Command::new("git").arg("submodule").arg("update"));
-        self.run(Command::new("git").arg("submodule").arg("update")
-                                    .arg("--recursive"));
-        self.run(Command::new("git").arg("submodule").arg("status")
-                                    .arg("--recursive"));
-        self.run(Command::new("git").arg("submodule").arg("foreach")
-                                    .arg("--recursive")
-                                    .arg("git").arg("clean").arg("-fdx"));
-        self.run(Command::new("git").arg("submodule").arg("foreach")
-                                    .arg("--recursive")
-                                    .arg("git").arg("checkout").arg("."));
+        self.run(git_submodule().arg("sync"));
+        self.run(git_submodule().arg("init"));
+        self.run(git_submodule().arg("update"));
+        self.run(git_submodule().arg("update").arg("--recursive"));
+        self.run(git_submodule().arg("status").arg("--recursive"));
+        self.run(git_submodule().arg("foreach").arg("--recursive")
+                                .arg("git").arg("clean").arg("-fdx"));
+        self.run(git_submodule().arg("foreach").arg("--recursive")
+                                .arg("git").arg("checkout").arg("."));
     }
 
     /// Clear out `dir` if our build has been flagged as dirty, and also set

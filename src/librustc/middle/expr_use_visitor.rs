@@ -721,10 +721,11 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         if let Some(adjustment) = adj {
             match adjustment {
                 adjustment::AdjustReifyFnPointer |
-                adjustment::AdjustUnsafeFnPointer => {
+                adjustment::AdjustUnsafeFnPointer |
+                adjustment::AdjustMutToConstPointer => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
-                    debug!("walk_adjustment(AdjustReifyFnPointer|AdjustUnsafeFnPointer)");
+                    debug!("walk_adjustment: trivial adjustment");
                     let cmt_unadjusted =
                         return_if_err!(self.mc.cat_expr_unadjusted(expr));
                     self.delegate_consume(expr.id, expr.span, cmt_unadjusted);

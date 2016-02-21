@@ -18,7 +18,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
-#![feature(borrow_state)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -81,6 +80,8 @@ use rustc_front::hir::{ItemFn, ItemForeignMod, ItemImpl, ItemMod, ItemStatic, It
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use rustc_front::hir::Local;
 use rustc_front::hir::{Pat, PatKind, Path, PrimTy};
+use rustc_front::hir::{PathSegment, PathParameters};
+use rustc_front::hir::HirVec;
 use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
 use rustc_front::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
 use rustc_front::util::walk_pat;
@@ -117,6 +118,12 @@ enum SuggestionType {
     NotFound,
 }
 
+/// Candidates for a name resolution failure
+pub struct SuggestedCandidates {
+    name: String,
+    candidates: Vec<Path>,
+}
+
 pub enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
@@ -127,7 +134,7 @@ pub enum ResolutionError<'a> {
     /// error E0404: is not a trait
     IsNotATrait(&'a str),
     /// error E0405: use of undeclared trait name
-    UndeclaredTraitName(&'a str),
+    UndeclaredTraitName(&'a str, SuggestedCandidates),
     /// error E0406: undeclared associated type
     UndeclaredAssociatedType,
     /// error E0407: method is not a member of trait
@@ -145,7 +152,7 @@ pub enum ResolutionError<'a> {
     /// error E0411: use of `Self` outside of an impl or trait
     SelfUsedOutsideImplOrTrait,
     /// error E0412: use of undeclared
-    UseOfUndeclared(&'a str, &'a str),
+    UseOfUndeclared(&'a str, &'a str, SuggestedCandidates),
     /// error E0413: declaration shadows an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
@@ -248,12 +255,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
         ResolutionError::IsNotATrait(name) => {
             struct_span_err!(resolver.session, span, E0404, "`{}` is not a trait", name)
         }
-        ResolutionError::UndeclaredTraitName(name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0405,
-                             "use of undeclared trait name `{}`",
-                             name)
+        ResolutionError::UndeclaredTraitName(name, candidates) => {
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0405,
+                                           "trait `{}` is not in scope",
+                                           name);
+            show_candidates(&mut err, span, &candidates);
+            err
         }
         ResolutionError::UndeclaredAssociatedType => {
             struct_span_err!(resolver.session, span, E0406, "undeclared associated type")
@@ -313,13 +322,15 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              E0411,
                              "use of `Self` outside of an impl or trait")
         }
-        ResolutionError::UseOfUndeclared(kind, name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0412,
-                             "use of undeclared {} `{}`",
-                             kind,
-                             name)
+        ResolutionError::UseOfUndeclared(kind, name, candidates) => {
+            let mut err = struct_span_err!(resolver.session,
+                                           span,
+                                           E0412,
+                                           "{} `{}` is undefined or not in scope",
+                                           kind,
+                                           name);
+            show_candidates(&mut err, span, &candidates);
+            err
         }
         ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(name) => {
             struct_span_err!(resolver.session,
@@ -798,7 +809,7 @@ pub struct ModuleS<'a> {
     is_extern_crate: bool,
 
     resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
-    imports: RefCell<Vec<ImportDirective>>,
+    unresolved_imports: RefCell<Vec<ImportDirective>>,
 
     // The module children of this node, including normal modules and anonymous modules.
     // Anonymous children are pseudo-modules that are implicitly created around items
@@ -827,9 +838,6 @@ pub struct ModuleS<'a> {
     // The number of unresolved pub glob imports in this module
     pub_glob_count: Cell<usize>,
 
-    // The index of the import we're resolving.
-    resolved_import_count: Cell<usize>,
-
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
@@ -839,6 +847,7 @@ pub struct ModuleS<'a> {
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
+
     fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool, is_public: bool) -> Self {
         ModuleS {
             parent_link: parent_link,
@@ -846,13 +855,12 @@ impl<'a> ModuleS<'a> {
             is_public: is_public,
             is_extern_crate: false,
             resolutions: RefCell::new(HashMap::new()),
-            imports: RefCell::new(Vec::new()),
+            unresolved_imports: RefCell::new(Vec::new()),
             module_children: RefCell::new(NodeMap()),
             shadowed_traits: RefCell::new(Vec::new()),
             glob_count: Cell::new(0),
             pub_count: Cell::new(0),
             pub_glob_count: Cell::new(0),
-            resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
         }
     }
@@ -920,15 +928,6 @@ impl<'a> ModuleS<'a> {
         match self.def {
             Some(Def::Trait(_)) => true,
             _ => false,
-        }
-    }
-
-    fn all_imports_resolved(&self) -> bool {
-        if self.imports.borrow_state() == ::std::cell::BorrowState::Writing {
-            // it is currently being resolved ! so nope
-            false
-        } else {
-            self.imports.borrow().len() == self.resolved_import_count.get()
         }
     }
 
@@ -1622,13 +1621,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn report_unresolved_imports(&mut self, module_: Module<'a>) {
-        let index = module_.resolved_import_count.get();
-        let imports = module_.imports.borrow();
-        let import_count = imports.len();
-        if index != import_count {
-            resolve_error(self,
-                          (*imports)[index].span,
-                          ResolutionError::UnresolvedImport(None));
+        for import in module_.unresolved_imports.borrow().iter() {
+            resolve_error(self, import.span, ResolutionError::UnresolvedImport(None));
+            break;
         }
 
         // Descend into children and anonymous children.
@@ -1970,10 +1965,28 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Err(())
             }
         } else {
-            resolve_error(self,
-                          trait_path.span,
-                          ResolutionError::UndeclaredTraitName(&path_names_to_string(trait_path,
-                                                                                      path_depth)));
+
+            // find possible candidates
+            let trait_name = trait_path.segments.last().unwrap().identifier.name;
+            let candidates =
+                self.lookup_candidates(
+                    trait_name,
+                    TypeNS,
+                    |def| match def {
+                        Def::Trait(_) => true,
+                        _             => false,
+                    },
+                );
+
+            // create error object
+            let name = &path_names_to_string(trait_path, path_depth);
+            let error =
+                ResolutionError::UndeclaredTraitName(
+                    name,
+                    candidates,
+                );
+
+            resolve_error(self, trait_path.span, error);
             Err(())
         }
     }
@@ -2297,13 +2310,33 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                           ty.span,
                                           ResolutionError::SelfUsedOutsideImplOrTrait);
                         } else {
-                            resolve_error(self,
-                                          ty.span,
-                                          ResolutionError::UseOfUndeclared(
-                                                                    kind,
-                                                                    &path_names_to_string(path,
-                                                                                           0))
-                                         );
+                            let segment = path.segments.last();
+                            let segment = segment.expect("missing name in path");
+                            let type_name = segment.identifier.name;
+
+                            let candidates =
+                                self.lookup_candidates(
+                                    type_name,
+                                    TypeNS,
+                                    |def| match def {
+                                        Def::Trait(_) |
+                                        Def::Enum(_) |
+                                        Def::Struct(_) |
+                                        Def::TyAlias(_) => true,
+                                        _               => false,
+                                    },
+                                );
+
+                            // create error object
+                            let name = &path_names_to_string(path, 0);
+                            let error =
+                                ResolutionError::UseOfUndeclared(
+                                    kind,
+                                    name,
+                                    candidates,
+                                );
+
+                            resolve_error(self, ty.span, error);
                         }
                     }
                 }
@@ -3458,6 +3491,99 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         found_traits
     }
 
+    /// When name resolution fails, this method can be used to look up candidate
+    /// entities with the expected name. It allows filtering them using the
+    /// supplied predicate (which should be used to only accept the types of
+    /// definitions expected e.g. traits). The lookup spans across all crates.
+    ///
+    /// NOTE: The method does not look into imports, but this is not a problem,
+    /// since we report the definitions (thus, the de-aliased imports).
+    fn lookup_candidates<FilterFn>(&mut self,
+                                   lookup_name: Name,
+                                   namespace: Namespace,
+                                   filter_fn: FilterFn) -> SuggestedCandidates
+        where FilterFn: Fn(Def) -> bool {
+
+        let mut lookup_results = Vec::new();
+        let mut worklist = Vec::new();
+        worklist.push((self.graph_root, Vec::new(), false));
+
+        while let Some((in_module,
+                        path_segments,
+                        in_module_is_extern)) = worklist.pop() {
+            build_reduced_graph::populate_module_if_necessary(self, &in_module);
+
+            in_module.for_each_child(|name, ns, name_binding| {
+
+                // avoid imports entirely
+                if name_binding.is_import() { return; }
+
+                // collect results based on the filter function
+                if let Some(def) = name_binding.def() {
+                    if name == lookup_name && ns == namespace && filter_fn(def) {
+                        // create the path
+                        let ident = hir::Ident::from_name(name);
+                        let params = PathParameters::none();
+                        let segment = PathSegment {
+                            identifier: ident,
+                            parameters: params,
+                        };
+                        let span = name_binding.span.unwrap_or(syntax::codemap::DUMMY_SP);
+                        let mut segms = path_segments.clone();
+                        segms.push(segment);
+                        let segms = HirVec::from_vec(segms);
+                        let path = Path {
+                            span: span,
+                            global: true,
+                            segments: segms,
+                        };
+                        // the entity is accessible in the following cases:
+                        // 1. if it's defined in the same crate, it's always
+                        // accessible (since private entities can be made public)
+                        // 2. if it's defined in another crate, it's accessible
+                        // only if both the module is public and the entity is
+                        // declared as public (due to pruning, we don't explore
+                        // outside crate private modules => no need to check this)
+                        if !in_module_is_extern || name_binding.is_public() {
+                            lookup_results.push(path);
+                        }
+                    }
+                }
+
+                // collect submodules to explore
+                if let Some(module) = name_binding.module() {
+                    // form the path
+                    let path_segments = match module.parent_link {
+                        NoParentLink => path_segments.clone(),
+                        ModuleParentLink(_, name) => {
+                            let mut paths = path_segments.clone();
+                            let ident = hir::Ident::from_name(name);
+                            let params = PathParameters::none();
+                            let segm = PathSegment {
+                                identifier: ident,
+                                parameters: params,
+                            };
+                            paths.push(segm);
+                            paths
+                        }
+                        _ => unreachable!(),
+                    };
+
+                    if !in_module_is_extern || name_binding.is_public() {
+                        // add the module to the lookup
+                        let is_extern = in_module_is_extern || module.is_extern_crate;
+                        worklist.push((module, path_segments, is_extern));
+                    }
+                }
+            })
+        }
+
+        SuggestedCandidates {
+            name: lookup_name.as_str().to_string(),
+            candidates: lookup_results,
+        }
+    }
+
     fn record_def(&mut self, node_id: NodeId, resolution: PathResolution) {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
         assert!(match resolution.last_private {
@@ -3511,6 +3637,67 @@ fn path_names_to_string(path: &Path, depth: usize) -> String {
                                     .map(|seg| seg.identifier.name)
                                     .collect();
     names_to_string(&names[..])
+}
+
+/// When an entity with a given name is not available in scope, we search for
+/// entities with that name in all crates. This method allows outputting the
+/// results of this search in a programmer-friendly way
+fn show_candidates(session: &mut DiagnosticBuilder,
+                   span: syntax::codemap::Span,
+                   candidates: &SuggestedCandidates) {
+
+    let paths = &candidates.candidates;
+
+    if paths.len() > 0 {
+        // don't show more than MAX_CANDIDATES results, so
+        // we're consistent with the trait suggestions
+        const MAX_CANDIDATES: usize = 5;
+
+        // we want consistent results across executions, but candidates are produced
+        // by iterating through a hash map, so make sure they are ordered:
+        let mut path_strings: Vec<_> = paths.into_iter()
+                                            .map(|p| path_names_to_string(&p, 0))
+                                            .collect();
+        path_strings.sort();
+
+        // behave differently based on how many candidates we have:
+        if !paths.is_empty() {
+            if paths.len() == 1 {
+                session.fileline_help(
+                    span,
+                    &format!("you can to import it into scope: `use {};`.",
+                        &path_strings[0]),
+                );
+            } else {
+                session.fileline_help(span, "you can import several candidates \
+                    into scope (`use ...;`):");
+                let count = path_strings.len() as isize - MAX_CANDIDATES as isize + 1;
+
+                for (idx, path_string) in path_strings.iter().enumerate() {
+                    if idx == MAX_CANDIDATES - 1 && count > 1 {
+                        session.fileline_help(
+                            span,
+                            &format!("  and {} other candidates", count).to_string(),
+                        );
+                        break;
+                    } else {
+                        session.fileline_help(
+                            span,
+                            &format!("  `{}`", path_string).to_string(),
+                        );
+                    }
+                }
+            }
+        }
+    } else {
+        // nothing found:
+        session.fileline_help(
+            span,
+            &format!("no candidates by the name of `{}` found in your \
+            project; maybe you misspelled the name or forgot to import \
+            an external crate?", candidates.name.to_string()),
+        );
+    };
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.

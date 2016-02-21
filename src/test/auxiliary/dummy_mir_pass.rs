@@ -21,17 +21,14 @@ extern crate syntax;
 use rustc::mir::transform::MirPass;
 use rustc::mir::repr::{Mir, Literal};
 use rustc::mir::visit::MutVisitor;
-use rustc::middle::ty;
+use rustc::middle::infer::InferCtxt;
 use rustc::middle::const_eval::ConstVal;
-use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};
 use rustc_plugin::Registry;
-use rustc_front::hir;
-use syntax::attr;
 
 struct Pass;
 
 impl MirPass for Pass {
-    fn run_on_mir<'tcx>(&mut self, mir: &mut Mir<'tcx>, tcx: &ty::ctxt<'tcx>) {
+    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &InferCtxt<'a, 'tcx>) {
         Visitor.visit_mir(mir)
     }
 }

@@ -461,12 +461,12 @@ impl Foo for Bar { // ok!
 "##,
 
 E0405: r##"
-An unknown trait was implemented. Example of erroneous code:
+The code refers to a trait that is not in scope. Example of erroneous code:
 
 ```compile_fail
 struct Foo;
 
-impl SomeTrait for Foo {} // error: use of undeclared trait name `SomeTrait`
+impl SomeTrait for Foo {} // error: trait `SomeTrait` is not in scope
 ```
 
 Please verify that the name of the trait wasn't misspelled and ensure that it
@@ -599,20 +599,20 @@ trait Baz : Foo + Foo2 {
 "##,
 
 E0412: r##"
-An undeclared type name was used. Example of erroneous codes:
+The type name used is not in scope. Example of erroneous codes:
 
 ```compile_fail
-impl Something {} // error: use of undeclared type name `Something`
+impl Something {} // error: type name `Something` is not in scope
 
 // or:
 
 trait Foo {
-    fn bar(N); // error: use of undeclared type name `N`
+    fn bar(N); // error: type name `N` is not in scope
 }
 
 // or:
 
-fn foo(x: T) {} // error: use of undeclared type name `T`
+fn foo(x: T) {} // type name `T` is not in scope
 ```
 
 To fix this error, please verify you didn't misspell the type name, you did

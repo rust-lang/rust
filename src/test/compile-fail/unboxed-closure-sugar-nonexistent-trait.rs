@@ -10,7 +10,7 @@
 
 #![feature(unboxed_closures)]
 
-fn f<F:Nonexist(isize) -> isize>(x: F) {} //~ ERROR undeclared trait name `Nonexist`
+fn f<F:Nonexist(isize) -> isize>(x: F) {} //~ ERROR trait `Nonexist` is not in scope
 
 type Typedef = isize;
 
