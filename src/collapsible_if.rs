@@ -14,6 +14,7 @@
 
 use rustc::lint::*;
 use rustc_front::hir::*;
+use std::borrow::Cow;
 use syntax::codemap::Spanned;
 
 use utils::{in_macro, snippet, snippet_block, span_lint_and_then};
@@ -95,11 +96,11 @@ fn requires_brackets(e: &Expr) -> bool {
     }
 }
 
-fn check_to_string(cx: &LateContext, e: &Expr) -> String {
+fn check_to_string(cx: &LateContext, e: &Expr) -> Cow<'static, str> {
     if requires_brackets(e) {
-        format!("({})", snippet(cx, e.span, ".."))
+        format!("({})", snippet(cx, e.span, "..")).into()
     } else {
-        format!("{}", snippet(cx, e.span, ".."))
+        snippet(cx, e.span, "..")
     }
 }
 

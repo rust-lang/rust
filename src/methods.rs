@@ -530,10 +530,10 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
             return;
         }
 
-        let sugg = match (fn_has_arguments, !or_has_args) {
-            (true, _) => format!("|_| {}", snippet(cx, arg.span, "..")),
-            (false, false) => format!("|| {}", snippet(cx, arg.span, "..")),
-            (false, true) => format!("{}", snippet(cx, fun.span, "..")),
+        let sugg: Cow<_> = match (fn_has_arguments, !or_has_args) {
+            (true, _) => format!("|_| {}", snippet(cx, arg.span, "..")).into(),
+            (false, false) => format!("|| {}", snippet(cx, arg.span, "..")).into(),
+            (false, true) => snippet(cx, fun.span, ".."),
         };
 
         span_lint(cx, OR_FUN_CALL, span, &format!("use of `{}` followed by a function call", name))
@@ -589,7 +589,7 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
         span_lint(cx,
                   EXTEND_FROM_SLICE,
                   expr.span,
-                  &format!("use of `extend` to extend a Vec by a slice"))
+                  "use of `extend` to extend a Vec by a slice")
             .span_suggestion(expr.span,
                              "try this",
                              format!("{}.extend_from_slice({}{})",

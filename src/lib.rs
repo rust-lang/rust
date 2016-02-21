@@ -35,59 +35,63 @@ extern crate rustc_plugin;
 
 use rustc_plugin::Registry;
 
+pub mod consts;
 #[macro_use]
 pub mod utils;
-pub mod copies;
-pub mod consts;
-pub mod types;
-pub mod misc;
-pub mod enum_glob_use;
-pub mod eq_op;
-pub mod bit_mask;
-pub mod ptr_arg;
-pub mod needless_bool;
+
+// begin lints modules, do not remove this comment, it’s used in `update_lints`
 pub mod approx_const;
-pub mod eta_reduction;
+pub mod array_indexing;
+pub mod attrs;
+pub mod bit_mask;
+pub mod block_in_if_condition;
+pub mod collapsible_if;
+pub mod copies;
+pub mod cyclomatic_complexity;
+pub mod derive;
+pub mod drop_ref;
+pub mod entry;
+pub mod enum_glob_use;
 pub mod enum_variants;
+pub mod eq_op;
+pub mod escape;
+pub mod eta_reduction;
+pub mod format;
 pub mod identity_op;
 pub mod items_after_statements;
-pub mod minmax;
-pub mod mut_mut;
-pub mod mut_reference;
 pub mod len_zero;
-pub mod attrs;
-pub mod collapsible_if;
-pub mod block_in_if_condition;
-pub mod unicode;
-pub mod shadow;
-pub mod strings;
-pub mod methods;
-pub mod returns;
 pub mod lifetimes;
 pub mod loops;
-pub mod ranges;
 pub mod map_clone;
 pub mod matches;
-pub mod precedence;
+pub mod methods;
+pub mod minmax;
+pub mod misc;
+pub mod misc_early;
+pub mod mut_mut;
+pub mod mut_reference;
 pub mod mutex_atomic;
-pub mod zero_div_zero;
-pub mod open_options;
+pub mod needless_bool;
 pub mod needless_features;
 pub mod needless_update;
 pub mod no_effect;
+pub mod open_options;
+pub mod panic;
+pub mod precedence;
+pub mod print;
+pub mod ptr_arg;
+pub mod ranges;
+pub mod regex;
+pub mod returns;
+pub mod shadow;
+pub mod strings;
 pub mod temporary_assignment;
 pub mod transmute;
-pub mod cyclomatic_complexity;
-pub mod escape;
-pub mod entry;
-pub mod misc_early;
-pub mod array_indexing;
-pub mod panic;
-pub mod derive;
-pub mod print;
+pub mod types;
+pub mod unicode;
 pub mod vec;
-pub mod drop_ref;
-pub mod regex;
+pub mod zero_div_zero;
+// end lints modules, do not remove this comment, it’s used in `update_lints`
 
 mod reexport {
     pub use syntax::ast::{Name, NodeId};
@@ -160,6 +164,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
     reg.register_late_lint_pass(box regex::RegexPass::default());
     reg.register_late_lint_pass(box copies::CopyAndPaste);
+    reg.register_late_lint_pass(box format::FormatMacLint);
 
     reg.register_lint_group("clippy_pedantic", vec![
         enum_glob_use::ENUM_GLOB_USE,
@@ -206,6 +211,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
+        format::USELESS_FORMAT,
         identity_op::IDENTITY_OP,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         len_zero::LEN_WITHOUT_IS_EMPTY,

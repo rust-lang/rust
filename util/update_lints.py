@@ -60,6 +60,13 @@ def gen_group(lints, levels=None):
         yield '        %s::%s,\n' % (module, name.upper())
 
 
+def gen_mods(lints):
+    """Declare modules"""
+
+    for module in sorted(set(lint[0] for lint in lints)):
+        yield 'pub mod %s;\n' % module
+
+
 def replace_region(fn, region_start, region_end, callback,
                    replace_start=True, write_back=True):
     """Replace a region in a file delimited by two lines matching regexes.
@@ -127,6 +134,12 @@ def main(print_only=False, check=False):
         r'^There are \d+ lints included in this crate:', "",
         lambda: ['There are %d lints included in this crate:\n' % len(lints)],
         write_back=not check)
+
+    # update the `pub mod` list
+    changed |= replace_region(
+        'src/lib.rs', r'begin lints modules', r'end lints modules',
+        lambda: gen_mods(lints),
+        replace_start=False, write_back=not check)
 
     # same for "clippy" lint collection
     changed |= replace_region(

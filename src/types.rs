@@ -491,12 +491,12 @@ fn check_type(cx: &LateContext, ty: &Ty) {
         visitor.visit_ty(ty);
         visitor.score
     };
-    // println!("{:?} --> {}", ty, score);
+
     if score > 250 {
         span_lint(cx,
                   TYPE_COMPLEXITY,
                   ty.span,
-                  &format!("very complex type used. Consider factoring parts into `type` definitions"));
+                  "very complex type used. Consider factoring parts into `type` definitions");
     }
 }
 

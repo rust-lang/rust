@@ -245,13 +245,13 @@ impl LateLintPass for LoopsPass {
                     let mut other_stuff = block.stmts
                                                .iter()
                                                .skip(1)
-                                               .map(|stmt| format!("{}", snippet(cx, stmt.span, "..")))
-                                               .collect::<Vec<String>>();
+                                               .map(|stmt| snippet(cx, stmt.span, ".."))
+                                               .collect::<Vec<Cow<_>>>();
                     if inner_stmt_expr.is_some() {
                         // if we have a statement which has a match,
                         if let Some(ref expr) = block.expr {
                             // then collect the expression (without semicolon) below it
-                            other_stuff.push(format!("{}", snippet(cx, expr.span, "..")));
+                            other_stuff.push(snippet(cx, expr.span, ".."));
                         }
                     }
 
@@ -317,8 +317,8 @@ impl LateLintPass for LoopsPass {
                     span_lint(cx,
                               UNUSED_COLLECT,
                               expr.span,
-                              &format!("you are collect()ing an iterator and throwing away the result. Consider \
-                                        using an explicit for loop to exhaust the iterator"));
+                              "you are collect()ing an iterator and throwing away the result. \
+                               Consider using an explicit for loop to exhaust the iterator");
                 }
             }
         }
