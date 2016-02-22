@@ -200,7 +200,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let (final_ty, dereferences, _) = check::autoderef(fcx,
                                                        span,
                                                        self_ty,
-                                                       None,
+                                                       || None,
                                                        UnresolvedTypeAction::Error,
                                                        NoPreference,
                                                        |t, d| {

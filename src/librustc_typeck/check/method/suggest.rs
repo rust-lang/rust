@@ -351,7 +351,7 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         return is_local(fcx.resolve_type_vars_if_possible(rcvr_ty));
     }
 
-    check::autoderef(fcx, span, rcvr_ty, None,
+    check::autoderef(fcx, span, rcvr_ty, || None,
                      check::UnresolvedTypeAction::Ignore, ty::NoPreference,
                      |ty, _| {
         if is_local(ty) {

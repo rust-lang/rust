@@ -87,6 +87,14 @@ struct Coerce<'a, 'tcx: 'a> {
 type CoerceResult<'tcx> = RelateResult<'tcx, Option<AutoAdjustment<'tcx>>>;
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
+    fn new(fcx: &'a FnCtxt<'a, 'tcx>, origin: TypeOrigin) -> Self {
+        Coerce {
+            fcx: fcx,
+            origin: origin,
+            unsizing_obligations: RefCell::new(vec![])
+        }
+    }
+
     fn tcx(&self) -> &TyCtxt<'tcx> {
         self.fcx.tcx()
     }
@@ -96,16 +104,17 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(None) // No coercion required.
     }
 
-    fn coerce(&self,
-              expr_a: &hir::Expr,
-              a: Ty<'tcx>,
-              b: Ty<'tcx>)
-              -> CoerceResult<'tcx> {
-        debug!("Coerce.tys({:?} => {:?})",
-               a,
-               b);
+    fn coerce<'a, E, I>(&self,
+                        exprs: &E,
+                        a: Ty<'tcx>,
+                        b: Ty<'tcx>)
+                        -> CoerceResult<'tcx>
+        // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
+        where E: Fn() -> I,
+              I: IntoIterator<Item=&'a hir::Expr> {
 
         let a = self.fcx.infcx().shallow_resolve(a);
+        debug!("Coerce.tys({:?} => {:?})", a, b);
 
         // Just ignore error types.
         if a.references_error() || b.references_error() {
@@ -156,15 +165,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
-    fn coerce_borrowed_pointer(&self,
-                               expr_a: &hir::Expr,
-                               a: Ty<'tcx>,
-                               b: Ty<'tcx>,
-                               mutbl_b: hir::Mutability)
-                               -> CoerceResult<'tcx> {
-        debug!("coerce_borrowed_pointer(a={:?}, b={:?})",
-               a,
-               b);
+    fn coerce_borrowed_pointer<'a, E, I>(&self,
+                                         span: Span,
+                                         exprs: &E,
+                                         a: Ty<'tcx>,
+                                         b: Ty<'tcx>,
+                                         mutbl_b: hir::Mutability)
+                                         -> CoerceResult<'tcx>
+        // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
+        where E: Fn() -> I,
+              I: IntoIterator<Item=&'a hir::Expr> {
+
+        debug!("coerce_borrowed_pointer(a={:?}, b={:?})", a, b);
 
         // If we have a parameter of type `&M T_a` and the value
         // provided is `expr`, we will be adding an implicit borrow,
@@ -179,17 +191,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => return self.subtype(a, b)
         }
 
-        let coercion = Coercion(self.origin.span());
+        let span = self.origin.span();
+        let coercion = Coercion(span);
         let r_borrow = self.fcx.infcx().next_region_var(coercion);
         let r_borrow = self.tcx().mk_region(r_borrow);
         let autoref = Some(AutoPtr(r_borrow, mutbl_b));
 
         let lvalue_pref = LvaluePreference::from_mutbl(mutbl_b);
         let mut first_error = None;
-        let (_, autoderefs, success) = autoderef(self.fcx,
-                                                 expr_a.span,
-                                                 a,
-                                                 Some(expr_a),
+        let (_, autoderefs, success) = autoderef(self.fcx, span, a, exprs,
                                                  UnresolvedTypeAction::Ignore,
                                                  lvalue_pref,
                                                  |inner_ty, autoderef| {
@@ -323,9 +333,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
-        let mut obligations = self.unsizing_obligations.borrow_mut();
-        assert!(obligations.is_empty());
-        *obligations = leftover_predicates;
+        *self.unsizing_obligations.borrow_mut() = leftover_predicates;
 
         let adjustment = AutoDerefRef {
             autoderefs: if reborrow.is_some() { 1 } else { 0 },
@@ -425,39 +433,48 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 }
 
+fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx>,
+                             exprs: &E,
+                             a: Ty<'tcx>,
+                             b: Ty<'tcx>)
+                             -> RelateResult<'tcx, Ty<'tcx>>
+    where E: Fn() -> I,
+          I: IntoIterator<Item=&'b hir::Expr> {
+
+    let (ty, adjustment) = try!(indent(|| coerce.coerce(exprs, a, b)));
+
+    let fcx = coerce.fcx;
+    if let AdjustDerefRef(auto) = adjustment {
+        if auto.unsize.is_some() {
+            for obligation in coerce.unsizing_obligations.borrow_mut().drain() {
+                fcx.register_predicate(obligation);
+            }
+        }
+    }
+
+    if !adjustment.is_identity() {
+        debug!("Success, coerced with {:?}", adjustment);
+        for expr in exprs() {
+            assert!(!fcx.inh.tables.borrow().adjustments.contains(&expr.id));
+            fcx.write_adjustment(expr.id, adjustment);
+        }
+    }
+    Ok(ty)
+}
+
+/// Attempt to coerce an expression from a type (a) to another type (b).
+/// Adjustments are only recorded if the coercion was successful.
+/// The expressions *must not* have any pre-existing adjustments.
 pub fn try<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                      expr: &hir::Expr,
                      a: Ty<'tcx>,
                      b: Ty<'tcx>)
                      -> RelateResult<'tcx, ()> {
     debug!("coercion::try({:?} -> {:?})", a, b);
-    let mut unsizing_obligations = vec![];
-    let adjustment = try!(indent(|| {
-        fcx.infcx().commit_if_ok(|_| {
-            let coerce = Coerce {
-                fcx: fcx,
-                origin: TypeOrigin::ExprAssignable(expr.span),
-                unsizing_obligations: RefCell::new(vec![])
-            };
-            let adjustment = try!(coerce.coerce(expr, a, b));
-            unsizing_obligations = coerce.unsizing_obligations.into_inner();
-            Ok(adjustment)
-        })
-    }));
-
-    if let Some(AdjustDerefRef(auto)) = adjustment {
-        if auto.unsize.is_some() {
-            for obligation in unsizing_obligations {
-                fcx.register_predicate(obligation);
-            }
-        }
-    }
-
-    if let Some(adjustment) = adjustment {
-        debug!("Success, coerced with {:?}", adjustment);
-        fcx.write_adjustment(expr.id, adjustment);
-    }
-    Ok(())
+    let mut coerce = Coerce::new(fcx, TypeOrigin::ExprAssignable(expr.span));
+    fcx.infcx().commit_if_ok(|_| {
+        apply(&mut coerce, &|| Some(expr), a, b)
+    }).map(|_| ())
 }
 
 fn coerce_mutbls<'tcx>(from_mutbl: hir::Mutability,
