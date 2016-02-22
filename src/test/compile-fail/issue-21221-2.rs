@@ -13,7 +13,7 @@ pub mod foo {
         // note: trait T is not public, but being in the current
         // crate, it's fine to show it, since the programmer can
         // decide to make it public based on the suggestion ...
-        trait T {}
+        pub trait T {}
     }
     // imports should be ignored:
     use self::bar::T;

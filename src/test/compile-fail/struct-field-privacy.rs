@@ -17,7 +17,7 @@ struct A {
 }
 
 mod inner {
-    struct A {
+    pub struct A {
         a: isize,
         pub b: isize,
     }
@@ -28,9 +28,6 @@ mod inner {
 }
 
 fn test(a: A, b: inner::A, c: inner::B, d: xc::A, e: xc::B) {
-    //~^ ERROR: struct `A` is private
-    //~^^ ERROR: struct `A` is private
-
     a.a;
     b.a; //~ ERROR: field `a` of struct `inner::A` is private
     b.b;

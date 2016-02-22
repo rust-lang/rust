@@ -15,8 +15,7 @@ mod foo {
 
 fn f(b: foo::Bar) { //~ ERROR enum `Bar` is private
     match b {
-        foo::Bar::Baz { a: _a } => {} //~ ERROR variant `Baz` is inaccessible
-        // ^~ ERROR enum `Bar` is private
+        foo::Bar::Baz { a: _a } => {} //~ ERROR enum `Bar` is private
     }
 }
 
