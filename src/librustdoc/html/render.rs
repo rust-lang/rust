@@ -52,7 +52,7 @@ use std::sync::Arc;
 
 use externalfiles::ExternalHtml;
 
-use serialize::json::{self, ToJson};
+use serialize::json::{ToJson, Json, as_json};
 use syntax::{abi, ast};
 use syntax::feature_gate::UnstableFeatures;
 use rustc::middle::cstore::LOCAL_CRATE;
@@ -290,7 +290,24 @@ struct IndexItem {
     path: String,
     desc: String,
     parent: Option<DefId>,
+    parent_idx: Option<usize>,
     search_type: Option<IndexItemFunctionType>,
+}
+
+impl ToJson for IndexItem {
+    fn to_json(&self) -> Json {
+        assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
+
+        let mut data = Vec::with_capacity(6);
+        data.push((self.ty as usize).to_json());
+        data.push(self.name.to_json());
+        data.push(self.path.to_json());
+        data.push(self.desc.to_json());
+        data.push(self.parent_idx.to_json());
+        data.push(self.search_type.to_json());
+
+        Json::Array(data)
+    }
 }
 
 /// A type used for the search index.
@@ -298,14 +315,15 @@ struct Type {
     name: Option<String>,
 }
 
-impl fmt::Display for Type {
-    /// Formats type as {name: $name}.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Wrapping struct fmt should never call us when self.name is None,
-        // but just to be safe we write `null` in that case.
+impl ToJson for Type {
+    fn to_json(&self) -> Json {
         match self.name {
-            Some(ref n) => write!(f, "{{\"name\":\"{}\"}}", n),
-            None => write!(f, "null")
+            Some(ref name) => {
+                let mut data = BTreeMap::new();
+                data.insert("name".to_owned(), name.to_json());
+                Json::Object(data)
+            },
+            None => Json::Null
         }
     }
 }
@@ -316,26 +334,17 @@ struct IndexItemFunctionType {
     output: Option<Type>
 }
 
-impl fmt::Display for IndexItemFunctionType {
-    /// Formats a full fn type as a JSON {inputs: [Type], outputs: Type/null}.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl ToJson for IndexItemFunctionType {
+    fn to_json(&self) -> Json {
         // If we couldn't figure out a type, just write `null`.
-        if self.inputs.iter().any(|ref i| i.name.is_none()) ||
-           (self.output.is_some() && self.output.as_ref().unwrap().name.is_none()) {
-            return write!(f, "null")
+        if self.inputs.iter().chain(self.output.iter()).any(|ref i| i.name.is_none()) {
+            Json::Null
+        } else {
+            let mut data = BTreeMap::new();
+            data.insert("inputs".to_owned(), self.inputs.to_json());
+            data.insert("output".to_owned(), self.output.to_json());
+            Json::Object(data)
         }
-
-        let inputs: Vec<String> = self.inputs.iter().map(|ref t| {
-            format!("{}", t)
-        }).collect();
-        try!(write!(f, "{{\"inputs\":[{}],\"output\":", inputs.join(",")));
-
-        match self.output {
-            Some(ref t) => try!(write!(f, "{}", t)),
-            None => try!(write!(f, "null"))
-        };
-
-        Ok(try!(write!(f, "}}")))
     }
 }
 
@@ -534,101 +543,79 @@ pub fn run(mut krate: clean::Crate,
     cx.krate(krate)
 }
 
+/// Build the search index from the collected metadata
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
-    // Build the search index from the collected metadata
     let mut nodeid_to_pathid = HashMap::new();
-    let mut pathid_to_nodeid = Vec::new();
-    {
-        let Cache { ref mut search_index,
-                    ref orphan_methods,
-                    ref mut paths, .. } = *cache;
+    let mut crate_items = Vec::with_capacity(cache.search_index.len());
+    let mut crate_paths = Vec::<Json>::new();
 
-        // Attach all orphan methods to the type's definition if the type
-        // has since been learned.
-        for &(did, ref item) in orphan_methods {
-            match paths.get(&did) {
-                Some(&(ref fqp, _)) => {
-                    // Needed to determine `self` type.
-                    let parent_basename = Some(fqp[fqp.len() - 1].clone());
-                    search_index.push(IndexItem {
-                        ty: shortty(item),
-                        name: item.name.clone().unwrap(),
-                        path: fqp[..fqp.len() - 1].join("::"),
-                        desc: Escape(&shorter(item.doc_value())).to_string(),
-                        parent: Some(did),
-                        search_type: get_index_search_type(&item, parent_basename),
-                    });
-                },
-                None => {}
-            }
-        }
+    let Cache { ref mut search_index,
+                ref orphan_methods,
+                ref mut paths, .. } = *cache;
 
-        // Reduce `NodeId` in paths into smaller sequential numbers,
-        // and prune the paths that do not appear in the index.
-        for item in search_index.iter() {
-            match item.parent {
-                Some(nodeid) => {
-                    if !nodeid_to_pathid.contains_key(&nodeid) {
-                        let pathid = pathid_to_nodeid.len();
-                        nodeid_to_pathid.insert(nodeid, pathid);
-                        pathid_to_nodeid.push(nodeid);
-                    }
-                }
-                None => {}
-            }
+    // Attach all orphan methods to the type's definition if the type
+    // has since been learned.
+    for &(did, ref item) in orphan_methods {
+        match paths.get(&did) {
+            Some(&(ref fqp, _)) => {
+                // Needed to determine `self` type.
+                let parent_basename = Some(fqp[fqp.len() - 1].clone());
+                search_index.push(IndexItem {
+                    ty: shortty(item),
+                    name: item.name.clone().unwrap(),
+                    path: fqp[..fqp.len() - 1].join("::"),
+                    desc: Escape(&shorter(item.doc_value())).to_string(),
+                    parent: Some(did),
+                    parent_idx: None,
+                    search_type: get_index_search_type(&item, parent_basename),
+                });
+            },
+            None => {}
         }
-        assert_eq!(nodeid_to_pathid.len(), pathid_to_nodeid.len());
     }
+
+    // Reduce `NodeId` in paths into smaller sequential numbers,
+    // and prune the paths that do not appear in the index.
+    let mut lastpath = String::new();
+    let mut lastpathid = 0usize;
+
+    for item in search_index {
+        item.parent_idx = item.parent.map(|nodeid| {
+            if nodeid_to_pathid.contains_key(&nodeid) {
+                *nodeid_to_pathid.get(&nodeid).unwrap()
+            } else {
+                let pathid = lastpathid;
+                nodeid_to_pathid.insert(nodeid, pathid);
+                lastpathid += 1;
+
+                let &(ref fqp, short) = paths.get(&nodeid).unwrap();
+                crate_paths.push(((short as usize), fqp.last().unwrap().clone()).to_json());
+                pathid
+            }
+        });
+
+        // Omit the parent path if it is same to that of the prior item.
+        if lastpath == item.path {
+            item.path.clear();
+        } else {
+            lastpath = item.path.clone();
+        }
+        crate_items.push(item.to_json());
+    }
+
+    let crate_doc = krate.module.as_ref().map(|module| {
+        Escape(&shorter(module.doc_value())).to_string()
+    }).unwrap_or(String::new());
+
+    let mut crate_data = BTreeMap::new();
+    crate_data.insert("doc".to_owned(), Json::String(crate_doc));
+    crate_data.insert("items".to_owned(), Json::Array(crate_items));
+    crate_data.insert("paths".to_owned(), Json::Array(crate_paths));
 
     // Collect the index into a string
-    let mut w = io::Cursor::new(Vec::new());
-    write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name).unwrap();
-
-    let mut lastpath = "".to_string();
-    for (i, item) in cache.search_index.iter().enumerate() {
-        // Omit the path if it is same to that of the prior item.
-        let path;
-        if lastpath == item.path {
-            path = "";
-        } else {
-            lastpath = item.path.to_string();
-            path = &item.path;
-        };
-
-        if i > 0 {
-            write!(&mut w, ",").unwrap();
-        }
-        write!(&mut w, r#"[{},"{}","{}",{}"#,
-               item.ty as usize, item.name, path,
-               item.desc.to_json().to_string()).unwrap();
-        match item.parent {
-            Some(nodeid) => {
-                let pathid = *nodeid_to_pathid.get(&nodeid).unwrap();
-                write!(&mut w, ",{}", pathid).unwrap();
-            }
-            None => write!(&mut w, ",null").unwrap()
-        }
-        match item.search_type {
-            Some(ref t) => write!(&mut w, ",{}", t).unwrap(),
-            None => write!(&mut w, ",null").unwrap()
-        }
-        write!(&mut w, "]").unwrap();
-    }
-
-    write!(&mut w, r#"],"paths":["#).unwrap();
-
-    for (i, &did) in pathid_to_nodeid.iter().enumerate() {
-        let &(ref fqp, short) = cache.paths.get(&did).unwrap();
-        if i > 0 {
-            write!(&mut w, ",").unwrap();
-        }
-        write!(&mut w, r#"[{},"{}"]"#,
-               short as usize, *fqp.last().unwrap()).unwrap();
-    }
-
-    write!(&mut w, "]}};").unwrap();
-
-    String::from_utf8(w.into_inner()).unwrap()
+    format!("searchIndex[{}] = {};",
+            as_json(&krate.name),
+            Json::Object(crate_data))
 }
 
 fn write_shared(cx: &Context,
@@ -693,7 +680,7 @@ fn write_shared(cx: &Context,
                 if !line.starts_with(key) {
                     continue
                 }
-                if line.starts_with(&format!("{}['{}']", key, krate)) {
+                if line.starts_with(&format!(r#"{}["{}"]"#, key, krate)) {
                     continue
                 }
                 ret.push(line.to_string());
@@ -1067,6 +1054,7 @@ impl DocFolder for Cache {
                             path: path.join("::").to_string(),
                             desc: Escape(&shorter(item.doc_value())).to_string(),
                             parent: parent,
+                            parent_idx: None,
                             search_type: get_index_search_type(&item, parent_basename),
                         });
                     }
@@ -1387,7 +1375,7 @@ impl Context {
                         let js_dst = this.dst.join("sidebar-items.js");
                         let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
                         try_err!(write!(&mut js_out, "initSidebarItems({});",
-                                    json::as_json(&items)), &js_dst);
+                                    as_json(&items)), &js_dst);
                     }
 
                     for item in m.items {
