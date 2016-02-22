@@ -2053,20 +2053,21 @@ pub enum UnresolvedTypeAction {
 ///
 /// Note: this method does not modify the adjustments table. The caller is responsible for
 /// inserting an AutoAdjustment record into the `fcx` using one of the suitable methods.
-pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
-                                 sp: Span,
-                                 base_ty: Ty<'tcx>,
-                                 opt_expr: Option<&hir::Expr>,
-                                 unresolved_type_action: UnresolvedTypeAction,
-                                 mut lvalue_pref: LvaluePreference,
-                                 mut should_stop: F)
-                                 -> (Ty<'tcx>, usize, Option<T>)
-    where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
+pub fn autoderef<'a, 'b, 'tcx, E, I, T, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                           sp: Span,
+                                           base_ty: Ty<'tcx>,
+                                           maybe_exprs: E,
+                                           unresolved_type_action: UnresolvedTypeAction,
+                                           mut lvalue_pref: LvaluePreference,
+                                           mut should_stop: F)
+                                           -> (Ty<'tcx>, usize, Option<T>)
+    // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
+    where E: Fn() -> I,
+          I: IntoIterator<Item=&'b hir::Expr>,
+          F: FnMut(Ty<'tcx>, usize) -> Option<T>,
 {
-    debug!("autoderef(base_ty={:?}, opt_expr={:?}, lvalue_pref={:?})",
-           base_ty,
-           opt_expr,
-           lvalue_pref);
+    debug!("autoderef(base_ty={:?}, lvalue_pref={:?})",
+           base_ty, lvalue_pref);
 
     let mut t = base_ty;
     for autoderefs in 0..fcx.tcx().sess.recursion_limit.get() {
@@ -2092,34 +2093,34 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Otherwise, deref if type is derefable:
-        let mt = match resolved_t.builtin_deref(false, lvalue_pref) {
-            Some(mt) => Some(mt),
-            None => {
-                let method_call =
-                    opt_expr.map(|expr| MethodCall::autoderef(expr.id, autoderefs as u32));
 
-                // Super subtle: it might seem as though we should
-                // pass `opt_expr` to `try_overloaded_deref`, so that
-                // the (implicit) autoref of using an overloaded deref
-                // would get added to the adjustment table. However we
-                // do not do that, because it's kind of a
-                // "meta-adjustment" -- instead, we just leave it
-                // unrecorded and know that there "will be" an
-                // autoref. regionck and other bits of the code base,
-                // when they encounter an overloaded autoderef, have
-                // to do some reconstructive surgery. This is a pretty
-                // complex mess that is begging for a proper MIR.
-                try_overloaded_deref(fcx, sp, method_call, None, resolved_t, lvalue_pref)
+        // Super subtle: it might seem as though we should
+        // pass `opt_expr` to `try_overloaded_deref`, so that
+        // the (implicit) autoref of using an overloaded deref
+        // would get added to the adjustment table. However we
+        // do not do that, because it's kind of a
+        // "meta-adjustment" -- instead, we just leave it
+        // unrecorded and know that there "will be" an
+        // autoref. regionck and other bits of the code base,
+        // when they encounter an overloaded autoderef, have
+        // to do some reconstructive surgery. This is a pretty
+        // complex mess that is begging for a proper MIR.
+        let mt = if let Some(mt) = resolved_t.builtin_deref(false, lvalue_pref) {
+            mt
+        } else if let Some(method) = try_overloaded_deref(fcx, sp, None,
+                                                          resolved_t, lvalue_pref) {
+            for expr in maybe_exprs() {
+                let method_call = MethodCall::autoderef(expr.id, autoderefs as u32);
+                fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
             }
+            make_overloaded_lvalue_return_type(fcx.tcx(), method)
+        } else {
+            return (resolved_t, autoderefs, None);
         };
-        match mt {
-            Some(mt) => {
-                t = mt.ty;
-                if mt.mutbl == hir::MutImmutable {
-                    lvalue_pref = NoPreference;
-                }
-            }
-            None => return (resolved_t, autoderefs, None)
+
+        t = mt.ty;
+        if mt.mutbl == hir::MutImmutable {
+            lvalue_pref = NoPreference;
         }
     }
 
@@ -2132,11 +2133,10 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
 
 fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   span: Span,
-                                  method_call: Option<MethodCall>,
                                   base_expr: Option<&hir::Expr>,
                                   base_ty: Ty<'tcx>,
                                   lvalue_pref: LvaluePreference)
-                                  -> Option<ty::TypeAndMut<'tcx>>
+                                  -> Option<MethodCallee<'tcx>>
 {
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
@@ -2158,33 +2158,23 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         (method, _) => method
     };
 
-    make_overloaded_lvalue_return_type(fcx, method_call, method)
+    method
 }
 
 /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait returns a type of `&T`, but the
 /// actual type we assign to the *expression* is `T`. So this function just peels off the return
-/// type by one layer to yield `T`. It also inserts the `method-callee` into the method map.
-fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                                method_call: Option<MethodCall>,
-                                                method: Option<MethodCallee<'tcx>>)
-                                                -> Option<ty::TypeAndMut<'tcx>>
+/// type by one layer to yield `T`.
+fn make_overloaded_lvalue_return_type<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                            method: MethodCallee<'tcx>)
+                                            -> ty::TypeAndMut<'tcx>
 {
-    match method {
-        Some(method) => {
-            // extract method return type, which will be &T;
-            // all LB regions should have been instantiated during method lookup
-            let ret_ty = method.ty.fn_ret();
-            let ret_ty = fcx.tcx().no_late_bound_regions(&ret_ty).unwrap().unwrap();
+    // extract method return type, which will be &T;
+    // all LB regions should have been instantiated during method lookup
+    let ret_ty = method.ty.fn_ret();
+    let ret_ty = tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap();
 
-            if let Some(method_call) = method_call {
-                fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
-            }
-
-            // method returns &T, but the type as visible to user is T, so deref
-            ret_ty.builtin_deref(true, NoPreference)
-        }
-        None => None,
-    }
+    // method returns &T, but the type as visible to user is T, so deref
+    ret_ty.builtin_deref(true, NoPreference).unwrap()
 }
 
 fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -2202,7 +2192,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let (ty, autoderefs, final_mt) = autoderef(fcx,
                                                base_expr.span,
                                                base_ty,
-                                               Some(base_expr),
+                                               || Some(base_expr),
                                                UnresolvedTypeAction::Error,
                                                lvalue_pref,
                                                |adj_ty, idx| {
@@ -2299,10 +2289,10 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // If some lookup succeeds, write callee into table and extract index/element
     // type from the method signature.
     // If some lookup succeeded, install method in table
-    method.and_then(|method| {
+    method.map(|method| {
         debug!("try_index_step: success, using overloaded indexing");
-        make_overloaded_lvalue_return_type(fcx, Some(method_call), Some(method)).
-            map(|ret| (input_ty, ret.ty))
+        fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
+        (input_ty, make_overloaded_lvalue_return_type(fcx.tcx(), method).ty)
     })
 }
 
@@ -2907,7 +2897,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let (_, autoderefs, field_ty) = autoderef(fcx,
                                                   expr.span,
                                                   expr_t,
-                                                  Some(base),
+                                                  || Some(base),
                                                   UnresolvedTypeAction::Error,
                                                   lvalue_pref,
                                                   |base_t, _| {
@@ -3005,7 +2995,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let (_, autoderefs, field_ty) = autoderef(fcx,
                                                   expr.span,
                                                   expr_t,
-                                                  Some(base),
+                                                  || Some(base),
                                                   UnresolvedTypeAction::Error,
                                                   lvalue_pref,
                                                   |base_t, _| {
@@ -3253,21 +3243,21 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             match unop {
                 hir::UnDeref => {
                     oprnd_t = structurally_resolved_type(fcx, expr.span, oprnd_t);
-                    oprnd_t = match oprnd_t.builtin_deref(true, NoPreference) {
-                        Some(mt) => mt.ty,
-                        None => match try_overloaded_deref(fcx, expr.span,
-                                                           Some(MethodCall::expr(expr.id)),
-                                                           Some(&oprnd), oprnd_t, lvalue_pref) {
-                            Some(mt) => mt.ty,
-                            None => {
-                                fcx.type_error_message(expr.span, |actual| {
-                                    format!("type `{}` cannot be \
-                                            dereferenced", actual)
-                                }, oprnd_t, None);
-                                tcx.types.err
-                            }
-                        }
-                    };
+
+                    if let Some(mt) = oprnd_t.builtin_deref(true, NoPreference) {
+                        oprnd_t = mt.ty;
+                    } else if let Some(method) = try_overloaded_deref(
+                            fcx, expr.span, Some(&oprnd), oprnd_t, lvalue_pref) {
+                        oprnd_t = make_overloaded_lvalue_return_type(tcx, method).ty;
+                        fcx.inh.tables.borrow_mut().method_map.insert(MethodCall::expr(expr.id),
+                                                                      method);
+                    } else {
+                        fcx.type_error_message(expr.span, |actual| {
+                            format!("type `{}` cannot be \
+                                    dereferenced", actual)
+                        }, oprnd_t, None);
+                        oprnd_t = tcx.types.err;
+                    }
                 }
                 hir::UnNot => {
                     oprnd_t = structurally_resolved_type(fcx, oprnd.span,

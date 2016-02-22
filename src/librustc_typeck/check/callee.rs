@@ -82,7 +82,7 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         autoderef(fcx,
                   callee_expr.span,
                   original_callee_ty,
-                  Some(callee_expr),
+                  || Some(callee_expr),
                   UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
                   |adj_ty, idx| {
