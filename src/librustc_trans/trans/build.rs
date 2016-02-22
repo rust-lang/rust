@@ -1067,8 +1067,9 @@ pub fn Resume(cx: Block, exn: ValueRef) -> ValueRef {
 pub fn AtomicCmpXchg(cx: Block, dst: ValueRef,
                      cmp: ValueRef, src: ValueRef,
                      order: AtomicOrdering,
-                     failure_order: AtomicOrdering) -> ValueRef {
-    B(cx).atomic_cmpxchg(dst, cmp, src, order, failure_order)
+                     failure_order: AtomicOrdering,
+                     weak: llvm::Bool) -> ValueRef {
+    B(cx).atomic_cmpxchg(dst, cmp, src, order, failure_order, weak)
 }
 pub fn AtomicRMW(cx: Block, op: AtomicBinOp,
                  dst: ValueRef, src: ValueRef,
