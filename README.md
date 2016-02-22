@@ -11,7 +11,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to link with clippy-service](#link-with-clippy-service)
 
 ##Lints
-There are 134 lints included in this crate:
+There are 135 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -19,6 +19,7 @@ name                                                                            
 [almost_swapped](https://github.com/Manishearth/rust-clippy/wiki#almost_swapped)                                     | warn    | `foo = bar; bar = foo` sequence
 [approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                                   | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                                         | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
+[blacklisted_name](https://github.com/Manishearth/rust-clippy/wiki#blacklisted_name)                                 | warn    | usage of a blacklisted/placeholder name
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)             | warn    | braces can be eliminated in conditions that are expressions, e.g `if { true } ...`
 [block_in_if_condition_stmt](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt)             | warn    | avoid complex blocks in conditions, instead move the block higher and bind it with 'let'; e.g: `if { let x = true; x } ...`
 [bool_comparison](https://github.com/Manishearth/rust-clippy/wiki#bool_comparison)                                   | warn    | comparing a variable to a boolean, e.g. `if x == true`

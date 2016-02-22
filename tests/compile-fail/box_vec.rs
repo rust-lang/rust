@@ -3,6 +3,7 @@
 
 #![deny(clippy)]
 #![allow(boxed_local)]
+#![allow(blacklisted_name)]
 
 macro_rules! boxit {
     ($init:expr, $x:ty) => {

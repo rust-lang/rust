@@ -48,6 +48,7 @@ pub mod approx_const;
 pub mod array_indexing;
 pub mod attrs;
 pub mod bit_mask;
+pub mod blacklisted_name;
 pub mod block_in_if_condition;
 pub mod collapsible_if;
 pub mod copies;
@@ -204,6 +205,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
+    reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -236,6 +238,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         attrs::INLINE_ALWAYS,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
+        blacklisted_name::BLACKLISTED_NAME,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,

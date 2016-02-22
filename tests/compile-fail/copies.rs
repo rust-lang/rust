@@ -6,6 +6,7 @@
 #![allow(needless_return)]
 #![allow(unused_variables)]
 #![allow(cyclomatic_complexity)]
+#![allow(blacklisted_name)]
 
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }

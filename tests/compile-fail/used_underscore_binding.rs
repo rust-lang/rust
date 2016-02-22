@@ -2,6 +2,8 @@
 #![plugin(clippy)]
 #![deny(clippy)]
 
+#![allow(blacklisted_name)]
+
 /// Test that we lint if we use a binding with a single leading underscore
 fn prefix_underscore(_foo: u32) -> u32 {
     _foo + 1 //~ ERROR used binding which is prefixed with an underscore
