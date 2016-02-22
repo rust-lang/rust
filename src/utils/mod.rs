@@ -133,8 +133,12 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
 /// ```
 pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
     cx.tcx.with_path(def_id, |iter| {
-        iter.zip(path)
+        let mut len = 0;
+
+        iter.inspect(|_| len += 1)
+            .zip(path)
             .all(|(nm, p)| nm.name().as_str() == *p)
+        && len == path.len()
     })
 }
 
