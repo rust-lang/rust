@@ -16,7 +16,7 @@
 mod bar {
     pub use self::glob::*;
 
-    mod glob {
+    pub mod glob {
         use foo;
     }
 }
