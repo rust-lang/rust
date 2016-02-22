@@ -1,16 +1,17 @@
 use rustc::front::map::Node::NodeItem;
 use rustc::lint::*;
+use rustc::middle::ty::TypeVariants;
 use rustc_front::hir::*;
 use syntax::ast::LitKind;
-use utils::{DISPLAY_FMT_METHOD_PATH, FMT_ARGUMENTS_NEWV1_PATH};
-use utils::{is_expn_of, match_path, span_lint};
+use utils::{DISPLAY_FMT_METHOD_PATH, FMT_ARGUMENTS_NEWV1_PATH, STRING_PATH};
+use utils::{is_expn_of, match_path, match_type, span_lint, walk_ptrs_ty};
 
 /// **What it does:** This lints about use of `format!("string literal with no argument")` and
-/// `format!("{}", foo)`.
+/// `format!("{}", foo)` where `foo` is a string.
 ///
-/// **Why is this bad?** There is no point of doing that. If you want a `String` you can use
-/// `to_owned` on the string literal or expression. The even worse `&format!("foo")` is often
-/// encountered in the wild.
+/// **Why is this bad?** There is no point of doing that. `format!("too")` can be replaced by `"foo".to_owned()` if you really need a `String`. The even worse `&format!("foo")` is often
+/// encountered in the wild. `format!("{}", foo)` can be replaced by `foo.clone()` if `foo: String`
+/// or `foo.to_owned()` is `foo: &str`.
 ///
 /// **Known problems:** None.
 ///
@@ -43,7 +44,7 @@ impl LateLintPass for FormatMacLint {
                         // ensure the format string is `"{..}"` with only one argument and no text
                         check_static_str(cx, &args[0]),
                         // ensure the format argument is `{}` ie. Display with no fancy option
-                        check_arg_is_display(&args[1])
+                        check_arg_is_display(cx, &args[1])
                     ], {
                         span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                     }}
@@ -94,11 +95,14 @@ fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
 ///     (__arg0,) => [::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Display::fmt)],
 /// })
 /// ```
-fn check_arg_is_display(expr: &Expr) -> bool {
+fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
     if_let_chain! {[
         let ExprAddrOf(_, ref expr) = expr.node,
         let ExprMatch(_, ref arms, _) = expr.node,
         arms.len() == 1,
+        arms[0].pats.len() == 1,
+        let PatKind::Tup(ref pat) = arms[0].pats[0].node,
+        pat.len() == 1,
         let ExprVec(ref exprs) = arms[0].body.node,
         exprs.len() == 1,
         let ExprCall(_, ref args) = exprs[0].node,
@@ -106,7 +110,9 @@ fn check_arg_is_display(expr: &Expr) -> bool {
         let ExprPath(None, ref path) = args[1].node,
         match_path(path, &DISPLAY_FMT_METHOD_PATH)
     ], {
-        return true;
+        let ty = walk_ptrs_ty(cx.tcx.pat_ty(&pat[0]));
+
+        return ty.sty == TypeVariants::TyStr || match_type(cx, ty, &STRING_PATH);
     }}
 
     false
