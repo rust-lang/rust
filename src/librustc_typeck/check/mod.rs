@@ -2491,20 +2491,17 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     Expectation::rvalue_hint(fcx.tcx(), ty)
                 });
 
-                check_expr_with_unifier(fcx,
-                                        &arg,
-                                        expected.unwrap_or(ExpectHasType(formal_ty)),
-                                        NoPreference, || {
-                    // 2. Coerce to the most detailed type that could be coerced
-                    //    to, which is `expected_ty` if `rvalue_hint` returns an
-                    //    `ExprHasType(expected_ty)`, or the `formal_ty` otherwise.
-                    let coerce_ty = expected.and_then(|e| e.only_has_type(fcx));
-                    demand::coerce(fcx, arg.span, coerce_ty.unwrap_or(formal_ty), &arg);
+                check_expr_with_expectation(fcx, &arg,
+                    expected.unwrap_or(ExpectHasType(formal_ty)));
+                // 2. Coerce to the most detailed type that could be coerced
+                //    to, which is `expected_ty` if `rvalue_hint` returns an
+                //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
+                let coerce_ty = expected.and_then(|e| e.only_has_type(fcx));
+                demand::coerce(fcx, arg.span, coerce_ty.unwrap_or(formal_ty), &arg);
 
-                    // 3. Relate the expected type and the formal one,
-                    //    if the expected type was used for the coercion.
-                    coerce_ty.map(|ty| demand::suptype(fcx, arg.span, formal_ty, ty));
-                });
+                // 3. Relate the expected type and the formal one,
+                //    if the expected type was used for the coercion.
+                coerce_ty.map(|ty| demand::suptype(fcx, arg.span, formal_ty, ty));
             }
 
             if let Some(&arg_ty) = fcx.inh.tables.borrow().node_types.get(&arg.id) {
@@ -2626,57 +2623,42 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn check_expr_eq_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 expr: &'tcx hir::Expr,
                                 expected: Ty<'tcx>) {
-    check_expr_with_unifier(
-        fcx, expr, ExpectHasType(expected), NoPreference,
-        || demand::eqtype(fcx, expr.span, expected, fcx.expr_ty(expr)));
+    check_expr_with_hint(fcx, expr, expected);
+    demand::eqtype(fcx, expr.span, expected, fcx.expr_ty(expr));
 }
 
 pub fn check_expr_has_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      expr: &'tcx hir::Expr,
                                      expected: Ty<'tcx>) {
-    check_expr_with_unifier(
-        fcx, expr, ExpectHasType(expected), NoPreference,
-        || demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr)));
+    check_expr_with_hint(fcx, expr, expected);
+    demand::suptype(fcx, expr.span, expected, fcx.expr_ty(expr));
 }
 
 fn check_expr_coercable_to_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           expr: &'tcx hir::Expr,
                                           expected: Ty<'tcx>) {
-    check_expr_with_unifier(
-        fcx, expr, ExpectHasType(expected), NoPreference,
-        || demand::coerce(fcx, expr.span, expected, expr));
+    check_expr_with_hint(fcx, expr, expected);
+    demand::coerce(fcx, expr.span, expected, expr);
 }
 
 fn check_expr_with_hint<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, expr: &'tcx hir::Expr,
                                   expected: Ty<'tcx>) {
-    check_expr_with_unifier(
-        fcx, expr, ExpectHasType(expected), NoPreference,
-        || ())
+    check_expr_with_expectation(fcx, expr, ExpectHasType(expected))
 }
 
 fn check_expr_with_expectation<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          expr: &'tcx hir::Expr,
                                          expected: Expectation<'tcx>) {
-    check_expr_with_unifier(
-        fcx, expr, expected, NoPreference,
-        || ())
-}
-
-fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                                         expr: &'tcx hir::Expr,
-                                                         expected: Expectation<'tcx>,
-                                                         lvalue_pref: LvaluePreference)
-{
-    check_expr_with_unifier(fcx, expr, expected, lvalue_pref, || ())
+    check_expr_with_expectation_and_lvalue_pref(fcx, expr, expected, NoPreference)
 }
 
 fn check_expr<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, expr: &'tcx hir::Expr)  {
-    check_expr_with_unifier(fcx, expr, NoExpectation, NoPreference, || ())
+    check_expr_with_expectation(fcx, expr, NoExpectation)
 }
 
 fn check_expr_with_lvalue_pref<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, expr: &'tcx hir::Expr,
                                         lvalue_pref: LvaluePreference)  {
-    check_expr_with_unifier(fcx, expr, NoExpectation, lvalue_pref, || ())
+    check_expr_with_expectation_and_lvalue_pref(fcx, expr, NoExpectation, lvalue_pref)
 }
 
 // determine the `self` type, using fresh variables for all variables
@@ -2778,13 +2760,10 @@ fn expected_types_for_fn_args<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// Note that inspecting a type's structure *directly* may expose the fact
 /// that there are actually multiple representations for `TyError`, so avoid
 /// that when err needs to be handled differently.
-fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
-                                        expr: &'tcx hir::Expr,
-                                        expected: Expectation<'tcx>,
-                                        lvalue_pref: LvaluePreference,
-                                        unifier: F) where
-    F: FnOnce(),
-{
+fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                                         expr: &'tcx hir::Expr,
+                                                         expected: Expectation<'tcx>,
+                                                         lvalue_pref: LvaluePreference) {
     debug!(">> typechecking: expr={:?} expected={:?}",
            expr, expected);
 
@@ -3662,8 +3641,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("... {:?}, expected is {:?}",
            fcx.expr_ty(expr),
            expected);
-
-    unifier();
 }
 
 pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
