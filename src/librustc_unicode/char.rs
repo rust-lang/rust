@@ -776,13 +776,13 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = 'c';
+    /// let c = 'C';
     ///
-    /// assert_eq!(c.to_uppercase().next(), Some('C'));
+    /// assert_eq!(c.to_lowercase().next(), Some('c'));
     ///
     /// // Japanese scripts do not have case, and so:
     /// let c = '山';
-    /// assert_eq!(c.to_uppercase().next(), Some('山'));
+    /// assert_eq!(c.to_lowercase().next(), Some('山'));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
