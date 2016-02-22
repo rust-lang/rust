@@ -1428,7 +1428,7 @@ pub trait Iterator {
     /// assert_eq!(6, doubled[2]);
     /// ```
     ///
-    /// Using the 'turbofish' instead of annotationg `doubled`:
+    /// Using the 'turbofish' instead of annotating `doubled`:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -1610,7 +1610,7 @@ pub trait Iterator {
     /// `true`, then so does `all()`. If any of them return `false`, it
     /// returns `false`.
     ///
-    /// `all()` is short-circuting; in other words, it will stop processing
+    /// `all()` is short-circuiting; in other words, it will stop processing
     /// as soon as it finds a `false`, given that no matter what else happens,
     /// the result will also be `false`.
     ///
@@ -1660,7 +1660,7 @@ pub trait Iterator {
     /// `true`, then so does `any()`. If they all return `false`, it
     /// returns `false`.
     ///
-    /// `any()` is short-circuting; in other words, it will stop processing
+    /// `any()` is short-circuiting; in other words, it will stop processing
     /// as soon as it finds a `true`, given that no matter what else happens,
     /// the result will also be `true`.
     ///
@@ -1711,7 +1711,7 @@ pub trait Iterator {
     /// `true`, then `find()` returns `Some(element)`. If they all return
     /// `false`, it returns `None`.
     ///
-    /// `find()` is short-circuting; in other words, it will stop processing
+    /// `find()` is short-circuiting; in other words, it will stop processing
     /// as soon as the closure returns `true`.
     ///
     /// Because `find()` takes a reference, and many iterators iterate over
@@ -1762,7 +1762,7 @@ pub trait Iterator {
     /// returns `true`, then `position()` returns `Some(index)`. If all of
     /// them return `false`, it returns `None`.
     ///
-    /// `position()` is short-circuting; in other words, it will stop
+    /// `position()` is short-circuiting; in other words, it will stop
     /// processing as soon as it finds a `true`.
     ///
     /// # Overflow Behavior
@@ -1824,7 +1824,7 @@ pub trait Iterator {
     /// and if one of them returns `true`, then `rposition()` returns
     /// `Some(index)`. If all of them return `false`, it returns `None`.
     ///
-    /// `rposition()` is short-circuting; in other words, it will stop
+    /// `rposition()` is short-circuiting; in other words, it will stop
     /// processing as soon as it finds a `true`.
     ///
     /// # Examples
@@ -2079,7 +2079,7 @@ pub trait Iterator {
         (ts, us)
     }
 
-    /// Creates an iterator which clone()s all of its elements.
+    /// Creates an iterator which `clone()`s all of its elements.
     ///
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
