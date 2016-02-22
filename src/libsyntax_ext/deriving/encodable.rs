@@ -179,7 +179,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
     let encode = cx.ident_of("encode");
 
     return match *substr.fields {
-        Struct(ref fields) => {
+        Struct(_, ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = Vec::new();
             for (i, &FieldInfo {
