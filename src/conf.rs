@@ -73,16 +73,16 @@ impl From<io::Error> for ConfError {
 }
 
 macro_rules! define_Conf {
-    ($(($toml_name: tt, $rust_name: ident, $default: expr, $ty: ident),)+) => {
+    ($(#[$doc: meta] ($toml_name: tt, $rust_name: ident, $default: expr => $($ty: tt)+),)+) => {
         /// Type used to store lint configuration.
         pub struct Conf {
-            $(pub $rust_name: $ty,)+
+            $(#[$doc] pub $rust_name: define_Conf!(TY $($ty)+),)+
         }
 
         impl Default for Conf {
             fn default() -> Conf {
                 Conf {
-                    $($rust_name: $default,)+
+                    $($rust_name: define_Conf!(DEFAULT $($ty)+, $default),)+
                 }
             }
         }
@@ -94,12 +94,12 @@ macro_rules! define_Conf {
                 match name.as_str() {
                     $(
                         define_Conf!(PAT $toml_name) => {
-                            if let Some(value) = define_Conf!(CONV $ty, value) {
+                            if let Some(value) = define_Conf!(CONV $($ty)+, value) {
                                 self.$rust_name = value;
                             }
                             else {
                                 return Err(ConfError::TypeError(define_Conf!(EXPR $toml_name),
-                                                                stringify!($ty),
+                                                                stringify!($($ty)+),
                                                                 value.type_str()));
                             }
                         },
@@ -117,12 +117,13 @@ macro_rules! define_Conf {
     // hack to convert tts
     (PAT $pat: pat) => { $pat };
     (EXPR $e: expr) => { $e };
+    (TY $ty: ty) => { $ty };
 
     // how to read the value?
     (CONV i64, $value: expr) => { $value.as_integer() };
     (CONV u64, $value: expr) => { $value.as_integer().iter().filter_map(|&i| if i >= 0 { Some(i as u64) } else { None }).next() };
     (CONV String, $value: expr) => { $value.as_str().map(Into::into) };
-    (CONV StringVec, $value: expr) => {{
+    (CONV Vec<String>, $value: expr) => {{
         let slice = $value.as_slice();
 
         if let Some(slice) = slice {
@@ -137,16 +138,21 @@ macro_rules! define_Conf {
             None
         }
     }};
+
+    // provide a nicer syntax to declare the default value of `Vec<String>` variables
+    (DEFAULT Vec<String>, $e: expr) => { $e.iter().map(|&e| e.to_owned()).collect() };
+    (DEFAULT $ty: ty, $e: expr) => { $e };
 }
 
-/// To keep the `define_Conf!` macro simple
-pub type StringVec = Vec<String>;
-
 define_Conf! {
-    ("blacklisted-names", blacklisted_names, vec!["foo".to_owned(), "bar".to_owned(), "baz".to_owned()], StringVec),
-    ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25, u64),
-    ("too-many-arguments-threshold", too_many_arguments_threshold, 6, u64),
-    ("type-complexity-threshold", type_complexity_threshold, 250, u64),
+    /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about
+    ("blacklisted-names", blacklisted_names, ["foo", "bar", "baz"] => Vec<String>),
+    /// Lint: CYCLOMATIC_COMPLEXITY. The maximum cyclomatic complexity a function can have
+    ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25 => u64),
+    /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
+    ("too-many-arguments-threshold", too_many_arguments_threshold, 6 => u64),
+    /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
+    ("type-complexity-threshold", type_complexity_threshold, 250 => u64),
 }
 
 /// Read the `toml` configuration file. The function will ignore “File not found” errors iif
