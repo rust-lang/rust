@@ -22,7 +22,7 @@ pub fn target() -> Target {
         target_vendor: "unknown".to_string(),
 
         options: TargetOptions {
-            features: "+v7,+vfp2,+neon".to_string(),
+            features: "+v7,+vfp3,+neon".to_string(),
             cpu: "cortex-a8".to_string(),
             .. base
         }
