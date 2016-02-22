@@ -21,6 +21,6 @@ CFG_UNIXY_armv7-unknown-linux-gnueabihf := 1
 CFG_LDPATH_armv7-unknown-linux-gnueabihf :=
 CFG_RUN_armv7-unknown-linux-gnueabihf=$(2)
 CFG_RUN_TARG_armv7-unknown-linux-gnueabihf=$(call CFG_RUN_armv7-unknown-linux-gnueabihf,,$(2))
-RUSTC_FLAGS_armv7-unknown-linux-gnueabihf := -C target-feature=+v7,+vfp2,+neon
+RUSTC_FLAGS_armv7-unknown-linux-gnueabihf :=
 RUSTC_CROSS_FLAGS_armv7-unknown-linux-gnueabihf :=
 CFG_GNU_TRIPLE_armv7-unknown-linux-gnueabihf := armv7-unknown-linux-gnueabihf
