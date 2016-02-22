@@ -11,7 +11,7 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr};
+use syntax::ast::{MetaItem, Expr, VariantData};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -66,14 +66,17 @@ fn cs_clone(
         cx.expr_call_global(field.span, fn_path.clone(), args)
     };
 
+    let vdata;
     match *substr.fields {
-        Struct(ref af) => {
+        Struct(vdata_, ref af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident]);
             all_fields = af;
+            vdata = vdata_;
         }
         EnumMatching(_, variant, ref af) => {
             ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.name]);
             all_fields = af;
+            vdata = &variant.node.data;
         },
         EnumNonMatchingCollapsed (..) => {
             cx.span_bug(trait_span,
@@ -86,30 +89,29 @@ fn cs_clone(
         }
     }
 
-    if !all_fields.is_empty() && all_fields[0].name.is_none() {
-        // enum-like
-        let subcalls = all_fields.iter().map(subcall).collect();
-        let path = cx.expr_path(ctor_path);
-        cx.expr_call(trait_span, path, subcalls)
-    } else {
-        // struct-like
-        let fields = all_fields.iter().map(|field| {
-            let ident = match field.name {
-                Some(i) => i,
-                None => {
-                    cx.span_bug(trait_span,
-                                &format!("unnamed field in normal struct in \
-                                         `derive({})`", name))
-                }
-            };
-            cx.field_imm(field.span, ident, subcall(field))
-        }).collect::<Vec<_>>();
+    match *vdata {
+        VariantData::Struct(..) => {
+            let fields = all_fields.iter().map(|field| {
+                let ident = match field.name {
+                    Some(i) => i,
+                    None => {
+                        cx.span_bug(trait_span,
+                                    &format!("unnamed field in normal struct in \
+                                             `derive({})`", name))
+                    }
+                };
+                cx.field_imm(field.span, ident, subcall(field))
+            }).collect::<Vec<_>>();
 
-        if fields.is_empty() {
-            // no fields, so construct like `None`
-            cx.expr_path(ctor_path)
-        } else {
             cx.expr_struct(trait_span, ctor_path, fields)
+        }
+        VariantData::Tuple(..) => {
+            let subcalls = all_fields.iter().map(subcall).collect();
+            let path = cx.expr_path(ctor_path);
+            cx.expr_call(trait_span, path, subcalls)
+        }
+        VariantData::Unit(..) => {
+            cx.expr_path(ctor_path)
         }
     }
 }
