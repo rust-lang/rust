@@ -6,9 +6,12 @@
 
 A collection of lints to catch common mistakes and improve your Rust code.
 
-[Jump to usage instructions](#usage)
-
-[Jump to link with clippy-service](#link-with-clippy-service)
+Table of contents:
+* [Lint list](#lints)
+* [Usage instructions](#usage)
+* [Configuration](#configuration)
+* [*clippy-service*](#link-with-clippy-service)
+* [License](#license)
 
 ##Lints
 There are 135 lints included in this crate:
@@ -229,6 +232,22 @@ And, in your `main.rs` or `lib.rs`:
 #![cfg_attr(feature="clippy", feature(plugin))]
 
 #![cfg_attr(feature="clippy", plugin(clippy))]
+```
+
+## Configuration
+Some lints can be configured in a `Clippy.toml` file. It contains basic `variable = value` mapping eg.
+
+```toml
+blacklisted-names = ["toto", "tata", "titi"]
+cyclomatic-complexity-threshold = 30
+```
+
+See the wiki for more information about which lints can be configured and the
+meaning of the variables.
+
+You can also specify the path to the configuration file with:
+```rust
+#![plugin(clippy(conf_file="path/to/clippy's/configuration"))]
 ```
 
 ##Link with clippy service
