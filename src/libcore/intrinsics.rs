@@ -58,6 +58,33 @@ extern "rust-intrinsic" {
     pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> T;
     pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> T;
     pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_failrelaxed<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_failacq<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> T;
+
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchgweak_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     pub fn atomic_load<T>(src: *const T) -> T;
     pub fn atomic_load_acq<T>(src: *const T) -> T;

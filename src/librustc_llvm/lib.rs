@@ -1584,7 +1584,8 @@ extern {
                                   CMP: ValueRef,
                                   RHS: ValueRef,
                                   Order: AtomicOrdering,
-                                  FailureOrder: AtomicOrdering)
+                                  FailureOrder: AtomicOrdering,
+                                  Weak: Bool)
                                   -> ValueRef;
     pub fn LLVMBuildAtomicRMW(B: BuilderRef,
                               Op: AtomicBinOp,
