@@ -48,6 +48,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::u32;
+use std::env::current_dir;
 
 use core::DocContext;
 use doctree;
@@ -201,7 +202,13 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         }
 
         let src = match cx.input {
-            Input::File(ref path) => path.clone(),
+            Input::File(ref path) => {
+                if path.is_absolute() {
+                    path.clone()
+                } else {
+                    current_dir().unwrap().join(path)
+                }
+            },
             Input::Str(_) => PathBuf::new() // FIXME: this is wrong
         };
 
