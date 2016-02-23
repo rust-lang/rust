@@ -10,8 +10,9 @@
 
 pub use self::ArgKind::*;
 
-use llvm::Attribute;
-use std::option;
+use llvm::{self, AttrHelper, ValueRef};
+use trans::attributes;
+use trans::common::return_type_is_void;
 use trans::context::CrateContext;
 use trans::cabi_x86;
 use trans::cabi_x86_64;
@@ -23,6 +24,11 @@ use trans::cabi_powerpc64;
 use trans::cabi_mips;
 use trans::cabi_asmjs;
 use trans::type_::Type;
+use trans::type_of;
+
+use middle::ty::{self, Ty};
+
+use syntax::abi::Abi;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ArgKind {
@@ -45,17 +51,17 @@ pub struct ArgType {
     /// Original LLVM type
     pub ty: Type,
     /// Coerced LLVM Type
-    pub cast: option::Option<Type>,
+    pub cast: Option<Type>,
     /// Dummy argument, which is emitted before the real argument
-    pub pad: option::Option<Type>,
+    pub pad: Option<Type>,
     /// LLVM attribute of argument
-    pub attr: option::Option<Attribute>
+    pub attr: Option<llvm::Attribute>
 }
 
 impl ArgType {
-    pub fn direct(ty: Type, cast: option::Option<Type>,
-                            pad: option::Option<Type>,
-                            attr: option::Option<Attribute>) -> ArgType {
+    pub fn direct(ty: Type, cast: Option<Type>,
+                            pad: Option<Type>,
+                            attr: Option<llvm::Attribute>) -> ArgType {
         ArgType {
             kind: Direct,
             ty: ty,
@@ -65,12 +71,12 @@ impl ArgType {
         }
     }
 
-    pub fn indirect(ty: Type, attr: option::Option<Attribute>) -> ArgType {
+    pub fn indirect(ty: Type, attr: Option<llvm::Attribute>) -> ArgType {
         ArgType {
             kind: Indirect,
             ty: ty,
-            cast: option::Option::None,
-            pad: option::Option::None,
+            cast: Option::None,
+            pad: Option::None,
             attr: attr
         }
     }
@@ -94,6 +100,14 @@ impl ArgType {
     }
 }
 
+fn c_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
+    if ty.is_bool() {
+        Type::i1(cx)
+    } else {
+        type_of::type_of(cx, ty)
+    }
+}
+
 /// Metadata describing how the arguments to a native function
 /// should be passed in order to respect the native ABI.
 ///
@@ -101,37 +115,160 @@ impl ArgType {
 /// comments are reverse-engineered and may be inaccurate. -NDM
 pub struct FnType {
     /// The LLVM types of each argument.
-    pub arg_tys: Vec<ArgType> ,
+    pub args: Vec<ArgType>,
 
     /// LLVM return type.
-    pub ret_ty: ArgType,
+    pub ret: ArgType,
+
+    pub variadic: bool,
+
+    pub cconv: llvm::CallConv
 }
 
-pub fn compute_abi_info(ccx: &CrateContext,
-                        atys: &[Type],
-                        rty: Type,
-                        ret_def: bool) -> FnType {
-    match &ccx.sess().target.target.arch[..] {
-        "x86" => cabi_x86::compute_abi_info(ccx, atys, rty, ret_def),
-        "x86_64" => if ccx.sess().target.target.options.is_like_windows {
-            cabi_x86_win64::compute_abi_info(ccx, atys, rty, ret_def)
-        } else {
-            cabi_x86_64::compute_abi_info(ccx, atys, rty, ret_def)
-        },
-        "aarch64" => cabi_aarch64::compute_abi_info(ccx, atys, rty, ret_def),
-        "arm" => {
-            let flavor = if ccx.sess().target.target.target_os == "ios" {
-                cabi_arm::Flavor::Ios
+impl FnType {
+    pub fn new<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                         abi: Abi,
+                         sig: &ty::FnSig<'tcx>,
+                         extra_args: &[Ty<'tcx>]) -> FnType {
+        use syntax::abi::Abi::*;
+        let cconv = match ccx.sess().target.target.adjust_abi(abi) {
+            RustIntrinsic => {
+                // Intrinsics are emitted at the call site
+                ccx.sess().bug("asked to register intrinsic fn");
+            }
+            PlatformIntrinsic => {
+                // Intrinsics are emitted at the call site
+                ccx.sess().bug("asked to register platform intrinsic fn");
+            }
+
+            Rust => {
+                // FIXME(#3678) Implement linking to foreign fns with Rust ABI
+                ccx.sess().unimpl("foreign functions with Rust ABI");
+            }
+
+            RustCall => {
+                // FIXME(#3678) Implement linking to foreign fns with Rust ABI
+                ccx.sess().unimpl("foreign functions with RustCall ABI");
+            }
+
+            // It's the ABI's job to select this, not us.
+            System => ccx.sess().bug("system abi should be selected elsewhere"),
+
+            Stdcall => llvm::X86StdcallCallConv,
+            Fastcall => llvm::X86FastcallCallConv,
+            Vectorcall => llvm::X86_VectorCall,
+            C => llvm::CCallConv,
+            Win64 => llvm::X86_64_Win64,
+
+            // These API constants ought to be more specific...
+            Cdecl => llvm::CCallConv,
+            Aapcs => llvm::CCallConv,
+        };
+
+        let rty = match sig.output {
+            ty::FnConverging(ret_ty) if !return_type_is_void(ccx, ret_ty) => {
+                c_type_of(ccx, ret_ty)
+            }
+            _ => Type::void(ccx)
+        };
+
+        let mut fty = FnType {
+            args: sig.inputs.iter().chain(extra_args.iter()).map(|&ty| {
+                ArgType::direct(c_type_of(ccx, ty), None, None, None)
+            }).collect(),
+            ret: ArgType::direct(rty, None, None, None),
+            variadic: sig.variadic,
+            cconv: cconv
+        };
+
+        match &ccx.sess().target.target.arch[..] {
+            "x86" => cabi_x86::compute_abi_info(ccx, &mut fty),
+            "x86_64" => if ccx.sess().target.target.options.is_like_windows {
+                cabi_x86_win64::compute_abi_info(ccx, &mut fty);
             } else {
-                cabi_arm::Flavor::General
+                cabi_x86_64::compute_abi_info(ccx, &mut fty);
+            },
+            "aarch64" => cabi_aarch64::compute_abi_info(ccx, &mut fty),
+            "arm" => {
+                let flavor = if ccx.sess().target.target.target_os == "ios" {
+                    cabi_arm::Flavor::Ios
+                } else {
+                    cabi_arm::Flavor::General
+                };
+                cabi_arm::compute_abi_info(ccx, &mut fty, flavor);
+            },
+            "mips" => cabi_mips::compute_abi_info(ccx, &mut fty),
+            "powerpc" => cabi_powerpc::compute_abi_info(ccx, &mut fty),
+            "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, &mut fty),
+            "asmjs" => cabi_asmjs::compute_abi_info(ccx, &mut fty),
+            a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
+        }
+
+        fty
+    }
+
+    pub fn to_llvm(&self, ccx: &CrateContext) -> Type {
+        let mut llargument_tys = Vec::new();
+
+        let llreturn_ty = if self.ret.is_indirect() {
+            llargument_tys.push(self.ret.ty.ptr_to());
+            Type::void(ccx)
+        } else {
+            self.ret.cast.unwrap_or(self.ret.ty)
+        };
+
+        for arg in &self.args {
+            if arg.is_ignore() {
+                continue;
+            }
+            // add padding
+            if let Some(ty) = arg.pad {
+                llargument_tys.push(ty);
+            }
+
+            let llarg_ty = if arg.is_indirect() {
+                arg.ty.ptr_to()
+            } else {
+                arg.cast.unwrap_or(arg.ty)
             };
-            cabi_arm::compute_abi_info(ccx, atys, rty, ret_def, flavor)
-        },
-        "mips" => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
-        "powerpc" => cabi_powerpc::compute_abi_info(ccx, atys, rty, ret_def),
-        "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, atys, rty, ret_def),
-        "asmjs" => cabi_asmjs::compute_abi_info(ccx, atys, rty, ret_def),
-        a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a)
-                              ),
+
+            llargument_tys.push(llarg_ty);
+        }
+
+        if self.variadic {
+            Type::variadic_func(&llargument_tys, &llreturn_ty)
+        } else {
+            Type::func(&llargument_tys, &llreturn_ty)
+        }
+    }
+
+    pub fn add_attributes(&self, llfn: ValueRef) {
+        let mut i = if self.ret.is_indirect() {
+            1
+        } else {
+            0
+        };
+
+        if let Some(attr) = self.ret.attr {
+            attr.apply_llfn(i, llfn);
+        }
+
+        i += 1;
+
+        for arg in &self.args {
+            if arg.is_ignore() {
+                continue;
+            }
+            // skip padding
+            if arg.pad.is_some() { i += 1; }
+
+            if let Some(attr) = arg.attr {
+                attr.apply_llfn(i, llfn);
+            }
+
+            i += 1;
+        }
+
+        attributes::unwind(llfn, false);
     }
 }
