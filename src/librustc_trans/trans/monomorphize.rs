@@ -17,7 +17,7 @@ use middle::subst;
 use middle::subst::{Subst, Substs};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use trans::attributes;
-use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
+use trans::base::{push_ctxt};
 use trans::base::trans_fn;
 use trans::base;
 use trans::common::*;
@@ -31,7 +31,6 @@ use rustc::util::ppaux;
 use rustc_front::hir;
 
 use syntax::abi::Abi;
-use syntax::ast;
 use syntax::attr;
 use syntax::errors;
 
@@ -41,13 +40,10 @@ use std::hash::{Hasher, Hash, SipHasher};
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: DefId,
                                 psubsts: &'tcx subst::Substs<'tcx>)
-                                -> (ValueRef, Ty<'tcx>, bool) {
+                                -> (ValueRef, Ty<'tcx>) {
     debug!("monomorphic_fn(fn_id={:?}, real_substs={:?})", fn_id, psubsts);
 
     assert!(!psubsts.types.needs_infer() && !psubsts.types.has_param_types());
-
-    // we can only monomorphize things in this crate (or inlined into it)
-    let fn_node_id = ccx.tcx().map.as_local_node_id(fn_id).unwrap();
 
     let _icx = push_ctxt("monomorphic_fn");
 
@@ -71,25 +67,6 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     debug!("monomorphic_fn({:?})", instance);
-
-
-    let map_node = errors::expect(
-        ccx.sess().diagnostic(),
-        ccx.tcx().map.find(fn_node_id),
-        || {
-            format!("while instantiating `{}`, couldn't find it in \
-                     the item map (may have attempted to monomorphize \
-                     an item defined in a different crate?)",
-                    instance)
-        });
-
-    if let hir_map::NodeForeignItem(_) = map_node {
-        let abi = ccx.tcx().map.get_foreign_abi(fn_node_id);
-        if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
-            // Foreign externs don't have to be monomorphized.
-            return (get_item_val(ccx, fn_node_id), mono_ty, true);
-        }
-    }
 
     ccx.stats().n_monos.set(ccx.stats().n_monos.get() + 1);
 
@@ -132,155 +109,79 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("monomorphize_fn mangled to {}", s);
     assert!(declare::get_defined_value(ccx, &s).is_none());
 
-    // This shouldn't need to option dance.
-    let mut hash_id = Some(hash_id);
-    let mut mk_lldecl = |abi: Abi| {
-        let lldecl = if abi != Abi::Rust {
-            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s)
-        } else {
-            // FIXME(nagisa): perhaps needs a more fine grained selection? See
-            // setup_lldecl below.
-            declare::define_internal_rust_fn(ccx, &s, mono_ty)
-        };
+    // FIXME(nagisa): perhaps needs a more fine grained selection?
+    let lldecl = declare::define_internal_fn(ccx, &s, mono_ty);
+    // FIXME(eddyb) Doubt all extern fn should allow unwinding.
+    attributes::unwind(lldecl, true);
 
-        ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
-        lldecl
-    };
-    let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
-        base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
-        attributes::from_fn_attrs(ccx, attrs, lldecl);
+    ccx.instances().borrow_mut().insert(instance, lldecl);
 
-        let is_first = !ccx.available_monomorphizations().borrow().contains(&s);
-        if is_first {
-            ccx.available_monomorphizations().borrow_mut().insert(s.clone());
-        }
+    // we can only monomorphize things in this crate (or inlined into it)
+    let fn_node_id = ccx.tcx().map.as_local_node_id(fn_id).unwrap();
+    let map_node = errors::expect(
+        ccx.sess().diagnostic(),
+        ccx.tcx().map.find(fn_node_id),
+        || {
+            format!("while instantiating `{}`, couldn't find it in \
+                     the item map (may have attempted to monomorphize \
+                     an item defined in a different crate?)",
+                    instance)
+        });
+    match map_node {
+        hir_map::NodeItem(&hir::Item {
+            ref attrs, node: hir::ItemFn(ref decl, _, _, abi, _, ref body), ..
+        }) |
+        hir_map::NodeTraitItem(&hir::TraitItem {
+            ref attrs, node: hir::MethodTraitItem(
+                hir::MethodSig { abi, ref decl, .. }, Some(ref body)), ..
+        }) |
+        hir_map::NodeImplItem(&hir::ImplItem {
+            ref attrs, node: hir::ImplItemKind::Method(
+                hir::MethodSig { abi, ref decl, .. }, ref body), ..
+        }) => {
+            base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
+            attributes::from_fn_attrs(ccx, attrs, lldecl);
 
-        let trans_everywhere = attr::requests_inline(attrs);
-        if trans_everywhere && !is_first {
-            llvm::SetLinkage(lldecl, llvm::AvailableExternallyLinkage);
-        }
-
-        // If `true`, then `lldecl` should be given a function body.
-        // Otherwise, it should be left as a declaration of an external
-        // function, with no definition in the current compilation unit.
-        trans_everywhere || is_first
-    };
-
-    let lldecl = match map_node {
-        hir_map::NodeItem(i) => {
-            match *i {
-              hir::Item {
-                  node: hir::ItemFn(ref decl, _, _, abi, _, ref body),
-                  ..
-              } => {
-                  let d = mk_lldecl(abi);
-                  let needs_body = setup_lldecl(d, &i.attrs);
-                  if needs_body {
-                      if abi != Abi::Rust {
-                          foreign::trans_rust_fn_with_foreign_abi(
-                              ccx, &decl, &body, &[], d, psubsts, fn_node_id,
-                              Some(&hash[..]));
-                      } else {
-                          trans_fn(ccx,
-                                   &decl,
-                                   &body,
-                                   d,
-                                   psubsts,
-                                   fn_node_id,
-                                   &i.attrs);
-                      }
-                  }
-
-                  d
-              }
-              _ => {
-                ccx.sess().bug("Can't monomorphize this kind of item")
-              }
+            let is_first = !ccx.available_monomorphizations().borrow().contains(&s);
+            if is_first {
+                ccx.available_monomorphizations().borrow_mut().insert(s.clone());
             }
-        }
-        hir_map::NodeVariant(v) => {
-            let variant = inlined_variant_def(ccx, fn_node_id);
-            assert_eq!(v.node.name, variant.name);
-            let d = mk_lldecl(Abi::Rust);
-            attributes::inline(d, attributes::InlineAttr::Hint);
-            trans_enum_variant(ccx, fn_node_id, Disr::from(variant.disr_val), psubsts, d);
-            d
-        }
-        hir_map::NodeImplItem(impl_item) => {
-            match impl_item.node {
-                hir::ImplItemKind::Method(ref sig, ref body) => {
-                    let d = mk_lldecl(Abi::Rust);
-                    let needs_body = setup_lldecl(d, &impl_item.attrs);
-                    if needs_body {
-                        trans_fn(ccx,
-                                 &sig.decl,
-                                 body,
-                                 d,
-                                 psubsts,
-                                 impl_item.id,
-                                 &impl_item.attrs);
-                    }
-                    d
-                }
-                _ => {
-                    ccx.sess().bug(&format!("can't monomorphize a {:?}",
-                                           map_node))
+
+            let trans_everywhere = attr::requests_inline(attrs);
+            if trans_everywhere && !is_first {
+                llvm::SetLinkage(lldecl, llvm::AvailableExternallyLinkage);
+            }
+
+            if trans_everywhere || is_first {
+                if abi != Abi::Rust && abi != Abi::RustCall {
+                    foreign::trans_rust_fn_with_foreign_abi(
+                        ccx, decl, body, attrs, lldecl, psubsts, fn_node_id,
+                        Some(&hash));
+                } else {
+                    trans_fn(ccx, decl, body, lldecl, psubsts, fn_node_id, attrs);
                 }
             }
         }
-        hir_map::NodeTraitItem(trait_item) => {
-            match trait_item.node {
-                hir::MethodTraitItem(ref sig, Some(ref body)) => {
-                    let d = mk_lldecl(Abi::Rust);
-                    let needs_body = setup_lldecl(d, &trait_item.attrs);
-                    if needs_body {
-                        trans_fn(ccx,
-                                 &sig.decl,
-                                 body,
-                                 d,
-                                 psubsts,
-                                 trait_item.id,
-                                 &trait_item.attrs);
-                    }
-                    d
+
+        hir_map::NodeVariant(_) | hir_map::NodeStructCtor(_) => {
+            let disr = match map_node {
+                hir_map::NodeVariant(_) => {
+                    Disr::from(inlined_variant_def(ccx, fn_node_id).disr_val)
                 }
-                _ => {
-                    ccx.sess().bug(&format!("can't monomorphize a {:?}",
-                                           map_node))
-                }
-            }
-        }
-        hir_map::NodeStructCtor(struct_def) => {
-            let d = mk_lldecl(Abi::Rust);
-            attributes::inline(d, attributes::InlineAttr::Hint);
-            if struct_def.is_struct() {
-                panic!("ast-mapped struct didn't have a ctor id")
-            }
-            base::trans_tuple_struct(ccx,
-                                     struct_def.id(),
-                                     psubsts,
-                                     d);
-            d
+                hir_map::NodeStructCtor(_) => Disr(0),
+                _ => unreachable!()
+            };
+            attributes::inline(lldecl, attributes::InlineAttr::Hint);
+            base::trans_ctor_shim(ccx, fn_node_id, disr, psubsts, lldecl);
         }
 
-        // Ugh -- but this ensures any new variants won't be forgotten
-        hir_map::NodeForeignItem(..) |
-        hir_map::NodeLifetime(..) |
-        hir_map::NodeTyParam(..) |
-        hir_map::NodeExpr(..) |
-        hir_map::NodeStmt(..) |
-        hir_map::NodeBlock(..) |
-        hir_map::NodePat(..) |
-        hir_map::NodeLocal(..) => {
-            ccx.sess().bug(&format!("can't monomorphize a {:?}",
-                                   map_node))
-        }
+        _ => unreachable!("can't monomorphize a {:?}", map_node)
     };
 
     ccx.monomorphizing().borrow_mut().insert(fn_id, depth);
 
     debug!("leaving monomorphic fn {}", ccx.tcx().item_path_str(fn_id));
-    (lldecl, mono_ty, true)
+    (lldecl, mono_ty)
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

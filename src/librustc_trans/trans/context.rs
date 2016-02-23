@@ -19,7 +19,7 @@ use rustc::mir::mir_map::MirMap;
 use trans::adt;
 use trans::base;
 use trans::builder::Builder;
-use trans::common::{ExternMap,BuilderRef_res};
+use trans::common::BuilderRef_res;
 use trans::debuginfo;
 use trans::declare;
 use trans::glue::DropGlueKind;
@@ -90,8 +90,6 @@ pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
     tn: TypeNames,
-    externs: RefCell<ExternMap>,
-    item_vals: RefCell<NodeMap<ValueRef>>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>>,
@@ -464,8 +462,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 llmod: llmod,
                 llcx: llcx,
                 tn: TypeNames::new(),
-                externs: RefCell::new(FnvHashMap()),
-                item_vals: RefCell::new(NodeMap()),
                 needs_unwind_cleanup_cache: RefCell::new(FnvHashMap()),
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
                 drop_glues: RefCell::new(FnvHashMap()),
@@ -614,14 +610,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn tn<'a>(&'a self) -> &'a TypeNames {
         &self.local.tn
-    }
-
-    pub fn externs<'a>(&'a self) -> &'a RefCell<ExternMap> {
-        &self.local.externs
-    }
-
-    pub fn item_vals<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
-        &self.local.item_vals
     }
 
     pub fn export_map<'a>(&'a self) -> &'a ExportMap {

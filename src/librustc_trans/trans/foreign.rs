@@ -10,7 +10,7 @@
 
 
 use back::{abi, link};
-use llvm::{ValueRef, CallConv, get_param};
+use llvm::{ValueRef, get_param};
 use llvm;
 use middle::weak_lang_items;
 use trans::attributes;
@@ -37,12 +37,10 @@ use std::iter::once;
 use libc::c_uint;
 use syntax::abi::Abi;
 use syntax::attr;
-use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 
-use rustc_front::print::pprust;
 use rustc_front::hir;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -110,56 +108,6 @@ pub fn register_static(ccx: &CrateContext,
     }
 
     return c;
-}
-
-// only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
-pub fn get_extern_fn(ccx: &CrateContext,
-                     externs: &mut ExternMap,
-                     name: &str,
-                     cc: llvm::CallConv,
-                     ty: Type,
-                     output: Ty)
-                     -> ValueRef {
-    match externs.get(name) {
-        Some(n) => return *n,
-        None => {}
-    }
-    let f = declare::declare_fn(ccx, name, cc, ty, ty::FnConverging(output));
-    externs.insert(name.to_string(), f);
-    f
-}
-
-/// Registers a foreign function found in a library. Just adds a LLVM global.
-pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                          abi: Abi, fty: Ty<'tcx>,
-                                          name: &str,
-                                          attrs: &[ast::Attribute])-> ValueRef {
-    debug!("register_foreign_item_fn(abi={:?}, \
-            ty={:?}, \
-            name={})",
-           abi,
-           fty,
-           name);
-
-    let cc = llvm_calling_convention(ccx, abi);
-
-    // Register the function as a C extern fn
-    let tys = foreign_types_for_fn_ty(ccx, fty);
-
-    // Make sure the calling convention is right for variadic functions
-    // (should've been caught if not in typeck)
-    if tys.fn_sig.variadic {
-        assert!(cc == llvm::CCallConv);
-    }
-
-    // Create the LLVM value for the C extern fn
-    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
-
-    let llfn = get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), name, cc, llfn_ty, fty);
-    attributes::unwind(llfn, false);
-    add_argument_attributes(&tys, llfn);
-    attributes::from_fn_attrs(ccx, attrs, llfn);
-    llfn
 }
 
 /// Prepares a call to a native function. This requires adapting
@@ -413,49 +361,6 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // where the `foo` function follows the C ABI. We rely on LLVM to
 // inline the one into the other. Of course we could just generate the
 // correct code in the first place, but this is much simpler.
-
-pub fn decl_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                               t: Ty<'tcx>,
-                                               name: &str)
-                                               -> ValueRef {
-    let tys = foreign_types_for_fn_ty(ccx, t);
-    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
-    let cconv = match t.sty {
-        ty::TyFnDef(_, _, ref fn_ty) | ty::TyFnPtr(ref fn_ty) => {
-            llvm_calling_convention(ccx, fn_ty.abi)
-        }
-        _ => panic!("expected bare fn in decl_rust_fn_with_foreign_abi")
-    };
-    let llfn = declare::declare_fn(ccx, name, cconv, llfn_ty,
-                                   ty::FnConverging(ccx.tcx().mk_nil()));
-    add_argument_attributes(&tys, llfn);
-    debug!("decl_rust_fn_with_foreign_abi(llfn_ty={:?}, llfn={:?})",
-           llfn_ty, Value(llfn));
-    llfn
-}
-
-pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
-                                         sp: Span,
-                                         sym: String,
-                                         node_id: ast::NodeId)
-                                         -> ValueRef {
-    let _icx = push_ctxt("foreign::register_foreign_fn");
-
-    let t = ccx.tcx().node_id_to_type(node_id);
-    let cconv = match t.sty {
-        ty::TyFnDef(_, _, ref fn_ty) | ty::TyFnPtr(ref fn_ty) => {
-            llvm_calling_convention(ccx, fn_ty.abi)
-        }
-        _ => panic!("expected bare fn in register_rust_fn_with_foreign_abi")
-    };
-    let tys = foreign_types_for_fn_ty(ccx, t);
-    let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
-    let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty);
-    add_argument_attributes(&tys, llfn);
-    debug!("register_rust_fn_with_foreign_abi(node_id={}, llfn_ty={:?}, llfn={:?})",
-           node_id, llfn_ty, Value(llfn));
-    llfn
-}
 
 pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 decl: &hir::FnDecl,
