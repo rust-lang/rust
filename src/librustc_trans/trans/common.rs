@@ -1200,41 +1200,6 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     infer::drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
 }
 
-// Key used to lookup values supplied for type parameters in an expr.
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum ExprOrMethodCall {
-    // Type parameters for a path like `None::<int>`
-    ExprId(ast::NodeId),
-
-    // Type parameters for a method call like `a.foo::<int>()`
-    MethodCallKey(ty::MethodCall)
-}
-
-pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                node: ExprOrMethodCall,
-                                param_substs: &subst::Substs<'tcx>)
-                                -> &'tcx subst::Substs<'tcx> {
-    let tcx = ccx.tcx();
-
-    let substs = match node {
-        ExprId(id) => {
-            tcx.node_id_item_substs(id).substs
-        }
-        MethodCallKey(method_call) => {
-            tcx.tables.borrow().method_map[&method_call].substs.clone()
-        }
-    };
-
-    if substs.types.needs_infer() {
-        tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
-                              node, substs));
-    }
-
-    ccx.tcx().mk_substs(monomorphize::apply_param_substs(tcx,
-                                                         param_substs,
-                                                         &substs.erase_regions()))
-}
-
 pub fn langcall(bcx: Block,
                 span: Option<Span>,
                 msg: &str,
