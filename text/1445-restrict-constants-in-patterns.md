@@ -1,7 +1,7 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- Feature Name: `structural_match`
+- Start Date: 2015-02-06
+- RFC PR: [rust-lang/rfcs#1445](https://github.com/rust-lang/rfcs/pull/1445)
+- Rust Issue: [rust-lang/rust#31434](https://github.com/rust-lang/rust/issues/31434)
 
 # Summary
 [summary]: #summary
@@ -164,7 +164,7 @@ are two main disadvantages:
 2. **Scaling to associated constants.** The current approach does not
    permit associated constants or generic integers to be used in a
    match statement.
-   
+
 #### Disadvantage: Weakened abstraction bounary
 
 The single biggest concern with structural equality is that it
@@ -185,7 +185,7 @@ now be used to **observe private fields**.
 pub struct Duration {
     pub seconds: u32,
     pub minutes: u32,
-}  
+}
 ```
 
 Let's say that this `Duration` type wishes to represent a span of
@@ -316,12 +316,12 @@ fn foo<T:SomeTrait>(x: bool) {
 impl SomeTrait for i32 {
     const A: bool = true;
     const B: bool = true;
-}    
+}
 
 impl SomeTrait for u32 {
     const A: bool = true;
     const B: bool = false;
-}    
+}
 ```
 
 Is this match exhaustive? Does it contain dead code? The answer will
@@ -347,7 +347,7 @@ and a match pattern like the following:
 
 ```rust
 match v {
-    V1 => ..., 
+    V1 => ...,
     ...,
     V5 => ...,
 }
