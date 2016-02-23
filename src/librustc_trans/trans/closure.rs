@@ -241,7 +241,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 
     // Create the closure.
     for (i, freevar) in freevars.iter().enumerate() {
-        let datum = expr::trans_local_var(bcx, freevar.def);
+        let datum = expr::trans_var(bcx, freevar.def);
         let upvar_slot_dest = adt::trans_field_ptr(
             bcx, &repr, adt::MaybeSizedValue::sized(dest_addr), Disr(0), i);
         let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),

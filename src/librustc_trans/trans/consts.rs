@@ -18,16 +18,19 @@ use middle::cstore::LOCAL_CRATE;
 use middle::const_eval::{self, ConstEvalErr};
 use middle::def::Def;
 use middle::def_id::DefId;
+use rustc::front::map as hir_map;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
-use trans::base::{self, push_ctxt};
+use trans::base::{self, exported_name, push_ctxt};
 use trans::callee::Callee;
 use trans::collector::{self, TransItem};
 use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
 use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
 use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null, ExprId, MethodCallKey};
+use trans::datum::{Datum, Lvalue};
 use trans::declare;
 use trans::monomorphize;
+use trans::foreign;
 use trans::type_::Type;
 use trans::type_of;
 use trans::value::Value;
@@ -46,7 +49,7 @@ use std::ffi::{CStr, CString};
 use std::borrow::Cow;
 use libc::c_uint;
 use syntax::ast::{self, LitKind};
-use syntax::attr;
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -806,7 +809,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
             let opt_def = cx.tcx().def_map.borrow().get(&cur.id).map(|d| d.full_def());
             if let Some(Def::Static(def_id, _)) = opt_def {
-                common::get_static_val(cx, def_id, ety)
+                get_static(cx, def_id).val
             } else {
                 // If this isn't the address of a static, then keep going through
                 // normal constant evaluation.
@@ -1013,6 +1016,65 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     })
 }
 
+pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
+                            -> Datum<'tcx, Lvalue> {
+    let ty = ccx.tcx().lookup_item_type(def_id).ty;
+
+    let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
+        match ccx.tcx().map.get(id) {
+            hir_map::NodeItem(&hir::Item {
+                ref attrs, span, node: hir::ItemStatic(..), ..
+            }) => {
+                // If this static came from an external crate, then
+                // we need to get the symbol from metadata instead of
+                // using the current crate's name/version
+                // information in the hash of the symbol
+                let sym = exported_name(ccx, id, ty, attrs);
+                debug!("making {}", sym);
+
+                // Create the global before evaluating the initializer;
+                // this is necessary to allow recursive statics.
+                let llty = type_of::type_of(ccx, ty);
+                let g = declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
+                    ccx.sess().span_fatal(span,
+                        &format!("symbol `{}` is already defined", sym))
+                });
+
+                ccx.item_symbols().borrow_mut().insert(id, sym);
+                g
+            }
+
+            hir_map::NodeForeignItem(ni @ &hir::ForeignItem {
+                node: hir::ForeignItemStatic(..), ..
+            }) => foreign::register_static(ccx, ni),
+
+            item => unreachable!("get_static: expected static, found {:?}", item)
+        }
+    } else {
+        // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
+        // FIXME(nagisa): investigate whether it can be changed into define_global
+        let name = ccx.sess().cstore.item_symbol(def_id);
+        let g = declare::declare_global(ccx, &name, type_of::type_of(ccx, ty));
+        // Thread-local statics in some other crate need to *always* be linked
+        // against in a thread-local fashion, so we need to be sure to apply the
+        // thread-local attribute locally if it was present remotely. If we
+        // don't do this then linker errors can be generated where the linker
+        // complains that one object files has a thread local version of the
+        // symbol and another one doesn't.
+        for attr in ccx.tcx().get_attrs(def_id).iter() {
+            if attr.check_name("thread_local") {
+                llvm::set_thread_local(g, true);
+            }
+        }
+        if ccx.use_dll_storage_attrs() {
+            llvm::SetDLLStorageClass(g, llvm::DLLImportStorageClass);
+        }
+        g
+    };
+
+    Datum::new(g, ty, Lvalue::new("static"))
+}
+
 pub fn trans_static(ccx: &CrateContext,
                     m: hir::Mutability,
                     expr: &hir::Expr,
@@ -1026,7 +1088,8 @@ pub fn trans_static(ccx: &CrateContext,
 
     unsafe {
         let _icx = push_ctxt("trans_static");
-        let g = base::get_item_val(ccx, id);
+        let def_id = ccx.tcx().map.local_def_id(id);
+        let datum = get_static(ccx, def_id);
 
         let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
         let (v, _) = try!(const_expr(
@@ -1039,40 +1102,39 @@ pub fn trans_static(ccx: &CrateContext,
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
-        let mut val_llty = llvm::LLVMTypeOf(v);
-        let v = if val_llty == Type::i1(ccx).to_ref() {
-            val_llty = Type::i8(ccx).to_ref();
-            llvm::LLVMConstZExt(v, val_llty)
+        let mut val_llty = val_ty(v);
+        let v = if val_llty == Type::i1(ccx) {
+            val_llty = Type::i8(ccx);
+            llvm::LLVMConstZExt(v, val_llty.to_ref())
         } else {
             v
         };
 
-        let ty = ccx.tcx().node_id_to_type(id);
-        let llty = type_of::type_of(ccx, ty);
-        let g = if val_llty == llty.to_ref() {
-            g
+        let llty = type_of::type_of(ccx, datum.ty);
+        let g = if val_llty == llty {
+            datum.val
         } else {
             // If we created the global with the wrong type,
             // correct the type.
             let empty_string = CString::new("").unwrap();
-            let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(g));
+            let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(datum.val));
             let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
-            llvm::LLVMSetValueName(g, empty_string.as_ptr());
+            llvm::LLVMSetValueName(datum.val, empty_string.as_ptr());
             let new_g = llvm::LLVMGetOrInsertGlobal(
-                ccx.llmod(), name_string.as_ptr(), val_llty);
+                ccx.llmod(), name_string.as_ptr(), val_llty.to_ref());
             // To avoid breaking any invariants, we leave around the old
             // global for the moment; we'll replace all references to it
             // with the new global later. (See base::trans_crate.)
-            ccx.statics_to_rauw().borrow_mut().push((g, new_g));
+            ccx.statics_to_rauw().borrow_mut().push((datum.val, new_g));
             new_g
         };
-        llvm::LLVMSetAlignment(g, type_of::align_of(ccx, ty));
+        llvm::LLVMSetAlignment(g, type_of::align_of(ccx, datum.ty));
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if m != hir::MutMutable {
-            let tcontents = ty.type_contents(ccx.tcx());
+            let tcontents = datum.ty.type_contents(ccx.tcx());
             if !tcontents.interior_unsafe() {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }

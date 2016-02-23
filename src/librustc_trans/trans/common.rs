@@ -1341,14 +1341,3 @@ pub fn shift_mask_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => panic!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
 }
-
-pub fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            did: DefId,
-                            ty: Ty<'tcx>)
-                            -> ValueRef {
-    if let Some(node_id) = ccx.tcx().map.as_local_node_id(did) {
-        base::get_item_val(ccx, node_id)
-    } else {
-        base::get_extern_const(ccx, did, ty)
-    }
-}

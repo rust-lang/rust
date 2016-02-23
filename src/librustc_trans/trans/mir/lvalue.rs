@@ -15,6 +15,7 @@ use rustc::mir::tcx::LvalueTy;
 use trans::adt;
 use trans::base;
 use trans::common::{self, BlockAndBuilder};
+use trans::consts;
 use trans::machine;
 use trans::type_of;
 use trans::mir::drop;
@@ -89,9 +90,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.mir.lvalue_ty(tcx, lvalue);
-                LvalueRef::new_sized(
-                    common::get_static_val(ccx, def_id, const_ty.to_ty(tcx)),
-                    const_ty)
+                LvalueRef::new_sized(consts::get_static(ccx, def_id).val, const_ty)
             },
             mir::Lvalue::ReturnPointer => {
                 let fn_return_ty = bcx.monomorphize(&self.mir.return_ty);

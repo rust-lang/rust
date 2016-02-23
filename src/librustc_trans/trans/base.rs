@@ -10,8 +10,8 @@
 //! Translate the completed AST to the LLVM IR.
 //!
 //! Some functions here, such as trans_block and trans_expr, return a value --
-//! the result of the translation to LLVM -- while others, such as trans_fn,
-//! trans_impl, and trans_item, are called only for the side effect of adding a
+//! the result of the translation to LLVM -- while others, such as trans_fn
+//! and trans_item, are called only for the side effect of adding a
 //! particular definition to the LLVM IR output we're producing.
 //!
 //! Hopefully useful general knowledge about trans:
@@ -226,36 +226,6 @@ pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn kind_for_closure(ccx: &CrateContext, closure_id: DefId) -> ty::ClosureKind {
     *ccx.tcx().tables.borrow().closure_kinds.get(&closure_id).unwrap()
-}
-
-pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  did: DefId,
-                                  t: Ty<'tcx>)
-                                  -> ValueRef {
-    let name = ccx.sess().cstore.item_symbol(did);
-    let ty = type_of(ccx, t);
-    if let Some(n) = ccx.externs().borrow_mut().get(&name) {
-        return *n;
-    }
-    // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
-    // FIXME(nagisa): investigate whether it can be changed into define_global
-    let c = declare::declare_global(ccx, &name[..], ty);
-    // Thread-local statics in some other crate need to *always* be linked
-    // against in a thread-local fashion, so we need to be sure to apply the
-    // thread-local attribute locally if it was present remotely. If we
-    // don't do this then linker errors can be generated where the linker
-    // complains that one object files has a thread local version of the
-    // symbol and another one doesn't.
-    for attr in ccx.tcx().get_attrs(did).iter() {
-        if attr.check_name("thread_local") {
-            llvm::set_thread_local(c, true);
-        }
-    }
-    if ccx.use_dll_storage_attrs() {
-        llvm::SetDLLStorageClass(c, llvm::DLLImportStorageClass);
-    }
-    ccx.externs().borrow_mut().insert(name.to_string(), c);
-    return c;
 }
 
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, info_ty: Ty<'tcx>, it: LangItem) -> DefId {
@@ -2714,11 +2684,11 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
     }
 }
 
-fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                           id: ast::NodeId,
-                           ty: Ty<'tcx>,
-                           attrs: &[ast::Attribute])
-                           -> String {
+pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               id: ast::NodeId,
+                               ty: Ty<'tcx>,
+                               attrs: &[ast::Attribute])
+                               -> String {
     match ccx.external_srcs().borrow().get(&id) {
         Some(&did) => {
             let sym = ccx.sess().cstore.item_symbol(did);
@@ -2768,25 +2738,6 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             let sym = || exported_name(ccx, id, ty, &i.attrs);
 
             let v = match i.node {
-                hir::ItemStatic(..) => {
-                    // If this static came from an external crate, then
-                    // we need to get the symbol from metadata instead of
-                    // using the current crate's name/version
-                    // information in the hash of the symbol
-                    let sym = sym();
-                    debug!("making {}", sym);
-
-                    // Create the global before evaluating the initializer;
-                    // this is necessary to allow recursive statics.
-                    let llty = type_of(ccx, ty);
-                    let g = declare::define_global(ccx, &sym[..], llty).unwrap_or_else(|| {
-                        ccx.sess()
-                           .span_fatal(i.span, &format!("symbol `{}` is already defined", sym))
-                    });
-
-                    ccx.item_symbols().borrow_mut().insert(i.id, sym);
-                    g
-                }
 
                 hir::ItemFn(_, _, _, abi, _, _) => {
                     let sym = sym();
