@@ -253,7 +253,7 @@ trait def_id_encoder_helpers {
 }
 
 impl<S:serialize::Encoder> def_id_encoder_helpers for S
-    where <S as serialize::serialize::Encoder>::Error: Debug
+    where <S as serialize::Encoder>::Error: Debug
 {
     fn emit_def_id(&mut self, did: DefId) {
         did.encode(self).unwrap()
@@ -267,7 +267,7 @@ trait def_id_decoder_helpers {
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D
-    where <D as serialize::serialize::Decoder>::Error: Debug
+    where <D as serialize::Decoder>::Error: Debug
 {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId {
         let did: DefId = Decodable::decode(self).unwrap();
