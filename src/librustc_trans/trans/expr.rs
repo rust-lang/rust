@@ -1678,8 +1678,7 @@ fn trans_scalar_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if use_fmod {
                 let f64t = Type::f64(bcx.ccx());
                 let fty = Type::func(&[f64t, f64t], &f64t);
-                let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty,
-                                                tcx.types.f64);
+                let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty);
                 if lhs_t == tcx.types.f32 {
                     let lhs = FPExt(bcx, lhs, f64t);
                     let rhs = FPExt(bcx, rhs, f64t);

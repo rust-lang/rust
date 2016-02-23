@@ -55,9 +55,8 @@ pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRe
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
-pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv,
-                  ty: Type, output: ty::FnOutput) -> ValueRef {
-    debug!("declare_fn(name={:?})", name);
+fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: Type) -> ValueRef {
+    debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         ccx.sess().bug(&format!("name {:?} contains an interior null byte", name))
     });
@@ -69,10 +68,6 @@ pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv,
     // Function addresses in Rust are never significant, allowing functions to
     // be merged.
     llvm::SetUnnamedAddr(llfn, true);
-
-    if output == ty::FnDiverging {
-        llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturn);
-    }
 
     if ccx.tcx().sess.opts.cg.no_redzone
         .unwrap_or(ccx.tcx().sess.target.target.options.disable_redzone) {
@@ -90,9 +85,8 @@ pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv,
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
-pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type,
-                   output: ty::Ty) -> ValueRef {
-    declare_fn(ccx, name, llvm::CCallConv, fn_type, ty::FnConverging(output))
+pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
+    declare_raw_fn(ccx, name, llvm::CCallConv, fn_type)
 }
 
 
@@ -237,7 +231,7 @@ pub fn define_internal_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 /// Get defined or externally defined (AvailableExternally linkage) value by
 /// name.
-fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+pub fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     debug!("get_defined_value(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         ccx.sess().bug(&format!("name {:?} contains an interior null byte", name))

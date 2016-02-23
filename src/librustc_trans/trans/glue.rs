@@ -14,7 +14,7 @@
 
 use std;
 
-use back::link::*;
+use back::link;
 use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
@@ -251,15 +251,14 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // To avoid infinite recursion, don't `make_drop_glue` until after we've
     // added the entry to the `drop_glues` cache.
     if let Some(old_sym) = ccx.available_drop_glues().borrow().get(&g) {
-        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty, ccx.tcx().mk_nil());
+        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty);
         ccx.drop_glues().borrow_mut().insert(g, llfn);
         return llfn;
     };
 
-    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "drop");
-    let llfn = declare::define_cfn(ccx, &fn_nm, llfnty, ccx.tcx().mk_nil()).unwrap_or_else(||{
-       ccx.sess().bug(&format!("symbol `{}` already defined", fn_nm));
-    });
+    let fn_nm = link::mangle_internal_name_by_type_and_seq(ccx, t, "drop");
+    assert!(declare::get_defined_value(ccx, &fn_nm).is_none());
+    let llfn = declare::declare_cfn(ccx, &fn_nm, llfnty);
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
 
     let _s = StatRecorder::new(ccx, format!("drop {:?}", t));
