@@ -51,8 +51,8 @@ use syntax::codemap::Span;
 
 use std::cmp::Ordering;
 
-pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
-    let name = match &*item.name.as_str() {
+fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+    let llvm_name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
         "powif32" => "llvm.powi.f32",
@@ -94,7 +94,7 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Opti
         "assume" => "llvm.assume",
         _ => return None
     };
-    Some(ccx.get_intrinsic(&name))
+    Some(ccx.get_intrinsic(&llvm_name))
 }
 
 pub fn span_transmute_size_error(a: &Session, b: Span, msg: &str) {
@@ -171,12 +171,10 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                            node: ast::NodeId,
                                             callee_ty: Ty<'tcx>,
                                             cleanup_scope: cleanup::CustomScopeIndex,
                                             args: callee::CallArgs<'a, 'tcx>,
                                             dest: expr::Dest,
-                                            substs: &'tcx subst::Substs<'tcx>,
                                             call_info: NodeIdAndSpan)
                                             -> Result<'blk, 'tcx> {
     let fcx = bcx.fcx;
@@ -185,12 +183,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_intrinsic_call");
 
-    let sig = ccx.tcx().erase_late_bound_regions(callee_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let (def_id, substs, sig) = match callee_ty.sty {
+        ty::TyFnDef(def_id, substs, fty) => {
+            let sig = tcx.erase_late_bound_regions(&fty.sig);
+            (def_id, substs, infer::normalize_associated_type(tcx, &sig))
+        }
+        _ => unreachable!("expected fn item type, found {}", callee_ty)
+    };
     let arg_tys = sig.inputs;
     let ret_ty = sig.output;
-    let foreign_item = tcx.map.expect_foreign_item(node);
-    let name = foreign_item.name.as_str();
+    let name = tcx.item_name(def_id).as_str();
 
     let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
 
@@ -437,8 +439,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let simple = get_simple_intrinsic(ccx, &foreign_item);
-    let llval = match (simple, &*name) {
+    let simple = get_simple_intrinsic(ccx, &name);
+    let llval = match (simple, &name[..]) {
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, None, call_debug_location)
         }
@@ -815,8 +817,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, _) => {
             let intr = match Intrinsic::find(tcx, &name) {
                 Some(intr) => intr,
-                None => ccx.sess().span_bug(foreign_item.span,
-                                            &format!("unknown intrinsic '{}'", name)),
+                None => unreachable!("unknown intrinsic '{}'", name),
             };
             fn one<T>(x: Vec<T>) -> T {
                 assert_eq!(x.len(), 1);
