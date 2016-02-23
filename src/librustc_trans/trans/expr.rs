@@ -44,7 +44,7 @@
 //!   expression and ensures that the result has a cleanup associated with it,
 //!   creating a temporary stack slot if necessary.
 //!
-//! - `trans_local_var -> Datum`: looks up a local variable or upvar.
+//! - `trans_var -> Datum`: looks up a local variable, upvar or static.
 
 #![allow(non_camel_case_types)]
 
@@ -652,7 +652,8 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans(bcx, &e)
         }
         hir::ExprPath(..) => {
-            trans_def(bcx, expr, bcx.def(expr.id))
+            let var = trans_var(bcx, bcx.def(expr.id));
+            DatumBlock::new(bcx, var.to_expr_datum())
         }
         hir::ExprField(ref base, name) => {
             trans_rec_field(bcx, &base, name.node)
@@ -882,27 +883,40 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     DatumBlock::new(bcx, elt_datum)
 }
 
-fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                         ref_expr: &hir::Expr,
-                         def: Def)
-                         -> DatumBlock<'blk, 'tcx, Expr> {
-    //! Translates a reference to a path.
+/// Translates a reference to a variable.
+pub fn trans_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, def: Def)
+                             -> Datum<'tcx, Lvalue> {
 
-    let _icx = push_ctxt("trans_def_lvalue");
     match def {
-        Def::Static(did, _) => {
-            let const_ty = expr_ty(bcx, ref_expr);
-            let val = get_static_val(bcx.ccx(), did, const_ty);
-            let lval = Lvalue::new("expr::trans_def");
-            DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr(lval)))
+        Def::Static(did, _) => consts::get_static(bcx.ccx(), did),
+        Def::Upvar(_, nid, _, _) => {
+            // Can't move upvars, so this is never a ZeroMemLastUse.
+            let local_ty = node_id_type(bcx, nid);
+            let lval = Lvalue::new_with_hint("expr::trans_var (upvar)",
+                                             bcx, nid, HintKind::ZeroAndMaintain);
+            match bcx.fcx.llupvars.borrow().get(&nid) {
+                Some(&val) => Datum::new(val, local_ty, lval),
+                None => {
+                    bcx.sess().bug(&format!(
+                        "trans_var: no llval for upvar {} found",
+                        nid));
+                }
+            }
         }
-        Def::Local(..) | Def::Upvar(..) => {
-            DatumBlock::new(bcx, trans_local_var(bcx, def).to_expr_datum())
+        Def::Local(_, nid) => {
+            let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
+                Some(&v) => v,
+                None => {
+                    bcx.sess().bug(&format!(
+                        "trans_var: no datum for local/arg {} found",
+                        nid));
+                }
+            };
+            debug!("take_local(nid={}, v={:?}, ty={})",
+                   nid, Value(datum.val), datum.ty);
+            datum
         }
-        _ => {
-            bcx.sess().span_bug(ref_expr.span,
-                &format!("{:?} should not reach expr::trans_def", def))
-        }
+        _ => unreachable!("{:?} should not reach expr::trans_var", def)
     }
 }
 
@@ -1243,48 +1257,6 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(ref_expr.span, &format!(
                 "Non-DPS def {:?} referened by {}",
                 def, bcx.node_id_to_string(ref_expr.id)));
-        }
-    }
-}
-
-/// Translates a reference to a local variable or argument. This always results in an lvalue datum.
-pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   def: Def)
-                                   -> Datum<'tcx, Lvalue> {
-    let _icx = push_ctxt("trans_local_var");
-
-    match def {
-        Def::Upvar(_, nid, _, _) => {
-            // Can't move upvars, so this is never a ZeroMemLastUse.
-            let local_ty = node_id_type(bcx, nid);
-            let lval = Lvalue::new_with_hint("expr::trans_local_var (upvar)",
-                                             bcx, nid, HintKind::ZeroAndMaintain);
-            match bcx.fcx.llupvars.borrow().get(&nid) {
-                Some(&val) => Datum::new(val, local_ty, lval),
-                None => {
-                    bcx.sess().bug(&format!(
-                        "trans_local_var: no llval for upvar {} found",
-                        nid));
-                }
-            }
-        }
-        Def::Local(_, nid) => {
-            let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
-                Some(&v) => v,
-                None => {
-                    bcx.sess().bug(&format!(
-                        "trans_local_var: no datum for local/arg {} found",
-                        nid));
-                }
-            };
-            debug!("take_local(nid={}, v={:?}, ty={})",
-                   nid, Value(datum.val), datum.ty);
-            datum
-        }
-        _ => {
-            bcx.sess().unimpl(&format!(
-                "unsupported def type in trans_local_var: {:?}",
-                def));
         }
     }
 }
