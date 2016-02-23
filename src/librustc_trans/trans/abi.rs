@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -28,7 +28,19 @@ use trans::type_of;
 
 use middle::ty::{self, Ty};
 
-use syntax::abi::Abi;
+pub use syntax::abi::Abi;
+
+/// The first half of a fat pointer.
+/// - For a closure, this is the code address.
+/// - For an object or trait instance, this is the address of the box.
+/// - For a slice, this is the base address.
+pub const FAT_PTR_ADDR: usize = 0;
+
+/// The second half of a fat pointer.
+/// - For a closure, this is the address of the environment.
+/// - For an object or trait instance, this is the address of the vtable.
+/// - For a slice, this is the length.
+pub const FAT_PTR_EXTRA: usize = 1;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ArgKind {
@@ -130,7 +142,7 @@ impl FnType {
                          abi: Abi,
                          sig: &ty::FnSig<'tcx>,
                          extra_args: &[Ty<'tcx>]) -> FnType {
-        use syntax::abi::Abi::*;
+        use self::Abi::*;
         let cconv = match ccx.sess().target.target.adjust_abi(abi) {
             RustIntrinsic => {
                 // Intrinsics are emitted at the call site

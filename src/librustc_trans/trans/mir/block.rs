@@ -11,7 +11,7 @@
 use llvm::{BasicBlockRef, ValueRef, OperandBundleDef};
 use rustc::middle::ty;
 use rustc::mir::repr as mir;
-use syntax::abi::Abi;
+use trans::abi::Abi;
 use trans::adt;
 use trans::attributes;
 use trans::base;

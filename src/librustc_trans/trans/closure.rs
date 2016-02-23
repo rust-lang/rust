@@ -14,6 +14,7 @@ use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
 use middle::traits::ProjectionMode;
+use trans::abi::Abi::RustCall;
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -32,7 +33,6 @@ use trans::Disr;
 use middle::ty;
 use session::config::FullDebugInfo;
 
-use syntax::abi::Abi::RustCall;
 use syntax::ast;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
 

@@ -19,6 +19,7 @@ pub use self::disr::Disr;
 #[macro_use]
 mod macros;
 
+mod abi;
 mod adt;
 mod asm;
 mod assert_dep_graph;
@@ -27,7 +28,6 @@ mod base;
 mod basic_block;
 mod build;
 mod builder;
-mod cabi;
 mod cabi_aarch64;
 mod cabi_arm;
 mod cabi_asmjs;

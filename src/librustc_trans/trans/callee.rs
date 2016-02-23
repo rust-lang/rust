@@ -27,6 +27,7 @@ use middle::subst;
 use middle::subst::{Substs};
 use middle::traits;
 use rustc::front::map as hir_map;
+use trans::abi::Abi;
 use trans::adt;
 use trans::attributes;
 use trans::base;
@@ -54,7 +55,6 @@ use trans::Disr;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_front::hir;
 
-use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 use syntax::errors;

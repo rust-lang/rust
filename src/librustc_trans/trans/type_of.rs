@@ -13,15 +13,14 @@
 use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
+use trans::abi::{Abi, FnType};
 use trans::adt;
-use trans::cabi::FnType;
 use trans::common::*;
 use trans::machine;
 use middle::ty::{self, Ty, TypeFoldable};
 
 use trans::type_::Type;
 
-use syntax::abi::Abi;
 use syntax::ast;
 
 // LLVM doesn't like objects that are too big. Issue #17913

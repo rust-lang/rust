@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::*;
-use trans::cabi::{ArgType, FnType};
+use trans::abi::{ArgType, FnType};
 use trans::type_::Type;
 use super::common::*;
 use super::machine::*;

@@ -16,7 +16,7 @@
 // need to be fixed when PowerPC vector support is added.
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Attribute};
-use trans::cabi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 

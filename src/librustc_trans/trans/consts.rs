@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
@@ -19,7 +18,7 @@ use middle::const_eval::{self, ConstEvalErr};
 use middle::def::Def;
 use middle::def_id::DefId;
 use rustc::front::map as hir_map;
-use trans::{adt, closure, debuginfo, expr, inline, machine};
+use trans::{abi, adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, exported_name, push_ctxt};
 use trans::callee::Callee;
 use trans::collector::{self, TransItem};

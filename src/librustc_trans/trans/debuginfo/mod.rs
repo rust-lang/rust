@@ -32,6 +32,7 @@ use middle::subst::{self, Substs};
 use rustc_front;
 use rustc_front::hir;
 
+use trans::abi::Abi;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
 use trans::{monomorphize, type_of};
@@ -49,7 +50,6 @@ use std::rc::Rc;
 
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap};
-use syntax::abi::Abi;
 use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 

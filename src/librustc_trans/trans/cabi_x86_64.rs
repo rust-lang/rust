@@ -16,7 +16,7 @@ use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute, Vector};
-use trans::cabi::{ArgType, FnType};
+use trans::abi::{ArgType, FnType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 

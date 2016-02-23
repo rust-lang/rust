@@ -11,7 +11,7 @@
 use libc::c_uint;
 use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Attribute};
-use trans::cabi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 

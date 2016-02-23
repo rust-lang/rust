@@ -61,7 +61,6 @@ pub use rustc::lint;
 pub use rustc::util;
 
 pub mod back {
-    pub use rustc_back::abi;
     pub use rustc_back::rpath;
     pub use rustc_back::svh;
 

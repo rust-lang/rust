@@ -51,12 +51,11 @@
 pub use self::Dest::*;
 use self::lazy_binop_ty::*;
 
-use back::abi;
 use llvm::{self, ValueRef, TypeKind};
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
 use middle::subst::Substs;
-use trans::{_match, adt, asm, base, closure, consts, controlflow};
+use trans::{_match, abi, adt, asm, base, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
 use trans::callee::{Callee, ArgExprs, ArgOverloadedCall, ArgOverloadedOp};

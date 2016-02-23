@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector, Attribute};
-use trans::cabi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
