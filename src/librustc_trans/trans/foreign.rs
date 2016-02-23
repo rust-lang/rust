@@ -463,30 +463,6 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-// feature gate SIMD types in FFI, since I (huonw) am not sure the
-// ABIs are handled at all correctly.
-fn gate_simd_ffi(tcx: &TyCtxt, decl: &hir::FnDecl, ty: &ty::BareFnTy) {
-    if !tcx.sess.features.borrow().simd_ffi {
-        let check = |ast_ty: &hir::Ty, ty: ty::Ty| {
-            if ty.is_simd() {
-                tcx.sess.struct_span_err(ast_ty.span,
-                              &format!("use of SIMD type `{}` in FFI is highly experimental and \
-                                        may result in invalid code",
-                                       pprust::ty_to_string(ast_ty)))
-                    .fileline_help(ast_ty.span,
-                                   "add #![feature(simd_ffi)] to the crate attributes to enable")
-                    .emit();
-            }
-        };
-        let sig = &ty.sig.0;
-        for (input, ty) in decl.inputs.iter().zip(&sig.inputs) {
-            check(&input.ty, *ty)
-        }
-        if let hir::Return(ref ty) = decl.output {
-            check(&ty, sig.output.unwrap())
-        }
-    }
-}
 
 pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
@@ -498,13 +474,6 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
                 Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic => {}
                 abi => {
                     let ty = ccx.tcx().node_id_to_type(foreign_item.id);
-                    match ty.sty {
-                        ty::TyFnDef(_, _, bft) |
-                        ty::TyFnPtr(bft) => gate_simd_ffi(ccx.tcx(), &decl, bft),
-                        _ => ccx.tcx().sess.span_bug(foreign_item.span,
-                                                     "foreign fn's sty isn't a bare_fn_ty?")
-                    }
-
                     register_foreign_item_fn(ccx, abi, ty, &lname, &foreign_item.attrs);
                     // Unlike for other items, we shouldn't call
                     // `base::update_linkage` here.  Foreign items have
