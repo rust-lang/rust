@@ -16,6 +16,7 @@
 #![feature(btree_range)]
 #![feature(collections)]
 #![feature(collections_bound)]
+#![feature(copy_from_slice)]
 #![feature(const_fn)]
 #![feature(fn_traits)]
 #![feature(enumset)]
