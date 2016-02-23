@@ -463,31 +463,6 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-
-pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
-    let _icx = push_ctxt("foreign::trans_foreign_mod");
-    for foreign_item in &foreign_mod.items {
-        let lname = link_name(foreign_item);
-
-        if let hir::ForeignItemFn(ref decl, _) = foreign_item.node {
-            match foreign_mod.abi {
-                Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic => {}
-                abi => {
-                    let ty = ccx.tcx().node_id_to_type(foreign_item.id);
-                    register_foreign_item_fn(ccx, abi, ty, &lname, &foreign_item.attrs);
-                    // Unlike for other items, we shouldn't call
-                    // `base::update_linkage` here.  Foreign items have
-                    // special linkage requirements, which are handled
-                    // inside `foreign::register_*`.
-                }
-            }
-        }
-
-        ccx.item_symbols().borrow_mut().insert(foreign_item.id,
-                                             lname.to_string());
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // Rust functions with foreign ABIs
 //
@@ -890,12 +865,12 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // This code is kind of a confused mess and needs to be reworked given
 // the massive simplifications that have occurred.
 
-pub fn link_name(i: &hir::ForeignItem) -> InternedString {
-    match attr::first_attr_value_str_by_name(&i.attrs, "link_name") {
+pub fn link_name(name: ast::Name, attrs: &[ast::Attribute]) -> InternedString {
+    match attr::first_attr_value_str_by_name(attrs, "link_name") {
         Some(ln) => ln.clone(),
-        None => match weak_lang_items::link_name(&i.attrs) {
+        None => match weak_lang_items::link_name(attrs) {
             Some(name) => name,
-            None => i.name.as_str(),
+            None => name.as_str(),
         }
     }
 }
