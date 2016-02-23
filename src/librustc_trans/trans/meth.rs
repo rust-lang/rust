@@ -108,7 +108,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     //
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
-    let llfn = declare::define_internal_rust_fn(ccx, &function_name, shim_fn_ty);
+    let llfn = declare::define_internal_fn(ccx, &function_name, shim_fn_ty);
 
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
