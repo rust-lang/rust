@@ -158,7 +158,7 @@ impl<'tcx> Callee<'tcx> {
                 // those from the impl and those from the method:
                 let impl_substs = vtable_impl.substs.with_method_from(&substs);
                 let substs = tcx.mk_substs(impl_substs);
-                let mth = tcx.get_impl_method(impl_did, substs, mname);
+                let mth = meth::get_impl_method(tcx, impl_did, substs, mname);
 
                 // Translate the function, bypassing Callee::def.
                 // That is because default methods have the same ID as the

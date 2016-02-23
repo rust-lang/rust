@@ -20,8 +20,7 @@ use middle::subst;
 use middle::traits::{self, ProjectionMode};
 use trans::base::*;
 use trans::build::*;
-use trans::callee::{Callee, Virtual, ArgVals,
-                    trans_fn_pointer_shim, trans_fn_ref_with_substs};
+use trans::callee::{Callee, Virtual, ArgVals, trans_fn_pointer_shim};
 use trans::closure;
 use trans::common::*;
 use trans::consts;
@@ -37,129 +36,10 @@ use trans::value::Value;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use syntax::ast::{self, Name};
-use syntax::attr;
 use syntax::codemap::DUMMY_SP;
-
-use rustc_front::hir;
 
 // drop_glue pointer, size, align.
 const VTABLE_OFFSET: usize = 3;
-
-/// The main "translation" pass for methods.  Generates code
-/// for non-monomorphized methods only.  Other methods will
-/// be generated once they are invoked with specific type parameters,
-/// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
-pub fn trans_impl(ccx: &CrateContext,
-                  name: ast::Name,
-                  impl_items: &[hir::ImplItem],
-                  generics: &hir::Generics,
-                  id: ast::NodeId) {
-    let _icx = push_ctxt("meth::trans_impl");
-    let tcx = ccx.tcx();
-
-    debug!("trans_impl(name={}, id={})", name, id);
-
-    // Both here and below with generic methods, be sure to recurse and look for
-    // items that we need to translate.
-    if !generics.ty_params.is_empty() {
-        return;
-    }
-
-    for impl_item in impl_items {
-        match impl_item.node {
-            hir::ImplItemKind::Method(ref sig, ref body) => {
-                if sig.generics.ty_params.is_empty() {
-                    let trans_everywhere = attr::requests_inline(&impl_item.attrs);
-                    for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
-                        let llfn = get_item_val(ccx, impl_item.id);
-                        let empty_substs = tcx.mk_substs(Substs::trans_empty());
-                        trans_fn(ccx,
-                                 &sig.decl,
-                                 body,
-                                 llfn,
-                                 empty_substs,
-                                 impl_item.id,
-                                 &impl_item.attrs);
-                        update_linkage(ccx,
-                                       llfn,
-                                       Some(impl_item.id),
-                                       if is_origin { OriginalTranslation } else { InlinedCopy });
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-/// Compute the appropriate callee, give na method's ID, trait ID,
-/// substitutions and a Vtable for that trait.
-pub fn callee_for_trait_impl<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                       method_id: DefId,
-                                       substs: &'tcx subst::Substs<'tcx>,
-                                       trait_id: DefId,
-                                       method_ty: Ty<'tcx>,
-                                       vtable: traits::Vtable<'tcx, ()>)
-                                       -> Callee<'tcx> {
-    let _icx = push_ctxt("meth::callee_for_trait_impl");
-    match vtable {
-        traits::VtableImpl(vtable_impl) => {
-            let impl_did = vtable_impl.impl_def_id;
-            let mname = ccx.tcx().item_name(method_id);
-            // create a concatenated set of substitutions which includes
-            // those from the impl and those from the method:
-            let impl_substs = vtable_impl.substs.with_method_from(&substs);
-            let substs = ccx.tcx().mk_substs(impl_substs);
-            let mth = get_impl_method(ccx.tcx(), impl_did, substs, mname);
-
-            // Translate the function, bypassing Callee::def.
-            // That is because default methods have the same ID as the
-            // trait method used to look up the impl method that ended
-            // up here, so calling Callee::def would infinitely recurse.
-            Callee::ptr(trans_fn_ref_with_substs(ccx, mth.method.def_id,
-                                                 Some(method_ty), mth.substs))
-        }
-        traits::VtableClosure(vtable_closure) => {
-            // The substitutions should have no type parameters remaining
-            // after passing through fulfill_obligation
-            let trait_closure_kind = ccx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
-            let llfn = closure::trans_closure_method(ccx,
-                                                     vtable_closure.closure_def_id,
-                                                     vtable_closure.substs,
-                                                     trait_closure_kind);
-            let fn_ptr_ty = match method_ty.sty {
-                ty::TyFnDef(_, _, fty) => ccx.tcx().mk_ty(ty::TyFnPtr(fty)),
-                _ => unreachable!("expected fn item type, found {}",
-                                  method_ty)
-            };
-            Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
-        }
-        traits::VtableFnPointer(fn_ty) => {
-            let trait_closure_kind = ccx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
-            let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
-            let fn_ptr_ty = match method_ty.sty {
-                ty::TyFnDef(_, _, fty) => ccx.tcx().mk_ty(ty::TyFnPtr(fty)),
-                _ => unreachable!("expected fn item type, found {}",
-                                  method_ty)
-            };
-            Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
-        }
-        traits::VtableObject(ref data) => {
-            Callee {
-                data: Virtual(traits::get_vtable_index_of_object_method(
-                    ccx.tcx(), data, method_id)),
-                ty: method_ty
-            }
-        }
-        traits::VtableBuiltin(..) |
-        traits::VtableDefaultImpl(..) |
-        traits::VtableParam(..) => {
-            ccx.sess().bug(
-                &format!("resolved vtable bad vtable {:?} in trans",
-                        vtable));
-        }
-    }
-}
 
 /// Extracts a method from a trait object's vtable, at the
 /// specified index, and casts it to the given type.

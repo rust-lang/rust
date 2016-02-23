@@ -2476,6 +2476,7 @@ fn set_global_section(ccx: &CrateContext, llval: ValueRef, i: &hir::Item) {
 pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
     let _icx = push_ctxt("trans_item");
 
+    let tcx = ccx.tcx();
     let from_external = ccx.external_srcs().borrow().contains_key(&item.id);
 
     match item.node {
@@ -2532,20 +2533,39 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
             }
         }
         hir::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
-            meth::trans_impl(ccx, item.name, impl_items, generics, item.id);
-        }
-        hir::ItemMod(_) => {
-            // modules have no equivalent at runtime, they just affect
-            // the mangled names of things contained within
+            // Both here and below with generic methods, be sure to recurse and look for
+            // items that we need to translate.
+            if !generics.ty_params.is_empty() {
+                return;
+            }
+
+            for impl_item in impl_items {
+                if let hir::ImplItemKind::Method(ref sig, ref body) = impl_item.node {
+                    if sig.generics.ty_params.is_empty() {
+                        let trans_everywhere = attr::requests_inline(&impl_item.attrs);
+                        for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
+                            let empty_substs = tcx.mk_substs(Substs::trans_empty());
+                            let def_id = tcx.map.local_def_id(impl_item.id);
+                            let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
+                            trans_fn(ccx, &sig.decl, body, llfn, empty_substs,
+                                     impl_item.id, &impl_item.attrs);
+                            update_linkage(ccx, llfn, Some(impl_item.id),
+                                if is_origin {
+                                    OriginalTranslation
+                                } else {
+                                    InlinedCopy
+                                });
+                        }
+                    }
+                }
+            }
         }
         hir::ItemEnum(ref enum_definition, ref gens) => {
             if gens.ty_params.is_empty() {
                 // sizes only make sense for non-generic types
-
                 enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
             }
         }
-        hir::ItemConst(..) => {}
         hir::ItemStatic(_, m, ref expr) => {
             let g = match consts::trans_static(ccx, m, expr, item.id, &item.attrs) {
                 Ok(g) => g,
@@ -2554,13 +2574,16 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
             set_global_section(ccx, g, item);
             update_linkage(ccx, g, Some(item.id), OriginalTranslation);
         }
-        hir::ItemForeignMod(ref foreign_mod) => {
-            foreign::trans_foreign_mod(ccx, foreign_mod);
+        hir::ItemForeignMod(ref m) => {
+            if m.abi == Abi::RustIntrinsic || m.abi == Abi::PlatformIntrinsic {
+                return;
+            }
+            for fi in &m.items {
+                let lname = foreign::link_name(fi.name, &fi.attrs).to_string();
+                ccx.item_symbols().borrow_mut().insert(fi.id, lname);
+            }
         }
-        hir::ItemTrait(..) => {}
-        _ => {
-            // fall through
-        }
+        _ => {}
     }
 }
 
