@@ -11,7 +11,7 @@
 use llvm::*;
 use super::common::*;
 use super::machine::*;
-use trans::cabi::{ArgType, FnType};
+use trans::abi::{ArgType, FnType};
 use trans::type_::Type;
 
 // Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx

@@ -22,6 +22,7 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::LangItem;
 use middle::subst::Substs;
+use trans::abi::Abi;
 use trans::base;
 use trans::build;
 use trans::builder::Builder;
@@ -49,7 +50,6 @@ use std::ops::Deref;
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 
-use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;

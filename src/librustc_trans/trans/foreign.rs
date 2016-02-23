@@ -9,15 +9,15 @@
 // except according to those terms.
 
 
-use back::{abi, link};
+use back::link;
 use llvm::{ValueRef, get_param};
 use llvm;
 use middle::weak_lang_items;
+use trans::abi::{self, Abi, FnType};
 use trans::attributes;
 use trans::base::{llvm_linkage_by_name, push_ctxt};
 use trans::base;
 use trans::build::*;
-use trans::cabi::FnType;
 use trans::common::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
@@ -35,7 +35,6 @@ use middle::subst::Substs;
 use std::cmp;
 use std::iter::once;
 use libc::c_uint;
-use syntax::abi::Abi;
 use syntax::attr;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::ast;
@@ -713,9 +712,6 @@ pub fn link_name(name: ast::Name, attrs: &[ast::Attribute]) -> InternedString {
         None => match weak_lang_items::link_name(attrs) {
             Some(name) => name,
             None => name.as_str(),
-        }
-    }
-}
         }
     }
 }

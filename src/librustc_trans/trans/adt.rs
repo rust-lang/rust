@@ -48,13 +48,13 @@ use std;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
-use back::abi::FAT_PTR_ADDR;
 use middle::subst;
 use middle::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
 use trans::_match;
+use trans::abi::FAT_PTR_ADDR;
 use trans::base::InitAlloca;
 use trans::build::*;
 use trans::cleanup;

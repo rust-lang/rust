@@ -14,7 +14,7 @@ use libc::c_uint;
 use std::cmp;
 use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector, Attribute};
-use trans::cabi::{ArgType, FnType};
+use trans::abi::{ArgType, FnType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
