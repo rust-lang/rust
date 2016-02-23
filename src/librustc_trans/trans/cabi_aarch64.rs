@@ -228,24 +228,12 @@ fn is_reg_ty(ty: Type) -> bool {
     }
 }
 
-pub fn compute_abi_info(ccx: &CrateContext,
-                        atys: &[Type],
-                        rty: Type,
-                        ret_def: bool) -> FnType {
-    let mut arg_tys = Vec::new();
-    for &aty in atys {
-        let ty = classify_arg_ty(ccx, aty);
-        arg_tys.push(ty);
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+    if fty.ret.ty != Type::void(ccx) {
+        fty.ret = classify_ret_ty(ccx, fty.ret.ty);
     }
 
-    let ret_ty = if ret_def {
-        classify_ret_ty(ccx, rty)
-    } else {
-        ArgType::direct(Type::void(ccx), None, None, None)
-    };
-
-    return FnType {
-        arg_tys: arg_tys,
-        ret_ty: ret_ty,
-    };
+    for arg in &mut fty.args {
+        *arg = classify_arg_ty(ccx, arg.ty);
+    }
 }

@@ -156,27 +156,13 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
     Type::struct_(ccx, &coerce_to_int(ccx, size), false)
 }
 
-pub fn compute_abi_info(ccx: &CrateContext,
-                        atys: &[Type],
-                        rty: Type,
-                        ret_def: bool) -> FnType {
-    let ret_ty = if ret_def {
-        classify_ret_ty(ccx, rty)
-    } else {
-        ArgType::direct(Type::void(ccx), None, None, None)
-    };
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+    if fty.ret.ty != Type::void(ccx) {
+        fty.ret = classify_ret_ty(ccx, fty.ret.ty);
+    }
 
-    let sret = ret_ty.is_indirect();
-    let mut arg_tys = Vec::new();
-    let mut offset = if sret { 4 } else { 0 };
-
-    for aty in atys {
-        let ty = classify_arg_ty(ccx, *aty, &mut offset);
-        arg_tys.push(ty);
-    };
-
-    return FnType {
-        arg_tys: arg_tys,
-        ret_ty: ret_ty,
-    };
+    let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };
+    for arg in &mut fty.args {
+        *arg = classify_arg_ty(ccx, arg.ty, &mut offset);
+    }
 }

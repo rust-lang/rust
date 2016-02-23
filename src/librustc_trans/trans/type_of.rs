@@ -14,8 +14,8 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
 use trans::adt;
+use trans::cabi::FnType;
 use trans::common::*;
-use trans::foreign;
 use trans::machine;
 use middle::ty::{self, Ty, TypeFoldable};
 
@@ -239,14 +239,6 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     llsizingty
 }
 
-pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    if t.is_bool() {
-        Type::i1(cx)
-    } else {
-        type_of(cx, t)
-    }
-}
-
 pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     if t.is_bool() {
         Type::i1(cx)
@@ -390,12 +382,12 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(f) => {
+        let sig = cx.tcx().erase_late_bound_regions(&f.sig);
+        let sig = infer::normalize_associated_type(cx.tcx(), &sig);
         if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-            let sig = cx.tcx().erase_late_bound_regions(&f.sig);
-            let sig = infer::normalize_associated_type(cx.tcx(), &sig);
             type_of_rust_fn(cx, None, &sig, f.abi).ptr_to()
         } else {
-            foreign::lltype_for_foreign_fn(cx, t).ptr_to()
+            FnType::new(cx, f.abi, &sig, &[]).to_llvm(cx).ptr_to()
         }
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),

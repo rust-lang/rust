@@ -17,7 +17,7 @@ use trans::attributes;
 use trans::base::{llvm_linkage_by_name, push_ctxt};
 use trans::base;
 use trans::build::*;
-use trans::cabi;
+use trans::cabi::FnType;
 use trans::common::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
@@ -46,82 +46,14 @@ use rustc_front::print::pprust;
 use rustc_front::hir;
 
 ///////////////////////////////////////////////////////////////////////////
-// Type definitions
-
-struct ForeignTypes<'tcx> {
-    /// Rust signature of the function
-    fn_sig: ty::FnSig<'tcx>,
-
-    /// Adapter object for handling native ABI rules (trust me, you
-    /// don't want to know)
-    fn_ty: cabi::FnType,
-
-    /// LLVM types that will appear on the foreign function
-    llsig: LlvmSignature,
-}
-
-struct LlvmSignature {
-    // LLVM versions of the types of this function's arguments.
-    llarg_tys: Vec<Type> ,
-
-    // LLVM version of the type that this function returns.  Note that
-    // this *may not be* the declared return type of the foreign
-    // function, because the foreign function may opt to return via an
-    // out pointer.
-    llret_ty: Type,
-
-    /// True if there is a return value (not bottom, not unit)
-    ret_def: bool,
-}
-
-
-///////////////////////////////////////////////////////////////////////////
 // Calls to external functions
-
-pub fn llvm_calling_convention(ccx: &CrateContext,
-                               abi: Abi) -> CallConv {
-    use syntax::abi::Abi::*;
-    match ccx.sess().target.target.adjust_abi(abi) {
-        RustIntrinsic => {
-            // Intrinsics are emitted at the call site
-            ccx.sess().bug("asked to register intrinsic fn");
-        }
-        PlatformIntrinsic => {
-            // Intrinsics are emitted at the call site
-            ccx.sess().bug("asked to register platform intrinsic fn");
-        }
-
-        Rust => {
-            // FIXME(#3678) Implement linking to foreign fns with Rust ABI
-            ccx.sess().unimpl("foreign functions with Rust ABI");
-        }
-
-        RustCall => {
-            // FIXME(#3678) Implement linking to foreign fns with Rust ABI
-            ccx.sess().unimpl("foreign functions with RustCall ABI");
-        }
-
-        // It's the ABI's job to select this, not us.
-        System => ccx.sess().bug("system abi should be selected elsewhere"),
-
-        Stdcall => llvm::X86StdcallCallConv,
-        Fastcall => llvm::X86FastcallCallConv,
-        Vectorcall => llvm::X86_VectorCall,
-        C => llvm::CCallConv,
-        Win64 => llvm::X86_64_Win64,
-
-        // These API constants ought to be more specific...
-        Cdecl => llvm::CCallConv,
-        Aapcs => llvm::CCallConv,
-    }
-}
 
 pub fn register_static(ccx: &CrateContext,
                        foreign_item: &hir::ForeignItem) -> ValueRef {
     let ty = ccx.tcx().node_id_to_type(foreign_item.id);
     let llty = type_of::type_of(ccx, ty);
 
-    let ident = link_name(foreign_item);
+    let ident = link_name(foreign_item.name, &foreign_item.attrs);
     let c = match attr::first_attr_value_str_by_name(&foreign_item.attrs,
                                                      "linkage") {
         // If this is a static with a linkage specified, then we need to handle
@@ -265,13 +197,9 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
     let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
     let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
-    let llsig = foreign_signature(ccx, &fn_sig, &passed_arg_tys[..]);
-    let fn_type = cabi::compute_abi_info(ccx,
-                                         &llsig.llarg_tys,
-                                         llsig.llret_ty,
-                                         llsig.ret_def);
 
-    let arg_tys: &[cabi::ArgType] = &fn_type.arg_tys;
+    let extra_args = &passed_arg_tys[fn_sig.inputs.len()..];
+    let fn_type = FnType::new(ccx, fn_abi, &fn_sig, extra_args);
 
     let mut llargs_foreign = Vec::new();
 
@@ -279,8 +207,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // pointer that Rust gave us. Sometimes we have to bitcast
     // because foreign fns return slightly different (but equivalent)
     // views on the same type (e.g., i64 in place of {i32,i32}).
-    if fn_type.ret_ty.is_indirect() {
-        match fn_type.ret_ty.cast {
+    if fn_type.ret.is_indirect() {
+        match fn_type.ret.cast {
             Some(ty) => {
                 let llcastedretptr =
                     BitCast(bcx, llretptr, ty.ptr_to());
@@ -293,7 +221,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let mut offset = 0;
-    for (i, arg_ty) in arg_tys.iter().enumerate() {
+    for (i, arg_ty) in fn_type.args.iter().enumerate() {
         let mut llarg_rust = llargs_rust[i + offset];
 
         if arg_ty.is_ignore() {
@@ -359,15 +287,13 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         llargs_foreign.push(llarg_foreign);
     }
 
-    let cc = llvm_calling_convention(ccx, fn_abi);
-
     // A function pointer is called without the declaration available, so we have to apply
     // any attributes with ABI implications directly to the call instruction.
     let mut attrs = llvm::AttrBuilder::new();
 
     // Add attributes that are always applicable, independent of the concrete foreign ABI
-    if fn_type.ret_ty.is_indirect() {
-        let llret_sz = machine::llsize_of_real(ccx, fn_type.ret_ty.ty);
+    if fn_type.ret.is_indirect() {
+        let llret_sz = machine::llsize_of_real(ccx, fn_type.ret.ty);
 
         // The outptr can be noalias and nocapture because it's entirely
         // invisible to the program. We also know it's nonnull as well
@@ -378,14 +304,14 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     // Add attributes that depend on the concrete foreign ABI
-    let mut arg_idx = if fn_type.ret_ty.is_indirect() { 1 } else { 0 };
-    match fn_type.ret_ty.attr {
+    let mut arg_idx = if fn_type.ret.is_indirect() { 1 } else { 0 };
+    match fn_type.ret.attr {
         Some(attr) => { attrs.arg(arg_idx, attr); },
         _ => ()
     }
 
     arg_idx += 1;
-    for arg_ty in &fn_type.arg_tys {
+    for arg_ty in &fn_type.args {
         if arg_ty.is_ignore() {
             continue;
         }
@@ -402,7 +328,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llforeign_retval = CallWithConv(bcx,
                                         llfn,
                                         &llargs_foreign[..],
-                                        cc,
+                                        fn_type.cconv,
                                         Some(attrs),
                                         call_debug_loc);
 
@@ -411,11 +337,11 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // type to match because some ABIs will use a different type than
     // the Rust type. e.g., a {u32,u32} struct could be returned as
     // u64.
-    if llsig.ret_def && !fn_type.ret_ty.is_indirect() {
-        let llrust_ret_ty = llsig.llret_ty;
-        let llforeign_ret_ty = match fn_type.ret_ty.cast {
+    if fn_type.ret.ty != Type::void(ccx) && !fn_type.ret.is_indirect() {
+        let llrust_ret_ty = fn_type.ret.ty;
+        let llforeign_ret_ty = match fn_type.ret.cast {
             Some(ty) => ty,
-            None => fn_type.ret_ty.ty
+            None => fn_type.ret.ty
         };
 
         debug!("llretptr={:?}", Value(llretptr));
@@ -543,14 +469,20 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let fnty = ccx.tcx().node_id_to_type(id);
     let mty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fnty);
-    let tys = foreign_types_for_fn_ty(ccx, mty);
+    let (fn_abi, fn_sig) = match mty.sty {
+        ty::TyFnDef(_, _, ref fn_ty) => (fn_ty.abi, &fn_ty.sig),
+        _ => ccx.sess().bug("trans_rust_fn_with_foreign_abi called on non-function type")
+    };
+    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
+    let fn_ty = FnType::new(ccx, fn_abi, &fn_sig, &[]);
 
     unsafe { // unsafe because we call LLVM operations
         // Build up the Rust function (`foo0` above).
         let llrustfn = build_rust_fn(ccx, decl, body, param_substs, attrs, id, hash);
 
         // Build up the foreign wrapper (`foo` above).
-        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, mty);
+        return build_wrap_fn(ccx, llrustfn, llwrapfn, &fn_sig, &fn_ty, mty);
     }
 
     fn build_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -568,7 +500,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
         let path =
-            tcx.map.def_path_from_id(id)
+            tcx.map.def_path(tcx.map.local_def_id(id))
                    .into_iter()
                    .map(|e| e.data.as_interned_str())
                    .chain(once(special_idents::clownshoe_abi.name.as_str()));
@@ -576,23 +508,27 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         // Compute the type that the function would have if it were just a
         // normal Rust function. This will be the type of the wrappee fn.
-        match t.sty {
-            ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f)=> {
+        let rust_fn_ty = match t.sty {
+            ty::TyFnDef(_, _, ref f) => {
                 assert!(f.abi != Abi::Rust);
                 assert!(f.abi != Abi::RustIntrinsic);
                 assert!(f.abi != Abi::PlatformIntrinsic);
+                tcx.mk_fn_ptr(ty::BareFnTy {
+                    unsafety: f.unsafety,
+                    abi: Abi::Rust,
+                    sig: f.sig.clone()
+                })
             }
             _ => {
-                ccx.sess().bug(&format!("build_rust_fn: extern fn {} has ty {:?}, \
-                                        expected a bare fn ty",
-                                       ccx.tcx().map.path_to_string(id),
-                                       t));
+                unreachable!("build_rust_fn: extern fn {} has ty {:?}, \
+                              expected a fn item type",
+                              tcx.map.path_to_string(id), t);
             }
         };
 
-        debug!("build_rust_fn: path={} id={} t={:?}",
+        debug!("build_rust_fn: path={} id={} ty={:?}",
                ccx.tcx().map.path_to_string(id),
-               id, t);
+               id, rust_fn_ty);
 
         let llfn = declare::define_internal_rust_fn(ccx, &ps, t);
         attributes::from_fn_attrs(ccx, attrs, llfn);
@@ -603,7 +539,8 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     unsafe fn build_wrap_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       llrustfn: ValueRef,
                                       llwrapfn: ValueRef,
-                                      tys: &ForeignTypes<'tcx>,
+                                      fn_sig: &ty::FnSig<'tcx>,
+                                      fn_ty: &FnType,
                                       t: Ty<'tcx>) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
@@ -650,7 +587,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         // If there is an out pointer on the foreign function
         let foreign_outptr = {
-            if tys.fn_ty.ret_ty.is_indirect() {
+            if fn_ty.ret.is_indirect() {
                 Some(get_param(llwrapfn, next_foreign_arg(false)))
             } else {
                 None
@@ -660,7 +597,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let rustfn_ty = Type::from_ref(llvm::LLVMTypeOf(llrustfn)).element_type();
         let mut rust_param_tys = rustfn_ty.func_params().into_iter();
         // Push Rust return pointer, using null if it will be unused.
-        let rust_uses_outptr = match tys.fn_sig.output {
+        let rust_uses_outptr = match fn_sig.output {
             ty::FnConverging(ret_ty) => type_of::return_uses_outptr(ccx, ret_ty),
             ty::FnDiverging => false
         };
@@ -696,7 +633,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             return_ty={:?}",
                            Value(slot),
                            llrust_ret_ty,
-                           tys.fn_sig.output);
+                           fn_sig.output);
                     llrust_args.push(slot);
                     return_alloca = Some(slot);
                 }
@@ -711,8 +648,8 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Build up the arguments to the call to the rust function.
         // Careful to adapt for cases where the native convention uses
         // a pointer and Rust does not or vice versa.
-        for i in 0..tys.fn_sig.inputs.len() {
-            let rust_ty = tys.fn_sig.inputs[i];
+        for i in 0..fn_sig.inputs.len() {
+            let rust_ty = fn_sig.inputs[i];
             let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);
             let llty = rust_param_tys.next().expect("Not enough parameter types!");
             let llrust_ty = if rust_indirect {
@@ -720,7 +657,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             } else {
                 llty
             };
-            let llforeign_arg_ty = tys.fn_ty.arg_tys[i];
+            let llforeign_arg_ty = fn_ty.args[i];
             let foreign_indirect = llforeign_arg_ty.is_indirect();
 
             if llforeign_arg_ty.is_ignore() {
@@ -802,12 +739,12 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           None, Some(attributes));
 
         // Get the return value where the foreign fn expects it.
-        let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
+        let llforeign_ret_ty = match fn_ty.ret.cast {
             Some(ty) => ty,
-            None => tys.fn_ty.ret_ty.ty
+            None => fn_ty.ret.ty
         };
         match foreign_outptr {
-            None if !tys.llsig.ret_def => {
+            None if fn_ty.ret.ty == Type::void(ccx) => {
                 // Function returns `()` or `bot`, which in Rust is the LLVM
                 // type "{}" but in foreign ABIs is "Void".
                 builder.ret_void();
@@ -874,140 +811,6 @@ pub fn link_name(name: ast::Name, attrs: &[ast::Attribute]) -> InternedString {
         }
     }
 }
-
-/// The ForeignSignature is the LLVM types of the arguments/return type of a function. Note that
-/// these LLVM types are not quite the same as the LLVM types would be for a native Rust function
-/// because foreign functions just plain ignore modes. They also don't pass aggregate values by
-/// pointer like we do.
-fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               fn_sig: &ty::FnSig<'tcx>,
-                               arg_tys: &[Ty<'tcx>])
-                               -> LlvmSignature {
-    let llarg_tys = arg_tys.iter().map(|&arg| foreign_arg_type_of(ccx, arg)).collect();
-    let (llret_ty, ret_def) = match fn_sig.output {
-        ty::FnConverging(ret_ty) =>
-            (type_of::foreign_arg_type_of(ccx, ret_ty), !return_type_is_void(ccx, ret_ty)),
-        ty::FnDiverging =>
-            (Type::nil(ccx), false)
-    };
-    LlvmSignature {
-        llarg_tys: llarg_tys,
-        llret_ty: llret_ty,
-        ret_def: ret_def
-    }
-}
-
-fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     ty: Ty<'tcx>) -> ForeignTypes<'tcx> {
-    let fn_sig = match ty.sty {
-        ty::TyFnDef(_, _, ref fn_ty) | ty::TyFnPtr(ref fn_ty) => &fn_ty.sig,
-        _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
-    };
-    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
-    let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
-    let llsig = foreign_signature(ccx, &fn_sig, &fn_sig.inputs);
-    let fn_ty = cabi::compute_abi_info(ccx,
-                                       &llsig.llarg_tys,
-                                       llsig.llret_ty,
-                                       llsig.ret_def);
-    debug!("foreign_types_for_fn_ty(\
-           ty={:?}, \
-           llsig={:?} -> {:?}, \
-           fn_ty={:?} -> {:?}, \
-           ret_def={}",
-           ty,
-           llsig.llarg_tys,
-           llsig.llret_ty,
-           fn_ty.arg_tys,
-           fn_ty.ret_ty,
-           llsig.ret_def);
-
-    ForeignTypes {
-        fn_sig: fn_sig,
-        llsig: llsig,
-        fn_ty: fn_ty
-    }
-}
-
-fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> Type {
-    let mut llargument_tys = Vec::new();
-
-    let ret_ty = tys.fn_ty.ret_ty;
-    let llreturn_ty = if ret_ty.is_indirect() {
-        llargument_tys.push(ret_ty.ty.ptr_to());
-        Type::void(ccx)
-    } else {
-        match ret_ty.cast {
-            Some(ty) => ty,
-            None => ret_ty.ty
         }
-    };
-
-    for &arg_ty in &tys.fn_ty.arg_tys {
-        if arg_ty.is_ignore() {
-            continue;
-        }
-        // add padding
-        match arg_ty.pad {
-            Some(ty) => llargument_tys.push(ty),
-            None => ()
-        }
-
-        let llarg_ty = if arg_ty.is_indirect() {
-            arg_ty.ty.ptr_to()
-        } else {
-            match arg_ty.cast {
-                Some(ty) => ty,
-                None => arg_ty.ty
-            }
-        };
-
-        llargument_tys.push(llarg_ty);
-    }
-
-    if tys.fn_sig.variadic {
-        Type::variadic_func(&llargument_tys, &llreturn_ty)
-    } else {
-        Type::func(&llargument_tys[..], &llreturn_ty)
-    }
-}
-
-pub fn lltype_for_foreign_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                       ty: Ty<'tcx>) -> Type {
-    lltype_for_fn_from_foreign_types(ccx, &foreign_types_for_fn_ty(ccx, ty))
-}
-
-fn add_argument_attributes(tys: &ForeignTypes,
-                           llfn: ValueRef) {
-    let mut i = if tys.fn_ty.ret_ty.is_indirect() {
-        1
-    } else {
-        0
-    };
-
-    match tys.fn_ty.ret_ty.attr {
-        Some(attr) => unsafe {
-            llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr.bits() as u64);
-        },
-        None => {}
-    }
-
-    i += 1;
-
-    for &arg_ty in &tys.fn_ty.arg_tys {
-        if arg_ty.is_ignore() {
-            continue;
-        }
-        // skip padding
-        if arg_ty.pad.is_some() { i += 1; }
-
-        match arg_ty.attr {
-            Some(attr) => unsafe {
-                llvm::LLVMAddFunctionAttribute(llfn, i as c_uint, attr.bits() as u64);
-            },
-            None => ()
-        }
-
-        i += 1;
     }
 }
