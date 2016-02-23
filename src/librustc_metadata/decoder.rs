@@ -955,12 +955,16 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                     cdata: Cmd,
                                     id: DefIndex,
                                     tcx: &TyCtxt<'tcx>)
-                                    -> ty::ImplOrTraitItem<'tcx> {
+                                    -> Option<ty::ImplOrTraitItem<'tcx>> {
     let item_doc = cdata.lookup_item(id);
 
     let def_id = item_def_id(item_doc, cdata);
 
-    let container_id = item_require_parent_item(cdata, item_doc);
+    let container_id = if let Some(id) = item_parent_item(cdata, item_doc) {
+        id
+    } else {
+        return None;
+    };
     let container_doc = cdata.lookup_item(container_id.index);
     let container = match item_family(container_doc) {
         Trait => TraitContainer(container_id),
@@ -971,7 +975,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
     let vis = item_visibility(item_doc);
     let defaultness = item_defaultness(item_doc);
 
-    match item_sort(item_doc) {
+    Some(match item_sort(item_doc) {
         sort @ Some('C') | sort @ Some('c') => {
             let ty = doc_type(item_doc, tcx, cdata);
             ty::ConstTraitItem(Rc::new(ty::AssociatedConst {
@@ -1017,8 +1021,8 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                 container: container,
             }))
         }
-        _ => panic!("unknown impl/trait item sort"),
-    }
+        _ => return None
+    })
 }
 
 pub fn get_trait_item_def_ids(cdata: Cmd, id: DefIndex)
@@ -1058,7 +1062,7 @@ pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
                                                     cdata,
                                                     did.index,
                                                     tcx);
-            if let ty::MethodTraitItem(ref method) = trait_item {
+            if let Some(ty::MethodTraitItem(ref method)) = trait_item {
                 Some((*method).clone())
             } else {
                 None
@@ -1087,7 +1091,7 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
                                                             cdata,
                                                             did.index,
                                                             tcx);
-                    if let ty::ConstTraitItem(ref ac) = trait_item {
+                    if let Some(ty::ConstTraitItem(ref ac)) = trait_item {
                         Some((*ac).clone())
                     } else {
                         None

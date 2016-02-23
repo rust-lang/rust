@@ -82,7 +82,7 @@ use trans::machine;
 use trans::machine::{llsize_of, llsize_of_real};
 use trans::meth;
 use trans::mir;
-use trans::monomorphize;
+use trans::monomorphize::{self, Instance};
 use trans::tvec;
 use trans::type_::Type;
 use trans::type_of;
@@ -2077,10 +2077,10 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     .unwrap_or_else(|| ccx.tcx().map.local_def_id(node_id)),
         };
 
-        ccx.record_translation_item_as_generated(TransItem::Fn{
-            def_id: def_id,
-            substs: ccx.tcx().mk_substs(ccx.tcx().erase_regions(param_substs)),
-        });
+        ccx.record_translation_item_as_generated(TransItem::Fn(Instance {
+            def: def_id,
+            params: &param_substs.types,
+        }));
     }
 }
 
