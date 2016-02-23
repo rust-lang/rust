@@ -519,25 +519,20 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             Some(def_id) if !base::wants_msvc_seh(ccx.sess()) => {
                 Callee::def(ccx, def_id, tcx.mk_substs(Substs::empty())).reify(ccx).val
             }
-            _ => {
-                let mut personality = self.ccx.eh_personality().borrow_mut();
-                match *personality {
-                    Some(llpersonality) => llpersonality,
-                    None => {
-                        let name = if !base::wants_msvc_seh(self.ccx.sess()) {
-                            "rust_eh_personality"
-                        } else if target.arch == "x86" {
-                            "_except_handler3"
-                        } else {
-                            "__C_specific_handler"
-                        };
-                        let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = declare::declare_cfn(self.ccx, name, fty,
-                                                     self.ccx.tcx().types.i32);
-                        *personality = Some(f);
-                        f
-                    }
-                }
+            _ => if let Some(llpersonality) = ccx.eh_personality().get() {
+                llpersonality
+            } else {
+                let name = if !base::wants_msvc_seh(ccx.sess()) {
+                    "rust_eh_personality"
+                } else if target.arch == "x86" {
+                    "_except_handler3"
+                } else {
+                    "__C_specific_handler"
+                };
+                let fty = Type::variadic_func(&[], &Type::i32(ccx));
+                let f = declare::declare_cfn(ccx, name, fty);
+                ccx.eh_personality().set(Some(f));
+                f
             }
         }
     }

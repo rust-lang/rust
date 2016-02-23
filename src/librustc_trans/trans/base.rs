@@ -2630,14 +2630,15 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                        use_start_lang_item: bool) {
         let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()], &ccx.int_type());
 
-        let llfn = declare::define_cfn(ccx, "main", llfty, ccx.tcx().mk_nil()).unwrap_or_else(|| {
+        if declare::get_defined_value(ccx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
             ccx.sess().struct_span_err(sp, "entry symbol `main` defined multiple times")
                       .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
                       .emit();
             ccx.sess().abort_if_errors();
             panic!();
-        });
+        }
+        let llfn = declare::declare_cfn(ccx, "main", llfty);
 
         let llbb = unsafe {
             llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn, "top\0".as_ptr() as *const _)

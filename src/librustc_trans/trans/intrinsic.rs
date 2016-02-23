@@ -949,8 +949,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 intrinsics::IntrinsicDef::Named(name) => {
                     let f = declare::declare_cfn(ccx,
                                                  name,
-                                                 Type::func(&inputs, &outputs),
-                                                 tcx.mk_nil());
+                                                 Type::func(&inputs, &outputs));
                     Call(bcx, f, &llargs, None, call_debug_location)
                 }
             };
