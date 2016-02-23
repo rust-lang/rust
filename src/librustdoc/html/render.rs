@@ -243,6 +243,7 @@ pub struct Cache {
 
     stack: Vec<String>,
     parent_stack: Vec<DefId>,
+    parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
     privmod: bool,
     remove_priv: bool,
@@ -487,6 +488,7 @@ pub fn run(mut krate: clean::Crate,
         stack: Vec::new(),
         parent_stack: Vec::new(),
         search_index: Vec::new(),
+        parent_is_trait_impl: false,
         extern_locations: HashMap::new(),
         primitive_locations: HashMap::new(),
         remove_priv: cx.passes.contains("strip-private"),
@@ -995,6 +997,10 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         if let Some(ref s) = item.name {
             let (parent, is_method) = match item.inner {
+                clean::AssociatedConstItem(..) if self.parent_is_trait_impl => {
+                    // skip associated consts in trait impls
+                    ((None, None), false)
+                }
                 clean::AssociatedTypeItem(..) |
                 clean::AssociatedConstItem(..) |
                 clean::TyMethodItem(..) |
@@ -1115,12 +1121,15 @@ impl DocFolder for Cache {
         }
 
         // Maintain the parent stack
+        let orig_parent_is_trait_impl = self.parent_is_trait_impl;
         let parent_pushed = match item.inner {
             clean::TraitItem(..) | clean::EnumItem(..) | clean::StructItem(..) => {
                 self.parent_stack.push(item.def_id);
+                self.parent_is_trait_impl = false;
                 true
             }
             clean::ImplItem(ref i) => {
+                self.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
                     clean::ResolvedPath{ did, .. } => {
                         self.parent_stack.push(did);
@@ -1201,6 +1210,7 @@ impl DocFolder for Cache {
         if pushed { self.stack.pop().unwrap(); }
         if parent_pushed { self.parent_stack.pop().unwrap(); }
         self.privmod = orig_privmod;
+        self.parent_is_trait_impl = orig_parent_is_trait_impl;
         return ret;
     }
 }
