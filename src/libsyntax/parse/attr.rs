@@ -11,7 +11,7 @@
 use attr;
 use ast;
 use codemap::{spanned, Spanned, mk_sp, Span};
-use parse::common::*; //resolve bug?
+use parse::common::SeqSep;
 use parse::PResult;
 use parse::token;
 use parse::parser::{Parser, TokenType};
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
     fn parse_meta_seq(&mut self) -> PResult<'a, Vec<P<ast::MetaItem>>> {
         self.parse_unspanned_seq(&token::OpenDelim(token::Paren),
                                  &token::CloseDelim(token::Paren),
-                                 seq_sep_trailing_allowed(token::Comma),
+                                 SeqSep::trailing_allowed(token::Comma),
                                  |p: &mut Parser<'a>| p.parse_meta_item())
     }
 }
