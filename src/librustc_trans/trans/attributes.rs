@@ -13,13 +13,11 @@ use libc::{c_uint, c_ulonglong};
 use llvm::{self, ValueRef, AttrHelper};
 use middle::ty;
 use middle::infer;
-use middle::traits::ProjectionMode;
 use session::config::NoDebugInfo;
 pub use syntax::attr::InlineAttr;
 use syntax::ast;
 use rustc_front::hir;
 use trans::abi::Abi;
-use trans::base;
 use trans::common;
 use trans::context::CrateContext;
 use trans::machine;
@@ -130,21 +128,12 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                               -> llvm::AttrBuilder {
     use middle::ty::{BrAnon, ReLateBound};
 
-    let function_type;
-    let (fn_sig, abi, env_ty) = match fn_type.sty {
-        ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => (&f.sig, f.abi, None),
-        ty::TyClosure(closure_did, ref substs) => {
-            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(),
-                                                      &ccx.tcx().tables,
-                                                      ProjectionMode::Any);
-            function_type = infcx.closure_type(closure_did, substs);
-            let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
-            (&function_type.sig, Abi::RustCall, Some(self_type))
-        }
-        _ => ccx.sess().bug("expected closure or function.")
+    let f = match fn_type.sty {
+        ty::TyFnDef(_, _, f) | ty::TyFnPtr(f) => f,
+        _ => unreachable!("expected fn type, found {:?}", fn_type)
     };
 
-    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    let fn_sig = ccx.tcx().erase_late_bound_regions(&f.sig);
     let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
 
     let mut attrs = llvm::AttrBuilder::new();
@@ -153,30 +142,17 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
     let input_tys = match fn_type.sty {
-        ty::TyClosure(..) => {
-            assert!(abi == Abi::RustCall);
-
-            match fn_sig.inputs[0].sty {
-                ty::TyTuple(ref inputs) => {
-                    let mut full_inputs = vec![env_ty.expect("Missing closure environment")];
-                    full_inputs.extend_from_slice(inputs);
-                    full_inputs
-                }
-                _ => ccx.sess().bug("expected tuple'd inputs")
-            }
-        },
-        ty::TyFnDef(..) | ty::TyFnPtr(_) if abi == Abi::RustCall => {
-            let mut inputs = vec![fn_sig.inputs[0]];
+        ty::TyFnDef(..) | ty::TyFnPtr(_) if f.abi == Abi::RustCall => {
+            let first = Some(fn_sig.inputs[0]).into_iter();
 
             match fn_sig.inputs[1].sty {
                 ty::TyTuple(ref t_in) => {
-                    inputs.extend_from_slice(&t_in[..]);
-                    inputs
+                    first.chain(t_in.iter().cloned())
                 }
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         }
-        _ => fn_sig.inputs.clone()
+        _ => None.into_iter().chain(fn_sig.inputs.iter().cloned())
     };
 
     // Index 0 is the return value of the llvm func, so we start at 1
@@ -228,7 +204,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
         }
     }
 
-    for &t in input_tys.iter() {
+    for t in input_tys {
         match t.sty {
             _ if type_of::arg_is_indirect(ccx, t) => {
                 let llarg_sz = machine::llsize_of_real(ccx, type_of::type_of(ccx, t));

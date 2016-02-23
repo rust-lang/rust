@@ -22,10 +22,8 @@
 use llvm::{self, ValueRef};
 use middle::ty;
 use middle::infer;
-use middle::traits::ProjectionMode;
 use trans::abi::{Abi, FnType};
 use trans::attributes;
-use trans::base;
 use trans::context::CrateContext;
 use trans::type_::Type;
 use trans::type_of;
@@ -94,37 +92,21 @@ pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
 /// update the declaration and return existing ValueRef instead.
 pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                             fn_type: ty::Ty<'tcx>) -> ValueRef {
-    debug!("declare_rust_fn(name={:?}, fn_type={:?})", name,
-           fn_type);
+    debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
 
-    let function_type; // placeholder so that the memory ownership works out ok
-    let (sig, abi, env) = match fn_type.sty {
-        ty::TyFnDef(_, _, f) |
-        ty::TyFnPtr(f) => {
-            (&f.sig, f.abi, None)
-        }
-        ty::TyClosure(closure_did, ref substs) => {
-            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(),
-                                                      &ccx.tcx().tables,
-                                                      ProjectionMode::Any);
-            function_type = infcx.closure_type(closure_did, substs);
-            let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
-            debug!("declare_rust_fn function_type={:?} self_type={:?}",
-                   function_type, self_type);
-            (&function_type.sig, Abi::RustCall, Some(self_type))
-        }
-        _ => ccx.sess().bug("expected closure or fn")
+    let f = match fn_type.sty {
+        ty::TyFnDef(_, _, f) | ty::TyFnPtr(f) => f,
+        _ => unreachable!("expected fn type for {:?}, found {:?}", name, fn_type)
     };
 
-
-    let sig = ccx.tcx().erase_late_bound_regions(sig);
+    let sig = ccx.tcx().erase_late_bound_regions(&f.sig);
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
-    let (cconv, llfty) = if abi == Abi::Rust || abi == Abi::RustCall {
-        (llvm::CCallConv, type_of::type_of_rust_fn(ccx, env, &sig, abi))
+    let (cconv, llfty) = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
+        (llvm::CCallConv, type_of::type_of_rust_fn(ccx, &sig, f.abi))
     } else {
-        let fty = FnType::new(ccx, abi, &sig, &[]);
+        let fty = FnType::new(ccx, f.abi, &sig, &[]);
         (fty.cconv, fty.to_llvm(ccx))
     };
 
@@ -137,10 +119,10 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturn);
     }
 
-    if abi == Abi::Rust || abi == Abi::RustCall {
+    if f.abi == Abi::Rust || f.abi == Abi::RustCall {
         attributes::from_fn_type(ccx, fn_type).apply_llfn(llfn);
     } else {
-        FnType::new(ccx, abi, &sig, &[]).add_attributes(llfn);
+        FnType::new(ccx, f.abi, &sig, &[]).add_attributes(llfn);
     }
 
     llfn

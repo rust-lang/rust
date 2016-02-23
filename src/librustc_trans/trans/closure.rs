@@ -14,7 +14,7 @@ use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
 use middle::traits::ProjectionMode;
-use trans::abi::Abi::RustCall;
+use trans::abi::Abi;
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -30,7 +30,7 @@ use trans::monomorphize::{Instance};
 use trans::type_of::*;
 use trans::value::Value;
 use trans::Disr;
-use middle::ty;
+use middle::ty::{self, Ty, TyCtxt};
 use session::config::FullDebugInfo;
 
 use syntax::ast;
@@ -49,7 +49,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Special case for small by-value selfs.
     let closure_ty = node_id_type(bcx, bcx.fcx.id);
-    let self_type = self_type_for_closure(bcx.ccx(), closure_def_id, closure_ty);
+    let self_type = get_self_type(bcx.tcx(), closure_def_id, closure_ty);
     let kind = kind_for_closure(bcx.ccx(), closure_def_id);
     let llenv = if kind == ty::ClosureKind::FnOnce &&
             !arg_is_indirect(bcx.ccx(), self_type) {
@@ -131,6 +131,21 @@ impl<'a> ClosureEnv<'a> {
     }
 }
 
+pub fn get_self_type<'tcx>(tcx: &TyCtxt<'tcx>,
+                           closure_id: DefId,
+                           fn_ty: Ty<'tcx>)
+                           -> Ty<'tcx> {
+    match tcx.closure_kind(closure_id) {
+        ty::ClosureKind::Fn => {
+            tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), fn_ty)
+        }
+        ty::ClosureKind::FnMut => {
+            tcx.mk_mut_ref(tcx.mk_region(ty::ReStatic), fn_ty)
+        }
+        ty::ClosureKind::FnOnce => fn_ty,
+    }
+}
+
 /// Returns the LLVM function declaration for a closure, creating it if
 /// necessary. If the ID does not correspond to a closure ID, returns None.
 pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -139,22 +154,38 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                    -> ValueRef {
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let substs = ccx.tcx().erase_regions(substs);
-    let mono_id = Instance {
+    let tcx = ccx.tcx();
+    let substs = tcx.erase_regions(substs);
+    let instance = Instance {
         def: closure_id,
         params: &substs.func_substs.types
     };
 
-    if let Some(&llfn) = ccx.closure_vals().borrow().get(&mono_id) {
+    if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         debug!("get_or_create_closure_declaration(): found closure {:?}: {:?}",
-               mono_id, Value(llfn));
+               instance, Value(llfn));
         return llfn;
     }
 
-    let path = ccx.tcx().def_path(closure_id);
+    let path = tcx.def_path(closure_id);
     let symbol = mangle_internal_name_by_path_and_seq(path, "closure");
 
-    let function_type = ccx.tcx().mk_closure_from_closure_substs(closure_id, Box::new(substs));
+    // Compute the rust-call form of the closure call method.
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+    let sig = &infcx.closure_type(closure_id, &substs).sig;
+    let sig = tcx.erase_late_bound_regions(sig);
+    let sig = infer::normalize_associated_type(tcx, &sig);
+    let closure_type = tcx.mk_closure_from_closure_substs(closure_id, Box::new(substs));
+    let function_type = tcx.mk_fn_ptr(ty::BareFnTy {
+        unsafety: hir::Unsafety::Normal,
+        abi: Abi::RustCall,
+        sig: ty::Binder(ty::FnSig {
+            inputs: Some(get_self_type(tcx, closure_id, closure_type))
+                        .into_iter().chain(sig.inputs).collect(),
+            output: sig.output,
+            variadic: false
+        })
+    });
     let llfn = declare::define_internal_fn(ccx, &symbol, function_type);
 
     // set an inline hint for all closures
@@ -162,8 +193,8 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debug!("get_or_create_declaration_if_closure(): inserting new \
             closure {:?}: {:?}",
-           mono_id, Value(llfn));
-    ccx.closure_vals().borrow_mut().insert(mono_id, llfn);
+           instance, Value(llfn));
+    ccx.instances().borrow_mut().insert(instance, llfn);
 
     llfn
 }
@@ -347,7 +378,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
-    assert_eq!(abi, RustCall);
+    assert_eq!(abi, Abi::RustCall);
     sig.0.inputs[0] = closure_ty;
     let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: unsafety,
