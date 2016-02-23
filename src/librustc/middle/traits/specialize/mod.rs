@@ -41,6 +41,7 @@ pub struct Overlap<'a, 'tcx: 'a> {
 /// Given a subst for the requested impl, translate it to a subst
 /// appropriate for the actual item definition (whether it be in that impl,
 /// a parent impl, or the trait).
+//
 // When we have selected one impl, but are actually using item definitions from
 // a parent impl providing a default, we need a way to translate between the
 // type parameters of the two impls. Here the `source_impl` is the one we've
@@ -152,6 +153,11 @@ pub fn specializes(tcx: &ty::ctxt, impl1_def_id: DefId, impl2_def_id: DefId) -> 
     // The last three steps are encapsulated in `fulfill_implication`.
     //
     // See RFC 1210 for more details and justification.
+
+    // Currently we do not allow e.g. a negative impl to specialize a positive one
+    if tcx.trait_impl_polarity(impl1_def_id) != tcx.trait_impl_polarity(impl2_def_id) {
+        return false
+    }
 
     let mut infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
 

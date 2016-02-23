@@ -8,19 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Make sure specialization cannot change impl polarity
+
 #![feature(optin_builtin_traits)]
 #![feature(specialization)]
 
-struct TestType<T>(T);
+trait Foo {}
 
-// TODO: nail down the rules here with @nikomatsakis
+impl Foo for .. {}
 
-unsafe impl<T> Send for TestType<T> {}
-impl !Send for TestType<u8> {}
+impl<T> Foo for T {}
+impl !Foo for u8 {} //~ ERROR E0119
 
-fn assert_send<T: Send>() {}
+trait Bar {}
 
-fn main() {
-    assert_send::<TestType<()>>();
-    assert_send::<TestType<u8>>(); //~ ERROR
-}
+impl Bar for .. {}
+
+impl<T> !Bar for T {}
+impl Bar for u8 {} //~ ERROR E0119
+
+fn main() {}
