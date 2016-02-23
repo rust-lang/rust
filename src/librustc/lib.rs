@@ -29,6 +29,7 @@
 #![feature(cell_extras)]
 #![feature(collections)]
 #![feature(const_fn)]
+#![feature(copy_from_slice)]
 #![feature(enumset)]
 #![feature(iter_arith)]
 #![feature(libc)]

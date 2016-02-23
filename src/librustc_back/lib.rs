@@ -31,6 +31,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_syntax)]
+#![feature(copy_from_slice)]
 #![feature(libc)]
 #![feature(rand)]
 #![feature(rustc_private)]
