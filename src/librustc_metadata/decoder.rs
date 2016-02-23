@@ -14,6 +14,7 @@
 
 use self::Family::*;
 
+use astencode::decode_inlined_item;
 use cstore::{self, crate_metadata};
 use common::*;
 use encoder::def_to_u64;
@@ -797,20 +798,9 @@ pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: DefIndex) -> ast::Nam
     item_name(intr, cdata.lookup_item(id))
 }
 
-pub type DecodeInlinedItem<'a> =
-    Box<for<'tcx> FnMut(Cmd,
-                        &TyCtxt<'tcx>,
-                        Vec<hir_map::PathElem>, // parent_path
-                        hir_map::DefPath,       // parent_def_path
-                        rbml::Doc,
-                        DefId)
-                        -> Result<&'tcx InlinedItem, (Vec<hir_map::PathElem>,
-                                                      hir_map::DefPath)> + 'a>;
-
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd,
                                 tcx: &TyCtxt<'tcx>,
                                 id: DefIndex,
-                                mut decode_inlined_item: DecodeInlinedItem)
                                 -> FoundAst<'tcx> {
     debug!("Looking up item: {:?}", id);
     let item_doc = cdata.lookup_item(id);
