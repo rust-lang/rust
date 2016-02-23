@@ -1138,6 +1138,30 @@ fn test_box_slice_clone_panics() {
     assert_eq!(drop_count.load(Ordering::SeqCst), 8);
 }
 
+#[test]
+fn test_copy_from_slice() {
+    let src = [0, 1, 2, 3, 4, 5];
+    let mut dst = [0; 6];
+    dst.copy_from_slice(&src);
+    assert_eq!(src, dst)
+}
+
+#[test]
+#[should_panic(expected = "destination and source slices have different lengths")]
+fn test_copy_from_slice_dst_longer() {
+    let src = [0, 1, 2, 3];
+    let mut dst = [0; 5];
+    dst.copy_from_slice(&src);
+}
+
+#[test]
+#[should_panic(expected = "destination and source slices have different lengths")]
+fn test_copy_from_slice_dst_shorter() {
+    let src = [0, 1, 2, 3];
+    let mut dst = [0; 3];
+    dst.copy_from_slice(&src);
+}
+
 mod bench {
     use std::{mem, ptr};
     use std::__rand::{Rng, thread_rng};
