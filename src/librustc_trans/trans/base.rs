@@ -192,22 +192,6 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                fn_ty: Ty<'tcx>,
-                                name: &str,
-                                attrs: &[ast::Attribute])
-                                -> ValueRef {
-    if let Some(n) = ccx.externs().borrow().get(name) {
-        return *n;
-    }
-
-    let f = declare::declare_rust_fn(ccx, name, fn_ty);
-    attributes::from_fn_attrs(ccx, &attrs, f);
-
-    ccx.externs().borrow_mut().insert(name.to_string(), f);
-    f
-}
-
 pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        closure_id: DefId,
                                        fn_ty: Ty<'tcx>)
@@ -862,34 +846,6 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         })
     } else {
         bcx
-    }
-}
-
-pub fn get_extern_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               def_id: DefId)
-                               -> datum::Datum<'tcx, datum::Rvalue> {
-    let name = ccx.sess().cstore.item_symbol(def_id);
-    let attrs = ccx.sess().cstore.item_attrs(def_id);
-    let ty = ccx.tcx().lookup_item_type(def_id).ty;
-    match ty.sty {
-        ty::TyFnDef(_, _, fty) => {
-            let abi = fty.abi;
-            let fty = infer::normalize_associated_type(ccx.tcx(), fty);
-            let ty = ccx.tcx().mk_fn_ptr(fty);
-            let llfn = match ccx.sess().target.target.adjust_abi(abi) {
-                Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
-                    ccx.sess().bug("unexpected intrinsic in get_extern_fn")
-                }
-                Abi::Rust | Abi::RustCall => {
-                    get_extern_rust_fn(ccx, ty, &name, &attrs)
-                }
-                _ => {
-                    foreign::register_foreign_item_fn(ccx, abi, ty, &name, &attrs)
-                }
-            };
-            datum::immediate_rvalue(llfn, ty)
-        }
-        _ => unreachable!("get_extern_fn: expected fn item type, found {}", ty)
     }
 }
 
@@ -2186,20 +2142,11 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     Result::new(bcx, llresult)
 }
 
-pub fn trans_tuple_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    ctor_id: ast::NodeId,
-                                    param_substs: &'tcx Substs<'tcx>,
-                                    llfndecl: ValueRef) {
-    let _icx = push_ctxt("trans_tuple_struct");
-
-    trans_enum_variant_or_tuple_like_struct(ccx, ctor_id, Disr(0), param_substs, llfndecl);
-}
-
-fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                     ctor_id: ast::NodeId,
-                                                     disr: Disr,
-                                                     param_substs: &'tcx Substs<'tcx>,
-                                                     llfndecl: ValueRef) {
+pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                 ctor_id: ast::NodeId,
+                                 disr: Disr,
+                                 param_substs: &'tcx Substs<'tcx>,
+                                 llfndecl: ValueRef) {
     let ctor_ty = ccx.tcx().node_id_to_type(ctor_id);
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
@@ -2557,54 +2504,6 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
     }
 }
 
-// only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
-pub fn register_fn_llvmty(ccx: &CrateContext,
-                          sp: Span,
-                          sym: String,
-                          node_id: ast::NodeId,
-                          cc: llvm::CallConv,
-                          llfty: Type)
-                          -> ValueRef {
-    debug!("register_fn_llvmty id={} sym={}", node_id, sym);
-
-    let llfn = declare::define_fn(ccx, &sym[..], cc, llfty,
-                                   ty::FnConverging(ccx.tcx().mk_nil())).unwrap_or_else(||{
-        ccx.sess().span_fatal(sp, &format!("symbol `{}` is already defined", sym));
-    });
-    finish_register_fn(ccx, sym, node_id);
-    llfn
-}
-
-fn finish_register_fn(ccx: &CrateContext, sym: String, node_id: ast::NodeId) {
-    ccx.item_symbols().borrow_mut().insert(node_id, sym);
-}
-
-fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                         sp: Span,
-                         sym: String,
-                         node_id: ast::NodeId,
-                         node_type: Ty<'tcx>)
-                         -> ValueRef {
-    if let ty::TyFnDef(_, _, ref f) = node_type.sty {
-        if f.abi != Abi::Rust && f.abi != Abi::RustCall {
-            ccx.sess().span_bug(sp,
-                                &format!("only the `{}` or `{}` calling conventions are valid \
-                                          for this function; `{}` was specified",
-                                         Abi::Rust.name(),
-                                         Abi::RustCall.name(),
-                                         f.abi.name()));
-        }
-    } else {
-        ccx.sess().span_bug(sp, "expected bare rust function")
-    }
-
-    let llfn = declare::define_rust_fn(ccx, &sym[..], node_type).unwrap_or_else(|| {
-        ccx.sess().span_fatal(sp, &format!("symbol `{}` is already defined", sym));
-    });
-    finish_register_fn(ccx, sym, node_id);
-    llfn
-}
-
 pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
     match *sess.entry_fn.borrow() {
         Some((entry_id, _)) => node_id == entry_id,
@@ -2722,119 +2621,6 @@ pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 fn contains_null(s: &str) -> bool {
     s.bytes().any(|b| b == 0)
-}
-
-pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
-    debug!("get_item_val(id=`{}`)", id);
-
-    if let Some(v) = ccx.item_vals().borrow().get(&id).cloned() {
-        return v;
-    }
-
-    let item = ccx.tcx().map.get(id);
-    debug!("get_item_val: id={} item={:?}", id, item);
-    let val = match item {
-        hir_map::NodeItem(i) => {
-            let ty = ccx.tcx().node_id_to_type(i.id);
-            let sym = || exported_name(ccx, id, ty, &i.attrs);
-
-            let v = match i.node {
-
-                hir::ItemFn(_, _, _, abi, _, _) => {
-                    let sym = sym();
-                    let llfn = if abi == Abi::Rust {
-                        register_fn(ccx, i.span, sym, i.id, ty)
-                    } else {
-                        foreign::register_rust_fn_with_foreign_abi(ccx, i.span, sym, i.id)
-                    };
-                    attributes::from_fn_attrs(ccx, &i.attrs, llfn);
-                    llfn
-                }
-
-                _ => ccx.sess().bug("get_item_val: weird result in table"),
-            };
-
-            v
-        }
-
-        hir_map::NodeTraitItem(trait_item) => {
-            debug!("get_item_val(): processing a NodeTraitItem");
-            match trait_item.node {
-                hir::MethodTraitItem(_, Some(_)) => {
-                    register_method(ccx, id, &trait_item.attrs, trait_item.span)
-                }
-                _ => {
-                    ccx.sess().span_bug(trait_item.span,
-                                        "unexpected variant: trait item other than a provided \
-                                         method in get_item_val()");
-                }
-            }
-        }
-
-        hir_map::NodeImplItem(impl_item) => {
-            match impl_item.node {
-                hir::ImplItemKind::Method(..) => {
-                    register_method(ccx, id, &impl_item.attrs, impl_item.span)
-                }
-                _ => {
-                    ccx.sess().span_bug(impl_item.span,
-                                        "unexpected variant: non-method impl item in \
-                                         get_item_val()");
-                }
-            }
-        }
-
-        hir_map::NodeForeignItem(ni) => {
-            match ni.node {
-                hir::ForeignItemFn(..) => {
-                    let abi = ccx.tcx().map.get_foreign_abi(id);
-                    let ty = ccx.tcx().node_id_to_type(ni.id);
-                    let name = foreign::link_name(&ni);
-                    foreign::register_foreign_item_fn(ccx, abi, ty, &name, &ni.attrs)
-                }
-                hir::ForeignItemStatic(..) => {
-                    foreign::register_static(ccx, &ni)
-                }
-            }
-        }
-        ref variant => {
-            ccx.sess().bug(&format!("get_item_val(): unexpected variant: {:?}", variant))
-        }
-    };
-
-    // All LLVM globals and functions are initially created as external-linkage
-    // declarations.  If `trans_item`/`trans_fn` later turns the declaration
-    // into a definition, it adjusts the linkage then (using `update_linkage`).
-    //
-    // The exception is foreign items, which have their linkage set inside the
-    // call to `foreign::register_*` above.  We don't touch the linkage after
-    // that (`foreign::trans_foreign_mod` doesn't adjust the linkage like the
-    // other item translation functions do).
-
-    ccx.item_vals().borrow_mut().insert(id, val);
-    val
-}
-
-fn register_method(ccx: &CrateContext,
-                   id: ast::NodeId,
-                   attrs: &[ast::Attribute],
-                   span: Span)
-                   -> ValueRef {
-    let mty = ccx.tcx().node_id_to_type(id);
-
-    let sym = exported_name(ccx, id, mty, &attrs);
-
-    if let ty::TyFnDef(_, _, ref f) = mty.sty {
-        let llfn = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-            register_fn(ccx, span, sym, id, mty)
-        } else {
-            foreign::register_rust_fn_with_foreign_abi(ccx, span, sym, id)
-        };
-        attributes::from_fn_attrs(ccx, &attrs, llfn);
-        return llfn;
-    } else {
-        ccx.sess().span_bug(span, "expected bare rust function");
-    }
 }
 
 pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,

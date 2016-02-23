@@ -25,15 +25,17 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
 use middle::subst::{Substs};
+use middle::traits;
 use rustc::front::map as hir_map;
 use trans::adt;
+use trans::attributes;
 use trans::base;
 use trans::base::*;
 use trans::build::*;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
-use trans::common::{self, Block, Result, NodeIdAndSpan, ExprId, CrateContext,
-                    ExprOrMethodCall, FunctionContext, MethodCallKey};
+use trans::closure;
+use trans::common::{self, Block, Result, NodeIdAndSpan, CrateContext, FunctionContext};
 use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::DebugLoc;
@@ -44,7 +46,7 @@ use trans::inline;
 use trans::foreign;
 use trans::intrinsic;
 use trans::meth;
-use trans::monomorphize;
+use trans::monomorphize::{self, Instance};
 use trans::type_::Type;
 use trans::type_of;
 use trans::value::Value;
@@ -442,9 +444,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(def_id.krate, LOCAL_CRATE);
 
         let substs = tcx.mk_substs(substs.clone().erase_regions());
-        let (mut val, fn_ty, must_cast) =
-            monomorphize::monomorphic_fn(ccx, def_id, substs);
-        let fn_ty = ref_ty.unwrap_or(fn_ty);
+        let (val, fn_ty) = monomorphize::monomorphic_fn(ccx, def_id, substs);
         let fn_ptr_ty = match fn_ty.sty {
             ty::TyFnDef(_, _, fty) => {
                 // Create a fn pointer with the substituted signature.
@@ -452,35 +452,71 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
             _ => unreachable!("expected fn item type, found {}", fn_ty)
         };
-        if must_cast && ref_ty.is_some() {
-            let llptrty = type_of::type_of(ccx, fn_ptr_ty);
-            if llptrty != common::val_ty(val) {
-                val = consts::ptrcast(val, llptrty);
-            }
-        }
+        assert_eq!(type_of::type_of(ccx, fn_ptr_ty), common::val_ty(val));
         return immediate_rvalue(val, fn_ptr_ty);
     }
 
     // Find the actual function pointer.
-    let local_node = ccx.tcx().map.as_local_node_id(def_id);
-    let mut datum = if let Some(node_id) = local_node {
-        // Type scheme of the function item (may have type params)
-        let fn_type_scheme = tcx.lookup_item_type(def_id);
-        let fn_type = match fn_type_scheme.ty.sty {
-            ty::TyFnDef(_, _, fty) => {
-                // Create a fn pointer with the normalized signature.
-                tcx.mk_fn_ptr(infer::normalize_associated_type(tcx, fty))
-            }
-            _ => unreachable!("expected fn item type, found {}",
-                              fn_type_scheme.ty)
-        };
-
-        // Internal reference.
-        immediate_rvalue(get_item_val(ccx, node_id), fn_type)
-    } else {
-        // External reference.
-        get_extern_fn(ccx, def_id)
+    let ty = ccx.tcx().lookup_item_type(def_id).ty;
+    let fn_ptr_ty = match ty.sty {
+        ty::TyFnDef(_, _, fty) => {
+            // Create a fn pointer with the normalized signature.
+            tcx.mk_fn_ptr(infer::normalize_associated_type(tcx, fty))
+        }
+        _ => unreachable!("expected fn item type, found {}", ty)
     };
+
+    let instance = Instance::mono(ccx.tcx(), def_id);
+    if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
+        return immediate_rvalue(llfn, fn_ptr_ty);
+    }
+
+    let attrs;
+    let local_id = ccx.tcx().map.as_local_node_id(def_id);
+    let maybe_node = local_id.and_then(|id| tcx.map.find(id));
+    let (sym, attrs, local_item) = match maybe_node {
+        Some(hir_map::NodeItem(&hir::Item {
+            ref attrs, id, span, node: hir::ItemFn(..), ..
+        })) |
+        Some(hir_map::NodeTraitItem(&hir::TraitItem {
+            ref attrs, id, span, node: hir::MethodTraitItem(_, Some(_)), ..
+        })) |
+        Some(hir_map::NodeImplItem(&hir::ImplItem {
+            ref attrs, id, span, node: hir::ImplItemKind::Method(..), ..
+        })) => {
+            let sym = exported_name(ccx, id, ty, attrs);
+
+            if declare::get_defined_value(ccx, &sym).is_some() {
+                ccx.sess().span_fatal(span,
+                    &format!("symbol `{}` is already defined", sym));
+            }
+
+            (sym, &attrs[..], Some(id))
+        }
+
+        Some(hir_map::NodeForeignItem(&hir::ForeignItem {
+            ref attrs, name, node: hir::ForeignItemFn(..), ..
+        })) => {
+            (foreign::link_name(name, attrs).to_string(), &attrs[..], None)
+        }
+
+        None => {
+            attrs = ccx.sess().cstore.item_attrs(def_id);
+            (ccx.sess().cstore.item_symbol(def_id), &attrs[..], None)
+        }
+
+        ref variant => {
+            ccx.sess().bug(&format!("get_fn: unexpected variant: {:?}", variant))
+        }
+    };
+
+    let llfn = declare::declare_fn(ccx, &sym, ty);
+    attributes::from_fn_attrs(ccx, attrs, llfn);
+    if let Some(id) = local_item {
+        // FIXME(eddyb) Doubt all extern fn should allow unwinding.
+        attributes::unwind(llfn, true);
+        ccx.item_symbols().borrow_mut().insert(id, sym);
+    }
 
     // This is subtle and surprising, but sometimes we have to bitcast
     // the resulting fn pointer.  The reason has to do with external
@@ -505,15 +541,18 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // This can occur on either a crate-local or crate-external
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
-    let llptrty = type_of::type_of(ccx, datum.ty);
-    if common::val_ty(datum.val) != llptrty {
-        debug!("trans_fn_ref_with_substs(): casting pointer!");
-        datum.val = consts::ptrcast(datum.val, llptrty);
+    let llptrty = type_of::type_of(ccx, fn_ptr_ty);
+    let llfn = if common::val_ty(llfn) != llptrty {
+        debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
+        consts::ptrcast(llfn, llptrty)
     } else {
-        debug!("trans_fn_ref_with_substs(): not casting pointer!");
-    }
+        debug!("get_fn: not casting pointer!");
+        llfn
+    };
 
-    datum
+    ccx.instances().borrow_mut().insert(instance, llfn);
+
+    immediate_rvalue(llfn, fn_ptr_ty)
 }
 
 // ______________________________________________________________________
