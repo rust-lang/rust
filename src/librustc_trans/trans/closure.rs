@@ -25,7 +25,7 @@ use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue};
 use trans::debuginfo::{self, DebugLoc};
 use trans::declare;
 use trans::expr;
-use trans::monomorphize::{MonoId};
+use trans::monomorphize::{Instance};
 use trans::type_of::*;
 use trans::value::Value;
 use trans::Disr;
@@ -140,7 +140,7 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
     let substs = ccx.tcx().erase_regions(substs);
-    let mono_id = MonoId {
+    let mono_id = Instance {
         def: closure_id,
         params: &substs.func_substs.types
     };

@@ -23,7 +23,7 @@ use trans::common::{ExternMap,BuilderRef_res};
 use trans::debuginfo;
 use trans::declare;
 use trans::glue::DropGlueKind;
-use trans::monomorphize::MonoId;
+use trans::monomorphize::Instance;
 use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
 use middle::subst::Substs;
@@ -100,8 +100,8 @@ pub struct LocalCrateContext<'tcx> {
     /// Backwards version of the `external` map (inlined items to where they
     /// came from)
     external_srcs: RefCell<NodeMap<DefId>>,
-    /// Cache instances of monomorphized functions
-    monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
+    /// Cache instances of monomorphic and polymorphic items
+    instances: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<usize>>,
     available_monomorphizations: RefCell<FnvHashSet<String>>,
     /// Cache generated vtables
@@ -148,7 +148,7 @@ pub struct LocalCrateContext<'tcx> {
     builder: BuilderRef_res,
 
     /// Holds the LLVM values for closure IDs.
-    closure_vals: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
+    closure_vals: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
 
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
@@ -471,7 +471,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 drop_glues: RefCell::new(FnvHashMap()),
                 external: RefCell::new(DefIdMap()),
                 external_srcs: RefCell::new(NodeMap()),
-                monomorphized: RefCell::new(FnvHashMap()),
+                instances: RefCell::new(FnvHashMap()),
                 monomorphizing: RefCell::new(DefIdMap()),
                 available_monomorphizations: RefCell::new(FnvHashSet()),
                 vtables: RefCell::new(FnvHashMap()),
@@ -660,8 +660,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.external_srcs
     }
 
-    pub fn monomorphized<'a>(&'a self) -> &'a RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>> {
-        &self.local.monomorphized
+    pub fn instances<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {
+        &self.local.instances
     }
 
     pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<usize>> {
@@ -746,7 +746,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.opaque_vec_type
     }
 
-    pub fn closure_vals<'a>(&'a self) -> &'a RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>> {
+    pub fn closure_vals<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {
         &self.local.closure_vals
     }
 

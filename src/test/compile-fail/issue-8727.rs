@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:reached the recursion limit during monomorphization
+// error-pattern:reached the recursion limit while instantiating `generic::<core::option::Option<
 
 // Verify the compiler fails with an error on infinite function
 // recursions.

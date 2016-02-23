@@ -236,7 +236,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     }
 
     fn impl_or_trait_item(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> ty::ImplOrTraitItem<'tcx>
+                          -> Option<ty::ImplOrTraitItem<'tcx>>
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_impl_or_trait_item(

@@ -29,8 +29,8 @@ use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, Vari
 use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null};
 use trans::datum::{Datum, Lvalue};
 use trans::declare;
-use trans::monomorphize;
 use trans::foreign;
+use trans::monomorphize::{self, Instance};
 use trans::type_::Type;
 use trans::type_of;
 use trans::value::Value;
@@ -1024,6 +1024,11 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                             -> Datum<'tcx, Lvalue> {
     let ty = ccx.tcx().lookup_item_type(def_id).ty;
 
+    let instance = Instance::mono(ccx.tcx(), def_id);
+    if let Some(&g) = ccx.instances().borrow().get(&instance) {
+        return Datum::new(g, ty, Lvalue::new("static"));
+    }
+
     let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
         match ccx.tcx().map.get(id) {
             hir_map::NodeItem(&hir::Item {
@@ -1076,6 +1081,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
         g
     };
 
+    ccx.instances().borrow_mut().insert(instance, g);
     Datum::new(g, ty, Lvalue::new("static"))
 }
 
