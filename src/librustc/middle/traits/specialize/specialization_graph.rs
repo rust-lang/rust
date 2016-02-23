@@ -65,6 +65,8 @@ impl Graph {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let trait_def_id = trait_ref.def_id;
 
+        debug!("inserting TraitRef {:?} into specialization graph", trait_ref);
+
         // if the reference itself contains an earlier error (e.g., due to a
         // resolution failure), then we just insert the impl at the top level of
         // the graph and claim that there's no overlap (in order to supress
@@ -99,10 +101,16 @@ impl Graph {
                     let ge = specializes(tcx, possible_sibling, impl_def_id);
 
                     if le && !ge {
+                        let parent_trait_ref = tcx.impl_trait_ref(possible_sibling).unwrap();
+                        debug!("descending as child of TraitRef {:?}", parent_trait_ref);
+
                         // the impl specializes possible_sibling
                         parent = possible_sibling;
                         continue 'descend;
                     } else if ge && !le {
+                        let child_trait_ref = tcx.impl_trait_ref(possible_sibling).unwrap();
+                        debug!("placing as parent of TraitRef {:?}", child_trait_ref);
+
                         // possible_sibling specializes the impl
                         *slot = impl_def_id;
                         self.parent.insert(impl_def_id, parent);
@@ -123,6 +131,7 @@ impl Graph {
             }
 
             // no overlap with any potential siblings, so add as a new sibling
+            debug!("placing as new sibling");
             self.parent.insert(impl_def_id, parent);
             possible_siblings.push(impl_def_id);
             return Ok(());
