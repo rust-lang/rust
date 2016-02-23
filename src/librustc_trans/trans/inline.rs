@@ -93,7 +93,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
             item.id
         }
-        FoundAst::FoundParent(parent_id, &InlinedItem::Item(ref item)) => {
+        FoundAst::FoundParent(parent_id, item) => {
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
@@ -101,7 +101,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             match item.node {
                 hir::ItemEnum(ref ast_def, _) => {
                     let ast_vs = &ast_def.variants;
-                    let ty_vs = &ccx.tcx().lookup_adt_def(parent_id).variants;
+                    let ty_vs = &tcx.lookup_adt_def(parent_id).variants;
                     assert_eq!(ast_vs.len(), ty_vs.len());
                     for (ast_v, ty_v) in ast_vs.iter().zip(ty_vs.iter()) {
                         if ty_v.did == fn_id { my_id = ast_v.node.data.id(); }
@@ -122,10 +122,6 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             }
             trans_item(ccx, &item);
             my_id
-        }
-        FoundAst::FoundParent(_, _) => {
-            ccx.sess().bug("maybe_get_item_ast returned a FoundParent \
-                            with a non-item parent");
         }
         FoundAst::Found(&InlinedItem::TraitItem(_, ref trait_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(trait_item.id));
