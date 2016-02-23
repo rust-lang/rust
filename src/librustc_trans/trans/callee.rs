@@ -58,21 +58,21 @@ use syntax::codemap::DUMMY_SP;
 use syntax::errors;
 use syntax::ptr::P;
 
-pub enum CalleeData<'tcx> {
+pub enum CalleeData {
     /// Constructor for enum variant/tuple-like-struct.
     NamedTupleConstructor(Disr),
 
     /// Function pointer.
     Fn(ValueRef),
 
-    Intrinsic(ast::NodeId, &'tcx subst::Substs<'tcx>),
+    Intrinsic,
 
     /// Trait object found in the vtable at that index.
     Virtual(usize)
 }
 
 pub struct Callee<'tcx> {
-    pub data: CalleeData<'tcx>,
+    pub data: CalleeData,
     pub ty: Ty<'tcx>
 }
 
@@ -245,7 +245,7 @@ impl<'tcx> Callee<'tcx> {
                 }
                 _ => unreachable!("expected fn item type, found {}", self.ty)
             },
-            Intrinsic(..) => unreachable!("intrinsic {} getting reified", self.ty)
+            Intrinsic => unreachable!("intrinsic {} getting reified", self.ty)
         }
     }
 }
@@ -545,7 +545,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
 
     match callee.data {
-        Intrinsic(node, substs) => {
+        Intrinsic => {
             assert!(abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic);
             assert!(dest.is_some());
 
@@ -557,10 +557,9 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             };
 
             let arg_cleanup_scope = fcx.push_custom_cleanup_scope();
-            return intrinsic::trans_intrinsic_call(bcx, node, callee.ty,
+            return intrinsic::trans_intrinsic_call(bcx, callee.ty,
                                                    arg_cleanup_scope, args,
                                                    dest.unwrap(),
-                                                   substs,
                                                    call_info);
         }
         NamedTupleConstructor(disr) => {
