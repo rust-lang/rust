@@ -27,7 +27,7 @@ use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
 use middle::subst::Subst;
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use middle::ty::adjustment;
 use middle::ty::{TyVid, IntVid, FloatVid};
 use middle::ty::{self, Ty, TyCtxt};
@@ -98,6 +98,11 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     // At a point sometime in the future normalization will be done by the typing context
     // directly.
     normalize: bool,
+
+    // Sadly, the behavior of projection varies a bit depending on the
+    // stage of compilation. The specifics are given in the
+    // documentation for `ProjectionMode`.
+    projection_mode: ProjectionMode,
 
     err_count_on_creation: usize,
 }
@@ -354,7 +359,8 @@ pub fn fixup_err_to_string(f: FixupError) -> String {
 
 pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
                                 tables: &'a RefCell<ty::Tables<'tcx>>,
-                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>)
+                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
+                                projection_mode: ProjectionMode)
                                 -> InferCtxt<'a, 'tcx> {
     InferCtxt {
         tcx: tcx,
@@ -366,14 +372,16 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
         reported_trait_errors: RefCell::new(FnvHashSet()),
         normalize: false,
+        projection_mode: projection_mode,
         err_count_on_creation: tcx.sess.err_count()
     }
 }
 
 pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
-                                        tables: &'a RefCell<ty::Tables<'tcx>>)
+                                        tables: &'a RefCell<ty::Tables<'tcx>>,
+                                        projection_mode: ProjectionMode)
                                         -> InferCtxt<'a, 'tcx> {
-    let mut infcx = new_infer_ctxt(tcx, tables, None);
+    let mut infcx = new_infer_ctxt(tcx, tables, None, projection_mode);
     infcx.normalize = true;
     infcx
 }
@@ -514,6 +522,7 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
+// NOTE: Callable from trans only!
 pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx>
 {
@@ -525,7 +534,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
         return value;
     }
 
-    let infcx = new_infer_ctxt(tcx, &tcx.tables, None);
+    let infcx = new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::Any);
     let mut selcx = traits::SelectionContext::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
@@ -593,6 +602,10 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn projection_mode(&self) -> ProjectionMode {
+        self.projection_mode
+    }
+
     pub fn freshen<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
     }

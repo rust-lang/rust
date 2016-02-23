@@ -92,7 +92,7 @@ use middle::infer;
 use middle::infer::{TypeOrigin, TypeTrace, type_variable};
 use middle::pat_util::{self, pat_id_map};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
-use middle::traits::{self, report_fulfillment_errors};
+use middle::traits::{self, report_fulfillment_errors, ProjectionMode};
 use middle::ty::{GenericPredicates, TypeScheme};
 use middle::ty::{ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
@@ -307,7 +307,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
            -> Inherited<'a, 'tcx> {
 
         Inherited {
-            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env)),
+            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env), ProjectionMode::AnyFinal),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             locals: RefCell::new(NodeMap()),
             tables: tables,
