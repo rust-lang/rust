@@ -89,7 +89,7 @@ pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 llenvironment_type: Option<Type>,
+                                 maybe_env: Option<Ty<'tcx>>,
                                  sig: &ty::FnSig<'tcx>,
                                  abi: Abi)
                                  -> Type
@@ -131,9 +131,8 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     // Arg 1: Environment
-    match llenvironment_type {
-        None => {}
-        Some(llenvironment_type) => atys.push(llenvironment_type),
+    if let Some(env_ty) = maybe_env {
+        atys.push(type_of_explicit_arg(cx, env_ty));
     }
 
     // ... then explicit args.
