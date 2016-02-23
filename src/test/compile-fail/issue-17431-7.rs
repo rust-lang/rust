@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum Foo { Voo(Option<Option<Foo>>) }
-//~^ ERROR recursive type `Foo` has infinite size
+//~^ ERROR invalid recursive enum type
 
 impl Foo { fn bar(&self) {} }
 

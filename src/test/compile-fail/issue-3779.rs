@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S { //~ ERROR E0072
+struct S {
+    //~^ ERROR invalid recursive struct type
     element: Option<S>
 }
 

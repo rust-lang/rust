@@ -9,9 +9,10 @@
 // except according to those terms.
 
 struct Baz { q: Option<Foo> }
+//~^ ERROR invalid recursive struct type
 
 struct Foo { q: Option<Baz> }
-//~^ ERROR recursive type `Foo` has infinite size
+//~^ ERROR invalid recursive struct type
 
 impl Foo { fn bar(&self) {} }
 

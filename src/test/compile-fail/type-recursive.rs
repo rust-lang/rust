@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct t1 { //~ ERROR E0072
+// error-pattern:invalid recursive struct type
+struct t1 {
     foo: isize,
     foolish: t1
 }

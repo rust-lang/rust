@@ -10,7 +10,7 @@
 
 enum foo { foo_(bar) }
 enum bar { bar_none, bar_some(bar) }
-//~^ ERROR recursive type `bar` has infinite size
+//~^ ERROR invalid recursive enum type
 
 fn main() {
 }

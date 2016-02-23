@@ -11,7 +11,7 @@
 use std::sync::Mutex;
 
 enum Foo { X(Mutex<Option<Foo>>) }
-//~^ ERROR recursive type `Foo` has infinite size
+//~^ ERROR invalid recursive enum type
 
 impl Foo { fn bar(self) {} }
 

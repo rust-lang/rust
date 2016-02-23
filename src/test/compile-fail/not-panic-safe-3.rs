@@ -19,4 +19,5 @@ fn assert<T: RecoverSafe + ?Sized>() {}
 
 fn main() {
     assert::<Arc<RefCell<i32>>>(); //~ ERROR: is not implemented
+    //~^ ERROR: is not implemented
 }
