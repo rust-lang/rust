@@ -152,9 +152,9 @@ pub struct LocalCrateContext<'tcx> {
 
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
-    eh_personality: RefCell<Option<ValueRef>>,
-    eh_unwind_resume: RefCell<Option<ValueRef>>,
-    rust_try_fn: RefCell<Option<ValueRef>>,
+    eh_personality: Cell<Option<ValueRef>>,
+    eh_unwind_resume: Cell<Option<ValueRef>>,
+    rust_try_fn: Cell<Option<ValueRef>>,
 
     intrinsics: RefCell<FnvHashMap<&'static str, ValueRef>>,
 
@@ -492,9 +492,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                 closure_vals: RefCell::new(FnvHashMap()),
                 dbg_cx: dbg_cx,
-                eh_personality: RefCell::new(None),
-                eh_unwind_resume: RefCell::new(None),
-                rust_try_fn: RefCell::new(None),
+                eh_personality: Cell::new(None),
+                eh_unwind_resume: Cell::new(None),
+                rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
@@ -754,15 +754,15 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.dbg_cx
     }
 
-    pub fn eh_personality<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+    pub fn eh_personality<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local.eh_personality
     }
 
-    pub fn eh_unwind_resume<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+    pub fn eh_unwind_resume<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local.eh_unwind_resume
     }
 
-    pub fn rust_try_fn<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+    pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local.rust_try_fn
     }
 
