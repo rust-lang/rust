@@ -721,4 +721,31 @@ mod tests {
 
         assert_eq!(cstr_hash, cstring_hash);
     }
+
+    #[test]
+    fn from_bytes_with_nul() {
+        let data = b"123\0";
+        let cstr = CStr::from_bytes_with_nul(data);
+        assert_eq!(cstr.map(CStr::to_bytes), Some(&b"123"[..]));
+        assert_eq!(cstr.map(CStr::to_bytes_with_nul), Some(&b"123\0"[..]));
+
+        unsafe {
+            let cstr_unchecked = CStr::from_bytes_with_nul_unchecked(data);
+            assert_eq!(cstr, Some(cstr_unchecked));
+        }
+    }
+
+    #[test]
+    fn from_bytes_with_nul_unterminated() {
+        let data = b"123";
+        let cstr = CStr::from_bytes_with_nul(data);
+        assert!(cstr.is_none());
+    }
+
+    #[test]
+    fn from_bytes_with_nul_interior() {
+        let data = b"1\023\0";
+        let cstr = CStr::from_bytes_with_nul(data);
+        assert!(cstr.is_none());
+    }
 }
