@@ -476,7 +476,7 @@ impl char {
     ///
     /// let mut b = [0; 0];
     ///
-    /// let result = 'ß'.encode_utf8(&mut b);
+    /// let result = 'ß'.encode_utf16(&mut b);
     ///
     /// assert_eq!(result, None);
     /// ```
