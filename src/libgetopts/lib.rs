@@ -331,9 +331,8 @@ impl Matches {
     /// Returns the string argument supplied to one of several matching options or `None`.
     pub fn opts_str(&self, names: &[String]) -> Option<String> {
         for nm in names {
-            match self.opt_val(&nm[..]) {
-                Some(Val(ref s)) => return Some(s.clone()),
-                _ => (),
+            if let Some(Val(ref s)) = self.opt_val(&nm[..]) {
+                  return Some(s.clone())
             }
         }
         None

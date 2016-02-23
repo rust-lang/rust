@@ -226,9 +226,8 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> String {
-    match ccx.type_hashcodes().borrow().get(&t) {
-        Some(h) => return h.to_string(),
-        None => {}
+    if let Some(h) = ccx.type_hashcodes().borrow().get(&t) {
+        return h.to_string()
     }
 
     let mut symbol_hasher = ccx.symbol_hasher().borrow_mut();
@@ -315,9 +314,8 @@ pub fn mangle<PI: Iterator<Item=InternedString>>(path: PI, hash: Option<&str>) -
         push(&mut n, &data);
     }
 
-    match hash {
-        Some(s) => push(&mut n, s),
-        None => {}
+    if let Some(s) = hash {
+        push(&mut n, s)
     }
 
     n.push('E'); // End name-sequence.

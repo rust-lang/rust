@@ -947,9 +947,8 @@ pub fn C_u8(ccx: &CrateContext, i: u8) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> ValueRef {
     unsafe {
-        match cx.const_cstr_cache().borrow().get(&s) {
-            Some(&llval) => return llval,
-            None => ()
+        if let Some(&llval) = cx.const_cstr_cache().borrow().get(&s) {
+            return llval;
         }
 
         let sc = llvm::LLVMConstStringInContext(cx.llcx(),
