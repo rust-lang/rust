@@ -23,10 +23,10 @@ use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, exported_name, push_ctxt};
 use trans::callee::Callee;
 use trans::collector::{self, TransItem};
-use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
+use trans::common::{type_is_sized, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
 use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
-use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null, ExprId, MethodCallKey};
+use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null};
 use trans::datum::{Datum, Lvalue};
 use trans::declare;
 use trans::monomorphize;
@@ -195,13 +195,18 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                           node: ExprOrMethodCall,
                            def_id: DefId,
+                           substs: Substs<'tcx>,
                            arg_vals: &[ValueRef],
                            param_substs: &'tcx Substs<'tcx>,
                            trueconst: TrueConst) -> Result<ValueRef, ConstEvalFailure> {
     let fn_like = const_eval::lookup_const_fn_by_id(ccx.tcx(), def_id);
     let fn_like = fn_like.expect("lookup_const_fn_by_id failed in const_fn_call");
+
+    let body = match fn_like.body().expr {
+        Some(ref expr) => expr,
+        None => return Ok(C_nil(ccx))
+    };
 
     let args = &fn_like.decl().inputs;
     assert_eq!(args.len(), arg_vals.len());
@@ -209,13 +214,12 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let arg_ids = args.iter().map(|arg| arg.pat.id);
     let fn_args = arg_ids.zip(arg_vals.iter().cloned()).collect();
 
-    let substs = node_id_substs(ccx, node, param_substs);
-    match fn_like.body().expr {
-        Some(ref expr) => {
-            const_expr(ccx, &expr, substs, Some(&fn_args), trueconst).map(|(res, _)| res)
-        },
-        None => Ok(C_nil(ccx)),
-    }
+    let substs = monomorphize::apply_param_substs(ccx.tcx(),
+                                                  param_substs,
+                                                  &substs.erase_regions());
+    let substs = ccx.tcx().mk_substs(substs);
+
+    const_expr(ccx, body, substs, Some(&fn_args), trueconst).map(|(res, _)| res)
 }
 
 pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -947,8 +951,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 Def::Fn(did) | Def::Method(did) => {
                     try!(const_fn_call(
                         cx,
-                        ExprId(callee.id),
                         did,
+                        cx.tcx().node_id_item_substs(callee.id).substs,
                         &arg_vals,
                         param_substs,
                         trueconst,
@@ -976,9 +980,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprMethodCall(_, _, ref args) => {
             let arg_vals = try!(map_list(args));
             let method_call = ty::MethodCall::expr(e.id);
-            let method_did = cx.tcx().tables.borrow().method_map[&method_call].def_id;
-            try!(const_fn_call(cx, MethodCallKey(method_call),
-                               method_did, &arg_vals, param_substs, trueconst))
+            let method = cx.tcx().tables.borrow().method_map[&method_call];
+            try!(const_fn_call(cx, method.def_id, method.substs.clone(),
+                               &arg_vals, param_substs, trueconst))
         },
         hir::ExprType(ref e, _) => try!(const_expr(cx, &e, param_substs, fn_args, trueconst)).0,
         hir::ExprBlock(ref block) => {
