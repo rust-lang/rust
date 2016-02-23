@@ -1295,8 +1295,8 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                              trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                              -> ValueRef {
     let ccx = fcx.ccx;
-    if let Some(llfn) = *ccx.rust_try_fn().borrow() {
-        return llfn
+    if let Some(llfn) = ccx.rust_try_fn().get() {
+        return llfn;
     }
 
     // Define the type up front for the signature of the rust_try function.
@@ -1323,7 +1323,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     };
     let rust_try = gen_fn(fcx, "__rust_try", tcx.mk_fn_ptr(try_fn_ty), output,
                           trans);
-    *ccx.rust_try_fn().borrow_mut() = Some(rust_try);
+    ccx.rust_try_fn().set(Some(rust_try));
     return rust_try
 }
 
