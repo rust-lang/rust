@@ -997,8 +997,9 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         if let Some(ref s) = item.name {
             let (parent, is_method) = match item.inner {
-                clean::AssociatedConstItem(..) if self.parent_is_trait_impl => {
-                    // skip associated consts in trait impls
+                clean::AssociatedConstItem(..) |
+                clean::TypedefItem(_, true) if self.parent_is_trait_impl => {
+                    // skip associated items in trait impls
                     ((None, None), false)
                 }
                 clean::AssociatedTypeItem(..) |
@@ -1031,10 +1032,6 @@ impl DocFolder for Cache {
                         };
                         ((Some(*last), path), true)
                     }
-                }
-                clean::TypedefItem(_, true) => {
-                    // skip associated types in impls
-                    ((None, None), false)
                 }
                 _ => ((None, Some(&*self.stack)), false)
             };
