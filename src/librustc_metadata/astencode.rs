@@ -125,61 +125,51 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &TyCtxt<'tcx>,
                                  parent_path: Vec<ast_map::PathElem>,
                                  parent_def_path: ast_map::DefPath,
-                                 par_doc: rbml::Doc,
+                                 ast_doc: rbml::Doc,
                                  orig_did: DefId)
-                                 -> Result<&'tcx InlinedItem, (Vec<ast_map::PathElem>,
-                                                               ast_map::DefPath)> {
-    match par_doc.opt_child(c::tag_ast) {
-      None => Err((parent_path, parent_def_path)),
-      Some(ast_doc) => {
-        let mut path_as_str = None;
-        debug!("> Decoding inlined fn: {:?}::?",
-        {
-            // Do an Option dance to use the path after it is moved below.
-            let s = ast_map::path_to_string(parent_path.iter().cloned());
-            path_as_str = Some(s);
-            path_as_str.as_ref().map(|x| &x[..])
-        });
-        let mut ast_dsr = reader::Decoder::new(ast_doc);
-        let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
-        let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
-        let dcx = &DecodeContext {
-            cdata: cdata,
-            tcx: tcx,
-            from_id_range: from_id_range,
-            to_id_range: to_id_range,
-            last_filemap_index: Cell::new(0)
-        };
-        let raw_ii = decode_ast(ast_doc);
-        let ii = ast_map::map_decoded_item(&dcx.tcx.map,
-                                           parent_path,
-                                           parent_def_path,
-                                           raw_ii,
-                                           dcx);
-        let name = match *ii {
-            InlinedItem::Item(ref i) => i.name,
-            InlinedItem::Foreign(ref i) => i.name,
-            InlinedItem::TraitItem(_, ref ti) => ti.name,
-            InlinedItem::ImplItem(_, ref ii) => ii.name
-        };
-        debug!("Fn named: {}", name);
-        debug!("< Decoded inlined fn: {}::{}",
-               path_as_str.unwrap(),
-               name);
-        region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
-        decode_side_tables(dcx, ast_doc);
-        copy_item_types(dcx, ii, orig_did);
-        match *ii {
-          InlinedItem::Item(ref i) => {
-            debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-                   ::rustc_front::print::pprust::item_to_string(&i));
-          }
-          _ => { }
-        }
-
-        Ok(ii)
-      }
+                                 -> &'tcx InlinedItem {
+    let mut path_as_str = None;
+    debug!("> Decoding inlined fn: {:?}::?",
+    {
+        // Do an Option dance to use the path after it is moved below.
+        let s = ast_map::path_to_string(parent_path.iter().cloned());
+        path_as_str = Some(s);
+        path_as_str.as_ref().map(|x| &x[..])
+    });
+    let mut ast_dsr = reader::Decoder::new(ast_doc);
+    let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
+    let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
+    let dcx = &DecodeContext {
+        cdata: cdata,
+        tcx: tcx,
+        from_id_range: from_id_range,
+        to_id_range: to_id_range,
+        last_filemap_index: Cell::new(0)
+    };
+    let ii = ast_map::map_decoded_item(&dcx.tcx.map,
+                                       parent_path,
+                                       parent_def_path,
+                                       decode_ast(ast_doc),
+                                       dcx);
+    let name = match *ii {
+        InlinedItem::Item(ref i) => i.name,
+        InlinedItem::Foreign(ref i) => i.name,
+        InlinedItem::TraitItem(_, ref ti) => ti.name,
+        InlinedItem::ImplItem(_, ref ii) => ii.name
+    };
+    debug!("Fn named: {}", name);
+    debug!("< Decoded inlined fn: {}::{}",
+            path_as_str.unwrap(),
+            name);
+    region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
+    decode_side_tables(dcx, ast_doc);
+    copy_item_types(dcx, ii, orig_did);
+    if let InlinedItem::Item(ref i) = *ii {
+        debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
+               ::rustc_front::print::pprust::item_to_string(&i));
     }
+
+    ii
 }
 
 // ______________________________________________________________________

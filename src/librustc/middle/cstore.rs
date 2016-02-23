@@ -122,7 +122,7 @@ pub struct ChildItem {
 
 pub enum FoundAst<'ast> {
     Found(&'ast InlinedItem),
-    FoundParent(DefId, &'ast InlinedItem),
+    FoundParent(DefId, &'ast hir::Item),
     NotFound,
 }
 
