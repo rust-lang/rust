@@ -1,7 +1,7 @@
 - Feature Name: specialization
 - Start Date: 2015-06-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1210](https://github.com/rust-lang/rfcs/pull/1210)
+- Rust Issue: [rust-lang/rust#31844](https://github.com/rust-lang/rust/issues/31844)
 
 # Summary
 
