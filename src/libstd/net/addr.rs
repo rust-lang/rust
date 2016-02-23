@@ -467,9 +467,8 @@ impl ToSocketAddrs for str {
     type Iter = vec::IntoIter<SocketAddr>;
     fn to_socket_addrs(&self) -> io::Result<vec::IntoIter<SocketAddr>> {
         // try to parse as a regular SocketAddr first
-        match self.parse().ok() {
-            Some(addr) => return Ok(vec![addr].into_iter()),
-            None => {}
+        if let Some(addr) = self.parse().ok() {
+            return Ok(vec![addr].into_iter());
         }
 
         macro_rules! try_opt {

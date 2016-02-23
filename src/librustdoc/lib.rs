@@ -385,9 +385,8 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
         *s.borrow_mut() = analysis.take();
     });
 
-    match matches.opt_str("crate-name") {
-        Some(name) => krate.name = name,
-        None => {}
+    if let Some(name) = matches.opt_str("crate-name") {
+        krate.name = name
     }
 
     // Process all of the crate attributes, extracting plugin metadata along
