@@ -35,6 +35,7 @@ use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::adjustment;
+use middle::traits::ProjectionMode;
 use rustc::front::map as hir_map;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};
@@ -868,7 +869,10 @@ impl LateLintPass for UnconditionalRecursion {
                     let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
 
                     let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
-                    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+                    let infcx = infer::new_infer_ctxt(tcx,
+                                                      &tcx.tables,
+                                                      Some(param_env),
+                                                      ProjectionMode::AnyFinal);
                     let mut selcx = traits::SelectionContext::new(&infcx);
                     match selcx.select(&obligation) {
                         // The method comes from a `T: Trait` bound.

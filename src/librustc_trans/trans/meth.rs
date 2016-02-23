@@ -17,7 +17,7 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::subst::{Subst, Substs};
 use middle::subst;
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use trans::base::*;
 use trans::build::*;
 use trans::callee::{Callee, Virtual, ArgVals,
@@ -488,7 +488,7 @@ pub fn get_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {

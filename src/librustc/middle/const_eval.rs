@@ -24,6 +24,7 @@ use middle::def_id::DefId;
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::util::IntTypeExt;
+use middle::traits::ProjectionMode;
 use middle::astconv_util::ast_ty_to_prim_ty;
 use util::nodemap::NodeMap;
 
@@ -1049,7 +1050,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
            trait_ref);
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
 
     let mut selcx = traits::SelectionContext::new(&infcx);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
@@ -1067,6 +1068,11 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
         }
     };
 
+    // NOTE: this code does not currently account for specialization, but when
+    // it does so, it should hook into the ProjectionMode to determine when the
+    // constant should resolve; this will also require plumbing through to this
+    // function whether we are in "trans mode" to pick the right ProjectionMode
+    // when constructing the inference context above.
     match selection {
         traits::VtableImpl(ref impl_data) => {
             match tcx.associated_consts(impl_data.impl_def_id)

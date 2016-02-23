@@ -16,7 +16,7 @@ use super::{Overlap, specializes};
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::infer;
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use middle::ty::{self, ImplOrTraitItem, TraitDef, TypeFoldable};
 use syntax::ast::Name;
 use util::nodemap::DefIdMap;
@@ -93,7 +93,7 @@ impl Graph {
             for slot in possible_siblings.iter_mut() {
                 let possible_sibling = *slot;
 
-                let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+                let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::Topmost);
                 let overlap = traits::overlapping_impls(&infcx, possible_sibling, impl_def_id);
 
                 if let Some(trait_ref) = overlap {

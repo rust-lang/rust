@@ -17,7 +17,7 @@ use middle::def_id::DefId;
 use middle::subst;
 use middle::infer;
 use middle::pat_util;
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use middle::ty::{Disr, ParameterEnvironment};
 use middle::ty::TypeVariants::*;
@@ -130,7 +130,10 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         let tcx = self.tcx;
 
         // FIXME: (@jroesch) float this code up
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(self.clone()));
+        let infcx = infer::new_infer_ctxt(tcx,
+                                          &tcx.tables,
+                                          Some(self.clone()),
+                                          ProjectionMode::AnyFinal);
 
         let adt = match self_type.sty {
             ty::TyStruct(struct_def, substs) => {
@@ -542,7 +545,10 @@ impl<'tcx> ty::TyS<'tcx> {
                        -> bool
     {
         let tcx = param_env.tcx;
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()));
+        let infcx = infer::new_infer_ctxt(tcx,
+                                          &tcx.tables,
+                                          Some(param_env.clone()),
+                                          ProjectionMode::AnyFinal);
 
         let is_impld = traits::type_known_to_meet_builtin_bound(&infcx,
                                                                 self, bound, span);

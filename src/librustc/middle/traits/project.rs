@@ -35,6 +35,94 @@ use util::common::FN_OUTPUT_NAME;
 
 use std::rc::Rc;
 
+/// Depending on the stage of compilation, we want projection to be
+/// more or less conservative.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ProjectionMode {
+    /// At coherence-checking time, we're still constructing the
+    /// specialization graph, and thus we only project project
+    /// non-`default` associated types that are defined directly in
+    /// the applicable impl. (This behavior should be improved over
+    /// time, to allow for successful projections modulo cycles
+    /// between different impls).
+    // TODO: Add tracking issue to do better here.
+    ///
+    /// Here's an example that will fail due to the restriction:
+    ///
+    /// ```
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     type Output = bool;
+    /// }
+    ///
+    /// impl Assoc for u8 {} // <- inherits the non-default type from above
+    ///
+    /// trait Foo {}
+    /// impl Foo for u32 {}
+    /// impl Foo for <u8 as Assoc>::Output {}  // <- this projection will fail
+    /// ```
+    ///
+    /// The projection would succeed if `Output` had been defined
+    /// directly in the impl for `u8`.
+    // TODO: Add test
+    Topmost,
+
+    /// At type-checking time, we refuse to project any associated
+    /// type that is marked `default`. Non-`default` ("final") types
+    /// are always projected. This is necessary in general for
+    /// soundness of specialization. However, we *could* allow
+    /// projections in fully-monomorphic cases. We choose not to,
+    /// because we prefer for `default type` to force the type
+    /// definition to be treated abstractly by any consumers of the
+    /// impl. Concretely, that means that the following example will
+    /// fail to compile:
+    ///
+    /// ```
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     default type Output = bool;
+    /// }
+    ///
+    /// fn main() {
+    ///     let <() as Assoc>::Output = true;
+    /// }
+    // TODO: Add test
+    AnyFinal,
+
+    /// At trans time, all projections will succeed.
+    Any,
+}
+
+impl ProjectionMode {
+    pub fn topmost(&self) -> bool {
+        match *self {
+            ProjectionMode::Topmost => true,
+            _ => false,
+        }
+    }
+
+    pub fn any_final(&self) -> bool {
+        match *self {
+            ProjectionMode::AnyFinal => true,
+            _ => false,
+        }
+    }
+
+    pub fn any(&self) -> bool {
+        match *self {
+            ProjectionMode::Any => true,
+            _ => false,
+        }
+    }
+}
+
+
 pub type PolyProjectionObligation<'tcx> =
     Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
 

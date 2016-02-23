@@ -15,8 +15,8 @@ use middle::free_region::FreeRegionMap;
 use middle::infer;
 use middle::region;
 use middle::subst::{self, Subst};
-use middle::traits;
 use middle::ty::{self, Ty, TyCtxt};
+use middle::traits::{self, ProjectionMode};
 use util::nodemap::FnvHashSet;
 
 use syntax::ast;
@@ -82,7 +82,10 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(impl_param_env));
+    let infcx = infer::new_infer_ctxt(tcx,
+                                      &tcx.tables,
+                                      Some(impl_param_env),
+                                      ProjectionMode::AnyFinal);
     let mut fulfillment_cx = traits::FulfillmentContext::new();
 
     let named_type = tcx.lookup_item_type(self_type_did).ty;

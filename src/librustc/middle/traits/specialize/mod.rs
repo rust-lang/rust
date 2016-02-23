@@ -17,7 +17,7 @@
 // See traits/README.md for a bit more detail on how specialization
 // fits together with the rest of the trait machinery.
 
-use super::{build_selcx, SelectionContext, FulfillmentContext};
+use super::{SelectionContext, FulfillmentContext};
 use super::util::{fresh_type_vars_for_impl, impl_trait_ref_and_oblig};
 
 use middle::cstore::CrateStore;
@@ -25,7 +25,7 @@ use middle::def_id::DefId;
 use middle::infer::{self, InferCtxt, TypeOrigin};
 use middle::region;
 use middle::subst::{Subst, Substs};
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use middle::ty;
 use syntax::codemap::DUMMY_SP;
 
@@ -159,7 +159,7 @@ pub fn specializes(tcx: &ty::ctxt, impl1_def_id: DefId, impl2_def_id: DefId) -> 
         return false
     }
 
-    let mut infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
+    let mut infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Topmost);
 
     // Skiolemize impl1: we want to prove that "for all types matched by impl1,
     // those types are also matched by impl2".
@@ -199,7 +199,7 @@ fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                  -> Result<Substs<'tcx>, ()>
 {
     infcx.probe(|_| {
-        let selcx = &mut build_selcx(&infcx).project_topmost().build();
+        let selcx = &mut SelectionContext::new(&infcx);
         let target_substs = fresh_type_vars_for_impl(&infcx, DUMMY_SP, target_impl);
         let (target_trait_ref, obligations) = impl_trait_ref_and_oblig(selcx,
                                                                        target_impl,

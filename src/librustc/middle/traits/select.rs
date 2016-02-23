@@ -25,6 +25,7 @@ use super::report_overflow_error;
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
 use super::{ObjectCastObligation, Obligation};
+use super::ProjectionMode;
 use super::TraitNotObjectSafe;
 use super::Selection;
 use super::SelectionResult;
@@ -77,98 +78,6 @@ pub struct SelectionContext<'cx, 'tcx:'cx> {
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
     intercrate: bool,
-
-    /// Sadly, the behavior of projection varies a bit depending on the
-    /// stage of compilation. The specifics are given in the
-    /// documentation for `ProjectionMode`.
-    projection_mode: ProjectionMode,
-}
-
-/// Depending on the stage of compilation, we want projection to be
-/// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ProjectionMode {
-    /// At coherence-checking time, we're still constructing the
-    /// specialization graph, and thus we only project project
-    /// non-`default` associated types that are defined directly in
-    /// the applicable impl. (This behavior should be improved over
-    /// time, to allow for successful projections modulo cycles
-    /// between different impls).
-    // TODO: Add tracking issue to do better here.
-    ///
-    /// Here's an example that will fail due to the restriction:
-    ///
-    /// ```
-    /// trait Assoc {
-    ///     type Output;
-    /// }
-    ///
-    /// impl<T> Assoc for T {
-    ///     type Output = bool;
-    /// }
-    ///
-    /// impl Assoc for u8 {} // <- inherits the non-default type from above
-    ///
-    /// trait Foo {}
-    /// impl Foo for u32 {}
-    /// impl Foo for <u8 as Assoc>::Output {}  // <- this projection will fail
-    /// ```
-    ///
-    /// The projection would succeed if `Output` had been defined
-    /// directly in the impl for `u8`.
-    // TODO: Add test
-    Topmost,
-
-    /// At type-checking time, we refuse to project any associated
-    /// type that is marked `default`. Non-`default` ("final") types
-    /// are always projected. This is necessary in general for
-    /// soundness of specialization. However, we *could* allow
-    /// projections in fully-monomorphic cases. We choose not to,
-    /// because we prefer for `default type` to force the type
-    /// definition to be treated abstractly by any consumers of the
-    /// impl. Concretely, that means that the following example will
-    /// fail to compile:
-    ///
-    /// ```
-    /// trait Assoc {
-    ///     type Output;
-    /// }
-    ///
-    /// impl<T> Assoc for T {
-    ///     default type Output = bool;
-    /// }
-    ///
-    /// fn main() {
-    ///     let <() as Assoc>::Output = true;
-    /// }
-    // TODO: Add test
-    AnyFinal,
-
-    /// At trans time, all projections will succeed.
-    Any,
-}
-
-impl ProjectionMode {
-    pub fn topmost(&self) -> bool {
-        match *self {
-            ProjectionMode::Topmost => true,
-            _ => false,
-        }
-    }
-
-    pub fn any_final(&self) -> bool {
-        match *self {
-            ProjectionMode::AnyFinal => true,
-            _ => false,
-        }
-    }
-
-    pub fn any(&self) -> bool {
-        match *self {
-            ProjectionMode::Any => true,
-            _ => false,
-        }
-    }
 }
 
 // A stack that walks back up the stack frame.
@@ -348,45 +257,20 @@ pub struct EvaluationCache<'tcx> {
     hashmap: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, EvaluationResult>>
 }
 
-pub struct SelectionContextBuilder<'cx, 'tcx: 'cx>(SelectionContext<'cx, 'tcx>);
-
-impl<'cx, 'tcx> SelectionContextBuilder<'cx, 'tcx> {
-    pub fn intercrate(mut self) -> Self {
-        self.0.intercrate = true;
-        self
-    }
-
-    pub fn project_any(mut self) -> Self {
-        self.0.projection_mode = ProjectionMode::Any;
-        self
-    }
-
-    pub fn project_any_final(mut self) -> Self {
-        self.0.projection_mode = ProjectionMode::AnyFinal;
-        self
-    }
-
-    pub fn project_topmost(mut self) -> Self {
-        self.0.projection_mode = ProjectionMode::Topmost;
-        self
-    }
-
-    pub fn build(self) -> SelectionContext<'cx, 'tcx> {
-        self.0
-    }
-}
-
-pub fn build_selcx<'cx, 'tcx>(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContextBuilder<'cx, 'tcx> {
-    SelectionContextBuilder(SelectionContext::new(infcx))
-}
-
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             freshener: infcx.freshener(),
             intercrate: false,
-            projection_mode: ProjectionMode::AnyFinal,
+        }
+    }
+
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
+        SelectionContext {
+            infcx: infcx,
+            freshener: infcx.freshener(),
+            intercrate: true,
         }
     }
 
@@ -407,7 +291,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn projection_mode(&self) -> ProjectionMode {
-        self.projection_mode
+        self.infcx.projection_mode()
     }
 
     ///////////////////////////////////////////////////////////////////////////
