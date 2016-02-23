@@ -25,7 +25,7 @@ use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
 use trans::base::*;
 use trans::build::*;
-use trans::callee;
+use trans::callee::{Callee, ArgVals};
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::collector::{self, TransItem};
@@ -44,19 +44,18 @@ use libc::c_uint;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 
-pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                            v: ValueRef,
                                            size: ValueRef,
                                            align: ValueRef,
                                            debug_loc: DebugLoc)
                                            -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_exchange_free");
-    let ccx = cx.ccx();
-    callee::trans_lang_call(cx,
-        langcall(cx, None, "", ExchangeFreeFnLangItem),
-        &[PointerCast(cx, v, Type::i8p(ccx)), size, align],
-        Some(expr::Ignore),
-        debug_loc).bcx
+
+    let def_id = langcall(bcx, None, "", ExchangeFreeFnLangItem);
+    let args = [PointerCast(bcx, v, Type::i8p(bcx.ccx())), size, align];
+    Callee::def(bcx.ccx(), def_id, bcx.tcx().mk_substs(Substs::empty()))
+        .call(bcx, debug_loc, ArgVals(&args), None).bcx
 }
 
 pub fn trans_exchange_free<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
@@ -366,9 +365,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => tcx.sess.bug(&format!("dtor for {:?} is not an impl???", t))
     };
     let dtor_did = def.destructor().unwrap();
-    bcx = callee::Callee::ptr(callee::trans_fn_ref_with_substs(
-            bcx.ccx(), dtor_did, None, vtbl.substs))
-        .call(bcx, DebugLoc::None, callee::ArgVals(args), Some(expr::Ignore)).bcx;
+    bcx = Callee::def(bcx.ccx(), dtor_did, vtbl.substs)
+        .call(bcx, DebugLoc::None, ArgVals(args), None).bcx;
 
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }

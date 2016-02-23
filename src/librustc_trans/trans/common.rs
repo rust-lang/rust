@@ -512,11 +512,12 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         // `rust_eh_personality` function, but rather we wired it up to the
         // CRT's custom personality function, which forces LLVM to consider
         // landing pads as "landing pads for SEH".
-        let target = &self.ccx.sess().target.target;
-        match self.ccx.tcx().lang_items.eh_personality() {
-            Some(def_id) if !base::wants_msvc_seh(self.ccx.sess()) => {
-                callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
-                                     self.param_substs).val
+        let ccx = self.ccx;
+        let tcx = ccx.tcx();
+        let target = &ccx.sess().target.target;
+        match tcx.lang_items.eh_personality() {
+            Some(def_id) if !base::wants_msvc_seh(ccx.sess()) => {
+                Callee::def(ccx, def_id, tcx.mk_substs(Substs::empty())).reify(ccx).val
             }
             _ => {
                 let mut personality = self.ccx.eh_personality().borrow_mut();

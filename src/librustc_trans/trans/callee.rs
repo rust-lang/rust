@@ -97,26 +97,19 @@ impl<'tcx> Callee<'tcx> {
     pub fn method<'blk>(bcx: Block<'blk, 'tcx>,
                         method: ty::MethodCallee<'tcx>) -> Callee<'tcx> {
         let substs = bcx.tcx().mk_substs(bcx.fcx.monomorphize(&method.substs));
-        let ty = bcx.fcx.monomorphize(&method.ty);
-        Callee::def(bcx.ccx(), method.def_id, substs, ty)
+        Callee::def(bcx.ccx(), method.def_id, substs)
     }
 
     /// Function or method definition.
     pub fn def<'a>(ccx: &CrateContext<'a, 'tcx>,
                    def_id: DefId,
-                   substs: &'tcx subst::Substs<'tcx>,
-                   ty: Ty<'tcx>)
+                   substs: &'tcx subst::Substs<'tcx>)
                    -> Callee<'tcx> {
         let tcx = ccx.tcx();
 
         if substs.self_ty().is_some() {
             // Only trait methods can have a Self parameter.
-            let method_item = tcx.impl_or_trait_item(def_id);
-            let trait_id = method_item.container().id();
-            let trait_ref = ty::Binder(substs.to_trait_ref(tcx, trait_id));
-            let vtbl = common::fulfill_obligation(ccx, DUMMY_SP, trait_ref);
-            return meth::callee_for_trait_impl(ccx, def_id, substs,
-                                               trait_id, ty, vtbl);
+            return Callee::trait_method(ccx, def_id, substs);
         }
 
         let maybe_node_id = inline::get_local_instance(ccx, def_id)
@@ -124,34 +117,95 @@ impl<'tcx> Callee<'tcx> {
         let maybe_ast_node = maybe_node_id.and_then(|node_id| {
             tcx.map.find(node_id)
         });
-        match maybe_ast_node {
+
+        let data = match maybe_ast_node {
             Some(hir_map::NodeStructCtor(_)) => {
-                return Callee {
-                    data: NamedTupleConstructor(Disr(0)),
-                    ty: ty
-                };
+                NamedTupleConstructor(Disr(0))
             }
             Some(hir_map::NodeVariant(_)) => {
                 let vinfo = common::inlined_variant_def(ccx, maybe_node_id.unwrap());
-                assert_eq!(vinfo.kind(), ty::VariantKind::Tuple);
-
-                return Callee {
-                    data: NamedTupleConstructor(Disr::from(vinfo.disr_val)),
-                    ty: ty
-                };
+                NamedTupleConstructor(Disr::from(vinfo.disr_val))
             }
-            Some(hir_map::NodeForeignItem(fi)) => {
+            Some(hir_map::NodeForeignItem(fi)) if {
                 let abi = tcx.map.get_foreign_abi(fi.id);
-                if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                    return Callee {
-                        data: Intrinsic(fi.id, substs),
-                        ty: ty
-                    };
+                abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic
+            } => Intrinsic,
+
+            _ => return Callee::ptr(get_fn(ccx, def_id, substs))
+        };
+
+        Callee {
+            data: data,
+            ty: def_ty(tcx, def_id, substs)
+        }
+    }
+
+    /// Trait method, which has to be resolved to an impl method.
+    pub fn trait_method<'a>(ccx: &CrateContext<'a, 'tcx>,
+                            def_id: DefId,
+                            substs: &'tcx subst::Substs<'tcx>)
+                            -> Callee<'tcx> {
+        let tcx = ccx.tcx();
+
+        let method_item = tcx.impl_or_trait_item(def_id);
+        let trait_id = method_item.container().id();
+        let trait_ref = ty::Binder(substs.to_trait_ref(tcx, trait_id));
+        match common::fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
+            traits::VtableImpl(vtable_impl) => {
+                let impl_did = vtable_impl.impl_def_id;
+                let mname = tcx.item_name(def_id);
+                // create a concatenated set of substitutions which includes
+                // those from the impl and those from the method:
+                let impl_substs = vtable_impl.substs.with_method_from(&substs);
+                let substs = tcx.mk_substs(impl_substs);
+                let mth = tcx.get_impl_method(impl_did, substs, mname);
+
+                // Translate the function, bypassing Callee::def.
+                // That is because default methods have the same ID as the
+                // trait method used to look up the impl method that ended
+                // up here, so calling Callee::def would infinitely recurse.
+                Callee::ptr(get_fn(ccx, mth.method.def_id, mth.substs))
+            }
+            traits::VtableClosure(vtable_closure) => {
+                // The substitutions should have no type parameters remaining
+                // after passing through fulfill_obligation
+                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                let llfn = closure::trans_closure_method(ccx,
+                                                         vtable_closure.closure_def_id,
+                                                         vtable_closure.substs,
+                                                         trait_closure_kind);
+
+                let method_ty = def_ty(tcx, def_id, substs);
+                let fn_ptr_ty = match method_ty.sty {
+                    ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                    _ => unreachable!("expected fn item type, found {}",
+                                      method_ty)
+                };
+                Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
+            }
+            traits::VtableFnPointer(fn_ty) => {
+                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
+
+                let method_ty = def_ty(tcx, def_id, substs);
+                let fn_ptr_ty = match method_ty.sty {
+                    ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                    _ => unreachable!("expected fn item type, found {}",
+                                      method_ty)
+                };
+                Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
+            }
+            traits::VtableObject(ref data) => {
+                Callee {
+                    data: Virtual(traits::get_vtable_index_of_object_method(
+                        tcx, data, def_id)),
+                    ty: def_ty(tcx, def_id, substs)
                 }
             }
-            _ => {}
+            vtable => {
+                unreachable!("resolved vtable bad vtable {:?} in trans", vtable);
+            }
         }
-        Callee::ptr(trans_fn_ref_with_substs(ccx, def_id, Some(ty), substs))
     }
 
     /// This behemoth of a function translates function calls. Unfortunately, in
@@ -187,7 +241,7 @@ impl<'tcx> Callee<'tcx> {
             Virtual(idx) => meth::trans_object_shim(ccx, self.ty, idx),
             NamedTupleConstructor(_) => match self.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
-                    return trans_fn_ref_with_substs(ccx, def_id, Some(self.ty), substs);
+                    return get_fn(ccx, def_id, substs);
                 }
                 _ => unreachable!("expected fn item type, found {}", self.ty)
             },
@@ -196,31 +250,13 @@ impl<'tcx> Callee<'tcx> {
     }
 }
 
-/// Translates a reference (with id `ref_id`) to the fn/method with id `def_id` into a function
-/// pointer. This may require monomorphization or inlining.
-pub fn trans_fn_ref<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              def_id: DefId,
-                              node: ExprOrMethodCall,
-                              param_substs: &'tcx subst::Substs<'tcx>)
-                              -> Datum<'tcx, Rvalue> {
-    let _icx = push_ctxt("trans_fn_ref");
-
-    let substs = common::node_id_substs(ccx, node, param_substs);
-    debug!("trans_fn_ref(def_id={:?}, node={:?}, substs={:?})",
-           def_id,
-           node,
-           substs);
-    let ref_ty = match node {
-        ExprId(0) => return trans_fn_ref_with_substs(ccx, def_id, None, substs),
-        ExprId(id) => ccx.tcx().node_id_to_type(id),
-        MethodCallKey(method_call) => {
-            ccx.tcx().tables.borrow().method_map[&method_call].ty
-        }
-    };
-    let ref_ty = monomorphize::apply_param_substs(ccx.tcx(),
-                                                  param_substs,
-                                                  &ref_ty);
-    trans_fn_ref_with_substs(ccx, def_id, Some(ref_ty), substs)
+/// Given a DefId and some Substs, produces the monomorphic item type.
+fn def_ty<'tcx>(tcx: &TyCtxt<'tcx>,
+                def_id: DefId,
+                substs: &'tcx subst::Substs<'tcx>)
+                -> Ty<'tcx> {
+    let ty = tcx.lookup_item_type(def_id).ty;
+    monomorphize::apply_param_substs(tcx, substs, &ty)
 }
 
 /// Translates an adapter that implements the `Fn` trait for a fn
@@ -323,7 +359,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfnpointer = match bare_fn_ty.sty {
         ty::TyFnDef(def_id, substs, _) => {
             // Function definitions have to be turned into a pointer.
-            Callee::def(ccx, def_id, substs, bare_fn_ty).reify(ccx).val
+            Callee::def(ccx, def_id, substs).reify(ccx).val
         }
 
         // the first argument (`self`) will be ptr to the fn pointer
@@ -360,25 +396,14 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 ///
 /// - `ccx`: the crate context
 /// - `def_id`: def id of the fn or method item being referenced
-/// - `node`: node id of the reference to the fn/method, if applicable.
-///   This parameter may be zero; but, if so, the resulting value may not
-///   have the right type, so it must be cast before being used.
-/// - `ref_ty`: monotype of the reference to the fn/method, if applicable.
-///   This parameter may be None; but, if so, the resulting value may not
-///   have the right type, so it must be cast before being used.
 /// - `substs`: values for each of the fn/method's parameters
-pub fn trans_fn_ref_with_substs<'a, 'tcx>(
-    ccx: &CrateContext<'a, 'tcx>,
-    def_id: DefId,
-    ref_ty: Option<Ty<'tcx>>,
-    substs: &'tcx subst::Substs<'tcx>)
-    -> Datum<'tcx, Rvalue>
-{
-    let _icx = push_ctxt("trans_fn_ref_with_substs");
+fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                    def_id: DefId,
+                    substs: &'tcx subst::Substs<'tcx>)
+                    -> Datum<'tcx, Rvalue> {
     let tcx = ccx.tcx();
 
-    debug!("trans_fn_ref_with_substs(def_id={:?}, ref_ty={:?}, substs={:?})",
-           def_id, ref_ty, substs);
+    debug!("get_fn(def_id={:?}, substs={:?})", def_id, substs);
 
     assert!(!substs.types.needs_infer());
     assert!(!substs.types.has_escaping_regions());
@@ -408,7 +433,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     let must_monomorphise =
         !substs.types.is_empty() || is_named_tuple_constructor(tcx, def_id);
 
-    debug!("trans_fn_ref_with_substs({:?}) must_monomorphise: {}",
+    debug!("get_fn({:?}) must_monomorphise: {}",
            def_id, must_monomorphise);
 
     // Create a monomorphic version of generic functions
@@ -493,16 +518,6 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
 // ______________________________________________________________________
 // Translating calls
-
-pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   did: DefId,
-                                   args: &[ValueRef],
-                                   dest: Option<expr::Dest>,
-                                   debug_loc: DebugLoc)
-                                   -> Result<'blk, 'tcx> {
-    let datum = trans_fn_ref(bcx.ccx(), did, ExprId(0), bcx.fcx.param_substs);
-    Callee::ptr(datum).call(bcx, debug_loc, ArgVals(args), dest)
-}
 
 fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                     debug_loc: DebugLoc,

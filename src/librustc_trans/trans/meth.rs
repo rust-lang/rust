@@ -310,17 +310,9 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 let nullptr = C_null(Type::nil(ccx).ptr_to());
                 get_vtable_methods(ccx, id, substs)
                     .into_iter()
-                    .map(|opt_mth| {
-                        match opt_mth {
-                            Some(mth) => {
-                                trans_fn_ref_with_substs(ccx,
-                                                         mth.method.def_id,
-                                                         None,
-                                                         &mth.substs).val
-                            }
-                            None => nullptr
-                        }
-                    })
+                    .map(|opt_mth| opt_mth.map_or(nullptr, |mth| {
+                        Callee::def(ccx, mth.method.def_id, &mth.substs).reify(ccx).val
+                    }))
                     .collect::<Vec<_>>()
                     .into_iter()
             }

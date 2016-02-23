@@ -213,7 +213,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     if out_type_size != 0 {
                         // FIXME #19925 Remove this hack after a release cycle.
                         let _ = unpack_datum!(bcx, expr::trans(bcx, &arg_exprs[0]));
-                        let llfn = Callee::def(ccx, def_id, substs, in_type).reify(ccx).val;
+                        let llfn = Callee::def(ccx, def_id, substs).reify(ccx).val;
                         let llfnty = val_ty(llfn);
                         let llresult = match dest {
                             expr::SaveIn(d) => d,
@@ -1208,6 +1208,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dloc: DebugLoc) -> Block<'blk, 'tcx> {
     let llfn = get_rust_try_fn(bcx.fcx, &mut |bcx| {
         let ccx = bcx.ccx();
+        let tcx = ccx.tcx();
         let dloc = DebugLoc::None;
 
         // Translates the shims described above:
@@ -1228,10 +1229,11 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // managed by the standard library.
 
         attributes::emit_uwtable(bcx.fcx.llfn, true);
-        let catch_pers = match bcx.tcx().lang_items.eh_personality_catch() {
-            Some(did) => callee::trans_fn_ref(ccx, did, ExprId(0),
-                                              bcx.fcx.param_substs).val,
-            None => bcx.tcx().sess.bug("eh_personality_catch not defined"),
+        let catch_pers = match tcx.lang_items.eh_personality_catch() {
+            Some(did) => {
+                Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
+            }
+            None => ccx.sess().bug("eh_personality_catch not defined"),
         };
 
         let then = bcx.fcx.new_temp_block("then");
@@ -1341,9 +1343,10 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let tcx = ccx.tcx();
     let dloc = DebugLoc::None;
 
-    let rust_try_filter = match ccx.tcx().lang_items.msvc_try_filter() {
-        Some(did) => callee::trans_fn_ref(ccx, did, ExprId(0),
-                                          fcx.param_substs).val,
+    let rust_try_filter = match tcx.lang_items.msvc_try_filter() {
+        Some(did) => {
+            Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
+        }
         None => ccx.sess().bug("msvc_try_filter not defined"),
     };
 

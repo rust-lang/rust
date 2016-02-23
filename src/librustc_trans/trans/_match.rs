@@ -200,12 +200,13 @@ use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use middle::pat_util::*;
+use middle::subst::Substs;
 use trans::adt;
 use trans::base::*;
 use trans::build::{AddCase, And, Br, CondBr, GEPi, InBoundsGEP, Load, PointerCast};
 use trans::build::{Not, Store, Sub, add_comment};
 use trans::build;
-use trans::callee;
+use trans::callee::{Callee, ArgVals};
 use trans::cleanup::{self, CleanupMethods, DropHintMethods};
 use trans::common::*;
 use trans::consts;
@@ -881,7 +882,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               rhs_t: Ty<'tcx>,
                               debug_loc: DebugLoc)
                               -> Result<'blk, 'tcx> {
-    fn compare_str<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+    fn compare_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                lhs_data: ValueRef,
                                lhs_len: ValueRef,
                                rhs_data: ValueRef,
@@ -889,11 +890,13 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                rhs_t: Ty<'tcx>,
                                debug_loc: DebugLoc)
                                -> Result<'blk, 'tcx> {
-        let did = langcall(cx,
+        let did = langcall(bcx,
                            None,
                            &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);
-        callee::trans_lang_call(cx, did, &[lhs_data, lhs_len, rhs_data, rhs_len], None, debug_loc)
+        let args = [lhs_data, lhs_len, rhs_data, rhs_len];
+        Callee::def(bcx.ccx(), did, bcx.tcx().mk_substs(Substs::empty()))
+            .call(bcx, debug_loc, ArgVals(&args), None)
     }
 
     let _icx = push_ctxt("compare_values");
