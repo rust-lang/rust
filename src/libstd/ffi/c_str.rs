@@ -439,7 +439,7 @@ impl CStr {
     /// Creates a C string wrapper from a byte slice.
     ///
     /// This function will cast the provided `bytes` to a `CStr` wrapper after
-    /// ensuring that it is null terminated but does not contain any interior
+    /// ensuring that it is null terminated and does not contain any interior
     /// nul bytes.
     ///
     /// # Examples
@@ -453,8 +453,8 @@ impl CStr {
     /// assert!(cstr.is_some());
     /// # }
     /// ```
-    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "0")]
-    pub fn from_bytes_with_nul<'a>(bytes: &'a [u8]) -> Option<&'a CStr> {
+    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "31190")]
+    pub fn from_bytes_with_nul(bytes: &[u8]) -> Option<&CStr> {
         if bytes.is_empty() || memchr::memchr(0, &bytes) != Some(bytes.len() - 1) {
             None
         } else {
@@ -482,8 +482,8 @@ impl CStr {
     /// }
     /// # }
     /// ```
-    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "0")]
-    pub unsafe fn from_bytes_with_nul_unchecked<'a>(bytes: &'a [u8]) -> &'a CStr {
+    #[unstable(feature = "cstr_from_bytes", reason = "recently added", issue = "31190")]
+    pub unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
         mem::transmute(bytes)
     }
 
