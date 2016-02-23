@@ -61,9 +61,9 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     // build fmt.debug_struct(<name>).field(<fieldname>, &<fieldval>)....build()
     // or fmt.debug_tuple(<name>).field(&<fieldval>)....build()
     // based on the "shape".
-    let ident = match *substr.fields {
-        Struct(..) => substr.type_ident,
-        EnumMatching(_, v, _) => v.node.name,
+    let (ident, is_struct) = match *substr.fields {
+        Struct(vdata, _) => (substr.type_ident, vdata.is_struct()),
+        EnumMatching(_, v, _) => (v.node.name, v.node.data.is_struct()),
         EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
             cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
         }
@@ -76,11 +76,6 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let builder_expr = cx.expr_ident(span, builder.clone());
 
     let fmt = substr.nonself_args[0].clone();
-    let is_struct = match *substr.fields {
-        Struct(vdata, _) => vdata,
-        EnumMatching(_, v, _) => &v.node.data,
-        _ => unreachable!()
-    }.is_struct();
 
     let stmts = match *substr.fields {
         Struct(_, ref fields) | EnumMatching(_, _, ref fields) => {
