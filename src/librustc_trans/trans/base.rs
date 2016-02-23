@@ -2845,46 +2845,6 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 }
             }
         }
-
-        hir_map::NodeVariant(ref v) => {
-            let llfn;
-            let fields = if v.node.data.is_struct() {
-                ccx.sess().bug("struct variant kind unexpected in get_item_val")
-            } else {
-                v.node.data.fields()
-            };
-            assert!(!fields.is_empty());
-            let ty = ccx.tcx().node_id_to_type(id);
-            let parent = ccx.tcx().map.get_parent(id);
-            let enm = ccx.tcx().map.expect_item(parent);
-            let sym = exported_name(ccx, id, ty, &enm.attrs);
-
-            llfn = match enm.node {
-                hir::ItemEnum(_, _) => {
-                    register_fn(ccx, (*v).span, sym, id, ty)
-                }
-                _ => ccx.sess().bug("NodeVariant, shouldn't happen"),
-            };
-            attributes::inline(llfn, attributes::InlineAttr::Hint);
-            llfn
-        }
-
-        hir_map::NodeStructCtor(struct_def) => {
-            // Only register the constructor if this is a tuple-like struct.
-            let ctor_id = if struct_def.is_struct() {
-                ccx.sess().bug("attempt to register a constructor of a non-tuple-like struct")
-            } else {
-                struct_def.id()
-            };
-            let parent = ccx.tcx().map.get_parent(id);
-            let struct_item = ccx.tcx().map.expect_item(parent);
-            let ty = ccx.tcx().node_id_to_type(ctor_id);
-            let sym = exported_name(ccx, id, ty, &struct_item.attrs);
-            let llfn = register_fn(ccx, struct_item.span, sym, ctor_id, ty);
-            attributes::inline(llfn, attributes::InlineAttr::Hint);
-            llfn
-        }
-
         ref variant => {
             ccx.sess().bug(&format!("get_item_val(): unexpected variant: {:?}", variant))
         }
