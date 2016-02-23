@@ -385,7 +385,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         AdjustReifyFnPointer => {
             match datum.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
-                    datum = Callee::def(bcx.ccx(), def_id, substs, datum.ty)
+                    datum = Callee::def(bcx.ccx(), def_id, substs)
                         .reify(bcx.ccx()).to_expr_datum();
                 }
                 _ => {
@@ -1143,7 +1143,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let f = unpack_datum!(bcx, trans(bcx, f));
                 (match f.ty.sty {
                     ty::TyFnDef(def_id, substs, _) => {
-                        Callee::def(bcx.ccx(), def_id, substs, f.ty)
+                        Callee::def(bcx.ccx(), def_id, substs)
                     }
                     ty::TyFnPtr(_) => {
                         let f = unpack_datum!(bcx,

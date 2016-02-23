@@ -163,7 +163,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 let (callee, fty) = match callee.ty.sty {
                     ty::TyFnDef(def_id, substs, f) => {
-                        (Callee::def(bcx.ccx(), def_id, substs, callee.ty), f)
+                        (Callee::def(bcx.ccx(), def_id, substs), f)
                     }
                     ty::TyFnPtr(f) => {
                         (Callee {

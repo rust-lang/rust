@@ -11,10 +11,11 @@
 use llvm::ValueRef;
 use middle::def::Def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
+use middle::subst::Substs;
 use trans::base::*;
 use trans::basic_block::BasicBlock;
 use trans::build::*;
-use trans::callee;
+use trans::callee::{Callee, ArgVals};
 use trans::cleanup::CleanupMethods;
 use trans::cleanup;
 use trans::common::*;
@@ -405,13 +406,8 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let expr_file_line = consts::addr_of(ccx, expr_file_line_const, align, "panic_loc");
     let args = vec!(expr_file_line);
     let did = langcall(bcx, Some(call_info.span), "", PanicFnLangItem);
-    let bcx = callee::trans_lang_call(bcx,
-                                      did,
-                                      &args[..],
-                                      Some(expr::Ignore),
-                                      call_info.debug_loc()).bcx;
-    Unreachable(bcx);
-    return bcx;
+    Callee::def(ccx, did, ccx.tcx().mk_substs(Substs::empty()))
+        .call(bcx, call_info.debug_loc(), ArgVals(&args), None).bcx
 }
 
 pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -438,11 +434,6 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let file_line = consts::addr_of(ccx, file_line_const, align, "panic_bounds_check_loc");
     let args = vec!(file_line, index, len);
     let did = langcall(bcx, Some(call_info.span), "", PanicBoundsCheckFnLangItem);
-    let bcx = callee::trans_lang_call(bcx,
-                                      did,
-                                      &args[..],
-                                      Some(expr::Ignore),
-                                      call_info.debug_loc()).bcx;
-    Unreachable(bcx);
-    return bcx;
+    Callee::def(ccx, did, ccx.tcx().mk_substs(Substs::empty()))
+        .call(bcx, call_info.debug_loc(), ArgVals(&args), None).bcx
 }

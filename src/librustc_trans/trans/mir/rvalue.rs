@@ -201,7 +201,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         match operand.ty.sty {
                             ty::TyFnDef(def_id, substs, _) => {
                                 OperandValue::Immediate(
-                                    Callee::def(bcx.ccx(), def_id, substs, operand.ty)
+                                    Callee::def(bcx.ccx(), def_id, substs)
                                         .reify(bcx.ccx()).val)
                             }
                             _ => {
@@ -511,8 +511,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 if use_fmod {
                     let f64t = Type::f64(bcx.ccx());
                     let fty = Type::func(&[f64t, f64t], &f64t);
-                    let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty,
-                                                    tcx.types.f64);
+                    let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty);
                     if input_ty == tcx.types.f32 {
                         let lllhs = bcx.fpext(lhs, f64t);
                         let llrhs = bcx.fpext(rhs, f64t);

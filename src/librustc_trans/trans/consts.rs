@@ -352,9 +352,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         Some(AdjustReifyFnPointer) => {
             match ety.sty {
                 ty::TyFnDef(def_id, substs, _) => {
-                    let datum = Callee::def(cx, def_id, substs, ety).reify(cx);
-                    llconst = datum.val;
-                    ety_adjusted = datum.ty;
+                    llconst = Callee::def(cx, def_id, substs).reify(cx).val;
                 }
                 _ => {
                     unreachable!("{} cannot be reified to a fn ptr", ety)

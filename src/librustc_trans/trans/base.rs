@@ -57,7 +57,7 @@ use trans::assert_dep_graph;
 use trans::attributes;
 use trans::build::*;
 use trans::builder::{Builder, noname};
-use trans::callee;
+use trans::callee::{Callee, CallArgs, ArgExprs, ArgVals};
 use trans::cleanup::{self, CleanupMethods, DropHint};
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
@@ -280,11 +280,9 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("malloc_raw_exchange");
 
     // Allocate space:
-    let r = callee::trans_lang_call(bcx,
-                                    require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem),
-                                    &[size, align],
-                                    None,
-                                    debug_loc);
+    let def_id = require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem);
+    let r = Callee::def(bcx.ccx(), def_id, bcx.tcx().mk_substs(Substs::empty()))
+        .call(bcx, debug_loc, ArgVals(&[size, align]), None);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
@@ -1219,9 +1217,8 @@ pub fn trans_unwind_resume(bcx: Block, lpval: ValueRef) {
         Resume(bcx, lpval);
     } else {
         let exc_ptr = ExtractValue(bcx, lpval, 0);
-        let llunwresume = bcx.fcx.eh_unwind_resume();
-        Call(bcx, llunwresume, &[exc_ptr], None, DebugLoc::None);
-        Unreachable(bcx);
+        bcx.fcx.eh_unwind_resume()
+            .call(bcx, DebugLoc::None, ArgVals(&[exc_ptr]), None);
     }
 }
 
@@ -2147,20 +2144,10 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   closure::ClosureEnv::NotClosure);
 }
 
-pub fn trans_enum_variant<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    ctor_id: ast::NodeId,
-                                    disr: Disr,
-                                    param_substs: &'tcx Substs<'tcx>,
-                                    llfndecl: ValueRef) {
-    let _icx = push_ctxt("trans_enum_variant");
-
-    trans_enum_variant_or_tuple_like_struct(ccx, ctor_id, disr, param_substs, llfndecl);
-}
-
 pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  ctor_ty: Ty<'tcx>,
                                                  disr: Disr,
-                                                 args: callee::CallArgs,
+                                                 args: CallArgs,
                                                  dest: expr::Dest,
                                                  debug_loc: DebugLoc)
                                                  -> Result<'blk, 'tcx> {
@@ -2188,7 +2175,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     if !type_is_zero_size(ccx, result_ty) {
         match args {
-            callee::ArgExprs(exprs) => {
+            ArgExprs(exprs) => {
                 let fields = exprs.iter().map(|x| &**x).enumerate().collect::<Vec<_>>();
                 bcx = expr::trans_adt(bcx,
                                       result_ty,
@@ -2204,7 +2191,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // Just eval all the expressions (if any). Since expressions in Rust can have arbitrary
         // contents, there could be side-effects we need from them.
         match args {
-            callee::ArgExprs(exprs) => {
+            ArgExprs(exprs) => {
                 for expr in exprs {
                     bcx = expr::trans_into(bcx, expr, expr::Ignore);
                 }
@@ -2500,8 +2487,9 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 // compilation unit that references the item, so it will still get
                 // translated everywhere it's needed.
                 for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
-                    let llfn = get_item_val(ccx, item.id);
-                    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+                    let empty_substs = tcx.mk_substs(Substs::trans_empty());
+                    let def_id = tcx.map.local_def_id(item.id);
+                    let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                     if abi != Abi::Rust {
                         foreign::trans_rust_fn_with_foreign_abi(ccx,
                                                                 &decl,
@@ -2536,9 +2524,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                         // error in trans. This is used to write compile-fail tests
                         // that actually test that compilation succeeds without
                         // reporting an error.
-                        let item_def_id = ccx.tcx().map.local_def_id(item.id);
-                        if ccx.tcx().has_attr(item_def_id, "rustc_error") {
-                            ccx.tcx().sess.span_fatal(item.span, "compilation successful");
+                        if tcx.has_attr(def_id, "rustc_error") {
+                            tcx.sess.span_fatal(item.span, "compilation successful");
                         }
                     }
                 }
@@ -2671,17 +2658,10 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {
                     Ok(id) => id,
-                    Err(s) => {
-                        ccx.sess().fatal(&s[..]);
-                    }
+                    Err(s) => ccx.sess().fatal(&s)
                 };
-                let start_fn = if let Some(start_node_id) = ccx.tcx()
-                                                               .map
-                                                               .as_local_node_id(start_def_id) {
-                    get_item_val(ccx, start_node_id)
-                } else {
-                    get_extern_fn(ccx, start_def_id).val
-                };
+                let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+                let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx).val;
                 let args = {
                     let opaque_rust_main =
                         llvm::LLVMBuildPointerCast(bld,
