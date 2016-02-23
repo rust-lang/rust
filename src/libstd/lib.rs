@@ -222,6 +222,7 @@
 #![feature(collections)]
 #![feature(collections_bound)]
 #![feature(const_fn)]
+#![feature(copy_from_slice)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(decode_utf16)]

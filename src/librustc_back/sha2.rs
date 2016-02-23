@@ -134,13 +134,13 @@ impl FixedBuffer for FixedBuffer64 {
             let buffer_remaining = size - self.buffer_idx;
             if input.len() >= buffer_remaining {
                 self.buffer[self.buffer_idx..size]
-                    .clone_from_slice(&input[..buffer_remaining]);
+                    .copy_from_slice(&input[..buffer_remaining]);
                 self.buffer_idx = 0;
                 func(&self.buffer);
                 i += buffer_remaining;
             } else {
                 self.buffer[self.buffer_idx..self.buffer_idx + input.len()]
-                    .clone_from_slice(input);
+                    .copy_from_slice(input);
                 self.buffer_idx += input.len();
                 return;
             }
@@ -157,7 +157,7 @@ impl FixedBuffer for FixedBuffer64 {
         // data left in the input vector will be less than the buffer size and the buffer will
         // be empty.
         let input_remaining = input.len() - i;
-        self.buffer[..input_remaining].clone_from_slice(&input[i..]);
+        self.buffer[..input_remaining].copy_from_slice(&input[i..]);
         self.buffer_idx += input_remaining;
     }
 

@@ -256,7 +256,7 @@ impl Write for Cursor<Vec<u8>> {
             let pos = pos as usize;
             let space = self.inner.len() - pos;
             let (left, right) = buf.split_at(cmp::min(space, buf.len()));
-            self.inner[pos..pos + left.len()].clone_from_slice(left);
+            self.inner[pos..pos + left.len()].copy_from_slice(left);
             self.inner.extend_from_slice(right);
         }
 
