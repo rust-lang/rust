@@ -530,7 +530,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                ccx.tcx().map.path_to_string(id),
                id, rust_fn_ty);
 
-        let llfn = declare::define_internal_rust_fn(ccx, &ps, t);
+        let llfn = declare::define_internal_fn(ccx, &ps, rust_fn_ty);
         attributes::from_fn_attrs(ccx, attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, param_substs, id, attrs);
         llfn

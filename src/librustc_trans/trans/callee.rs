@@ -337,7 +337,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     //
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, bare_fn_ty,
                                                                    "fn_pointer_shim");
-    let llfn = declare::declare_internal_rust_fn(ccx, &function_name[..], tuple_fn_ty);
+    let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
 
     //
     let empty_substs = tcx.mk_substs(Substs::trans_empty());

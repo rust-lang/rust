@@ -1275,7 +1275,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                     trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                     -> ValueRef {
     let ccx = fcx.ccx;
-    let llfn = declare::define_internal_rust_fn(ccx, name, ty);
+    let llfn = declare::define_internal_fn(ccx, name, ty);
     let (fcx, block_arena);
     block_arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,

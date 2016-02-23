@@ -12,8 +12,6 @@
 
 //! Code that is useful in various trans modules.
 
-pub use self::ExprOrMethodCall::*;
-
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
@@ -23,11 +21,11 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::LangItem;
-use middle::subst::{self, Substs};
+use middle::subst::Substs;
 use trans::base;
 use trans::build;
 use trans::builder::Builder;
-use trans::callee;
+use trans::callee::Callee;
 use trans::cleanup;
 use trans::consts;
 use trans::datum;
@@ -43,14 +41,15 @@ use middle::traits::{self, SelectionContext, ProjectionMode};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
 use rustc::mir::repr::Mir;
-use util::nodemap::{FnvHashMap, NodeMap};
+use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ops::Deref;
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
-use std::vec::Vec;
+
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
@@ -252,8 +251,6 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
         b: b
     }
 }
-
-pub type ExternMap = FnvHashMap<String, ValueRef>;
 
 pub fn validate_substs(substs: &Substs) {
     assert!(!substs.types.needs_infer());
@@ -539,31 +536,33 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 
     // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
-    pub fn eh_unwind_resume(&self) -> ValueRef {
+    pub fn eh_unwind_resume(&self) -> Callee<'tcx> {
         use trans::attributes;
-        assert!(self.ccx.sess().target.target.options.custom_unwind_resume);
-        match self.ccx.tcx().lang_items.eh_unwind_resume() {
-            Some(def_id) => {
-                callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
-                                     self.param_substs).val
-            }
-            None => {
-                let mut unwresume = self.ccx.eh_unwind_resume().borrow_mut();
-                match *unwresume {
-                    Some(llfn) => llfn,
-                    None => {
-                        let fty = Type::func(&[Type::i8p(self.ccx)], &Type::void(self.ccx));
-                        let llfn = declare::declare_fn(self.ccx,
-                                                       "rust_eh_unwind_resume",
-                                                       llvm::CCallConv,
-                                                       fty, ty::FnDiverging);
-                        attributes::unwind(llfn, true);
-                        *unwresume = Some(llfn);
-                        llfn
-                    }
-                }
-            }
+        let ccx = self.ccx;
+        let tcx = ccx.tcx();
+        assert!(ccx.sess().target.target.options.custom_unwind_resume);
+        if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
+            return Callee::def(ccx, def_id, tcx.mk_substs(Substs::empty()));
         }
+
+        let ty = tcx.mk_fn_ptr(ty::BareFnTy {
+            unsafety: hir::Unsafety::Unsafe,
+            abi: Abi::C,
+            sig: ty::Binder(ty::FnSig {
+                inputs: vec![tcx.mk_mut_ptr(tcx.types.u8)],
+                output: ty::FnDiverging,
+                variadic: false
+            }),
+        });
+
+        let unwresume = ccx.eh_unwind_resume();
+        if let Some(llfn) = unwresume.get() {
+            return Callee::ptr(datum::immediate_rvalue(llfn, ty));
+        }
+        let llfn = declare::declare_fn(ccx, "rust_eh_unwind_resume", ty);
+        attributes::unwind(llfn, true);
+        unwresume.set(Some(llfn));
+        Callee::ptr(datum::immediate_rvalue(llfn, ty))
     }
 }
 

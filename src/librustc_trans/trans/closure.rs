@@ -155,7 +155,7 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let symbol = mangle_internal_name_by_path_and_seq(path, "closure");
 
     let function_type = ccx.tcx().mk_closure_from_closure_substs(closure_id, Box::new(substs));
-    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type);
+    let llfn = declare::define_internal_fn(ccx, &symbol, function_type);
 
     // set an inline hint for all closures
     attributes::inline(llfn, attributes::InlineAttr::Hint);
@@ -357,8 +357,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
-    let lloncefn = declare::define_internal_rust_fn(ccx, &function_name,
-                                                    llonce_fn_ty);
+    let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
