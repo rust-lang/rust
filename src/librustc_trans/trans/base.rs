@@ -192,22 +192,6 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                       closure_id: DefId,
-                                       fn_ty: Ty<'tcx>)
-                                       -> Ty<'tcx> {
-    let closure_kind = ccx.tcx().closure_kind(closure_id);
-    match closure_kind {
-        ty::ClosureKind::Fn => {
-            ccx.tcx().mk_imm_ref(ccx.tcx().mk_region(ty::ReStatic), fn_ty)
-        }
-        ty::ClosureKind::FnMut => {
-            ccx.tcx().mk_mut_ref(ccx.tcx().mk_region(ty::ReStatic), fn_ty)
-        }
-        ty::ClosureKind::FnOnce => fn_ty,
-    }
-}
-
 pub fn kind_for_closure(ccx: &CrateContext, closure_id: DefId) -> ty::ClosureKind {
     *ccx.tcx().tables.borrow().closure_kinds.get(&closure_id).unwrap()
 }

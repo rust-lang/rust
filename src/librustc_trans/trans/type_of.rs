@@ -88,14 +88,11 @@ pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 maybe_env: Option<Ty<'tcx>>,
                                  sig: &ty::FnSig<'tcx>,
                                  abi: Abi)
                                  -> Type
 {
-    debug!("type_of_rust_fn(sig={:?},abi={:?})",
-           sig,
-           abi);
+    debug!("type_of_rust_fn(sig={:?}, abi={:?})", sig, abi);
 
     assert!(!sig.variadic); // rust fns are never variadic
 
@@ -128,11 +125,6 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ty::FnDiverging => Type::void(cx)
     };
-
-    // Arg 1: Environment
-    if let Some(env_ty) = maybe_env {
-        atys.push(type_of_explicit_arg(cx, env_ty));
-    }
 
     // ... then explicit args.
     for input in inputs {
@@ -384,7 +376,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
         let sig = cx.tcx().erase_late_bound_regions(&f.sig);
         let sig = infer::normalize_associated_type(cx.tcx(), &sig);
         if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-            type_of_rust_fn(cx, None, &sig, f.abi).ptr_to()
+            type_of_rust_fn(cx, &sig, f.abi).ptr_to()
         } else {
             FnType::new(cx, f.abi, &sig, &[]).to_llvm(cx).ptr_to()
         }
