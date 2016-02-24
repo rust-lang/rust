@@ -30,6 +30,7 @@ use rustc_typeck::middle::infer::glb::Glb;
 use rustc_typeck::middle::infer::sub::Sub;
 use rustc_metadata::cstore::CStore;
 use rustc::front::map as hir_map;
+use rustc::middle::traits::PredicateObligation;
 use rustc::session::{self, config};
 use std::rc::Rc;
 use syntax::ast;
@@ -351,30 +352,36 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         infer::TypeTrace::dummy(self.tcx())
     }
 
-    pub fn with_sub<T, F: for<'b> FnMut(Sub<'a, 'b, 'tcx>) -> T>(&self, mut f: F) -> T {
+    pub fn with_sub<T, F: for<'b> FnMut(Sub<'a, 'b, 'tcx>) -> T>(&self, mut f: F)
+        -> (T, Vec<PredicateObligation<'tcx>>)
+    {
         let trace = self.dummy_type_trace();
         let mut obligations = Vec::new();
-        f(self.infcx.sub(true, trace, &mut obligations))
+        (f(self.infcx.sub(true, trace, &mut obligations)), obligations)
     }
 
-    pub fn with_lub<T, F: for<'b> FnMut(Lub<'a, 'b, 'tcx>) -> T>(&self, mut f: F) -> T {
+    pub fn with_lub<T, F: for<'b> FnMut(Lub<'a, 'b, 'tcx>) -> T>(&self, mut f: F)
+        -> (T, Vec<PredicateObligation<'tcx>>)
+    {
         let trace = self.dummy_type_trace();
         let mut obligations = Vec::new();
-        f(self.infcx.lub(true, trace, &mut obligations))
+        (f(self.infcx.lub(true, trace, &mut obligations)), obligations)
     }
 
-    pub fn with_glb<T, F: for<'b> FnMut(Glb<'a, 'b, 'tcx>) -> T>(&self, mut f: F) -> T {
+    pub fn with_glb<T, F: for<'b> FnMut(Glb<'a, 'b, 'tcx>) -> T>(&self, mut f: F)
+        -> (T, Vec<PredicateObligation<'tcx>>)
+    {
         let trace = self.dummy_type_trace();
         let mut obligations = Vec::new();
-        f(self.infcx.glb(true, trace, &mut obligations))
+        (f(self.infcx.glb(true, trace, &mut obligations)), obligations)
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.with_sub(|mut sub| sub.relate(&t1, &t2)) {
-            Ok(_) => {}
-            Err(ref e) => {
+            (Ok(_), obligations) => assert!(obligations.is_empty()),
+            (Err(ref e), _) => {
                 panic!("unexpected error computing sub({:?},{:?}): {}", t1, t2, e);
             }
         }
@@ -384,8 +391,8 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// region checks).
     pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.with_sub(|mut sub| sub.relate(&t1, &t2)) {
-            Err(_) => {}
-            Ok(_) => {
+            (Err(_), obligations) => assert!(obligations.is_empty()),
+            (Ok(_), _) => {
                 panic!("unexpected success computing sub({:?},{:?})", t1, t2);
             }
         }
@@ -394,10 +401,11 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `LUB(t1,t2) == t_lub`
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
         match self.with_lub(|mut lub| lub.relate(&t1, &t2)) {
-            Ok(t) => {
+            (Ok(t), obligations) => {
                 self.assert_eq(t, t_lub);
+                assert!(obligations.is_empty());
             }
-            Err(ref e) => {
+            (Err(ref e), _) => {
                 panic!("unexpected error in LUB: {}", e)
             }
         }
@@ -407,15 +415,17 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
         debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
         match self.with_glb(|mut glb| glb.relate(&t1, &t2)) {
-            Err(e) => {
+            (Err(e), _) => {
                 panic!("unexpected error computing LUB: {:?}", e)
             }
-            Ok(t) => {
+            (Ok(t), obligations) => {
                 self.assert_eq(t, t_glb);
 
                 // sanity check for good measure:
                 self.assert_subtype(t, t1);
                 self.assert_subtype(t, t2);
+
+                assert!(obligations.is_empty());
             }
         }
     }
