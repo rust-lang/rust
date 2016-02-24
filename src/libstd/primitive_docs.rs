@@ -12,6 +12,50 @@
 //
 /// The boolean type.
 ///
+/// The `bool` represents a value, which could only be either `true` or `false`.
+///
+/// # Basic usage
+///
+/// `bool` implements various traits, such as [`BitAnd`], [`BitOr`], [`Not`], etc.,
+/// which allow us to perform boolean operations using `&`, `|` and `!`.
+///
+/// [`if`] always demands a `bool` value. [`assert!`], being an important macro in testing,
+/// checks whether an expression returns `true`.
+///
+/// ```
+/// let bool_val = true & false | false;
+/// assert!(!bool_val);
+/// ```
+///
+/// [`assert!`]: std/macro.assert!.html
+/// [`if` conditionals]: ../../book/if.html
+/// [`BitAnd`]: ../ops/trait.BitAnd.html
+/// [`BitOr`]: ../ops/trait.BitOr.html
+/// [`Not`]: ../ops/trait.Not.html
+///
+/// # Examples
+///
+/// A trivial example of the usage of `bool`,
+///
+/// ```
+/// let praise_the_borrow_checker = true;
+///
+/// // using the `if` conditional
+/// if praise_the_borrow_checker {
+///     println!("oh, yeah!");
+/// } else {
+///     println!("what?!!");
+/// }
+///
+/// // ... or, a match pattern
+/// match praise_the_borrow_checker {
+///     true => println!("keep praising!"),
+///     false => println!("you should praise!"),
+/// }
+/// ```
+///
+/// Also, since `bool` implements the [`Copy`](../marker/trait.Copy.html) trait, we don't
+/// have to worry about the move semantics (just like the integer and float primitives).
 mod prim_bool { }
 
 #[doc(primitive = "char")]
@@ -533,4 +577,3 @@ mod prim_isize { }
 /// *[See also the `std::usize` module](usize/index.html).*
 ///
 mod prim_usize { }
-

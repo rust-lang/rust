@@ -311,10 +311,12 @@ for i in (1..100).filter(|&x| x % 2 == 0) {
 ```
 
 This will print all of the even numbers between one and a hundred.
-(Note that because `filter` doesn't consume the elements that are
-being iterated over, it is passed a reference to each element, and
-thus the filter predicate uses the `&x` pattern to extract the integer
-itself.)
+(Note that, unlike `map`, the closure passed to `filter` is passed a reference
+to the element instead of the element itself. The filter predicate here uses
+the `&x` pattern to extract the integer. The filter closure is passed a
+reference because it returns `true` or `false` instead of the element,
+so the `filter` implementation must retain ownership to put the elements
+into the newly constructed iterator.)
 
 You can chain all three things together: start with an iterator, adapt it
 a few times, and then consume the result. Check it out:

@@ -2734,18 +2734,19 @@ fn make_item_keywords(it: &clean::Item) -> String {
 
 fn get_index_search_type(item: &clean::Item,
                          parent: Option<String>) -> Option<IndexItemFunctionType> {
-    let decl = match item.inner {
-        clean::FunctionItem(ref f) => &f.decl,
-        clean::MethodItem(ref m) => &m.decl,
-        clean::TyMethodItem(ref m) => &m.decl,
+    let (decl, selfty) = match item.inner {
+        clean::FunctionItem(ref f) => (&f.decl, None),
+        clean::MethodItem(ref m) => (&m.decl, Some(&m.self_)),
+        clean::TyMethodItem(ref m) => (&m.decl, Some(&m.self_)),
         _ => return None
     };
 
     let mut inputs = Vec::new();
 
     // Consider `self` an argument as well.
-    if let Some(name) = parent {
-        inputs.push(Type { name: Some(name.to_ascii_lowercase()) });
+    match parent.and_then(|p| selfty.map(|s| (p, s)) ) {
+        Some((_, &clean::SelfStatic)) | None => (),
+        Some((name, _)) => inputs.push(Type { name: Some(name.to_ascii_lowercase()) }),
     }
 
     inputs.extend(&mut decl.inputs.values.iter().map(|arg| {
