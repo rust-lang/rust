@@ -6,7 +6,10 @@
 
 fn main() {
     let y = Some(true);
-    loop { //~ERROR
+    loop {
+    //~^ERROR this loop could be written as a `while let` loop
+    //~|HELP try
+    //~|SUGGESTION while let Some(_x) = y {
         if let Some(_x) = y {
             let _v = 1;
         } else {
@@ -19,13 +22,19 @@ fn main() {
         }
         break;
     }
-    loop { //~ERROR
+    loop {
+    //~^ERROR this loop could be written as a `while let` loop
+    //~|HELP try
+    //~|SUGGESTION while let Some(_x) = y {
         match y {
             Some(_x) => true,
             None => break
         };
     }
-    loop { //~ERROR
+    loop {
+    //~^ERROR this loop could be written as a `while let` loop
+    //~|HELP try
+    //~|SUGGESTION while let Some(x) = y {
         let x = match y {
             Some(x) => x,
             None => break
@@ -33,7 +42,10 @@ fn main() {
         let _x = x;
         let _str = "foo";
     }
-    loop { //~ERROR
+    loop {
+    //~^ERROR this loop could be written as a `while let` loop
+    //~|HELP try
+    //~|SUGGESTION while let Some(x) = y {
         let x = match y {
             Some(x) => x,
             None => break,

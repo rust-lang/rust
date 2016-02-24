@@ -271,14 +271,17 @@ impl LateLintPass for LoopsPass {
                                 } else {
                                     expr_block(cx, &arms[0].body, Some(other_stuff.join("\n    ")), "..")
                                 };
-                                span_help_and_lint(cx,
+                                span_lint_and_then(cx,
                                                    WHILE_LET_LOOP,
                                                    expr.span,
                                                    "this loop could be written as a `while let` loop",
-                                                   &format!("try\nwhile let {} = {} {}",
-                                                            snippet(cx, arms[0].pats[0].span, ".."),
-                                                            snippet(cx, matchexpr.span, ".."),
-                                                            loop_body));
+                                                   |db| {
+                                                       let sug = format!("while let {} = {} {}",
+                                                                         snippet(cx, arms[0].pats[0].span, ".."),
+                                                                         snippet(cx, matchexpr.span, ".."),
+                                                                         loop_body);
+                                                       db.span_suggestion(expr.span, "try", sug);
+                                                   });
                             }
                         }
                         _ => (),
