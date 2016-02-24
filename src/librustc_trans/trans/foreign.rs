@@ -13,7 +13,7 @@ use back::link;
 use llvm::{ValueRef, get_param};
 use llvm;
 use middle::weak_lang_items;
-use trans::abi::{self, Abi, FnType};
+use trans::abi::{Abi, FnType};
 use trans::attributes;
 use trans::base::{llvm_linkage_by_name, push_ctxt};
 use trans::base;
@@ -21,11 +21,9 @@ use trans::build::*;
 use trans::common::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
-use trans::expr;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
-use trans::type_of::*;
 use trans::type_of;
 use trans::value::Value;
 use middle::infer;
@@ -167,17 +165,40 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    let mut offset = 0;
-    for (i, arg_ty) in fn_type.args.iter().enumerate() {
-        let mut llarg_rust = llargs_rust[i + offset];
+    let mut i = 0;
+    for &passed_arg_ty in &passed_arg_tys {
+        let arg_ty = fn_type.args[i];
 
         if arg_ty.is_ignore() {
+            i += 1;
+            continue;
+        }
+
+        if type_is_fat_ptr(ccx.tcx(), passed_arg_ty) {
+            // Fat pointers are one pointer and one integer or pointer.
+            let (a, b) = (fn_type.args[i], fn_type.args[i + 1]);
+            assert_eq!((a.cast, b.cast), (None, None));
+            assert!(!a.is_indirect() && !b.is_indirect());
+
+            if let Some(ty) = a.pad {
+                llargs_foreign.push(C_undef(ty));
+            }
+            llargs_foreign.push(llargs_rust[i]);
+            i += 1;
+
+            if let Some(ty) = b.pad {
+                llargs_foreign.push(C_undef(ty));
+            }
+            llargs_foreign.push(llargs_rust[i]);
+            i += 1;
             continue;
         }
 
         // Does Rust pass this argument by pointer?
-        let rust_indirect = type_of::arg_is_indirect(ccx, passed_arg_tys[i]);
+        let rust_indirect = type_of::arg_is_indirect(ccx, passed_arg_ty);
 
+        let mut llarg_rust = llargs_rust[i];
+        i += 1;
         debug!("argument {}, llarg_rust={:?}, rust_indirect={}, arg_ty={:?}",
                i,
                Value(llarg_rust),
@@ -187,14 +208,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // Ensure that we always have the Rust value indirectly,
         // because it makes bitcasting easier.
         if !rust_indirect {
-            let scratch = base::alloc_ty(bcx, passed_arg_tys[i], "__arg");
-            if type_is_fat_ptr(ccx.tcx(), passed_arg_tys[i]) {
-                Store(bcx, llargs_rust[i + offset], expr::get_dataptr(bcx, scratch));
-                Store(bcx, llargs_rust[i + offset + 1], expr::get_meta(bcx, scratch));
-                offset += 1;
-            } else {
-                base::store_ty(bcx, llarg_rust, scratch, passed_arg_tys[i]);
-            }
+            let scratch = base::alloc_ty(bcx, passed_arg_ty, "__arg");
+            base::store_ty(bcx, llarg_rust, scratch, passed_arg_ty);
             llarg_rust = scratch;
         }
 
@@ -202,9 +217,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                Value(llarg_rust));
 
         // Check whether we need to do any casting
-        match arg_ty.cast {
-            Some(ty) => llarg_rust = BitCast(bcx, llarg_rust, ty.ptr_to()),
-            None => ()
+        if let Some(ty) = arg_ty.cast {
+            llarg_rust = BitCast(bcx, llarg_rust, ty.ptr_to());
         }
 
         debug!("llarg_rust={:?} (after casting)",
@@ -214,22 +228,19 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let foreign_indirect = arg_ty.is_indirect();
         let llarg_foreign = if foreign_indirect {
             llarg_rust
+        } else if passed_arg_ty.is_bool() {
+            let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
+            Trunc(bcx, val, Type::i1(bcx.ccx()))
         } else {
-            if passed_arg_tys[i].is_bool() {
-                let val = LoadRangeAssert(bcx, llarg_rust, 0, 2, llvm::False);
-                Trunc(bcx, val, Type::i1(bcx.ccx()))
-            } else {
-                Load(bcx, llarg_rust)
-            }
+            Load(bcx, llarg_rust)
         };
 
         debug!("argument {}, llarg_foreign={:?}",
                i, Value(llarg_foreign));
 
         // fill padding with undef value
-        match arg_ty.pad {
-            Some(ty) => llargs_foreign.push(C_undef(ty)),
-            None => ()
+        if let Some(ty) = arg_ty.pad {
+            llargs_foreign.push(C_undef(ty));
         }
         llargs_foreign.push(llarg_foreign);
     }
@@ -552,16 +563,16 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Build up the arguments to the call to the rust function.
         // Careful to adapt for cases where the native convention uses
         // a pointer and Rust does not or vice versa.
+        let mut tys = fn_ty.args.iter().zip(rust_param_tys);
         for i in 0..fn_sig.inputs.len() {
             let rust_ty = fn_sig.inputs[i];
             let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);
-            let llty = rust_param_tys.next().expect("Not enough parameter types!");
+            let (llforeign_arg_ty, llty) = tys.next().expect("Not enough parameter types!");
             let llrust_ty = if rust_indirect {
                 llty.element_type()
             } else {
                 llty
             };
-            let llforeign_arg_ty = fn_ty.args[i];
             let foreign_indirect = llforeign_arg_ty.is_indirect();
 
             if llforeign_arg_ty.is_ignore() {
@@ -573,6 +584,19 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // skip padding
             let foreign_index = next_foreign_arg(llforeign_arg_ty.pad.is_some());
             let mut llforeign_arg = get_param(llwrapfn, foreign_index);
+
+            if type_is_fat_ptr(ccx.tcx(), rust_ty) {
+                // Fat pointers are one pointer and one integer or pointer.
+                let a = llforeign_arg_ty;
+                let (b, _) = tys.next().expect("Not enough parameter types!");
+                assert_eq!((a.cast, b.cast), (None, None));
+                assert!(!a.is_indirect() && !b.is_indirect());
+
+                llrust_args.push(llforeign_arg);
+                let foreign_index = next_foreign_arg(llforeign_arg_ty.pad.is_some());
+                llrust_args.push(get_param(llwrapfn, foreign_index));
+                continue;
+            }
 
             debug!("llforeign_arg {}{}: {:?}", "#",
                    i, Value(llforeign_arg));
@@ -624,15 +648,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             debug!("llrust_arg {}{}: {:?}", "#",
                    i, Value(llrust_arg));
-            if type_is_fat_ptr(ccx.tcx(), rust_ty) {
-                let next_llrust_ty = rust_param_tys.next().expect("Not enough parameter types!");
-                llrust_args.push(builder.load(builder.bitcast(builder.struct_gep(
-                                llrust_arg, abi::FAT_PTR_ADDR), llrust_ty.ptr_to())));
-                llrust_args.push(builder.load(builder.bitcast(builder.struct_gep(
-                                llrust_arg, abi::FAT_PTR_EXTRA), next_llrust_ty.ptr_to())));
-            } else {
-                llrust_args.push(llrust_arg);
-            }
+            llrust_args.push(llrust_arg);
         }
 
         // Perform the call itself
