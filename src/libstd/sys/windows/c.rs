@@ -10,18 +10,19 @@
 
 //! C definitions used by libnative that don't belong in liblibc
 
-#![allow(bad_style, overflowing_literals, dead_code, deprecated, unused_imports)]
+#![allow(bad_style)]
+#![cfg_attr(test, allow(dead_code))]
 
 use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort};
-use os::raw::{c_char, c_short, c_ulonglong};
+use os::raw::{c_char, c_ulonglong};
 use libc::{wchar_t, size_t, c_void};
 use ptr;
 
 #[repr(simd)]
 #[repr(C)]
+#[cfg(target_arch = "x86_64")]
 struct u64x2(u64, u64);
 
-pub use self::GET_FILEEX_INFO_LEVELS::*;
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
 pub use self::EXCEPTION_DISPOSITION::*;
 
@@ -64,7 +65,6 @@ pub type LPVOID = *mut c_void;
 pub type LPWCH = *mut WCHAR;
 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
 pub type LPWSADATA = *mut WSADATA;
-pub type LPWSANETWORKEVENTS = *mut WSANETWORKEVENTS;
 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 pub type LPWSTR = *mut WCHAR;
@@ -83,56 +83,35 @@ pub const FALSE: BOOL = 0;
 
 pub const FILE_ATTRIBUTE_READONLY: DWORD = 0x1;
 pub const FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x10;
-pub const FILE_ATTRIBUTE_NORMAL: DWORD = 0x80;
 pub const FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x400;
+
 pub const FILE_SHARE_DELETE: DWORD = 0x4;
 pub const FILE_SHARE_READ: DWORD = 0x1;
 pub const FILE_SHARE_WRITE: DWORD = 0x2;
+
 pub const CREATE_ALWAYS: DWORD = 2;
 pub const CREATE_NEW: DWORD = 1;
 pub const OPEN_ALWAYS: DWORD = 4;
 pub const OPEN_EXISTING: DWORD = 3;
 pub const TRUNCATE_EXISTING: DWORD = 5;
 
-pub const FILE_READ_DATA: DWORD = 0x00000001;
 pub const FILE_WRITE_DATA: DWORD = 0x00000002;
 pub const FILE_APPEND_DATA: DWORD = 0x00000004;
-pub const FILE_READ_EA: DWORD = 0x00000008;
 pub const FILE_WRITE_EA: DWORD = 0x00000010;
-pub const FILE_EXECUTE: DWORD = 0x00000020;
-pub const FILE_READ_ATTRIBUTES: DWORD = 0x00000080;
 pub const FILE_WRITE_ATTRIBUTES: DWORD = 0x00000100;
-
-pub const DELETE: DWORD = 0x00008000;
 pub const READ_CONTROL: DWORD = 0x00020000;
-pub const WRITE_DAC: DWORD = 0x00040000;
-pub const WRITE_OWNER: DWORD = 0x00080000;
 pub const SYNCHRONIZE: DWORD = 0x00100000;
-
 pub const GENERIC_READ: DWORD = 0x80000000;
 pub const GENERIC_WRITE: DWORD = 0x40000000;
-pub const GENERIC_EXECUTE: DWORD = 0x20000000;
-pub const GENERIC_ALL: DWORD = 0x10000000;
-
-pub const STANDARD_RIGHTS_READ: DWORD = READ_CONTROL;
 pub const STANDARD_RIGHTS_WRITE: DWORD = READ_CONTROL;
-pub const STANDARD_RIGHTS_EXECUTE: DWORD = READ_CONTROL;
-pub const FILE_GENERIC_READ: DWORD = STANDARD_RIGHTS_READ | FILE_READ_DATA |
-                                     FILE_READ_ATTRIBUTES |
-                                     FILE_READ_EA |
-                                     SYNCHRONIZE;
 pub const FILE_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
                                       FILE_WRITE_ATTRIBUTES |
                                       FILE_WRITE_EA |
                                       FILE_APPEND_DATA |
                                       SYNCHRONIZE;
 
-pub const SECURITY_ANONYMOUS: DWORD = 0 << 16;
-pub const SECURITY_IDENTIFICATION: DWORD = 1 << 16;
-pub const SECURITY_IMPERSONATION: DWORD = 2 << 16;
-pub const SECURITY_DELEGATION: DWORD = 3 << 16;
-pub const SECURITY_CONTEXT_TRACKING: DWORD = 0x00040000;
-pub const SECURITY_EFFECTIVE_ONLY: DWORD = 0x00080000;
+pub const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
+pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 #[repr(C)]
@@ -153,96 +132,36 @@ impl Clone for WIN32_FIND_DATAW {
     fn clone(&self) -> Self { *self }
 }
 
-pub const FIONBIO: c_long = 0x8004667e;
-pub const FD_SETSIZE: usize = 64;
-pub const MSG_DONTWAIT: c_int = 0;
-pub const ENABLE_ECHO_INPUT: DWORD = 0x4;
-pub const ENABLE_EXTENDED_FLAGS: DWORD = 0x80;
-pub const ENABLE_INSERT_MODE: DWORD = 0x20;
-pub const ENABLE_LINE_INPUT: DWORD = 0x2;
-pub const ENABLE_PROCESSED_INPUT: DWORD = 0x1;
-pub const ENABLE_QUICK_EDIT_MODE: DWORD = 0x40;
-
-pub const FD_ACCEPT: c_long = 0x08;
-pub const FD_MAX_EVENTS: usize = 10;
-
-pub const WSA_INVALID_EVENT: WSAEVENT = 0 as WSAEVENT;
-pub const WSA_INFINITE: DWORD = INFINITE;
-pub const WSA_WAIT_TIMEOUT: DWORD = WAIT_TIMEOUT;
-pub const WSA_WAIT_EVENT_0: DWORD = WAIT_OBJECT_0;
-pub const WSA_WAIT_FAILED: DWORD = WAIT_FAILED;
 pub const WSA_FLAG_OVERLAPPED: DWORD = 0x01;
-pub const WSA_FLAG_NO_HANDLE_INHERIT: DWORD = 0x80;
 
 pub const WSADESCRIPTION_LEN: usize = 256;
 pub const WSASYS_STATUS_LEN: usize = 128;
 pub const WSAPROTOCOL_LEN: DWORD = 255;
 pub const INVALID_SOCKET: SOCKET = !0;
 
-pub const WSAEINTR: c_int = 10004;
-pub const WSAEBADF: c_int = 10009;
 pub const WSAEACCES: c_int = 10013;
-pub const WSAEFAULT: c_int = 10014;
 pub const WSAEINVAL: c_int = 10022;
-pub const WSAEMFILE: c_int = 10024;
 pub const WSAEWOULDBLOCK: c_int = 10035;
-pub const WSAEINPROGRESS: c_int = 10036;
-pub const WSAEALREADY: c_int = 10037;
-pub const WSAENOTSOCK: c_int = 10038;
-pub const WSAEDESTADDRREQ: c_int = 10039;
-pub const WSAEMSGSIZE: c_int = 10040;
-pub const WSAEPROTOTYPE: c_int = 10041;
-pub const WSAENOPROTOOPT: c_int = 10042;
-pub const WSAEPROTONOSUPPORT: c_int = 10043;
-pub const WSAESOCKTNOSUPPORT: c_int = 10044;
-pub const WSAEOPNOTSUPP: c_int = 10045;
-pub const WSAEPFNOSUPPORT: c_int = 10046;
-pub const WSAEAFNOSUPPORT: c_int = 10047;
 pub const WSAEADDRINUSE: c_int = 10048;
 pub const WSAEADDRNOTAVAIL: c_int = 10049;
-pub const WSAENETDOWN: c_int = 10050;
-pub const WSAENETUNREACH: c_int = 10051;
-pub const WSAENETRESET: c_int = 10052;
 pub const WSAECONNABORTED: c_int = 10053;
 pub const WSAECONNRESET: c_int = 10054;
-pub const WSAENOBUFS: c_int = 10055;
-pub const WSAEISCONN: c_int = 10056;
 pub const WSAENOTCONN: c_int = 10057;
 pub const WSAESHUTDOWN: c_int = 10058;
-pub const WSAETOOMANYREFS: c_int = 10059;
 pub const WSAETIMEDOUT: c_int = 10060;
 pub const WSAECONNREFUSED: c_int = 10061;
-pub const WSAELOOP: c_int = 10062;
-pub const WSAENAMETOOLONG: c_int = 10063;
-pub const WSAEHOSTDOWN: c_int = 10064;
-pub const WSAEHOSTUNREACH: c_int = 10065;
-pub const WSAENOTEMPTY: c_int = 10066;
-pub const WSAEPROCLIM: c_int = 10067;
-pub const WSAEUSERS: c_int = 10068;
-pub const WSAEDQUOT: c_int = 10069;
-pub const WSAESTALE: c_int = 10070;
-pub const WSAEREMOTE: c_int = 10071;
-pub const WSASYSNOTREADY: c_int = 10091;
-pub const WSAVERNOTSUPPORTED: c_int = 10092;
-pub const WSANOTINITIALISED: c_int = 10093;
-pub const WSAEDISCON: c_int = 10101;
-pub const WSAENOMORE: c_int = 10102;
-pub const WSAECANCELLED: c_int = 10103;
-pub const WSAEINVALIDPROCTABLE: c_int = 10104;
+
 pub const NI_MAXHOST: DWORD = 1025;
 
 pub const MAX_PROTOCOL_CHAIN: DWORD = 7;
 
 pub const TOKEN_READ: DWORD = 0x20008;
-pub const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
-pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
 pub const FSCTL_GET_REPARSE_POINT: DWORD = 0x900a8;
 pub const IO_REPARSE_TAG_SYMLINK: DWORD = 0xa000000c;
 pub const IO_REPARSE_TAG_MOUNT_POINT: DWORD = 0xa0000003;
 pub const SYMLINK_FLAG_RELATIVE: DWORD = 0x00000001;
 pub const FSCTL_SET_REPARSE_POINT: DWORD = 0x900a4;
-pub const FSCTL_DELETE_REPARSE_POINT: DWORD = 0x900ac;
 
 pub const SYMBOLIC_LINK_FLAG_DIRECTORY: DWORD = 0x1;
 
@@ -254,38 +173,19 @@ pub const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
 pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
 pub const PROGRESS_CONTINUE: DWORD = 0;
-pub const PROGRESS_CANCEL: DWORD = 1;
-pub const PROGRESS_STOP: DWORD = 2;
-pub const PROGRESS_QUIET: DWORD = 3;
 
-pub const TOKEN_ADJUST_PRIVILEGES: DWORD = 0x0020;
-pub const SE_PRIVILEGE_ENABLED: DWORD = 2;
-
-
-pub const ERROR_SUCCESS: DWORD = 0;
-pub const ERROR_INVALID_FUNCTION: DWORD = 1;
 pub const ERROR_FILE_NOT_FOUND: DWORD = 2;
 pub const ERROR_PATH_NOT_FOUND: DWORD = 3;
 pub const ERROR_ACCESS_DENIED: DWORD = 5;
 pub const ERROR_INVALID_HANDLE: DWORD = 6;
 pub const ERROR_NO_MORE_FILES: DWORD = 18;
 pub const ERROR_BROKEN_PIPE: DWORD = 109;
-pub const ERROR_DISK_FULL: DWORD = 112;
 pub const ERROR_CALL_NOT_IMPLEMENTED: DWORD = 120;
 pub const ERROR_INSUFFICIENT_BUFFER: DWORD = 122;
-pub const ERROR_INVALID_NAME: DWORD = 123;
 pub const ERROR_ALREADY_EXISTS: DWORD = 183;
-pub const ERROR_PIPE_BUSY: DWORD = 231;
 pub const ERROR_NO_DATA: DWORD = 232;
-pub const ERROR_INVALID_ADDRESS: DWORD = 487;
-pub const ERROR_PIPE_CONNECTED: DWORD = 535;
-pub const ERROR_ILLEGAL_CHARACTER: DWORD = 582;
 pub const ERROR_ENVVAR_NOT_FOUND: DWORD = 203;
-pub const ERROR_NOTHING_TO_TERMINATE: DWORD = 758;
 pub const ERROR_OPERATION_ABORTED: DWORD = 995;
-pub const ERROR_IO_PENDING: DWORD = 997;
-pub const ERROR_FILE_INVALID: DWORD = 1006;
-pub const ERROR_NOT_FOUND: DWORD = 1168;
 pub const ERROR_TIMEOUT: DWORD = 0x5B4;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
@@ -306,8 +206,6 @@ pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE {
     ptr: ptr::null_mut(),
 };
 pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: ptr::null_mut() };
-
-pub const STILL_ACTIVE: DWORD = 259;
 
 pub const DETACHED_PROCESS: DWORD = 0x00000008;
 pub const CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;
@@ -333,14 +231,13 @@ pub const FILE_BEGIN: DWORD = 0;
 pub const FILE_CURRENT: DWORD = 1;
 pub const FILE_END: DWORD = 2;
 
-pub const WAIT_ABANDONED: DWORD = 0x00000080;
 pub const WAIT_OBJECT_0: DWORD = 0x00000000;
-pub const WAIT_TIMEOUT: DWORD = 0x00000102;
-pub const WAIT_FAILED: DWORD = !0;
 
+#[cfg(target_env = "msvc")]
 pub const MAX_SYM_NAME: usize = 2000;
+#[cfg(target_arch = "x86")]
 pub const IMAGE_FILE_MACHINE_I386: DWORD = 0x014c;
-pub const IMAGE_FILE_MACHINE_IA64: DWORD = 0x0200;
+#[cfg(target_arch = "x86_64")]
 pub const IMAGE_FILE_MACHINE_AMD64: DWORD = 0x8664;
 
 pub const PROV_RSA_FULL: DWORD = 1;
@@ -350,13 +247,17 @@ pub const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
 pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
 pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_NONCONTINUABLE: DWORD = 0x1;   // Noncontinuable exception
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_UNWINDING: DWORD = 0x2;        // Unwind is in progress
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_EXIT_UNWIND: DWORD = 0x4;      // Exit unwind is in progress
-pub const EXCEPTION_STACK_INVALID: DWORD = 0x8;    // Stack out of limits or unaligned
-pub const EXCEPTION_NESTED_CALL: DWORD = 0x10;     // Nested exception handler call
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_TARGET_UNWIND: DWORD = 0x20;   // Target unwind in progress
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_COLLIDED_UNWIND: DWORD = 0x40; // Collided exception handler call
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING |
                                     EXCEPTION_EXIT_UNWIND |
                                     EXCEPTION_TARGET_UNWIND |
@@ -383,12 +284,6 @@ pub struct WSADATA {
     pub lpVendorInfo: *mut u8,
     pub szDescription: [u8; WSADESCRIPTION_LEN + 1],
     pub szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
-}
-
-#[repr(C)]
-pub struct WSANETWORKEVENTS {
-    pub lNetworkEvents: c_long,
-    pub iErrorCode: [c_int; FD_MAX_EVENTS],
 }
 
 pub type WSAEVENT = HANDLE;
@@ -418,43 +313,6 @@ pub struct WSAPROTOCOL_INFO {
 }
 
 #[repr(C)]
-pub struct fd_set {
-    fd_count: c_uint,
-    fd_array: [SOCKET; FD_SETSIZE],
-}
-
-pub fn fd_set(set: &mut fd_set, s: SOCKET) {
-    set.fd_array[set.fd_count as usize] = s;
-    set.fd_count += 1;
-}
-
-pub type SHORT = c_short;
-
-#[repr(C)]
-pub struct COORD {
-    pub X: SHORT,
-    pub Y: SHORT,
-}
-
-#[repr(C)]
-pub struct SMALL_RECT {
-    pub Left: SHORT,
-    pub Top: SHORT,
-    pub Right: SHORT,
-    pub Bottom: SHORT,
-}
-
-#[repr(C)]
-pub struct CONSOLE_SCREEN_BUFFER_INFO {
-    pub dwSize: COORD,
-    pub dwCursorPosition: COORD,
-    pub wAttributes: WORD,
-    pub srWindow: SMALL_RECT,
-    pub dwMaximumWindowSize: COORD,
-}
-pub type PCONSOLE_SCREEN_BUFFER_INFO = *mut CONSOLE_SCREEN_BUFFER_INFO;
-
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct WIN32_FILE_ATTRIBUTE_DATA {
     pub dwFileAttributes: DWORD,
@@ -480,12 +338,7 @@ pub struct BY_HANDLE_FILE_INFORMATION {
 }
 
 #[repr(C)]
-pub enum GET_FILEEX_INFO_LEVELS {
-    GetFileExInfoStandard,
-    GetFileExMaxInfoLevel
-}
-
-#[repr(C)]
+#[allow(dead_code)] // we only use some variants
 pub enum FILE_INFO_BY_HANDLE_CLASS {
     FileBasicInfo                   = 0,
     FileStandardInfo                = 1,
@@ -567,28 +420,6 @@ pub struct CRITICAL_SECTION {
     OwningThread: HANDLE,
     LockSemaphore: HANDLE,
     SpinCount: ULONG_PTR
-}
-
-#[repr(C)]
-pub struct LUID {
-    pub LowPart: DWORD,
-    pub HighPart: c_long,
-}
-
-pub type PLUID = *mut LUID;
-
-#[repr(C)]
-pub struct TOKEN_PRIVILEGES {
-    pub PrivilegeCount: DWORD,
-    pub Privileges: [LUID_AND_ATTRIBUTES; 1],
-}
-
-pub type PTOKEN_PRIVILEGES = *mut TOKEN_PRIVILEGES;
-
-#[repr(C)]
-pub struct LUID_AND_ATTRIBUTES {
-    pub Luid: LUID,
-    pub Attributes: DWORD,
 }
 
 #[repr(C)]
@@ -695,6 +526,7 @@ pub struct OVERLAPPED {
 }
 
 #[repr(C)]
+#[cfg(target_env = "msvc")]
 pub struct SYMBOL_INFO {
     pub SizeOfStruct: c_ulong,
     pub TypeIndex: c_ulong,
@@ -717,6 +549,7 @@ pub struct SYMBOL_INFO {
 }
 
 #[repr(C)]
+#[cfg(target_env = "msvc")]
 pub struct IMAGEHLP_LINE64 {
     pub SizeOfStruct: u32,
     pub Key: *const c_void,
@@ -726,6 +559,7 @@ pub struct IMAGEHLP_LINE64 {
 }
 
 #[repr(C)]
+#[allow(dead_code)] // we only use some variants
 pub enum ADDRESS_MODE {
     AddrMode1616,
     AddrMode1632,
@@ -941,9 +775,11 @@ pub struct in6_addr {
     pub s6_addr: [u8; 16],
 }
 
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub enum UNWIND_HISTORY_TABLE {}
 
 #[repr(C)]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub struct RUNTIME_FUNCTION {
     pub BeginAddress: DWORD,
     pub EndAddress: DWORD,
@@ -951,6 +787,7 @@ pub struct RUNTIME_FUNCTION {
 }
 
 #[repr(C)]
+#[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub struct DISPATCHER_CONTEXT {
     pub ControlPc: LPVOID,
     pub ImageBase: LPVOID,
@@ -965,6 +802,7 @@ pub struct DISPATCHER_CONTEXT {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[allow(dead_code)] // we only use some variants
 pub enum EXCEPTION_DISPOSITION {
     ExceptionContinueExecution,
     ExceptionContinueSearch,
@@ -1016,9 +854,6 @@ extern "system" {
 
     pub fn GetConsoleMode(hConsoleHandle: HANDLE,
                           lpMode: LPDWORD) -> BOOL;
-    pub fn GetFileAttributesExW(lpFileName: LPCWSTR,
-                                fInfoLevelId: GET_FILEEX_INFO_LEVELS,
-                                lpFileInformation: LPVOID) -> BOOL;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR,
                               dwFileAttributes: DWORD) -> BOOL;
@@ -1076,15 +911,6 @@ extern "system" {
                        lpData: LPVOID,
                        pbCancel: LPBOOL,
                        dwCopyFlags: DWORD) -> BOOL;
-    pub fn LookupPrivilegeValueW(lpSystemName: LPCWSTR,
-                                 lpName: LPCWSTR,
-                                 lpLuid: PLUID) -> BOOL;
-    pub fn AdjustTokenPrivileges(TokenHandle: HANDLE,
-                                 DisableAllPrivileges: BOOL,
-                                 NewState: PTOKEN_PRIVILEGES,
-                                 BufferLength: DWORD,
-                                 PreviousState: PTOKEN_PRIVILEGES,
-                                 ReturnLength: *mut DWORD) -> BOOL;
     pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
                                        VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
                                        -> LPVOID;
@@ -1260,10 +1086,12 @@ extern "system" {
     pub fn CryptReleaseContext(hProv: HCRYPTPROV, dwFlags: DWORD) -> BOOL;
 
     #[unwind]
+    #[cfg(any(target_arch = "x86_64", target_env = "msvc"))]
     pub fn RaiseException(dwExceptionCode: DWORD,
                           dwExceptionFlags: DWORD,
                           nNumberOfArguments: DWORD,
                           lpArguments: *const ULONG_PTR);
+    #[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
     pub fn RtlUnwindEx(TargetFrame: LPVOID,
                        TargetIp: LPVOID,
                        ExceptionRecord: *const EXCEPTION_RECORD,
