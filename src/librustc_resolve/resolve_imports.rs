@@ -394,7 +394,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                            directive.is_public &&
                                            !name_binding.is_public() => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
-                let note_msg = format!("Consider marking `{}` as `pub` in the imported module",
+                let note_msg = format!("consider marking `{}` as `pub` in the imported module",
                                         source);
                 struct_span_err!(self.resolver.session, directive.span, E0364, "{}", &msg)
                     .span_note(directive.span, &note_msg)
@@ -414,7 +414,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     } else {
                         let msg = format!("`{}` is private, and cannot be reexported", source);
                         let note_msg =
-                            format!("Consider declaring type or module `{}` with `pub`", source);
+                            format!("consider declaring type or module `{}` with `pub`", source);
                         struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
                             .span_note(directive.span, &note_msg)
                             .emit();
