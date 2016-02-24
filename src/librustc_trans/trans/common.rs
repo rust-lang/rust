@@ -75,18 +75,6 @@ pub fn type_is_fat_ptr<'tcx>(cx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::TyStruct(def, substs) => {
-            let fields = &def.struct_variant().fields;
-            fields.len() == 1 && {
-                type_is_immediate(ccx, monomorphize::field_ty(ccx.tcx(), substs, &fields[0]))
-            }
-        }
-        _ => false
-    }
-}
-
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     use trans::machine::llsize_of_alloc;
     use trans::type_of::sizing_type_of;
@@ -94,7 +82,6 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     let tcx = ccx.tcx();
     let simple = ty.is_scalar() ||
         ty.is_unique() || ty.is_region_ptr() ||
-        type_is_newtype_immediate(ccx, ty) ||
         ty.is_simd();
     if simple && !type_is_fat_ptr(tcx, ty) {
         return true;
