@@ -586,8 +586,5 @@ extern "rust-intrinsic" {
     /// platforms this is a `*mut *mut T` which is filled in by the compiler and
     /// on MSVC it's `*mut [usize; 2]`. For more information see the compiler's
     /// source as well as std's catch implementation.
-    #[cfg(not(stage0))]
     pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
-    #[cfg(stage0)]
-    pub fn try(f: fn(*mut u8), data: *mut u8) -> *mut u8;
 }

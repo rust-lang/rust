@@ -27,10 +27,10 @@ use sys_common::{AsInner, FromInner};
 pub enum IpAddr {
     /// Representation of an IPv4 address.
     #[stable(feature = "ip_addr", since = "1.7.0")]
-    V4(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.7.0"))] Ipv4Addr),
+    V4(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv4Addr),
     /// Representation of an IPv6 address.
     #[stable(feature = "ip_addr", since = "1.7.0")]
-    V6(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.7.0"))] Ipv6Addr),
+    V6(#[stable(feature = "ip_addr", since = "1.7.0")] Ipv6Addr),
 }
 
 /// Representation of an IPv4 address.

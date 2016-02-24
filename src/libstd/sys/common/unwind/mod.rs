@@ -128,7 +128,6 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     }
 }
 
-#[cfg(not(stage0))]
 unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
                     -> Result<(), Box<Any + Send>> {
     PANIC_COUNT.with(|s| {
@@ -152,22 +151,6 @@ unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
             Ok(())
         } else {
             Err(imp::cleanup(payload))
-        }
-    })
-}
-
-#[cfg(stage0)]
-unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
-                    -> Result<(), Box<Any + Send>> {
-    PANIC_COUNT.with(|s| {
-        let prev = s.get();
-        s.set(0);
-        let ep = intrinsics::try(f, data);
-        s.set(prev);
-        if ep.is_null() {
-            Ok(())
-        } else {
-            Err(imp::cleanup(ep))
         }
     })
 }
