@@ -12,7 +12,7 @@
 #![allow(unreachable_code)]
 
 use rustc::dep_graph::DepNode;
-use rustc::infer::{self, InferCtxt};
+use rustc::infer::{self, InferCtxt, InferOk};
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -336,15 +336,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn mk_subty(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                        sup, sub)
+        infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span), sup, sub)
+            .map(|InferOk { obligations }| {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+                ()
+            })
     }
 
     fn mk_eqty(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                       a, b)
+        infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span), a, b)
+            .map(|InferOk { obligations }| {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+                ()
+            })
     }
 
     fn tcx(&self) -> &'a TyCtxt<'tcx> {

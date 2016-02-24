@@ -37,8 +37,7 @@ use super::object_safety;
 use super::util;
 
 use middle::def_id::DefId;
-use infer;
-use infer::{InferCtxt, TypeFreshener, TypeOrigin};
+use infer::{self, InferCtxt, InferOk, TypeFreshener, TypeOrigin};
 use ty::subst::{Subst, Substs, TypeSpace};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use traits;
@@ -484,7 +483,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Predicate::Equate(ref p) => {
                 // does this code ever run?
                 match self.infcx.equality_predicate(obligation.cause.span, p) {
-                    Ok(()) => EvaluatedToOk,
+                    Ok(InferOk { obligations }) => {
+                        // FIXME propagate obligations
+                        assert!(obligations.is_empty());
+                        EvaluatedToOk
+                    },
                     Err(_) => EvaluatedToErr
                 }
             }
@@ -1185,7 +1188,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              trait_bound.clone(),
                                              ty::Binder(skol_trait_ref.clone())) {
-            Ok(()) => { }
+            Ok(InferOk { obligations }) => {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+            }
             Err(_) => { return false; }
         }
 
@@ -2498,7 +2504,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              expected_trait_ref.clone(),
                                              obligation_trait_ref.clone()) {
-            Ok(()) => Ok(()),
+            Ok(InferOk { obligations }) => {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+                Ok(())
+            },
             Err(e) => Err(OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
         }
     }
@@ -2814,8 +2824,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.infcx.sub_poly_trait_refs(false,
                                              origin,
                                              poly_trait_ref,
-                                             obligation.predicate.to_poly_trait_ref()) {
-            Ok(()) => Ok(()),
+                                             obligation.predicate.to_poly_trait_ref())
+        {
+            Ok(InferOk { obligations }) => {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+                Ok(())
+            },
             Err(_) => Err(()),
         }
     }
