@@ -8,7 +8,7 @@ use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 
 use syntax::ast::{Lit, LitKind};
 
-use utils::{get_item_name, snippet, span_lint, walk_ptrs_ty};
+use utils::{get_item_name, snippet, span_lint, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** This lint checks for getting the length of something via `.len()` just to compare to zero, and suggests using `.is_empty()` where applicable.
 ///
@@ -80,7 +80,6 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItem]) {
     }
 
     if !trait_items.iter().any(|i| is_named_self(i, "is_empty")) {
-        // span_lint(cx, LEN_WITHOUT_IS_EMPTY, item.span, &format!("trait {}", item.ident));
         for i in trait_items {
             if is_named_self(i, "len") {
                 span_lint(cx,
@@ -151,12 +150,17 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], lit: &Lit, op: &str) {
     if let Spanned{node: LitKind::Int(0, _), ..} = *lit {
         if name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
-            span_lint(cx,
-                      LEN_ZERO,
-                      span,
-                      &format!("consider replacing the len comparison with `{}{}.is_empty()`",
-                               op,
-                               snippet(cx, args[0].span, "_")));
+            span_lint_and_then(cx,
+                               LEN_ZERO,
+                               span,
+                               "length comparison to zero",
+                               |db| {
+                                   db.span_suggestion(span,
+                                                      "consider using `is_empty`",
+                                                       format!("{}{}.is_empty()",
+                                                               op,
+                                                               snippet(cx, args[0].span, "_")));
+                               });
         }
     }
 }

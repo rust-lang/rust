@@ -69,7 +69,10 @@ impl HasWrongIsEmpty {
 #[deny(len_zero)]
 fn main() {
     let x = [1, 2];
-    if x.len() == 0 { //~ERROR consider replacing the len comparison
+    if x.len() == 0 {
+        //~^ERROR length comparison to zero
+        //~|HELP consider using `is_empty`
+        //~|SUGGESTION x.is_empty()
         println!("This should not happen!");
     }
 
@@ -84,19 +87,31 @@ fn main() {
     }
 
     let hie = HasIsEmpty;
-    if hie.len() == 0 { //~ERROR consider replacing the len comparison
+    if hie.len() == 0 {
+        //~^ERROR length comparison to zero
+        //~|HELP consider using `is_empty`
+        //~|SUGGESTION hie.is_empty()
         println!("Or this!");
     }
-    if hie.len() != 0 { //~ERROR consider replacing the len comparison
+    if hie.len() != 0 {
+        //~^ERROR length comparison to zero
+        //~|HELP consider using `is_empty`
+        //~|SUGGESTION !hie.is_empty()
         println!("Or this!");
     }
-    if hie.len() > 0 { //~ERROR consider replacing the len comparison
+    if hie.len() > 0 {
+        //~^ERROR length comparison to zero
+        //~|HELP consider using `is_empty`
+        //~|SUGGESTION !hie.is_empty()
         println!("Or this!");
     }
     assert!(!hie.is_empty());
 
     let wie : &WithIsEmpty = &Wither;
-    if wie.len() == 0 { //~ERROR consider replacing the len comparison
+    if wie.len() == 0 {
+        //~^ERROR length comparison to zero
+        //~|HELP consider using `is_empty`
+        //~|SUGGESTION wie.is_empty()
         println!("Or this!");
     }
     assert!(!wie.is_empty());
