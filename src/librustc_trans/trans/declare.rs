@@ -26,7 +26,6 @@ use trans::abi::{Abi, FnType};
 use trans::attributes;
 use trans::context::CrateContext;
 use trans::type_::Type;
-use trans::type_of;
 
 use std::ffi::CString;
 use libc::c_uint;
@@ -103,17 +102,8 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
-    let (cconv, llfty) = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-        (llvm::CCallConv, type_of::type_of_rust_fn(ccx, &sig, f.abi))
-    } else {
-        let fty = FnType::new(ccx, f.abi, &sig, &[]);
-        (fty.cconv, fty.to_llvm(ccx))
-    };
-
-    // it is ok to directly access sig.0.output because we erased all
-    // late-bound-regions above
-        debug!("declare_rust_fn llfty={:?}", llfty);
-    let llfn = declare_raw_fn(ccx, name, cconv, llfty);
+    let fty = FnType::new(ccx, f.abi, &sig, &[]);
+    let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.to_llvm(ccx));
 
     if sig.output == ty::FnDiverging {
         llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturn);
@@ -122,7 +112,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     if f.abi == Abi::Rust || f.abi == Abi::RustCall {
         attributes::from_fn_type(ccx, fn_type).apply_llfn(llfn);
     } else {
-        FnType::new(ccx, f.abi, &sig, &[]).add_attributes(llfn);
+        fty.add_attributes(llfn);
     }
 
     llfn

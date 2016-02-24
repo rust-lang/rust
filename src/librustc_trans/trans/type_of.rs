@@ -13,7 +13,7 @@
 use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
-use trans::abi::{Abi, FnType};
+use trans::abi::FnType;
 use trans::adt;
 use trans::common::*;
 use trans::machine;
@@ -85,59 +85,6 @@ pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     result
-}
-
-pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 sig: &ty::FnSig<'tcx>,
-                                 abi: Abi)
-                                 -> Type
-{
-    debug!("type_of_rust_fn(sig={:?}, abi={:?})", sig, abi);
-
-    assert!(!sig.variadic); // rust fns are never variadic
-
-    let mut atys: Vec<Type> = Vec::new();
-
-    // First, munge the inputs, if this has the `rust-call` ABI.
-    let inputs_temp;
-    let inputs = if abi == Abi::RustCall {
-        inputs_temp = untuple_arguments(cx, &sig.inputs);
-        &inputs_temp
-    } else {
-        &sig.inputs
-    };
-
-    // Arg 0: Output pointer.
-    // (if the output type is non-immediate)
-    let lloutputtype = match sig.output {
-        ty::FnConverging(output) => {
-            let use_out_pointer = return_uses_outptr(cx, output);
-            let lloutputtype = arg_type_of(cx, output);
-            // Use the output as the actual return value if it's immediate.
-            if use_out_pointer {
-                atys.push(lloutputtype.ptr_to());
-                Type::void(cx)
-            } else if return_type_is_void(cx, output) {
-                Type::void(cx)
-            } else {
-                lloutputtype
-            }
-        }
-        ty::FnDiverging => Type::void(cx)
-    };
-
-    // ... then explicit args.
-    for input in inputs {
-        let arg_ty = type_of_explicit_arg(cx, input);
-
-        if type_is_fat_ptr(cx.tcx(), input) {
-            atys.extend(arg_ty.field_types());
-        } else {
-            atys.push(arg_ty);
-        }
-    }
-
-    Type::func(&atys[..], &lloutputtype)
 }
 
 // A "sizing type" is an LLVM type, the size and alignment of which are
@@ -375,11 +322,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyFnPtr(f) => {
         let sig = cx.tcx().erase_late_bound_regions(&f.sig);
         let sig = infer::normalize_associated_type(cx.tcx(), &sig);
-        if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-            type_of_rust_fn(cx, &sig, f.abi).ptr_to()
-        } else {
-            FnType::new(cx, f.abi, &sig, &[]).to_llvm(cx).ptr_to()
-        }
+        FnType::new(cx, f.abi, &sig, &[]).to_llvm(cx).ptr_to()
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),
       ty::TyTuple(..) => {
