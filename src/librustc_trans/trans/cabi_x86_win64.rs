@@ -31,7 +31,9 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
         }
     };
 
-    fixup(&mut fty.ret, Some(Attribute::StructRet));
+    if fty.ret.ty != Type::void(ccx) {
+        fixup(&mut fty.ret, Some(Attribute::StructRet));
+    }
     for arg in &mut fty.args {
         fixup(arg, None);
     }

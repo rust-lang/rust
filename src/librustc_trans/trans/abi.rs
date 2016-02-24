@@ -23,6 +23,7 @@ use trans::cabi_powerpc;
 use trans::cabi_powerpc64;
 use trans::cabi_mips;
 use trans::cabi_asmjs;
+use trans::machine::llsize_of_alloc;
 use trans::type_::Type;
 use trans::type_of;
 
@@ -146,22 +147,14 @@ impl FnType {
         let cconv = match ccx.sess().target.target.adjust_abi(abi) {
             RustIntrinsic => {
                 // Intrinsics are emitted at the call site
-                ccx.sess().bug("asked to register intrinsic fn");
+                ccx.sess().bug("asked to compute FnType of intrinsic");
             }
             PlatformIntrinsic => {
                 // Intrinsics are emitted at the call site
-                ccx.sess().bug("asked to register platform intrinsic fn");
+                ccx.sess().bug("asked to compute FnType of platform intrinsic");
             }
 
-            Rust => {
-                // FIXME(#3678) Implement linking to foreign fns with Rust ABI
-                ccx.sess().unimpl("foreign functions with Rust ABI");
-            }
-
-            RustCall => {
-                // FIXME(#3678) Implement linking to foreign fns with Rust ABI
-                ccx.sess().unimpl("foreign functions with RustCall ABI");
-            }
+            Rust | RustCall => llvm::CCallConv,
 
             // It's the ABI's job to select this, not us.
             System => ccx.sess().bug("system abi should be selected elsewhere"),
@@ -184,8 +177,27 @@ impl FnType {
             _ => Type::void(ccx)
         };
 
-        let mut args = Vec::with_capacity(sig.inputs.len() + extra_args.len());
-        for ty in sig.inputs.iter().chain(extra_args.iter()) {
+        let mut inputs = &sig.inputs[..];
+        let extra_args = if abi == RustCall {
+            assert!(!sig.variadic && extra_args.is_empty());
+
+            match inputs[inputs.len() - 1].sty {
+                ty::TyTuple(ref tupled_arguments) => {
+                    inputs = &inputs[..inputs.len() - 1];
+                    &tupled_arguments[..]
+                }
+                _ => {
+                    unreachable!("argument to function with \"rust-call\" ABI \
+                                  is not a tuple");
+                }
+            }
+        } else {
+            assert!(sig.variadic || extra_args.is_empty());
+            extra_args
+        };
+
+        let mut args = Vec::with_capacity(inputs.len() + extra_args.len());
+        for ty in inputs.iter().chain(extra_args.iter()) {
             let llty = c_type_of(ccx, ty);
             if type_is_fat_ptr(ccx.tcx(), ty) {
                 args.extend(llty.field_types().into_iter().map(|llty| {
@@ -202,6 +214,35 @@ impl FnType {
             variadic: sig.variadic,
             cconv: cconv
         };
+
+        if abi == Rust || abi == RustCall {
+            let fixup = |arg: &mut ArgType| {
+                if !arg.ty.is_aggregate() {
+                    // Scalars and vectors, always immediate.
+                    return;
+                }
+                let size = llsize_of_alloc(ccx, arg.ty);
+                if size > llsize_of_alloc(ccx, ccx.int_type()) {
+                    arg.kind = Indirect;
+                } else if size > 0 {
+                    // We want to pass small aggregates as immediates, but using
+                    // a LLVM aggregate type for this leads to bad optimizations,
+                    // so we pick an appropriately sized integer type instead.
+                    arg.cast = Some(Type::ix(ccx, size * 8));
+                }
+            };
+            if let ty::FnConverging(ret_ty) = sig.output {
+                // Fat pointers are returned by-value.
+                if !type_is_fat_ptr(ccx.tcx(), ret_ty) &&
+                   fty.ret.ty != Type::void(ccx) {
+                    fixup(&mut fty.ret);
+                }
+            };
+            for arg in &mut fty.args {
+                fixup(arg);
+            }
+            return fty;
+        }
 
         match &ccx.sess().target.target.arch[..] {
             "x86" => cabi_x86::compute_abi_info(ccx, &mut fty),
