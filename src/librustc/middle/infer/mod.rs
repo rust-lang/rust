@@ -406,7 +406,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
         cx.lub(a_is_expected, trace.clone(), &mut obligations).relate(&a, &b)
     });
     match result {
-        Ok(t) => InferOk { value: t, obligations: obligations},
+        Ok(t) => InferOk { value: t, obligations: obligations },
         Err(ref err) => {
             cx.report_and_explain_type_error(trace, err);
             InferOk { value: cx.tcx.types.err, obligations: Vec::new() }
