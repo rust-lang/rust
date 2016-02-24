@@ -39,7 +39,7 @@ Instead of:
  */
 ```
 
-Only use inner doc comments //! to write crate and module-level documentation,
+Only use inner doc comments `//!` to write crate and module-level documentation,
 nothing else. When using `mod` blocks, prefer `///` outside of the block:
 
 ```rust
