@@ -151,15 +151,12 @@ impl<'a> Step<'a> {
     pub fn deps(&self, build: &'a Build) -> Vec<Step<'a>> {
         match self.src {
             Source::Rustc { stage: 0 } => {
-                if self.target == build.config.build {
-                    Vec::new()
-                } else {
-                    let compiler = Compiler::new(0, &build.config.build);
-                    vec![self.librustc(0, compiler)]
-                }
+                assert!(self.target == build.config.build);
+                Vec::new()
             }
             Source::Rustc { stage } => {
-                vec![self.librustc(stage - 1, self.compiler(stage - 1))]
+                let compiler = Compiler::new(stage - 1, &build.config.build);
+                vec![self.librustc(stage - 1, compiler)]
             }
             Source::Librustc { stage, compiler } => {
                 vec![self.libstd(stage, compiler), self.llvm(())]
