@@ -354,9 +354,9 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
             // linting condition: we only indexed one variable
             if visitor.indexed.len() == 1 {
                 let (indexed, indexed_extent) = visitor.indexed
-                                     .into_iter()
-                                     .next()
-                                     .unwrap_or_else(|| unreachable!() /* len == 1 */);
+                                                       .into_iter()
+                                                       .next()
+                                                       .unwrap_or_else(|| unreachable!() /* len == 1 */);
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 let pat_extent = cx.tcx.region_maps.var_scope(pat.id);
@@ -441,8 +441,12 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                 // who think that this will iterate from the larger value to the
                 // smaller value.
                 let (sup, eq) = match (start_idx, stop_idx) {
-                    (ConstVal::Int(start_idx), ConstVal::Int(stop_idx)) => (start_idx > stop_idx, start_idx == stop_idx),
-                    (ConstVal::Uint(start_idx), ConstVal::Uint(stop_idx)) => (start_idx > stop_idx, start_idx == stop_idx),
+                    (ConstVal::Int(start_idx), ConstVal::Int(stop_idx)) => {
+                        (start_idx > stop_idx, start_idx == stop_idx)
+                    }
+                    (ConstVal::Uint(start_idx), ConstVal::Uint(stop_idx)) => {
+                        (start_idx > stop_idx, start_idx == stop_idx)
+                    }
                     _ => (false, false),
                 };
 
@@ -518,26 +522,25 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
 fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
     let ty = cx.tcx.expr_ty(arg);
     if match_type(cx, ty, &OPTION_PATH) {
-        span_help_and_lint(
-            cx,
-            FOR_LOOP_OVER_OPTION,
-            arg.span,
-            &format!("for loop over `{0}`, which is an `Option`. This is more readably written as \
-                      an `if let` statement.", snippet(cx, arg.span, "_")),
-            &format!("consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
-                     snippet(cx, pat.span, "_"), snippet(cx, arg.span, "_"))
-        );
-    }
-    else if match_type(cx, ty, &RESULT_PATH) {
-        span_help_and_lint(
-            cx,
-            FOR_LOOP_OVER_RESULT,
-            arg.span,
-            &format!("for loop over `{0}`, which is a `Result`. This is more readably written as \
-                      an `if let` statement.", snippet(cx, arg.span, "_")),
-            &format!("consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
-                     snippet(cx, pat.span, "_"), snippet(cx, arg.span, "_"))
-        );
+        span_help_and_lint(cx,
+                           FOR_LOOP_OVER_OPTION,
+                           arg.span,
+                           &format!("for loop over `{0}`, which is an `Option`. This is more readably written as an \
+                                     `if let` statement.",
+                                    snippet(cx, arg.span, "_")),
+                           &format!("consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
+                                    snippet(cx, pat.span, "_"),
+                                    snippet(cx, arg.span, "_")));
+    } else if match_type(cx, ty, &RESULT_PATH) {
+        span_help_and_lint(cx,
+                           FOR_LOOP_OVER_RESULT,
+                           arg.span,
+                           &format!("for loop over `{0}`, which is a `Result`. This is more readably written as an \
+                                     `if let` statement.",
+                                    snippet(cx, arg.span, "_")),
+                           &format!("consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
+                                    snippet(cx, pat.span, "_"),
+                                    snippet(cx, arg.span, "_")));
     }
 }
 
@@ -593,31 +596,29 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
             let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
                 (key, _) if pat_is_wild(key, body) => (&pat[1].span, "values"),
                 (_, value) if pat_is_wild(value, body) => (&pat[0].span, "keys"),
-                _ => return
+                _ => return,
             };
 
             let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
             let arg_span = if let ExprAddrOf(_, ref expr) = arg.node {
                 expr.span
-            }
-            else {
+            } else {
                 arg.span
             };
 
-            if match_type(cx, ty, &HASHMAP_PATH) ||
-               match_type(cx, ty, &BTREEMAP_PATH) {
+            if match_type(cx, ty, &HASHMAP_PATH) || match_type(cx, ty, &BTREEMAP_PATH) {
                 span_lint_and_then(cx,
-                          FOR_KV_MAP,
-                          expr.span,
-                          &format!("you seem to want to iterate on a map's {}", kind),
-                          |db| {
-                    db.span_suggestion(expr.span,
-                                       "use the corresponding method",
-                                       format!("for {} in {}.{}() {{...}}",
-                                               snippet(cx, *pat_span, ".."),
-                                               snippet(cx, arg_span, ".."),
-                                               kind));
-                });
+                                   FOR_KV_MAP,
+                                   expr.span,
+                                   &format!("you seem to want to iterate on a map's {}", kind),
+                                   |db| {
+                                       db.span_suggestion(expr.span,
+                                                          "use the corresponding method",
+                                                          format!("for {} in {}.{}() {{...}}",
+                                                                  snippet(cx, *pat_span, ".."),
+                                                                  snippet(cx, arg_span, ".."),
+                                                                  kind));
+                                   });
             }
         }
     }
@@ -635,7 +636,7 @@ fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
             };
             walk_expr(&mut visitor, body);
             !visitor.used
-        },
+        }
         _ => false,
     }
 }
@@ -650,7 +651,7 @@ impl<'a> Visitor<'a> for UsedVisitor {
         if let ExprPath(None, ref path) = expr.node {
             if path.segments.len() == 1 && path.segments[0].identifier == self.var {
                 self.used = true;
-                return
+                return;
             }
         }
 

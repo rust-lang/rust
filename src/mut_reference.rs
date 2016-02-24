@@ -1,8 +1,8 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
-use utils::span_lint;
 use rustc::middle::ty::{TypeAndMut, TypeVariants, MethodCall, TyS};
+use rustc_front::hir::*;
 use syntax::ptr::P;
+use utils::span_lint;
 
 /// **What it does:** This lint detects giving a mutable reference to a function that only requires an immutable reference.
 ///

@@ -3,8 +3,8 @@ use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::{Def, PathResolution};
 use rustc_front::hir::*;
 use rustc_front::util::is_comparison_binop;
-use syntax::codemap::Span;
 use syntax::ast::LitKind;
+use syntax::codemap::Span;
 
 use utils::span_lint;
 

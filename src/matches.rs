@@ -7,7 +7,6 @@ use rustc_front::hir::*;
 use std::cmp::Ordering;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
-
 use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
 use utils::{match_type, snippet, span_lint, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 
@@ -139,20 +138,20 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
        arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
        arms[1].pats.len() == 1 && arms[1].guard.is_none() {
-           let els = if is_unit_expr(&arms[1].body) {
-               None
-           } else if let ExprBlock(_) = arms[1].body.node {
-               // matches with blocks that contain statements are prettier as `if let + else`
-               Some(&*arms[1].body)
-           } else {
-               // allow match arms with just expressions
-               return;
-           };
-           let ty = cx.tcx.expr_ty(ex);
-           if ty.sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow {
-                check_single_match_single_pattern(cx, ex, arms, expr, els);
-                check_single_match_opt_like(cx, ex, arms, expr, ty, els);
-           }
+        let els = if is_unit_expr(&arms[1].body) {
+            None
+        } else if let ExprBlock(_) = arms[1].body.node {
+            // matches with blocks that contain statements are prettier as `if let + else`
+            Some(&*arms[1].body)
+        } else {
+            // allow match arms with just expressions
+            return;
+        };
+        let ty = cx.tcx.expr_ty(ex);
+        if ty.sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow {
+            check_single_match_single_pattern(cx, ex, arms, expr, els);
+            check_single_match_opt_like(cx, ex, arms, expr, ty, els);
+        }
     }
 }
 
@@ -194,11 +193,11 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, Some(ref inner)) => {
             // contains any non wildcard patterns? e.g. Err(err)
-            if inner.iter().any(|pat| if let PatKind::Wild = pat.node { false } else { true }) {
+            if inner.iter().any(|pat| pat.node != PatKind::Wild) {
                 return;
             }
             path.to_string()
-        },
+        }
         PatKind::TupleStruct(ref path, None) => path.to_string(),
         PatKind::Ident(BindByValue(MutImmutable), ident, None) => ident.node.to_string(),
         _ => return,

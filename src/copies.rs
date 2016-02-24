@@ -61,11 +61,7 @@ pub struct CopyAndPaste;
 
 impl LintPass for CopyAndPaste {
     fn get_lints(&self) -> LintArray {
-        lint_array![
-            IFS_SAME_COND,
-            IF_SAME_THEN_ELSE,
-            MATCH_SAME_ARMS
-        ]
+        lint_array![IFS_SAME_COND, IF_SAME_THEN_ELSE, MATCH_SAME_ARMS]
     }
 }
 
@@ -89,35 +85,43 @@ impl LateLintPass for CopyAndPaste {
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
 fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
-    let hash : &Fn(&&Block) -> u64 = &|block| -> u64 {
+    let hash: &Fn(&&Block) -> u64 = &|block| -> u64 {
         let mut h = SpanlessHash::new(cx);
         h.hash_block(block);
         h.finish()
     };
 
-    let eq : &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool {
+    let eq: &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool {
         SpanlessEq::new(cx).eq_block(lhs, rhs)
     };
 
     if let Some((i, j)) = search_same(blocks, hash, eq) {
-        span_note_and_lint(cx, IF_SAME_THEN_ELSE, j.span, "this `if` has identical blocks", i.span, "same as this");
+        span_note_and_lint(cx,
+                           IF_SAME_THEN_ELSE,
+                           j.span,
+                           "this `if` has identical blocks",
+                           i.span,
+                           "same as this");
     }
 }
 
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
-    let hash : &Fn(&&Expr) -> u64 = &|expr| -> u64 {
+    let hash: &Fn(&&Expr) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx);
         h.hash_expr(expr);
         h.finish()
     };
 
-    let eq : &Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool {
-        SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs)
-    };
+    let eq: &Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
 
     if let Some((i, j)) = search_same(conds, hash, eq) {
-        span_note_and_lint(cx, IFS_SAME_COND, j.span, "this `if` has the same condition as a previous if", i.span, "same as this");
+        span_note_and_lint(cx,
+                           IFS_SAME_COND,
+                           j.span,
+                           "this `if` has the same condition as a previous if",
+                           i.span,
+                           "same as this");
     }
 }
 
@@ -137,7 +141,12 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 
     if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
         if let Some((i, j)) = search_same(&**arms, hash, eq) {
-            span_note_and_lint(cx, MATCH_SAME_ARMS, j.body.span, "this `match` has identical arm bodies", i.body.span, "same as this");
+            span_note_and_lint(cx,
+                               MATCH_SAME_ARMS,
+                               j.body.span,
+                               "this `match` has identical arm bodies",
+                               i.body.span,
+                               "same as this");
         }
     }
 }
@@ -155,8 +164,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 
         if let Some(ref else_expr) = *else_expr {
             expr = else_expr;
-        }
-        else {
+        } else {
             break;
         }
     }
@@ -188,7 +196,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                 if let Some(ref as_pat) = *as_pat {
                     bindings_impl(cx, as_pat, map);
                 }
-            },
+            }
             PatKind::Struct(_, ref fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, &pat.node.pat, map);
@@ -210,7 +218,12 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, pat, map);
                 }
             }
-            PatKind::TupleStruct(..) | PatKind::Lit(..) | PatKind::QPath(..) | PatKind::Range(..) | PatKind::Wild | PatKind::Path(..) => (),
+            PatKind::TupleStruct(..) |
+            PatKind::Lit(..) |
+            PatKind::QPath(..) |
+            PatKind::Range(..) |
+            PatKind::Wild |
+            PatKind::Path(..) => (),
         }
     }
 
@@ -219,36 +232,35 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
     result
 }
 
-fn search_same<T, Hash, Eq>(exprs: &[T],
-                            hash: Hash,
-                            eq: Eq) -> Option<(&T, &T)>
-where Hash: Fn(&T) -> u64,
-      Eq: Fn(&T, &T) -> bool {
+fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
+    where Hash: Fn(&T) -> u64,
+          Eq: Fn(&T, &T) -> bool
+{
     // common cases
     if exprs.len() < 2 {
         return None;
-    }
-    else if exprs.len() == 2 {
+    } else if exprs.len() == 2 {
         return if eq(&exprs[0], &exprs[1]) {
             Some((&exprs[0], &exprs[1]))
-        }
-        else {
+        } else {
             None
-        }
+        };
     }
 
-    let mut map : HashMap<_, Vec<&_>> = HashMap::with_capacity(exprs.len());
+    let mut map: HashMap<_, Vec<&_>> = HashMap::with_capacity(exprs.len());
 
     for expr in exprs {
         match map.entry(hash(expr)) {
             Entry::Occupied(o) => {
                 for o in o.get() {
                     if eq(&o, expr) {
-                        return Some((&o, expr))
+                        return Some((&o, expr));
                     }
                 }
             }
-            Entry::Vacant(v) => { v.insert(vec![expr]); }
+            Entry::Vacant(v) => {
+                v.insert(vec![expr]);
+            }
         }
     }
 

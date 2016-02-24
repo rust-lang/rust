@@ -1,10 +1,9 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
 use rustc::lint::*;
-use syntax::attr::*;
 use syntax::ast::*;
+use syntax::attr::*;
 use syntax::parse::token::InternedString;
-
 use utils::span_help_and_lint;
 use utils::{camel_case_from, camel_case_until};
 
@@ -95,7 +94,7 @@ impl EarlyLintPass for EnumVariantNames {
             } else if !post.is_empty() {
                 ("post", post)
             } else {
-                return
+                return;
             };
             span_help_and_lint(cx,
                                ENUM_VARIANT_NAMES,

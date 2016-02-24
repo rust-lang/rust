@@ -3,12 +3,10 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LintPass, LintArray, LateLintPass, LateContext};
-use rustc_front::hir::Expr;
-
-use syntax::ast;
-use rustc::middle::ty;
 use rustc::middle::subst::ParamSpace;
-
+use rustc::middle::ty;
+use rustc_front::hir::Expr;
+use syntax::ast;
 use utils::{span_lint, MUTEX_PATH, match_type};
 
 /// **What it does:** This lint checks for usages of `Mutex<X>` where an atomic will do.

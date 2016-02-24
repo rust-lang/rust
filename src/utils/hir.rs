@@ -19,11 +19,17 @@ pub struct SpanlessEq<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
-        SpanlessEq { cx: cx, ignore_fn: false }
+        SpanlessEq {
+            cx: cx,
+            ignore_fn: false,
+        }
     }
 
     pub fn ignore_fn(self) -> Self {
-        SpanlessEq { cx: self.cx, ignore_fn: true }
+        SpanlessEq {
+            cx: self.cx,
+            ignore_fn: true,
+        }
     }
 
     /// Check whether two statements are the same.
@@ -40,7 +46,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 }
             }
             (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) |
-                (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => self.eq_expr(l, r),
+            (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => self.eq_expr(l, r),
             _ => false,
         }
     }
@@ -48,7 +54,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     /// Check whether two blocks are the same.
     pub fn eq_block(&self, left: &Block, right: &Block) -> bool {
         over(&left.stmts, &right.stmts, |l, r| self.eq_stmt(l, r)) &&
-            both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
+        both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
     }
 
     // ok, it’s a big function, but mostly one big match with simples cases
@@ -77,9 +83,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
                 lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             }
-            (&ExprBlock(ref l), &ExprBlock(ref r)) => {
-                self.eq_block(l, r)
-            }
+            (&ExprBlock(ref l), &ExprBlock(ref r)) => self.eq_block(l, r),
             (&ExprBinary(lop, ref ll, ref lr), &ExprBinary(rop, ref rl, ref rr)) => {
                 lop.node == rop.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             }
@@ -267,7 +271,10 @@ pub struct SpanlessHash<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
-        SpanlessHash { cx: cx, s: SipHasher::new() }
+        SpanlessHash {
+            cx: cx,
+            s: SipHasher::new(),
+        }
     }
 
     pub fn finish(&self) -> u64 {
@@ -389,7 +396,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_) -> _ = ExprLit;
                 c.hash(&mut self.s);
                 l.hash(&mut self.s);
-            },
+            }
             ExprLoop(ref b, ref i) => {
                 let c: fn(_, _) -> _ = ExprLoop;
                 c.hash(&mut self.s);
@@ -466,7 +473,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_) -> _ = ExprTup;
                 c.hash(&mut self.s);
                 self.hash_exprs(tup);
-            },
+            }
             ExprTupField(ref le, li) => {
                 let c: fn(_, _) -> _ = ExprTupField;
                 c.hash(&mut self.s);
@@ -491,7 +498,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 c.hash(&mut self.s);
 
                 self.hash_exprs(v);
-            },
+            }
             ExprWhile(ref cond, ref b, l) => {
                 let c: fn(_, _, _) -> _ = ExprWhile;
                 c.hash(&mut self.s);

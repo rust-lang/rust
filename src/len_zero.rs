@@ -1,13 +1,10 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
-use syntax::ast::Name;
-use syntax::ptr::P;
-use syntax::codemap::{Span, Spanned};
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
-
-use syntax::ast::{Lit, LitKind};
-
+use rustc_front::hir::*;
+use syntax::ast::{Lit, LitKind, Name};
+use syntax::codemap::{Span, Spanned};
+use syntax::ptr::P;
 use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** This lint checks for getting the length of something via `.len()` just to compare to zero, and suggests using `.is_empty()` where applicable.

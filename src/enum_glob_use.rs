@@ -1,13 +1,13 @@
 //! lint on `use`ing all variants of an enum
 
-use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray, LintContext};
-use rustc_front::hir::*;
 use rustc::front::map::Node::NodeItem;
 use rustc::front::map::definitions::DefPathData;
+use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray, LintContext};
 use rustc::middle::ty::TyEnum;
-use utils::span_lint;
-use syntax::codemap::Span;
+use rustc_front::hir::*;
 use syntax::ast::NodeId;
+use syntax::codemap::Span;
+use utils::span_lint;
 
 /// **What it does:** Warns when `use`ing all variants of an enum
 ///

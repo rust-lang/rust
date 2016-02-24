@@ -1,13 +1,13 @@
 use regex_syntax;
-use std::error::Error;
+use rustc::lint::*;
+use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
+use rustc_front::hir::*;
 use std::collections::HashSet;
+use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
-use rustc_front::hir::*;
-use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
-use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-use rustc::lint::*;
 
 use utils::{is_expn_of, match_path, match_type, REGEX_NEW_PATH, span_lint, span_help_and_lint};
 
@@ -54,7 +54,7 @@ declare_lint! {
 #[derive(Clone, Default)]
 pub struct RegexPass {
     spans: HashSet<Span>,
-    last: Option<NodeId>
+    last: Option<NodeId>,
 }
 
 impl LintPass for RegexPass {
@@ -86,10 +86,10 @@ impl LateLintPass for RegexPass {
             self.last = Some(block.id);
         }}
     }
-    
+
     fn check_block_post(&mut self, _: &LateContext, block: &Block) {
         if self.last.map_or(false, |id| block.id == id) {
-             self.last = None;
+            self.last = None;
         }
     }
 
@@ -145,7 +145,7 @@ impl LateLintPass for RegexPass {
 fn str_span(base: Span, s: &str, c: usize) -> Span {
     let lo = match s.char_indices().nth(c) {
         Some((b, _)) => base.lo + BytePos(b as u32),
-        _ => base.hi
+        _ => base.hi,
     };
     Span{ lo: lo, hi: lo, ..base }
 }
@@ -153,7 +153,7 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
 fn const_str(cx: &LateContext, e: &Expr) -> Option<InternedString> {
     match eval_const_expr_partial(cx.tcx, e, ExprTypeChecked, None) {
         Ok(ConstVal::Str(r)) => Some(r),
-        _ => None
+        _ => None,
     }
 }
 
@@ -165,20 +165,21 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
         Expr::Literal {..} => Some("consider using `str::contains`"),
         Expr::Concat(ref exprs) => {
             match exprs.len() {
-                2 => match (&exprs[0], &exprs[1]) {
-                    (&Expr::StartText, &Expr::EndText) => Some("consider using `str::is_empty`"),
-                    (&Expr::StartText, &Expr::Literal {..}) => Some("consider using `str::starts_with`"),
-                    (&Expr::Literal {..}, &Expr::EndText) => Some("consider using `str::ends_with`"),
-                    _ => None,
-                },
+                2 => {
+                    match (&exprs[0], &exprs[1]) {
+                        (&Expr::StartText, &Expr::EndText) => Some("consider using `str::is_empty`"),
+                        (&Expr::StartText, &Expr::Literal {..}) => Some("consider using `str::starts_with`"),
+                        (&Expr::Literal {..}, &Expr::EndText) => Some("consider using `str::ends_with`"),
+                        _ => None,
+                    }
+                }
                 3 => {
                     if let (&Expr::StartText, &Expr::Literal {..}, &Expr::EndText) = (&exprs[0], &exprs[1], &exprs[2]) {
                         Some("consider using `==` on `str`s")
-                    }
-                    else {
+                    } else {
                         None
                     }
-                },
+                }
                 _ => None,
             }
         }

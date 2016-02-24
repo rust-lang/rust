@@ -1,11 +1,8 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use syntax::codemap::Span;
-
 use syntax::ast::LitKind;
-
+use syntax::codemap::Span;
 use unicode_normalization::UnicodeNormalization;
-
 use utils::{snippet, span_help_and_lint};
 
 /// **What it does:** This lint checks for the unicode zero-width space in the code.

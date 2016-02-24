@@ -1,8 +1,8 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use std::f64::consts as f64;
-use utils::span_lint;
 use syntax::ast::{Lit, LitKind, FloatTy};
+use utils::span_lint;
 
 /// **What it does:** This lint checks for floating point literals that approximate constants which are defined in [`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants) or [`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants), respectively, suggesting to use the predefined constant.
 ///

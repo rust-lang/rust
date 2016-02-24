@@ -6,10 +6,9 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
-
-use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
-use utils::SpanlessEq;
 use utils::STRING_PATH;
+use utils::SpanlessEq;
+use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 
 /// **What it does:** This lint matches code of the form `x = x + y` (without `let`!).
 ///
