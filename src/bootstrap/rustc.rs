@@ -61,6 +61,9 @@ fn main() {
             root.push("/lib");
             cmd.arg("-L").arg(&root);
         }
+        if let Ok(s) = env::var("RUSTC_FLAGS") {
+            cmd.args(&s.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>());
+        }
     }
 
     // Set various options from config.toml to configure how we're building
@@ -78,9 +81,6 @@ fn main() {
     cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
     if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
         cmd.arg("-C").arg(format!("codegen-units={}", s));
-    }
-    if let Ok(s) = env::var("RUSTC_FLAGS") {
-        cmd.args(&s.split(" ").filter(|s| !s.is_empty()).collect::<Vec<_>>());
     }
 
     // Actually run the compiler!
