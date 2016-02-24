@@ -11,8 +11,6 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
-use std::cell::RefCell;
-
 use rustc::middle::infer::{self, InferCtxt};
 use rustc::middle::traits;
 use rustc::middle::ty::{self, Ty};
@@ -310,7 +308,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                ty,
                obligations);
 
-        let mut fulfill_cx = self.cx.fulfillment_cx.borrow_mut();
+        let mut fulfill_cx = &mut self.cx.fulfillment_cx;
         for obligation in obligations {
             fulfill_cx.register_predicate_obligation(infcx, obligation);
         }
@@ -321,7 +319,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
 pub struct TypeChecker<'a, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
+    fulfillment_cx: traits::FulfillmentContext<'tcx>,
     last_span: Span
 }
 
@@ -329,32 +327,30 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         TypeChecker {
             infcx: infcx,
-            fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
+            fulfillment_cx: traits::FulfillmentContext::new(),
             last_span: DUMMY_SP
         }
     }
 
-    fn mk_subty(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
+    fn mk_subty(&mut self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
         infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span), sup, sub)
             .map(|infer::InferOk { obligations, .. }| {
                 for obligation in obligations {
-                    self.fulfillment_cx.borrow_mut()
-                        .register_predicate_obligation(self.infcx, obligation);
+                    self.fulfillment_cx.register_predicate_obligation(self.infcx, obligation);
                 }
                 ()
             })
     }
 
-    fn mk_eqty(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
+    fn mk_eqty(&mut self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
         infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span), a, b)
             .map(|infer::InferOk { obligations, .. }| {
                 for obligation in obligations {
-                    self.fulfillment_cx.borrow_mut()
-                        .register_predicate_obligation(self.infcx, obligation);
+                    self.fulfillment_cx.register_predicate_obligation(self.infcx, obligation);
                 }
                 ()
             })
@@ -372,7 +368,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let lv_ty = mir.lvalue_ty(tcx, lv).to_ty(tcx);
                 let rv_ty = mir.rvalue_ty(tcx, rv);
                 if let Some(rv_ty) = rv_ty {
-                    if let Err(terr) = self.mk_subty(self.last_span, rv_ty, lv_ty) {
+                    let last_span = self.last_span;
+                    if let Err(terr) = self.mk_subty(last_span, rv_ty, lv_ty) {
                         span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
                                      lv_ty, rv_ty, terr);
                     }
@@ -384,7 +381,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_terminator(&self,
+    fn check_terminator(&mut self,
                         mir: &Mir<'tcx>,
                         term: &Terminator<'tcx>) {
         debug!("check_terminator: {:?}", term);
@@ -408,7 +405,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             Terminator::SwitchInt { ref discr, switch_ty, .. } => {
                 let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
-                if let Err(terr) = self.mk_subty(self.last_span, discr_ty, switch_ty) {
+                let last_span = self.last_span;
+                if let Err(terr) = self.mk_subty(last_span, discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
                 }
@@ -453,7 +451,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_call_dest(&self,
+    fn check_call_dest(&mut self,
                        mir: &Mir<'tcx>,
                        term: &Terminator<'tcx>,
                        sig: &ty::FnSig<'tcx>,
@@ -465,7 +463,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             (&Some((ref dest, _)), ty::FnConverging(ty)) => {
                 let dest_ty = mir.lvalue_ty(tcx, dest).to_ty(tcx);
-                if let Err(terr) = self.mk_subty(self.last_span, ty, dest_ty) {
+                let last_span = self.last_span;
+                if let Err(terr) = self.mk_subty(last_span, ty, dest_ty) {
                     span_mirbug!(self, term,
                                  "call dest mismatch ({:?} <- {:?}): {:?}",
                                  dest_ty, ty, terr);
@@ -478,7 +477,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_call_inputs(&self,
+    fn check_call_inputs(&mut self,
                          mir: &Mir<'tcx>,
                          term: &Terminator<'tcx>,
                          sig: &ty::FnSig<'tcx>,
@@ -491,7 +490,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
         for (n, (fn_arg, op_arg)) in sig.inputs.iter().zip(args).enumerate() {
             let op_arg_ty = mir.operand_ty(self.tcx(), op_arg);
-            if let Err(terr) = self.mk_subty(self.last_span, op_arg_ty, fn_arg) {
+            let last_span = self.last_span;
+            if let Err(terr) = self.mk_subty(last_span, op_arg_ty, fn_arg) {
                 span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
                              n, fn_arg, op_arg_ty, terr);
             }
@@ -509,7 +509,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_box_free_inputs(&self,
+    fn check_box_free_inputs(&mut self,
                              mir: &Mir<'tcx>,
                              term: &Terminator<'tcx>,
                              sig: &ty::FnSig<'tcx>,
@@ -546,7 +546,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         };
 
-        if let Err(terr) = self.mk_subty(self.last_span, arg_ty, pointee_ty) {
+        let last_span = self.last_span;
+        if let Err(terr) = self.mk_subty(last_span, arg_ty, pointee_ty) {
             span_mirbug!(self, term, "bad box_free arg ({:?} <- {:?}): {:?}",
                          pointee_ty, arg_ty, terr);
         }
@@ -571,7 +572,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn verify_obligations(&mut self, mir: &Mir<'tcx>) {
         self.last_span = mir.span;
-        if let Err(e) = self.fulfillment_cx.borrow_mut().select_all_or_error(self.infcx) {
+        if let Err(e) = self.fulfillment_cx.select_all_or_error(self.infcx) {
             span_mirbug!(self, "", "errors selecting obligation: {:?}",
                          e);
         }
