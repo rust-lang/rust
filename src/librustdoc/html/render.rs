@@ -1489,9 +1489,11 @@ impl<'a> Item<'a> {
                           true, |component| {
                 path.push(component.to_string());
             });
+
             // If the span points into an external macro the
             // source-file will be bogus, i.e `<foo macros>`
-            if Path::new(&self.item.source.filename).is_file() {
+            let filename = &self.item.source.filename;
+            if !(filename.starts_with("<") && filename.ends_with("macros>")) {
                 Some(format!("{root}src/{krate}/{path}.html#{href}",
                              root = self.cx.root_path,
                              krate = self.cx.layout.krate,
