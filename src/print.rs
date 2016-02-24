@@ -1,6 +1,6 @@
+use rustc::front::map::Node::{NodeItem, NodeImplItem};
 use rustc::lint::*;
 use rustc_front::hir::*;
-use rustc::front::map::Node::{NodeItem, NodeImplItem};
 use utils::{FMT_ARGUMENTV1_NEW_PATH, DEBUG_FMT_METHOD_PATH, IO_PRINT_PATH};
 use utils::{is_expn_of, match_path, span_lint};
 

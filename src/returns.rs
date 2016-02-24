@@ -1,6 +1,5 @@
 use rustc::lint::*;
 use syntax::ast::*;
-// use reexport::*;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 

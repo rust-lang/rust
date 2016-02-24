@@ -1,8 +1,10 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use utils::{CLONE_PATH, OPTION_PATH};
-use utils::{is_adjusted, match_path, match_trait_method, match_type, snippet, span_help_and_lint};
-use utils::{walk_ptrs_ty, walk_ptrs_ty_depth};
+use utils::{
+    is_adjusted, match_path, match_trait_method, match_type, snippet, span_help_and_lint,
+    walk_ptrs_ty, walk_ptrs_ty_depth
+};
 
 /// **What it does:** This lint checks for mapping clone() over an iterator.
 ///

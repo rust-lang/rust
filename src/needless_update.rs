@@ -1,7 +1,6 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::middle::ty::TyStruct;
 use rustc_front::hir::{Expr, ExprStruct};
-
 use utils::span_lint;
 
 /// **What it does:** This lint warns on needlessly including a base struct on update when all fields are changed anyway.

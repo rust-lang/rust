@@ -4,7 +4,6 @@
 
 use rustc::lint::*;
 use rustc_front::hir::*;
-
 use utils::span_lint;
 use utils;
 

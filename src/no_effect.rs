@@ -1,10 +1,7 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::middle::def::Def;
-use rustc_front::hir::{Expr, Expr_};
-use rustc_front::hir::{Stmt, StmtSemi};
-
-use utils::in_macro;
-use utils::span_lint;
+use rustc_front::hir::{Expr, Expr_, Stmt, StmtSemi};
+use utils::{in_macro, span_lint};
 
 /// **What it does:** This lint checks for statements which have no effect.
 ///

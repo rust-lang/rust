@@ -1,12 +1,10 @@
-use std::ops::Deref;
-use rustc_front::hir::*;
 use reexport::*;
-use syntax::codemap::Span;
-use rustc_front::intravisit::{Visitor, FnKind};
-
 use rustc::lint::*;
 use rustc::middle::def::Def;
-
+use rustc_front::hir::*;
+use rustc_front::intravisit::{Visitor, FnKind};
+use std::ops::Deref;
+use syntax::codemap::Span;
 use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint, DiagnosticWrapper};
 
 /// **What it does:** This lint checks for bindings that shadow other bindings already in scope, while just changing reference level or mutability.

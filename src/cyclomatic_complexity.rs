@@ -1,13 +1,13 @@
 //! calculate cyclomatic complexity and warn about overly complex functions
 
 use rustc::lint::*;
-use rustc_front::hir::*;
 use rustc::middle::cfg::CFG;
 use rustc::middle::ty;
-use syntax::codemap::Span;
-use syntax::attr::*;
-use syntax::ast::Attribute;
+use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr};
+use syntax::ast::Attribute;
+use syntax::attr::*;
+use syntax::codemap::Span;
 
 use utils::{in_macro, LimitStack, span_help_and_lint};
 

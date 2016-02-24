@@ -1,12 +1,12 @@
 //! checks for attributes
 
+use reexport::*;
 use rustc::lint::*;
 use rustc_front::hir::*;
-use reexport::*;
 use semver::Version;
-use syntax::codemap::Span;
-use syntax::attr::*;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind};
+use syntax::attr::*;
+use syntax::codemap::Span;
 use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
 
 /// **What it does:** This lint checks for items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.

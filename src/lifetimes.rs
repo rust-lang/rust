@@ -1,11 +1,10 @@
-use rustc_front::hir::*;
 use reexport::*;
 use rustc::lint::*;
-use syntax::codemap::Span;
-use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
 use rustc::middle::def::Def;
+use rustc_front::hir::*;
+use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
 use std::collections::{HashSet, HashMap};
-
+use syntax::codemap::Span;
 use utils::{in_external_macro, span_lint};
 
 /// **What it does:** This lint checks for lifetime annotations which can be removed by relying on lifetime elision.

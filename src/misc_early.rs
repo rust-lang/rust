@@ -1,11 +1,8 @@
 use rustc::lint::*;
-
 use std::collections::HashMap;
-
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-
 use utils::{span_lint, span_help_and_lint};
 
 /// **What it does:** This lint checks for structure field patterns bound to wildcards.

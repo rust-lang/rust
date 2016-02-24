@@ -1,6 +1,7 @@
 use rustc::lint::*;
-use rustc::middle::const_eval::{ConstVal, eval_const_expr_partial};
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc::middle::const_eval::{ConstVal, eval_const_expr_partial};
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::subst::{Subst, TypeSpace};
 use rustc::middle::ty;
 use rustc_front::hir::*;
@@ -8,14 +9,12 @@ use std::borrow::Cow;
 use std::{fmt, iter};
 use syntax::codemap::Span;
 use syntax::ptr::P;
-
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
             match_type, method_chain_args, snippet, snippet_opt, span_lint, span_lint_and_then, span_note_and_lint,
             walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::{BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH, STRING_PATH,
-            VEC_PATH,};
+            VEC_PATH};
 use utils::MethodArgs;
-use rustc::middle::cstore::CrateStore;
 
 #[derive(Clone)]
 pub struct MethodsPass;
@@ -439,12 +438,10 @@ impl LateLintPass for MethodsPass {
 
                             if let Some(&ret_ty) = ret_ty {
                                 ret_ty.walk().any(|t| t == ty)
-                            }
-                            else {
+                            } else {
                                 false
                             }
-                        }
-                        else {
+                        } else {
                             false
                         };
 
@@ -961,9 +958,9 @@ impl SelfKind {
     fn matches(&self, slf: &ExplicitSelf_, allow_value_for_ref: bool) -> bool {
         match (self, slf) {
             (&SelfKind::Value, &SelfValue(_)) |
-                (&SelfKind::Ref, &SelfRegion(_, Mutability::MutImmutable, _)) |
-                (&SelfKind::RefMut, &SelfRegion(_, Mutability::MutMutable, _)) |
-                (&SelfKind::No, &SelfStatic) => true,
+            (&SelfKind::Ref, &SelfRegion(_, Mutability::MutImmutable, _)) |
+            (&SelfKind::RefMut, &SelfRegion(_, Mutability::MutMutable, _)) |
+            (&SelfKind::No, &SelfStatic) => true,
             (&SelfKind::Ref, &SelfValue(_)) | (&SelfKind::RefMut, &SelfValue(_)) => allow_value_for_ref,
             (_, &SelfExplicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
             _ => false,
@@ -973,10 +970,10 @@ impl SelfKind {
     fn matches_explicit_type(&self, ty: &Ty, allow_value_for_ref: bool) -> bool {
         match (self, &ty.node) {
             (&SelfKind::Value, &TyPath(..)) |
-                (&SelfKind::Ref, &TyRptr(_, MutTy { mutbl: Mutability::MutImmutable, .. })) |
-                (&SelfKind::RefMut, &TyRptr(_, MutTy { mutbl: Mutability::MutMutable, .. })) => true,
+            (&SelfKind::Ref, &TyRptr(_, MutTy { mutbl: Mutability::MutImmutable, .. })) |
+            (&SelfKind::RefMut, &TyRptr(_, MutTy { mutbl: Mutability::MutMutable, .. })) => true,
             (&SelfKind::Ref, &TyPath(..)) |
-                (&SelfKind::RefMut, &TyPath(..)) => allow_value_for_ref,
+            (&SelfKind::RefMut, &TyPath(..)) => allow_value_for_ref,
             _ => false,
         }
     }

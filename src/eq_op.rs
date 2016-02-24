@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc_front::util as ast_util;
-
 use utils::{SpanlessEq, span_lint};
 
 /// **What it does:** This lint checks for equal operands to comparison, logical and bitwise,

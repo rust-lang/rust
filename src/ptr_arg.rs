@@ -2,13 +2,12 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::lint::*;
-use rustc_front::hir::*;
 use rustc::front::map::NodeItem;
+use rustc::lint::*;
 use rustc::middle::ty;
-
-use utils::{span_lint, match_type};
+use rustc_front::hir::*;
 use utils::{STRING_PATH, VEC_PATH};
+use utils::{span_lint, match_type};
 
 /// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless the references are mutable.
 ///

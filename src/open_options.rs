@@ -1,8 +1,8 @@
 use rustc::lint::*;
 use rustc_front::hir::{Expr, ExprMethodCall, ExprLit};
-use utils::{walk_ptrs_ty_depth, match_type, span_lint, OPEN_OPTIONS_PATH};
-use syntax::codemap::{Span, Spanned};
 use syntax::ast::LitKind;
+use syntax::codemap::{Span, Spanned};
+use utils::{walk_ptrs_ty_depth, match_type, span_lint, OPEN_OPTIONS_PATH};
 
 /// **What it does:** This lint checks for duplicate open options as well as combinations that make no sense.
 ///

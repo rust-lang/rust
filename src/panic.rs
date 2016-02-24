@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::ast::LitKind;
-
 use utils::{span_lint, in_external_macro, match_path, BEGIN_UNWIND};
 
 /// **What it does:** This lint checks for missing parameters in `panic!`.

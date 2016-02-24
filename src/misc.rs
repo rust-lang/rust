@@ -1,15 +1,14 @@
-use rustc::lint::*;
-use syntax::ptr::P;
-use rustc_front::hir::*;
 use reexport::*;
+use rustc::lint::*;
+use rustc::middle::const_eval::ConstVal::Float;
+use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+use rustc::middle::const_eval::eval_const_expr_partial;
+use rustc::middle::ty;
+use rustc_front::hir::*;
+use rustc_front::intravisit::FnKind;
 use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::{Span, Spanned, ExpnFormat};
-use rustc_front::intravisit::FnKind;
-use rustc::middle::ty;
-use rustc::middle::const_eval::ConstVal::Float;
-use rustc::middle::const_eval::eval_const_expr_partial;
-use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-
+use syntax::ptr::P;
 use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint};
 use utils::{span_lint_and_then, walk_ptrs_ty, is_integer_literal, implements_trait};
 

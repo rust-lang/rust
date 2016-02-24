@@ -1,5 +1,5 @@
-use rustc_front::hir::*;
 use rustc::lint::{LateLintPass, LateContext, LintArray, LintPass};
+use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr};
 use utils::*;
 

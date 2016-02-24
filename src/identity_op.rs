@@ -1,8 +1,7 @@
+use consts::{constant_simple, Constant, Sign};
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
-
-use consts::{constant_simple, Constant, Sign};
 use utils::{span_lint, snippet, in_macro};
 
 /// **What it does:** This lint checks for identity operations, e.g. `x + 0`.

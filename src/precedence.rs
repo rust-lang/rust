@@ -1,7 +1,6 @@
 use rustc::lint::*;
-use syntax::codemap::Spanned;
 use syntax::ast::*;
-
+use syntax::codemap::Spanned;
 use utils::{span_lint, snippet};
 
 /// **What it does:** This lint checks for operations where precedence may be unclear and suggests to add parentheses. Currently it catches the following:

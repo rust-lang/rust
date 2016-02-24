@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use syntax::ast::{LitKind, self};
+use syntax::ast::{self, LitKind};
 use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;

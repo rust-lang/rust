@@ -4,10 +4,8 @@
 
 use rustc::lint::*;
 use rustc_front::hir::*;
-
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;
-
 use utils::{span_lint, span_lint_and_then, snippet};
 
 /// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly.

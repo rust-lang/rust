@@ -1,11 +1,9 @@
+use consts::{Constant, constant_simple};
 use rustc::lint::*;
 use rustc_front::hir::*;
-use syntax::ptr::P;
 use std::cmp::{PartialOrd, Ordering};
-
-use consts::{Constant, constant_simple};
+use syntax::ptr::P;
 use utils::{match_def_path, span_lint};
-use self::MinMax::{Min, Max};
 
 /// **What it does:** This lint checks for expressions where `std::cmp::min` and `max` are used to clamp values, but switched so that the result is constant.
 ///
@@ -36,7 +34,7 @@ impl LateLintPass for MinMaxPass {
                     return;
                 }
                 match (outer_max, outer_c.partial_cmp(&inner_c)) {
-                    (_, None) | (Max, Some(Ordering::Less)) | (Min, Some(Ordering::Greater)) => (),
+                    (_, None) | (MinMax::Max, Some(Ordering::Less)) | (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
                         span_lint(cx, MIN_MAX, expr.span, "this min/max combination leads to constant result");
                     }
@@ -58,9 +56,9 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
             let def_id = cx.tcx.def_map.borrow()[&path.id].def_id();
 
             if match_def_path(cx, def_id, &["core", "cmp", "min"]) {
-                fetch_const(args, Min)
+                fetch_const(args, MinMax::Min)
             } else if match_def_path(cx, def_id, &["core", "cmp", "max"]) {
-                fetch_const(args, Max)
+                fetch_const(args, MinMax::Max)
             } else {
                 None
             }

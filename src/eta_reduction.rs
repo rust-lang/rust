@@ -1,9 +1,7 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
 use rustc::middle::ty;
-
+use rustc_front::hir::*;
 use utils::{snippet_opt, span_lint_and_then, is_adjusted};
-
 
 #[allow(missing_copy_implementations)]
 pub struct EtaPass;

@@ -1,13 +1,12 @@
-use rustc::lint::*;
-use rustc_front::hir::*;
 use reexport::*;
-use rustc_front::util::{is_comparison_binop, binop_to_string};
-use syntax::codemap::Span;
-use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
-use rustc::middle::ty;
+use rustc::lint::*;
 use rustc::middle::const_eval;
+use rustc::middle::ty;
+use rustc_front::hir::*;
+use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
+use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::ast::{IntTy, UintTy, FloatTy};
-
+use syntax::codemap::Span;
 use utils::*;
 
 /// Handles all the linting of funky types
@@ -618,7 +617,7 @@ enum AbsurdComparisonResult {
 }
 
 fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
-                            -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
+                                -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
     use types::ExtremeType::*;
     use types::AbsurdComparisonResult::*;
     type Extr<'a> = ExtremeExpr<'a>;
@@ -704,7 +703,10 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
 
         _ => return None,
     };
-    Some(ExtremeExpr { which: which, expr: expr })
+    Some(ExtremeExpr {
+        which: which,
+        expr: expr,
+    })
 }
 
 impl LateLintPass for AbsurdExtremeComparisons {
@@ -721,16 +723,20 @@ impl LateLintPass for AbsurdExtremeComparisons {
                     let conclusion = match result {
                         AlwaysFalse => "this comparison is always false".to_owned(),
                         AlwaysTrue => "this comparison is always true".to_owned(),
-                        InequalityImpossible =>
-                            format!("the case where the two sides are not equal never occurs, \
-                                     consider using {} == {} instead",
+                        InequalityImpossible => {
+                            format!("the case where the two sides are not equal never occurs, consider using {} == {} \
+                                     instead",
                                     snippet(cx, lhs.span, "lhs"),
-                                    snippet(cx, rhs.span, "rhs")),
+                                    snippet(cx, rhs.span, "rhs"))
+                        }
                     };
 
                     let help = format!("because {} is the {} value for this type, {}",
                                        snippet(cx, culprit.expr.span, "x"),
-                                       match culprit.which { Minimum => "minimum", Maximum => "maximum" },
+                                       match culprit.which {
+                                           Minimum => "minimum",
+                                           Maximum => "maximum",
+                                       },
                                        conclusion);
 
                     span_help_and_lint(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, &help);
