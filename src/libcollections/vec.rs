@@ -135,6 +135,49 @@ use super::range::RangeArgument;
 /// }
 /// ```
 ///
+/// # Indexing
+///
+/// The Vec type allows to access values by index, because it implements the
+/// `Index` trait. An example will be more explicit:
+///
+/// ```
+/// let v = vec!(0, 2, 4, 6);
+/// println!("{}", v[1]); // it will display '2'
+/// ```
+///
+/// However be careful: if you try to access an index which isn't in the Vec,
+/// your software will panic! You cannot do this:
+///
+/// ```ignore
+/// let v = vec!(0, 2, 4, 6);
+/// println!("{}", v[6]); // it will panic!
+/// ```
+///
+/// In conclusion: always check if the index you want to get really exists
+/// before doing it.
+///
+/// # Slicing
+///
+/// A Vec can be mutable. Slices, on the other hand, are read-only objects.
+/// To get a slice, use "&". Example:
+///
+/// ```
+/// fn read_slice(slice: &[usize]) {
+///     // ...
+/// }
+///
+/// let v = vec!(0, 1);
+/// read_slice(&v);
+///
+/// // ... and that's all!
+/// // you can also do it like this:
+/// let x : &[usize] = &v;
+/// ```
+///
+/// In Rust, it's more common to pass slices as arguments rather than vectors
+/// when you just want to provide a read access. The same goes for String and
+/// &str.
+///
 /// # Capacity and reallocation
 ///
 /// The capacity of a vector is the amount of space allocated for any future
