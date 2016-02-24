@@ -9,6 +9,7 @@
 # except according to those terms.
 
 import re
+import os
 
 license_re = re.compile(
 u"""(#|//) Copyright .* The Rust Project Developers. See the COPYRIGHT
@@ -40,8 +41,9 @@ exceptions = [
 ]
 
 def check_license(name, contents):
+    name = os.path.normpath(name)
     # Whitelist check
-    if any(name.endswith(e) for e in exceptions):
+    if any(name.endswith(os.path.normpath(e)) for e in exceptions):
         return True
 
     # Xfail check

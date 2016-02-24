@@ -122,7 +122,8 @@ try:
             'src/liblibc',
         }
 
-        if any(d in dirpath for d in skippable_dirs):
+        dirpath = os.path.normpath(dirpath)
+        if any(os.path.normpath(d) in dirpath for d in skippable_dirs):
             continue
 
         file_names = [os.path.join(dirpath, f) for f in filenames
