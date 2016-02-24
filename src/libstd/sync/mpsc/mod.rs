@@ -385,12 +385,12 @@ pub enum TrySendError<T> {
     /// this is not a buffered channel, then there is no receiver available to
     /// acquire the data.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Full(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] T),
+    Full(#[stable(feature = "rust1", since = "1.0.0")] T),
 
     /// This channel's receiving half has disconnected, so the data could not be
     /// sent. The data is returned back to the callee in this case.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Disconnected(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] T),
+    Disconnected(#[stable(feature = "rust1", since = "1.0.0")] T),
 }
 
 enum Flavor<T> {
