@@ -22,7 +22,7 @@ use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
 use rustc::ty::subst;
 use rustc::ty::subst::Subst;
-use rustc::traits::ProjectionMode;
+use rustc::traits::{PredicateObligations, ProjectionMode};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::relate::TypeRelation;
 use rustc::infer::{self, TypeOrigin};
@@ -358,25 +358,26 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         infer::TypeTrace::dummy(self.tcx())
     }
 
-    pub fn sub(&self) -> Sub<'a, 'tcx> {
+    pub fn with_sub<T, F: FnMut(Sub<'a, 'tcx>) -> T>(&self, mut f: F) -> T {
         let trace = self.dummy_type_trace();
-        self.infcx.sub(true, trace)
+        f(self.infcx.sub(true, trace))
     }
 
-    pub fn lub(&self) -> Lub<'a, 'tcx> {
+    pub fn with_lub<T, F: FnMut(Lub<'a, 'tcx>) -> T>(&self, mut f: F) -> T {
         let trace = self.dummy_type_trace();
-        self.infcx.lub(true, trace)
+        f(self.infcx.lub(true, trace))
     }
 
-    pub fn glb(&self) -> Glb<'a, 'tcx> {
+    pub fn with_glb<T, F: FnMut(Glb<'a, 'tcx>) -> T>(&self, mut f: F) -> T {
         let trace = self.dummy_type_trace();
-        self.infcx.glb(true, trace)
+        f(self.infcx.glb(true, trace))
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub().relate(&t1, &t2) {
+        let mut obligations = PredicateObligations::new();
+        match self.with_sub(|mut sub| sub.relate(&t1, &t2, &mut obligations)) {
             Ok(_) => {}
             Err(ref e) => {
                 panic!("unexpected error computing sub({:?},{:?}): {}", t1, t2, e);
@@ -387,7 +388,8 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `t1 <: t2` is false (this may register additional
     /// region checks).
     pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub().relate(&t1, &t2) {
+        let mut obligations = PredicateObligations::new();
+        match self.with_sub(|mut sub| sub.relate(&t1, &t2, &mut obligations)) {
             Err(_) => {}
             Ok(_) => {
                 panic!("unexpected success computing sub({:?},{:?})", t1, t2);
@@ -397,7 +399,8 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     /// Checks that `LUB(t1,t2) == t_lub`
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
-        match self.lub().relate(&t1, &t2) {
+        let mut obligations = PredicateObligations::new();
+        match self.with_lub(|mut lub| lub.relate(&t1, &t2, &mut obligations)) {
             Ok(t) => {
                 self.assert_eq(t, t_lub);
             }
@@ -410,7 +413,8 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
         debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
-        match self.glb().relate(&t1, &t2) {
+        let mut obligations = PredicateObligations::new();
+        match self.with_glb(|mut glb| glb.relate(&t1, &t2, &mut obligations)) {
             Err(e) => {
                 panic!("unexpected error computing LUB: {:?}", e)
             }
