@@ -18,7 +18,7 @@ type behind a trait interface similar to trait objects, while
 still generating the same statically dispatched code as with concrete types:
 
 ```rust
-fn foo(n: u32) -> impl Iterator<Item=u32> {
+fn foo(n: u32) -> @Iterator<Item=u32> {
     (0..n).map(|x| x * 100)
 }
 // ^ behaves as if it had return type Map<Range<u32>, Clos>
@@ -30,20 +30,101 @@ for x in foo(10) {
 
 ```
 
+# Background
+
+There has been much discussion around the `impl Trait` feature already, with
+different proposals extending the core idea into different directions:
+
+- The [original proposal](https://github.com/rust-lang/rfcs/pull/105).
+- A [blog post](http://aturon.github.io/blog/2015/09/28/impl-trait/) reviving
+  the proposal and further exploring the design space.
+- A [more recent proposal](https://github.com/rust-lang/rfcs/pull/1305) with a
+  substantially more ambitious scope.
+
+This RFC is an attempt to make progress on the feature by proposing a minimal
+subset that should be forwards-compatible with a whole range of extensions that
+have been discussed (and will be reviewed in this RFC). However, even this small
+step requires resolving some of the core questions raised in
+[the blog post](http://aturon.github.io/blog/2015/09/28/impl-trait/).
+
+This RFC is closest in spirit to the
+[original RFC]((https://github.com/rust-lang/rfcs/pull/105), and we'll repeat
+its motivation and some other parts of its text below.
+
 # Motivation
 [motivation]: #motivation
 
 > Why are we doing this? What use cases does it support? What is the expected outcome?
 
-There has been much discussion around the `impl Trait` feature already, with
-different proposals extending the core idea into different directions.
+In today's Rust, you can write a function signature like
 
-See http://aturon.github.io/blog/2015/09/28/impl-trait/ for detailed motivation, and
-https://github.com/rust-lang/rfcs/pull/105 and https://github.com/rust-lang/rfcs/pull/1305 for prior RFCs on this topic.
+````rust
+fn consume_iter_static<I: Iterator<u8>>(iter: I)
+fn consume_iter_dynamic(iter: Box<Iterator<u8>>)
+````
 
-It is not yet clear which, if any, of the proposals will end up as the "final form"
-of the feature, so this RFC aims to only specify a usable subset that will
-be compatible with most of them.
+In both cases, the function does not depend on the exact type of the argument.
+The type is held "abstract", and is assumed only to satisfy a trait bound.
+
+* In the `_static` version using generics, each use of the function is
+ specialized to a concrete, statically-known type, giving static dispatch, inline
+ layout, and other performance wins.
+
+* In the `_dynamic` version using trait objects, the concrete argument type is
+  only known at runtime using a vtable.
+
+On the other hand, while you can write
+
+````rust
+fn produce_iter_dynamic() -> Box<Iterator<u8>>
+````
+
+you _cannot_ write something like
+
+````rust
+fn produce_iter_static() -> Iterator<u8>
+````
+
+That is, in today's Rust, abstract return types can only be written using trait
+objects, which can be a significant performance penalty. This RFC proposes
+"unboxed abstract types" as a way of achieving signatures like
+`produce_iter_static`. Like generics, unboxed abstract types guarantee static
+dispatch and inline data layout.
+
+Here are some problems that unboxed abstract types solve or mitigate:
+
+* _Returning unboxed closures_. Closure syntax generates an anonymous type
+  implementing a closure trait. Without unboxed abstract types, there is no way
+  to use this syntax while returning the resulting closure unboxed, because there
+  is no way to write the name of the generated type.
+
+* _Leaky APIs_. Functions can easily leak implementation details in their return
+  type, when the API should really only promise a trait bound. For example, a
+  function returning `Rev<Splits<'a, u8>>` is revealing exactly how the iterator
+  is constructed, when the function should only promise that it returns _some_
+  type implementing `Iterator<u8>`. Using newtypes/structs with private fields
+  helps, but is extra work. Unboxed abstract types make it as easy to promise only
+  a trait bound as it is to return a concrete type.
+
+* _Complex types_. Use of iterators in particular can lead to huge types:
+
+  ````rust
+  Chain<Map<'a, (int, u8), u16, Enumerate<Filter<'a, u8, vec::MoveItems<u8>>>>, SkipWhile<'a, u16, Map<'a, &u16, u16, slice::Items<u16>>>>
+  ````
+
+  Even when using newtypes to hide the details, the type still has to be written
+  out, which can be very painful. Unboxed abstract types only require writing the
+  trait bound.
+
+* _Documentation_. In today's Rust, reading the documentation for the `Iterator`
+  trait is needlessly difficult. Many of the methods return new iterators, but
+  currently each one returns a different type (`Chain`, `Zip`, `Map`, `Filter`,
+  etc), and it requires drilling down into each of these types to determine what
+  kind of iterator they produce.
+
+In short, unboxed abstract types make it easy for a function signature to
+promise nothing more than a trait bound, and do not generally require the
+function's author to write down the concrete type implementing the bound.
 
 # Detailed design
 [design]: #detailed-design
@@ -76,9 +157,9 @@ there is also the option of using keyword-based syntax like `impl Trait` or
 `abstract Trait`, but this would add a verbosity overhead for a feature
 that will be used somewhat commonly.
 
-#### Semantic
+#### Semantics
 
-The core semantic of the feature is described below.
+The core semantics of the feature is described below.
 
 Note that the sections after this one go into more detail on some of the design
 decisions, and that it is likely for most of the mentioned limitations to be
