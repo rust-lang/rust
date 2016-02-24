@@ -182,9 +182,8 @@ pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) 
 //     recursive types. For example, enum types rely on this behavior.
 
 pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    match cx.llsizingtypes().borrow().get(&t).cloned() {
-        Some(t) => return t,
-        None => ()
+    if let Some(t) = cx.llsizingtypes().borrow().get(&t).cloned() {
+        return t;
     }
 
     debug!("sizing_type_of {:?}", t);
@@ -317,9 +316,8 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
 /// NB: If you update this, be sure to update `sizing_type_of()` as well.
 pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     // Check the cache.
-    match cx.lltypes().borrow().get(&t) {
-        Some(&llty) => return llty,
-        None => ()
+    if let Some(&llty) = cx.lltypes().borrow().get(&t) {
+        return llty;
     }
 
     debug!("type_of {:?}", t);

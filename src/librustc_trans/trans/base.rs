@@ -150,9 +150,8 @@ impl Drop for _InsnCtxt {
 pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     debug!("new InsnCtxt: {}", s);
     TASK_LOCAL_INSN_KEY.with(|slot| {
-        match slot.borrow_mut().as_mut() {
-            Some(ctx) => ctx.push(s),
-            None => {}
+        if let Some(ctx) = slot.borrow_mut().as_mut() {
+            ctx.push(s)
         }
     });
     _InsnCtxt {
@@ -198,9 +197,8 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 name: &str,
                                 did: DefId)
                                 -> ValueRef {
-    match ccx.externs().borrow().get(name) {
-        Some(n) => return *n,
-        None => (),
+    if let Some(n) = ccx.externs().borrow().get(name) {
+        return *n;
     }
 
     let f = declare::declare_rust_fn(ccx, name, fn_ty);
@@ -238,9 +236,8 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   -> ValueRef {
     let name = ccx.sess().cstore.item_symbol(did);
     let ty = type_of(ccx, t);
-    match ccx.externs().borrow_mut().get(&name) {
-        Some(n) => return *n,
-        None => (),
+    if let Some(n) = ccx.externs().borrow_mut().get(&name) {
+        return *n;
     }
     // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
     // FIXME(nagisa): investigate whether it can be changed into define_global
@@ -2755,9 +2752,8 @@ fn contains_null(s: &str) -> bool {
 pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`{}`)", id);
 
-    match ccx.item_vals().borrow().get(&id).cloned() {
-        Some(v) => return v,
-        None => {}
+    if let Some(v) = ccx.item_vals().borrow().get(&id).cloned() {
+        return v;
     }
 
     let item = ccx.tcx().map.get(id);
