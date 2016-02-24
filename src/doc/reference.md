@@ -3564,8 +3564,9 @@ Each instance of a trait object includes:
    each method of `SomeTrait` that `T` implements, a pointer to `T`'s
    implementation (i.e. a function pointer).
 
-The purpose of trait objects is to permit "late binding" of methods. A call to
-a method on a trait object is only resolved to a vtable entry at compile time.
+The purpose of trait objects is to permit "late binding" of methods. Calling a
+method on a trait object results in virtual dispatch at runtime: that is, a
+function pointer is loaded from the trait object vtable and invoked indirectly.
 The actual implementation for each vtable entry can vary on an object-by-object
 basis.
 
