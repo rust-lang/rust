@@ -71,7 +71,7 @@ use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use middle::ty::{self, LvaluePreference, TypeAndMut, Ty};
 use middle::ty::fold::TypeFoldable;
 use middle::ty::error::TypeError;
-use middle::ty::relate::RelateResult;
+use middle::ty::relate::{RelateOk};
 use util::common::indent;
 
 use std::cell::RefCell;
@@ -84,7 +84,7 @@ struct Coerce<'a, 'tcx: 'a> {
     unsizing_obligations: RefCell<Vec<traits::PredicateObligation<'tcx>>>,
 }
 
-type CoerceResult<'tcx> = RelateResult<'tcx, Option<AutoAdjustment<'tcx>>>;
+type CoerceResult<'tcx> = Result<Option<AutoAdjustment<'tcx>>, TypeError<'tcx>>;
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
@@ -92,8 +92,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
-        try!(self.fcx.infcx().sub_types(false, self.origin.clone(), a, b));
-        Ok(None) // No coercion required.
+        self.fcx.infcx().sub_types(false, self.origin.clone(), a, b)
+            .map(|RelateOk { obligations, .. }| {
+                for obligation in obligations {
+                    self.fcx.register_predicate(obligation);
+                }
+                None
+            })
     }
 
     fn unpack_actual_value<T, F>(&self, a: Ty<'tcx>, f: F) -> T where
@@ -206,13 +211,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             let ty = self.tcx().mk_ref(r_borrow,
                                         TypeAndMut {ty: inner_ty, mutbl: mutbl_b});
-            if let Err(err) = self.subtype(ty, b) {
-                if first_error.is_none() {
-                    first_error = Some(err);
+            match self.subtype(ty, b) {
+                Err(err) => {
+                    if first_error.is_none() {
+                        first_error = Some(err);
+                    }
+                    None
+                },
+                Ok(_) => {
+                    Some(())
                 }
-                None
-            } else {
-                Some(())
             }
         });
 
@@ -439,7 +447,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              expr: &hir::Expr,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
-                             -> RelateResult<'tcx, ()> {
+                             -> Result<(), TypeError<'tcx>> {
     debug!("mk_assignty({:?} -> {:?})", a, b);
     let mut unsizing_obligations = vec![];
     let adjustment = try!(indent(|| {

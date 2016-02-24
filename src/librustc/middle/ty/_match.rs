@@ -10,7 +10,7 @@
 
 use middle::ty::{self, Ty};
 use middle::ty::error::TypeError;
-use middle::ty::relate::{self, Relate, TypeRelation, RelateResult};
+use middle::ty::relate::{self, Relate, RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// substituted with values so as to make it equal to A. Matching is
@@ -57,19 +57,19 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
                self.tag(),
                a,
                b);
-        Ok(a)
+        Ok(RelateOk::from(a))
     }
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({:?}, {:?})", self.tag(),
                a, b);
-        if a == b { return Ok(a); }
+        if a == b { return Ok(RelateOk::from(a)); }
 
         match (&a.sty, &b.sty) {
             (_, &ty::TyInfer(ty::FreshTy(_))) |
             (_, &ty::TyInfer(ty::FreshIntTy(_))) |
             (_, &ty::TyInfer(ty::FreshFloatTy(_))) => {
-                Ok(a)
+                Ok(RelateOk::from(a))
             }
 
             (&ty::TyInfer(_), _) |
@@ -78,7 +78,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
             }
 
             (&ty::TyError, _) | (_, &ty::TyError) => {
-                Ok(self.tcx().types.err)
+                Ok(RelateOk::from(self.tcx().types.err))
             }
 
             _ => {
@@ -91,6 +91,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'a,'tcx>
     {
-        Ok(ty::Binder(try!(self.relate(a.skip_binder(), b.skip_binder()))))
+        self.relate(a.skip_binder(), b.skip_binder()).map_value(|c| ty::Binder(c))
     }
 }

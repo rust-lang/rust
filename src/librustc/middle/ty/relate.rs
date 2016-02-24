@@ -13,15 +13,105 @@
 //! can be other things. Examples of type relations are subtyping,
 //! type equality, etc.
 
+use std::cell::Cell;
+use std::iter::FromIterator;
+
 use middle::def_id::DefId;
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
+use middle::traits;
 use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
 use syntax::abi;
 use rustc_front::hir as ast;
 
-pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
+
+#[derive(Clone, Debug)]
+pub struct RelateOk<'tcx, T> {
+    pub value: T,
+    pub obligations: Vec<traits::PredicateObligation<'tcx>>,
+}
+impl<'tcx, T> From<T> for RelateOk<'tcx, T> {
+    fn from(value: T) -> Self {
+        RelateOk { value: value, obligations: Vec::new() }
+    }
+}
+impl<'tcx, T> RelateOk<'tcx, T> {
+    pub fn chain<U>(self, other: RelateOk<'tcx, U>) -> RelateOk<'tcx, (T, U)> {
+        let RelateOk { value, mut obligations } = self;
+        let RelateOk { value: other_value, obligations: other_obligations } = other;
+        obligations.extend(other_obligations);
+        RelateOk { value: (value, other_value), obligations: obligations }
+    }
+}
+
+pub type RelateResult<'tcx, T> = Result<RelateOk<'tcx, T>, TypeError<'tcx>>;
+
+pub trait RelateResultTrait<'tcx, T> {
+    fn map_value<U, F: FnOnce(T) -> U>(self, mapper: F) -> RelateResult<'tcx, U>;
+    fn and_then_with<U, F: FnOnce(T) -> RelateResult<'tcx, U>>(self, mapper: F)
+        -> RelateResult<'tcx, U>;
+}
+impl<'tcx, T> RelateResultTrait<'tcx, T> for RelateResult<'tcx, T> {
+    fn map_value<U, F: FnOnce(T) -> U>(self, mapper: F) -> RelateResult<'tcx, U> {
+        match self {
+            Ok(RelateOk { value, obligations }) =>
+                Ok(RelateOk{ value: mapper(value), obligations: obligations }),
+            Err(x) => Err(x),
+        }
+    }
+    fn and_then_with<U, F: FnOnce(T) -> RelateResult<'tcx, U>>(self, mapper: F)
+        -> RelateResult<'tcx, U>
+    {
+        match self {
+            Ok(RelateOk { value, mut obligations }) => match mapper(value) {
+                Ok(RelateOk { value: next_value, obligations: new_obligations }) => {
+                    obligations.extend(new_obligations);
+                    Ok(RelateOk { value: next_value, obligations: obligations })
+                },
+                Err(x) => Err(x),
+            },
+            Err(x) => Err(x),
+        }
+    }
+}
+fn relate_result_from_iter<'tcx, T, U, I: IntoIterator<Item=RelateResult<'tcx, U>>>(iter: I)
+    -> RelateResult<'tcx, T> where T: FromIterator<U>
+{
+    let mut all_obligations = Vec::new();
+    let mut err = None;
+    let end_on_next_elem = Cell::new(false);
+    let value = iter.into_iter()
+        .take_while(|x| {
+            if end_on_next_elem.get() {
+                false
+            } else {
+                if !x.is_ok() {
+                    end_on_next_elem.set(true);
+                }
+                true
+            }
+        })
+        .filter_map(|x| {
+            match x {
+                Ok(RelateOk { value, obligations }) => {
+                    all_obligations.extend(obligations);
+                    Some(value)
+                },
+                Err(x) => {
+                    err = Some(x);
+                    None
+                },
+            }
+        })
+        .collect();
+    match err {
+        Some(err) => Err(err),
+        None => {
+            Ok(RelateOk { value: value, obligations: all_obligations })
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum Cause {
@@ -52,7 +142,8 @@ pub trait TypeRelation<'a,'tcx> : Sized {
     /// Relete elements of two slices pairwise.
     fn relate_zip<T:Relate<'a,'tcx>>(&mut self, a: &[T], b: &[T]) -> RelateResult<'tcx, Vec<T>> {
         assert_eq!(a.len(), b.len());
-        a.iter().zip(b).map(|(a, b)| self.relate(a, b)).collect()
+        let tmp: Vec<_> = a.iter().zip(b).map(|(a, b)| self.relate(a, b)).collect();
+        relate_result_from_iter(tmp)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -108,8 +199,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeAndMut<'tcx> {
                 ast::Mutability::MutImmutable => ty::Covariant,
                 ast::Mutability::MutMutable => ty::Invariant,
             };
-            let ty = try!(relation.relate_with_variance(variance, &a.ty, &b.ty));
-            Ok(ty::TypeAndMut {ty: ty, mutbl: mutbl})
+            relation.relate_with_variance(variance, &a.ty, &b.ty)
+                .map_value(|ty| ty::TypeAndMut {ty: ty, mutbl: mutbl})
         }
     }
 }
@@ -147,12 +238,15 @@ fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
     where R: TypeRelation<'a,'tcx>
 {
     let mut substs = Substs::empty();
+    let mut obligations = Vec::new();
 
     for &space in &ParamSpace::all() {
         let a_tps = a_subst.types.get_slice(space);
         let b_tps = b_subst.types.get_slice(space);
         let t_variances = variances.map(|v| v.types.get_slice(space));
-        let tps = try!(relate_type_params(relation, t_variances, a_tps, b_tps));
+        let RelateOk { value: tps, obligations: new_obligations } =
+            try!(relate_type_params(relation, t_variances, a_tps, b_tps));
+        obligations.extend(new_obligations);
         substs.types.replace(space, tps);
     }
 
@@ -166,16 +260,18 @@ fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
                 let a_regions = a.get_slice(space);
                 let b_regions = b.get_slice(space);
                 let r_variances = variances.map(|v| v.regions.get_slice(space));
-                let regions = try!(relate_region_params(relation,
-                                                        r_variances,
-                                                        a_regions,
-                                                        b_regions));
+                let RelateOk { value: regions, obligations: new_obligations } =
+                    try!(relate_region_params(relation,
+                                              r_variances,
+                                              a_regions,
+                                              b_regions));
+                obligations.extend(new_obligations);
                 substs.mut_regions().replace(space, regions);
             }
         }
     }
 
-    Ok(substs)
+    Ok(RelateOk { value: substs, obligations: obligations })
 }
 
 fn relate_type_params<'a,'tcx:'a,R>(relation: &mut R,
@@ -191,14 +287,13 @@ fn relate_type_params<'a,'tcx:'a,R>(relation: &mut R,
                                                          &b_tys.len())));
     }
 
-    (0 .. a_tys.len())
+    relate_result_from_iter((0 .. a_tys.len())
         .map(|i| {
             let a_ty = a_tys[i];
             let b_ty = b_tys[i];
             let v = variances.map_or(ty::Invariant, |v| v[i]);
             relation.relate_with_variance(v, &a_ty, &b_ty)
-        })
-        .collect()
+        }))
 }
 
 fn relate_region_params<'a,'tcx:'a,R>(relation: &mut R,
@@ -222,14 +317,13 @@ fn relate_region_params<'a,'tcx:'a,R>(relation: &mut R,
 
     assert_eq!(num_region_params, b_rs.len());
 
-    (0..a_rs.len())
+    relate_result_from_iter((0..a_rs.len())
         .map(|i| {
             let a_r = a_rs[i];
             let b_r = b_rs[i];
             let variance = variances.map_or(ty::Invariant, |v| v[i]);
             relation.relate_with_variance(variance, &a_r, &b_r)
-        })
-        .collect()
+        }))
 }
 
 impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::BareFnTy<'tcx> {
@@ -242,9 +336,12 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::BareFnTy<'tcx> {
         let unsafety = try!(relation.relate(&a.unsafety, &b.unsafety));
         let abi = try!(relation.relate(&a.abi, &b.abi));
         let sig = try!(relation.relate(&a.sig, &b.sig));
-        Ok(ty::BareFnTy {unsafety: unsafety,
-                         abi: abi,
-                         sig: sig})
+        let RelateOk { value: ((unsafety, abi), sig), obligations } =
+            unsafety.chain(abi).chain(sig);
+        Ok(RelateOk {
+            value: ty::BareFnTy {unsafety: unsafety, abi: abi, sig: sig},
+            obligations: obligations,
+        })
     }
 }
 
@@ -266,17 +363,19 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::FnSig<'tcx> {
 
         let output = try!(match (a.output, b.output) {
             (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
-                Ok(ty::FnConverging(try!(relation.relate(&a_ty, &b_ty)))),
+                relation.relate(&a_ty, &b_ty).map_value(|x| ty::FnConverging(x)),
             (ty::FnDiverging, ty::FnDiverging) =>
-                Ok(ty::FnDiverging),
+                Ok(RelateOk::from(ty::FnDiverging)),
             (a, b) =>
                 Err(TypeError::ConvergenceMismatch(
                     expected_found(relation, &(a != ty::FnDiverging), &(b != ty::FnDiverging)))),
         });
 
-        return Ok(ty::FnSig {inputs: inputs,
-                             output: output,
-                             variadic: a.variadic});
+        let RelateOk { value: (inputs, output), obligations } = inputs.chain(output);
+        Ok(RelateOk {
+            value: ty::FnSig {inputs: inputs, output: output, variadic: a.variadic},
+            obligations: obligations
+        })
     }
 }
 
@@ -290,9 +389,8 @@ fn relate_arg_vecs<'a,'tcx:'a,R>(relation: &mut R,
         return Err(TypeError::ArgCount);
     }
 
-    a_args.iter().zip(b_args)
-          .map(|(a, b)| relation.relate_with_variance(ty::Contravariant, a, b))
-          .collect()
+    relate_result_from_iter(a_args.iter().zip(b_args)
+          .map(|(a, b)| relation.relate_with_variance(ty::Contravariant, a, b)))
 }
 
 impl<'a,'tcx:'a> Relate<'a,'tcx> for ast::Unsafety {
@@ -305,7 +403,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ast::Unsafety {
         if a != b {
             Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
         } else {
-            Ok(*a)
+            Ok(RelateOk::from(*a))
         }
     }
 }
@@ -318,7 +416,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for abi::Abi {
         where R: TypeRelation<'a,'tcx>
     {
         if a == b {
-            Ok(*a)
+            Ok(RelateOk::from(*a))
         } else {
             Err(TypeError::AbiMismatch(expected_found(relation, a, b)))
         }
@@ -336,8 +434,9 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ProjectionTy<'tcx> {
             Err(TypeError::ProjectionNameMismatched(
                 expected_found(relation, &a.item_name, &b.item_name)))
         } else {
-            let trait_ref = try!(relation.relate(&a.trait_ref, &b.trait_ref));
-            Ok(ty::ProjectionTy { trait_ref: trait_ref, item_name: a.item_name })
+            relation.relate(&a.trait_ref, &b.trait_ref).map_value(|trait_ref| {
+                ty::ProjectionTy { trait_ref: trait_ref, item_name: a.item_name }
+            })
         }
     }
 }
@@ -349,9 +448,13 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ProjectionPredicate<'tcx> {
                  -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let projection_ty = try!(relation.relate(&a.projection_ty, &b.projection_ty));
-        let ty = try!(relation.relate(&a.ty, &b.ty));
-        Ok(ty::ProjectionPredicate { projection_ty: projection_ty, ty: ty })
+        let RelateOk { value: (projection_ty, ty), obligations } =
+            try!(relation.relate(&a.projection_ty, &b.projection_ty))
+                .chain(try!(relation.relate(&a.ty, &b.ty)));
+        Ok(RelateOk {
+            value: ty::ProjectionPredicate { projection_ty: projection_ty, ty: ty },
+            obligations: obligations,
+        })
     }
 }
 
@@ -370,9 +473,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for Vec<ty::PolyProjectionPredicate<'tcx>> {
         if a.len() != b.len() {
             Err(TypeError::ProjectionBoundsLength(expected_found(relation, &a.len(), &b.len())))
         } else {
-            a.iter().zip(b)
-                .map(|(a, b)| relation.relate(a, b))
-                .collect()
+            relate_result_from_iter(a.iter().zip(b)
+                .map(|(a, b)| relation.relate(a, b)))
         }
     }
 }
@@ -392,9 +494,15 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ExistentialBounds<'tcx> {
                                                          &b.region_bound)));
         let nb = try!(relation.relate(&a.builtin_bounds, &b.builtin_bounds));
         let pb = try!(relation.relate(&a.projection_bounds, &b.projection_bounds));
-        Ok(ty::ExistentialBounds { region_bound: r,
-                                   builtin_bounds: nb,
-                                   projection_bounds: pb })
+        let RelateOk { value: ((r, nb), pb), obligations } = r.chain(nb).chain(pb);
+        Ok(RelateOk {
+            value: ty::ExistentialBounds {
+                region_bound: r,
+                builtin_bounds: nb,
+                projection_bounds: pb
+            },
+            obligations: obligations,
+        })
     }
 }
 
@@ -410,7 +518,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::BuiltinBounds {
         if a != b {
             Err(TypeError::BuiltinBoundsMismatch(expected_found(relation, a, b)))
         } else {
-            Ok(*a)
+            Ok(RelateOk::from(*a))
         }
     }
 }
@@ -426,8 +534,10 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
-            let substs = try!(relate_item_substs(relation, a.def_id, a.substs, b.substs));
-            Ok(ty::TraitRef { def_id: a.def_id, substs: relation.tcx().mk_substs(substs) })
+            relate_item_substs(relation, a.def_id, a.substs, b.substs)
+                .map_value(|substs| {
+                    ty::TraitRef { def_id: a.def_id, substs: relation.tcx().mk_substs(substs) }
+                })
         }
     }
 }
@@ -466,7 +576,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
 
         (&ty::TyError, _) | (_, &ty::TyError) =>
         {
-            Ok(tcx.types.err)
+            Ok(RelateOk::from(tcx.types.err))
         }
 
         (&ty::TyChar, _) |
@@ -477,34 +587,37 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
         (&ty::TyStr, _)
             if a == b =>
         {
-            Ok(a)
+            Ok(RelateOk::from(a))
         }
 
         (&ty::TyParam(ref a_p), &ty::TyParam(ref b_p))
             if a_p.idx == b_p.idx && a_p.space == b_p.space =>
         {
-            Ok(a)
+            Ok(RelateOk::from(a))
         }
 
         (&ty::TyEnum(a_def, a_substs), &ty::TyEnum(b_def, b_substs))
             if a_def == b_def =>
         {
-            let substs = try!(relate_item_substs(relation, a_def.did, a_substs, b_substs));
-            Ok(tcx.mk_enum(a_def, tcx.mk_substs(substs)))
+            relate_item_substs(relation, a_def.did, a_substs, b_substs).map_value(|substs| {
+                tcx.mk_enum(a_def, tcx.mk_substs(substs))
+            })
         }
 
         (&ty::TyTrait(ref a_), &ty::TyTrait(ref b_)) =>
         {
-            let principal = try!(relation.relate(&a_.principal, &b_.principal));
-            let bounds = try!(relation.relate(&a_.bounds, &b_.bounds));
-            Ok(tcx.mk_trait(principal, bounds))
+            let RelateOk { value: (principal, bounds), obligations } =
+                try!(relation.relate(&a_.principal, &b_.principal))
+                    .chain(try!(relation.relate(&a_.bounds, &b_.bounds)));
+            Ok(RelateOk { value: tcx.mk_trait(principal, bounds), obligations: obligations })
         }
 
         (&ty::TyStruct(a_def, a_substs), &ty::TyStruct(b_def, b_substs))
             if a_def == b_def =>
         {
-            let substs = try!(relate_item_substs(relation, a_def.did, a_substs, b_substs));
-            Ok(tcx.mk_struct(a_def, tcx.mk_substs(substs)))
+            relate_item_substs(relation, a_def.did, a_substs, b_substs).map_value(|substs| {
+                tcx.mk_struct(a_def, tcx.mk_substs(substs))
+            })
         }
 
         (&ty::TyClosure(a_id, ref a_substs),
@@ -514,34 +627,34 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             // All TyClosure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
-            let substs = try!(relation.relate(a_substs, b_substs));
-            Ok(tcx.mk_closure_from_closure_substs(a_id, substs))
+            relation.relate(a_substs, b_substs).map_value(|substs| {
+                tcx.mk_closure_from_closure_substs(a_id, substs)
+            })
         }
 
         (&ty::TyBox(a_inner), &ty::TyBox(b_inner)) =>
         {
-            let typ = try!(relation.relate(&a_inner, &b_inner));
-            Ok(tcx.mk_box(typ))
+            relation.relate(&a_inner, &b_inner).map_value(|typ| tcx.mk_box(typ))
         }
 
         (&ty::TyRawPtr(ref a_mt), &ty::TyRawPtr(ref b_mt)) =>
         {
-            let mt = try!(relation.relate(a_mt, b_mt));
-            Ok(tcx.mk_ptr(mt))
+            relation.relate(a_mt, b_mt).map_value(|mt| tcx.mk_ptr(mt))
         }
 
         (&ty::TyRef(a_r, ref a_mt), &ty::TyRef(b_r, ref b_mt)) =>
         {
-            let r = try!(relation.relate_with_variance(ty::Contravariant, a_r, b_r));
-            let mt = try!(relation.relate(a_mt, b_mt));
-            Ok(tcx.mk_ref(tcx.mk_region(r), mt))
+            let RelateOk { value: (r, mt), obligations } =
+                try!(relation.relate_with_variance(ty::Contravariant, a_r, b_r))
+                    .chain(try!(relation.relate(a_mt, b_mt)));
+            Ok(RelateOk { value: tcx.mk_ref(tcx.mk_region(r), mt), obligations: obligations })
         }
 
         (&ty::TyArray(a_t, sz_a), &ty::TyArray(b_t, sz_b)) =>
         {
-            let t = try!(relation.relate(&a_t, &b_t));
+            let RelateOk { value: t, obligations } = try!(relation.relate(&a_t, &b_t));
             if sz_a == sz_b {
-                Ok(tcx.mk_array(t, sz_a))
+                Ok(RelateOk { value: tcx.mk_array(t, sz_a), obligations: obligations })
             } else {
                 Err(TypeError::FixedArraySize(expected_found(relation, &sz_a, &sz_b)))
             }
@@ -549,17 +662,15 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
 
         (&ty::TySlice(a_t), &ty::TySlice(b_t)) =>
         {
-            let t = try!(relation.relate(&a_t, &b_t));
-            Ok(tcx.mk_slice(t))
+            relation.relate(&a_t, &b_t).map_value(|t| tcx.mk_slice(t))
         }
 
         (&ty::TyTuple(ref as_), &ty::TyTuple(ref bs)) =>
         {
             if as_.len() == bs.len() {
-                let ts = try!(as_.iter().zip(bs)
-                                 .map(|(a, b)| relation.relate(a, b))
-                                 .collect::<Result<_, _>>());
-                Ok(tcx.mk_tup(ts))
+                relate_result_from_iter(
+                    as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)))
+                    .map_value(|ts| tcx.mk_tup(ts))
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(
                     expected_found(relation, &as_.len(), &bs.len())))
@@ -571,14 +682,16 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
         (&ty::TyBareFn(a_opt_def_id, a_fty), &ty::TyBareFn(b_opt_def_id, b_fty))
             if a_opt_def_id == b_opt_def_id =>
         {
-            let fty = try!(relation.relate(a_fty, b_fty));
-            Ok(tcx.mk_fn(a_opt_def_id, tcx.mk_bare_fn(fty)))
+            relation.relate(a_fty, b_fty).map_value(|fty| {
+                tcx.mk_fn(a_opt_def_id, tcx.mk_bare_fn(fty))
+            })
         }
 
         (&ty::TyProjection(ref a_data), &ty::TyProjection(ref b_data)) =>
         {
-            let projection_ty = try!(relation.relate(a_data, b_data));
-            Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name))
+            relation.relate(a_data, b_data).map_value(|projection_ty| {
+                tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name)
+            })
         }
 
         _ =>
@@ -595,10 +708,14 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ClosureSubsts<'tcx> {
                  -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let func_substs = try!(relate_substs(relation, None, a.func_substs, b.func_substs));
-        let upvar_tys = try!(relation.relate_zip(&a.upvar_tys, &b.upvar_tys));
-        Ok(ty::ClosureSubsts { func_substs: relation.tcx().mk_substs(func_substs),
-                               upvar_tys: upvar_tys })
+        let RelateOk { value: (func_substs, upvar_tys), obligations } =
+            try!(relate_substs(relation, None, a.func_substs, b.func_substs))
+                .chain(try!(relation.relate_zip(&a.upvar_tys, &b.upvar_tys)));
+        Ok(RelateOk {
+            value: ty::ClosureSubsts { func_substs: relation.tcx().mk_substs(func_substs),
+                                       upvar_tys: upvar_tys },
+            obligations: obligations,
+        })
     }
 }
 
@@ -637,7 +754,7 @@ impl<'a,'tcx:'a,T> Relate<'a,'tcx> for Rc<T>
     {
         let a: &T = a;
         let b: &T = b;
-        Ok(Rc::new(try!(relation.relate(a, b))))
+        relation.relate(a, b).map_value(|v| Rc::new(v))
     }
 }
 
@@ -652,7 +769,7 @@ impl<'a,'tcx:'a,T> Relate<'a,'tcx> for Box<T>
     {
         let a: &T = a;
         let b: &T = b;
-        Ok(Box::new(try!(relation.relate(a, b))))
+        relation.relate(a, b).map_value(|v| Box::new(v))
     }
 }
 

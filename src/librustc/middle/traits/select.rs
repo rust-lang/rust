@@ -476,7 +476,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Predicate::Equate(ref p) => {
                 // does this code ever run?
                 match self.infcx.equality_predicate(obligation.cause.span, p) {
-                    Ok(()) => EvaluatedToOk,
+                    // Do we need to somehow propagate obligations here?
+                    Ok(_) => EvaluatedToOk,
                     Err(_) => EvaluatedToErr
                 }
             }
@@ -1164,7 +1165,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              trait_bound.clone(),
                                              ty::Binder(skol_trait_ref.clone())) {
-            Ok(()) => { }
+            // Do we need to somehow propagate obligations here?
+            Ok(_) => { }
             Err(_) => { return false; }
         }
 
@@ -2453,7 +2455,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              expected_trait_ref.clone(),
                                              obligation_trait_ref.clone()) {
-            Ok(()) => Ok(()),
+            // Do we need to somehow propagate obligations here?
+            Ok(_) => Ok(()),
             Err(e) => Err(OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
         }
     }
@@ -2770,7 +2773,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              poly_trait_ref,
                                              obligation.predicate.to_poly_trait_ref()) {
-            Ok(()) => Ok(()),
+            // Do we need to somehow propagate obligations here?
+            Ok(_) => Ok(()),
             Err(_) => Err(()),
         }
     }

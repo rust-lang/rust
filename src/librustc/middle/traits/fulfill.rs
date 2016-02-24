@@ -11,6 +11,7 @@
 use dep_graph::DepGraph;
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, TypeFoldable, ToPolyTraitRef};
+use middle::ty::relate::RelateOk;
 use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
 use std::iter;
 use syntax::ast;
@@ -526,14 +527,14 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 
         ty::Predicate::Equate(ref binder) => {
             match selcx.infcx().equality_predicate(obligation.cause.span, binder) {
-                Ok(()) => Ok(Some(Vec::new())),
+                Ok(RelateOk { obligations, .. }) => Ok(Some(obligations)),
                 Err(_) => Err(CodeSelectionError(Unimplemented)),
             }
         }
 
         ty::Predicate::RegionOutlives(ref binder) => {
             match selcx.infcx().region_outlives_predicate(obligation.cause.span, binder) {
-                Ok(()) => Ok(Some(Vec::new())),
+                Ok(RelateOk { obligations, .. }) => Ok(Some(obligations)),
                 Err(_) => Err(CodeSelectionError(Unimplemented)),
             }
         }

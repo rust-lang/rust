@@ -392,7 +392,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
         match self.lub().relate(&t1, &t2) {
             Ok(t) => {
-                self.assert_eq(t, t_lub);
+                self.assert_eq(t.value, t_lub);
             }
             Err(ref e) => {
                 panic!("unexpected error in LUB: {}", e)
@@ -408,11 +408,11 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 panic!("unexpected error computing LUB: {:?}", e)
             }
             Ok(t) => {
-                self.assert_eq(t, t_glb);
+                self.assert_eq(t.value, t_glb);
 
                 // sanity check for good measure:
-                self.assert_subtype(t, t1);
-                self.assert_subtype(t, t2);
+                self.assert_subtype(t.value, t1);
+                self.assert_subtype(t.value, t2);
             }
         }
     }

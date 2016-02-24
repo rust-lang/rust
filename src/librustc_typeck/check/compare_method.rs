@@ -12,6 +12,7 @@ use middle::free_region::FreeRegionMap;
 use middle::infer::{self, TypeOrigin};
 use middle::traits;
 use middle::ty::{self};
+use middle::ty::relate::RelateOk;
 use middle::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
@@ -323,13 +324,20 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         debug!("compare_impl_method: trait_fty={:?}",
                trait_fty);
 
-        try!(infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty));
+        let RelateOk { obligations, .. } =
+            try!(infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty));
 
+        for obligation in obligations {
+            fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+        }
         infcx.leak_check(&skol_map, snapshot)
     });
 
     match err {
-        Ok(()) => { }
+        Ok(RelateOk { obligations, .. }) =>
+            for obligation in obligations {
+                fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+            },
         Err(terr) => {
             debug!("checking trait method for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_fty,
@@ -475,7 +483,10 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
     });
 
     match err {
-        Ok(()) => { }
+        Ok(RelateOk { obligations, .. }) =>
+            for obligation in obligations {
+                fulfillment_cx.register_predicate_obligation(&infcx, obligation);
+            },
         Err(terr) => {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_ty,

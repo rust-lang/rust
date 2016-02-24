@@ -15,7 +15,7 @@ use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Cause, Relate, RelateOk, RelateResult, RelateResultTrait, TypeRelation};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -62,7 +62,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
 
-        if a == b { return Ok(a); }
+        if a == b { return Ok(RelateOk::from(a)); }
 
         let infcx = self.fields.infcx;
         let a = infcx.type_variables.borrow().replace_if_possible(a);
@@ -72,26 +72,23 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
                 infcx.type_variables
                     .borrow_mut()
                     .relate_vars(a_id, SubtypeOf, b_id);
-                Ok(a)
+                Ok(RelateOk::from(a))
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                try!(self.fields
-                         .switch_expected()
-                         .instantiate(b, SupertypeOf, a_id));
-                Ok(a)
+                self.fields
+                    .switch_expected()
+                    .instantiate(b, SupertypeOf, a_id).map_value(|_| a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                try!(self.fields.instantiate(a, SubtypeOf, b_id));
-                Ok(a)
+                self.fields.instantiate(a, SubtypeOf, b_id).map_value(|_| a)
             }
 
             (&ty::TyError, _) | (_, &ty::TyError) => {
-                Ok(self.tcx().types.err)
+                Ok(RelateOk::from(self.tcx().types.err))
             }
 
             _ => {
-                try!(combine::super_combine_tys(self.fields.infcx, self, a, b));
-                Ok(a)
+                combine::super_combine_tys(self.fields.infcx, self, a, b).map_value(|_| a)
             }
         }
     }
@@ -104,7 +101,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
         // error messages.
         let origin = SubregionOrigin::Subtype(self.fields.trace.clone());
         self.fields.infcx.region_vars.make_subregion(origin, a, b);
-        Ok(a)
+        Ok(RelateOk::from(a))
     }
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
