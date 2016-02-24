@@ -78,10 +78,7 @@ pub enum StmtKind<'tcx> {
         pattern: Pattern<'tcx>,
 
         /// let pat = <INIT> ...
-        initializer: Option<ExprRef<'tcx>>,
-
-        /// let pat = init; <STMTS>
-        stmts: Vec<StmtRef<'tcx>>,
+        initializer: Option<ExprRef<'tcx>>
     },
 }
 

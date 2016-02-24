@@ -249,6 +249,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                       extent: CodeExtent,
                       mut block: BasicBlock,
                       target: BasicBlock) {
+        debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
         let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent)
                                                       .unwrap_or_else(||{
             self.hir.span_bug(span, &format!("extent {:?} does not enclose", extent))
