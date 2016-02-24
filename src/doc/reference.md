@@ -841,8 +841,8 @@ extern crate std as ruststd; // linking to 'std' under another name
 
 A _use declaration_ creates one or more local name bindings synonymous with
 some other [path](#paths). Usually a `use` declaration is used to shorten the
-path required to refer to a module item. These declarations may appear at the
-top of [modules](#modules) and [blocks](grammar.html#block-expressions).
+path required to refer to a module item. These declarations may appear in
+[modules](#modules) and [blocks](grammar.html#block-expressions), usually at the top.
 
 > **Note**: Unlike in many languages,
 > `use` declarations in Rust do *not* declare linkage dependency with external crates.
@@ -1764,7 +1764,7 @@ pub mod submodule {
 # fn main() {}
 ```
 
-For a rust program to pass the privacy checking pass, all paths must be valid
+For a Rust program to pass the privacy checking pass, all paths must be valid
 accesses given the two rules above. This includes all use statements,
 expressions, types, etc.
 
@@ -3564,8 +3564,9 @@ Each instance of a trait object includes:
    each method of `SomeTrait` that `T` implements, a pointer to `T`'s
    implementation (i.e. a function pointer).
 
-The purpose of trait objects is to permit "late binding" of methods. A call to
-a method on a trait object is only resolved to a vtable entry at compile time.
+The purpose of trait objects is to permit "late binding" of methods. Calling a
+method on a trait object results in virtual dispatch at runtime: that is, a
+function pointer is loaded from the trait object vtable and invoked indirectly.
 The actual implementation for each vtable entry can vary on an object-by-object
 basis.
 

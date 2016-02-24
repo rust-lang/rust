@@ -66,9 +66,8 @@ impl<'a> Parser<'a> {
     fn read_or<T>(&mut self, parsers: &mut [Box<FnMut(&mut Parser) -> Option<T> + 'static>])
                -> Option<T> {
         for pf in parsers {
-            match self.read_atomically(|p: &mut Parser| pf(p)) {
-                Some(r) => return Some(r),
-                None => {}
+            if let Some(r) = self.read_atomically(|p: &mut Parser| pf(p)) {
+                return Some(r);
             }
         }
         None
