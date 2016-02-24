@@ -130,8 +130,7 @@ fn project_and_unify_type<'cx,'tcx>(
                                             obligation.recursion_depth) {
             Some(n) => n,
             None => {
-                consider_unification_despite_ambiguity(selcx, obligation);
-                return Ok(None);
+                return Ok(consider_unification_despite_ambiguity(selcx, obligation));
             }
         };
 
@@ -151,14 +150,16 @@ fn project_and_unify_type<'cx,'tcx>(
 }
 
 fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext<'cx,'tcx>,
-                                                    obligation: &ProjectionObligation<'tcx>) {
+                                                    obligation: &ProjectionObligation<'tcx>)
+    -> Option<Vec<PredicateObligation<'tcx>>>
+{
     debug!("consider_unification_despite_ambiguity(obligation={:?})",
            obligation);
 
     let def_id = obligation.predicate.projection_ty.trait_ref.def_id;
     match selcx.tcx().lang_items.fn_trait_kind(def_id) {
         Some(_) => { }
-        None => { return; }
+        None => { return None; }
     }
 
     let infcx = selcx.infcx();
@@ -191,11 +192,11 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
             let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let obligation_ty = obligation.predicate.ty;
             match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
-                Ok(InferOk { .. }) => { }
-                Err(_) => { /* ignore errors */ }
+                Ok(InferOk { obligations, .. }) => { Some(obligations) }
+                Err(_) => { /* ignore errors */ None }
             }
         }
-        _ => { }
+        _ => { None }
     }
 }
 
