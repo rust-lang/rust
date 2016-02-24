@@ -2004,6 +2004,13 @@ impl AsRef<Path> for OsStr {
     }
 }
 
+#[stable(feature = "cow_str_as_ref_path", since = "1.8.0")]
+impl<'a> AsRef<Path> for Cow<'a, str> {
+    fn as_ref(&self) -> &Path {
+        Path::new(&self[..])
+    }
+}
+
 #[stable(feature = "cow_os_str_as_ref_path", since = "1.8.0")]
 impl<'a> AsRef<Path> for Cow<'a, OsStr> {
     fn as_ref(&self) -> &Path {
@@ -2091,7 +2098,7 @@ impl_cmp!(Cow<'a, Path>, Path);
 impl_cmp!(Cow<'a, Path>, &'b Path);
 impl_cmp!(Cow<'a, Path>, PathBuf);
 
-macro_rules! impl_cmp_os_str {
+macro_rules! impl_cmp_as_ref {
     ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "cmp_path", since = "1.8.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
@@ -2123,20 +2130,31 @@ macro_rules! impl_cmp_os_str {
     }
 }
 
-impl_cmp_os_str!(PathBuf, OsStr);
-impl_cmp_os_str!(PathBuf, &'a OsStr);
-impl_cmp_os_str!(PathBuf, Cow<'a, OsStr>);
-impl_cmp_os_str!(PathBuf, OsString);
-impl_cmp_os_str!(Path, OsStr);
-impl_cmp_os_str!(Path, &'a OsStr);
-impl_cmp_os_str!(Path, Cow<'a, OsStr>);
-impl_cmp_os_str!(Path, OsString);
-impl_cmp_os_str!(&'a Path, OsStr);
-impl_cmp_os_str!(&'a Path, Cow<'b, OsStr>);
-impl_cmp_os_str!(&'a Path, OsString);
-impl_cmp_os_str!(Cow<'a, Path>, OsStr);
-impl_cmp_os_str!(Cow<'a, Path>, &'b OsStr);
-impl_cmp_os_str!(Cow<'a, Path>, OsString);
+impl_cmp_as_ref!(PathBuf, str);
+impl_cmp_as_ref!(PathBuf, &'a str);
+impl_cmp_as_ref!(PathBuf, Cow<'a, str>);
+impl_cmp_as_ref!(PathBuf, String);
+impl_cmp_as_ref!(PathBuf, OsStr);
+impl_cmp_as_ref!(PathBuf, &'a OsStr);
+impl_cmp_as_ref!(PathBuf, Cow<'a, OsStr>);
+impl_cmp_as_ref!(PathBuf, OsString);
+impl_cmp_as_ref!(Path, str);
+impl_cmp_as_ref!(Path, &'a str);
+impl_cmp_as_ref!(Path, Cow<'a, str>);
+impl_cmp_as_ref!(Path, String);
+impl_cmp_as_ref!(Path, OsStr);
+impl_cmp_as_ref!(Path, &'a OsStr);
+impl_cmp_as_ref!(Path, Cow<'a, OsStr>);
+impl_cmp_as_ref!(Path, OsString);
+impl_cmp_as_ref!(&'a Path, str);
+impl_cmp_as_ref!(&'a Path, Cow<'b, str>);
+impl_cmp_as_ref!(&'a Path, String);
+impl_cmp_as_ref!(&'a Path, OsStr);
+impl_cmp_as_ref!(&'a Path, Cow<'b, OsStr>);
+impl_cmp_as_ref!(&'a Path, OsString);
+impl_cmp_as_ref!(Cow<'a, Path>, OsStr);
+impl_cmp_as_ref!(Cow<'a, Path>, &'b OsStr);
+impl_cmp_as_ref!(Cow<'a, Path>, OsString);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {
