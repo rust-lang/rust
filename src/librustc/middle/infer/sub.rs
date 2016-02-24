@@ -13,25 +13,27 @@ use super::higher_ranked::HigherRankedRelations;
 use super::SubregionOrigin;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
+use middle::traits::PredicateObligation;
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>,
+pub struct Sub<'a, 'o, 'tcx: 'a + 'o> {
+    fields: CombineFields<'a, 'o, 'tcx>,
 }
 
-impl<'a, 'tcx> Sub<'a, 'tcx> {
-    pub fn new(f: CombineFields<'a, 'tcx>) -> Sub<'a, 'tcx> {
+impl<'a, 'o, 'tcx> Sub<'a, 'o, 'tcx> {
+    pub fn new(f: CombineFields<'a, 'o, 'tcx>) -> Sub<'a, 'o, 'tcx> {
         Sub { fields: f }
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
+impl<'a, 'o, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'o, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
     fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.infcx.tcx }
+    fn obligations(&self) -> &Vec<PredicateObligation<'tcx>> { self.fields.obligations }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R

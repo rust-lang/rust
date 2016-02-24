@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::traits::PredicateObligation;
+
 use middle::ty::{self, Ty};
 use middle::ty::error::TypeError;
 use middle::ty::relate::{self, Relate, TypeRelation, RelateResult};
@@ -29,18 +31,22 @@ use middle::ty::relate::{self, Relate, TypeRelation, RelateResult};
 /// important thing about the result is Ok/Err. Also, matching never
 /// affects any type variables or unification state.
 pub struct Match<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>
+    tcx: &'a ty::ctxt<'tcx>,
+    obligations: &'a mut Vec<PredicateObligation<'tcx>>,
 }
 
 impl<'a, 'tcx> Match<'a, 'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> Match<'a, 'tcx> {
-        Match { tcx: tcx }
+    pub fn new(tcx: &'a ty::ctxt<'tcx>, obligations: &'a mut Vec<PredicateObligation<'tcx>>)
+        -> Match<'a, 'tcx>
+    {
+        Match { tcx: tcx, obligations: obligations }
     }
 }
 
 impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Match" }
     fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.tcx }
+    fn obligations(&self) -> &Vec<PredicateObligation<'tcx>> { self.obligations }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,

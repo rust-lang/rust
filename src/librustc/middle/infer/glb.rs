@@ -14,24 +14,27 @@ use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
+use middle::traits::PredicateObligation;
 use middle::ty::{self, Ty};
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
-pub struct Glb<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+pub struct Glb<'a, 'o, 'tcx: 'a + 'o> {
+    fields: CombineFields<'a, 'o, 'tcx>
 }
 
-impl<'a, 'tcx> Glb<'a, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'tcx>) -> Glb<'a, 'tcx> {
+impl<'a, 'o, 'tcx> Glb<'a, 'o, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'o, 'tcx>) -> Glb<'a, 'o, 'tcx> {
         Glb { fields: fields }
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
+impl<'a, 'o, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'o, 'tcx> {
     fn tag(&self) -> &'static str { "Glb" }
 
     fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.tcx() }
+
+    fn obligations(&self) -> &Vec<PredicateObligation<'tcx>> { self.fields.obligations }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
@@ -71,12 +74,12 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LatticeDir<'a,'tcx> for Glb<'a, 'tcx> {
+impl<'a, 'o, 'tcx> LatticeDir<'a,'tcx> for Glb<'a, 'o, 'tcx> {
     fn infcx(&self) -> &'a InferCtxt<'a,'tcx> {
         self.fields.infcx
     }
 
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
+    fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub();
         try!(sub.relate(&v, &a));
         try!(sub.relate(&v, &b));
