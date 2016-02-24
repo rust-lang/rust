@@ -932,7 +932,9 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
-        format!("{}:{}:", testpaths.file.display(), ee.line)
+        let expected = format!("{}:{}:", testpaths.file.display(), ee.line);
+        // On windows just translate all '\' path separators to '/'
+        expected.replace(r"\", "/")
     }).collect::<Vec<String>>();
 
     let (expect_help, expect_note) =
