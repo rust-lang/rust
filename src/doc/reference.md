@@ -841,8 +841,8 @@ extern crate std as ruststd; // linking to 'std' under another name
 
 A _use declaration_ creates one or more local name bindings synonymous with
 some other [path](#paths). Usually a `use` declaration is used to shorten the
-path required to refer to a module item. These declarations may appear at the
-top of [modules](#modules) and [blocks](grammar.html#block-expressions).
+path required to refer to a module item. These declarations may appear in
+[modules](#modules) and [blocks](grammar.html#block-expressions), usually at the top.
 
 > **Note**: Unlike in many languages,
 > `use` declarations in Rust do *not* declare linkage dependency with external crates.
