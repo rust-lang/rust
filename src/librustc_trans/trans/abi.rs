@@ -12,7 +12,7 @@ pub use self::ArgKind::*;
 
 use llvm::{self, AttrHelper, ValueRef};
 use trans::attributes;
-use trans::common::return_type_is_void;
+use trans::common::{return_type_is_void, type_is_fat_ptr};
 use trans::context::CrateContext;
 use trans::cabi_x86;
 use trans::cabi_x86_64;
@@ -184,10 +184,20 @@ impl FnType {
             _ => Type::void(ccx)
         };
 
+        let mut args = Vec::with_capacity(sig.inputs.len() + extra_args.len());
+        for ty in sig.inputs.iter().chain(extra_args.iter()) {
+            let llty = c_type_of(ccx, ty);
+            if type_is_fat_ptr(ccx.tcx(), ty) {
+                args.extend(llty.field_types().into_iter().map(|llty| {
+                    ArgType::direct(llty, None, None, None)
+                }));
+            } else {
+                args.push(ArgType::direct(llty, None, None, None));
+            }
+        }
+
         let mut fty = FnType {
-            args: sig.inputs.iter().chain(extra_args.iter()).map(|&ty| {
-                ArgType::direct(c_type_of(ccx, ty), None, None, None)
-            }).collect(),
+            args: args,
             ret: ArgType::direct(rty, None, None, None),
             variadic: sig.variadic,
             cconv: cconv
