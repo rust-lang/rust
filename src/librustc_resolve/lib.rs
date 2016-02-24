@@ -2788,8 +2788,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if check_ribs {
-            if let Some(def) = self.resolve_identifier_in_local_ribs(identifier, namespace) {
-                return Some(def);
+            match self.resolve_identifier_in_local_ribs(identifier, namespace, record_used) {
+                Some(def) => return Some(def),
+                None => {}
             }
         }
 
@@ -3001,7 +3002,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_identifier_in_local_ribs(&mut self,
                                         ident: hir::Ident,
-                                        namespace: Namespace)
+                                        namespace: Namespace,
+                                        record_used: bool)
                                         -> Option<LocalDef> {
         // Check the local set of ribs.
         let name = match namespace { ValueNS => ident.name, TypeNS => ident.unhygienic_name };
@@ -3033,7 +3035,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                       ident.unhygienic_name,
                                                                       namespace,
                                                                       true,
-                                                                      true) {
+                                                                      record_used) {
                     if let Some(def) = binding.def() {
                         return Some(LocalDef::from_def(def));
                     }
