@@ -8,7 +8,7 @@ use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 
 use syntax::ast::{Lit, LitKind};
 
-use utils::{get_item_name, snippet, span_lint, span_lint_and_then, walk_ptrs_ty};
+use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** This lint checks for getting the length of something via `.len()` just to compare to zero, and suggests using `.is_empty()` where applicable.
 ///
@@ -51,6 +51,10 @@ impl LintPass for LenZero {
 
 impl LateLintPass for LenZero {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
+        if in_macro(cx, item.span) {
+            return;
+        }
+
         match item.node {
             ItemTrait(_, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
             ItemImpl(_, _, _, None, _, ref impl_items) => check_impl_items(cx, item, impl_items),
@@ -59,6 +63,10 @@ impl LateLintPass for LenZero {
     }
 
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        if in_macro(cx, expr.span) {
+            return;
+        }
+
         if let ExprBinary(Spanned{node: cmp, ..}, ref left, ref right) = expr.node {
             match cmp {
                 BiEq => check_cmp(cx, expr.span, left, right, ""),
