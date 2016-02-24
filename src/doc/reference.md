@@ -1764,7 +1764,7 @@ pub mod submodule {
 # fn main() {}
 ```
 
-For a rust program to pass the privacy checking pass, all paths must be valid
+For a Rust program to pass the privacy checking pass, all paths must be valid
 accesses given the two rules above. This includes all use statements,
 expressions, types, etc.
 
