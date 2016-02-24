@@ -854,24 +854,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
 
           let mut call_args = NodeMap();
           for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
-              let arg_hint = match ty_hint {
-                  ExprTypeChecked => ExprTypeChecked,
-                  UncheckedExprNoHint | UncheckedExprHint(_) => {
-                      if let Some(hint) = tcx.ast_ty_to_ty_cache.borrow().get(&arg.ty.id) {
-                          let mut new_ty_hint = UncheckedExprHint(hint);
-                          for t in hint.walk() {
-                              if let ty::TypeVariants::TyParam(_) = t.sty {
-                                  // found a generic argument, but we are in typeck
-                                  new_ty_hint = UncheckedExprNoHint;
-                                  break;
-                              }
-                          }
-                          new_ty_hint
-                      } else {
-                          UncheckedExprNoHint
-                      }
-                  },
-              };
+              let arg_hint = ty_hint.erase_hint();
               let arg_val = try!(eval_const_expr_partial(
                   tcx,
                   arg_expr,
