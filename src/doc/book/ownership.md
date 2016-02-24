@@ -157,7 +157,7 @@ this point of time). These two parts of the vector (the one on the stack and
 one on the heap) must agree with each other at all times with regards to
 things like the length, capacity etc.
 
-When we move `v` to `v2`, rust actually does a bitwise copy of the vector
+When we move `v` to `v2`, Rust actually does a bitwise copy of the vector
 object `v` into the stack allocation represented by `v2`. This shallow copy
 does not create a copy of the heap allocation containing the actual data.
 Which means that there would be two pointers to the contents of the vector
