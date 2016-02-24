@@ -351,25 +351,28 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         infer::TypeTrace::dummy(self.tcx())
     }
 
-    pub fn sub(&self) -> Sub<'a, 'tcx> {
+    pub fn with_sub<T, F: for<'b> FnMut(Sub<'a, 'b, 'tcx>) -> T>(&self, mut f: F) -> T {
         let trace = self.dummy_type_trace();
-        self.infcx.sub(true, trace)
+        let mut obligations = Vec::new();
+        f(self.infcx.sub(true, trace, &mut obligations))
     }
 
-    pub fn lub(&self) -> Lub<'a, 'tcx> {
+    pub fn with_lub<T, F: for<'b> FnMut(Lub<'a, 'b, 'tcx>) -> T>(&self, mut f: F) -> T {
         let trace = self.dummy_type_trace();
-        self.infcx.lub(true, trace)
+        let mut obligations = Vec::new();
+        f(self.infcx.lub(true, trace, &mut obligations))
     }
 
-    pub fn glb(&self) -> Glb<'a, 'tcx> {
+    pub fn with_glb<T, F: for<'b> FnMut(Glb<'a, 'b, 'tcx>) -> T>(&self, mut f: F) -> T {
         let trace = self.dummy_type_trace();
-        self.infcx.glb(true, trace)
+        let mut obligations = Vec::new();
+        f(self.infcx.glb(true, trace, &mut obligations))
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub().relate(&t1, &t2) {
+        match self.with_sub(|mut sub| sub.relate(&t1, &t2)) {
             Ok(_) => {}
             Err(ref e) => {
                 panic!("unexpected error computing sub({:?},{:?}): {}", t1, t2, e);
@@ -380,7 +383,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `t1 <: t2` is false (this may register additional
     /// region checks).
     pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub().relate(&t1, &t2) {
+        match self.with_sub(|mut sub| sub.relate(&t1, &t2)) {
             Err(_) => {}
             Ok(_) => {
                 panic!("unexpected success computing sub({:?},{:?})", t1, t2);
@@ -390,7 +393,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     /// Checks that `LUB(t1,t2) == t_lub`
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
-        match self.lub().relate(&t1, &t2) {
+        match self.with_lub(|mut lub| lub.relate(&t1, &t2)) {
             Ok(t) => {
                 self.assert_eq(t, t_lub);
             }
@@ -403,7 +406,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
         debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
-        match self.glb().relate(&t1, &t2) {
+        match self.with_glb(|mut glb| glb.relate(&t1, &t2)) {
             Err(e) => {
                 panic!("unexpected error computing LUB: {:?}", e)
             }
