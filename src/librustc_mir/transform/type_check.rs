@@ -11,6 +11,8 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use std::cell::RefCell;
+
 use rustc::middle::infer::{self, InferCtxt};
 use rustc::middle::traits;
 use rustc::middle::ty::{self, Ty};
@@ -308,7 +310,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                ty,
                obligations);
 
-        let mut fulfill_cx = &mut self.cx.fulfillment_cx;
+        let mut fulfill_cx = self.cx.fulfillment_cx.borrow_mut();
         for obligation in obligations {
             fulfill_cx.register_predicate_obligation(infcx, obligation);
         }
@@ -319,7 +321,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
 pub struct TypeChecker<'a, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    fulfillment_cx: traits::FulfillmentContext<'tcx>,
+    fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
     last_span: Span
 }
 
@@ -327,7 +329,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
         TypeChecker {
             infcx: infcx,
-            fulfillment_cx: traits::FulfillmentContext::new(),
+            fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             last_span: DUMMY_SP
         }
     }
@@ -335,15 +337,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn mk_subty(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                        sup, sub)
+        infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span), sup, sub)
+            .map(|infer::InferOk { obligations, .. }| {
+                for obligation in obligations {
+                    self.fulfillment_cx.borrow_mut()
+                        .register_predicate_obligation(self.infcx, obligation);
+                }
+                ()
+            })
     }
 
     fn mk_eqty(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                       a, b)
+        infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span), a, b)
+            .map(|infer::InferOk { obligations, .. }| {
+                for obligation in obligations {
+                    self.fulfillment_cx.borrow_mut()
+                        .register_predicate_obligation(self.infcx, obligation);
+                }
+                ()
+            })
     }
 
     fn tcx(&self) -> &'a ty::ctxt<'tcx> {
@@ -557,7 +571,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn verify_obligations(&mut self, mir: &Mir<'tcx>) {
         self.last_span = mir.span;
-        if let Err(e) = self.fulfillment_cx.select_all_or_error(self.infcx) {
+        if let Err(e) = self.fulfillment_cx.borrow_mut().select_all_or_error(self.infcx) {
             span_mirbug!(self, "", "errors selecting obligation: {:?}",
                          e);
         }
