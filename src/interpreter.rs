@@ -244,7 +244,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 let base_ptr = self.eval_lvalue(&proj.base);
 
                 match proj.elem {
-                    mir::ProjectionElem::Field(field) => {
+                    mir::ProjectionElem::Field(field, _) => {
                         base_ptr.offset(field.index())
                     }
 
