@@ -93,13 +93,13 @@ fn top_level(build: &Build) -> Vec<Step> {
                 continue
             }
             let host = t.target(host);
-            targets.push(host.librustc(stage, host.compiler(stage)));
+            targets.push(host.librustc(stage, t.compiler(stage)));
             for target in build.config.target.iter() {
                 if !build.flags.target.contains(target) {
                     continue
                 }
                 targets.push(host.target(target)
-                                 .libstd(stage, host.compiler(stage)));
+                                 .libstd(stage, t.compiler(stage)));
             }
         }
     }
