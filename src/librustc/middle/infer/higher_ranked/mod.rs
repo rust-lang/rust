@@ -21,13 +21,16 @@ use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 pub trait HigherRankedRelations<'a,'tcx> {
-    fn higher_ranked_sub<T>(&mut self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_sub<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>;
 
-    fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>;
 
-    fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>;
 }
 
@@ -101,7 +104,8 @@ impl<'a,'o,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'o,'tcx> {
         });
     }
 
-    fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
     {
         // Start a snapshot so we can examine "all bindings that were
@@ -191,7 +195,8 @@ impl<'a,'o,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'o,'tcx> {
         }
     }
 
-    fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
     {
         debug!("higher_ranked_glb({:?}, {:?})",

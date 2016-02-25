@@ -92,7 +92,8 @@ use middle::region::{self, CodeExtent};
 use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, Ty, MethodCall, TypeFoldable};
-use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound, InferOk};
+use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound,
+                    InferOk};
 use middle::pat_util;
 use middle::ty::adjustment;
 use middle::ty::wf::ImpliedBound;
