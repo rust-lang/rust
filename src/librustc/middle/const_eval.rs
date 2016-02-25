@@ -465,7 +465,8 @@ pub enum ErrKind {
     Math(ConstMathErr),
 
     IntermediateUnsignedNegative,
-    InferredWrongType(ConstInt),
+    /// Expected, Got
+    TypeMismatch(String, ConstInt),
     BadType(ConstVal),
 }
 
@@ -528,7 +529,10 @@ impl ConstEvalErr {
                                              number was encountered. This is most likely a bug in\
                                              the constant evaluator".into_cow(),
 
-            InferredWrongType(ref i) => format!("inferred wrong type for {}", i).into_cow(),
+            TypeMismatch(ref expected, ref got) => {
+                format!("mismatched types: expected `{}`, found `{}`",
+                        expected, got.description()).into_cow()
+            },
             BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
         }
     }
@@ -745,7 +749,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
 
         let val = match eval_const_expr_partial(tcx, &base, base_hint, fn_args) {
             Ok(val) => val,
-            Err(ConstEvalErr { kind: InferredWrongType(val), .. }) => {
+            Err(ConstEvalErr { kind: TypeMismatch(_, val), .. }) => {
                 // Something like `5i8 as usize` doesn't need a type hint for the base
                 // instead take the type hint from the inner value
                 let hint = match val.int_type() {
@@ -1085,8 +1089,8 @@ fn infer<'tcx>(
         (&ty::TyUint(_), Infer(_)) => Err(err(Math(ConstMathErr::NotInRange))),
         (&ty::TyUint(_), InferSigned(_)) => Err(err(IntermediateUnsignedNegative)),
 
-        (&ty::TyInt(_), i) |
-        (&ty::TyUint(_), i) => Err(err(InferredWrongType(i))),
+        (&ty::TyInt(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
+        (&ty::TyUint(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
 
         (&ty::TyEnum(ref adt, _), i) => {
             let hints = tcx.lookup_repr_hints(adt.did);
