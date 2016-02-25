@@ -48,13 +48,17 @@ impl Rng for OsRng {
         unsafe { mem::transmute(v) }
     }
     fn fill_bytes(&mut self, v: &mut [u8]) {
-        let ret = unsafe {
-            c::CryptGenRandom(self.hcryptprov, v.len() as c::DWORD,
-                              v.as_mut_ptr())
-        };
-        if ret == 0 {
-            panic!("couldn't generate random bytes: {}",
-                   io::Error::last_os_error());
+        // CryptGenRandom takes a DWORD (u32) for the length so we need to
+        // split up the buffer.
+        for slice in v.chunks_mut(<c::DWORD>::max_value() as usize) {
+            let ret = unsafe {
+                c::CryptGenRandom(self.hcryptprov, slice.len() as c::DWORD,
+                                  slice.as_mut_ptr())
+            };
+            if ret == 0 {
+                panic!("couldn't generate random bytes: {}",
+                       io::Error::last_os_error());
+            }
         }
     }
 }
