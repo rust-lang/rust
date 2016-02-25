@@ -1921,6 +1921,24 @@ impl Path {
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
+
+    /// Returns true if the path is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let mut path = Path::new("");
+    /// assert!(path.is_empty());
+    ///
+    /// path.push("/tmp/foo.rs");
+    /// assert!(!path.is_empty());
+    /// ```
+    #[unstable(feature = "path_is_empty", reason = "recently added", issue = "30259")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3330,6 +3348,17 @@ mod tests {
             tfn!(r"foo\..", "bar", r"foo\..\bar");
             tfn!(r"\", "foo", r"\foo");
         }
+    }
+
+    #[test]
+    pub fn is_empty() {
+        let path = Path::new("/tmp/foo.rs");
+        assert!(!path.is_empty());
+
+        let mut path_buf = PathBuf::new();
+        assert!(path_buf.is_empty());
+        path_buf.push("foo");
+        assert!(!path_buf.is_empty());
     }
 
     #[test]
