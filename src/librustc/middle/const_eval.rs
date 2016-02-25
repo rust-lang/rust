@@ -743,7 +743,21 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
             }
         };
 
-        let val = try!(eval_const_expr_partial(tcx, &base, base_hint, fn_args));
+        let val = match eval_const_expr_partial(tcx, &base, base_hint, fn_args) {
+            Ok(val) => val,
+            Err(ConstEvalErr { kind: InferredWrongType(val), .. }) => {
+                // Something like `5i8 as usize` doesn't need a type hint for the base
+                // instead take the type hint from the inner value
+                let hint = match val.int_type() {
+                    Some(IntType::UnsignedInt(ty)) => ty_hint.checked_or(tcx.mk_mach_uint(ty)),
+                    Some(IntType::SignedInt(ty)) => ty_hint.checked_or(tcx.mk_mach_int(ty)),
+                    // we had a type hint, so we can't have an unknown type
+                    None => unreachable!(),
+                };
+                try!(eval_const_expr_partial(tcx, &base, hint, fn_args))
+            },
+            Err(e) => return Err(e),
+        };
         match cast_const(tcx, val, ety) {
             Ok(val) => val,
             Err(kind) => return Err(ConstEvalErr { span: e.span, kind: kind }),
