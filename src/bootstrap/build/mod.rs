@@ -39,6 +39,14 @@ mod sanity;
 mod step;
 mod util;
 
+#[cfg(windows)]
+mod job;
+
+#[cfg(not(windows))]
+mod job {
+    pub unsafe fn setup() {}
+}
+
 pub use build::config::Config;
 pub use build::flags::Flags;
 
@@ -114,14 +122,9 @@ impl Build {
     pub fn build(&mut self) {
         use build::step::Source::*;
 
-        // see comments in job.rs for what's going on here
-        #[cfg(windows)]
-        fn setup_job() {
-            mod job;
-            unsafe { job::setup() }
+        unsafe {
+            job::setup();
         }
-        #[cfg(not(windows))] fn setup_job() {}
-        setup_job();
 
         if self.flags.clean {
             return clean::clean(self);
