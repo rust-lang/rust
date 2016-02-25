@@ -11,7 +11,7 @@
 use llvm::*;
 use super::common::*;
 use super::machine::*;
-use trans::abi::{ArgType, FnType, Indirect};
+use trans::abi::{ArgType, FnType};
 use trans::type_::Type;
 
 // Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx
@@ -24,7 +24,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 2 => a.cast = Some(Type::i16(ccx)),
                 4 => a.cast = Some(Type::i32(ccx)),
                 8 => a.cast = Some(Type::i64(ccx)),
-                _ => a.kind = Indirect
+                _ => a.make_indirect(ccx)
             }
         }
     };

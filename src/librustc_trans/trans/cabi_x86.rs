@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::*;
-use trans::abi::{FnType, Indirect, Ignore};
+use trans::abi::FnType;
 use trans::type_::Type;
 use super::common::*;
 use super::machine::*;
@@ -30,20 +30,20 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 2 => fty.ret.cast = Some(Type::i16(ccx)),
                 4 => fty.ret.cast = Some(Type::i32(ccx)),
                 8 => fty.ret.cast = Some(Type::i64(ccx)),
-                _ => fty.ret.kind = Indirect
+                _ => fty.ret.make_indirect(ccx)
             }
         } else {
-            fty.ret.kind = Indirect;
+            fty.ret.make_indirect(ccx);
         }
     }
 
     for arg in &mut fty.args {
         if arg.ty.kind() == Struct {
             if llsize_of_alloc(ccx, arg.ty) == 0 {
-                arg.kind = Ignore;
+                arg.ignore();
             } else {
-                arg.kind = Indirect;
-                arg.attr = Some(Attribute::ByVal);
+                arg.make_indirect(ccx);
+                arg.attrs.set(Attribute::ByVal);
             }
         }
     }

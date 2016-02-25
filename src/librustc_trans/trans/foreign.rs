@@ -253,7 +253,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         llfn,
                                         &llargs_foreign[..],
                                         fn_type.cconv,
-                                        Some(fn_type.llvm_attrs(ccx)),
+                                        Some(fn_type.llvm_attrs()),
                                         call_debug_loc);
 
     // If the function we just called does not use an outpointer,
