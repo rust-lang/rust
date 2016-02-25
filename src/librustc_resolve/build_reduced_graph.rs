@@ -499,7 +499,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         debug!("(building reduced graph for external crate) building external def {}, priv {:?}",
                final_ident,
                vis);
-        let is_public = vis == hir::Public;
+        let is_public = vis == hir::Public || new_parent.is_trait();
 
         let mut modifiers = DefModifiers::empty();
         if is_public {
