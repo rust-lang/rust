@@ -98,6 +98,7 @@ pub const TRUNCATE_EXISTING: DWORD = 5;
 pub const FILE_WRITE_DATA: DWORD = 0x00000002;
 pub const FILE_APPEND_DATA: DWORD = 0x00000004;
 pub const FILE_WRITE_EA: DWORD = 0x00000010;
+pub const FILE_READ_ATTRIBUTES: DWORD = 0x00000080;
 pub const FILE_WRITE_ATTRIBUTES: DWORD = 0x00000100;
 pub const READ_CONTROL: DWORD = 0x00020000;
 pub const SYNCHRONIZE: DWORD = 0x00100000;
@@ -362,6 +363,15 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
     FileIdExtdDirectoryInfo         = 19, // 0x13
     FileIdExtdDirectoryRestartInfo  = 20, // 0x14
     MaximumFileInfoByHandlesClass
+}
+
+#[repr(C)]
+pub struct FILE_BASIC_INFO {
+    pub CreationTime: LARGE_INTEGER,
+    pub LastAccessTime: LARGE_INTEGER,
+    pub LastWriteTime: LARGE_INTEGER,
+    pub ChangeTime: LARGE_INTEGER,
+    pub FileAttributes: DWORD,
 }
 
 #[repr(C)]
@@ -855,8 +865,6 @@ extern "system" {
     pub fn GetConsoleMode(hConsoleHandle: HANDLE,
                           lpMode: LPDWORD) -> BOOL;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-    pub fn SetFileAttributesW(lpFileName: LPCWSTR,
-                              dwFileAttributes: DWORD) -> BOOL;
     pub fn GetFileInformationByHandle(hFile: HANDLE,
                             lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
                             -> BOOL;
