@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![crate_type="lib"]
 
 // @has assoc_types/trait.Index.html
@@ -40,3 +42,34 @@ pub fn cmp_input<T: Feed, U: Feed>(a: &T::Input, b: &U::Input) -> bool
 {
     a == b
 }
+
+/* !search-index
+{
+    "assoc_types": {
+        "assoc_types::Feed": [
+            "Trait"
+        ],
+        "assoc_types::Feed<Trait>::Input": [
+            "AssociatedType"
+        ],
+        "assoc_types::Index": [
+            "Trait"
+        ],
+        "assoc_types::Index<Trait>::Output": [
+            "AssociatedType"
+        ],
+        "assoc_types::Index<Trait>::index": [
+            "TyMethod(index, i) -> output"
+        ],
+        "assoc_types::cmp_input": [
+            "Function(input, input) -> bool"
+        ],
+        "assoc_types::use_input": [
+            "Function(t, input)"
+        ],
+        "assoc_types::use_output": [
+            "Function(t, usize) -> output"
+        ]
+    }
+}
+*/

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // @has issue_25001/struct.Foo.html
 pub struct Foo<T>(T);
 
@@ -51,3 +53,28 @@ impl<'a, T> Bar for &'a mut Foo<T> {
     // @has - '//*[@id="method.quux-2"]//code' 'fn quux(self)'
     fn quux(self) {}
 }
+
+/* !search-index
+{
+    "issue_25001": {
+        "issue_25001::Bar": [
+            "Trait"
+        ],
+        "issue_25001::Bar<Trait>::Item": [
+            "AssociatedType"
+        ],
+        "issue_25001::Bar<Trait>::quux": [
+            "TyMethod(bar)"
+        ],
+        "issue_25001::Foo": [
+            "Struct"
+        ],
+        "issue_25001::Foo<Struct>::pass": [
+            "Method(foo) -> isize"
+        ],
+        "issue_25001::Foo<Struct>::quux": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

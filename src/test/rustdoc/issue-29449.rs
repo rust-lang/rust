@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // @has issue_29449/struct.Foo.html
 pub struct Foo;
 
@@ -28,3 +30,25 @@ impl Foo {
     /// # Panics
     pub fn bar_2() {}
 }
+
+/* !search-index
+{
+    "issue_29449": {
+        "issue_29449::Foo": [
+            "Struct"
+        ],
+        "issue_29449::Foo<Struct>::bar": [
+            "Method(foo)",
+            "# Examples\n# Panics"
+        ],
+        "issue_29449::Foo<Struct>::bar_1": [
+            "Method(foo)",
+            "# Examples"
+        ],
+        "issue_29449::Foo<Struct>::bar_2": [
+            "Method(foo)",
+            "# Examples\n# Panics"
+        ]
+    }
+}
+*/

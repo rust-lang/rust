@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![feature(lang_items)]
 #![no_std]
 
@@ -20,3 +22,16 @@ pub mod str {
         pub fn foo(&self) {}
     }
 }
+
+/* !search-index
+{
+    "issue_23511": {
+        "issue_23511::str": [
+            "Primitive"
+        ],
+        "issue_23511::str<Primitive>::foo": [
+            "Method(str)"
+        ]
+    }
+}
+*/

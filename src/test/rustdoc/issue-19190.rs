@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 use std::ops::Deref;
 
 pub struct Foo;
@@ -26,3 +28,25 @@ impl Deref for Bar {
 // @has issue_19190/struct.Bar.html
 // @has - '//*[@id="method.foo"]' 'fn foo(&self)'
 // @!has - '//*[@id="method.static_foo"]' 'fn static_foo()'
+
+/* !search-index
+{
+    "issue_19190": {
+        "issue_19190::Bar": [
+            "Struct"
+        ],
+        "issue_19190::Bar<Struct>::deref": [
+            "Method(bar) -> foo"
+        ],
+        "issue_19190::Foo": [
+            "Struct"
+        ],
+        "issue_19190::Foo<Struct>::foo": [
+            "Method(foo)"
+        ],
+        "issue_19190::Foo<Struct>::static_foo": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

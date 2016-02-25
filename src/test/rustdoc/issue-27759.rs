@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![feature(staged_api)]
 #![doc(issue_tracker_base_url = "http://issue_url/")]
 
@@ -24,3 +26,16 @@ pub mod unstable {
     #[unstable(feature="test_function", issue="1234567890")]
     pub fn issue() {}
 }
+
+/* !search-index
+{
+    "issue_27759": {
+        "issue_27759::unstable": [
+            "Module"
+        ],
+        "issue_27759::unstable::issue": [
+            "Function()"
+        ]
+    }
+}
+*/

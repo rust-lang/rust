@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-extern-method.rs
 // ignore-cross-compile
+// check-search-index
 
 #![feature(unboxed_closures)]
 
@@ -27,3 +28,28 @@ pub trait Bar {
     // @has - '//*[@id="method.bar_"]//code' 'extern "rust-call" fn bar_'
     extern "rust-call" fn bar_(&self, _: ()) { }
 }
+
+/* !search-index
+{
+    "extern_method": {
+        "extern_method::Bar": [
+            "Trait"
+        ],
+        "extern_method::Bar<Trait>::bar": [
+            "TyMethod()"
+        ],
+        "extern_method::Bar<Trait>::bar_": [
+            "Method()"
+        ],
+        "extern_method::Foo": [
+            "Trait"
+        ],
+        "extern_method::Foo<Trait>::foo": [
+            "TyMethod()"
+        ],
+        "extern_method::Foo<Trait>::foo_": [
+            "Method()"
+        ]
+    }
+}
+*/

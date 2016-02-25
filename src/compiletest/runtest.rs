@@ -1765,10 +1765,23 @@ fn run_rustdoc_test(config: &Config, props: &TestProps, testfile: &Path) {
                           testfile,
                           Command::new(&config.python)
                                   .arg(root.join("src/etc/htmldocck.py"))
-                                  .arg(out_dir)
+                                  .arg(out_dir.clone())
                                   .arg(testfile));
     if !res.status.success() {
         fatal_proc_rec("htmldocck failed!", &res);
+    }
+
+    if props.check_search_index {
+        let res = cmd2procres(config,
+                              testfile,
+                              Command::new(&config.python)
+                                      .arg(root.join("src/etc/search-index.py"))
+                                      .arg("check")
+                                      .arg(out_dir.join("search-index.js"))
+                                      .arg(testfile));
+        if !res.status.success() {
+            fatal_proc_rec("search-index check failed!", &res);
+        }
     }
 }
 

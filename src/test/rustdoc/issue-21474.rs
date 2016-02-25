@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 pub use inner::*;
 
 mod inner {
@@ -19,3 +21,16 @@ pub trait Blah { }
 // @count issue_21474/struct.What.html \
 //        '//*[@class="impl"]' 1
 pub struct What;
+
+/* !search-index
+{
+    "issue_21474": {
+        "issue_21474::Blah": [
+            "Trait"
+        ],
+        "issue_21474::What": [
+            "Struct"
+        ]
+    }
+}
+*/

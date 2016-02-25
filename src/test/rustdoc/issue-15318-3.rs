@@ -8,8 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // @has issue_15318_3/primitive.pointer.html
 
 /// dox
 #[doc(primitive = "pointer")]
 pub mod ptr {}
+
+/* !search-index
+{
+    "issue_15318_3": {
+        "issue_15318_3::pointer": [
+            "Primitive",
+            "dox"
+        ],
+        "issue_15318_3::ptr": [
+            "Module",
+            "dox"
+        ]
+    }
+}
+*/

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![crate_type = "lib"]
 #![feature(globs)]
 
@@ -22,3 +24,9 @@ mod m {
         pub use super::*;
     }
 }
+
+/* !search-index
+{
+    "recursion1": {}
+}
+*/

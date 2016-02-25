@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 macro_rules! define_struct {
     ($rounds:expr) => (
         struct Struct {
@@ -17,3 +19,9 @@ macro_rules! define_struct {
 }
 
 define_struct!(2);
+
+/* !search-index
+{
+    "issue_16019": {}
+}
+*/

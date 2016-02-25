@@ -10,6 +10,7 @@
 
 // aux-build:issue-20727.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_20727;
 
@@ -48,3 +49,43 @@ pub mod reexport {
     //        'fn index_mut(&mut self, index: Idx) -> &mut Self::Output;'
     pub use issue_20727::IndexMut;
 }
+
+/* !search-index
+{
+    "issue_20727_4": {
+        "issue_20727_4::Index": [
+            "Trait"
+        ],
+        "issue_20727_4::Index<Trait>::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_4::Index<Trait>::index": [
+            "TyMethod(index, idx) -> output"
+        ],
+        "issue_20727_4::IndexMut": [
+            "Trait"
+        ],
+        "issue_20727_4::IndexMut<Trait>::index_mut": [
+            "TyMethod(indexmut, idx) -> output"
+        ],
+        "issue_20727_4::reexport": [
+            "Module"
+        ],
+        "issue_20727_4::reexport::Index": [
+            "Trait"
+        ],
+        "issue_20727_4::reexport::Index<Trait>::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_4::reexport::Index<Trait>::index": [
+            "TyMethod()"
+        ],
+        "issue_20727_4::reexport::IndexMut": [
+            "Trait"
+        ],
+        "issue_20727_4::reexport::IndexMut<Trait>::index_mut": [
+            "TyMethod()"
+        ]
+    }
+}
+*/

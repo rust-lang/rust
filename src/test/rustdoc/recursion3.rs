@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![feature(globs)]
 
 pub mod longhands {
@@ -23,3 +25,22 @@ pub mod common_types {
         pub use super::super::longhands::computed_as_specified as compute_CSSColor;
     }
 }
+
+/* !search-index
+{
+    "recursion3": {
+        "recursion3::common_types": [
+            "Module"
+        ],
+        "recursion3::common_types::computed": [
+            "Module"
+        ],
+        "recursion3::longhands": [
+            "Module"
+        ],
+        "recursion3::longhands::computed_as_specified": [
+            "Function()"
+        ]
+    }
+}
+*/

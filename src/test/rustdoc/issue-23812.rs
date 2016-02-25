@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 macro_rules! doc {
     (#[$outer:meta] mod $i:ident { #![$inner:meta] }) =>
     (
@@ -44,3 +46,18 @@ doc! {
 // @!has - '/** Outer block comment */'
 // @has - 'Inner block comment'
 // @!has - '/*! Inner block comment */'
+
+/* !search-index
+{
+    "issue_23812": {
+        "issue_23812::Bar": [
+            "Module",
+            "Outer block comment\nInner block comment "
+        ],
+        "issue_23812::Foo": [
+            "Module",
+            "Outer comment\nInner comment"
+        ]
+    }
+}
+*/

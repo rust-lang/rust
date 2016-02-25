@@ -11,6 +11,7 @@
 // aux-build:issue-23207-1.rs
 // aux-build:issue-23207-2.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_23207_2;
 
@@ -18,3 +19,15 @@ extern crate issue_23207_2;
 // @count - '//*[@class="struct"]' 1
 pub use issue_23207_2::fmt;
 
+/* !search-index
+{
+    "issue_23207": {
+        "issue_23207::fmt": [
+            "Module"
+        ],
+        "issue_23207::fmt::Error": [
+            "Struct"
+        ]
+    }
+}
+*/

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 extern {
     // @has issue_22038/fn.foo1.html \
     //      '//*[@class="rust fn"]' 'pub unsafe extern fn foo1()'
@@ -27,3 +29,22 @@ pub extern fn bar() {}
 // @has issue_22038/fn.baz.html \
 //      '//*[@class="rust fn"]' 'pub extern "system" fn baz()'
 pub extern "system" fn baz() {}
+
+/* !search-index
+{
+    "issue_22038": {
+        "issue_22038::bar": [
+            "Function()"
+        ],
+        "issue_22038::baz": [
+            "Function()"
+        ],
+        "issue_22038::foo1": [
+            "Function()"
+        ],
+        "issue_22038::foo2": [
+            "Function()"
+        ]
+    }
+}
+*/

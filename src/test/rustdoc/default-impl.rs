@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-default-impl.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate rustdoc_default_impl as foo;
 
@@ -17,3 +18,34 @@ pub use foo::bar;
 
 pub fn wut<T: bar::Bar>() {
 }
+
+/* !search-index
+{
+    "default_impl": {
+        "default_impl::Foo<Trait>::test": [
+            "Method()"
+        ],
+        "default_impl::bar": [
+            "Module"
+        ],
+        "default_impl::bar::Bar": [
+            "Trait"
+        ],
+        "default_impl::bar::Foo": [
+            "Trait"
+        ],
+        "default_impl::bar::Foo<Trait>::foo": [
+            "Method()"
+        ],
+        "default_impl::bar::TypeId": [
+            "Struct"
+        ],
+        "default_impl::wut": [
+            "Function()"
+        ],
+        "rustdoc_default_impl::bar::TypeId<Struct>::of": [
+            "Method(typeid) -> typeid"
+        ]
+    }
+}
+*/

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // @has must_use/struct.Struct.html //pre '#[must_use]'
 #[must_use]
 pub struct Struct {
@@ -19,3 +21,19 @@ pub struct Struct {
 pub enum Enum {
     Variant(i32),
 }
+
+/* !search-index
+{
+    "must_use": {
+        "must_use::Enum": [
+            "Enum"
+        ],
+        "must_use::Enum<Enum>::Variant": [
+            "Variant"
+        ],
+        "must_use::Struct": [
+            "Struct"
+        ]
+    }
+}
+*/

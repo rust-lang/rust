@@ -8,8 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
 
 /// Test  | Table
 /// ------|-------------
 /// t = b | id = \|x\| x
 pub struct Foo; // @has issue_27862/struct.Foo.html //td 'id = |x| x'
+
+/* !search-index
+{
+    "issue_27862": {
+        "issue_27862::Foo": [
+            "Struct",
+            "Test  | Table\n------|-------------\nt = b | id = \\|x\\| x"
+        ]
+    }
+}
+*/

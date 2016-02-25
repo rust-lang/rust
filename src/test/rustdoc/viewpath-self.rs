@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![crate_name = "foo"]
 
 pub mod io {
@@ -26,3 +28,31 @@ pub mod prelude {
     // @has foo/prelude/index.html '//code' 'pub use Maybe::{self, Just, Nothing}'
     #[doc(no_inline)] pub use Maybe::{self, Just, Nothing};
 }
+
+/* !search-index
+{
+    "foo": {
+        "foo::Maybe": [
+            "Enum"
+        ],
+        "foo::Maybe<Enum>::Just": [
+            "Variant"
+        ],
+        "foo::Maybe<Enum>::Nothing": [
+            "Variant"
+        ],
+        "foo::io": [
+            "Module"
+        ],
+        "foo::io::Reader": [
+            "Trait"
+        ],
+        "foo::io::Reader<Trait>::dummy": [
+            "Method(reader)"
+        ],
+        "foo::prelude": [
+            "Module"
+        ]
+    }
+}
+*/

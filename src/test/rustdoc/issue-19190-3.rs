@@ -10,6 +10,7 @@
 
 // aux-build:issue-19190-3.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_19190_3;
 
@@ -36,3 +37,33 @@ impl Deref for MyBar {
     fn deref(&self) -> &Baz { loop {} }
 }
 
+/* !search-index
+{
+    "issue_19190_3": {
+        "issue_19190_3::Bar": [
+            "Struct"
+        ],
+        "issue_19190_3::Bar<Struct>::deref": [
+            "Method(bar) -> baz"
+        ],
+        "issue_19190_3::Baz<Struct>::baz": [
+            "Method()"
+        ],
+        "issue_19190_3::Baz<Struct>::static_baz": [
+            "Method()"
+        ],
+        "issue_19190_3::Foo": [
+            "Struct"
+        ],
+        "issue_19190_3::Foo<Struct>::deref": [
+            "Method(foo) -> i32"
+        ],
+        "issue_19190_3::MyBar": [
+            "Struct"
+        ],
+        "issue_19190_3::MyBar<Struct>::deref": [
+            "Method(mybar) -> baz"
+        ]
+    }
+}
+*/

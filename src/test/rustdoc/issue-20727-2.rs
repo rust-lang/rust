@@ -10,6 +10,7 @@
 
 // aux-build:issue-20727.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_20727;
 
@@ -31,3 +32,30 @@ pub mod reexport {
     pub use issue_20727::Add;
 }
 
+/* !search-index
+{
+    "issue_20727_2": {
+        "issue_20727_2::Add": [
+            "Trait"
+        ],
+        "issue_20727_2::Add<Trait>::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_2::Add<Trait>::add": [
+            "TyMethod(add, rhs) -> output"
+        ],
+        "issue_20727_2::reexport": [
+            "Module"
+        ],
+        "issue_20727_2::reexport::Add": [
+            "Trait"
+        ],
+        "issue_20727_2::reexport::Add<Trait>::Output": [
+            "AssociatedType"
+        ],
+        "issue_20727_2::reexport::Add<Trait>::add": [
+            "TyMethod()"
+        ]
+    }
+}
+*/

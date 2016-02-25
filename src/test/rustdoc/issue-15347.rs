@@ -9,7 +9,18 @@
 // except according to those terms.
 
 // compile-flags:--no-defaults --passes "collapse-docs" --passes "unindent-comments"
+// check-search-index
 
 // @has issue_15347/fn.foo.html
 #[doc(hidden)]
 pub fn foo() {}
+
+/* !search-index
+{
+    "issue_15347": {
+        "issue_15347::foo": [
+            "Function()"
+        ]
+    }
+}
+*/

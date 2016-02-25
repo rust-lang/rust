@@ -36,6 +36,8 @@ pub struct TestProps {
     pub check_lines: Vec<String> ,
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
+    // Check the generated search-index against a embedded reference
+    pub check_search_index: bool,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -62,6 +64,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut pp_exact = None;
     let mut check_lines = Vec::new();
     let mut build_aux_docs = false;
+    let mut check_search_index = false;
     let mut force_host = false;
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
@@ -88,6 +91,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if !build_aux_docs {
             build_aux_docs = parse_build_aux_docs(ln);
+        }
+
+        if !check_search_index {
+            check_search_index = parse_check_search_index(ln);
         }
 
         if !force_host {
@@ -152,6 +159,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         exec_env: exec_env,
         check_lines: check_lines,
         build_aux_docs: build_aux_docs,
+        check_search_index: check_search_index,
         force_host: force_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
@@ -294,6 +302,10 @@ fn parse_force_host(line: &str) -> bool {
 
 fn parse_build_aux_docs(line: &str) -> bool {
     parse_name_directive(line, "build-aux-docs")
+}
+
+fn parse_check_search_index(line: &str) -> bool {
+    parse_name_directive(line, "check-search-index")
 }
 
 fn parse_check_stdout(line: &str) -> bool {

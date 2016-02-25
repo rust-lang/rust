@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 pub trait Foo {
     fn foo(&self) {}
 }
@@ -18,3 +20,19 @@ pub struct Bar;
 //      '//*[@id="method.foo"]' \
 //      'fn foo'
 impl<'a> Foo for &'a Bar {}
+
+/* !search-index
+{
+    "issue_20175": {
+        "issue_20175::Bar": [
+            "Struct"
+        ],
+        "issue_20175::Foo": [
+            "Trait"
+        ],
+        "issue_20175::Foo<Trait>::foo": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

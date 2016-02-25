@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-impl-parts-crosscrate.rs
 // ignore-cross-compile
+// check-search-index
 
 #![feature(optin_builtin_traits)]
 
@@ -28,3 +29,13 @@ pub struct Bar<T> { t: T }
 // @has - Copy
 impl<T: Send> !rustdoc_impl_parts_crosscrate::AnOibit for Bar<T>
     where T: Copy {}
+
+/* !search-index
+{
+    "impl_parts_crosscrate": {
+        "impl_parts_crosscrate::Bar": [
+            "Struct"
+        ]
+    }
+}
+*/

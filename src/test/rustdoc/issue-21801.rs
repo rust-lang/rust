@@ -10,6 +10,7 @@
 
 // aux-build:issue-21801.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_21801;
 
@@ -17,3 +18,16 @@ extern crate issue_21801;
 // @has - '//*[@id="method.new"]' \
 //        'fn new<F>(f: F) -> Foo where F: FnMut() -> i32'
 pub use issue_21801::Foo;
+
+/* !search-index
+{
+    "issue_21801": {
+        "issue_21801::Foo": [
+            "Struct"
+        ],
+        "issue_21801::Foo<Struct>::new": [
+            "Method(foo, f) -> foo"
+        ]
+    }
+}
+*/

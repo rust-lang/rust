@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![crate_name = "foo"]
 
 pub trait MyTrait { fn dummy(&self) { } }
@@ -46,3 +48,46 @@ impl<F> MyTrait for Foxtrot<F> where F: MyTrait {}
 // @has foo/type.Golf.html '//pre[@class="rust typedef"]' \
 //          "type Golf<T> where T: Clone = (T, T)"
 pub type Golf<T> where T: Clone = (T, T);
+
+/* !search-index
+{
+    "foo": {
+        "foo::Alpha": [
+            "Struct"
+        ],
+        "foo::Bravo": [
+            "Trait"
+        ],
+        "foo::Bravo<Trait>::get": [
+            "TyMethod(bravo, b)"
+        ],
+        "foo::Delta": [
+            "Struct"
+        ],
+        "foo::Delta<Struct>::delta": [
+            "Method(delta)"
+        ],
+        "foo::Echo": [
+            "Struct"
+        ],
+        "foo::Foxtrot": [
+            "Enum"
+        ],
+        "foo::Foxtrot<Enum>::Foxtrot1": [
+            "Variant"
+        ],
+        "foo::Golf": [
+            "Typedef"
+        ],
+        "foo::MyTrait": [
+            "Trait"
+        ],
+        "foo::MyTrait<Trait>::dummy": [
+            "Method(mytrait)"
+        ],
+        "foo::charlie": [
+            "Function()"
+        ]
+    }
+}
+*/

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![crate_name = "rustdoc_test"]
 
 use std::ops::Deref;
@@ -34,3 +36,22 @@ impl Deref for Bar {
     type Target = Bar;
     fn deref(&self) -> &Bar { self }
 }
+
+/* !search-index
+{
+    "rustdoc_test": {
+        "rustdoc_test::Bar": [
+            "Struct"
+        ],
+        "rustdoc_test::Bar<Struct>::deref": [
+            "Method(bar) -> bar"
+        ],
+        "rustdoc_test::Foo": [
+            "Struct"
+        ],
+        "rustdoc_test::Foo<Struct>::test_method": [
+            "Method(foo)"
+        ]
+    }
+}
+*/

@@ -10,6 +10,7 @@
 
 // aux-build:rustdoc-ffi.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate rustdoc_ffi as lib;
 
@@ -20,3 +21,15 @@ extern "C" {
     // @has ffi/fn.another.html //pre 'pub unsafe extern fn another(cold_as_ice: u32)'
     pub fn another(cold_as_ice: u32);
 }
+/* !search-index
+{
+    "ffi": {
+        "ffi::another": [
+            "Function()"
+        ],
+        "ffi::foreigner": [
+            "Function()"
+        ]
+    }
+}
+*/

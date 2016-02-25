@@ -10,6 +10,7 @@
 
 // aux-build:issue-27362.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_27362;
 pub use issue_27362 as quux;
@@ -17,3 +18,22 @@ pub use issue_27362 as quux;
 // @matches issue_27362/quux/fn.foo.html '//pre' "pub const fn foo()"
 // @matches issue_27362/quux/fn.bar.html '//pre' "pub const unsafe fn bar()"
 // @matches issue_27362/quux/struct.Foo.html '//code' "const unsafe fn baz()"
+
+/* !search-index
+{
+    "issue_27362": {
+        "issue_27362::Foo<Struct>::baz": [
+            "Method()"
+        ],
+        "issue_27362::quux::Foo": [
+            "Struct"
+        ],
+        "issue_27362::quux::bar": [
+            "Function()"
+        ],
+        "issue_27362::quux::foo": [
+            "Function()"
+        ]
+    }
+}
+*/

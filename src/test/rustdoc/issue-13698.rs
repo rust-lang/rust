@@ -10,6 +10,7 @@
 
 // aux-build:issue-13698.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_13698;
 
@@ -24,3 +25,16 @@ pub trait Bar {
 
 // @!has issue_13698/struct.Foo.html '//*[@id="method.foo"]' 'fn bar'
 impl Bar for Foo {}
+
+/* !search-index
+{
+    "issue_13698": {
+        "issue_13698::Bar": [
+            "Trait"
+        ],
+        "issue_13698::Foo": [
+            "Struct"
+        ]
+    }
+}
+*/

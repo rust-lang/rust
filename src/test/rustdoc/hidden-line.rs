@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 /// The '# ' lines should be removed from the output, but the #[derive] should be
 /// retained.
 ///
@@ -27,3 +29,14 @@ pub fn foo() {}
 
 // @!has hidden_line/fn.foo.html invisible
 // @matches - //pre "#\[derive\(PartialEq\)\] // Bar"
+
+/* !search-index
+{
+    "hidden_line": {
+        "hidden_line::foo": [
+            "Function()",
+"The &#39;# &#39; lines should be removed from the output, but the #[derive] should be\nretained."
+        ]
+    }
+}
+*/

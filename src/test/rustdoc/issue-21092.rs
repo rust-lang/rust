@@ -10,9 +10,29 @@
 
 // aux-build:issue-21092.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_21092;
 
 // @has issue_21092/struct.Bar.html
 // @has - '//*[@id="associatedtype.Bar"]' 'type Bar = i32'
 pub use issue_21092::{Foo, Bar};
+
+/* !search-index
+{
+    "issue_21092": {
+        "issue_21092::Bar": [
+            "Struct"
+        ],
+        "issue_21092::Foo": [
+            "Trait"
+        ],
+        "issue_21092::Foo<Trait>::Bar": [
+            "AssociatedType"
+        ],
+        "issue_21092::Foo<Trait>::foo": [
+            "Method()"
+        ]
+    }
+}
+*/

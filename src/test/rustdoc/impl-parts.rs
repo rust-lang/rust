@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![feature(optin_builtin_traits)]
 
 pub trait AnOibit {}
@@ -21,3 +23,16 @@ pub struct Foo<T> { field: T }
 // @has impl_parts/trait.AnOibit.html '//*[@class="item-list"]//code' \
 //     "impl<T: Clone> !AnOibit for Foo<T> where T: Sync"
 impl<T: Clone> !AnOibit for Foo<T> where T: Sync {}
+
+/* !search-index
+{
+    "impl_parts": {
+        "impl_parts::AnOibit": [
+            "Trait"
+        ],
+        "impl_parts::Foo": [
+            "Struct"
+        ]
+    }
+}
+*/

@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
 
 // @has issue_16265_2/index.html '[src]'
 
 trait Y {}
 impl Y for Option<u32>{}
+
+/* !search-index
+{
+    "issue_16265_2": {}
+}
+*/

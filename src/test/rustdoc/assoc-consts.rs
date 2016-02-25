@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 #![feature(associated_consts)]
 
 pub trait Foo {
@@ -24,3 +26,22 @@ impl Bar {
     //      'const BAR: usize = 3'
     pub const BAR: usize = 3;
 }
+
+/* !search-index
+{
+    "assoc_consts": {
+        "assoc_consts::Bar": [
+            "Struct"
+        ],
+        "assoc_consts::Bar<Struct>::BAR": [
+            "AssociatedConst"
+        ],
+        "assoc_consts::Foo": [
+            "Trait"
+        ],
+        "assoc_consts::Foo<Trait>::FOO": [
+            "AssociatedConst"
+        ]
+    }
+}
+*/

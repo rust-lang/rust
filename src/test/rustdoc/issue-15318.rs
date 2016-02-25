@@ -10,6 +10,7 @@
 
 // aux-build:issue-15318.rs
 // ignore-cross-compile
+// check-search-index
 
 #![no_std]
 
@@ -19,3 +20,13 @@ extern crate issue_15318;
 //      '//*[@href="http://example.com/issue_15318/primitive.pointer.html"]' \
 //      '*mut T'
 pub fn bar<T>(ptr: *mut T) {}
+
+/* !search-index
+{
+    "issue_15318": {
+        "issue_15318::bar": [
+            "Function()"
+        ]
+    }
+}
+*/

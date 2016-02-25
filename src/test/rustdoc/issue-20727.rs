@@ -10,6 +10,7 @@
 
 // aux-build:issue-20727.rs
 // ignore-cross-compile
+// check-search-index
 
 extern crate issue_20727;
 
@@ -32,3 +33,31 @@ pub mod reexport {
     //      "fn deref(&'a self) -> &'a Self::Target;"
     pub use issue_20727::Deref;
 }
+
+/* !search-index
+{
+    "issue_20727": {
+        "issue_20727::Deref": [
+            "Trait"
+        ],
+        "issue_20727::Deref<Trait>::Target": [
+            "AssociatedType"
+        ],
+        "issue_20727::Deref<Trait>::deref": [
+            "TyMethod(deref) -> target"
+        ],
+        "issue_20727::reexport": [
+            "Module"
+        ],
+        "issue_20727::reexport::Deref": [
+            "Trait"
+        ],
+        "issue_20727::reexport::Deref<Trait>::Target": [
+            "AssociatedType"
+        ],
+        "issue_20727::reexport::Deref<Trait>::deref": [
+            "TyMethod()"
+        ]
+    }
+}
+*/

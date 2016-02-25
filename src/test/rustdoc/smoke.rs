@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // @has smoke/index.html
 
 //! Very docs
@@ -33,3 +35,34 @@ pub mod bar {
     // @has smoke/bar/fn.prawns.html
     pub fn prawns((a, b): (isize, usize), Foo { x, y }: Foo) { }
 }
+
+/* !search-index
+{
+    "smoke": {
+        "smoke::bar": [
+            "Module"
+        ],
+        "smoke::bar::Doge": [
+            "Trait",
+            "*wow*"
+        ],
+        "smoke::bar::Doge<Trait>::dummy": [
+            "Method(doge)"
+        ],
+        "smoke::bar::Foo": [
+            "Struct"
+        ],
+        "smoke::bar::baz": [
+            "Module",
+            "So correct"
+        ],
+        "smoke::bar::baz::baz": [
+            "Function()",
+            "Much detail"
+        ],
+        "smoke::bar::prawns": [
+            "Function()"
+        ]
+    }
+}
+*/

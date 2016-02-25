@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// check-search-index
+
 // This should fail a normal compile due to non_camel_case_types,
 // It should pass a doc-compile as it only needs to type-check and
 // therefore should not concern itself with the lints.
@@ -18,3 +20,13 @@
 pub struct foo {
     field: i32,
 }
+
+/* !search-index
+{
+    "cap_lints": {
+        "cap_lints::foo": [
+            "Struct"
+        ]
+    }
+}
+*/
