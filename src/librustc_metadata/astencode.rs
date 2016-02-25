@@ -32,7 +32,6 @@ use middle::ty::cast;
 use middle::const_qualif::ConstQualif;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
-use middle::privacy::{AllPublic, LastMod};
 use middle::region;
 use middle::subst;
 use middle::ty::{self, Ty};
@@ -1161,8 +1160,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let def = decode_def(dcx, val_dsr);
                         dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
                             base_def: def,
-                            // This doesn't matter cross-crate.
-                            last_private: LastMod(AllPublic),
                             depth: 0
                         });
                     }

@@ -54,7 +54,7 @@ use rustc::middle::cstore::{CrateStore, DefLike, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
-use rustc::middle::privacy::*;
+use rustc::middle::privacy::ExternalExports;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
@@ -757,8 +757,8 @@ enum AssocItemResolveResult {
 
 #[derive(Copy, Clone)]
 enum BareIdentifierPatternResolution {
-    FoundStructOrEnumVariant(Def, LastPrivate),
-    FoundConst(Def, LastPrivate, Name),
+    FoundStructOrEnumVariant(Def),
+    FoundConst(Def, Name),
     BareIdentifierPatternUnresolved,
 }
 
@@ -920,16 +920,6 @@ impl<'a> ModuleS<'a> {
         self.def.as_ref().map(Def::def_id)
     }
 
-    // This returns the DefId of the crate local item that controls this module's visibility.
-    // It is only used to compute `LastPrivate` data, and it differs from `def_id` only for extern
-    // crates, whose `def_id` is the external crate's root, not the local `extern crate` item.
-    fn local_def_id(&self) -> Option<DefId> {
-        match self.extern_crate_did {
-            Some(def_id) => Some(def_id),
-            None => self.def_id(),
-        }
-    }
-
     fn is_normal(&self) -> bool {
         match self.def {
             Some(Def::Mod(_)) | Some(Def::ForeignMod(_)) => true,
@@ -1040,27 +1030,12 @@ impl<'a> NameBinding<'a> {
         }
     }
 
-    fn local_def_id(&self) -> Option<DefId> {
-        match self.kind {
-            NameBindingKind::Def(def) => Some(def.def_id()),
-            NameBindingKind::Module(ref module) => module.local_def_id(),
-            NameBindingKind::Import { binding, .. } => binding.local_def_id(),
-        }
-    }
-
     fn defined_with(&self, modifiers: DefModifiers) -> bool {
         self.modifiers.contains(modifiers)
     }
 
     fn is_public(&self) -> bool {
         self.defined_with(DefModifiers::PUBLIC)
-    }
-
-    fn def_and_lp(&self) -> (Def, LastPrivate) {
-        let def = self.def().unwrap();
-        if let Def::Err = def { return (def, LastMod(AllPublic)) }
-        let lp = if self.is_public() { AllPublic } else { DependsOn(self.local_def_id().unwrap()) };
-        (def, LastMod(lp))
     }
 
     fn is_extern_crate(&self) -> bool {
@@ -1313,9 +1288,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      module_: Module<'a>,
                                      module_path: &[Name],
                                      index: usize,
-                                     span: Span,
-                                     lp: LastPrivate)
-                                     -> ResolveResult<(Module<'a>, LastPrivate)> {
+                                     span: Span)
+                                     -> ResolveResult<Module<'a>> {
         fn search_parent_externals(needle: Name, module: Module) -> Option<Module> {
             match module.resolve_name(needle, TypeNS, false) {
                 Success(binding) if binding.is_extern_crate() => Some(module),
@@ -1331,7 +1305,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut search_module = module_;
         let mut index = index;
         let module_path_len = module_path.len();
-        let mut closest_private = lp;
 
         // Resolve the module part of the path. This does not involve looking
         // upward though scope chains; we simply resolve names directly in
@@ -1380,14 +1353,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // so, whether there is a module within.
                     if let Some(module_def) = binding.module() {
                         search_module = module_def;
-
-                        // Keep track of the closest private module used
-                        // when resolving this import chain.
-                        if !binding.is_public() {
-                            if let Some(did) = search_module.local_def_id() {
-                                closest_private = LastMod(DependsOn(did));
-                            }
-                        }
                     } else {
                         let msg = format!("Not a module `{}`", name);
                         return Failed(Some((span, msg)));
@@ -1398,7 +1363,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             index += 1;
         }
 
-        return Success((search_module, closest_private));
+        return Success(search_module);
     }
 
     /// Attempts to resolve the module part of an import directive or path
@@ -1411,9 +1376,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Span)
-                           -> ResolveResult<(Module<'a>, LastPrivate)> {
+                           -> ResolveResult<Module<'a>> {
         if module_path.len() == 0 {
-            return Success((self.graph_root, LastMod(AllPublic))) // Use the crate root
+            return Success(self.graph_root) // Use the crate root
         }
 
         debug!("(resolving module path for import) processing `{}` rooted at `{}`",
@@ -1425,7 +1390,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let search_module;
         let start_index;
-        let last_private;
         match module_prefix_result {
             Failed(None) => {
                 let mpath = names_to_string(module_path);
@@ -1459,7 +1423,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // resolution process at index zero.
                         search_module = self.graph_root;
                         start_index = 0;
-                        last_private = LastMod(AllPublic);
                     }
                     UseLexicalScope => {
                         // This is not a crate-relative path. We resolve the
@@ -1478,7 +1441,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 Some(containing_module) => {
                                     search_module = containing_module;
                                     start_index = 1;
-                                    last_private = LastMod(AllPublic);
                                 }
                                 None => return Failed(None),
                             }
@@ -1489,16 +1451,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success(PrefixFound(ref containing_module, index)) => {
                 search_module = containing_module;
                 start_index = index;
-                last_private = LastMod(DependsOn(containing_module.local_def_id()
-                                                                  .unwrap()));
             }
         }
 
         self.resolve_module_path_from_root(search_module,
                                            module_path,
                                            start_index,
-                                           span,
-                                           last_private)
+                                           span)
     }
 
     /// Invariant: This must only be called during main resolution, not during
@@ -1847,8 +1806,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             match self.resolve_crate_relative_path(prefix.span,
                                                                    &prefix.segments,
                                                                    TypeNS) {
-                                Some((def, lp)) =>
-                                    self.record_def(item.id, PathResolution::new(def, lp, 0)),
+                                Some(def) =>
+                                    self.record_def(item.id, PathResolution::new(def, 0)),
                                 None => {
                                     resolve_error(self,
                                                   prefix.span,
@@ -2399,7 +2358,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     match self.resolve_bare_identifier_pattern(ident.unhygienic_name,
                                                                pattern.span) {
-                        FoundStructOrEnumVariant(def, lp) if const_ok => {
+                        FoundStructOrEnumVariant(def) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to struct or enum variant",
                                    renamed);
 
@@ -2409,7 +2368,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self.record_def(pattern.id,
                                             PathResolution {
                                                 base_def: def,
-                                                last_private: lp,
                                                 depth: 0,
                                             });
                         }
@@ -2422,18 +2380,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
-                        FoundConst(def, lp, _) if const_ok => {
+                        FoundConst(def, _) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to constant", renamed);
 
                             self.enforce_default_binding_mode(pattern, binding_mode, "a constant");
                             self.record_def(pattern.id,
                                             PathResolution {
                                                 base_def: def,
-                                                last_private: lp,
                                                 depth: 0,
                                             });
                         }
-                        FoundConst(def, _, name) => {
+                        FoundConst(def, name) => {
                             resolve_error(
                                 self,
                                 pattern.span,
@@ -2455,7 +2412,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self.record_def(pattern.id,
                                             PathResolution {
                                                 base_def: def,
-                                                last_private: LastMod(AllPublic),
                                                 depth: 0,
                                             });
 
@@ -2673,10 +2629,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // considered as not having a private component because
                     // the lookup happened only within the current module.
                     Some(def @ Def::Variant(..)) | Some(def @ Def::Struct(..)) => {
-                        return FoundStructOrEnumVariant(def, LastMod(AllPublic));
+                        return FoundStructOrEnumVariant(def);
                     }
                     Some(def @ Def::Const(..)) | Some(def @ Def::AssociatedConst(..)) => {
-                        return FoundConst(def, LastMod(AllPublic), name);
+                        return FoundConst(def, name);
                     }
                     Some(Def::Static(..)) => {
                         resolve_error(self, span, ResolutionError::StaticVariableReference);
@@ -2757,7 +2713,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
 
-        let mk_res = |(def, lp)| PathResolution::new(def, lp, path_depth);
+        let mk_res = |def| PathResolution::new(def, path_depth);
 
         if path.global {
             let def = self.resolve_crate_relative_path(span, segments, namespace);
@@ -2770,14 +2726,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, true);
             return unqualified_def.and_then(|def| self.adjust_local_def(def, span))
                                   .map(|def| {
-                                      PathResolution::new(def, LastMod(AllPublic), path_depth)
+                                      PathResolution::new(def, path_depth)
                                   });
         }
 
         let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
-            (Some((ref d, _)), Some(ref ud)) if *d == ud.def => {
+            (Some(d), Some(ref ud)) if d == ud.def => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
@@ -2923,7 +2879,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     span: Span,
                                     segments: &[hir::PathSegment],
                                     namespace: Namespace)
-                                    -> Option<(Def, LastPrivate)> {
+                                    -> Option<Def> {
         let module_path = segments.split_last()
                                   .unwrap()
                                   .1
@@ -2932,7 +2888,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                   .collect::<Vec<_>>();
 
         let containing_module;
-        let last_private;
         let current_module = self.current_module;
         match self.resolve_module_path(current_module, &module_path, UseLexicalScope, span) {
             Failed(err) => {
@@ -2949,22 +2904,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 return None;
             }
             Indeterminate => return None,
-            Success((resulting_module, resulting_last_private)) => {
+            Success(resulting_module) => {
                 containing_module = resulting_module;
-                last_private = resulting_last_private;
             }
         }
 
         let name = segments.last().unwrap().identifier.name;
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
-        let def = match result {
-            Success(binding) => {
-                let (def, lp) = binding.def_and_lp();
-                (def, last_private.or(lp))
-            }
-            _ => return None,
-        };
-        return Some(def);
+        result.success().map(|binding| binding.def().unwrap())
     }
 
     /// Invariant: This must be called only during main resolution, not during
@@ -2973,7 +2920,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    span: Span,
                                    segments: &[hir::PathSegment],
                                    namespace: Namespace)
-                                   -> Option<(Def, LastPrivate)> {
+                                   -> Option<Def> {
         let module_path = segments.split_last()
                                   .unwrap()
                                   .1
@@ -2984,12 +2931,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let root_module = self.graph_root;
 
         let containing_module;
-        let last_private;
         match self.resolve_module_path_from_root(root_module,
                                                  &module_path,
                                                  0,
-                                                 span,
-                                                 LastMod(AllPublic)) {
+                                                 span) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -3006,20 +2951,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             Indeterminate => return None,
 
-            Success((resulting_module, resulting_last_private)) => {
+            Success(resulting_module) => {
                 containing_module = resulting_module;
-                last_private = resulting_last_private;
             }
         }
 
         let name = segments.last().unwrap().identifier.name;
-        match self.resolve_name_in_module(containing_module, name, namespace, false, true) {
-            Success(binding) => {
-                let (def, lp) = binding.def_and_lp();
-                Some((def, last_private.or(lp)))
-            }
-            _ => None,
-        }
+        let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
+        result.success().map(|binding| binding.def().unwrap())
     }
 
     fn resolve_identifier_in_local_ribs(&mut self,
@@ -3105,10 +3044,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                .and_then(NameBinding::module)
                 }
             } else {
-                match this.resolve_module_path(root, &name_path, UseLexicalScope, span) {
-                    Success((module, _)) => Some(module),
-                    _ => None,
-                }
+                this.resolve_module_path(root, &name_path, UseLexicalScope, span).success()
             }
         }
 
@@ -3420,7 +3356,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.record_def(expr.id,
                                         PathResolution {
                                             base_def: def,
-                                            last_private: LastMod(AllPublic),
                                             depth: 0,
                                         })
                     }
@@ -3613,12 +3548,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn record_def(&mut self, node_id: NodeId, resolution: PathResolution) {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
-        assert!(match resolution.last_private {
-                    LastImport{..} => false,
-                    _ => true,
-                },
-                "Import should only be used for `use` directives");
-
         if let Some(prev_res) = self.def_map.borrow_mut().insert(node_id, resolution) {
             let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
             self.session.span_bug(span,
@@ -3756,7 +3685,6 @@ fn module_to_string(module: Module) -> String {
 fn err_path_resolution() -> PathResolution {
     PathResolution {
         base_def: Def::Err,
-        last_private: LastMod(AllPublic),
         depth: 0,
     }
 }
