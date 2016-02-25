@@ -131,10 +131,13 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
     if !build.unstable_features {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
-    if let Some(config) = build.config.target_config.get(target) {
-        if let Some(ref s) = config.llvm_config {
-            cargo.env("LLVM_CONFIG", s);
-        }
+    let target_config = build.config.target_config.get(target);
+    if let Some(ref s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+        cargo.env("LLVM_CONFIG", s);
+    } else {
+        let llvm_config = build.llvm_out(&build.config.build).join("bin")
+                               .join(exe("llvm-config", target));
+        cargo.env("LLVM_CONFIG", llvm_config);
     }
     if build.config.llvm_static_stdcpp {
         cargo.env("LLVM_STATIC_STDCPP",
