@@ -152,4 +152,29 @@ impl Def {
             _ => None
         }
     }
+
+    pub fn kind_name(&self) -> &'static str {
+        match *self {
+            Def::Fn(..) => "function",
+            Def::Mod(..) => "module",
+            Def::ForeignMod(..) => "foreign module",
+            Def::Static(..) => "static",
+            Def::Variant(..) => "variant",
+            Def::Enum(..) => "enum",
+            Def::TyAlias(..) => "type",
+            Def::AssociatedTy(..) => "associated type",
+            Def::Struct(..) => "struct",
+            Def::Trait(..) => "trait",
+            Def::Method(..) => "method",
+            Def::Const(..) => "const",
+            Def::AssociatedConst(..) => "associated const",
+            Def::TyParam(..) => "type parameter",
+            Def::PrimTy(..) => "builtin type",
+            Def::Local(..) => "local variable",
+            Def::Upvar(..) => "closure capture",
+            Def::Label(..) => "label",
+            Def::SelfTy(..) => "self type",
+            Def::Err => "unresolved item",
+        }
+    }
 }

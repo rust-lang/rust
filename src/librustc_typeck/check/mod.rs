@@ -2022,6 +2022,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
         }
     }
+
+    fn private_item_is_visible(&self, def_id: DefId) -> bool {
+        match self.tcx().map.as_local_node_id(def_id) {
+            Some(node_id) => self.tcx().map.private_item_is_visible_from(node_id, self.body_id),
+            None => false, // Private items from other crates are never visible
+        }
+    }
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {

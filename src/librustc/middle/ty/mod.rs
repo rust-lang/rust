@@ -173,6 +173,14 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
         }
     }
 
+    pub fn def(&self) -> Def {
+        match *self {
+            ConstTraitItem(ref associated_const) => Def::AssociatedConst(associated_const.def_id),
+            MethodTraitItem(ref method) => Def::Method(method.def_id),
+            TypeTraitItem(ref ty) => Def::AssociatedTy(ty.container.id(), ty.def_id),
+        }
+    }
+
     pub fn def_id(&self) -> DefId {
         match *self {
             ConstTraitItem(ref associated_const) => associated_const.def_id,

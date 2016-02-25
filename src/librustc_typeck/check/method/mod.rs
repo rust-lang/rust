@@ -338,20 +338,13 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
-    let def_id = pick.item.def_id();
+    let def_result = pick.item.def();
     let mut lp = LastMod(AllPublic);
     if let probe::InherentImplPick = pick.kind {
         if pick.item.vis() != hir::Public {
-            lp = LastMod(DependsOn(def_id));
+            lp = LastMod(DependsOn(def_result.def_id()));
         }
     }
-    let def_result = match pick.item {
-        ty::ImplOrTraitItem::MethodTraitItem(..) => Def::Method(def_id),
-        ty::ImplOrTraitItem::ConstTraitItem(..) => Def::AssociatedConst(def_id),
-        ty::ImplOrTraitItem::TypeTraitItem(..) => {
-            fcx.tcx().sess.span_bug(span, "resolve_ufcs: probe picked associated type");
-        }
-    };
     Ok((def_result, lp))
 }
 

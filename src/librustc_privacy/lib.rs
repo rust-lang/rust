@@ -692,32 +692,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     /// whether the node is accessible by the current module that iteration is
     /// inside.
     fn private_accessible(&self, id: ast::NodeId) -> bool {
-        let parent = *self.parents.get(&id).unwrap();
-        debug!("privacy - accessible parent {}", self.nodestr(parent));
-
-        // After finding `did`'s closest private member, we roll ourselves back
-        // to see if this private member's parent is anywhere in our ancestry.
-        // By the privacy rules, we can access all of our ancestor's private
-        // members, so that's why we test the parent, and not the did itself.
-        let mut cur = self.curitem;
-        loop {
-            debug!("privacy - questioning {}, {}", self.nodestr(cur), cur);
-            match cur {
-                // If the relevant parent is in our history, then we're allowed
-                // to look inside any of our ancestor's immediate private items,
-                // so this access is valid.
-                x if x == parent => return true,
-
-                // If we've reached the root, then we couldn't access this item
-                // in the first place
-                ast::DUMMY_NODE_ID => return false,
-
-                // Keep going up
-                _ => {}
-            }
-
-            cur = *self.parents.get(&cur).unwrap();
-        }
+        self.tcx.map.private_item_is_visible_from(id, self.curitem)
     }
 
     fn report_error(&self, result: CheckResult) -> bool {
@@ -835,7 +810,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             }
             UnnamedField(idx) => &v.fields[idx]
         };
-        if field.vis == hir::Public || self.local_private_accessible(field.did) {
+        if field.vis == hir::Public || self.local_private_accessible(def.did) {
             return;
         }
 
@@ -945,19 +920,9 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // def map is not. Therefore the names we work out below will not always
         // be accurate and we can get slightly wonky error messages (but type
         // checking is always correct).
-        match path_res.full_def() {
-            Def::Fn(..) => ck("function"),
-            Def::Static(..) => ck("static"),
-            Def::Const(..) => ck("const"),
-            Def::AssociatedConst(..) => ck("associated const"),
-            Def::Variant(..) => ck("variant"),
-            Def::TyAlias(..) => ck("type"),
-            Def::Enum(..) => ck("enum"),
-            Def::Trait(..) => ck("trait"),
-            Def::Struct(..) => ck("struct"),
-            Def::Method(..) => ck("method"),
-            Def::Mod(..) => ck("module"),
-            _ => {}
+        let def = path_res.full_def();
+        if def != Def::Err {
+            ck(def.kind_name());
         }
     }
 
@@ -1036,7 +1001,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         _ => expr_ty
                     }.ty_adt_def().unwrap();
                     let any_priv = def.struct_variant().fields.iter().any(|f| {
-                        f.vis != hir::Public && !self.local_private_accessible(f.did)
+                        f.vis != hir::Public && !self.local_private_accessible(def.did)
                     });
                     if any_priv {
                         span_err!(self.tcx.sess, expr.span, E0450,
