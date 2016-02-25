@@ -146,6 +146,14 @@ impl Build {
                 Librustc { stage, compiler } => {
                     compile::rustc(self, stage, target.target, &compiler);
                 }
+                LibstdLink { stage, compiler, host } => {
+                    compile::std_link(self, stage, target.target,
+                                      &compiler, host);
+                }
+                LibrustcLink { stage, compiler, host } => {
+                    compile::rustc_link(self, stage, target.target,
+                                        &compiler, host);
+                }
                 Rustc { stage: 0 } => {
                     assert!(target.target == self.config.build,
                             "only have one stage0 compiler");

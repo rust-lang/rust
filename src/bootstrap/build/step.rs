@@ -32,6 +32,19 @@ macro_rules! targets {
             (libstd, Libstd { stage: u32, compiler: Compiler<'a> }),
             (librustc, Librustc { stage: u32, compiler: Compiler<'a> }),
 
+            // Links the standard library/librustc produced by the compiler
+            // provided into the host's directory also provided.
+            (libstd_link, LibstdLink {
+                stage: u32,
+                compiler: Compiler<'a>,
+                host: &'a str
+            }),
+            (librustc_link, LibrustcLink {
+                stage: u32,
+                compiler: Compiler<'a>,
+                host: &'a str
+            }),
+
             // Steps for long-running native builds. Ideally these wouldn't
             // actually exist and would be part of build scripts, but for now
             // these are here.
@@ -107,13 +120,25 @@ fn top_level(build: &Build) -> Vec<Step> {
                 continue
             }
             let host = t.target(host);
-            targets.push(host.librustc(stage, t.compiler(stage)));
+            if host.target == build.config.build {
+                targets.push(host.librustc(stage, host.compiler(stage)));
+            } else {
+                targets.push(host.librustc_link(stage, t.compiler(stage),
+                                                host.target));
+            }
             for target in build.config.target.iter() {
                 if !build.flags.target.contains(target) {
                     continue
                 }
-                targets.push(host.target(target)
-                                 .libstd(stage, t.compiler(stage)));
+
+                if host.target == build.config.build {
+                    targets.push(host.target(target)
+                                     .libstd(stage, host.compiler(stage)));
+                } else {
+                    targets.push(host.target(target)
+                                     .libstd_link(stage, t.compiler(stage),
+                                                  host.target));
+                }
             }
         }
     }
@@ -128,10 +153,14 @@ fn add_steps<'a>(build: &'a Build,
                  target: &Step<'a>,
                  targets: &mut Vec<Step<'a>>) {
     for step in build.flags.step.iter() {
-        let compiler = host.compiler(stage);
+        let compiler = host.target(&build.config.build).compiler(stage);
         match &step[..] {
             "libstd" => targets.push(target.libstd(stage, compiler)),
             "librustc" => targets.push(target.librustc(stage, compiler)),
+            "libstd-link" => targets.push(target.libstd_link(stage, compiler,
+                                                             host.target)),
+            "librustc-link" => targets.push(target.librustc_link(stage, compiler,
+                                                                 host.target)),
             "rustc" => targets.push(host.rustc(stage)),
             "llvm" => targets.push(target.llvm(())),
             "compiler-rt" => targets.push(target.compiler_rt(())),
@@ -178,6 +207,14 @@ impl<'a> Step<'a> {
             Source::Libstd { stage: _, compiler } => {
                 vec![self.compiler_rt(()),
                      self.rustc(compiler.stage).target(compiler.host)]
+            }
+            Source::LibrustcLink { stage, compiler, host } => {
+                vec![self.librustc(stage, compiler),
+                     self.libstd_link(stage, compiler, host)]
+            }
+            Source::LibstdLink { stage, compiler, host } => {
+                vec![self.libstd(stage, compiler),
+                     self.target(host).rustc(stage)]
             }
             Source::CompilerRt { _dummy } => {
                 vec![self.llvm(()).target(&build.config.build)]

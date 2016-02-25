@@ -58,6 +58,30 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
     }
 
     build.run(&mut cargo);
+    std_link(build, stage, target, compiler, host);
+}
+
+/// Link all libstd rlibs/dylibs into the sysroot location.
+///
+/// Links those artifacts generated in the given `stage` for `target` produced
+/// by `compiler` into `host`'s sysroot.
+pub fn std_link(build: &Build,
+                stage: u32,
+                target: &str,
+                compiler: &Compiler,
+                host: &str) {
+    let libdir = build.sysroot_libdir(stage, host, target);
+    let out_dir = build.cargo_out(stage, compiler.host, true, target);
+
+    // If we're linking one compiler host's output into another, then we weren't
+    // called from the `std` method above. In that case we clean out what's
+    // already there and then also link compiler-rt into place.
+    if host != compiler.host {
+        let _ = fs::remove_dir_all(&libdir);
+        t!(fs::create_dir_all(&libdir));
+        t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
+                         libdir.join(staticlib("compiler-rt", target))));
+    }
     add_to_sysroot(&out_dir, &libdir);
 }
 
@@ -150,8 +174,21 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
     }
     build.run(&mut cargo);
 
-    let sysroot_libdir = build.sysroot_libdir(stage, host, target);
-    add_to_sysroot(&out_dir, &sysroot_libdir);
+    rustc_link(build, stage, target, compiler, compiler.host);
+}
+
+/// Link all librustc rlibs/dylibs into the sysroot location.
+///
+/// Links those artifacts generated in the given `stage` for `target` produced
+/// by `compiler` into `host`'s sysroot.
+pub fn rustc_link(build: &Build,
+                  stage: u32,
+                  target: &str,
+                  compiler: &Compiler,
+                  host: &str) {
+    let libdir = build.sysroot_libdir(stage, host, target);
+    let out_dir = build.cargo_out(stage, compiler.host, false, target);
+    add_to_sysroot(&out_dir, &libdir);
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
