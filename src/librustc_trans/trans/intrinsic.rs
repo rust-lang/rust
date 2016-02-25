@@ -407,7 +407,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // These are the only intrinsic functions that diverge.
     if name == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        Call(bcx, llfn, &[], None, call_debug_location);
+        Call(bcx, llfn, &[], call_debug_location);
         fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
@@ -442,11 +442,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let simple = get_simple_intrinsic(ccx, &name);
     let llval = match (simple, &name[..]) {
         (Some(llfn), _) => {
-            Call(bcx, llfn, &llargs, None, call_debug_location)
+            Call(bcx, llfn, &llargs, call_debug_location)
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            Call(bcx, llfn, &[], None, call_debug_location)
+            Call(bcx, llfn, &[], call_debug_location)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -636,13 +636,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         "cttz" => count_zeros_intrinsic(bcx, &format!("llvm.cttz.i{}", width),
                                                         llargs[0], call_debug_location),
                         "ctpop" => Call(bcx, ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
-                                        &llargs, None, call_debug_location),
+                                        &llargs, call_debug_location),
                         "bswap" => {
                             if width == 8 {
                                 llargs[0] // byte swap a u8/i8 is just a no-op
                             } else {
                                 Call(bcx, ccx.get_intrinsic(&format!("llvm.bswap.i{}", width)),
-                                        &llargs, None, call_debug_location)
+                                        &llargs, call_debug_location)
                             }
                         }
                         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
@@ -951,7 +951,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let f = declare::declare_cfn(ccx,
                                                  name,
                                                  Type::func(&inputs, &outputs));
-                    Call(bcx, f, &llargs, None, call_debug_location)
+                    Call(bcx, f, &llargs, call_debug_location)
                 }
             };
 
@@ -1024,7 +1024,6 @@ fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            Mul(bcx, size, count, DebugLoc::None),
            align,
            C_bool(ccx, volatile)],
-         None,
          call_debug_location)
 }
 
@@ -1054,7 +1053,6 @@ fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            Mul(bcx, size, count, DebugLoc::None),
            align,
            C_bool(ccx, volatile)],
-         None,
          call_debug_location)
 }
 
@@ -1065,7 +1063,7 @@ fn count_zeros_intrinsic(bcx: Block,
                          -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
     let llfn = bcx.ccx().get_intrinsic(&name);
-    Call(bcx, llfn, &[val, y], None, call_debug_location)
+    Call(bcx, llfn, &[val, y], call_debug_location)
 }
 
 fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -1078,7 +1076,7 @@ fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = Call(bcx, llfn, &[a, b], None, call_debug_location);
+    let val = Call(bcx, llfn, &[a, b], call_debug_location);
     let result = ExtractValue(bcx, val, 0);
     let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
     Store(bcx, result, StructGEP(bcx, out, 0));
@@ -1094,7 +1092,7 @@ fn try_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dest: ValueRef,
                              dloc: DebugLoc) -> Block<'blk, 'tcx> {
     if bcx.sess().no_landing_pads() {
-        Call(bcx, func, &[data], None, dloc);
+        Call(bcx, func, &[data], dloc);
         Store(bcx, C_null(Type::i8p(bcx.ccx())), dest);
         bcx
     } else if wants_msvc_seh(bcx.sess()) {
@@ -1165,9 +1163,9 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // More information can be found in libstd's seh.rs implementation.
         let slot = Alloca(bcx, Type::i8p(ccx), "slot");
         let localescape = ccx.get_intrinsic(&"llvm.localescape");
-        Call(bcx, localescape, &[slot], None, dloc);
+        Call(bcx, localescape, &[slot], dloc);
         Store(bcx, local_ptr, slot);
-        Invoke(bcx, func, &[data], normal.llbb, catchswitch.llbb, None, dloc);
+        Invoke(bcx, func, &[data], normal.llbb, catchswitch.llbb, dloc);
 
         Ret(normal, C_i32(ccx, 0), dloc);
 
@@ -1184,7 +1182,7 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = Call(bcx, llfn, &[func, data, local_ptr], None, dloc);
+    let ret = Call(bcx, llfn, &[func, data, local_ptr], dloc);
     Store(bcx, ret, dest);
     return bcx
 }
@@ -1242,7 +1240,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let func = llvm::get_param(bcx.fcx.llfn, 0);
         let data = llvm::get_param(bcx.fcx.llfn, 1);
         let local_ptr = llvm::get_param(bcx.fcx.llfn, 2);
-        Invoke(bcx, func, &[data], then.llbb, catch.llbb, None, dloc);
+        Invoke(bcx, func, &[data], then.llbb, catch.llbb, dloc);
         Ret(then, C_i32(ccx, 0), dloc);
 
         // Type indicator for the exception being thrown.
@@ -1262,7 +1260,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = Call(bcx, llfn, &[func, data, local_ptr], None, dloc);
+    let ret = Call(bcx, llfn, &[func, data, local_ptr], dloc);
     Store(bcx, ret, dest);
     return bcx;
 }
@@ -1376,11 +1374,10 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     // For more info, see seh.rs in the standard library.
     let do_trans = |bcx: Block, ehptrs, base_pointer| {
         let rust_try_fn = BitCast(bcx, rust_try_fn, Type::i8p(ccx));
-        let parentfp = Call(bcx, recoverfp, &[rust_try_fn, base_pointer],
-                            None, dloc);
+        let parentfp = Call(bcx, recoverfp, &[rust_try_fn, base_pointer], dloc);
         let arg = Call(bcx, localrecover,
-                       &[rust_try_fn, parentfp, C_i32(ccx, 0)], None, dloc);
-        let ret = Call(bcx, rust_try_filter, &[ehptrs, arg], None, dloc);
+                       &[rust_try_fn, parentfp, C_i32(ccx, 0)], dloc);
+        let ret = Call(bcx, rust_try_filter, &[ehptrs, arg], dloc);
         Ret(bcx, ret, dloc);
     };
 
@@ -1402,7 +1399,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
             }),
         });
         gen_fn(fcx, "__rustc_try_filter", filter_fn_ty, output, &mut |bcx| {
-            let ebp = Call(bcx, frameaddress, &[C_i32(ccx, 1)], None, dloc);
+            let ebp = Call(bcx, frameaddress, &[C_i32(ccx, 1)], dloc);
             let exn = InBoundsGEP(bcx, ebp, &[C_i32(ccx, -20)]);
             let exn = Load(bcx, BitCast(bcx, exn, Type::i8p(ccx).ptr_to()));
             do_trans(bcx, exn, ebp);

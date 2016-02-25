@@ -515,10 +515,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if input_ty == tcx.types.f32 {
                         let lllhs = bcx.fpext(lhs, f64t);
                         let llrhs = bcx.fpext(rhs, f64t);
-                        let llres = bcx.call(llfn, &[lllhs, llrhs], None, None);
+                        let llres = bcx.call(llfn, &[lllhs, llrhs], None);
                         bcx.fptrunc(llres, Type::f32(bcx.ccx()))
                     } else {
-                        bcx.call(llfn, &[lhs, rhs], None, None)
+                        bcx.call(llfn, &[lhs, rhs], None)
                     }
                 } else {
                     bcx.frem(lhs, rhs)

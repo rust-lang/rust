@@ -11,7 +11,7 @@
 #![allow(dead_code)] // FFI wrappers
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect, AttrBuilder};
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use trans::base;
@@ -165,8 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                   args: &[ValueRef],
                   then: BasicBlockRef,
                   catch: BasicBlockRef,
-                  bundle: Option<&OperandBundleDef>,
-                  attributes: Option<AttrBuilder>)
+                  bundle: Option<&OperandBundleDef>)
                   -> ValueRef {
         self.count_insn("invoke");
 
@@ -180,18 +179,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
 
         unsafe {
-            let v = llvm::LLVMRustBuildInvoke(self.llbuilder,
-                                              llfn,
-                                              args.as_ptr(),
-                                              args.len() as c_uint,
-                                              then,
-                                              catch,
-                                              bundle,
-                                              noname());
-            if let Some(a) = attributes {
-                a.apply_callsite(v);
-            }
-            v
+            llvm::LLVMRustBuildInvoke(self.llbuilder,
+                                      llfn,
+                                      args.as_ptr(),
+                                      args.len() as c_uint,
+                                      then,
+                                      catch,
+                                      bundle,
+                                      noname())
         }
     }
 
@@ -775,7 +770,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                          comment_text.as_ptr(), noname(), False,
                                          False)
             };
-            self.call(asm, &[], None, None);
+            self.call(asm, &[], None);
         }
     }
 
@@ -800,13 +795,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             let v = llvm::LLVMInlineAsm(
                 fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
-            self.call(v, inputs, None, None)
+            self.call(v, inputs, None)
         }
     }
 
     pub fn call(&self, llfn: ValueRef, args: &[ValueRef],
-                bundle: Option<&OperandBundleDef>,
-                attributes: Option<AttrBuilder>) -> ValueRef {
+                bundle: Option<&OperandBundleDef>) -> ValueRef {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({})",
@@ -844,22 +838,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
 
         unsafe {
-            let v = llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr(),
-                                            args.len() as c_uint, bundle,
-                                            noname());
-            if let Some(a) = attributes {
-                a.apply_callsite(v);
-            }
-            v
+            llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr(),
+                                    args.len() as c_uint, bundle, noname())
         }
     }
 
     pub fn call_with_conv(&self, llfn: ValueRef, args: &[ValueRef],
                           conv: CallConv,
-                          bundle: Option<&OperandBundleDef>,
-                          attributes: Option<AttrBuilder>) -> ValueRef {
+                          bundle: Option<&OperandBundleDef>) -> ValueRef {
         self.count_insn("callwithconv");
-        let v = self.call(llfn, args, bundle, attributes);
+        let v = self.call(llfn, args, bundle);
         llvm::SetInstructionCallConv(v, conv);
         v
     }

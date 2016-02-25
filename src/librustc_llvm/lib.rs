@@ -212,21 +212,21 @@ impl Attributes {
         self
     }
 
-    pub fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
+    pub fn apply_llfn(&self, idx: usize, llfn: ValueRef) {
         unsafe {
-            LLVMAddFunctionAttribute(llfn, idx, self.regular.bits());
+            LLVMAddFunctionAttribute(llfn, idx as c_uint, self.regular.bits());
             if self.dereferenceable_bytes != 0 {
-                LLVMAddDereferenceableAttr(llfn, idx,
+                LLVMAddDereferenceableAttr(llfn, idx as c_uint,
                                            self.dereferenceable_bytes);
             }
         }
     }
 
-    pub fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
+    pub fn apply_callsite(&self, idx: usize, callsite: ValueRef) {
         unsafe {
-            LLVMAddCallSiteAttribute(callsite, idx, self.regular.bits());
+            LLVMAddCallSiteAttribute(callsite, idx as c_uint, self.regular.bits());
             if self.dereferenceable_bytes != 0 {
-                LLVMAddDereferenceableCallSiteAttr(callsite, idx,
+                LLVMAddDereferenceableCallSiteAttr(callsite, idx as c_uint,
                                                    self.dereferenceable_bytes);
             }
         }
@@ -238,49 +238,6 @@ impl Attributes {
 pub enum AttributeSet {
     ReturnIndex = 0,
     FunctionIndex = !0
-}
-
-pub struct AttrBuilder {
-    attrs: Vec<(usize, Attributes)>
-}
-
-impl AttrBuilder {
-    pub fn new() -> AttrBuilder {
-        AttrBuilder {
-            attrs: Vec::new()
-        }
-    }
-
-    pub fn arg(&mut self, idx: usize) -> &mut Attributes {
-        let mut found = None;
-        for (i, &(idx2, _)) in self.attrs.iter().enumerate() {
-            if idx == idx2 {
-                found = Some(i);
-                break;
-            }
-        }
-        let i = found.unwrap_or_else(|| {
-            self.attrs.push((idx, Attributes::default()));
-            self.attrs.len() - 1
-        });
-        &mut self.attrs[i].1
-    }
-
-    pub fn ret(&mut self) -> &mut Attributes {
-        self.arg(ReturnIndex as usize)
-    }
-
-    pub fn apply_llfn(&self, llfn: ValueRef) {
-        for &(idx, ref attr) in &self.attrs {
-            attr.apply_llfn(idx as c_uint, llfn);
-        }
-    }
-
-    pub fn apply_callsite(&self, callsite: ValueRef) {
-        for &(idx, ref attr) in &self.attrs {
-            attr.apply_callsite(idx as c_uint, callsite);
-        }
-    }
 }
 
 // enum for the LLVM IntPredicate type

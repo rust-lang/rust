@@ -864,7 +864,6 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let expected = Call(bcx,
                                 expect,
                                 &[bounds_check, C_bool(ccx, false)],
-                                None,
                                 index_expr_debug_loc);
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
@@ -1681,10 +1680,10 @@ fn trans_scalar_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 if lhs_t == tcx.types.f32 {
                     let lhs = FPExt(bcx, lhs, f64t);
                     let rhs = FPExt(bcx, rhs, f64t);
-                    let res = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
+                    let res = Call(bcx, llfn, &[lhs, rhs], binop_debug_loc);
                     FPTrunc(bcx, res, Type::f32(bcx.ccx()))
                 } else {
-                    Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc)
+                    Call(bcx, llfn, &[lhs, rhs], binop_debug_loc)
                 }
             } else {
                 FRem(bcx, lhs, rhs, binop_debug_loc)
@@ -2255,7 +2254,7 @@ impl OverflowOpViaIntrinsic {
                                         -> (Block<'blk, 'tcx>, ValueRef) {
         let llfn = self.to_intrinsic(bcx, lhs_t);
 
-        let val = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
+        let val = Call(bcx, llfn, &[lhs, rhs], binop_debug_loc);
         let result = ExtractValue(bcx, val, 0); // iN operation result
         let overflow = ExtractValue(bcx, val, 1); // i1 "did it overflow?"
 
@@ -2264,7 +2263,7 @@ impl OverflowOpViaIntrinsic {
 
         let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
         Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
-             None, binop_debug_loc);
+             binop_debug_loc);
 
         let bcx =
             base::with_cond(bcx, cond, |bcx|
