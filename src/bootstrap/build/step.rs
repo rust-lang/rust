@@ -21,9 +21,23 @@ pub struct Step<'a> {
 macro_rules! targets {
     ($m:ident) => {
         $m! {
+            // Step representing building the stageN compiler. This is just the
+            // compiler executable itself, not any of the support libraries
             (rustc, Rustc { stage: u32 }),
+
+            // Steps for the two main cargo builds, one for the standard library
+            // and one for the compiler itself. These are parameterized over the
+            // stage output they're going to be placed in along with the
+            // compiler which is producing the copy of libstd or librustc
             (libstd, Libstd { stage: u32, compiler: Compiler<'a> }),
             (librustc, Librustc { stage: u32, compiler: Compiler<'a> }),
+
+            // Steps for long-running native builds. Ideally these wouldn't
+            // actually exist and would be part of build scripts, but for now
+            // these are here.
+            //
+            // There aren't really any parameters to this, but empty structs
+            // with braces are unstable so we just pick something that works.
             (llvm, Llvm { _dummy: () }),
             (compiler_rt, CompilerRt { _dummy: () }),
         }
