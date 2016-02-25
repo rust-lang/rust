@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use std::cmp::Ordering;
+use syntax::attr::IntType;
+use syntax::ast::{IntTy, UintTy};
 
 use super::is::*;
 use super::us::*;
@@ -256,6 +258,22 @@ impl ConstInt {
             ConstInt::Usize(ConstUsize::Us32(i)) => ConstInt::Usize(ConstUsize::Us32(add1!(i))),
             ConstInt::Usize(ConstUsize::Us64(i)) => ConstInt::Usize(ConstUsize::Us64(add1!(i))),
             ConstInt::Infer(_) | ConstInt::InferSigned(_) => panic!("no type info for const int"),
+        }
+    }
+
+    pub fn int_type(self) -> Option<IntType> {
+        match self {
+            ConstInt::I8(_) => Some(IntType::SignedInt(IntTy::I8)),
+            ConstInt::I16(_) => Some(IntType::SignedInt(IntTy::I16)),
+            ConstInt::I32(_) => Some(IntType::SignedInt(IntTy::I32)),
+            ConstInt::I64(_) => Some(IntType::SignedInt(IntTy::I64)),
+            ConstInt::Isize(_) => Some(IntType::SignedInt(IntTy::Is)),
+            ConstInt::U8(_) => Some(IntType::UnsignedInt(UintTy::U8)),
+            ConstInt::U16(_) => Some(IntType::UnsignedInt(UintTy::U16)),
+            ConstInt::U32(_) => Some(IntType::UnsignedInt(UintTy::U32)),
+            ConstInt::U64(_) => Some(IntType::UnsignedInt(UintTy::U64)),
+            ConstInt::Usize(_) => Some(IntType::UnsignedInt(UintTy::Us)),
+            _ => None,
         }
     }
 }
