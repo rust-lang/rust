@@ -1165,7 +1165,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              trait_bound.clone(),
                                              ty::Binder(skol_trait_ref.clone())) {
-            Ok(InferOk { .. }) => { }
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME Once obligations start getting generated, they ought to be propagated.
+                assert!(obligations.is_empty());
+            }
             Err(_) => { return false; }
         }
 
@@ -2454,7 +2457,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              expected_trait_ref.clone(),
                                              obligation_trait_ref.clone()) {
-            Ok(InferOk { .. }) => Ok(()),
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME Once obligations start getting generated, they ought tobe propagated.
+                assert!(obligations.is_empty());
+                Ok(())
+            },
             Err(e) => Err(OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
         }
     }
@@ -2771,7 +2778,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              poly_trait_ref,
                                              obligation.predicate.to_poly_trait_ref()) {
-            Ok(InferOk { .. }) => Ok(()),
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME Once obligations start getting generated, they ought to be propagated.
+                assert!(obligations.is_empty());
+                Ok(())
+            },
             Err(_) => Err(()),
         }
     }
