@@ -117,7 +117,7 @@ fn add_steps<'a>(build: &'a Build,
         let compiler = host.compiler(stage);
         match &step[..] {
             "libstd" => targets.push(target.libstd(stage, compiler)),
-            "librustc" => targets.push(target.libstd(stage, compiler)),
+            "librustc" => targets.push(target.librustc(stage, compiler)),
             "rustc" => targets.push(host.rustc(stage)),
             "llvm" => targets.push(target.llvm(())),
             "compiler-rt" => targets.push(target.compiler_rt(())),
