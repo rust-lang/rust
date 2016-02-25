@@ -46,7 +46,7 @@ use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
 use std::iter::repeat;
 use std::mem;
-use std::path::{PathBuf, Path};
+use std::path::{PathBuf, Path, Component};
 use std::str;
 use std::sync::Arc;
 
@@ -810,16 +810,17 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
     // make it relative, if possible
     let p = p.strip_prefix(src_root).unwrap_or(p);
 
-    let mut iter = p.iter().map(|x| x.to_str().unwrap()).peekable();
+    let mut iter = p.components().peekable();
+
     while let Some(c) = iter.next() {
         if !keep_filename && iter.peek().is_none() {
             break;
         }
 
-        if ".." == c {
-            f("up");
-        } else {
-            f(c)
+        match c {
+            Component::ParentDir => f("up"),
+            Component::Normal(c) => f(c.to_str().unwrap()),
+            _ => continue,
         }
     }
 }
@@ -871,7 +872,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
             self.cx
-                .include_sources = match self.emit_source(&item.source .filename) {
+                .include_sources = match self.emit_source(&item.source.filename) {
                 Ok(()) => true,
                 Err(e) => {
                     println!("warning: source code was requested to be rendered, \
@@ -1489,9 +1490,11 @@ impl<'a> Item<'a> {
                           true, |component| {
                 path.push(component.to_string());
             });
+
             // If the span points into an external macro the
             // source-file will be bogus, i.e `<foo macros>`
-            if Path::new(&self.item.source.filename).is_file() {
+            let filename = &self.item.source.filename;
+            if !(filename.starts_with("<") && filename.ends_with("macros>")) {
                 Some(format!("{root}src/{krate}/{path}.html#{href}",
                              root = self.cx.root_path,
                              krate = self.cx.layout.krate,
