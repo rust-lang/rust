@@ -103,17 +103,20 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
     let fty = FnType::new(ccx, f.abi, &sig, &[]);
-    let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.to_llvm(ccx));
+    let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.llvm_type(ccx));
 
     if sig.output == ty::FnDiverging {
         llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturn);
     }
 
-    if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-        attributes::from_fn_type(ccx, fn_type).apply_llfn(llfn);
+    let attrs = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
+        attributes::from_fn_type(ccx, fn_type)
     } else {
-        fty.add_attributes(llfn);
-    }
+        attributes::unwind(llfn, false);
+        fty.llvm_attrs(ccx)
+    };
+
+    attrs.apply_llfn(llfn);
 
     llfn
 }

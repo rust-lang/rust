@@ -10,7 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector, Attribute};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
@@ -163,9 +163,6 @@ fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
 
 fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
     if is_reg_ty(ret.ty) {
-        if ret.ty == Type::i1(ccx) {
-            ret.attr = Some(Attribute::ZExt)
-        }
         return;
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ret.ty) {
@@ -189,14 +186,10 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
         return;
     }
     ret.kind = Indirect;
-    ret.attr = Some(Attribute::StructRet);
 }
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
     if is_reg_ty(arg.ty) {
-        if arg.ty == Type::i1(ccx) {
-            arg.attr = Some(Attribute::ZExt);
-        }
         return;
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(arg.ty) {
