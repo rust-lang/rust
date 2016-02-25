@@ -72,44 +72,22 @@ pub struct ArgType {
 }
 
 impl ArgType {
-    pub fn direct(ty: Type, cast: Option<Type>,
-                            pad: Option<Type>,
-                            attr: Option<llvm::Attribute>) -> ArgType {
+    fn new(ty: Type) -> ArgType {
         ArgType {
             kind: Direct,
             ty: ty,
-            cast: cast,
-            pad: pad,
-            attr: attr
-        }
-    }
-
-    pub fn indirect(ty: Type, attr: Option<llvm::Attribute>) -> ArgType {
-        ArgType {
-            kind: Indirect,
-            ty: ty,
-            cast: Option::None,
-            pad: Option::None,
-            attr: attr
-        }
-    }
-
-    pub fn ignore(ty: Type) -> ArgType {
-        ArgType {
-            kind: Ignore,
-            ty: ty,
             cast: None,
             pad: None,
-            attr: None,
+            attr: None
         }
     }
 
     pub fn is_indirect(&self) -> bool {
-        return self.kind == Indirect;
+        self.kind == Indirect
     }
 
     pub fn is_ignore(&self) -> bool {
-        return self.kind == Ignore;
+        self.kind == Ignore
     }
 }
 
@@ -200,17 +178,15 @@ impl FnType {
         for ty in inputs.iter().chain(extra_args.iter()) {
             let llty = c_type_of(ccx, ty);
             if type_is_fat_ptr(ccx.tcx(), ty) {
-                args.extend(llty.field_types().into_iter().map(|llty| {
-                    ArgType::direct(llty, None, None, None)
-                }));
+                args.extend(llty.field_types().into_iter().map(ArgType::new));
             } else {
-                args.push(ArgType::direct(llty, None, None, None));
+                args.push(ArgType::new(llty));
             }
         }
 
         let mut fty = FnType {
             args: args,
-            ret: ArgType::direct(rty, None, None, None),
+            ret: ArgType::new(rty),
             variadic: sig.variadic,
             cconv: cconv
         };

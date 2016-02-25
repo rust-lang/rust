@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector, Attribute};
-use trans::abi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -129,12 +129,14 @@ fn ty_size(ty: Type, align_fn: TyAlignFn) -> usize {
     }
 }
 
-fn classify_ret_ty(ccx: &CrateContext, ty: Type, align_fn: TyAlignFn) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        return ArgType::direct(ty, None, None, attr);
+fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType, align_fn: TyAlignFn) {
+    if is_reg_ty(ret.ty) {
+        if ret.ty == Type::i1(ccx) {
+            ret.attr = Some(Attribute::ZExt);
+        }
+        return;
     }
-    let size = ty_size(ty, align_fn);
+    let size = ty_size(ret.ty, align_fn);
     if size <= 4 {
         let llty = if size <= 1 {
             Type::i8(ccx)
@@ -143,24 +145,28 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type, align_fn: TyAlignFn) -> ArgType
         } else {
             Type::i32(ccx)
         };
-        return ArgType::direct(ty, Some(llty), None, None);
+        ret.cast = Some(llty);
+        return;
     }
-    ArgType::indirect(ty, Some(Attribute::StructRet))
+    ret.kind = Indirect;
+    ret.attr = Some(Attribute::StructRet);
 }
 
-fn classify_arg_ty(ccx: &CrateContext, ty: Type, align_fn: TyAlignFn) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        return ArgType::direct(ty, None, None, attr);
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, align_fn: TyAlignFn) {
+    if is_reg_ty(arg.ty) {
+        if arg.ty == Type::i1(ccx) {
+            arg.attr = Some(Attribute::ZExt);
+        }
+        return;
     }
-    let align = align_fn(ty);
-    let size = ty_size(ty, align_fn);
+    let align = align_fn(arg.ty);
+    let size = ty_size(arg.ty, align_fn);
     let llty = if align <= 4 {
         Type::array(&Type::i32(ccx), ((size + 3) / 4) as u64)
     } else {
         Type::array(&Type::i64(ccx), ((size + 7) / 8) as u64)
     };
-    ArgType::direct(ty, Some(llty), None, None)
+    arg.cast = Some(llty);
 }
 
 fn is_reg_ty(ty: Type) -> bool {
@@ -181,10 +187,10 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType, flavor: Flavor) {
     };
 
     if fty.ret.ty != Type::void(ccx) {
-        fty.ret = classify_ret_ty(ccx, fty.ret.ty, align_fn);
+        classify_ret_ty(ccx, &mut fty.ret, align_fn);
     }
 
     for arg in &mut fty.args {
-        *arg = classify_arg_ty(ccx, arg.ty, align_fn);
+        classify_arg_ty(ccx, arg, align_fn);
     }
 }

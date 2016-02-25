@@ -16,7 +16,7 @@
 // need to be fixed when PowerPC vector support is added.
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Attribute};
-use trans::abi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -151,22 +151,25 @@ fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
     })
 }
 
-fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        return ArgType::direct(ty, None, None, attr);
+fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
+    if is_reg_ty(ret.ty) {
+        if ret.ty == Type::i1(ccx) {
+            ret.attr = Some(Attribute::ZExt);
+        }
+        return;
     }
 
     // The PowerPC64 big endian ABI doesn't return aggregates in registers
     if ccx.sess().target.target.target_endian == "big" {
-        return ArgType::indirect(ty, Some(Attribute::StructRet))
+        ret.kind = Indirect;
+        ret.attr = Some(Attribute::StructRet);
     }
 
-    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
-        let llty = Type::array(&base_ty, members);
-        return ArgType::direct(ty, Some(llty), None, None);
+    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ret.ty) {
+        ret.cast = Some(Type::array(&base_ty, members));
+        return;
     }
-    let size = ty_size(ty);
+    let size = ty_size(ret.ty);
     if size <= 16 {
         let llty = if size <= 1 {
             Type::i8(ccx)
@@ -179,28 +182,28 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
         } else {
             Type::array(&Type::i64(ccx), ((size + 7 ) / 8 ) as u64)
         };
-        return ArgType::direct(ty, Some(llty), None, None);
+        ret.cast = Some(llty);
+        return;
     }
 
-    ArgType::indirect(ty, Some(Attribute::StructRet))
+    ret.kind = Indirect;
+    ret.attr = Some(Attribute::StructRet);
 }
 
-fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        return ArgType::direct(ty, None, None, attr);
-    }
-    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
-        let llty = Type::array(&base_ty, members);
-        return ArgType::direct(ty, Some(llty), None, None);
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
+    if is_reg_ty(arg.ty) {
+        if arg.ty == Type::i1(ccx) {
+            arg.attr = Some(Attribute::ZExt);
+        }
+        return;
     }
 
-    ArgType::direct(
-        ty,
-        Some(struct_ty(ccx, ty)),
-        None,
-        None
-    )
+    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(arg.ty) {
+        arg.cast = Some(Type::array(&base_ty, members));
+        return;
+    }
+
+    arg.cast = Some(struct_ty(ccx, arg.ty));
 }
 
 fn is_reg_ty(ty: Type) -> bool {
@@ -238,10 +241,10 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     if fty.ret.ty != Type::void(ccx) {
-        fty.ret = classify_ret_ty(ccx, fty.ret.ty);
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
-        *arg = classify_arg_ty(ccx, arg.ty);
+        classify_arg_ty(ccx, arg);
     }
 }

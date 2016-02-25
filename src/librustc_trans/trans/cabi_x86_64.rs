@@ -16,7 +16,7 @@ use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute, Vector};
-use trans::abi::{ArgType, FnType};
+use trans::abi::{ArgType, FnType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -385,25 +385,23 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     fn x86_64_ty<F>(ccx: &CrateContext,
-                    ty: Type,
+                    arg: &mut ArgType,
                     is_mem_cls: F,
                     ind_attr: Attribute)
-                    -> ArgType where
-        F: FnOnce(&[RegClass]) -> bool,
+        where F: FnOnce(&[RegClass]) -> bool
     {
-        if !ty.is_reg_ty() {
-            let cls = classify_ty(ty);
+        if !arg.ty.is_reg_ty() {
+            let cls = classify_ty(arg.ty);
             if is_mem_cls(&cls) {
-                ArgType::indirect(ty, Some(ind_attr))
+                arg.kind = Indirect;
+                arg.attr = Some(ind_attr);
             } else {
-                ArgType::direct(ty,
-                                Some(llreg_ty(ccx, &cls)),
-                                None,
-                                None)
+                arg.cast = Some(llreg_ty(ccx, &cls));
             }
         } else {
-            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-            ArgType::direct(ty, None, None, attr)
+            if arg.ty == Type::i1(ccx) {
+                arg.attr = Some(Attribute::ZExt);
+            }
         }
     }
 
@@ -411,7 +409,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     let mut sse_regs = 8; // XMM0-7
 
     if fty.ret.ty != Type::void(ccx) {
-        fty.ret = x86_64_ty(ccx, fty.ret.ty, |cls| {
+        x86_64_ty(ccx, &mut fty.ret, |cls| {
             if cls.is_ret_bysret() {
                 // `sret` parameter thus one less register available
                 int_regs -= 1;
@@ -423,7 +421,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     }
 
     for arg in &mut fty.args {
-        *arg = x86_64_ty(ccx, arg.ty, |cls| {
+        x86_64_ty(ccx, arg, |cls| {
             let needed_int = cls.iter().filter(|&&c| c == Int).count() as isize;
             let needed_sse = cls.iter().filter(|c| c.is_sse()).count() as isize;
             let in_mem = cls.is_pass_byval() ||

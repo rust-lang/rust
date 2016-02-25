@@ -11,7 +11,7 @@
 use libc::c_uint;
 use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Attribute};
-use trans::abi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -82,34 +82,33 @@ fn ty_size(ty: Type) -> usize {
     }
 }
 
-fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        ArgType::direct(ty, None, None, attr)
+fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
+    if is_reg_ty(ret.ty) {
+        if ret.ty == Type::i1(ccx) {
+            ret.attr = Some(Attribute::ZExt);
+        }
     } else {
-        ArgType::indirect(ty, Some(Attribute::StructRet))
+        ret.kind = Indirect;
+        ret.attr = Some(Attribute::StructRet);
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut usize) -> ArgType {
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
     let orig_offset = *offset;
-    let size = ty_size(ty) * 8;
-    let mut align = ty_align(ty);
+    let size = ty_size(arg.ty) * 8;
+    let mut align = ty_align(arg.ty);
 
     align = cmp::min(cmp::max(align, 4), 8);
     *offset = align_up_to(*offset, align);
     *offset += align_up_to(size, align * 8) / 8;
 
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        ArgType::direct(ty, None, None, attr)
+    if is_reg_ty(arg.ty) {
+        if arg.ty == Type::i1(ccx) {
+            arg.attr = Some(Attribute::ZExt);
+        }
     } else {
-        ArgType::direct(
-            ty,
-            Some(struct_ty(ccx, ty)),
-            padding_ty(ccx, align, orig_offset),
-            None
-        )
+        arg.cast = Some(struct_ty(ccx, arg.ty));
+        arg.pad = padding_ty(ccx, align, orig_offset);
     }
 }
 
@@ -158,11 +157,11 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     if fty.ret.ty != Type::void(ccx) {
-        fty.ret = classify_ret_ty(ccx, fty.ret.ty);
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
     let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };
     for arg in &mut fty.args {
-        *arg = classify_arg_ty(ccx, arg.ty, &mut offset);
+        classify_arg_ty(ccx, arg, &mut offset);
     }
 }
