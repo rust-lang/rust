@@ -146,8 +146,12 @@ impl Build {
                 Librustc { stage, compiler } => {
                     compile::rustc(self, stage, target.target, &compiler);
                 }
+                Rustc { stage: 0 } => {
+                    assert!(target.target == self.config.build,
+                            "only have one stage0 compiler");
+                }
                 Rustc { stage } => {
-                    println!("ok, rustc stage{} in {}", stage, target.target);
+                    compile::assemble_rustc(self, stage, target.target);
                 }
             }
         }

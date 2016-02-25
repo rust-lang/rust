@@ -99,7 +99,6 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
              host, target);
 
     let out_dir = build.cargo_out(stage, &host, false, target);
-    let rustc = out_dir.join(exe("rustc", target));
     build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
 
     let mut cargo = build.cargo(stage, compiler, false, target, "build");
@@ -153,10 +152,6 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
 
     let sysroot_libdir = build.sysroot_libdir(stage, host, target);
     add_to_sysroot(&out_dir, &sysroot_libdir);
-
-    if host == target {
-        assemble_compiler(build, stage, target, &rustc);
-    }
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -172,21 +167,21 @@ fn compiler_file(compiler: &Path, file: &str) -> String {
 
 /// Prepare a new compiler from the artifacts in `stage`
 ///
-/// This will link the compiler built by `host` during the stage
-/// specified to the sysroot location for `host` to be the official
-/// `stage + 1` compiler for that host. This means that the `rustc` binary
-/// itself will be linked into place along with all supporting dynamic
-/// libraries.
-fn assemble_compiler(build: &Build, stage: u32, host: &str, rustc: &Path) {
+/// This will assemble a compiler in `build/$host/stage$stage`. The compiler
+/// must have been previously produced by the `stage - 1` build.config.build
+/// compiler.
+pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
+    assert!(stage > 0, "the stage0 compiler isn't assembled, it's downloaded");
+
     // Clear out old files
-    let sysroot = build.sysroot(stage + 1, host);
+    let sysroot = build.sysroot(stage, host);
     let _ = fs::remove_dir_all(&sysroot);
     t!(fs::create_dir_all(&sysroot));
 
     // Link in all dylibs to the libdir
     let sysroot_libdir = sysroot.join(libdir(host));
     t!(fs::create_dir_all(&sysroot_libdir));
-    let src_libdir = build.sysroot_libdir(stage, host, host);
+    let src_libdir = build.sysroot_libdir(stage - 1, &build.config.build, host);
     for f in t!(fs::read_dir(&src_libdir)).map(|f| t!(f)) {
         let filename = f.file_name().into_string().unwrap();
         if is_dylib(&filename) {
@@ -194,17 +189,20 @@ fn assemble_compiler(build: &Build, stage: u32, host: &str, rustc: &Path) {
         }
     }
 
+    let out_dir = build.cargo_out(stage - 1, &build.config.build, false, host);
+
     // Link the compiler binary itself into place
+    let rustc = out_dir.join(exe("rustc", host));
     let bindir = sysroot.join("bin");
     t!(fs::create_dir_all(&bindir));
-    let compiler = build.compiler_path(&Compiler::new(stage + 1, host));
+    let compiler = build.compiler_path(&Compiler::new(stage, host));
     let _ = fs::remove_file(&compiler);
     t!(fs::hard_link(rustc, compiler));
 
     // See if rustdoc exists to link it into place
-    let exe = exe("rustdoc", host);
-    let rustdoc_src = rustc.parent().unwrap().join(&exe);
-    let rustdoc_dst = bindir.join(exe);
+    let rustdoc = exe("rustdoc", host);
+    let rustdoc_src = out_dir.join(&rustdoc);
+    let rustdoc_dst = bindir.join(&rustdoc);
     if fs::metadata(&rustdoc_src).is_ok() {
         let _ = fs::remove_file(&rustdoc_dst);
         t!(fs::hard_link(&rustdoc_src, &rustdoc_dst));
