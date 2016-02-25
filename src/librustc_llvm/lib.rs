@@ -151,41 +151,40 @@ bitflags! {
         const OptimizeForSize = 1 << 13,
         const StackProtect    = 1 << 14,
         const StackProtectReq = 1 << 15,
-        const Alignment       = 1 << 16,
         const NoCapture       = 1 << 21,
         const NoRedZone       = 1 << 22,
         const NoImplicitFloat = 1 << 23,
         const Naked           = 1 << 24,
         const InlineHint      = 1 << 25,
-        const Stack           = 7 << 26,
         const ReturnsTwice    = 1 << 29,
         const UWTable         = 1 << 30,
         const NonLazyBind     = 1 << 31,
-        const OptimizeNone    = 1 << 42,
+
+        // Some of these are missing from the LLVM C API, the rest are
+        // present, but commented out, and preceded by the following warning:
+        // FIXME: These attributes are currently not included in the C API as
+        // a temporary measure until the API/ABI impact to the C API is understood
+        // and the path forward agreed upon.
+        const SanitizeAddress = 1 << 32;
+        const MinSize         = 1 << 33;
+        const NoDuplicate     = 1 << 34;
+        const StackProtectStrong = 1 << 35;
+        const SanitizeThread  = 1 << 36;
+        const SanitizeMemory  = 1 << 37;
+        const NoBuiltin       = 1 << 38;
+        const Returned        = 1 << 39;
+        const Cold            = 1 << 40;
+        const Builtin         = 1 << 41;
+        const OptimizeNone    = 1 << 42;
+        const InAlloca        = 1 << 43;
+        const NonNull         = 1 << 44;
+        const JumpTable       = 1 << 45;
+        const Convergent      = 1 << 46;
+        const SafeStack       = 1 << 47;
+        const NoRecurse       = 1 << 48;
+        const InaccessibleMemOnly         = 1 << 49;
+        const InaccessibleMemOrArgMemOnly = 1 << 50;
     }
-}
-
-
-#[repr(u64)]
-#[derive(Copy, Clone)]
-pub enum OtherAttribute {
-    // The following are not really exposed in
-    // the LLVM C api so instead to add these
-    // we call a wrapper function in RustWrapper
-    // that uses the C++ api.
-    SanitizeAddressAttribute = 1 << 32,
-    MinSizeAttribute = 1 << 33,
-    NoDuplicateAttribute = 1 << 34,
-    StackProtectStrongAttribute = 1 << 35,
-    SanitizeThreadAttribute = 1 << 36,
-    SanitizeMemoryAttribute = 1 << 37,
-    NoBuiltinAttribute = 1 << 38,
-    ReturnedAttribute = 1 << 39,
-    ColdAttribute = 1 << 40,
-    BuiltinAttribute = 1 << 41,
-    OptimizeNoneAttribute = 1 << 42,
-    InAllocaAttribute = 1 << 43,
-    NonNullAttribute = 1 << 44,
 }
 
 #[derive(Copy, Clone)]
@@ -215,20 +214,6 @@ impl AttrHelper for Attribute {
     fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
         unsafe {
             LLVMAddCallSiteAttribute(callsite, idx, self.bits() as uint64_t);
-        }
-    }
-}
-
-impl AttrHelper for OtherAttribute {
-    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
-        unsafe {
-            LLVMAddFunctionAttribute(llfn, idx, *self as uint64_t);
-        }
-    }
-
-    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
-        unsafe {
-            LLVMAddCallSiteAttribute(callsite, idx, *self as uint64_t);
         }
     }
 }
