@@ -807,9 +807,9 @@ pub struct ModuleS<'a> {
     def: Option<Def>,
     is_public: bool,
 
-    // If the module is an extern crate, `def` is root of the external crate and `extern_crate_did`
-    // is the DefId of the local `extern crate` item (otherwise, `extern_crate_did` is None).
-    extern_crate_did: Option<DefId>,
+    // If the module is an extern crate, `def` is root of the external crate and `extern_crate_id`
+    // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
+    extern_crate_id: Option<NodeId>,
 
     resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
     unresolved_imports: RefCell<Vec<ImportDirective>>,
@@ -856,7 +856,7 @@ impl<'a> ModuleS<'a> {
             parent_link: parent_link,
             def: def,
             is_public: is_public,
-            extern_crate_did: None,
+            extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
             unresolved_imports: RefCell::new(Vec::new()),
             module_children: RefCell::new(NodeMap()),
@@ -1039,7 +1039,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_extern_crate(&self) -> bool {
-        self.module().and_then(|module| module.extern_crate_did).is_some()
+        self.module().and_then(|module| module.extern_crate_id).is_some()
     }
 
     fn is_import(&self) -> bool {
@@ -1237,10 +1237,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                parent_link: ParentLink<'a>,
                                def: Def,
                                is_public: bool,
-                               local_def: DefId)
+                               local_node_id: NodeId)
                                -> Module<'a> {
         let mut module = ModuleS::new(parent_link, Some(def), false, is_public);
-        module.extern_crate_did = Some(local_def);
+        module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }
 
