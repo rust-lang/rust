@@ -245,8 +245,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
                 let lvalue = self.trans_lvalue(bcx, lvalue);
                 let ty = lvalue.ty.to_ty(bcx.tcx());
-                if !glue::type_needs_drop(bcx.tcx(), ty) ||
-                    common::type_is_fat_ptr(bcx.tcx(), ty) {
+                if !glue::type_needs_drop(bcx.tcx(), ty) {
                     return
                 } else {
                     drop::drop_fill(bcx, lvalue.llval, ty);
