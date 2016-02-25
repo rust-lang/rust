@@ -10,7 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector, Attribute};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
@@ -131,9 +131,6 @@ fn ty_size(ty: Type, align_fn: TyAlignFn) -> usize {
 
 fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType, align_fn: TyAlignFn) {
     if is_reg_ty(ret.ty) {
-        if ret.ty == Type::i1(ccx) {
-            ret.attr = Some(Attribute::ZExt);
-        }
         return;
     }
     let size = ty_size(ret.ty, align_fn);
@@ -149,14 +146,10 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType, align_fn: TyAlignFn) {
         return;
     }
     ret.kind = Indirect;
-    ret.attr = Some(Attribute::StructRet);
 }
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, align_fn: TyAlignFn) {
     if is_reg_ty(arg.ty) {
-        if arg.ty == Type::i1(ccx) {
-            arg.attr = Some(Attribute::ZExt);
-        }
         return;
     }
     let align = align_fn(arg.ty);

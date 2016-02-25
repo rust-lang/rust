@@ -387,20 +387,16 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     fn x86_64_ty<F>(ccx: &CrateContext,
                     arg: &mut ArgType,
                     is_mem_cls: F,
-                    ind_attr: Attribute)
+                    ind_attr: Option<Attribute>)
         where F: FnOnce(&[RegClass]) -> bool
     {
         if !arg.ty.is_reg_ty() {
             let cls = classify_ty(arg.ty);
             if is_mem_cls(&cls) {
                 arg.kind = Indirect;
-                arg.attr = Some(ind_attr);
+                arg.attr = ind_attr;
             } else {
                 arg.cast = Some(llreg_ty(ccx, &cls));
-            }
-        } else {
-            if arg.ty == Type::i1(ccx) {
-                arg.attr = Some(Attribute::ZExt);
             }
         }
     }
@@ -417,7 +413,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
             } else {
                 false
             }
-        }, Attribute::StructRet);
+        }, None);
     }
 
     for arg in &mut fty.args {
@@ -436,7 +432,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 sse_regs -= needed_sse;
             }
             in_mem
-        }, Attribute::ByVal);
+        }, Some(Attribute::ByVal));
 
         // An integer, pointer, double or float parameter
         // thus the above closure passed to `x86_64_ty` won't

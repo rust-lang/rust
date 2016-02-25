@@ -10,8 +10,7 @@
 
 pub use self::ArgKind::*;
 
-use llvm::{self, AttrHelper, ValueRef};
-use trans::attributes;
+use llvm;
 use trans::common::{return_type_is_void, type_is_fat_ptr};
 use trans::context::CrateContext;
 use trans::cabi_x86;
@@ -23,7 +22,7 @@ use trans::cabi_powerpc;
 use trans::cabi_powerpc64;
 use trans::cabi_mips;
 use trans::cabi_asmjs;
-use trans::machine::llsize_of_alloc;
+use trans::machine::{llsize_of_alloc, llsize_of_real};
 use trans::type_::Type;
 use trans::type_of;
 
@@ -191,6 +190,13 @@ impl FnType {
             cconv: cconv
         };
 
+        // Add ZExt attributes to i1 arguments and returns.
+        for arg in Some(&mut fty.ret).into_iter().chain(&mut fty.args) {
+            if arg.ty == Type::i1(ccx) {
+                arg.attr = Some(llvm::Attribute::ZExt);
+            }
+        }
+
         if abi == Rust || abi == RustCall {
             let fixup = |arg: &mut ArgType| {
                 if !arg.ty.is_aggregate() {
@@ -246,7 +252,7 @@ impl FnType {
         fty
     }
 
-    pub fn to_llvm(&self, ccx: &CrateContext) -> Type {
+    pub fn llvm_type(&self, ccx: &CrateContext) -> Type {
         let mut llargument_tys = Vec::new();
 
         let llreturn_ty = if self.ret.is_indirect() {
@@ -281,19 +287,29 @@ impl FnType {
         }
     }
 
-    pub fn add_attributes(&self, llfn: ValueRef) {
-        let mut i = if self.ret.is_indirect() {
-            1
-        } else {
-            0
+    pub fn llvm_attrs(&self, ccx: &CrateContext) -> llvm::AttrBuilder {
+        let mut attrs = llvm::AttrBuilder::new();
+        let mut i = if self.ret.is_indirect() { 1 } else { 0 };
+
+        // Add attributes that are always applicable, independent of the concrete foreign ABI
+        if self.ret.is_indirect() {
+            let llret_sz = llsize_of_real(ccx, self.ret.ty);
+
+            // The outptr can be noalias and nocapture because it's entirely
+            // invisible to the program. We also know it's nonnull as well
+            // as how many bytes we can dereference
+            attrs.arg(i, llvm::Attribute::StructRet)
+                 .arg(i, llvm::Attribute::NoAlias)
+                 .arg(i, llvm::Attribute::NoCapture)
+                 .arg(i, llvm::DereferenceableAttribute(llret_sz));
         };
 
+        // Add attributes that depend on the concrete foreign ABI
         if let Some(attr) = self.ret.attr {
-            attr.apply_llfn(i, llfn);
+            attrs.arg(i, attr);
         }
 
         i += 1;
-
         for arg in &self.args {
             if arg.is_ignore() {
                 continue;
@@ -302,12 +318,12 @@ impl FnType {
             if arg.pad.is_some() { i += 1; }
 
             if let Some(attr) = arg.attr {
-                attr.apply_llfn(i, llfn);
+                attrs.arg(i, attr);
             }
 
             i += 1;
         }
 
-        attributes::unwind(llfn, false);
+        attrs
     }
 }

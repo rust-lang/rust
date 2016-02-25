@@ -247,47 +247,13 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // A function pointer is called without the declaration available, so we have to apply
     // any attributes with ABI implications directly to the call instruction.
-    let mut attrs = llvm::AttrBuilder::new();
 
-    // Add attributes that are always applicable, independent of the concrete foreign ABI
-    if fn_type.ret.is_indirect() {
-        let llret_sz = machine::llsize_of_real(ccx, fn_type.ret.ty);
-
-        // The outptr can be noalias and nocapture because it's entirely
-        // invisible to the program. We also know it's nonnull as well
-        // as how many bytes we can dereference
-        attrs.arg(1, llvm::Attribute::NoAlias)
-             .arg(1, llvm::Attribute::NoCapture)
-             .arg(1, llvm::DereferenceableAttribute(llret_sz));
-    };
-
-    // Add attributes that depend on the concrete foreign ABI
-    let mut arg_idx = if fn_type.ret.is_indirect() { 1 } else { 0 };
-    match fn_type.ret.attr {
-        Some(attr) => { attrs.arg(arg_idx, attr); },
-        _ => ()
-    }
-
-    arg_idx += 1;
-    for arg_ty in &fn_type.args {
-        if arg_ty.is_ignore() {
-            continue;
-        }
-        // skip padding
-        if arg_ty.pad.is_some() { arg_idx += 1; }
-
-        if let Some(attr) = arg_ty.attr {
-            attrs.arg(arg_idx, attr);
-        }
-
-        arg_idx += 1;
-    }
 
     let llforeign_retval = CallWithConv(bcx,
                                         llfn,
                                         &llargs_foreign[..],
                                         fn_type.cconv,
-                                        Some(attrs),
+                                        Some(fn_type.llvm_attrs(ccx)),
                                         call_debug_loc);
 
     // If the function we just called does not use an outpointer,

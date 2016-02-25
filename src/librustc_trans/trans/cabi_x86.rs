@@ -30,17 +30,11 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 2 => fty.ret.cast = Some(Type::i16(ccx)),
                 4 => fty.ret.cast = Some(Type::i32(ccx)),
                 8 => fty.ret.cast = Some(Type::i64(ccx)),
-                _ => {
-                    fty.ret.kind = Indirect;
-                    fty.ret.attr = Some(Attribute::StructRet);
-                }
+                _ => fty.ret.kind = Indirect
             }
         } else {
             fty.ret.kind = Indirect;
-            fty.ret.attr = Some(Attribute::StructRet);
         }
-    } else if fty.ret.ty == Type::i1(ccx) {
-        fty.ret.attr = Some(Attribute::ZExt);
     }
 
     for arg in &mut fty.args {
@@ -51,8 +45,6 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 arg.kind = Indirect;
                 arg.attr = Some(Attribute::ByVal);
             }
-        } else if arg.ty == Type::i1(ccx) {
-            arg.attr = Some(Attribute::ZExt);
         }
     }
 }

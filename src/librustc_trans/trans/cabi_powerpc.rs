@@ -10,7 +10,7 @@
 
 use libc::c_uint;
 use llvm;
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Attribute};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array};
 use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
@@ -82,17 +82,6 @@ fn ty_size(ty: Type) -> usize {
     }
 }
 
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
-    if is_reg_ty(ret.ty) {
-        if ret.ty == Type::i1(ccx) {
-            ret.attr = Some(Attribute::ZExt);
-        }
-    } else {
-        ret.kind = Indirect;
-        ret.attr = Some(Attribute::StructRet);
-    }
-}
-
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
     let orig_offset = *offset;
     let size = ty_size(arg.ty) * 8;
@@ -102,11 +91,7 @@ fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
     *offset = align_up_to(*offset, align);
     *offset += align_up_to(size, align * 8) / 8;
 
-    if is_reg_ty(arg.ty) {
-        if arg.ty == Type::i1(ccx) {
-            arg.attr = Some(Attribute::ZExt);
-        }
-    } else {
+    if !is_reg_ty(arg.ty) {
         arg.cast = Some(struct_ty(ccx, arg.ty));
         arg.pad = padding_ty(ccx, align, orig_offset);
     }
@@ -157,7 +142,9 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     if fty.ret.ty != Type::void(ccx) {
-        classify_ret_ty(ccx, &mut fty.ret);
+        if !is_reg_ty(fty.ret.ty) {
+            fty.ret.kind = Indirect;
+        }
     }
 
     let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };

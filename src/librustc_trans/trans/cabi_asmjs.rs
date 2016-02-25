@@ -20,7 +20,7 @@ use trans::type_::Type;
 // See the https://github.com/kripken/emscripten-fastcomp-clang repository.
 // The class `EmscriptenABIInfo` in `/lib/CodeGen/TargetInfo.cpp` contains the ABI definitions.
 
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
+fn classify_ret_ty(ret: &mut ArgType) {
     match ret.ty.kind() {
         Struct => {
             let field_types = ret.ty.field_types();
@@ -28,38 +28,28 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
                 ret.cast = Some(field_types[0]);
             } else {
                 ret.kind = Indirect;
-                ret.attr = Some(Attribute::StructRet);
-            }
-        },
-        Array => {
-            ret.kind = Indirect;
-            ret.attr = Some(Attribute::StructRet);
-        },
-        _ => {
-            if ret.ty == Type::i1(ccx) {
-                ret.attr = Some(Attribute::ZExt);
             }
         }
+        Array => {
+            ret.kind = Indirect;
+        }
+        _ => {}
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
+fn classify_arg_ty(arg: &mut ArgType) {
     if arg.ty.is_aggregate() {
         arg.kind = Indirect;
         arg.attr = Some(Attribute::ByVal);
-    } else {
-        if arg.ty == Type::i1(ccx) {
-            arg.attr = Some(Attribute::ZExt);
-        }
     }
 }
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     if fty.ret.ty != Type::void(ccx) {
-        classify_ret_ty(ccx, &mut fty.ret);
+        classify_ret_ty(&mut fty.ret);
     }
 
     for arg in &mut fty.args {
-        classify_arg_ty(ccx, arg);
+        classify_arg_ty(arg);
     }
 }

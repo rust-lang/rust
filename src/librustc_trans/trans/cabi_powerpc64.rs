@@ -15,7 +15,7 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Attribute};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array};
 use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
@@ -153,16 +153,12 @@ fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
 
 fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
     if is_reg_ty(ret.ty) {
-        if ret.ty == Type::i1(ccx) {
-            ret.attr = Some(Attribute::ZExt);
-        }
         return;
     }
 
     // The PowerPC64 big endian ABI doesn't return aggregates in registers
     if ccx.sess().target.target.target_endian == "big" {
         ret.kind = Indirect;
-        ret.attr = Some(Attribute::StructRet);
     }
 
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ret.ty) {
@@ -187,14 +183,10 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
     }
 
     ret.kind = Indirect;
-    ret.attr = Some(Attribute::StructRet);
 }
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
     if is_reg_ty(arg.ty) {
-        if arg.ty == Type::i1(ccx) {
-            arg.attr = Some(Attribute::ZExt);
-        }
         return;
     }
 
