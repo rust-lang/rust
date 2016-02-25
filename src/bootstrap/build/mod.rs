@@ -155,8 +155,7 @@ impl Build {
                                         &compiler, host);
                 }
                 Rustc { stage: 0 } => {
-                    assert!(target.target == self.config.build,
-                            "only have one stage0 compiler");
+                    // nothing to do...
                 }
                 Rustc { stage } => {
                     compile::assemble_rustc(self, stage, target.target);

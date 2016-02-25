@@ -194,7 +194,6 @@ impl<'a> Step<'a> {
     pub fn deps(&self, build: &'a Build) -> Vec<Step<'a>> {
         match self.src {
             Source::Rustc { stage: 0 } => {
-                assert!(self.target == build.config.build);
                 Vec::new()
             }
             Source::Rustc { stage } => {
