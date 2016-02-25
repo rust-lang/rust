@@ -299,6 +299,15 @@ fn collect_tests_from_dir(config: &Config,
         let file_path = file.path();
         debug!("inspecting file {:?}", file_path.display());
         if is_test(config, &file_path) {
+            // If we find a test foo/bar.rs, we have to build the
+            // output directory `$build/foo` so we can write
+            // `$build/foo/bar` into it. We do this *now* in this
+            // sequential loop because otherwise, if we do it in the
+            // tests themselves, they race for the privilege of
+            // creating the directories and sometimes fail randomly.
+            let build_dir = config.build_base.join(&relative_dir_path);
+            fs::create_dir_all(&build_dir).unwrap();
+
             let paths = TestPaths {
                 file: file_path,
                 base: base.to_path_buf(),
