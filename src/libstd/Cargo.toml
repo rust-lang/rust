@@ -18,7 +18,6 @@ collections = { path = "../libcollections" }
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
 rand = { path = "../librand" }
-rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_unicode = { path = "../librustc_unicode" }
 
 [build-dependencies]

@@ -311,10 +311,101 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
+        self.compare_exchange(current, new, order, strongest_failure_ordering(order))
+    }
+
+    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    ///
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
+    ///
+    /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
+    /// operation. The first describes the required ordering if the operation succeeds while the
+    /// second describes the required ordering when the operation fails. The failure ordering can't
+    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let some_bool = AtomicBool::new(true);
+    ///
+    /// assert_eq!(some_bool.compare_exchange(true,
+    ///                                       false,
+    ///                                       Ordering::Acquire,
+    ///                                       Ordering::Relaxed),
+    ///            true);
+    /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
+    ///
+    /// assert_eq!(some_bool.compare_exchange(true, true,
+    ///                                       Ordering::SeqCst,
+    ///                                       Ordering::Acquire),
+    ///            false);
+    /// assert_eq!(some_bool.load(Ordering::Relaxed), false);
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange(&self,
+                            current: bool,
+                            new: bool,
+                            success: Ordering,
+                            failure: Ordering) -> bool {
         let current = if current { UINT_TRUE } else { 0 };
         let new = if new { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) > 0 }
+        unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) > 0 }
+    }
+
+    /// Stores a value into the `bool` if the current value is the same as the `current` value.
+    ///
+    /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
+    /// comparison succeeds, which can result in more efficient code on some platforms. The
+    /// returned value is a tuple of the existing value and a flag indicating whether the
+    /// new value was written.
+    ///
+    /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering if the operation
+    /// succeeds while the second describes the required ordering when the operation fails. The
+    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let val = AtomicBool::new(false);
+    ///
+    /// let new = true;
+    /// let mut old = val.load(Ordering::Relaxed);
+    /// loop {
+    ///     let result = val.compare_exchange_weak(old, new,
+    ///                                            Ordering::SeqCst,
+    ///                                            Ordering::Relaxed);
+    ///     if result.1 {
+    ///         break;
+    ///     } else {
+    ///         old = result.0;
+    ///     }
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange_weak(&self,
+                                 current: bool,
+                                 new: bool,
+                                 success: Ordering,
+                                 failure: Ordering) -> (bool, bool) {
+        let current = if current { UINT_TRUE } else { 0 };
+        let new = if new { UINT_TRUE } else { 0 };
+
+        let result = unsafe {
+            atomic_compare_exchange_weak(self.v.get(), current, new, success, failure)
+        };
+        (result.0 > 0, result.1)
     }
 
     /// Logical "and" with a boolean value.
@@ -553,7 +644,91 @@ impl AtomicIsize {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn compare_and_swap(&self, current: isize, new: isize, order: Ordering) -> isize {
-        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) }
+        self.compare_exchange(current, new, order, strongest_failure_ordering(order))
+    }
+
+    /// Stores a value into the `isize` if the current value is the same as the `current` value.
+    ///
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
+    ///
+    /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
+    /// operation. The first describes the required ordering if the operation succeeds while the
+    /// second describes the required ordering when the operation fails. The failure ordering can't
+    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicIsize, Ordering};
+    ///
+    /// let some_isize = AtomicIsize::new(5);
+    ///
+    /// assert_eq!(some_isize.compare_exchange(5, 10,
+    ///                                        Ordering::Acquire,
+    ///                                        Ordering::Relaxed),
+    ///            5);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 10);
+    ///
+    /// assert_eq!(some_isize.compare_exchange(6, 12,
+    ///                                        Ordering::SeqCst,
+    ///                                        Ordering::Acquire),
+    ///            10);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 10);
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange(&self,
+                            current: isize,
+                            new: isize,
+                            success: Ordering,
+                            failure: Ordering) -> isize {
+        unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) }
+    }
+
+    /// Stores a value into the `isize if the current value is the same as the `current` value.
+    ///
+    /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
+    /// comparison succeeds, which can result in more efficient code on some platforms. The
+    /// returned value is a tuple of the existing value and a flag indicating whether the
+    /// new value was written.
+    ///
+    /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering if the operation
+    /// succeeds while the second describes the required ordering when the operation fails. The
+    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicIsize, Ordering};
+    ///
+    /// let val = AtomicIsize::new(4);
+    ///
+    /// let mut old = val.load(Ordering::Relaxed);
+    /// loop {
+    ///     let new = old * 2;
+    ///     let result = val.compare_exchange_weak(old, new,
+    ///                                            Ordering::SeqCst,
+    ///                                            Ordering::Relaxed);
+    ///     if result.1 {
+    ///         break;
+    ///     } else {
+    ///         old = result.0;
+    ///     }
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange_weak(&self,
+                                 current: isize,
+                                 new: isize,
+                                 success: Ordering,
+                                 failure: Ordering) -> (isize, bool) {
+        unsafe { atomic_compare_exchange_weak(self.v.get(), current, new, success, failure) }
     }
 
     /// Add an isize to the current value, returning the previous value.
@@ -746,7 +921,91 @@ impl AtomicUsize {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn compare_and_swap(&self, current: usize, new: usize, order: Ordering) -> usize {
-        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) }
+        self.compare_exchange(current, new, order, strongest_failure_ordering(order))
+    }
+
+    /// Stores a value into the `usize` if the current value is the same as the `current` value.
+    ///
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
+    ///
+    /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
+    /// operation. The first describes the required ordering if the operation succeeds while the
+    /// second describes the required ordering when the operation fails. The failure ordering can't
+    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicUsize, Ordering};
+    ///
+    /// let some_isize = AtomicUsize::new(5);
+    ///
+    /// assert_eq!(some_isize.compare_exchange(5, 10,
+    ///                                        Ordering::Acquire,
+    ///                                        Ordering::Relaxed),
+    ///            5);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 10);
+    ///
+    /// assert_eq!(some_isize.compare_exchange(6, 12,
+    ///                                        Ordering::SeqCst,
+    ///                                        Ordering::Acquire),
+    ///            10);
+    /// assert_eq!(some_isize.load(Ordering::Relaxed), 10);
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange(&self,
+                            current: usize,
+                            new: usize,
+                            success: Ordering,
+                            failure: Ordering) -> usize {
+        unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) }
+    }
+
+    /// Stores a value into the `usize` if the current value is the same as the `current` value.
+    ///
+    /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
+    /// comparison succeeds, which can result in more efficient code on some platforms. The
+    /// returned value is a tuple of the existing value and a flag indicating whether the
+    /// new value was written.
+    ///
+    /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering if the operation
+    /// succeeds while the second describes the required ordering when the operation fails. The
+    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicUsize, Ordering};
+    ///
+    /// let val = AtomicUsize::new(4);
+    ///
+    /// let mut old = val.load(Ordering::Relaxed);
+    /// loop {
+    ///     let new = old * 2;
+    ///     let result = val.compare_exchange_weak(old, new,
+    ///                                            Ordering::SeqCst,
+    ///                                            Ordering::Relaxed);
+    ///     if result.1 {
+    ///         break;
+    ///     } else {
+    ///         old = result.0;
+    ///     }
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange_weak(&self,
+                                 current: usize,
+                                 new: usize,
+                                 success: Ordering,
+                                 failure: Ordering) -> (usize, bool) {
+        unsafe { atomic_compare_exchange_weak(self.v.get(), current, new, success, failure) }
     }
 
     /// Add to the current usize, returning the previous value.
@@ -947,15 +1206,109 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
+        self.compare_exchange(current, new, order, strongest_failure_ordering(order))
+    }
+
+    /// Stores a value into the pointer if the current value is the same as the `current` value.
+    ///
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
+    ///
+    /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
+    /// operation. The first describes the required ordering if the operation succeeds while the
+    /// second describes the required ordering when the operation fails. The failure ordering can't
+    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let ptr = &mut 5;
+    /// let some_ptr  = AtomicPtr::new(ptr);
+    ///
+    /// let other_ptr   = &mut 10;
+    /// let another_ptr = &mut 10;
+    ///
+    /// let value = some_ptr.compare_exchange(other_ptr, another_ptr,
+    ///                                       Ordering::SeqCst, Ordering::Relaxed);
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange(&self,
+                            current: *mut T,
+                            new: *mut T,
+                            success: Ordering,
+                            failure: Ordering) -> *mut T {
         unsafe {
-            atomic_compare_and_swap(self.p.get() as *mut usize, current as usize,
-                                    new as usize, order) as *mut T
+            atomic_compare_exchange(self.p.get() as *mut usize, current as usize,
+                                    new as usize, success, failure) as *mut T
         }
+    }
+
+    /// Stores a value into the pointer if the current value is the same as the `current` value.
+    ///
+    /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
+    /// comparison succeeds, which can result in more efficient code on some platforms. The
+    /// returned value is a tuple of the existing value and a flag indicating whether the
+    /// new value was written.
+    ///
+    /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
+    /// ordering of this operation. The first describes the required ordering if the operation
+    /// succeeds while the second describes the required ordering when the operation fails. The
+    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// success ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(extended_compare_and_swap)]
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let some_ptr = AtomicPtr::new(&mut 5);
+    ///
+    /// let new = &mut 10;
+    /// let mut old = some_ptr.load(Ordering::Relaxed);
+    /// loop {
+    ///     let result = some_ptr.compare_exchange_weak(old, new,
+    ///                                                 Ordering::SeqCst,
+    ///                                                 Ordering::Relaxed);
+    ///     if result.1 {
+    ///         break;
+    ///     } else {
+    ///         old = result.0;
+    ///     }
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "extended_compare_and_swap", reason = "recently added", issue = "31767")]
+    pub fn compare_exchange_weak(&self,
+                                 current: *mut T,
+                                 new: *mut T,
+                                 success: Ordering,
+                                 failure: Ordering) -> (*mut T, bool) {
+        let result = unsafe {
+            atomic_compare_exchange_weak(self.p.get() as *mut usize, current as usize,
+                                         new as usize, success, failure)
+        };
+        (result.0 as *mut T, result.1)
     }
 }
 
 #[inline]
-unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
+fn strongest_failure_ordering(order: Ordering) -> Ordering {
+    match order {
+        Release => Relaxed,
+        Relaxed => Relaxed,
+        SeqCst  => SeqCst,
+        Acquire => Acquire,
+        AcqRel  => Acquire,
+    }
+}
+
+#[inline]
+unsafe fn atomic_store<T>(dst: *mut T, val: T, order: Ordering) {
     match order {
         Release => intrinsics::atomic_store_rel(dst, val),
         Relaxed => intrinsics::atomic_store_relaxed(dst, val),
@@ -966,7 +1319,7 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
 }
 
 #[inline]
-unsafe fn atomic_load<T>(dst: *const T, order:Ordering) -> T {
+unsafe fn atomic_load<T>(dst: *const T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_load_acq(dst),
         Relaxed => intrinsics::atomic_load_relaxed(dst),
@@ -1012,14 +1365,78 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Ordering) -> T {
-    match order {
+#[cfg(not(stage0))]
+unsafe fn atomic_compare_exchange<T>(dst: *mut T,
+                                     old: T,
+                                     new: T,
+                                     success: Ordering,
+                                     failure: Ordering) -> T {
+    match (success, failure) {
+        (Acquire, Acquire) => intrinsics::atomic_cxchg_acq(dst, old, new),
+        (Release, Relaxed) => intrinsics::atomic_cxchg_rel(dst, old, new),
+        (AcqRel, Acquire)  => intrinsics::atomic_cxchg_acqrel(dst, old, new),
+        (Relaxed, Relaxed) => intrinsics::atomic_cxchg_relaxed(dst, old, new),
+        (SeqCst, SeqCst)   => intrinsics::atomic_cxchg(dst, old, new),
+        (Acquire, Relaxed) => intrinsics::atomic_cxchg_acq_failrelaxed(dst, old, new),
+        (AcqRel, Relaxed)  => intrinsics::atomic_cxchg_acqrel_failrelaxed(dst, old, new),
+        (SeqCst, Relaxed)  => intrinsics::atomic_cxchg_failrelaxed(dst, old, new),
+        (SeqCst, Acquire)  => intrinsics::atomic_cxchg_failacq(dst, old, new),
+        (_, Release) => panic!("there is no such thing as an acquire/release failure ordering"),
+        (_, AcqRel) => panic!("there is no such thing as a release failure ordering"),
+        _ => panic!("a failure ordering can't be stronger than a success ordering"),
+    }
+}
+
+#[inline]
+#[cfg(stage0)]
+unsafe fn atomic_compare_exchange<T>(dst: *mut T,
+                                     old: T,
+                                     new: T,
+                                     success: Ordering,
+                                     _: Ordering) -> T {
+    match success {
         Acquire => intrinsics::atomic_cxchg_acq(dst, old, new),
         Release => intrinsics::atomic_cxchg_rel(dst, old, new),
         AcqRel  => intrinsics::atomic_cxchg_acqrel(dst, old, new),
         Relaxed => intrinsics::atomic_cxchg_relaxed(dst, old, new),
         SeqCst  => intrinsics::atomic_cxchg(dst, old, new),
     }
+}
+
+#[inline]
+#[cfg(not(stage0))]
+unsafe fn atomic_compare_exchange_weak<T>(dst: *mut T,
+                                          old: T,
+                                          new: T,
+                                          success: Ordering,
+                                          failure: Ordering) -> (T, bool) {
+    match (success, failure) {
+        (Acquire, Acquire) => intrinsics::atomic_cxchgweak_acq(dst, old, new),
+        (Release, Relaxed) => intrinsics::atomic_cxchgweak_rel(dst, old, new),
+        (AcqRel, Acquire)  => intrinsics::atomic_cxchgweak_acqrel(dst, old, new),
+        (Relaxed, Relaxed) => intrinsics::atomic_cxchgweak_relaxed(dst, old, new),
+        (SeqCst, SeqCst)   => intrinsics::atomic_cxchgweak(dst, old, new),
+        (Acquire, Relaxed) => intrinsics::atomic_cxchgweak_acq_failrelaxed(dst, old, new),
+        (AcqRel, Relaxed)  => intrinsics::atomic_cxchgweak_acqrel_failrelaxed(dst, old, new),
+        (SeqCst, Relaxed)  => intrinsics::atomic_cxchgweak_failrelaxed(dst, old, new),
+        (SeqCst, Acquire)  => intrinsics::atomic_cxchgweak_failacq(dst, old, new),
+        (_, Release) => panic!("there is no such thing as an acquire/release failure ordering"),
+        (_, AcqRel) => panic!("there is no such thing as a release failure ordering"),
+        _ => panic!("a failure ordering can't be stronger than a success ordering"),
+    }
+}
+
+#[inline]
+#[cfg(stage0)]
+unsafe fn atomic_compare_exchange_weak<T>(dst: *mut T,
+                                          old: T,
+                                          new: T,
+                                          success: Ordering,
+                                          failure: Ordering) -> (T, bool)
+    where T: ::cmp::Eq + ::marker::Copy
+{
+    let result = atomic_compare_exchange(dst, old, new, success, failure);
+    (result, result == old)
 }
 
 #[inline]

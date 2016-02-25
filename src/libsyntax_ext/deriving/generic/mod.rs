@@ -300,7 +300,7 @@ pub enum StaticFields {
 
 /// A summary of the possible sets of fields.
 pub enum SubstructureFields<'a> {
-    Struct(Vec<FieldInfo<'a>>),
+    Struct(&'a ast::VariantData, Vec<FieldInfo<'a>>),
     /// Matching variants of the enum: variant index, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
@@ -981,7 +981,7 @@ impl<'a> MethodDef<'a> {
             type_ident,
             self_args,
             nonself_args,
-            &Struct(fields));
+            &Struct(struct_def, fields));
 
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
@@ -1460,8 +1460,9 @@ impl<'a> TraitDef<'a> {
                                           fields in generic `derive`"),
             // named fields
             (_, false) => Named(named_idents),
-            // tuple structs (includes empty structs)
-            (_, _)     => Unnamed(just_spans)
+            // empty structs
+            _ if struct_def.is_struct() => Named(named_idents),
+            _ => Unnamed(just_spans),
         }
     }
 
@@ -1486,7 +1487,11 @@ impl<'a> TraitDef<'a> {
                                                    P<Expr>,
                                                    &'a [ast::Attribute])>) {
         if struct_def.fields().is_empty() {
-            return (cx.pat_enum(self.span, struct_path, vec![]), vec![]);
+            if struct_def.is_struct() {
+                return (cx.pat_struct(self.span, struct_path, vec![]), vec![]);
+            } else {
+                return (cx.pat_enum(self.span, struct_path, vec![]), vec![]);
+            }
         }
 
         let mut paths = Vec::new();
@@ -1521,7 +1526,7 @@ impl<'a> TraitDef<'a> {
 
         // struct_type is definitely not Unknown, since struct_def.fields
         // must be nonempty to reach here
-        let pattern = if struct_type == Record {
+        let pattern = if struct_def.is_struct() {
             let field_pats = subpats.into_iter().zip(&ident_expr)
                                     .map(|(pat, &(_, id, _, _))| {
                 // id is guaranteed to be Some
@@ -1566,7 +1571,7 @@ pub fn cs_fold<F>(use_foldl: bool,
     F: FnMut(&mut ExtCtxt, Span, P<Expr>, P<Expr>, &[P<Expr>]) -> P<Expr>,
 {
     match *substructure.fields {
-        EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
+        EnumMatching(_, _, ref all_fields) | Struct(_, ref all_fields) => {
             if use_foldl {
                 all_fields.iter().fold(base, |old, field| {
                     f(cx,
@@ -1612,7 +1617,7 @@ pub fn cs_same_method<F>(f: F,
     F: FnOnce(&mut ExtCtxt, Span, Vec<P<Expr>>) -> P<Expr>,
 {
     match *substructure.fields {
-        EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
+        EnumMatching(_, _, ref all_fields) | Struct(_, ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
             let called = all_fields.iter().map(|field| {
                 cx.expr_method_call(field.span,

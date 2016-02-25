@@ -86,6 +86,7 @@ dependencies = [
  "log 0.0.0",
  "rbml 0.0.0",
  "rustc_back 0.0.0",
+ "rustc_bitflags 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_front 0.0.0",
  "rustc_llvm 0.0.0",
@@ -103,6 +104,10 @@ dependencies = [
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
+
+[[package]]
+name = "rustc_bitflags"
+version = "0.0.0"
 
 [[package]]
 name = "rustc_borrowck"
@@ -156,6 +161,7 @@ name = "rustc_front"
 version = "0.0.0"
 dependencies = [
  "log 0.0.0",
+ "rustc_bitflags 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
@@ -177,6 +183,7 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "gcc 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_bitflags 0.0.0",
 ]
 
 [[package]]
@@ -188,6 +195,7 @@ dependencies = [
  "rbml 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
+ "rustc_bitflags 0.0.0",
  "rustc_front 0.0.0",
  "rustc_llvm 0.0.0",
  "serialize 0.0.0",
@@ -231,6 +239,7 @@ version = "0.0.0"
 dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
+ "rustc_bitflags 0.0.0",
  "rustc_front 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_mir 0.0.0",
@@ -254,6 +263,7 @@ dependencies = [
  "arena 0.0.0",
  "log 0.0.0",
  "rustc 0.0.0",
+ "rustc_bitflags 0.0.0",
  "rustc_front 0.0.0",
  "syntax 0.0.0",
 ]
@@ -325,9 +335,8 @@ dependencies = [
 name = "syntax"
 version = "0.0.0"
 dependencies = [
- "arena 0.0.0",
- "fmt_macros 0.0.0",
  "log 0.0.0",
+ "rustc_bitflags 0.0.0",
  "serialize 0.0.0",
  "term 0.0.0",
 ]
@@ -343,9 +352,6 @@ dependencies = [
 [[package]]
 name = "term"
 version = "0.0.0"
-dependencies = [
- "log 0.0.0",
-]
 
 [[package]]
 name = "test"

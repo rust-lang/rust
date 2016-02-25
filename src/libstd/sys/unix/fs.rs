@@ -27,7 +27,10 @@ use sys_common::{AsInner, FromInner};
 
 #[cfg(target_os = "linux")]
 use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "android")]
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off64_t, ftruncate64, lseek64,
+           dirent as dirent64, open as open64};
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
 use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
            ftruncate as ftruncate64, lseek as lseek64, dirent as dirent64, open as open64};
 #[cfg(not(any(target_os = "linux", target_os = "solaris")))]
@@ -119,7 +122,31 @@ impl FileAttr {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "macos")))]
+#[cfg(target_os = "netbsd")]
+impl FileAttr {
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_mtime as libc::time_t,
+            tv_nsec: self.stat.st_mtimensec as libc::c_long,
+        }))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_atime as libc::time_t,
+            tv_nsec: self.stat.st_atimensec as libc::c_long,
+        }))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_birthtime as libc::time_t,
+            tv_nsec: self.stat.st_birthtimensec as libc::c_long,
+        }))
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "macos", target_os = "netbsd")))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {

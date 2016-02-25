@@ -16,9 +16,15 @@ use io::prelude::*;
 use io;
 use libc::{c_ulong, c_int, c_char, c_void};
 use mem;
-use super::{SymFromAddrFn, SymGetLineFromAddr64Fn};
 use sys::c;
 use sys_common::backtrace::{output, output_fileline};
+
+type SymFromAddrFn =
+    extern "system" fn(c::HANDLE, u64, *mut u64,
+                       *mut c::SYMBOL_INFO) -> c::BOOL;
+type SymGetLineFromAddr64Fn =
+    extern "system" fn(c::HANDLE, u64, *mut u32,
+                       *mut c::IMAGEHLP_LINE64) -> c::BOOL;
 
 pub fn print(w: &mut Write, i: isize, addr: u64, dbghelp: &DynamicLibrary,
              process: c::HANDLE) -> io::Result<()> {

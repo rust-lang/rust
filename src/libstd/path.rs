@@ -268,33 +268,33 @@ mod platform {
 pub enum Prefix<'a> {
     /// Prefix `\\?\`, together with the given component immediately following it.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Verbatim(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr),
+    Verbatim(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
     /// Prefix `\\?\UNC\`, with the "server" and "share" components following it.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimUNC(
-        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
-        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
     /// Prefix like `\\?\C:\`, for the given drive letter
     #[stable(feature = "rust1", since = "1.0.0")]
-    VerbatimDisk(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] u8),
+    VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 
     /// Prefix `\\.\`, together with the given component immediately following it.
     #[stable(feature = "rust1", since = "1.0.0")]
-    DeviceNS(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr),
+    DeviceNS(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
     /// Prefix `\\server\share`, with the given "server" and "share" components.
     #[stable(feature = "rust1", since = "1.0.0")]
     UNC(
-        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
-        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
     /// Prefix `C:` for the given disk drive.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Disk(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] u8),
+    Disk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 }
 
 impl<'a> Prefix<'a> {
@@ -537,7 +537,7 @@ pub enum Component<'a> {
     /// Does not occur on Unix.
     #[stable(feature = "rust1", since = "1.0.0")]
     Prefix(
-        #[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] PrefixComponent<'a>
+        #[stable(feature = "rust1", since = "1.0.0")] PrefixComponent<'a>
     ),
 
     /// The root directory component, appears after any prefix and before anything else
@@ -554,7 +554,7 @@ pub enum Component<'a> {
 
     /// A normal component, i.e. `a` and `b` in `a/b`
     #[stable(feature = "rust1", since = "1.0.0")]
-    Normal(#[cfg_attr(not(stage0), stable(feature = "rust1", since = "1.0.0"))] &'a OsStr),
+    Normal(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 }
 
 impl<'a> Component<'a> {
@@ -2004,6 +2004,13 @@ impl AsRef<Path> for OsStr {
     }
 }
 
+#[stable(feature = "cow_os_str_as_ref_path", since = "1.8.0")]
+impl<'a> AsRef<Path> for Cow<'a, OsStr> {
+    fn as_ref(&self) -> &Path {
+        Path::new(self)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for OsString {
     fn as_ref(&self) -> &Path {
@@ -2046,7 +2053,7 @@ impl<'a> IntoIterator for &'a Path {
     fn into_iter(self) -> Iter<'a> { self.iter() }
 }
 
-macro_rules! impl_eq {
+macro_rules! impl_cmp {
     ($lhs:ty, $rhs: ty) => {
         #[stable(feature = "partialeq_path", since = "1.6.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
@@ -2060,14 +2067,76 @@ macro_rules! impl_eq {
             fn eq(&self, other: &$lhs) -> bool { <Path as PartialEq>::eq(self, other) }
         }
 
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
+                <Path as PartialOrd>::partial_cmp(self, other)
+            }
+        }
+
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
+                <Path as PartialOrd>::partial_cmp(self, other)
+            }
+        }
     }
 }
 
-impl_eq!(PathBuf, Path);
-impl_eq!(PathBuf, &'a Path);
-impl_eq!(Cow<'a, Path>, Path);
-impl_eq!(Cow<'a, Path>, &'b Path);
-impl_eq!(Cow<'a, Path>, PathBuf);
+impl_cmp!(PathBuf, Path);
+impl_cmp!(PathBuf, &'a Path);
+impl_cmp!(Cow<'a, Path>, Path);
+impl_cmp!(Cow<'a, Path>, &'b Path);
+impl_cmp!(Cow<'a, Path>, PathBuf);
+
+macro_rules! impl_cmp_os_str {
+    ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool { <Path as PartialEq>::eq(self, other.as_ref()) }
+        }
+
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool { <Path as PartialEq>::eq(self.as_ref(), other) }
+        }
+
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialOrd<$rhs> for $lhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
+                <Path as PartialOrd>::partial_cmp(self, other.as_ref())
+            }
+        }
+
+        #[stable(feature = "cmp_path", since = "1.8.0")]
+        impl<'a, 'b> PartialOrd<$lhs> for $rhs {
+            #[inline]
+            fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
+                <Path as PartialOrd>::partial_cmp(self.as_ref(), other)
+            }
+        }
+    }
+}
+
+impl_cmp_os_str!(PathBuf, OsStr);
+impl_cmp_os_str!(PathBuf, &'a OsStr);
+impl_cmp_os_str!(PathBuf, Cow<'a, OsStr>);
+impl_cmp_os_str!(PathBuf, OsString);
+impl_cmp_os_str!(Path, OsStr);
+impl_cmp_os_str!(Path, &'a OsStr);
+impl_cmp_os_str!(Path, Cow<'a, OsStr>);
+impl_cmp_os_str!(Path, OsString);
+impl_cmp_os_str!(&'a Path, OsStr);
+impl_cmp_os_str!(&'a Path, Cow<'b, OsStr>);
+impl_cmp_os_str!(&'a Path, OsString);
+impl_cmp_os_str!(Cow<'a, Path>, OsStr);
+impl_cmp_os_str!(Cow<'a, Path>, &'b OsStr);
+impl_cmp_os_str!(Cow<'a, Path>, OsString);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {

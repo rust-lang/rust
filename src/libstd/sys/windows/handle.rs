@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cmp;
 use io::ErrorKind;
 use io;
 use mem;
@@ -15,6 +16,7 @@ use ops::Deref;
 use ptr;
 use sys::c;
 use sys::cvt;
+use u32;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///
@@ -64,10 +66,12 @@ impl RawHandle {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let mut read = 0;
+        // ReadFile takes a DWORD (u32) for the length so it only supports
+        // reading u32::MAX bytes at a time.
+        let len = cmp::min(buf.len(), u32::MAX as usize) as c::DWORD;
         let res = cvt(unsafe {
-            c::ReadFile(self.0, buf.as_ptr() as c::LPVOID,
-                           buf.len() as c::DWORD, &mut read,
-                           ptr::null_mut())
+            c::ReadFile(self.0, buf.as_mut_ptr() as c::LPVOID,
+                        len, &mut read, ptr::null_mut())
         });
 
         match res {
@@ -85,10 +89,12 @@ impl RawHandle {
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let mut amt = 0;
+        // WriteFile takes a DWORD (u32) for the length so it only supports
+        // writing u32::MAX bytes at a time.
+        let len = cmp::min(buf.len(), u32::MAX as usize) as c::DWORD;
         try!(cvt(unsafe {
             c::WriteFile(self.0, buf.as_ptr() as c::LPVOID,
-                            buf.len() as c::DWORD, &mut amt,
-                            ptr::null_mut())
+                         len, &mut amt, ptr::null_mut())
         }));
         Ok(amt as usize)
     }
