@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm::{Struct, Array, Attribute};
-use trans::abi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType, Indirect};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -20,41 +20,46 @@ use trans::type_::Type;
 // See the https://github.com/kripken/emscripten-fastcomp-clang repository.
 // The class `EmscriptenABIInfo` in `/lib/CodeGen/TargetInfo.cpp` contains the ABI definitions.
 
-fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    match ty.kind() {
+fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
+    match ret.ty.kind() {
         Struct => {
-            let field_types = ty.field_types();
+            let field_types = ret.ty.field_types();
             if field_types.len() == 1 {
-                ArgType::direct(ty, Some(field_types[0]), None, None)
+                ret.cast = Some(field_types[0]);
             } else {
-                ArgType::indirect(ty, Some(Attribute::StructRet))
+                ret.kind = Indirect;
+                ret.attr = Some(Attribute::StructRet);
             }
         },
         Array => {
-            ArgType::indirect(ty, Some(Attribute::StructRet))
+            ret.kind = Indirect;
+            ret.attr = Some(Attribute::StructRet);
         },
         _ => {
-            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-            ArgType::direct(ty, None, None, attr)
+            if ret.ty == Type::i1(ccx) {
+                ret.attr = Some(Attribute::ZExt);
+            }
         }
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if ty.is_aggregate() {
-        ArgType::indirect(ty, Some(Attribute::ByVal))
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
+    if arg.ty.is_aggregate() {
+        arg.kind = Indirect;
+        arg.attr = Some(Attribute::ByVal);
     } else {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        ArgType::direct(ty, None, None, attr)
+        if arg.ty == Type::i1(ccx) {
+            arg.attr = Some(Attribute::ZExt);
+        }
     }
 }
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     if fty.ret.ty != Type::void(ccx) {
-        fty.ret = classify_ret_ty(ccx, fty.ret.ty);
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
-        *arg = classify_arg_ty(ccx, arg.ty);
+        classify_arg_ty(ccx, arg);
     }
 }

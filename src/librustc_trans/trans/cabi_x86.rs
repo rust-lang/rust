@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::*;
-use trans::abi::{ArgType, FnType};
+use trans::abi::{FnType, Indirect, Ignore};
 use trans::type_::Type;
 use super::common::*;
 use super::machine::*;
@@ -23,8 +23,6 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
         // Some links:
         // http://www.angelcode.com/dev/callconv/callconv.html
         // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
-        let indirect = ArgType::indirect(fty.ret.ty, Some(Attribute::StructRet));
-
         let t = &ccx.sess().target.target;
         if t.options.is_like_osx || t.options.is_like_windows {
             match llsize_of_alloc(ccx, fty.ret.ty) {
@@ -32,10 +30,14 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 2 => fty.ret.cast = Some(Type::i16(ccx)),
                 4 => fty.ret.cast = Some(Type::i32(ccx)),
                 8 => fty.ret.cast = Some(Type::i64(ccx)),
-                _ => fty.ret = indirect
+                _ => {
+                    fty.ret.kind = Indirect;
+                    fty.ret.attr = Some(Attribute::StructRet);
+                }
             }
         } else {
-            fty.ret = indirect;
+            fty.ret.kind = Indirect;
+            fty.ret.attr = Some(Attribute::StructRet);
         }
     } else if fty.ret.ty == Type::i1(ccx) {
         fty.ret.attr = Some(Attribute::ZExt);
@@ -43,11 +45,12 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
 
     for arg in &mut fty.args {
         if arg.ty.kind() == Struct {
-            *arg = if llsize_of_alloc(ccx, arg.ty) == 0 {
-                ArgType::ignore(arg.ty)
+            if llsize_of_alloc(ccx, arg.ty) == 0 {
+                arg.kind = Ignore;
             } else {
-                ArgType::indirect(arg.ty, Some(Attribute::ByVal))
-            };
+                arg.kind = Indirect;
+                arg.attr = Some(Attribute::ByVal);
+            }
         } else if arg.ty == Type::i1(ccx) {
             arg.attr = Some(Attribute::ZExt);
         }
