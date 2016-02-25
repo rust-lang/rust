@@ -441,7 +441,7 @@ impl Error for JoinPathsError {
 /// use std::env;
 ///
 /// match env::home_dir() {
-///     Some(ref p) => println!("{}", p.display()),
+///     Some(path) => println!("{}", path.display()),
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
