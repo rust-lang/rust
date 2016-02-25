@@ -184,10 +184,13 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
+                let cstore = &self.session.cstore;
                 span_err!(self.session, span, E0152,
-                    "duplicate entry for `{}`", LanguageItems::item_name(item_index));
+                          "duplicate entry for `{}`, first definition found in `{}`",
+                          LanguageItems::item_name(item_index),
+                          cstore.crate_name(item_def_id.krate));
             }
-            Some(_) | None => {
+            _ => {
                 // OK.
             }
         }

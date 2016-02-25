@@ -743,6 +743,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                      source_did: Option<DefId>,
                      msg: &str)
                      -> CheckResult {
+        use rustc_front::hir::Item_::ItemExternCrate;
         debug!("ensure_public(span={:?}, to_check={:?}, source_did={:?}, msg={:?})",
                span, to_check, source_did, msg);
         let def_privacy = self.def_privacy(to_check);
@@ -763,6 +764,21 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // be local.)
         let def_id = source_did.unwrap_or(to_check);
         let node_id = self.tcx.map.as_local_node_id(def_id);
+
+        // Warn when using a inaccessible extern crate.
+        if let Some(node_id) = self.tcx.map.as_local_node_id(to_check) {
+            match self.tcx.map.get(node_id) {
+                ast_map::Node::NodeItem(&hir::Item { node: ItemExternCrate(_), name, .. }) => {
+                    self.tcx.sess.add_lint(lint::builtin::INACCESSIBLE_EXTERN_CRATE,
+                                           node_id,
+                                           span,
+                                           format!("extern crate `{}` is private", name));
+                    return None;
+                }
+                _ => {}
+            }
+        }
+
         let (err_span, err_msg) = if Some(id) == node_id {
             return Some((span, format!("{} is private", msg), None));
         } else {

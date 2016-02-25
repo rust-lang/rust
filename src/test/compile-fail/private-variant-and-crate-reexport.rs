@@ -11,6 +11,10 @@
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
+extern crate core;
+pub use core as reexported_core; //~ WARN extern crate `core` is private, and cannot be reexported
+//~^ WARNING hard error
+
 mod m1 {
     pub use ::E::V; //~ WARN variant `V` is private, and cannot be reexported
     //~^ WARNING hard error

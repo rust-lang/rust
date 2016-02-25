@@ -46,7 +46,7 @@ use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
 use std::iter::repeat;
 use std::mem;
-use std::path::{PathBuf, Path};
+use std::path::{PathBuf, Path, Component};
 use std::str;
 use std::sync::Arc;
 
@@ -243,6 +243,7 @@ pub struct Cache {
 
     stack: Vec<String>,
     parent_stack: Vec<DefId>,
+    parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
     privmod: bool,
     remove_priv: bool,
@@ -487,6 +488,7 @@ pub fn run(mut krate: clean::Crate,
         stack: Vec::new(),
         parent_stack: Vec::new(),
         search_index: Vec::new(),
+        parent_is_trait_impl: false,
         extern_locations: HashMap::new(),
         primitive_locations: HashMap::new(),
         remove_priv: cx.passes.contains("strip-private"),
@@ -810,16 +812,17 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
     // make it relative, if possible
     let p = p.strip_prefix(src_root).unwrap_or(p);
 
-    let mut iter = p.iter().map(|x| x.to_str().unwrap()).peekable();
+    let mut iter = p.components().peekable();
+
     while let Some(c) = iter.next() {
         if !keep_filename && iter.peek().is_none() {
             break;
         }
 
-        if ".." == c {
-            f("up");
-        } else {
-            f(c)
+        match c {
+            Component::ParentDir => f("up"),
+            Component::Normal(c) => f(c.to_str().unwrap()),
+            _ => continue,
         }
     }
 }
@@ -871,7 +874,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
             self.cx
-                .include_sources = match self.emit_source(&item.source .filename) {
+                .include_sources = match self.emit_source(&item.source.filename) {
                 Ok(()) => true,
                 Err(e) => {
                     println!("warning: source code was requested to be rendered, \
@@ -995,6 +998,11 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         if let Some(ref s) = item.name {
             let (parent, is_method) = match item.inner {
+                clean::AssociatedConstItem(..) |
+                clean::TypedefItem(_, true) if self.parent_is_trait_impl => {
+                    // skip associated items in trait impls
+                    ((None, None), false)
+                }
                 clean::AssociatedTypeItem(..) |
                 clean::AssociatedConstItem(..) |
                 clean::TyMethodItem(..) |
@@ -1025,10 +1033,6 @@ impl DocFolder for Cache {
                         };
                         ((Some(*last), path), true)
                     }
-                }
-                clean::TypedefItem(_, true) => {
-                    // skip associated types in impls
-                    ((None, None), false)
                 }
                 _ => ((None, Some(&*self.stack)), false)
             };
@@ -1115,12 +1119,15 @@ impl DocFolder for Cache {
         }
 
         // Maintain the parent stack
+        let orig_parent_is_trait_impl = self.parent_is_trait_impl;
         let parent_pushed = match item.inner {
             clean::TraitItem(..) | clean::EnumItem(..) | clean::StructItem(..) => {
                 self.parent_stack.push(item.def_id);
+                self.parent_is_trait_impl = false;
                 true
             }
             clean::ImplItem(ref i) => {
+                self.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
                     clean::ResolvedPath{ did, .. } => {
                         self.parent_stack.push(did);
@@ -1201,6 +1208,7 @@ impl DocFolder for Cache {
         if pushed { self.stack.pop().unwrap(); }
         if parent_pushed { self.parent_stack.pop().unwrap(); }
         self.privmod = orig_privmod;
+        self.parent_is_trait_impl = orig_parent_is_trait_impl;
         return ret;
     }
 }
@@ -1489,9 +1497,11 @@ impl<'a> Item<'a> {
                           true, |component| {
                 path.push(component.to_string());
             });
+
             // If the span points into an external macro the
             // source-file will be bogus, i.e `<foo macros>`
-            if Path::new(&self.item.source.filename).is_file() {
+            let filename = &self.item.source.filename;
+            if !(filename.starts_with("<") && filename.ends_with("macros>")) {
                 Some(format!("{root}src/{krate}/{path}.html#{href}",
                              root = self.cx.root_path,
                              krate = self.cx.layout.krate,
