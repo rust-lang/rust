@@ -437,21 +437,7 @@ impl Build {
     }
 
     fn rustc_flags(&self, target: &str) -> Vec<String> {
-        let mut base = match target {
-            "arm-unknown-linux-gnueabihf" => {
-                vec!["-Ctarget-feature=+v6,+vfp2".to_string()]
-            }
-            "mips-unknown-linux-gnu" => {
-                vec!["-Ctarget-cpu=mips32r2".to_string(),
-                     "-Ctarget-feature=+mips32r2".to_string(),
-                     "-Csoft-float".to_string()]
-            }
-            "mipsel-unknown-linux-gnu" => {
-                vec!["-Ctarget-cpu=mips32".to_string(),
-                     "-Ctarget-feature=+mips32".to_string()]
-            }
-            _ => Vec::new(),
-        };
+        let mut base = Vec::new();
         if target != self.config.build && !target.contains("msvc") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
