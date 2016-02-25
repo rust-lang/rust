@@ -31,17 +31,25 @@ use getopts::{Matches, Options};
 /// Rustfmt operations.
 enum Operation {
     /// Format files and their child modules.
-    Format(Vec<PathBuf>, Option<PathBuf>),
+    Format {
+        files: Vec<PathBuf>,
+        config_path: Option<PathBuf>,
+    },
     /// Print the help message.
     Help,
     // Print version information
     Version,
     /// Print detailed configuration help.
     ConfigHelp,
-    /// Invalid program input, including reason.
-    InvalidInput(String),
+    /// Invalid program input.
+    InvalidInput {
+        reason: String,
+    },
     /// No file specified, read from stdin
-    Stdin(String, Option<PathBuf>),
+    Stdin {
+        input: String,
+        config_path: Option<PathBuf>,
+    },
 }
 
 /// Try to find a project file in the given directory and its parents. Returns the path of a the
@@ -156,7 +164,7 @@ fn execute() -> i32 {
     let operation = determine_operation(&matches);
 
     match operation {
-        Operation::InvalidInput(reason) => {
+        Operation::InvalidInput { reason } => {
             print_usage(&opts, &reason);
             1
         }
@@ -172,7 +180,7 @@ fn execute() -> i32 {
             Config::print_docs();
             0
         }
-        Operation::Stdin(input, config_path) => {
+        Operation::Stdin { input, config_path } => {
             // try to read config from local directory
             let (mut config, _) = match_cli_path_or_file(config_path, &env::current_dir().unwrap())
                                       .expect("Error resolving config");
@@ -183,7 +191,7 @@ fn execute() -> i32 {
             run_from_stdin(input, &config);
             0
         }
-        Operation::Format(files, config_path) => {
+        Operation::Format { files, config_path } => {
             let mut config = Config::default();
             let mut path = None;
             // Load the config path file if provided
@@ -281,13 +289,19 @@ fn determine_operation(matches: &Matches) -> Operation {
         let mut buffer = String::new();
         match io::stdin().read_to_string(&mut buffer) {
             Ok(..) => (),
-            Err(e) => return Operation::InvalidInput(e.to_string()),
+            Err(e) => return Operation::InvalidInput { reason: e.to_string() },
         }
 
-        return Operation::Stdin(buffer, config_path);
+        return Operation::Stdin {
+            input: buffer,
+            config_path: config_path,
+        };
     }
 
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
-    Operation::Format(files, config_path)
+    Operation::Format {
+        files: files,
+        config_path: config_path,
+    }
 }
