@@ -27,7 +27,7 @@ use middle::subst;
 use middle::subst::{Substs};
 use middle::traits;
 use rustc::front::map as hir_map;
-use trans::abi::Abi;
+use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::attributes;
 use trans::base;
@@ -700,25 +700,31 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         };
 
         // Invoke the actual rust fn and update bcx/llresult.
-        let (llret, b) = base::invoke(bcx,
-                                      datum.val,
-                                      &llargs[..],
-                                      datum.ty,
-                                      debug_loc);
+        let (llret, b) = base::invoke(bcx, datum.val, &llargs, debug_loc);
+
+        let fn_ty = match datum.ty.sty {
+            ty::TyFnDef(_, _, f) | ty::TyFnPtr(f) => {
+                let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
+                let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
+                FnType::new(bcx.ccx(), f.abi, &sig, &[])
+            }
+            _ => unreachable!("expected fn type")
+        };
+
+        if !bcx.unreachable.get() {
+            fn_ty.apply_attrs_callsite(llret);
+        }
+
         bcx = b;
         llresult = llret;
 
         // If the Rust convention for this type is return via
         // the return value, copy it into llretslot.
-        match (opt_llretslot, ret_ty) {
-            (Some(llretslot), ty::FnConverging(ret_ty)) => {
-                if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                    !common::type_is_zero_size(bcx.ccx(), ret_ty)
-                {
-                    store_ty(bcx, llret, llretslot, ret_ty)
-                }
+        if let Some(llretslot) = opt_llretslot {
+            let llty = fn_ty.ret.original_ty;
+            if !fn_ty.ret.is_indirect() && llty != Type::void(bcx.ccx()) {
+                store_ty(bcx, llret, llretslot, ret_ty.unwrap())
             }
-            (_, _) => {}
         }
     } else {
         // Lang items are the only case where dest is None, and

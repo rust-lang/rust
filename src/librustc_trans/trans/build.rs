@@ -12,7 +12,7 @@
 #![allow(non_snake_case)]
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect, AttrBuilder};
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate};
 use llvm::{ValueRef, BasicBlockRef};
 use trans::common::*;
@@ -139,7 +139,6 @@ pub fn Invoke(cx: Block,
               args: &[ValueRef],
               then: BasicBlockRef,
               catch: BasicBlockRef,
-              attributes: Option<AttrBuilder>,
               debug_loc: DebugLoc)
               -> ValueRef {
     if cx.unreachable.get() {
@@ -154,7 +153,7 @@ pub fn Invoke(cx: Block,
            }).collect::<Vec<String>>().join(", "));
     debug_loc.apply(cx.fcx);
     let bundle = cx.lpad().and_then(|b| b.bundle());
-    B(cx).invoke(fn_, args, then, catch, bundle, attributes)
+    B(cx).invoke(fn_, args, then, catch, bundle)
 }
 
 pub fn Unreachable(cx: Block) {
@@ -911,7 +910,6 @@ pub fn InlineAsmCall(cx: Block, asm: *const c_char, cons: *const c_char,
 pub fn Call(cx: Block,
             fn_: ValueRef,
             args: &[ValueRef],
-            attributes: Option<AttrBuilder>,
             debug_loc: DebugLoc)
             -> ValueRef {
     if cx.unreachable.get() {
@@ -919,14 +917,13 @@ pub fn Call(cx: Block,
     }
     debug_loc.apply(cx.fcx);
     let bundle = cx.lpad.get().and_then(|b| b.bundle());
-    B(cx).call(fn_, args, bundle, attributes)
+    B(cx).call(fn_, args, bundle)
 }
 
 pub fn CallWithConv(cx: Block,
                     fn_: ValueRef,
                     args: &[ValueRef],
                     conv: CallConv,
-                    attributes: Option<AttrBuilder>,
                     debug_loc: DebugLoc)
                     -> ValueRef {
     if cx.unreachable.get() {
@@ -934,7 +931,7 @@ pub fn CallWithConv(cx: Block,
     }
     debug_loc.apply(cx.fcx);
     let bundle = cx.lpad.get().and_then(|b| b.bundle());
-    B(cx).call_with_conv(fn_, args, conv, bundle, attributes)
+    B(cx).call_with_conv(fn_, args, conv, bundle)
 }
 
 pub fn AtomicFence(cx: Block, order: AtomicOrdering, scope: SynchronizationScope) {

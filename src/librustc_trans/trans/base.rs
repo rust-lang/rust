@@ -836,15 +836,12 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           llfn: ValueRef,
                           llargs: &[ValueRef],
-                          fn_ty: Ty<'tcx>,
                           debug_loc: DebugLoc)
                           -> (ValueRef, Block<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8(bcx.ccx())), bcx);
     }
-
-    let attributes = attributes::from_fn_type(bcx.ccx(), fn_ty);
 
     match bcx.opt_node_id {
         None => {
@@ -868,7 +865,6 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               &llargs[..],
                               normal_bcx.llbb,
                               landing_pad,
-                              Some(attributes),
                               debug_loc);
         return (llresult, normal_bcx);
     } else {
@@ -877,7 +873,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("arg: {:?}", Value(llarg));
         }
 
-        let llresult = Call(bcx, llfn, &llargs[..], Some(attributes), debug_loc);
+        let llresult = Call(bcx, llfn, &llargs[..], debug_loc);
         return (llresult, bcx);
     }
 }
@@ -1105,7 +1101,6 @@ pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
         Call(cx,
              lifetime_start,
              &[C_u64(ccx, size), ptr],
-             None,
              DebugLoc::None);
     })
 }
@@ -1116,7 +1111,6 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
         Call(cx,
              lifetime_end,
              &[C_u64(ccx, size), ptr],
-             None,
              DebugLoc::None);
     })
 }
@@ -1147,7 +1141,6 @@ pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, a
     Call(cx,
          memcpy,
          &[dst_ptr, src_ptr, size, align, volatile],
-         None,
          DebugLoc::None);
 }
 
@@ -1217,7 +1210,7 @@ pub fn call_memset<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
     let volatile = C_bool(ccx, volatile);
-    b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None, None);
+    b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
 }
 
 
@@ -1292,7 +1285,7 @@ pub fn alloca_dropped<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ty: Ty<'tcx>, name: &st
     // Block, which we do not have for `alloca_insert_pt`).
     core_lifetime_emit(cx.ccx(), p, Lifetime::Start, |ccx, size, lifetime_start| {
         let ptr = b.pointercast(p, Type::i8p(ccx));
-        b.call(lifetime_start, &[C_u64(ccx, size), ptr], None, None);
+        b.call(lifetime_start, &[C_u64(ccx, size), ptr], None);
     });
     memfill(&b, p, ty, adt::DTOR_DONE);
     p

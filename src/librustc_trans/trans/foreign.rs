@@ -253,8 +253,10 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         llfn,
                                         &llargs_foreign[..],
                                         fn_type.cconv,
-                                        Some(fn_type.llvm_attrs()),
                                         call_debug_loc);
+    if !bcx.unreachable.get() {
+        fn_type.apply_attrs_callsite(llforeign_retval);
+    }
 
     // If the function we just called does not use an outpointer,
     // store the result into the rust outpointer. Cast the outpointer
@@ -347,20 +349,31 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let fnty = ccx.tcx().node_id_to_type(id);
     let mty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fnty);
-    let (fn_abi, fn_sig) = match mty.sty {
-        ty::TyFnDef(_, _, ref fn_ty) => (fn_ty.abi, &fn_ty.sig),
+    let f = match mty.sty {
+        ty::TyFnDef(_, _, f) => f,
         _ => ccx.sess().bug("trans_rust_fn_with_foreign_abi called on non-function type")
     };
-    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
+    assert!(f.abi != Abi::Rust);
+    assert!(f.abi != Abi::RustIntrinsic);
+    assert!(f.abi != Abi::PlatformIntrinsic);
+
+    let fn_sig = ccx.tcx().erase_late_bound_regions(&f.sig);
     let fn_sig = infer::normalize_associated_type(ccx.tcx(), &fn_sig);
-    let fn_ty = FnType::new(ccx, fn_abi, &fn_sig, &[]);
+    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::BareFnTy {
+        unsafety: f.unsafety,
+        abi: Abi::Rust,
+        sig: ty::Binder(fn_sig.clone())
+    });
+    let fty = FnType::new(ccx, f.abi, &fn_sig, &[]);
+    let rust_fty = FnType::new(ccx, Abi::Rust, &fn_sig, &[]);
 
     unsafe { // unsafe because we call LLVM operations
         // Build up the Rust function (`foo0` above).
-        let llrustfn = build_rust_fn(ccx, decl, body, param_substs, attrs, id, hash);
+        let llrustfn = build_rust_fn(ccx, decl, body, param_substs,
+                                     attrs, id, rust_fn_ty, hash);
 
         // Build up the foreign wrapper (`foo` above).
-        return build_wrap_fn(ccx, llrustfn, llwrapfn, &fn_sig, &fn_ty, mty);
+        return build_wrap_fn(ccx, llrustfn, llwrapfn, &fn_sig, &fty, &rust_fty);
     }
 
     fn build_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -369,13 +382,12 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                param_substs: &'tcx Substs<'tcx>,
                                attrs: &[ast::Attribute],
                                id: ast::NodeId,
+                               rust_fn_ty: Ty<'tcx>,
                                hash: Option<&str>)
                                -> ValueRef
     {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
         let tcx = ccx.tcx();
-        let t = tcx.node_id_to_type(id);
-        let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
         let path =
             tcx.map.def_path(tcx.map.local_def_id(id))
@@ -384,25 +396,6 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                    .chain(once(special_idents::clownshoe_abi.name.as_str()));
         let ps = link::mangle(path, hash);
 
-        // Compute the type that the function would have if it were just a
-        // normal Rust function. This will be the type of the wrappee fn.
-        let rust_fn_ty = match t.sty {
-            ty::TyFnDef(_, _, ref f) => {
-                assert!(f.abi != Abi::Rust);
-                assert!(f.abi != Abi::RustIntrinsic);
-                assert!(f.abi != Abi::PlatformIntrinsic);
-                tcx.mk_fn_ptr(ty::BareFnTy {
-                    unsafety: f.unsafety,
-                    abi: Abi::Rust,
-                    sig: f.sig.clone()
-                })
-            }
-            _ => {
-                unreachable!("build_rust_fn: extern fn {} has ty {:?}, \
-                              expected a fn item type",
-                              tcx.map.path_to_string(id), t);
-            }
-        };
 
         debug!("build_rust_fn: path={} id={} ty={:?}",
                ccx.tcx().map.path_to_string(id),
@@ -419,14 +412,13 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       llwrapfn: ValueRef,
                                       fn_sig: &ty::FnSig<'tcx>,
                                       fn_ty: &FnType,
-                                      t: Ty<'tcx>) {
+                                      rust_fty: &FnType) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
 
-        debug!("build_wrap_fn(llrustfn={:?}, llwrapfn={:?}, t={:?})",
+        debug!("build_wrap_fn(llrustfn={:?}, llwrapfn={:?})",
                Value(llrustfn),
-               Value(llwrapfn),
-               t);
+               Value(llwrapfn));
 
         // Avoid all the Rust generation stuff and just generate raw
         // LLVM here.
@@ -615,11 +607,9 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         // Perform the call itself
-        debug!("calling llrustfn = {:?}, t = {:?}",
-               Value(llrustfn), t);
-        let attributes = attributes::from_fn_type(ccx, t);
-        let llrust_ret_val = builder.call(llrustfn, &llrust_args,
-                                          None, Some(attributes));
+        debug!("calling llrustfn = {:?}", Value(llrustfn));
+        let llrust_ret_val = builder.call(llrustfn, &llrust_args, None);
+        rust_fty.apply_attrs_callsite(llrust_ret_val);
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = fn_ty.ret.cast.unwrap_or(fn_ty.ret.original_ty);

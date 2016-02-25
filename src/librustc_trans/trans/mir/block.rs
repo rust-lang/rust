@@ -9,11 +9,10 @@
 // except according to those terms.
 
 use llvm::{BasicBlockRef, ValueRef, OperandBundleDef};
-use rustc::middle::ty;
+use rustc::middle::{infer, ty};
 use rustc::mir::repr as mir;
-use trans::abi::Abi;
+use trans::abi::{Abi, FnType};
 use trans::adt;
-use trans::attributes;
 use trans::base;
 use trans::build;
 use trans::callee::{Callee, Fn, Virtual};
@@ -141,11 +140,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                &[llvalue],
                                self.llblock(target),
                                unwind.llbb(),
-                               cleanup_bundle.as_ref(),
-                               None);
+                               cleanup_bundle.as_ref());
                     self.bcx(target).at_start(|bcx| drop::drop_fill(bcx, lvalue.llval, ty));
                 } else {
-                    bcx.call(drop_fn, &[llvalue], cleanup_bundle.as_ref(), None);
+                    bcx.call(drop_fn, &[llvalue], cleanup_bundle.as_ref());
                     drop::drop_fill(&bcx, lvalue.llval, ty);
                     funclet_br(bcx, self.llblock(target));
                 }
@@ -244,7 +242,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                     datum
                 };
-                let attrs = attributes::from_fn_type(bcx.ccx(), datum.ty);
+
+                let fn_ty = match datum.ty.sty {
+                    ty::TyFnDef(_, _, f) | ty::TyFnPtr(f) => {
+                        let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
+                        let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
+                        FnType::new(bcx.ccx(), f.abi, &sig, &[])
+                    }
+                    _ => unreachable!("expected fn type")
+                };
 
                 // Many different ways to call a function handled here
                 match (is_foreign, cleanup, destination) {
@@ -253,12 +259,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
-                        bcx.invoke(datum.val,
-                                   &llargs[..],
-                                   unreachable_blk.llbb,
-                                   landingpad.llbb(),
-                                   cleanup_bundle.as_ref(),
-                                   Some(attrs));
+                        let cs = bcx.invoke(datum.val,
+                                            &llargs[..],
+                                            unreachable_blk.llbb,
+                                            landingpad.llbb(),
+                                            cleanup_bundle.as_ref());
+                        fn_ty.apply_attrs_callsite(cs);
                         landingpad.at_start(|bcx| for op in args {
                             self.set_operand_dropped(bcx, op);
                         });
@@ -270,8 +276,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                    &llargs[..],
                                                    self.llblock(success),
                                                    landingpad.llbb(),
-                                                   cleanup_bundle.as_ref(),
-                                                   Some(attrs));
+                                                   cleanup_bundle.as_ref());
+                        fn_ty.apply_attrs_callsite(invokeret);
                         if must_copy_dest {
                             let (ret_dest, ret_ty) = ret_dest_ty
                                 .expect("return destination and type not set");
@@ -289,18 +295,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         });
                     },
                     (false, _, &None) => {
-                        bcx.call(datum.val,
-                                 &llargs[..],
-                                 cleanup_bundle.as_ref(),
-                                 Some(attrs));
+                        let cs = bcx.call(datum.val,
+                                          &llargs[..],
+                                          cleanup_bundle.as_ref());
+                        fn_ty.apply_attrs_callsite(cs);
                         // no need to drop args, because the call never returns
                         bcx.unreachable();
                     }
                     (false, _, &Some((_, target))) => {
                         let llret = bcx.call(datum.val,
                                              &llargs[..],
-                                             cleanup_bundle.as_ref(),
-                                             Some(attrs));
+                                             cleanup_bundle.as_ref());
+                        fn_ty.apply_attrs_callsite(llret);
                         if must_copy_dest {
                             let (ret_dest, ret_ty) = ret_dest_ty
                                 .expect("return destination and type not set");

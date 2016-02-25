@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm;
+use llvm::{self, ValueRef};
 use trans::common::{return_type_is_void, type_is_fat_ptr};
 use trans::context::CrateContext;
 use trans::cabi_x86;
@@ -24,6 +24,7 @@ use trans::machine::{llsize_of_alloc, llsize_of_real};
 use trans::type_::Type;
 use trans::type_of;
 
+use rustc_front::hir;
 use middle::ty::{self, Ty};
 
 pub use syntax::abi::Abi;
@@ -204,22 +205,102 @@ impl FnType {
             }
         };
 
-        let ret = match sig.output {
+        let mut ret = match sig.output {
             ty::FnConverging(ret_ty) if !return_type_is_void(ccx, ret_ty) => {
                 arg_of(ret_ty)
             }
             _ => ArgType::new(Type::void(ccx), Type::void(ccx))
         };
 
+        if let ty::FnConverging(ret_ty) = sig.output {
+            if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
+                // The `noalias` attribute on the return value is useful to a
+                // function ptr caller.
+                if let ty::TyBox(_) = ret_ty.sty {
+                    // `Box` pointer return values never alias because ownership
+                    // is transferred
+                    ret.attrs.set(llvm::Attribute::NoAlias);
+                }
+
+                // We can also mark the return value as `dereferenceable` in certain cases
+                match ret_ty.sty {
+                    // These are not really pointers but pairs, (pointer, len)
+                    ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+                    ty::TyBox(ty) => {
+                        let llty = type_of::sizing_type_of(ccx, ty);
+                        let llsz = llsize_of_real(ccx, llty);
+                        ret.attrs.set_dereferenceable(llsz);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
         let mut args = Vec::with_capacity(inputs.len() + extra_args.len());
+
+        // Handle safe Rust thin and fat pointers.
+        let rust_ptr_attrs = |ty: Ty<'tcx>, arg: &mut ArgType| match ty.sty {
+            // `Box` pointer parameters never alias because ownership is transferred
+            ty::TyBox(inner) => {
+                arg.attrs.set(llvm::Attribute::NoAlias);
+                Some(inner)
+            }
+
+            ty::TyRef(b, mt) => {
+                use middle::ty::{BrAnon, ReLateBound};
+
+                // `&mut` pointer parameters never alias other parameters, or mutable global data
+                //
+                // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
+                // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
+                // on memory dependencies rather than pointer equality
+                let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
+
+                if mt.mutbl != hir::MutMutable && !interior_unsafe {
+                    arg.attrs.set(llvm::Attribute::NoAlias);
+                }
+
+                if mt.mutbl == hir::MutImmutable && !interior_unsafe {
+                    arg.attrs.set(llvm::Attribute::ReadOnly);
+                }
+
+                // When a reference in an argument has no named lifetime, it's
+                // impossible for that reference to escape this function
+                // (returned or stored beyond the call by a closure).
+                if let ReLateBound(_, BrAnon(_)) = *b {
+                    arg.attrs.set(llvm::Attribute::NoCapture);
+                }
+
+                Some(mt.ty)
+            }
+            _ => None
+        };
+
         for ty in inputs.iter().chain(extra_args.iter()) {
-            let arg = arg_of(ty);
+            let mut arg = arg_of(ty);
+
             if type_is_fat_ptr(ccx.tcx(), ty) {
-                let original = arg.original_ty.field_types();
-                let sizing = arg.ty.field_types();
-                args.extend(original.into_iter().zip(sizing)
-                                    .map(|(o, s)| ArgType::new(o, s)));
+                let original_tys = arg.original_ty.field_types();
+                let sizing_tys = arg.ty.field_types();
+                assert_eq!((original_tys.len(), sizing_tys.len()), (2, 2));
+
+                let mut data = ArgType::new(original_tys[0], sizing_tys[0]);
+                let mut info = ArgType::new(original_tys[1], sizing_tys[1]);
+
+                if let Some(inner) = rust_ptr_attrs(ty, &mut data) {
+                    data.attrs.set(llvm::Attribute::NonNull);
+                    if ccx.tcx().struct_tail(inner).is_trait() {
+                        info.attrs.set(llvm::Attribute::NonNull);
+                    }
+                }
+                args.push(data);
+                args.push(info);
             } else {
+                if let Some(inner) = rust_ptr_attrs(ty, &mut arg) {
+                    let llty = type_of::sizing_type_of(ccx, inner);
+                    let llsz = llsize_of_real(ccx, llty);
+                    arg.attrs.set_dereferenceable(llsz);
+                }
                 args.push(arg);
             }
         }
@@ -327,18 +408,29 @@ impl FnType {
         }
     }
 
-    pub fn llvm_attrs(&self) -> llvm::AttrBuilder {
-        let mut attrs = llvm::AttrBuilder::new();
+    pub fn apply_attrs_llfn(&self, llfn: ValueRef) {
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
-        *attrs.arg(i) = self.ret.attrs;
+        self.ret.attrs.apply_llfn(i, llfn);
         i += 1;
         for arg in &self.args {
             if !arg.is_ignore() {
                 if arg.pad.is_some() { i += 1; }
-                *attrs.arg(i) = arg.attrs;
+                arg.attrs.apply_llfn(i, llfn);
                 i += 1;
             }
         }
-        attrs
+    }
+
+    pub fn apply_attrs_callsite(&self, callsite: ValueRef) {
+        let mut i = if self.ret.is_indirect() { 1 } else { 0 };
+        self.ret.attrs.apply_callsite(i, callsite);
+        i += 1;
+        for arg in &self.args {
+            if !arg.is_ignore() {
+                if arg.pad.is_some() { i += 1; }
+                arg.attrs.apply_callsite(i, callsite);
+                i += 1;
+            }
+        }
     }
 }

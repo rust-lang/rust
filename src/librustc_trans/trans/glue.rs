@@ -170,13 +170,13 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let may_need_drop =
                     ICmp(bcx, llvm::IntNE, hint_val, moved_val, DebugLoc::None);
                 bcx = with_cond(bcx, may_need_drop, |cx| {
-                    Call(cx, glue, &[ptr], None, debug_loc);
+                    Call(cx, glue, &[ptr], debug_loc);
                     cx
                 })
             }
             None => {
                 // No drop-hint ==> call standard drop glue
-                Call(bcx, glue, &[ptr], None, debug_loc);
+                Call(bcx, glue, &[ptr], debug_loc);
             }
         }
     }
@@ -313,7 +313,7 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             And(bcx, not_init, not_done, DebugLoc::None);
         with_cond(bcx, drop_flag_neither_initialized_nor_cleared, |cx| {
             let llfn = cx.ccx().get_intrinsic(&("llvm.debugtrap"));
-            Call(cx, llfn, &[], None, DebugLoc::None);
+            Call(cx, llfn, &[], DebugLoc::None);
             cx
         })
     };
@@ -583,7 +583,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             Call(bcx,
                  dtor,
                  &[PointerCast(bcx, Load(bcx, data_ptr), Type::i8p(bcx.ccx()))],
-                 None,
                  DebugLoc::None);
             bcx
         }

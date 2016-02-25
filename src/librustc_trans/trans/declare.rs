@@ -109,14 +109,11 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturn);
     }
 
-    let attrs = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-        attributes::from_fn_type(ccx, fn_type)
-    } else {
+    if f.abi != Abi::Rust && f.abi != Abi::RustCall {
         attributes::unwind(llfn, false);
-        fty.llvm_attrs()
-    };
+    }
 
-    attrs.apply_llfn(llfn);
+    fty.apply_attrs_llfn(llfn);
 
     llfn
 }
