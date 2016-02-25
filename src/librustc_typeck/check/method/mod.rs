@@ -337,9 +337,16 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
-    Ok(pick.item.def())
-}
+    let def = pick.item.def();
 
+    if let probe::InherentImplPick = pick.kind {
+        if pick.item.vis() != hir::Public && !fcx.private_item_is_visible(def.def_id()) {
+            let msg = format!("{} `{}` is private", def.kind_name(), &method_name.as_str());
+            fcx.tcx().sess.span_err(span, &msg);
+        }
+    }
+    Ok(def)
+}
 
 /// Find item with name `item_name` defined in `trait_def_id`
 /// and return it, or `None`, if no such item.
