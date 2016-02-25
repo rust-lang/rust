@@ -476,7 +476,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Predicate::Equate(ref p) => {
                 // does this code ever run?
                 match self.infcx.equality_predicate(obligation.cause.span, p) {
-                    Ok(InferOk { .. }) => EvaluatedToOk,
+                    Ok(InferOk { obligations, .. }) =>
+                        self.evaluate_predicates_recursively(previous_stack, obligations.iter()),
                     Err(_) => EvaluatedToErr
                 }
             }
