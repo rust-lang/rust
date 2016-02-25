@@ -21,7 +21,7 @@ use sys_common::net::{getsockopt, setsockopt};
 use time::Duration;
 
 pub use sys::{cvt, cvt_r};
-pub use libc as netc;
+pub extern crate libc as netc;
 
 pub type wrlen_t = size_t;
 

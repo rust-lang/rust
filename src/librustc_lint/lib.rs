@@ -159,6 +159,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "the explanation for E0446 (`--explain E0446`)",
         },
         FutureIncompatibleInfo {
+            id: LintId::of(INACCESSIBLE_EXTERN_CRATE),
+            reference: "PR 31362 <https://github.com/rust-lang/rust/pull/31362>",
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(INVALID_TYPE_PARAM_DEFAULT),
             reference: "PR 30742 <https://github.com/rust-lang/rust/pull/30724>",
         },
