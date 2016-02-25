@@ -226,7 +226,7 @@ mod platform {
                     }
                     _ => (),
                 }
-            } else if path.len() > 1 && path[1] == b':' {
+            } else if path.get(1) == Some(b':') {
                 // C:
                 let c = path[0];
                 if c.is_ascii() && (c as char).is_alphabetic() {
