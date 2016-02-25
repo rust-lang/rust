@@ -457,6 +457,10 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
                reason = "recently added, needs RFC for stabilization,
                          questionable interaction with Condvar",
                issue = "27746")]
+    #[rustc_deprecated(since = "1.8.0",
+                       reason = "unsound on Mutex because of Condvar and \
+                                 RwLock may also with to be used with Condvar \
+                                 one day")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockReadGuard<'rwlock, U>
         where F: FnOnce(&T) -> &U
     {
@@ -508,6 +512,10 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
                reason = "recently added, needs RFC for stabilization,
                          questionable interaction with Condvar",
                issue = "27746")]
+    #[rustc_deprecated(since = "1.8.0",
+                       reason = "unsound on Mutex because of Condvar and \
+                                 RwLock may also with to be used with Condvar \
+                                 one day")]
     pub fn map<U: ?Sized, F>(this: Self, cb: F) -> RwLockWriteGuard<'rwlock, U>
         where F: FnOnce(&mut T) -> &mut U
     {

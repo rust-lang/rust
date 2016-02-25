@@ -12,7 +12,7 @@
 //
 // Test std::num::Wrapping<T> for {uN, iN, usize, isize}
 
-#![feature(op_assign_traits, num_bits_bytes, test)]
+#![feature(num_bits_bytes, test)]
 
 extern crate test;
 

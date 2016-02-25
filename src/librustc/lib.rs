@@ -26,7 +26,6 @@
 #![feature(associated_consts)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(cell_extras)]
 #![feature(collections)]
 #![feature(const_fn)]
 #![feature(copy_from_slice)]
@@ -37,11 +36,9 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(scoped_tls)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(str_char)]
-#![feature(time2)]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;

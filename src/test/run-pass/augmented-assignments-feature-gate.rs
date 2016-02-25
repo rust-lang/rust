@@ -12,20 +12,12 @@ use std::ops::AddAssign;
 
 struct Int(i32);
 
-impl AddAssign for Int {
-    fn add_assign(&mut self, _: Int) {
-        unimplemented!()
+impl AddAssign<i32> for Int {
+    fn add_assign(&mut self, _: i32) {
     }
 }
 
 fn main() {
-    let mut x = Int(1);
-    x   //~ error: use of moved value: `x`
-    +=
-    x;  //~ note: `x` moved here because it has type `Int`, which is non-copyable
-
-    let y = Int(2);
-    y   //~ error: cannot borrow immutable local variable `y` as mutable
-    +=
-    Int(1);
+    let mut x = Int(0);
+    x += 1;
 }

@@ -29,7 +29,6 @@
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(str_escape)]
-#![feature(str_utf16)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]

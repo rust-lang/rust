@@ -1141,7 +1141,6 @@ the list of fields entirely. Such a struct implicitly defines a constant of
 its type with the same name. For example:
 
 ```
-# #![feature(braced_empty_structs)]
 struct Cookie;
 let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 ```
@@ -1149,7 +1148,6 @@ let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 is equivalent to
 
 ```
-# #![feature(braced_empty_structs)]
 struct Cookie {}
 const Cookie: Cookie = Cookie {};
 let c = [Cookie, Cookie {}, Cookie, Cookie {}];
@@ -2385,7 +2383,6 @@ The currently implemented features of the reference compiler are:
                               terms of encapsulation).
 * - `default_type_parameter_fallback` - Allows type parameter defaults to
                                         influence type inference.
-* - `braced_empty_structs` - Allows use of empty structs and enum variants with braces.
 
 * - `stmt_expr_attributes` - Allows attributes on expressions and
                              non-item statements.
