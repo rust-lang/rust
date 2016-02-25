@@ -492,7 +492,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// Acquiring the path to the current executable is a platform-specific operation
 /// that can fail for a good number of reasons. Some errors can include, but not
-/// be limited to filesystem operations failing or general syscall failures.
+/// be limited to, filesystem operations failing or general syscall failures.
 ///
 /// # Examples
 ///
