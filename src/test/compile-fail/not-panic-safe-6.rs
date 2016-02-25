@@ -17,6 +17,7 @@ use std::cell::RefCell;
 fn assert<T: RecoverSafe + ?Sized>() {}
 
 fn main() {
-    assert::<*mut RefCell<i32>>(); //~ ERROR E0277
+    assert::<*mut RefCell<i32>>(); //~ ERROR: is not implemented
+    //~^ ERROR is not implemented
 }
 

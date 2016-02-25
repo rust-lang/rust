@@ -13,6 +13,5 @@ trait Trait {}
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
     //~^ ERROR the trait `core::marker::Sized` is not implemented
-    //~| ERROR the trait `core::marker::Sized` is not implemented
-    //~| ERROR the trait `core::marker::Sized` is not implemented
+    //~^^ ERROR the trait `core::marker::Sized` is not implemented
 }

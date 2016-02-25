@@ -479,7 +479,7 @@ fn project_type<'cx,'tcx>(
     let recursion_limit = selcx.tcx().sess.recursion_limit.get();
     if obligation.recursion_depth >= recursion_limit {
         debug!("project: overflow!");
-        report_overflow_error(selcx.infcx(), &obligation, true);
+        report_overflow_error(selcx.infcx(), &obligation);
     }
 
     let obligation_trait_ref =

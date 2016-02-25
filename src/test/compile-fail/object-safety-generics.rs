@@ -28,7 +28,6 @@ fn make_bar<T:Bar>(t: &T) -> &Bar {
 }
 
 fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
-    //~^ ERROR E0038
     t as &Bar
 }
 

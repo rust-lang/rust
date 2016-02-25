@@ -11,7 +11,7 @@
 use std::sync::Mutex;
 
 struct Foo { foo: Mutex<Option<Foo>> }
-//~^ ERROR recursive type `Foo` has infinite size
+//~^ ERROR invalid recursive struct type
 
 impl Foo { fn bar(&self) {} }
 
