@@ -313,15 +313,15 @@ impl FnType {
             // The outptr can be noalias and nocapture because it's entirely
             // invisible to the program. We also know it's nonnull as well
             // as how many bytes we can dereference
-            attrs.arg(i, llvm::Attribute::StructRet)
-                 .arg(i, llvm::Attribute::NoAlias)
-                 .arg(i, llvm::Attribute::NoCapture)
-                 .arg(i, llvm::DereferenceableAttribute(llret_sz));
+            attrs.arg(i).set(llvm::Attribute::StructRet)
+                        .set(llvm::Attribute::NoAlias)
+                        .set(llvm::Attribute::NoCapture)
+                        .set_dereferenceable(llret_sz);
         };
 
         // Add attributes that depend on the concrete foreign ABI
         if let Some(attr) = self.ret.attr {
-            attrs.arg(i, attr);
+            attrs.arg(i).set(attr);
         }
 
         i += 1;
@@ -333,7 +333,7 @@ impl FnType {
             if arg.pad.is_some() { i += 1; }
 
             if let Some(attr) = arg.attr {
-                attrs.arg(i, attr);
+                attrs.arg(i).set(attr);
             }
 
             i += 1;
