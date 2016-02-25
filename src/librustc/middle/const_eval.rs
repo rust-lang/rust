@@ -36,6 +36,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap;
+use syntax::attr::IntType;
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -462,6 +463,10 @@ pub enum ErrKind {
 
     IndexOpFeatureGated,
     Math(ConstMathErr),
+
+    IntermediateUnsignedNegative,
+    InferredWrongType(ConstInt),
+    BadType(ConstVal),
 }
 
 impl From<ConstMathErr> for ErrKind {
@@ -518,6 +523,13 @@ impl ConstEvalErr {
             MiscCatchAll => "unsupported constant expr".into_cow(),
             IndexOpFeatureGated => "the index operation on const values is unstable".into_cow(),
             Math(ref err) => err.description().into_cow(),
+
+            IntermediateUnsignedNegative => "during the computation of an unsigned a negative \
+                                             number was encountered. This is most likely a bug in\
+                                             the constant evaluator".into_cow(),
+
+            InferredWrongType(ref i) => format!("inferred wrong type for {}", i).into_cow(),
+            BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
         }
     }
 }
@@ -974,7 +986,101 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
       _ => signal!(e, MiscCatchAll)
     };
 
-    Ok(result)
+    match (ety.map(|t| &t.sty), result) {
+        (Some(ref ty_hint), Integral(i)) => Ok(Integral(try!(infer(i, tcx, ty_hint, e.span)))),
+        (_, result) => Ok(result),
+    }
+}
+
+fn infer<'tcx>(
+    i: ConstInt,
+    tcx: &TyCtxt<'tcx>,
+    ty_hint: &ty::TypeVariants<'tcx>,
+    span: Span
+) -> Result<ConstInt, ConstEvalErr> {
+    use syntax::ast::*;
+    const I8MAX: u64 = ::std::i8::MAX as u64;
+    const I16MAX: u64 = ::std::i16::MAX as u64;
+    const I32MAX: u64 = ::std::i32::MAX as u64;
+    const I64MAX: u64 = ::std::i64::MAX as u64;
+
+    const U8MAX: u64 = ::std::u8::MAX as u64;
+    const U16MAX: u64 = ::std::u16::MAX as u64;
+    const U32MAX: u64 = ::std::u32::MAX as u64;
+
+    const I8MAXI: i64 = ::std::i8::MAX as i64;
+    const I16MAXI: i64 = ::std::i16::MAX as i64;
+    const I32MAXI: i64 = ::std::i32::MAX as i64;
+
+    const I8MINI: i64 = ::std::i8::MIN as i64;
+    const I16MINI: i64 = ::std::i16::MIN as i64;
+    const I32MINI: i64 = ::std::i32::MIN as i64;
+
+    let err = |e| ConstEvalErr {
+        span: span,
+        kind: e,
+    };
+
+    match (ty_hint, i) {
+        (&ty::TyInt(IntTy::I8), result @ I8(_)) => Ok(result),
+        (&ty::TyInt(IntTy::I16), result @ I16(_)) => Ok(result),
+        (&ty::TyInt(IntTy::I32), result @ I32(_)) => Ok(result),
+        (&ty::TyInt(IntTy::I64), result @ I64(_)) => Ok(result),
+        (&ty::TyInt(IntTy::Is), result @ Isize(_)) => Ok(result),
+
+        (&ty::TyUint(UintTy::U8), result @ U8(_)) => Ok(result),
+        (&ty::TyUint(UintTy::U16), result @ U16(_)) => Ok(result),
+        (&ty::TyUint(UintTy::U32), result @ U32(_)) => Ok(result),
+        (&ty::TyUint(UintTy::U64), result @ U64(_)) => Ok(result),
+        (&ty::TyUint(UintTy::Us), result @ Usize(_)) => Ok(result),
+
+        (&ty::TyInt(IntTy::I8), Infer(i @ 0...I8MAX)) => Ok(I8(i as i8)),
+        (&ty::TyInt(IntTy::I16), Infer(i @ 0...I16MAX)) => Ok(I16(i as i16)),
+        (&ty::TyInt(IntTy::I32), Infer(i @ 0...I32MAX)) => Ok(I32(i as i32)),
+        (&ty::TyInt(IntTy::I64), Infer(i @ 0...I64MAX)) => Ok(I64(i as i64)),
+        (&ty::TyInt(IntTy::Is), Infer(i @ 0...I64MAX)) => {
+            match ConstIsize::new(i as i64, tcx.sess.target.int_type) {
+                Ok(val) => Ok(Isize(val)),
+                Err(e) => Err(err(e.into())),
+            }
+        },
+        (&ty::TyInt(_), Infer(_)) => Err(err(Math(ConstMathErr::NotInRange))),
+
+        (&ty::TyInt(IntTy::I8), InferSigned(i @ I8MINI...I8MAXI)) => Ok(I8(i as i8)),
+        (&ty::TyInt(IntTy::I16), InferSigned(i @ I16MINI...I16MAXI)) => Ok(I16(i as i16)),
+        (&ty::TyInt(IntTy::I32), InferSigned(i @ I32MINI...I32MAXI)) => Ok(I32(i as i32)),
+        (&ty::TyInt(IntTy::I64), InferSigned(i)) => Ok(I64(i)),
+        (&ty::TyInt(IntTy::Is), InferSigned(i)) => {
+            match ConstIsize::new(i, tcx.sess.target.int_type) {
+                Ok(val) => Ok(Isize(val)),
+                Err(e) => Err(err(e.into())),
+            }
+        },
+        (&ty::TyInt(_), InferSigned(_)) => Err(err(Math(ConstMathErr::NotInRange))),
+
+        (&ty::TyUint(UintTy::U8), Infer(i @ 0...U8MAX)) => Ok(U8(i as u8)),
+        (&ty::TyUint(UintTy::U16), Infer(i @ 0...U16MAX)) => Ok(U16(i as u16)),
+        (&ty::TyUint(UintTy::U32), Infer(i @ 0...U32MAX)) => Ok(U32(i as u32)),
+        (&ty::TyUint(UintTy::U64), Infer(i)) => Ok(U64(i)),
+        (&ty::TyUint(UintTy::Us), Infer(i)) => {
+            match ConstUsize::new(i, tcx.sess.target.uint_type) {
+                Ok(val) => Ok(Usize(val)),
+                Err(e) => Err(err(e.into())),
+            }
+        },
+        (&ty::TyUint(_), Infer(_)) => Err(err(Math(ConstMathErr::NotInRange))),
+        (&ty::TyUint(_), InferSigned(_)) => Err(err(IntermediateUnsignedNegative)),
+
+        (&ty::TyInt(_), i) |
+        (&ty::TyUint(_), i) => Err(err(InferredWrongType(i))),
+
+        (&ty::TyEnum(ref adt, _), i) => {
+            let hints = tcx.lookup_repr_hints(adt.did);
+            let int_ty = tcx.enum_repr_type(hints.iter().next());
+            infer(i, tcx, &int_ty.to_ty(tcx).sty, span)
+        },
+        (_, i) => Err(err(BadType(ConstVal::Integral(i)))),
+    }
 }
 
 fn impl_or_trait_container(tcx: &TyCtxt, def_id: DefId) -> ty::ImplOrTraitItemContainer {
@@ -1083,7 +1189,7 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
     }
 }
 
-fn cast_const_float<'tcx>(tcx: &ty::ctxt<'tcx>, f: f64, ty: ty::Ty) -> CastResult {
+fn cast_const_float<'tcx>(tcx: &TyCtxt<'tcx>, f: f64, ty: ty::Ty) -> CastResult {
     match ty.sty {
         ty::TyInt(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
         ty::TyInt(_) => cast_const_int(tcx, InferSigned(f as i64), ty),
@@ -1094,7 +1200,7 @@ fn cast_const_float<'tcx>(tcx: &ty::ctxt<'tcx>, f: f64, ty: ty::Ty) -> CastResul
     }
 }
 
-fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult {
+fn cast_const<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult {
     match val {
         Integral(i) => cast_const_int(tcx, i, ty),
         Bool(b) => cast_const_int(tcx, Infer(b as u64), ty),
@@ -1105,7 +1211,7 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResu
 }
 
 fn lit_to_const<'tcx>(lit: &ast::LitKind,
-                      tcx: &ty::ctxt<'tcx>,
+                      tcx: &TyCtxt<'tcx>,
                       ty_hint: Option<Ty<'tcx>>,
                       span: Span,
                       ) -> Result<ConstVal, ConstMathErr> {
