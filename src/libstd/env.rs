@@ -442,7 +442,7 @@ impl Error for JoinPathsError {
 ///
 /// match env::home_dir() {
 ///     Some(ref p) => println!("{}", p.display()),
-///     None => println!("Impossible to get your home dir!")
+///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
