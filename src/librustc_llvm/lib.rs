@@ -33,8 +33,6 @@
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
-pub use self::OtherAttribute::*;
-pub use self::SpecialAttribute::*;
 pub use self::AttributeSet::*;
 pub use self::IntPredicate::*;
 pub use self::RealPredicate::*;
@@ -133,7 +131,7 @@ pub enum DLLStorageClassTypes {
 }
 
 bitflags! {
-    #[derive(Debug)]
+    #[derive(Default, Debug)]
     flags Attribute : u64 {
         const ZExt            = 1 << 0,
         const SExt            = 1 << 1,
@@ -165,31 +163,74 @@ bitflags! {
         // FIXME: These attributes are currently not included in the C API as
         // a temporary measure until the API/ABI impact to the C API is understood
         // and the path forward agreed upon.
-        const SanitizeAddress = 1 << 32;
-        const MinSize         = 1 << 33;
-        const NoDuplicate     = 1 << 34;
-        const StackProtectStrong = 1 << 35;
-        const SanitizeThread  = 1 << 36;
-        const SanitizeMemory  = 1 << 37;
-        const NoBuiltin       = 1 << 38;
-        const Returned        = 1 << 39;
-        const Cold            = 1 << 40;
-        const Builtin         = 1 << 41;
-        const OptimizeNone    = 1 << 42;
-        const InAlloca        = 1 << 43;
-        const NonNull         = 1 << 44;
-        const JumpTable       = 1 << 45;
-        const Convergent      = 1 << 46;
-        const SafeStack       = 1 << 47;
-        const NoRecurse       = 1 << 48;
-        const InaccessibleMemOnly         = 1 << 49;
-        const InaccessibleMemOrArgMemOnly = 1 << 50;
+        const SanitizeAddress = 1 << 32,
+        const MinSize         = 1 << 33,
+        const NoDuplicate     = 1 << 34,
+        const StackProtectStrong = 1 << 35,
+        const SanitizeThread  = 1 << 36,
+        const SanitizeMemory  = 1 << 37,
+        const NoBuiltin       = 1 << 38,
+        const Returned        = 1 << 39,
+        const Cold            = 1 << 40,
+        const Builtin         = 1 << 41,
+        const OptimizeNone    = 1 << 42,
+        const InAlloca        = 1 << 43,
+        const NonNull         = 1 << 44,
+        const JumpTable       = 1 << 45,
+        const Convergent      = 1 << 46,
+        const SafeStack       = 1 << 47,
+        const NoRecurse       = 1 << 48,
+        const InaccessibleMemOnly         = 1 << 49,
+        const InaccessibleMemOrArgMemOnly = 1 << 50,
     }
 }
 
-#[derive(Copy, Clone)]
-pub enum SpecialAttribute {
-    DereferenceableAttribute(u64)
+#[derive(Copy, Clone, Default)]
+pub struct Attributes {
+    regular: Attribute,
+    dereferenceable_bytes: u64
+}
+
+impl Attributes {
+    pub fn set(&mut self, attr: Attribute) -> &mut Self {
+        self.regular = self.regular | attr;
+        self
+    }
+
+    pub fn unset(&mut self, attr: Attribute) -> &mut Self {
+        self.regular = self.regular - attr;
+        self
+    }
+
+    pub fn set_dereferenceable(&mut self, bytes: u64) -> &mut Self {
+        self.dereferenceable_bytes = bytes;
+        self
+    }
+
+    pub fn unset_dereferenceable(&mut self) -> &mut Self {
+        self.dereferenceable_bytes = 0;
+        self
+    }
+
+    pub fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
+        unsafe {
+            LLVMAddFunctionAttribute(llfn, idx, self.regular.bits());
+            if self.dereferenceable_bytes != 0 {
+                LLVMAddDereferenceableAttr(llfn, idx,
+                                           self.dereferenceable_bytes);
+            }
+        }
+    }
+
+    pub fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
+        unsafe {
+            LLVMAddCallSiteAttribute(callsite, idx, self.regular.bits());
+            if self.dereferenceable_bytes != 0 {
+                LLVMAddDereferenceableCallSiteAttr(callsite, idx,
+                                                   self.dereferenceable_bytes);
+            }
+        }
+    }
 }
 
 #[repr(C)]
@@ -199,45 +240,8 @@ pub enum AttributeSet {
     FunctionIndex = !0
 }
 
-pub trait AttrHelper {
-    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef);
-    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef);
-}
-
-impl AttrHelper for Attribute {
-    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
-        unsafe {
-            LLVMAddFunctionAttribute(llfn, idx, self.bits() as uint64_t);
-        }
-    }
-
-    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
-        unsafe {
-            LLVMAddCallSiteAttribute(callsite, idx, self.bits() as uint64_t);
-        }
-    }
-}
-
-impl AttrHelper for SpecialAttribute {
-    fn apply_llfn(&self, idx: c_uint, llfn: ValueRef) {
-        match *self {
-            DereferenceableAttribute(bytes) => unsafe {
-                LLVMAddDereferenceableAttr(llfn, idx, bytes as uint64_t);
-            }
-        }
-    }
-
-    fn apply_callsite(&self, idx: c_uint, callsite: ValueRef) {
-        match *self {
-            DereferenceableAttribute(bytes) => unsafe {
-                LLVMAddDereferenceableCallSiteAttr(callsite, idx, bytes as uint64_t);
-            }
-        }
-    }
-}
-
 pub struct AttrBuilder {
-    attrs: Vec<(usize, Box<AttrHelper+'static>)>
+    attrs: Vec<(usize, Attributes)>
 }
 
 impl AttrBuilder {
@@ -247,14 +251,23 @@ impl AttrBuilder {
         }
     }
 
-    pub fn arg<T: AttrHelper + 'static>(&mut self, idx: usize, a: T) -> &mut AttrBuilder {
-        self.attrs.push((idx, box a as Box<AttrHelper+'static>));
-        self
+    pub fn arg(&mut self, idx: usize) -> &mut Attributes {
+        let mut found = None;
+        for (i, &(idx2, _)) in self.attrs.iter().enumerate() {
+            if idx == idx2 {
+                found = Some(i);
+                break;
+            }
+        }
+        let i = found.unwrap_or_else(|| {
+            self.attrs.push((idx, Attributes::default()));
+            self.attrs.len() - 1
+        });
+        &mut self.attrs[i].1
     }
 
-    pub fn ret<T: AttrHelper + 'static>(&mut self, a: T) -> &mut AttrBuilder {
-        self.attrs.push((ReturnIndex as usize, box a as Box<AttrHelper+'static>));
-        self
+    pub fn ret(&mut self) -> &mut Attributes {
+        self.arg(ReturnIndex as usize)
     }
 
     pub fn apply_llfn(&self, llfn: ValueRef) {

@@ -10,7 +10,7 @@
 //! Set and unset common attributes on LLVM values.
 
 use libc::{c_uint, c_ulonglong};
-use llvm::{self, ValueRef, AttrHelper};
+use llvm::{self, ValueRef};
 use middle::ty;
 use middle::infer;
 use session::config::NoDebugInfo;
@@ -110,13 +110,11 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
 
     for attr in attrs {
         if attr.check_name("cold") {
-            unsafe {
-                llvm::LLVMAddFunctionAttribute(llfn,
-                                               llvm::FunctionIndex as c_uint,
-                                               llvm::ColdAttribute as u64)
-            }
+            llvm::Attributes::default().set(llvm::Attribute::Cold)
+                .apply_llfn(llvm::FunctionIndex as c_uint, llfn)
         } else if attr.check_name("allocator") {
-            llvm::Attribute::NoAlias.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
+            llvm::Attributes::default().set(llvm::Attribute::NoAlias)
+                .apply_llfn(llvm::ReturnIndex as c_uint, llfn)
         } else if attr.check_name("unwind") {
             unwind(llfn, true);
         }
@@ -168,10 +166,10 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // The outptr can be noalias and nocapture because it's entirely
             // invisible to the program. We also know it's nonnull as well
             // as how many bytes we can dereference
-            attrs.arg(1, llvm::Attribute::StructRet)
-                 .arg(1, llvm::Attribute::NoAlias)
-                 .arg(1, llvm::Attribute::NoCapture)
-                 .arg(1, llvm::DereferenceableAttribute(llret_sz));
+            attrs.arg(1).set(llvm::Attribute::StructRet)
+                        .set(llvm::Attribute::NoAlias)
+                        .set(llvm::Attribute::NoCapture)
+                        .set_dereferenceable(llret_sz);
 
             // Add one more since there's an outptr
             idx += 1;
@@ -182,7 +180,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // `Box` pointer return values never alias because ownership
                 // is transferred
                 ty::TyBox(it) if common::type_is_sized(ccx.tcx(), it) => {
-                    attrs.ret(llvm::Attribute::NoAlias);
+                    attrs.ret().set(llvm::Attribute::NoAlias);
                 }
                 _ => {}
             }
@@ -193,13 +191,13 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 ty::TyRef(_, ty::TypeAndMut { ty: inner, .. })
                 | ty::TyBox(inner) if common::type_is_sized(ccx.tcx(), inner) => {
                     let llret_sz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
-                    attrs.ret(llvm::DereferenceableAttribute(llret_sz));
+                    attrs.ret().set_dereferenceable(llret_sz);
                 }
                 _ => {}
             }
 
             if let ty::TyBool = ret_ty.sty {
-                attrs.ret(llvm::Attribute::ZExt);
+                attrs.ret().set(llvm::Attribute::ZExt);
             }
         }
     }
@@ -212,26 +210,26 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // For non-immediate arguments the callee gets its own copy of
                 // the value on the stack, so there are no aliases. It's also
                 // program-invisible so can't possibly capture
-                attrs.arg(idx, llvm::Attribute::NoAlias)
-                     .arg(idx, llvm::Attribute::NoCapture)
-                     .arg(idx, llvm::DereferenceableAttribute(llarg_sz));
+                attrs.arg(idx).set(llvm::Attribute::NoAlias)
+                              .set(llvm::Attribute::NoCapture)
+                              .set_dereferenceable(llarg_sz);
             }
 
             ty::TyBool => {
-                attrs.arg(idx, llvm::Attribute::ZExt);
+                attrs.arg(idx).set(llvm::Attribute::ZExt);
             }
 
             // `Box` pointer parameters never alias because ownership is transferred
             ty::TyBox(inner) => {
-                attrs.arg(idx, llvm::Attribute::NoAlias);
+                attrs.arg(idx).set(llvm::Attribute::NoAlias);
 
                 if common::type_is_sized(ccx.tcx(), inner) {
                     let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
-                    attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
+                    attrs.arg(idx).set_dereferenceable(llsz);
                 } else {
-                    attrs.arg(idx, llvm::NonNullAttribute);
+                    attrs.arg(idx).set(llvm::Attribute::NonNull);
                     if inner.is_trait() {
-                        attrs.arg(idx + 1, llvm::NonNullAttribute);
+                        attrs.arg(idx + 1).set(llvm::Attribute::NonNull);
                     }
                 }
             }
@@ -245,22 +243,22 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
 
                 if mt.mutbl != hir::MutMutable && !interior_unsafe {
-                    attrs.arg(idx, llvm::Attribute::NoAlias);
+                    attrs.arg(idx).set(llvm::Attribute::NoAlias);
                 }
 
                 if mt.mutbl == hir::MutImmutable && !interior_unsafe {
-                    attrs.arg(idx, llvm::Attribute::ReadOnly);
+                    attrs.arg(idx).set(llvm::Attribute::ReadOnly);
                 }
 
                 // & pointer parameters are also never null and for sized types we also know
                 // exactly how many bytes we can dereference
                 if common::type_is_sized(ccx.tcx(), mt.ty) {
                     let llsz = machine::llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                    attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
+                    attrs.arg(idx).set_dereferenceable(llsz);
                 } else {
-                    attrs.arg(idx, llvm::NonNullAttribute);
+                    attrs.arg(idx).set(llvm::Attribute::NonNull);
                     if mt.ty.is_trait() {
-                        attrs.arg(idx + 1, llvm::NonNullAttribute);
+                        attrs.arg(idx + 1).set(llvm::Attribute::NonNull);
                     }
                 }
 
@@ -268,7 +266,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // impossible for that reference to escape this function
                 // (returned or stored beyond the call by a closure).
                 if let ReLateBound(_, BrAnon(_)) = *b {
-                    attrs.arg(idx, llvm::Attribute::NoCapture);
+                    attrs.arg(idx).set(llvm::Attribute::NoCapture);
                 }
             }
 
