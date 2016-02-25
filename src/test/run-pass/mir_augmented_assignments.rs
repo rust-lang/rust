@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(augmented_assignments)]
-#![feature(op_assign_traits)]
 #![feature(rustc_attrs)]
 
 use std::mem;

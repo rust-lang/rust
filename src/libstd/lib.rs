@@ -226,7 +226,6 @@
 #![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(decode_utf16)]
-#![feature(drop_in_place)]
 #![feature(dropck_parametricity)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]

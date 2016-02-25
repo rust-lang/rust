@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:augmented_assignments.rs
+use std::ops::AddAssign;
 
-// Test that the feature gate is needed when using augmented assignments that were overloaded in
-// another crate
+struct Int(i32);
 
-extern crate augmented_assignments;
-
-use augmented_assignments::Int;
-
-fn main() {
-    let mut x = Int(0);
-    x += 1;
-    //~^ error: overloaded augmented assignments are not stable
-    //~| help: add #![feature(augmented_assignments)] to the crate root to enable
+impl AddAssign for Int {
+    fn add_assign(&mut self, _: Int) {
+        unimplemented!()
+    }
 }
+
+fn main() {}

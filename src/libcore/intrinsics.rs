@@ -240,7 +240,7 @@ extern "rust-intrinsic" {
     ///
     /// This has all the same safety problems as `ptr::read` with respect to
     /// invalid pointers, types, and double drops.
-    #[unstable(feature = "drop_in_place", reason = "just exposed, needs FCP", issue = "27908")]
+    #[stable(feature = "drop_in_place", since = "1.8.0")]
     pub fn drop_in_place<T: ?Sized>(to_drop: *mut T);
 
     /// Gets a static string slice containing the name of a type.

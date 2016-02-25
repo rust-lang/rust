@@ -448,6 +448,7 @@ pub mod tls {
     use rbml::opaque::Encoder as OpaqueEncoder;
     use rbml::opaque::Decoder as OpaqueDecoder;
     use serialize;
+    use std::cell::Cell;
     use std::mem;
     use middle::ty::{self, Ty};
     use middle::subst::Substs;
@@ -459,12 +460,14 @@ pub mod tls {
         fn encode_substs(&self, encoder: &mut OpaqueEncoder, substs: &Substs<'tcx>);
     }
 
-    /// Marker type used for the scoped TLS slot.
-    /// The type context cannot be used directly because the scoped TLS
+    /// Marker type used for the TLS slot.
+    /// The type context cannot be used directly because the TLS
     /// in libstd doesn't allow types generic over lifetimes.
     struct TlsPayload;
 
-    scoped_thread_local!(static TLS_ENCODING: TlsPayload);
+    thread_local! {
+        static TLS_ENCODING: Cell<Option<*const TlsPayload>> = Cell::new(None)
+    }
 
     /// Execute f after pushing the given EncodingContext onto the TLS stack.
     pub fn enter_encoding_context<'tcx, F, R>(ecx: &EncodingContext<'tcx>,
@@ -474,7 +477,13 @@ pub mod tls {
     {
         let tls_payload = (ecx as *const _, encoder as *mut _);
         let tls_ptr = &tls_payload as *const _ as *const TlsPayload;
-        TLS_ENCODING.set(unsafe { &*tls_ptr }, || f(ecx, encoder))
+        TLS_ENCODING.with(|tls| {
+            let prev = tls.get();
+            tls.set(Some(tls_ptr));
+            let ret = f(ecx, encoder);
+            tls.set(prev);
+            return ret
+        })
     }
 
     /// Execute f with access to the thread-local encoding context and
@@ -506,8 +515,8 @@ pub mod tls {
         where F: FnOnce(&EncodingContext, &mut OpaqueEncoder) -> R
     {
         TLS_ENCODING.with(|tls| {
-            let tls_payload = (tls as *const TlsPayload)
-                                   as *mut (&EncodingContext, &mut OpaqueEncoder);
+            let tls = tls.get().unwrap();
+            let tls_payload = tls as *mut (&EncodingContext, &mut OpaqueEncoder);
             f((*tls_payload).0, (*tls_payload).1)
         })
     }
@@ -519,7 +528,9 @@ pub mod tls {
         fn translate_def_id(&self, def_id: DefId) -> DefId;
     }
 
-    scoped_thread_local!(static TLS_DECODING: TlsPayload);
+    thread_local! {
+        static TLS_DECODING: Cell<Option<*const TlsPayload>> = Cell::new(None)
+    }
 
     /// Execute f after pushing the given DecodingContext onto the TLS stack.
     pub fn enter_decoding_context<'tcx, F, R>(dcx: &DecodingContext<'tcx>,
@@ -529,7 +540,13 @@ pub mod tls {
     {
         let tls_payload = (dcx as *const _, decoder as *mut _);
         let tls_ptr = &tls_payload as *const _ as *const TlsPayload;
-        TLS_DECODING.set(unsafe { &*tls_ptr }, || f(dcx, decoder))
+        TLS_DECODING.with(|tls| {
+            let prev = tls.get();
+            tls.set(Some(tls_ptr));
+            let ret = f(dcx, decoder);
+            tls.set(prev);
+            return ret
+        })
     }
 
     /// Execute f with access to the thread-local decoding context and
@@ -563,8 +580,8 @@ pub mod tls {
         where F: FnOnce(&DecodingContext, &mut OpaqueDecoder) -> R
     {
         TLS_DECODING.with(|tls| {
-            let tls_payload = (tls as *const TlsPayload)
-                                   as *mut (&DecodingContext, &mut OpaqueDecoder);
+            let tls = tls.get().unwrap();
+            let tls_payload = tls as *mut (&DecodingContext, &mut OpaqueDecoder);
             f((*tls_payload).0, (*tls_payload).1)
         })
     }

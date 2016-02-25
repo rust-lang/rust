@@ -8,17 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::AddAssign;
-//~^ error: use of unstable library feature 'op_assign_traits'
+// aux-build:augmented_assignments.rs
 
-struct Int(i32);
+extern crate augmented_assignments;
 
-impl AddAssign for Int {
-    //~^ error: use of unstable library feature 'op_assign_traits'
-    fn add_assign(&mut self, _: Int) {
-        //~^ error: use of unstable library feature 'op_assign_traits'
-        unimplemented!()
-    }
+use augmented_assignments::Int;
+
+fn main() {
+    let mut x = Int(0);
+    x += 1;
 }
-
-fn main() {}

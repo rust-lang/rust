@@ -1418,7 +1418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Return the dict-like variant corresponding to a given `Def`.
     pub fn def_struct_variant(&self,
                               def: Def,
-                              span: Span)
+                              _span: Span)
                               -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
     {
         let (adt, variant) = match def {
@@ -1441,15 +1441,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if var_kind == ty::VariantKind::Struct {
             Some((adt, variant))
         } else if var_kind == ty::VariantKind::Unit {
-            if !self.tcx().sess.features.borrow().braced_empty_structs {
-                let mut err = self.tcx().sess.struct_span_err(span,
-                                                              "empty structs and enum variants \
-                                                               with braces are unstable");
-                fileline_help!(&mut err, span, "add #![feature(braced_empty_structs)] to \
-                                                the crate features to enable");
-                err.emit();
-            }
-
              Some((adt, variant))
          } else {
              None

@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(augmented_assignments)]
-#![feature(op_assign_traits)]
-
 use std::ops::AddAssign;
 
-pub struct Int(i32);
+pub struct Int(pub i32);
 
 impl AddAssign<i32> for Int {
     fn add_assign(&mut self, _: i32) {
-        unimplemented!();
     }
 }
