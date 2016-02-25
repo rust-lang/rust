@@ -108,7 +108,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
     let llsizingty = match t.sty {
         _ if !type_is_sized(cx.tcx(), t) => {
-            Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
+            Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, t)], false)
         }
 
         ty::TyBool => Type::bool(cx),
@@ -123,7 +123,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             if type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
             } else {
-                Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
+                Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, ty)], false)
             }
         }
 
@@ -175,6 +175,18 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
     llsizingty
+}
+
+fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
+    let unsized_part = ccx.tcx().struct_tail(ty);
+    match unsized_part.sty {
+        ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
+            Type::uint_from_ty(ccx, ast::UintTy::Us)
+        }
+        ty::TyTrait(_) => Type::vtable_ptr(ccx),
+        _ => unreachable!("Unexpected tail in unsized_info_ty: {:?} for ty={:?}",
+                          unsized_part, ty)
+    }
 }
 
 pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
@@ -283,16 +295,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   cx.tn().find_type("str_slice").unwrap()
               } else {
                   let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
-                  let unsized_part = cx.tcx().struct_tail(ty);
-                  let info_ty = match unsized_part.sty {
-                      ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
-                          Type::uint_from_ty(cx, ast::UintTy::Us)
-                      }
-                      ty::TyTrait(_) => Type::vtable_ptr(cx),
-                      _ => panic!("Unexpected type returned from \
-                                   struct_tail: {:?} for ty={:?}",
-                                  unsized_part, ty)
-                  };
+                  let info_ty = unsized_info_ty(cx, ty);
                   Type::struct_(cx, &[ptr_ty, info_ty], false)
               }
           } else {

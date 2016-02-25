@@ -203,7 +203,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                i,
                Value(llarg_rust),
                rust_indirect,
-               arg_ty.ty);
+               arg_ty);
 
         // Ensure that we always have the Rust value indirectly,
         // because it makes bitcasting easier.
@@ -261,12 +261,9 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // type to match because some ABIs will use a different type than
     // the Rust type. e.g., a {u32,u32} struct could be returned as
     // u64.
-    if fn_type.ret.ty != Type::void(ccx) && !fn_type.ret.is_indirect() {
-        let llrust_ret_ty = fn_type.ret.ty;
-        let llforeign_ret_ty = match fn_type.ret.cast {
-            Some(ty) => ty,
-            None => fn_type.ret.ty
-        };
+    let llrust_ret_ty = fn_type.ret.original_ty;
+    if llrust_ret_ty != Type::void(ccx) && !fn_type.ret.is_indirect() {
+        let llforeign_ret_ty = fn_type.ret.cast.unwrap_or(llrust_ret_ty);
 
         debug!("llretptr={:?}", Value(llretptr));
         debug!("llforeign_retval={:?}", Value(llforeign_retval));
@@ -625,12 +622,9 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           None, Some(attributes));
 
         // Get the return value where the foreign fn expects it.
-        let llforeign_ret_ty = match fn_ty.ret.cast {
-            Some(ty) => ty,
-            None => fn_ty.ret.ty
-        };
+        let llforeign_ret_ty = fn_ty.ret.cast.unwrap_or(fn_ty.ret.original_ty);
         match foreign_outptr {
-            None if fn_ty.ret.ty == Type::void(ccx) => {
+            None if llforeign_ret_ty == Type::void(ccx) => {
                 // Function returns `()` or `bot`, which in Rust is the LLVM
                 // type "{}" but in foreign ABIs is "Void".
                 builder.ret_void();
