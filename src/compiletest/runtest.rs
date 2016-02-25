@@ -1520,7 +1520,8 @@ fn output_testname(filepath: &Path) -> PathBuf {
 
 fn output_base_name(config: &Config, testpaths: &TestPaths) -> PathBuf {
     let dir = config.build_base.join(&testpaths.relative_dir);
-    fs::create_dir_all(&dir).unwrap();
+
+    // Note: The directory `dir` is created during `collect_tests_from_dir`
     dir
         .join(&output_testname(&testpaths.file))
         .with_extension(&config.stage_id)
