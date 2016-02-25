@@ -125,6 +125,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub INACCESSIBLE_EXTERN_CRATE,
+    Warn,
+    "use of inaccessible extern crate erroneously allowed"
+}
+
+declare_lint! {
     pub INVALID_TYPE_PARAM_DEFAULT,
     Warn,
     "type parameter default erroneously allowed in invalid location"
@@ -167,6 +173,7 @@ impl LintPass for HardwiredLints {
             TRIVIAL_CASTS,
             TRIVIAL_NUMERIC_CASTS,
             PRIVATE_IN_PUBLIC,
+            INACCESSIBLE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
             MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR,

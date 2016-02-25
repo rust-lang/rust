@@ -806,7 +806,10 @@ pub struct ModuleS<'a> {
     parent_link: ParentLink<'a>,
     def: Option<Def>,
     is_public: bool,
-    is_extern_crate: bool,
+
+    // If the module is an extern crate, `def` is root of the external crate and `extern_crate_did`
+    // is the DefId of the local `extern crate` item (otherwise, `extern_crate_did` is None).
+    extern_crate_did: Option<DefId>,
 
     resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
     unresolved_imports: RefCell<Vec<ImportDirective>>,
@@ -853,7 +856,7 @@ impl<'a> ModuleS<'a> {
             parent_link: parent_link,
             def: def,
             is_public: is_public,
-            is_extern_crate: false,
+            extern_crate_did: None,
             resolutions: RefCell::new(HashMap::new()),
             unresolved_imports: RefCell::new(Vec::new()),
             module_children: RefCell::new(NodeMap()),
@@ -915,6 +918,16 @@ impl<'a> ModuleS<'a> {
 
     fn def_id(&self) -> Option<DefId> {
         self.def.as_ref().map(Def::def_id)
+    }
+
+    // This returns the DefId of the crate local item that controls this module's visibility.
+    // It is only used to compute `LastPrivate` data, and it differs from `def_id` only for extern
+    // crates, whose `def_id` is the external crate's root, not the local `extern crate` item.
+    fn local_def_id(&self) -> Option<DefId> {
+        match self.extern_crate_did {
+            Some(def_id) => Some(def_id),
+            None => self.def_id(),
+        }
     }
 
     fn is_normal(&self) -> bool {
@@ -1027,6 +1040,14 @@ impl<'a> NameBinding<'a> {
         }
     }
 
+    fn local_def_id(&self) -> Option<DefId> {
+        match self.kind {
+            NameBindingKind::Def(def) => Some(def.def_id()),
+            NameBindingKind::Module(ref module) => module.local_def_id(),
+            NameBindingKind::Import { binding, .. } => binding.local_def_id(),
+        }
+    }
+
     fn defined_with(&self, modifiers: DefModifiers) -> bool {
         self.modifiers.contains(modifiers)
     }
@@ -1038,11 +1059,12 @@ impl<'a> NameBinding<'a> {
     fn def_and_lp(&self) -> (Def, LastPrivate) {
         let def = self.def().unwrap();
         if let Def::Err = def { return (def, LastMod(AllPublic)) }
-        (def, LastMod(if self.is_public() { AllPublic } else { DependsOn(def.def_id()) }))
+        let lp = if self.is_public() { AllPublic } else { DependsOn(self.local_def_id().unwrap()) };
+        (def, LastMod(lp))
     }
 
     fn is_extern_crate(&self) -> bool {
-        self.module().map(|module| module.is_extern_crate).unwrap_or(false)
+        self.module().and_then(|module| module.extern_crate_did).is_some()
     }
 
     fn is_import(&self) -> bool {
@@ -1236,9 +1258,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.arenas.name_bindings.alloc(name_binding)
     }
 
-    fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def) -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), false, true);
-        module.is_extern_crate = true;
+    fn new_extern_crate_module(&self,
+                               parent_link: ParentLink<'a>,
+                               def: Def,
+                               is_public: bool,
+                               local_def: DefId)
+                               -> Module<'a> {
+        let mut module = ModuleS::new(parent_link, Some(def), false, is_public);
+        module.extern_crate_did = Some(local_def);
         self.arenas.modules.alloc(module)
     }
 
@@ -1357,7 +1384,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // Keep track of the closest private module used
                         // when resolving this import chain.
                         if !binding.is_public() {
-                            if let Some(did) = search_module.def_id() {
+                            if let Some(did) = search_module.local_def_id() {
                                 closest_private = LastMod(DependsOn(did));
                             }
                         }
@@ -1462,7 +1489,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success(PrefixFound(ref containing_module, index)) => {
                 search_module = containing_module;
                 start_index = index;
-                last_private = LastMod(DependsOn(containing_module.def_id()
+                last_private = LastMod(DependsOn(containing_module.local_def_id()
                                                                   .unwrap()));
             }
         }
@@ -3571,7 +3598,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     if !in_module_is_extern || name_binding.is_public() {
                         // add the module to the lookup
-                        let is_extern = in_module_is_extern || module.is_extern_crate;
+                        let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         worklist.push((module, path_segments, is_extern));
                     }
                 }

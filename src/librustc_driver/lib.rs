@@ -65,6 +65,7 @@ use rustc_trans::back::link;
 use rustc_trans::save;
 use rustc::session::{config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
+use rustc::session::config::{get_unstable_features_setting, OptionStability};
 use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
 use rustc::lint;
@@ -85,7 +86,7 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use rustc::session::early_error;
+use rustc::session::{early_error, early_warn};
 
 use syntax::ast;
 use syntax::parse;
@@ -93,6 +94,7 @@ use syntax::errors;
 use syntax::errors::emitter::Emitter;
 use syntax::diagnostics;
 use syntax::parse::token;
+use syntax::feature_gate::UnstableFeatures;
 
 #[cfg(test)]
 pub mod test;
@@ -819,8 +821,31 @@ fn print_flag_list<T>(cmdline_opt: &str,
 }
 
 /// Process command line options. Emits messages as appropriate. If compilation
-/// should continue, returns a getopts::Matches object parsed from args, otherwise
-/// returns None.
+/// should continue, returns a getopts::Matches object parsed from args,
+/// otherwise returns None.
+///
+/// The compiler's handling of options is a little complication as it ties into
+/// our stability story, and it's even *more* complicated by historical
+/// accidents. The current intention of each compiler option is to have one of
+/// three modes:
+///
+/// 1. An option is stable and can be used everywhere.
+/// 2. An option is unstable, but was historically allowed on the stable
+///    channel.
+/// 3. An option is unstable, and can only be used on nightly.
+///
+/// Like unstable library and language features, however, unstable options have
+/// always required a form of "opt in" to indicate that you're using them. This
+/// provides the easy ability to scan a code base to check to see if anything
+/// unstable is being used. Currently, this "opt in" is the `-Z` "zed" flag.
+///
+/// All options behind `-Z` are considered unstable by default. Other top-level
+/// options can also be considered unstable, and they were unlocked through the
+/// `-Z unstable-options` flag. Note that `-Z` remains to be the root of
+/// instability in both cases, though.
+///
+/// So with all that in mind, the comments below have some more detail about the
+/// contortions done here to get things to work out correctly.
 pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
     let _binary = args.remove(0);
@@ -832,62 +857,83 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         return None;
     }
 
-    fn allows_unstable_options(matches: &getopts::Matches) -> bool {
-        let r = matches.opt_strs("Z");
-        r.iter().any(|x| *x == "unstable-options")
-    }
-
-    fn parse_all_options(args: &Vec<String>) -> getopts::Matches {
-        let all_groups: Vec<getopts::OptGroup> = config::rustc_optgroups()
-                                                     .into_iter()
-                                                     .map(|x| x.opt_group)
-                                                     .collect();
-        match getopts::getopts(&args[..], &all_groups) {
-            Ok(m) => {
-                if !allows_unstable_options(&m) {
-                    // If -Z unstable-options was not specified, verify that
-                    // no unstable options were present.
-                    for opt in config::rustc_optgroups().into_iter().filter(|x| !x.is_stable()) {
-                        let opt_name = if !opt.opt_group.long_name.is_empty() {
-                            &opt.opt_group.long_name
-                        } else {
-                            &opt.opt_group.short_name
-                        };
-                        if m.opt_present(opt_name) {
-                            early_error(ErrorOutputType::default(),
-                                        &format!("use of unstable option '{}' requires -Z \
-                                                  unstable-options",
-                                                 opt_name));
-                        }
-                    }
-                }
-                m
-            }
-            Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
-        }
-    }
-
-    // As a speed optimization, first try to parse the command-line using just
-    // the stable options.
-    let matches = match getopts::getopts(&args[..], &config::optgroups()) {
-        Ok(ref m) if allows_unstable_options(m) => {
-            // If -Z unstable-options was specified, redo parsing with the
-            // unstable options to ensure that unstable options are defined
-            // in the returned getopts::Matches.
-            parse_all_options(&args)
-        }
+    // Parse with *all* options defined in the compiler, we don't worry about
+    // option stability here we just want to parse as much as possible.
+    let all_groups: Vec<getopts::OptGroup> = config::rustc_optgroups()
+                                                 .into_iter()
+                                                 .map(|x| x.opt_group)
+                                                 .collect();
+    let matches = match getopts::getopts(&args[..], &all_groups) {
         Ok(m) => m,
-        Err(_) => {
-            // redo option parsing, including unstable options this time,
-            // in anticipation that the mishandled option was one of the
-            // unstable ones.
-            parse_all_options(&args)
-        }
+        Err(f) => early_error(ErrorOutputType::default(), &f.to_string()),
     };
 
+    // For all options we just parsed, we check a few aspects:
+    //
+    // * If the option is stable, we're all good
+    // * If the option wasn't passed, we're all good
+    // * If `-Z unstable-options` wasn't passed (and we're not a -Z option
+    //   ourselves), then we require the `-Z unstable-options` flag to unlock
+    //   this option that was passed.
+    // * If we're a nightly compiler, then unstable options are now unlocked, so
+    //   we're good to go.
+    // * Otherwise, if we're a truly unstable option then we generate an error
+    //   (unstable option being used on stable)
+    // * If we're a historically stable-but-should-be-unstable option then we
+    //   emit a warning that we're going to turn this into an error soon.
+    let has_z_unstable_options = matches.opt_strs("Z")
+                                        .iter()
+                                        .any(|x| *x == "unstable-options");
+    let really_allows_unstable_options = match get_unstable_features_setting() {
+        UnstableFeatures::Disallow => false,
+        _ => true,
+    };
+    for opt in config::rustc_optgroups() {
+        if opt.stability == OptionStability::Stable {
+            continue
+        }
+        let opt_name = if !opt.opt_group.long_name.is_empty() {
+            &opt.opt_group.long_name
+        } else {
+            &opt.opt_group.short_name
+        };
+        if !matches.opt_present(opt_name) {
+            continue
+        }
+        if opt_name != "Z" && !has_z_unstable_options {
+            let msg = format!("the `-Z unstable-options` flag must also be \
+                               passed to enable the flag `{}`", opt_name);
+            early_error(ErrorOutputType::default(), &msg);
+        }
+        if really_allows_unstable_options {
+            continue
+        }
+        match opt.stability {
+            OptionStability::Unstable => {
+                let msg = format!("the option `{}` is only accepted on the \
+                                   nightly compiler", opt_name);
+                early_error(ErrorOutputType::default(), &msg);
+            }
+            OptionStability::UnstableButNotReally => {
+                let msg = format!("the option `{}` is is unstable and should \
+                                   only be used on the nightly compiler, but \
+                                   it is currently accepted for backwards \
+                                   compatibility; this will soon change, \
+                                   see issue #31847 for more details",
+                                  opt_name);
+                early_warn(ErrorOutputType::default(), &msg);
+            }
+            OptionStability::Stable => {}
+        }
+    }
+
     if matches.opt_present("h") || matches.opt_present("help") {
+        // Only show unstable options in --help if we *really* accept unstable
+        // options, which catches the case where we got `-Z unstable-options` on
+        // the stable channel of Rust which was accidentally allowed
+        // historically.
         usage(matches.opt_present("verbose"),
-              allows_unstable_options(&matches));
+              has_z_unstable_options && really_allows_unstable_options);
         return None;
     }
 

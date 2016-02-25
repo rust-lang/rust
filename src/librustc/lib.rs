@@ -51,7 +51,7 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate rbml;
-extern crate rustc_llvm;
+pub extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_front;
 extern crate rustc_data_structures;
@@ -65,8 +65,6 @@ extern crate serialize as rustc_serialize; // used by deriving
 
 #[cfg(test)]
 extern crate test;
-
-pub use rustc_llvm as llvm;
 
 #[macro_use]
 mod macros;

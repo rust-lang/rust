@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// ignore-windows
+// compile-flags: --no-defaults
 
-pub extern crate core; //~WARN `pub extern crate` does not work
-
-#[rustc_error]
-fn main() {} //~ ERROR: compilation successful
+// @has src/issue_26995/dev/null.html
+// @has issue_26995/null/index.html '//a/@href' '../../src/issue_26995/dev/null.html'
+#[path="/dev/null"]
+pub mod null;
