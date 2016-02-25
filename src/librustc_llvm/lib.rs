@@ -185,7 +185,7 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Attributes {
     regular: Attribute,
     dereferenceable_bytes: u64

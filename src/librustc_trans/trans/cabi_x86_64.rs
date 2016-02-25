@@ -16,7 +16,7 @@ use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute, Vector};
-use trans::abi::{ArgType, FnType, Indirect};
+use trans::abi::{ArgType, FnType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -393,8 +393,10 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
         if !arg.ty.is_reg_ty() {
             let cls = classify_ty(arg.ty);
             if is_mem_cls(&cls) {
-                arg.kind = Indirect;
-                arg.attr = ind_attr;
+                arg.make_indirect(ccx);
+                if let Some(attr) = ind_attr {
+                    arg.attrs.set(attr);
+                }
             } else {
                 arg.cast = Some(llreg_ty(ccx, &cls));
             }

@@ -16,7 +16,7 @@
 // need to be fixed when PowerPC vector support is added.
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array};
-use trans::abi::{FnType, ArgType, Indirect};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -158,7 +158,7 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
 
     // The PowerPC64 big endian ABI doesn't return aggregates in registers
     if ccx.sess().target.target.target_endian == "big" {
-        ret.kind = Indirect;
+        ret.make_indirect(ccx);
     }
 
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ret.ty) {
@@ -182,7 +182,7 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
         return;
     }
 
-    ret.kind = Indirect;
+    ret.make_indirect(ccx);
 }
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {

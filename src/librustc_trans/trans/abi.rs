@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::ArgKind::*;
-
 use llvm;
 use trans::common::{return_type_is_void, type_is_fat_ptr};
 use trans::context::CrateContext;
@@ -43,7 +41,7 @@ pub const FAT_PTR_ADDR: usize = 0;
 pub const FAT_PTR_EXTRA: usize = 1;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub enum ArgKind {
+enum ArgKind {
     /// Pass the argument directly using the normal converted
     /// LLVM type or by coercing to another specified type
     Direct,
@@ -59,7 +57,7 @@ pub enum ArgKind {
 /// This is borrowed from clang's ABIInfo.h
 #[derive(Clone, Copy, Debug)]
 pub struct ArgType {
-    pub kind: ArgKind,
+    kind: ArgKind,
     /// Original LLVM type
     pub original_ty: Type,
     /// Sizing LLVM type (pointers are opaque).
@@ -81,28 +79,48 @@ pub struct ArgType {
     pub cast: Option<Type>,
     /// Dummy argument, which is emitted before the real argument
     pub pad: Option<Type>,
-    /// LLVM attribute of argument
-    pub attr: Option<llvm::Attribute>
+    /// LLVM attributes of argument
+    pub attrs: llvm::Attributes
 }
 
 impl ArgType {
     fn new(original_ty: Type, ty: Type) -> ArgType {
         ArgType {
-            kind: Direct,
+            kind: ArgKind::Direct,
             original_ty: original_ty,
             ty: ty,
             cast: None,
             pad: None,
-            attr: None
+            attrs: llvm::Attributes::default()
         }
     }
 
+    pub fn make_indirect(&mut self, ccx: &CrateContext) {
+        // Wipe old attributes, likely not valid through indirection.
+        self.attrs = llvm::Attributes::default();
+
+        let llarg_sz = llsize_of_real(ccx, self.ty);
+
+        // For non-immediate arguments the callee gets its own copy of
+        // the value on the stack, so there are no aliases. It's also
+        // program-invisible so can't possibly capture
+        self.attrs.set(llvm::Attribute::NoAlias)
+                  .set(llvm::Attribute::NoCapture)
+                  .set_dereferenceable(llarg_sz);
+
+        self.kind = ArgKind::Indirect;
+    }
+
+    pub fn ignore(&mut self) {
+        self.kind = ArgKind::Ignore;
+    }
+
     pub fn is_indirect(&self) -> bool {
-        self.kind == Indirect
+        self.kind == ArgKind::Indirect
     }
 
     pub fn is_ignore(&self) -> bool {
-        self.kind == Ignore
+        self.kind == ArgKind::Ignore
     }
 }
 
@@ -178,7 +196,7 @@ impl FnType {
             if ty.is_bool() {
                 let llty = Type::i1(ccx);
                 let mut arg = ArgType::new(llty, llty);
-                arg.attr = Some(llvm::Attribute::ZExt);
+                arg.attrs.set(llvm::Attribute::ZExt);
                 arg
             } else {
                 ArgType::new(type_of::type_of(ccx, ty),
@@ -221,7 +239,7 @@ impl FnType {
                 }
                 let size = llsize_of_alloc(ccx, arg.ty);
                 if size > llsize_of_alloc(ccx, ccx.int_type()) {
-                    arg.kind = Indirect;
+                    arg.make_indirect(ccx);
                 } else if size > 0 {
                     // We want to pass small aggregates as immediates, but using
                     // a LLVM aggregate type for this leads to bad optimizations,
@@ -237,6 +255,9 @@ impl FnType {
             }
             for arg in &mut fty.args {
                 fixup(arg);
+            }
+            if fty.ret.is_indirect() {
+                fty.ret.attrs.set(llvm::Attribute::StructRet);
             }
             return fty;
         }
@@ -262,6 +283,10 @@ impl FnType {
             "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, &mut fty),
             "asmjs" => cabi_asmjs::compute_abi_info(ccx, &mut fty),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
+        }
+
+        if fty.ret.is_indirect() {
+            fty.ret.attrs.set(llvm::Attribute::StructRet);
         }
 
         fty
@@ -302,43 +327,18 @@ impl FnType {
         }
     }
 
-    pub fn llvm_attrs(&self, ccx: &CrateContext) -> llvm::AttrBuilder {
+    pub fn llvm_attrs(&self) -> llvm::AttrBuilder {
         let mut attrs = llvm::AttrBuilder::new();
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
-
-        // Add attributes that are always applicable, independent of the concrete foreign ABI
-        if self.ret.is_indirect() {
-            let llret_sz = llsize_of_real(ccx, self.ret.ty);
-
-            // The outptr can be noalias and nocapture because it's entirely
-            // invisible to the program. We also know it's nonnull as well
-            // as how many bytes we can dereference
-            attrs.arg(i).set(llvm::Attribute::StructRet)
-                        .set(llvm::Attribute::NoAlias)
-                        .set(llvm::Attribute::NoCapture)
-                        .set_dereferenceable(llret_sz);
-        };
-
-        // Add attributes that depend on the concrete foreign ABI
-        if let Some(attr) = self.ret.attr {
-            attrs.arg(i).set(attr);
-        }
-
+        *attrs.arg(i) = self.ret.attrs;
         i += 1;
         for arg in &self.args {
-            if arg.is_ignore() {
-                continue;
+            if !arg.is_ignore() {
+                if arg.pad.is_some() { i += 1; }
+                *attrs.arg(i) = arg.attrs;
+                i += 1;
             }
-            // skip padding
-            if arg.pad.is_some() { i += 1; }
-
-            if let Some(attr) = arg.attr {
-                attrs.arg(i).set(attr);
-            }
-
-            i += 1;
         }
-
         attrs
     }
 }

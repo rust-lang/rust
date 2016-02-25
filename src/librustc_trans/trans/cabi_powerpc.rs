@@ -11,7 +11,7 @@
 use libc::c_uint;
 use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array};
-use trans::abi::{FnType, ArgType, Indirect};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -143,7 +143,7 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     if fty.ret.ty != Type::void(ccx) {
         if !is_reg_ty(fty.ret.ty) {
-            fty.ret.kind = Indirect;
+            fty.ret.make_indirect(ccx);
         }
     }
 

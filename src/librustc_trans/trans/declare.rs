@@ -113,7 +113,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         attributes::from_fn_type(ccx, fn_type)
     } else {
         attributes::unwind(llfn, false);
-        fty.llvm_attrs(ccx)
+        fty.llvm_attrs()
     };
 
     attrs.apply_llfn(llfn);

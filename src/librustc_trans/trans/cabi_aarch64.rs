@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
-use trans::abi::{FnType, ArgType, Indirect};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -185,7 +185,7 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
         ret.cast = Some(llty);
         return;
     }
-    ret.kind = Indirect;
+    ret.make_indirect(ccx);
 }
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
@@ -214,7 +214,7 @@ fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
         arg.cast = Some(llty);
         return;
     }
-    arg.kind = Indirect;
+    arg.make_indirect(ccx);
 }
 
 fn is_reg_ty(ty: Type) -> bool {
