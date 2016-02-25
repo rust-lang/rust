@@ -133,20 +133,29 @@ function's author to write down the concrete type implementing the bound.
 > with the language to understand, and for somebody familiar with the compiler to implement.
 > This should get into specifics and corner-cases, and include examples of how the feature is used.
 
-#### Syntax
+As explained at the start of the RFC, the focus here is a relatively narrow
+introduction of abstract types limited to the return type of inherent methods
+and free functions. While we still need to resolve some of the core questions
+about what an "abstract type" means even in these cases, we avoid some of the
+complexities that come along with allowing the feature in other locations or
+with other extensions.
+
+## Syntax
 
 Let's start with the bikeshed: The proposed syntax is `@Trait` in return type
 position, composing like trait objects to forms like `@(Foo+Send+'a)`.
 
-The reason for choosing a sigil is ergonomics: Whatever the exact final
-implementation will be capable of, you'd want it to be as easy to read/write
-as trait objects, or else the more performant and idiomatic option would
-be the more verbose one, and thus probably less used.
+The reason for choosing a sigil is ergonomics: Whatever the exact final feature
+will be capable of, you'd want it to be as easy to read/write as trait objects,
+or else the more performant and idiomatic option would be the more verbose one,
+and thus probably less used.
 
-The argument can be made this decreases the google-ability of Rust syntax
-(and this doesn't even talk about the _old_ `@T` pointer semantic the internet is still littered with),
-but this would be somewhat mitigated by the feature being supposedly used commonly once it lands,
-and can be explained in the docs as being short for `abstract` or `anonym`.
+The argument can be made this decreases the google-ability of Rust syntax (and
+this doesn't even talk about the _old_ `@T` pointer semantic the internet is
+still littered with), but this would be somewhat mitigated by the feature being
+supposedly used commonly once it lands, and can be explained in the docs as
+being short for `abstract` or `anonym`. And in any case, it's a problem we
+already suffer with `&T` and `&mut T`.
 
 If there are good reasons against `@`, there is also the choice of `~`.
 All points from above still apply, except `~` is a bit rarer in language
@@ -157,37 +166,41 @@ there is also the option of using keyword-based syntax like `impl Trait` or
 `abstract Trait`, but this would add a verbosity overhead for a feature
 that will be used somewhat commonly.
 
-#### Semantics
+## Semantics
 
 The core semantics of the feature is described below.
 
 Note that the sections after this one go into more detail on some of the design
-decisions, and that it is likely for most of the mentioned limitations to be
-lifted at some point in the future.
+decisions, and that **it is likely for many of the mentioned limitations to be
+lifted at some point in the future**. For clarity, we'll separately categories the *core
+semantics* of the feature (aspects that would stay unchanged with future extensions)
+and the *initial limitations* (which are likely to be lifted later).
 
-- `@Trait` may only be written at return type position
-  of a freestanding or inherent-impl function, not in trait definitions,
-  closure traits, function pointers, or any non-return type position.
-- The function body can return values of any type that implements Trait,
-  but all return values need to be of the same type.
-- As far as the typesystem and the compiler is concerned,
-  the return type outside of the function would
-  not be a entirely "new" type, nor would it be
-  a simple type alias. Rather, its semantic would be very similar to that of
-  _generic type paramters_ inside a function, with small differences caused
-  by being an _output_ rather than an _input_ of the function.
+**Core semantics**:
+
+- If a function returns `@Trait`, its body can return values of any type that
+  implements `Trait`, but all return values need to be of the same type.
+
+- As far as the typesystem and the compiler is concerned, the return type
+  outside of the function would not be a entirely "new" type, nor would it be a
+  simple type alias. Rather, its semantics would be very similar to that of
+  _generic type paramters_ inside a function, with small differences caused by
+  being an _output_ rather than an _input_ of the function.
+
   - The type would be known to implement the specified traits.
   - The type would not be known to implement any other trait, with
-    the exception of OIBITS and default traits like `Sized`.
+    the exception of OIBITS (aka "auto traits") and default traits like `Sized`.
   - The type would not be considered equal to the actual underlying type.
-  - The type would not be allowed to be implemented on.
-  - The type would be unnameable, just like closures and function items.
-- Because OIBITS like `Send` and `Sync` will leak through an
-  abstract return type, there will be some additional complexity in the
-  compiler due to some non-local type checking becoming necessary.
-- The return type has a identity based on all generic parameters the
+  - The type would not be allowed to appear as the Self type for an `impl` block.
+
+- Because OIBITS like `Send` and `Sync` will leak through an abstract return
+  type, there will be some additional complexity in the compiler due to some
+  non-local type checking becoming necessary.
+
+- The return type has an identity based on all generic parameters the
   function body is parametrized by, and by the location of the function
   in the module system. This means type equality behaves like this:
+
   ```rust
   fn foo<T: Trait>(t: T) -> @Trait {
       t
@@ -205,8 +218,33 @@ lifted at some point in the future.
   equal_type(foo::<bool>(false), foo::<i32>(0)); // ERROR, `@Trait {foo<bool>}` is not the same type as `@Trait {foo<i32>}`
   ```
 
-- The function body can not see through its own return type, so code like this
+- The code generation passes of the compiler would not draw a distinction
+  between the abstract return type and the underlying type, just like they don't
+  for generic paramters. This means:
+  - The same trait code would be instantiated, for example, `-> @Any`
+    would return the type id of the underlying type.
+    - Specialization would specialize based on the underlying type.
+
+**Initial limitations**:
+
+- `@Trait` may only be written at return type position of a freestanding or
+  inherent-impl function, not in trait definitions, closure traits, function
+  pointers, or any non-return type position.
+
+  - Eventually, we will want to allow the feature to be used within traits, and
+    like in argument position as well (as an ergonomic improvement over today's generics).
+
+- The type produced when a function returns `@Trait` would be effectively
+  unnameable, just like closures and function items.
+
+  - We will almost certainly want to lift this limitation in the long run, so
+    that abstract return types can be placed into structs and so on. There are a
+    few ways we could do so, all related to getting at the "output type" of a
+    function given all of its generic arguments.
+
+- The function body cannot see through its own return type, so code like this
   would be forbidden just like on the outside:
+
   ```rust
   fn sum_to(n: u32) -> @Display {
       if n == 0 {
@@ -217,37 +255,58 @@ lifted at some point in the future.
   }
   ```
 
-- The code generation passes of the compiler would
-  not draw a distinction between the abstract return type and the underlying type,
-  just like they don't for generic paramters. This means:
-  - The same trait code would be instantiated, for example, `-> @Any`
-    would return the type id of the underlying type.
-  - Specialization would specialize based on the underlying type.
+  - It's unclear whether we'll want to lift this limitation, but it should be possible to do so.
 
-#### Why this semantic for the return type?
+## Rationale
 
-There has been a lot of discussion about what the semantic of
-the return type should be, with the theoretical extremes being "full return type inference" and "fully abstract type that behaves like a autogenerated newtype wrapper"
+### Why this semantics for the return type?
 
-The design as choosen in this RFC lies somewhat in between those two,
-for the following reasons:
+There has been a lot of discussion about what the semantics of the return type
+should be, with the theoretical extremes being "full return type inference" and
+"fully abstract type that behaves like a autogenerated newtype wrapper". (This
+was in fact the main focus of the
+[blog post](http://aturon.github.io/blog/2015/09/28/impl-trait/) on `impl
+Trait`.)
 
-- Usage of this feature should not imply worse performance
-  than not using it, so specialization and codegeneration has to
-  treat it the same.
-- Likewise, there should not be any bad interactions
-  caused by part of the typesystem treating the return type different
-  than other parts, so it should not have its own "identity"
-  in the sense of allowing additional or different trait or inherent implementations.
-- It should not enable return type inference in item signatures,
-  so the exact underlying type needs to be hidden.
-- It should not cause type errors to change the function
-  body and/or the underlying type as long as the specifed trait
-  bounds are still satisfied.
-- As a exception to the above, it should not act as a barrier to OIBITs like
-  `Send` and `Sync` due to ergonomic reasons. For more details, see next section.
+The design as choosen in this RFC lies somewhat in between those two, since it
+allows OIBITs to leak through, and allows specialization to "see" the full type
+being returned. That is, `@Trait` does not attempt to be a "tightly sealed"
+abstraction boundary. The rationale for this design is a mixture of pragmatics
+and principles.
 
-#### OIBIT semantic
+#### Specialization transparency
+
+**Principles for specialization transparency**:
+
+The [specialization RFC](https://github.com/rust-lang/rfcs/pull/1210) has given
+us a basic principle for how to understand bounds in function generics: they
+represent a *minimum* contract between the caller and the callee, in that the
+caller must meet at least those bounds, and the callee must be prepared to work
+with any type that meets at least those bounds. However, with specialization,
+the callee may choose different behavior when additional bounds hold.
+
+This RFC abides by a similar interpretation for return types: the signature
+represents the minimum bound that the callee must satisfy, and the caller must
+be prepared to work with any type that meets at least that bound. Again, with
+specialization, the caller may dispatch on additional type information beyond
+those bounds.
+
+In other words, to the extent that returning `@Trait` is intended to be
+symmetric with taking a generic `T: Trait`, transparency with respect to
+specialization maintains that symmetry.
+
+**Pragmatics for specialization transparency**:
+
+The practical reason we want `@Trait` to be transparent to specialization is the
+same as the reason we want specialization in the first place: to be able to
+break through abstractions with more efficient special-case code.
+
+This is particularly important for one of the primary intended usecases:
+returning `@Iterator`. We are very likely to employ specialization for various
+iterator types, and making the underlying return type invisible to
+specialization would lose out on those efficiency wins.
+
+#### OIBIT transparency
 
 OIBITs leak through an abstract return type. This might be considered controversial, since
 it effectively opens a channel where the result of function-local type inference affects
@@ -255,32 +314,49 @@ item-level API, but has been deemed worth it for the following reasons:
 
 - Ergonomics: Trait objects already have the issue of explicitly needing to
   declare `Send`/`Sync`-ability, and not extending this problem to abstract
-  return types is desireable. In practice, most uses
-  of this feature would have to add explicit bounds for OIBITS
-  if they wanted to be maximally usable.
+  return types is desireable. In practice, most uses of this feature would have
+  to add explicit bounds for OIBITS if they wanted to be maximally usable.
+
 - Low real change, since the situation already somewhat exists on structs with private fields:
   - In both cases, a change to the private implementation might change whether a OIBIT is
     implemented or not.
   - In both cases, the existence of OIBIT impls is not visible without doc tools
   - In both cases, you can only assert the existence of OIBIT impls
-    by adding explicit trait bounds either to the API or to the crate's testsuite.
+  by adding explicit trait bounds either to the API or to the crate's testsuite.
 
-This means, however, that it has to be considered a silent breaking change
-to change a function with a abstract return type
-in a way that removes OIBIT impls, which might be a problem.
+In fact, a large part of the point of OIBITs in the first place was to cut
+across abstraction barriers and provide information about a type without the
+type's author having to explicitly opt in.
 
-But since the number of used OIBITs is relatvly small,
-deducing the return type in a function body and reasoning
-about whether such a breakage will occur has been deemed as a manageable amount of work.
+This means, however, that it has to be considered a silent breaking change to
+change a function with a abstract return type in a way that removes OIBIT impls,
+which might be a problem. (As noted above, this is already the case for `struct`
+definitions.)
 
-#### Anonymity
+But since the number of used OIBITs is relatvly small, deducing the return type
+in a function body and reasoning about whether such a breakage will occur has
+been deemed as a manageable amount of work.
 
-A abstract return type can not be named - this is similar to how closures
+#### Wherefore type abstraction?
+
+In the [most recent RFC](https://github.com/rust-lang/rfcs/pull/1305) related to
+this feature, a more "tightly sealed" abstraction mechanism was
+proposed. However, part of the discussion on specialization centered on
+precisely the issue of what type abstraction provides and how to achieve it.  A
+particular salient point there is that, in Rust, *privacy* is already our
+primary mechanism for hiding
+(["privacy is the new parametricity"](https://github.com/rust-lang/rfcs/pull/1210#issuecomment-181992044)). In
+practice, that means that if you want opacity against specialization, you should
+use something like a newtype.
+
+### Anonymity
+
+A abstract return type can not be named -- this is similar to how closures
 and function items are already unnameable types, and might be considered
-a problem because it makes it not possible to build explicitly typed API
+a problem because it makes it not possible to build explicitly typed APIs
 around the return type of a function.
 
-The current semantic has been chosen for consistency and simplicity,
+The current semantics has been chosen for consistency and simplicity,
 since the issue already exists with closures and function items, and
 a solution to them will also apply here.
 
@@ -289,7 +365,7 @@ abstract return types could get upgraded to having a name transparently.
 Likewise, if `typeof` makes it into the language, then you could refer to the
 return type of a function without naming it.
 
-#### Limitation to only return type position
+### Limitation to only return type position
 
 There have been various proposed additional places where abstract types
 might be usable. For example, `fn x(y: @Trait)` as shorthand for
@@ -300,7 +376,7 @@ locations are yet unclear
 (`@Trait` would effectively behave completely different before and after the `->`),
 this has also been excluded from this proposal.
 
-#### Type transparency in recursive functions
+### Type transparency in recursive functions
 
 Functions with abstract return types can not see through their own return type,
 making code like this not compile:
@@ -341,13 +417,13 @@ fn sum_to(n: u32) -> @Display {
 }
 ```
 
-#### Not legal in function pointers/closure traits
+### Not legal in function pointers/closure traits
 
 Because `@Trait` defines a type tied to the concrete function body,
 it does not make much sense to talk about it separately in a function signature,
 so the syntax is forbidden there.
 
-#### Compability with conditional trait bounds
+### Compability with conditional trait bounds
 
 On valid critique for the existing `@Trait` proposal is that it does not
 cover more complex scenarios, where the return type would implement
@@ -368,7 +444,7 @@ Using just `-> @Iterator`, this would not be possible to reproduce.
 Since there has been no proposals so far that would address this in a way
 that would conflict with the fixed-trait-set case, this RFC punts on that issue as well.
 
-#### Limitation to free/inherent functions
+### Limitation to free/inherent functions
 
 One important usecase of abstract return types is to use them in trait methods.
 
