@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub extern crate core;
 pub use foo as bar;
 
 pub mod foo {

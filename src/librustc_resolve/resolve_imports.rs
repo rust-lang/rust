@@ -394,7 +394,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                            directive.is_public &&
                                            !name_binding.is_public() => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
-                let note_msg = format!("Consider marking `{}` as `pub` in the imported module",
+                let note_msg = format!("consider marking `{}` as `pub` in the imported module",
                                         source);
                 struct_span_err!(self.resolver.session, directive.span, E0364, "{}", &msg)
                     .span_note(directive.span, &note_msg)
@@ -403,12 +403,22 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
             (_, &Success(name_binding)) if !name_binding.is_import() && directive.is_public => {
                 if !name_binding.is_public() {
-                    let msg = format!("`{}` is private, and cannot be reexported", source);
-                    let note_msg =
-                        format!("Consider declaring type or module `{}` with `pub`", source);
-                    struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
-                        .span_note(directive.span, &note_msg)
-                        .emit();
+                    if name_binding.is_extern_crate() {
+                        let msg = format!("extern crate `{}` is private, and cannot be reexported \
+                                           (error E0364), consider declaring with `pub`",
+                                           source);
+                        self.resolver.session.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                       directive.id,
+                                                       directive.span,
+                                                       msg);
+                    } else {
+                        let msg = format!("`{}` is private, and cannot be reexported", source);
+                        let note_msg =
+                            format!("consider declaring type or module `{}` with `pub`", source);
+                        struct_span_err!(self.resolver.session, directive.span, E0365, "{}", &msg)
+                            .span_note(directive.span, &note_msg)
+                            .emit();
+                    }
                 } else if name_binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
                     let msg = format!("variant `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring its enum as `pub`",
@@ -441,9 +451,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         module_.decrement_outstanding_references_for(target, TypeNS);
 
         let def_and_priv = |binding: &NameBinding| {
-            let def = binding.def().unwrap();
-            let last_private = if binding.is_public() { lp } else { DependsOn(def.def_id()) };
-            (def, last_private)
+            let last_private =
+                if binding.is_public() { lp } else { DependsOn(binding.local_def_id().unwrap()) };
+            (binding.def().unwrap(), last_private)
         };
         let value_def_and_priv = value_result.success().map(&def_and_priv);
         let type_def_and_priv = type_result.success().map(&def_and_priv);
@@ -493,7 +503,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
         target_module.for_each_child(|name, ns, binding| {
             if !binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) { return }
-            if binding.is_extern_crate() { return }
             self.define(module_, name, ns, directive.import(binding));
 
             if ns == TypeNS && directive.is_public &&
