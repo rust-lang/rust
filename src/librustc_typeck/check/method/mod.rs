@@ -14,7 +14,6 @@ use astconv::AstConv;
 use check::FnCtxt;
 use middle::def::Def;
 use middle::def_id::DefId;
-use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
@@ -334,18 +333,11 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               method_name: ast::Name,
                               self_ty: ty::Ty<'tcx>,
                               expr_id: ast::NodeId)
-                              -> Result<(Def, LastPrivate), MethodError<'tcx>>
+                              -> Result<Def, MethodError<'tcx>>
 {
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
-    let def_result = pick.item.def();
-    let mut lp = LastMod(AllPublic);
-    if let probe::InherentImplPick = pick.kind {
-        if pick.item.vis() != hir::Public {
-            lp = LastMod(DependsOn(def_result.def_id()));
-        }
-    }
-    Ok((def_result, lp))
+    Ok(pick.item.def())
 }
 
 

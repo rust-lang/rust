@@ -25,7 +25,6 @@ use build_reduced_graph;
 
 use rustc::lint;
 use rustc::middle::def::*;
-use rustc::middle::privacy::*;
 
 use syntax::ast::{NodeId, Name};
 use syntax::attr::AttrMetaMethods;
@@ -296,7 +295,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                  &import_directive.module_path,
                                  UseLexicalScopeFlag::DontUseLexicalScope,
                                  import_directive.span)
-            .and_then(|(containing_module, lp)| {
+            .and_then(|containing_module| {
                 // We found the module that the target is contained
                 // within. Attempt to resolve the import within it.
                 if let SingleImport(target, source) = import_directive.subclass {
@@ -304,10 +303,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                containing_module,
                                                target,
                                                source,
-                                               import_directive,
-                                               lp)
+                                               import_directive)
                 } else {
-                    self.resolve_glob_import(module_, containing_module, import_directive, lp)
+                    self.resolve_glob_import(module_, containing_module, import_directive)
                 }
             })
             .and_then(|()| {
@@ -333,26 +331,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                              target_module: Module<'b>,
                              target: Name,
                              source: Name,
-                             directive: &ImportDirective,
-                             lp: LastPrivate)
+                             directive: &ImportDirective)
                              -> ResolveResult<()> {
-        debug!("(resolving single import) resolving `{}` = `{}::{}` from `{}` id {}, last \
-                private {:?}",
+        debug!("(resolving single import) resolving `{}` = `{}::{}` from `{}` id {}",
                target,
                module_to_string(&target_module),
                source,
                module_to_string(module_),
-               directive.id,
-               lp);
-
-        let lp = match lp {
-            LastMod(lp) => lp,
-            LastImport {..} => {
-                self.resolver
-                    .session
-                    .span_bug(directive.span, "not expecting Import here, must be LastMod")
-            }
-        };
+               directive.id);
 
         // If this is a circular import, we temporarily count it as determined so that
         // it fails (as opposed to being indeterminate) when nothing else can define it.
@@ -450,28 +436,12 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         module_.decrement_outstanding_references_for(target, ValueNS);
         module_.decrement_outstanding_references_for(target, TypeNS);
 
-        let def_and_priv = |binding: &NameBinding| {
-            let last_private =
-                if binding.is_public() { lp } else { DependsOn(binding.local_def_id().unwrap()) };
-            (binding.def().unwrap(), last_private)
+        let def = match type_result.success().and_then(NameBinding::def) {
+            Some(def) => def,
+            None => value_result.success().and_then(NameBinding::def).unwrap(),
         };
-        let value_def_and_priv = value_result.success().map(&def_and_priv);
-        let type_def_and_priv = type_result.success().map(&def_and_priv);
-
-        let import_lp = LastImport {
-            value_priv: value_def_and_priv.map(|(_, p)| p),
-            value_used: Used,
-            type_priv: type_def_and_priv.map(|(_, p)| p),
-            type_used: Used,
-        };
-
-        let write_path_resolution = |(def, _)| {
-            let path_resolution =
-                PathResolution { base_def: def, last_private: import_lp, depth: 0 };
-            self.resolver.def_map.borrow_mut().insert(directive.id, path_resolution);
-        };
-        value_def_and_priv.map(&write_path_resolution);
-        type_def_and_priv.map(&write_path_resolution);
+        let path_resolution = PathResolution { base_def: def, depth: 0 };
+        self.resolver.def_map.borrow_mut().insert(directive.id, path_resolution);
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());
@@ -484,8 +454,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     fn resolve_glob_import(&mut self,
                            module_: Module<'b>,
                            target_module: Module<'b>,
-                           directive: &ImportDirective,
-                           lp: LastPrivate)
+                           directive: &ImportDirective)
                            -> ResolveResult<()> {
         // We must bail out if the node has unresolved imports of any kind (including globs).
         if target_module.pub_count.get() > 0 {
@@ -521,7 +490,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             self.resolver.def_map.borrow_mut().insert(directive.id,
                                                       PathResolution {
                                                           base_def: Def::Mod(did),
-                                                          last_private: lp,
                                                           depth: 0,
                                                       });
         }

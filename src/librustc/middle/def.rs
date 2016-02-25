@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::def_id::DefId;
-use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
@@ -65,7 +64,6 @@ pub enum Def {
 #[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
     pub base_def: Def,
-    pub last_private: LastPrivate,
     pub depth: usize
 }
 
@@ -84,12 +82,10 @@ impl PathResolution {
     }
 
     pub fn new(base_def: Def,
-               last_private: LastPrivate,
                depth: usize)
                -> PathResolution {
         PathResolution {
             base_def: base_def,
-            last_private: last_private,
             depth: depth,
         }
     }
