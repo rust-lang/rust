@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cmp;
 use io;
 use libc::{c_int, c_void};
 use mem;
@@ -131,9 +132,9 @@ impl Socket {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
+        let len = cmp::min(buf.len(), i32::max_value() as usize) as i32;
         unsafe {
-            match c::recv(self.0, buf.as_mut_ptr() as *mut c_void,
-                             buf.len() as i32, 0) {
+            match c::recv(self.0, buf.as_mut_ptr() as *mut c_void, len, 0) {
                 -1 if c::WSAGetLastError() == c::WSAESHUTDOWN => Ok(0),
                 -1 => Err(last_error()),
                 n => Ok(n as usize)

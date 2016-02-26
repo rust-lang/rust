@@ -10,6 +10,7 @@
 
 use prelude::v1::*;
 
+use cmp;
 use ffi::{CStr, CString};
 use fmt;
 use io::{self, Error, ErrorKind};
@@ -198,10 +199,11 @@ impl TcpStream {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let ret = try!(cvt(unsafe {
             c::send(*self.inner.as_inner(),
                     buf.as_ptr() as *const c_void,
-                    buf.len() as wrlen_t,
+                    len,
                     0)
         }));
         Ok(ret as usize)
@@ -358,21 +360,23 @@ impl UdpSocket {
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
         let mut addrlen = mem::size_of_val(&storage) as c::socklen_t;
+        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
 
         let n = try!(cvt(unsafe {
             c::recvfrom(*self.inner.as_inner(),
                         buf.as_mut_ptr() as *mut c_void,
-                        buf.len() as wrlen_t, 0,
+                        len, 0,
                         &mut storage as *mut _ as *mut _, &mut addrlen)
         }));
         Ok((n as usize, try!(sockaddr_to_addr(&storage, addrlen as usize))))
     }
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
+        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let (dstp, dstlen) = dst.into_inner();
         let ret = try!(cvt(unsafe {
             c::sendto(*self.inner.as_inner(),
-                      buf.as_ptr() as *const c_void, buf.len() as wrlen_t,
+                      buf.as_ptr() as *const c_void, len,
                       0, dstp, dstlen)
         }));
         Ok(ret as usize)
