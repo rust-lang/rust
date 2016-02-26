@@ -55,17 +55,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         let_extent_stack.push(remainder_scope);
                         unpack!(block = this.in_scope(init_scope, block, move |this| {
                             // FIXME #30046                              ^~~~
-                            match initializer {
-                                Some(initializer) => {
-                                    this.expr_into_pattern(block,
-                                                           remainder_scope,
-                                                           pattern,
-                                                           initializer)
-                                }
-                                None => {
-                                    this.declare_bindings(remainder_scope, &pattern);
-                                    block.unit()
-                                }
+                            if let Some(init) = initializer {
+                                this.expr_into_pattern(block, remainder_scope, pattern, init)
+                            } else {
+                                this.declare_bindings(remainder_scope, &pattern);
+                                block.unit()
                             }
                         }));
                     }

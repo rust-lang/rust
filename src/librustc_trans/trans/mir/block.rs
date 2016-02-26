@@ -278,7 +278,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             self.set_operand_dropped(bcx, op);
                         });
                         landingpad.at_start(|bcx| for op in args {
-                                self.set_operand_dropped(bcx, op);
+                            self.set_operand_dropped(bcx, op);
                         });
                     },
                     (false, _, &None) => {
