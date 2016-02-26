@@ -203,7 +203,12 @@ pub struct TestDesc {
     pub should_panic: ShouldPanic,
 }
 
-unsafe impl Send for TestDesc {}
+#[derive(Clone)]
+pub struct TestPaths {
+    pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
+    pub base: PathBuf,         // e.g., compile-test, auxiliary
+    pub relative_dir: PathBuf, // e.g., foo/bar
+}
 
 #[derive(Debug)]
 pub struct TestDescAndFn {
