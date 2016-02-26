@@ -2285,6 +2285,21 @@ impl Baz for Foo {
     type Quux = u32;
 }
 ```
+
+Note, however, that items with the same name are allowed for inherent `impl`
+blocks that don't overlap:
+
+```
+struct Foo<T>(T);
+
+impl Foo<u8> {
+    fn bar(&self) -> bool { self.0 > 5 }
+}
+
+impl Foo<bool> {
+    fn bar(&self) -> bool { self.0 }
+}
+```
 "##,
 
 E0202: r##"

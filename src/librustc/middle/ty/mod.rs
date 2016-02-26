@@ -164,9 +164,9 @@ pub struct ImplHeader<'tcx> {
 }
 
 impl<'tcx> ImplHeader<'tcx> {
-    pub fn with_fresh_ty_vars<'a,'tcx>(selcx: &mut traits::SelectionContext<'a,'tcx>,
-                                       impl_def_id: DefId)
-                                       -> ImplHeader<'tcx>
+    pub fn with_fresh_ty_vars<'a>(selcx: &mut traits::SelectionContext<'a, 'tcx>,
+                                  impl_def_id: DefId)
+                                  -> ImplHeader<'tcx>
     {
         let tcx = selcx.tcx();
         let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
@@ -174,13 +174,13 @@ impl<'tcx> ImplHeader<'tcx> {
 
         let header = ImplHeader {
             impl_def_id: impl_def_id,
-            self_ty: tcx.lookup_item_type(impl_def_id),
+            self_ty: tcx.lookup_item_type(impl_def_id).ty,
             trait_ref: tcx.impl_trait_ref(impl_def_id),
-            predicates: tcx.lookup_predicates(impl_def_id),
-        }.subst(tcx, impl_substs);
+            predicates: tcx.lookup_predicates(impl_def_id).predicates.into_vec(),
+        }.subst(tcx, &impl_substs);
 
-        let Normalized { value: mut header, obligations: obligations } =
-            proect::normalize(selcx, ObligationCause::dummy(), &header);
+        let traits::Normalized { value: mut header, obligations } =
+            traits::normalize(selcx, traits::ObligationCause::dummy(), &header);
 
         header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
         header
