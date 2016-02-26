@@ -21,7 +21,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     fn make_mirror<'a>(self, cx: &mut Cx<'a, 'tcx>) -> Block<'tcx> {
         // We have to eagerly translate the "spine" of the statements
         // in order to get the lexical scoping correctly.
-        let stmts = mirror_stmts(cx, self.id, self.stmts.iter().enumerate());
+        let stmts = mirror_stmts(cx, self.id, &*self.stmts);
         Block {
             extent: cx.tcx.region_maps.node_extent(self.id),
             span: self.span,
@@ -31,14 +31,13 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     }
 }
 
-fn mirror_stmts<'a,'tcx:'a,STMTS>(cx: &mut Cx<'a,'tcx>,
-                                  block_id: ast::NodeId,
-                                  mut stmts: STMTS)
-                                  -> Vec<StmtRef<'tcx>>
-    where STMTS: Iterator<Item=(usize, &'tcx hir::Stmt)>
+fn mirror_stmts<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
+                            block_id: ast::NodeId,
+                            stmts: &'tcx [hir::Stmt])
+                            -> Vec<StmtRef<'tcx>>
 {
     let mut result = vec![];
-    while let Some((index, stmt)) = stmts.next() {
+    for (index, stmt) in stmts.iter().enumerate() {
         match stmt.node {
             hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) =>
                 result.push(StmtRef::Mirror(Box::new(Stmt {
@@ -48,28 +47,26 @@ fn mirror_stmts<'a,'tcx:'a,STMTS>(cx: &mut Cx<'a,'tcx>,
                         expr: expr.to_ref()
                     }
                 }))),
-            hir::StmtDecl(ref decl, id) => {
-                match decl.node {
-                    hir::DeclItem(..) => { /* ignore for purposes of the MIR */ }
-                    hir::DeclLocal(ref local) => {
-                        let remainder_extent = CodeExtentData::Remainder(BlockRemainder {
-                            block: block_id,
-                            first_statement_index: index as u32,
-                        });
-                        let remainder_extent =
-                            cx.tcx.region_maps.lookup_code_extent(remainder_extent);
+            hir::StmtDecl(ref decl, id) => match decl.node {
+                hir::DeclItem(..) => { /* ignore for purposes of the MIR */ }
+                hir::DeclLocal(ref local) => {
+                    let remainder_extent = CodeExtentData::Remainder(BlockRemainder {
+                        block: block_id,
+                        first_statement_index: index as u32,
+                    });
+                    let remainder_extent =
+                        cx.tcx.region_maps.lookup_code_extent(remainder_extent);
 
-                        let pattern = cx.irrefutable_pat(&local.pat);
-                        result.push(StmtRef::Mirror(Box::new(Stmt {
-                            span: stmt.span,
-                            kind: StmtKind::Let {
-                                remainder_scope: remainder_extent,
-                                init_scope: cx.tcx.region_maps.node_extent(id),
-                                pattern: pattern,
-                                initializer: local.init.to_ref(),
-                            },
-                        })));
-                    }
+                    let pattern = cx.irrefutable_pat(&local.pat);
+                    result.push(StmtRef::Mirror(Box::new(Stmt {
+                        span: stmt.span,
+                        kind: StmtKind::Let {
+                            remainder_scope: remainder_extent,
+                            init_scope: cx.tcx.region_maps.node_extent(id),
+                            pattern: pattern,
+                            initializer: local.init.to_ref(),
+                        },
+                    })));
                 }
             }
         }

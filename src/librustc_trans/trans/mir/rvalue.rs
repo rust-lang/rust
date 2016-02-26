@@ -43,9 +43,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         match *rvalue {
            mir::Rvalue::Use(ref operand) => {
+               let tr_operand = self.trans_operand(&bcx, operand);
                // FIXME: consider not copying constants through stack. (fixable by translating
                // constants into OperandValue::Ref, why don’t we do that yet if we don’t?)
-               let tr_operand = self.trans_operand(&bcx, operand);
                self.store_operand(&bcx, dest.llval, tr_operand);
                self.set_operand_dropped(&bcx, operand);
                bcx
@@ -563,6 +563,7 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
     }
 
     // (*) this is only true if the type is suitable
-    // (**) we need to zero-out the old value before moving, so we are restricted to either
-    // ensuring all users of `Use` set it themselves or not allowing to “create” operand for it.
+    // (**) we need to zero-out the source operand after moving, so we are restricted to either
+    // ensuring all users of `Use` zero it out themselves or not allowing to “create” operand for
+    // it.
 }
