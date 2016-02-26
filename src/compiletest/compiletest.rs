@@ -28,10 +28,12 @@ extern crate log;
 
 use std::env;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
+use test::TestPaths;
 use util::logv;
 
 pub mod procsrv;
@@ -267,15 +269,61 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {:?}",
            config.src_base.display());
     let mut tests = Vec::new();
-    let dirs = fs::read_dir(&config.src_base).unwrap();
-    for file in dirs {
-        let file = file.unwrap().path();
-        debug!("inspecting file {:?}", file.display());
-        if is_test(config, &file) {
-            tests.push(make_test(config, &file))
+    collect_tests_from_dir(config,
+                           &config.src_base,
+                           &config.src_base,
+                           &PathBuf::new(),
+                           &mut tests)
+        .unwrap();
+    tests
+}
+
+fn collect_tests_from_dir(config: &Config,
+                          base: &Path,
+                          dir: &Path,
+                          relative_dir_path: &Path,
+                          tests: &mut Vec<test::TestDescAndFn>)
+                          -> io::Result<()> {
+    // Ignore directories that contain a file
+    // `compiletest-ignore-dir`.
+    for file in try!(fs::read_dir(dir)) {
+        let file = try!(file);
+        if file.file_name() == *"compiletest-ignore-dir" {
+            return Ok(());
         }
     }
-    tests
+
+    let dirs = try!(fs::read_dir(dir));
+    for file in dirs {
+        let file = try!(file);
+        let file_path = file.path();
+        debug!("inspecting file {:?}", file_path.display());
+        if is_test(config, &file_path) {
+            // If we find a test foo/bar.rs, we have to build the
+            // output directory `$build/foo` so we can write
+            // `$build/foo/bar` into it. We do this *now* in this
+            // sequential loop because otherwise, if we do it in the
+            // tests themselves, they race for the privilege of
+            // creating the directories and sometimes fail randomly.
+            let build_dir = config.build_base.join(&relative_dir_path);
+            fs::create_dir_all(&build_dir).unwrap();
+
+            let paths = TestPaths {
+                file: file_path,
+                base: base.to_path_buf(),
+                relative_dir: relative_dir_path.to_path_buf(),
+            };
+            tests.push(make_test(config, &paths))
+        } else if file_path.is_dir() {
+            let relative_file_path = relative_dir_path.join(file.file_name());
+            try!(collect_tests_from_dir(config,
+                                        base,
+                                        &file_path,
+                                        &relative_file_path,
+                                        tests));
+        }
+    }
+    Ok(())
 }
 
 pub fn is_test(config: &Config, testfile: &Path) -> bool {
@@ -305,36 +353,33 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test(config: &Config, testfile: &Path) -> test::TestDescAndFn
-{
+pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
     test::TestDescAndFn {
         desc: test::TestDesc {
-            name: make_test_name(config, testfile),
-            ignore: header::is_test_ignored(config, testfile),
+            name: make_test_name(config, testpaths),
+            ignore: header::is_test_ignored(config, &testpaths.file),
             should_panic: test::ShouldPanic::No,
         },
-        testfn: make_test_closure(config, &testfile),
+        testfn: make_test_closure(config, testpaths),
     }
 }
 
-pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
-
-    // Try to elide redundant long paths
-    fn shorten(path: &Path) -> String {
-        let filename = path.file_name().unwrap().to_str();
-        let p = path.parent().unwrap();
-        let dir = p.file_name().unwrap().to_str();
-        format!("{}/{}", dir.unwrap_or(""), filename.unwrap_or(""))
-    }
-
-    test::DynTestName(format!("[{}] {}", config.mode, shorten(testfile)))
+pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
+    // Convert a complete path to something like
+    //
+    //    run-pass/foo/bar/baz.rs
+    let path =
+        PathBuf::from(config.mode.to_string())
+        .join(&testpaths.relative_dir)
+        .join(&testpaths.file.file_name().unwrap());
+    test::DynTestName(format!("[{}] {}", config.mode, path.display()))
 }
 
-pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
-    let config = (*config).clone();
-    let testfile = testfile.to_path_buf();
+pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
+    let config = config.clone();
+    let testpaths = testpaths.clone();
     test::DynTestFn(Box::new(move || {
-        runtest::run(config, &testfile)
+        runtest::run(config, &testpaths)
     }))
 }
 
