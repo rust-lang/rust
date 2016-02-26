@@ -526,11 +526,15 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     let macros = time(time_passes,
                       "macro loading",
-                      || macro_import::read_macro_defs(sess, &cstore, &krate));
+                      || macro_import::read_macro_defs(sess, &cstore, &krate, crate_name));
 
     let mut addl_plugins = Some(addl_plugins);
     let registrars = time(time_passes, "plugin loading", || {
-        plugin::load::load_plugins(sess, &cstore, &krate, addl_plugins.take().unwrap())
+        plugin::load::load_plugins(sess,
+                                   &cstore,
+                                   &krate,
+                                   crate_name,
+                                   addl_plugins.take().unwrap())
     });
 
     let mut registry = Registry::new(sess, &krate);
@@ -755,7 +759,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     time(time_passes,
          "external crate/lib resolution",
-         || LocalCrateReader::new(sess, cstore, &hir_map).read_crates());
+         || LocalCrateReader::new(sess, cstore, &hir_map, name).read_crates());
 
     let lang_items = time(time_passes, "language item collection", || {
         sess.track_errors(|| {

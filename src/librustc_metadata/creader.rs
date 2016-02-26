@@ -55,6 +55,7 @@ pub struct CrateReader<'a> {
     cstore: &'a CStore,
     next_crate_num: ast::CrateNum,
     foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
+    local_crate_name: String,
 }
 
 impl<'a, 'b, 'hir> Visitor<'hir> for LocalCrateReader<'a, 'b> {
@@ -146,12 +147,15 @@ impl PMDSource {
 }
 
 impl<'a> CrateReader<'a> {
-    pub fn new(sess: &'a Session, cstore: &'a CStore) -> CrateReader<'a> {
+    pub fn new(sess: &'a Session,
+               cstore: &'a CStore,
+               local_crate_name: &str) -> CrateReader<'a> {
         CrateReader {
             sess: sess,
             cstore: cstore,
             next_crate_num: cstore.next_crate_num(),
             foreign_item_map: FnvHashMap(),
+            local_crate_name: local_crate_name.to_owned(),
         }
     }
 
@@ -272,6 +276,38 @@ impl<'a> CrateReader<'a> {
         }
     }
 
+    fn verify_no_symbol_conflicts(&self,
+                                  crate_name: &str,
+                                  span: Span,
+                                  metadata: &MetadataBlob) {
+        let disambiguator = decoder::get_crate_disambiguator(metadata.as_slice());
+
+        // Check for (potential) conflicts with the local crate
+        if self.local_crate_name == crate_name &&
+           &self.sess.crate_disambiguator.borrow()[..] == disambiguator {
+            span_fatal!(self.sess, span, E0519,
+                        "the current crate is indistinguishable from one of its \
+                         dependencies: it has the same crate-name `{}` and was \
+                         compiled with the same `-C metadata` arguments. This \
+                         will result in symbol conflicts between the two.",
+                        crate_name)
+        }
+
+        let svh = decoder::get_crate_hash(metadata.as_slice());
+        // Check for conflicts with any crate loaded so far
+        self.cstore.iter_crate_data(|_, other| {
+            if other.name() == crate_name && // same crate-name
+               other.disambiguator() == disambiguator &&  // same crate-disambiguator
+               other.hash() != svh { // but different SVH
+                span_fatal!(self.sess, span, E0520,
+                        "found two different crates with name `{}` that are \
+                         not distinguished by differing `-C metadata`. This \
+                         will result in symbol conflicts between the two.",
+                        crate_name)
+            }
+        });
+    }
+
     fn register_crate(&mut self,
                       root: &Option<CratePaths>,
                       ident: &str,
@@ -282,6 +318,7 @@ impl<'a> CrateReader<'a> {
                       -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                           cstore::CrateSource) {
         self.verify_rustc_version(name, span, &lib.metadata);
+        self.verify_no_symbol_conflicts(name, span, &lib.metadata);
 
         // Claim this crate number and cache it
         let cnum = self.next_crate_num;
@@ -713,12 +750,15 @@ impl<'a> CrateReader<'a> {
 }
 
 impl<'a, 'b> LocalCrateReader<'a, 'b> {
-    pub fn new(sess: &'a Session, cstore: &'a CStore,
-               map: &'a hir_map::Map<'b>) -> LocalCrateReader<'a, 'b> {
+    pub fn new(sess: &'a Session,
+               cstore: &'a CStore,
+               map: &'a hir_map::Map<'b>,
+               local_crate_name: &str)
+               -> LocalCrateReader<'a, 'b> {
         LocalCrateReader {
             sess: sess,
             cstore: cstore,
-            creader: CrateReader::new(sess, cstore),
+            creader: CrateReader::new(sess, cstore, local_crate_name),
             ast_map: map,
         }
     }
