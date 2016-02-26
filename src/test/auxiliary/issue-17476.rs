@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Cmetadata=aux
 
 #![doc(html_root_url = "http://example.com")]
 

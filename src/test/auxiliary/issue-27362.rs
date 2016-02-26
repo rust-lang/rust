@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Cmetadata=aux
+
 #![feature(const_fn)]
 
 pub const fn foo() {}

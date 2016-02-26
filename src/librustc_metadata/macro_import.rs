@@ -32,11 +32,11 @@ struct MacroLoader<'a> {
 }
 
 impl<'a> MacroLoader<'a> {
-    fn new(sess: &'a Session, cstore: &'a CStore) -> MacroLoader<'a> {
+    fn new(sess: &'a Session, cstore: &'a CStore, crate_name: &str) -> MacroLoader<'a> {
         MacroLoader {
             sess: sess,
             span_whitelist: HashSet::new(),
-            reader: CrateReader::new(sess, cstore),
+            reader: CrateReader::new(sess, cstore, crate_name),
             macros: vec![],
         }
     }
@@ -47,10 +47,13 @@ pub fn call_bad_macro_reexport(a: &Session, b: Span) {
 }
 
 /// Read exported macros.
-pub fn read_macro_defs(sess: &Session, cstore: &CStore, krate: &ast::Crate)
+pub fn read_macro_defs(sess: &Session,
+                       cstore: &CStore,
+                       krate: &ast::Crate,
+                       crate_name: &str)
                        -> Vec<ast::MacroDef>
 {
-    let mut loader = MacroLoader::new(sess, cstore);
+    let mut loader = MacroLoader::new(sess, cstore, crate_name);
 
     // We need to error on `#[macro_use] extern crate` when it isn't at the
     // crate root, because `$crate` won't work properly. Identify these by
