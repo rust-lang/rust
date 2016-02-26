@@ -545,12 +545,7 @@ types private to a function body, for example an iterator adapter containing a c
 
 > What parts of the design are still TBD?
 
-- What happens if you specialize a function with an abstract return type,
-  and differ in whether the return type implements an OIBIT or not?
-  - It would mean that specialization choice
-    has to flow back into typechecking.
-  - It seems sound, but would mean that different input type combinations
-    of such a function could cause different OIBIT behavior independent
-    of the input type parameters themself.
-  - Which would not necessarily be an issue, since the actual type could not
-    be observed from the outside anyway.
+The precise implementation details for OIBIT transparency are a bit unclear: in
+general, it means that type checking may need to proceed in a particular order,
+since you cannot get the full type information from the signature alone (you
+have to typecheck the function body to determine which OIBITs apply).
