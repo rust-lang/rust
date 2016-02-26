@@ -503,20 +503,42 @@ so forbidding them in traits seems like the best initial course of action.
 
 > Why should we *not* do this?
 
+## Drawbacks due to the proposal's minimalism
+
 As has been elaborated on above, there are various way this feature could be
-extended and combined with the language, so implementing it might
-cause issues down the road if limitations or incompatibilities become apparent.
+extended and combined with the language, so implementing it might cause issues
+down the road if limitations or incompatibilities become apparent. However,
+variations of this RFC's proposal have been under discussion for quite a long
+time at this point, and this proposal is carefully designed to be
+future-compatible with them, while resolving the core issue around transparency.
+
+A drawback of limiting the feature to return type position (and not arguments)
+is that it creates a somewhat inconsistent mental model: it forces you to
+understand the feature in a highly special-cased way, rather than as a general
+way to talk about unknown-but-bounded types in function signatures. This could
+be particularly bewildering to newcomers, who must choose between `T: Trait`,
+`Box<Trait>`, and `@Trait`, with the latter only usable in one place.
+
+## Drawbacks due to partial transparency
+
+The fact that specialization and OIBITs can "see through" `@Trait` may be
+surprising, to the extent that one wants to see `@Trait` as an abstraction
+mechanism. However, as the RFC argued in the rationale section, this design is
+probably the most consistent with our existing post-specialization abstraction
+mechanisms, and lead to the relatively simple story that *privacy* is the way to
+achieve hiding in Rust.
 
 # Alternatives
 [alternatives]: #alternatives
 
 > What other designs have been considered? What is the impact of not doing this?
 
-See the links in the motivation section for a more detailed analysis.
+See the links in the motivation section for detailed analysis that we won't
+repeat here.
 
 But basically, without this feature certain things remain hard or impossible to do
 in Rust, like returning a efficiently usable type parametricised by
-types private to a function body, for example a iterator adapter containing a closure.
+types private to a function body, for example an iterator adapter containing a closure.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
