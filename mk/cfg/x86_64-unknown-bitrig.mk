@@ -20,3 +20,4 @@ CFG_LDPATH_x86_64-unknown-bitrig :=
 CFG_RUN_x86_64-unknown-bitrig=$(2)
 CFG_RUN_TARG_x86_64-unknown-bitrig=$(call CFG_RUN_x86_64-unknown-bitrig,,$(2))
 CFG_GNU_TRIPLE_x86_64-unknown-bitrig := x86_64-unknown-bitrig
+CFG_DISABLE_JEMALLOC_x86_64-unknown-bitrig := 1

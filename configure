@@ -865,9 +865,8 @@ fi
 # Force bitrig to build with clang; gcc doesn't like us there
 if [ $CFG_OSTYPE = unknown-bitrig ]
 then
-    step_msg "on Bitrig, forcing use of clang, disabling jemalloc"
+    step_msg "on Bitrig, forcing use of clang"
     CFG_ENABLE_CLANG=1
-    CFG_DISABLE_JEMALLOC=1
 fi
 
 # default gcc version under OpenBSD maybe too old, try using egcc, which is a
@@ -887,16 +886,6 @@ then
             CXX="${CXX:-eg++}"
         fi
     fi
-
-    step_msg "on OpenBSD, disabling jemalloc"
-    CFG_DISABLE_JEMALLOC=1
-fi
-
-if [ $CFG_OSTYPE = pc-windows-gnu ]
-then
-    # FIXME(#31030) - there's not a great reason to disable jemalloc here
-    step_msg "on Windows, disabling jemalloc"
-    CFG_DISABLE_JEMALLOC=1
 fi
 
 # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
@@ -1186,12 +1175,6 @@ do
             ;;
 
         *-msvc)
-            # Currently the build system is not configured to build jemalloc
-            # with MSVC, so we omit this optional dependency.
-            step_msg "targeting MSVC, disabling jemalloc"
-            CFG_DISABLE_JEMALLOC=1
-            putvar CFG_DISABLE_JEMALLOC
-
             # There are some MSYS python builds which will auto-translate
             # windows-style paths to MSYS-style paths in Python itself.
             # Unfortunately this breaks LLVM's build system as somewhere along
@@ -1298,18 +1281,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             putvar CFG_MSVC_LINK_${bits}
             putvar CFG_MSVC_INCLUDE_PATH_${bits}
             putvar CFG_MSVC_LIB_PATH_${bits}
-            ;;
-
-        *-rumprun-netbsd)
-            step_msg "targeting rumprun-netbsd, disabling jemalloc"
-            CFG_DISABLE_JEMALLOC=1
-            putvar CFG_DISABLE_JEMALLOC
-            ;;
-
-        *-emscripten)
-            step_msg "targeting emscripten, disabling jemalloc"
-            CFG_DISABLE_JEMALLOC=1
-            putvar CFG_DISABLE_JEMALLOC
             ;;
 
         *)

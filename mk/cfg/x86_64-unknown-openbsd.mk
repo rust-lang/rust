@@ -21,3 +21,4 @@ CFG_RUN_x86_64-unknown-openbsd=$(2)
 CFG_RUN_TARG_x86_64-unknown-openbsd=$(call CFG_RUN_x86_64-unknown-openbsd,,$(2))
 CFG_GNU_TRIPLE_x86_64-unknown-openbsd := x86_64-unknown-openbsd
 RUSTC_FLAGS_x86_64-unknown-openbsd=-C linker=$(call FIND_COMPILER,$(CC))
+CFG_DISABLE_JEMALLOC_x86_64-unknown-openbsd := 1
