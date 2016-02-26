@@ -482,8 +482,7 @@ pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
 }
 
-/// Returns the filesystem path to the current executable which is running but
-/// with the executable name.
+/// Returns the full filesystem path to the current running executable.
 ///
 /// The path returned is not necessarily a "real path" to the executable as
 /// there may be intermediate symlinks.
