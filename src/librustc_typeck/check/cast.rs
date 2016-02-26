@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,7 +13,7 @@
 //! A cast `e as U` is valid if one of the following holds:
 //! * `e` has type `T` and `T` coerces to `U`; *coercion-cast*
 //! * `e` has type `*T`, `U` is `*U_0`, and either `U_0: Sized` or
-//!   unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
+//!    unsize_kind(`T`) = unsize_kind(`U_0`); *ptr-ptr-cast*
 //! * `e` has type `*T` and `U` is a numeric type, while `T: Sized`; *ptr-addr-cast*
 //! * `e` is an integer and `U` is `*U_0`, while `U_0: Sized`; *addr-ptr-cast*
 //! * `e` has type `T` and `T` and `U` are any numeric types; *numeric-cast*
@@ -346,7 +346,7 @@ impl<'tcx> CastCheck<'tcx> {
     {
         // array-ptr-cast.
 
-	if !(m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutMutable) {
+        if  !(m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutMutable) {
             if let ty::TyArray(ety, _) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
