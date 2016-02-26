@@ -837,6 +837,30 @@ impl<T> [T] {
         core_slice::SliceExt::clone_from_slice(self, src)
     }
 
+    /// Copies all elements from `src` into `self`, using a memcpy.
+    ///
+    /// The length of `src` must be the same as `self`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two slices have different lengths.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(copy_from_slice)]
+    /// let mut dst = [0, 0, 0];
+    /// let src = [1, 2, 3];
+    ///
+    /// dst.copy_from_slice(&src);
+    /// assert_eq!(src, dst);
+    /// ```
+    #[unstable(feature = "copy_from_slice", issue = "31755")]
+    pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
+        core_slice::SliceExt::copy_from_slice(self, src)
+    }
+
+
     /// Copies `self` into a new `Vec`.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
