@@ -260,6 +260,11 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
             match def {
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 cstore::DlDef(Def::Mod(did)) => {
+                    // Don't recurse if this is a #[doc(hidden)] module
+                    if load_attrs(cx, tcx, did).iter().any(|a| is_doc_hidden(a)) {
+                        return;
+                    }
+
                     for item in tcx.sess.cstore.item_children(did) {
                         populate_impls(cx, tcx, item.def, impls)
                     }
@@ -423,19 +428,19 @@ pub fn build_impl(cx: &DocContext,
         deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
         def_id: did,
     });
+}
 
-    fn is_doc_hidden(a: &clean::Attribute) -> bool {
-        match *a {
-            clean::List(ref name, ref inner) if *name == "doc" => {
-                inner.iter().any(|a| {
-                    match *a {
-                        clean::Word(ref s) => *s == "hidden",
-                        _ => false,
-                    }
-                })
-            }
-            _ => false
+fn is_doc_hidden(a: &clean::Attribute) -> bool {
+    match *a {
+        clean::List(ref name, ref inner) if *name == "doc" => {
+            inner.iter().any(|a| {
+                match *a {
+                    clean::Word(ref s) => *s == "hidden",
+                    _ => false,
+                }
+            })
         }
+        _ => false
     }
 }
 
