@@ -1657,8 +1657,8 @@ fn shorter<'a>(s: Option<&'a str>) -> String {
 
 #[inline]
 fn plain_summary_line(s: Option<&str>) -> String {
-    let md = markdown::plain_summary_line(s.unwrap_or(""));
-    shorter(Some(&md)).replace("\n", " ")
+    let line = shorter(s).replace("\n", " ");
+    markdown::plain_summary_line(&line[..])
 }
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
