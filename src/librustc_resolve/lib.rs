@@ -1168,8 +1168,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             unresolved_imports: 0,
 
             current_module: graph_root,
-            value_ribs: Vec::new(),
-            type_ribs: Vec::new(),
+            value_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
+            type_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
             label_ribs: Vec::new(),
 
             current_trait_ref: None,
@@ -2712,10 +2712,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if check_ribs {
-            match self.resolve_identifier_in_local_ribs(identifier, namespace, record_used) {
-                Some(def) => return Some(def),
-                None => {}
-            }
+            return self.resolve_identifier_in_local_ribs(identifier, namespace, record_used);
         }
 
         // Check the items.
