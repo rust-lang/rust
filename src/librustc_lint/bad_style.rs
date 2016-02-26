@@ -283,7 +283,7 @@ impl LateLintPass for NonSnakeCase {
     fn check_struct_def(&mut self, cx: &LateContext, s: &hir::VariantData,
                         _: ast::Name, _: &hir::Generics, _: ast::NodeId) {
         for sf in s.fields() {
-            if let hir::StructField_ { kind: hir::NamedField(name, _), .. } = sf.node {
+            if let Some(name) = sf.node.name {
                 self.check_snake_case(cx, "structure field", &name.as_str(),
                                       Some(sf.span));
             }

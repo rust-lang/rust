@@ -11,7 +11,6 @@
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::{DefId, DefIndex};
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc_front::hir;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 use util::nodemap::NodeMap;
@@ -84,8 +83,7 @@ pub enum DefPathData {
     TypeParam(ast::Name),
     LifetimeDef(ast::Name),
     EnumVariant(ast::Name),
-    PositionalField,
-    Field(hir::StructFieldKind),
+    Field(Option<ast::Name>),
     StructCtor, // implicit ctor for a tuple-like struct
     Initializer, // initializer for a const
     Binding(ast::Name), // pattern binding
@@ -186,16 +184,12 @@ impl DefPathData {
             LifetimeDef(name) |
             EnumVariant(name) |
             DetachedCrate(name) |
-            Binding(name) => {
+            Binding(name) |
+            Field(Some(name)) => {
                 name.as_str()
             }
 
-            Field(hir::StructFieldKind::NamedField(name, _)) => {
-                name.as_str()
-            }
-
-            PositionalField |
-            Field(hir::StructFieldKind::UnnamedField(_)) => {
+            Field(None) => {
                 InternedString::new("{{field}}")
             }
 

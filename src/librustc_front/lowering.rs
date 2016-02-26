@@ -611,7 +611,8 @@ pub fn lower_struct_field(lctx: &LoweringContext, f: &StructField) -> hir::Struc
     Spanned {
         node: hir::StructField_ {
             id: f.node.id,
-            kind: lower_struct_field_kind(lctx, &f.node.kind),
+            name: f.node.ident().map(|ident| ident.name),
+            vis: lower_visibility(lctx, f.node.kind.visibility()),
             ty: lower_ty(lctx, &f.node.ty),
             attrs: lower_attrs(lctx, &f.node.attrs),
         },
@@ -1586,15 +1587,6 @@ pub fn lower_binding_mode(lctx: &LoweringContext, b: &BindingMode) -> hir::Bindi
     match *b {
         BindingMode::ByRef(m) => hir::BindByRef(lower_mutability(lctx, m)),
         BindingMode::ByValue(m) => hir::BindByValue(lower_mutability(lctx, m)),
-    }
-}
-
-pub fn lower_struct_field_kind(lctx: &LoweringContext,
-                               s: &StructFieldKind)
-                               -> hir::StructFieldKind {
-    match *s {
-        NamedField(ident, vis) => hir::NamedField(ident.name, lower_visibility(lctx, vis)),
-        UnnamedField(vis) => hir::UnnamedField(lower_visibility(lctx, vis)),
     }
 }
 

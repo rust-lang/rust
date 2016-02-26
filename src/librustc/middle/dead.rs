@@ -221,10 +221,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
-            has_extern_repr || inherited_pub_visibility || match f.node.kind {
-                hir::NamedField(_, hir::Public) => true,
-                _ => false
-            }
+            has_extern_repr || inherited_pub_visibility || f.node.vis == hir::Public
         });
         self.live_symbols.extend(live_fields.map(|f| f.node.id));
 
@@ -432,7 +429,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, node: &hir::StructField_) -> bool {
-        let is_named = node.name().is_some();
+        let is_named = node.name.is_some();
         let field_type = self.tcx.node_id_to_type(node.id);
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
@@ -549,7 +546,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_struct_field(&mut self, field: &hir::StructField) {
         if self.should_warn_about_field(&field.node) {
             self.warn_dead_code(field.node.id, field.span,
-                                field.node.name().unwrap(), "struct field");
+                                field.node.name.unwrap(), "struct field");
         }
 
         intravisit::walk_struct_field(self, field);
