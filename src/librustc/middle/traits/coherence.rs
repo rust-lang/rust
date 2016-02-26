@@ -10,18 +10,15 @@
 
 //! See `README.md` for high-level documentation
 
-use super::{Normalized, SelectionContext};
-use super::{Obligation, ObligationCause, PredicateObligation};
-use super::project;
-use super::util;
+use super::{SelectionContext};
+use super::{Obligation, ObligationCause};
 
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
-use middle::subst::{Subst, Substs, TypeSpace};
+use middle::subst::TypeSpace;
 use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::error::TypeError;
 use middle::infer::{self, InferCtxt, TypeOrigin};
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::DUMMY_SP;
 
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
@@ -31,7 +28,7 @@ struct InferIsLocal(bool);
 pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
                                     impl1_def_id: DefId,
                                     impl2_def_id: DefId)
-                                    -> Option<ImplTy<'tcx>>
+                                    -> Option<ty::ImplHeader<'tcx>>
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
@@ -48,7 +45,7 @@ pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
 fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
                       a_def_id: DefId,
                       b_def_id: DefId)
-                      -> Option<ImplHeader<'tcx>>
+                      -> Option<ty::ImplHeader<'tcx>>
 {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})",
            a_def_id,
@@ -64,8 +61,8 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
     if let Err(_) = infer::mk_eq_impl_headers(selcx.infcx(),
                                               true,
                                               TypeOrigin::Misc(DUMMY_SP),
-                                              a_impl_header,
-                                              b_impl_header) {
+                                              &a_impl_header,
+                                              &b_impl_header) {
         return None;
     }
 
@@ -74,7 +71,7 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
     let opt_failing_obligation =
-        a_impl_header.prediates
+        a_impl_header.predicates
                      .iter()
                      .chain(&b_impl_header.predicates)
                      .map(|p| infcx.resolve_type_vars_if_possible(p))

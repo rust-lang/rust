@@ -452,8 +452,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
             impl_def_id: self.impl_def_id,
             self_ty: self.self_ty.fold_with(folder),
             trait_ref: self.trait_ref.map(|t| t.fold_with(folder)),
-            predicates: self.predicates.into_iter().map(|p| p.fold_with(folder)).collect(),
-            polarity: self.polarity,
+            predicates: self.predicates.iter().map(|p| p.fold_with(folder)).collect(),
         }
     }
 
