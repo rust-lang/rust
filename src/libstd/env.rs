@@ -442,7 +442,7 @@ impl Error for JoinPathsError {
 ///
 /// match env::home_dir() {
 ///     Some(ref p) => println!("{}", p.display()),
-///     None => println!("Impossible to get your home dir!")
+///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -482,8 +482,7 @@ pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
 }
 
-/// Returns the filesystem path to the current executable which is running but
-/// with the executable name.
+/// Returns the full filesystem path to the current running executable.
 ///
 /// The path returned is not necessarily a "real path" to the executable as
 /// there may be intermediate symlinks.
@@ -492,7 +491,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// Acquiring the path to the current executable is a platform-specific operation
 /// that can fail for a good number of reasons. Some errors can include, but not
-/// be limited to filesystem operations failing or general syscall failures.
+/// be limited to, filesystem operations failing or general syscall failures.
 ///
 /// # Examples
 ///

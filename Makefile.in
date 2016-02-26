@@ -100,6 +100,10 @@
 #     // Having trouble figuring out which test is failing? Turn off parallel tests
 #     make check-stage1-std RUST_TEST_THREADS=1
 #
+#     // To make debug!() and other logging calls visible, reconfigure:
+#     ./configure --enable-debug-assertions
+#     make ....
+#
 # If you really feel like getting your hands dirty, then:
 #
 #     run `make nitty-gritty`
