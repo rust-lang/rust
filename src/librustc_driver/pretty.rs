@@ -817,13 +817,12 @@ pub fn pretty_print_input(sess: Session,
                                                              &id,
                                                              resolve::MakeGlobMap::No,
                                                              |tcx, mir_map, _, _| {
-                let mir_map = mir_map.unwrap();
-
-                for (nodeid, mir) in &mir_map.map {
-                    try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(*nodeid)));
-                    try!(write_mir_pretty(mir, &mut out));
+                if let Some(mir_map) = mir_map {
+                    for (nodeid, mir) in &mir_map.map {
+                        try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(*nodeid)));
+                        try!(write_mir_pretty(mir, &mut out));
+                    }
                 }
-
                 Ok(())
             }), &sess)
         }
@@ -840,12 +839,14 @@ pub fn pretty_print_input(sess: Session,
                                                              &id,
                                                              resolve::MakeGlobMap::No,
                                                              |tcx, mir_map, _, _| {
-                let mir_map = mir_map.unwrap();
-                try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(nodeid)));
-                let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
-                    sess.fatal(&format!("no MIR map entry for node {}", nodeid))
-                });
-                write_mir_pretty(mir, &mut out)
+                if let Some(mir_map) = mir_map {
+                    try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(nodeid)));
+                    let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
+                        sess.fatal(&format!("no MIR map entry for node {}", nodeid))
+                    });
+                    try!(write_mir_pretty(mir, &mut out));
+                }
+                Ok(())
             }), &sess)
         }
 
