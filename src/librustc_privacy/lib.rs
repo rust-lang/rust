@@ -1129,35 +1129,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
 struct SanePrivacyVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    in_block: bool,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
-    /// We want to visit items in the context of their containing
-    /// module and so forth, so supply a crate for doing a deep walk.
-    fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
-    }
-
     fn visit_item(&mut self, item: &hir::Item) {
         self.check_sane_privacy(item);
-        if self.in_block {
-            self.check_all_inherited(item);
-        }
-
-        let orig_in_block = self.in_block;
-
-        // Modules turn privacy back on, otherwise we inherit
-        self.in_block = if let hir::ItemMod(..) = item.node { false } else { orig_in_block };
-
         intravisit::walk_item(self, item);
-        self.in_block = orig_in_block;
-    }
-
-    fn visit_block(&mut self, b: &'v hir::Block) {
-        let orig_in_block = replace(&mut self.in_block, true);
-        intravisit::walk_block(self, b);
-        self.in_block = orig_in_block;
     }
 }
 
@@ -1201,40 +1178,6 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                                 "place qualifiers on individual functions instead");
             }
             hir::ItemStruct(..) | hir::ItemEnum(..) | hir::ItemTrait(..) |
-            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
-            hir::ItemMod(..) | hir::ItemExternCrate(..) |
-            hir::ItemUse(..) | hir::ItemTy(..) => {}
-        }
-    }
-
-    /// When inside of something like a function or a method, visibility has no
-    /// control over anything so this forbids any mention of any visibility
-    fn check_all_inherited(&self, item: &hir::Item) {
-        let check_inherited = |sp, vis| {
-            if vis != hir::Inherited {
-                span_err!(self.tcx.sess, sp, E0447,
-                          "visibility has no effect inside functions or block expressions");
-            }
-        };
-
-        check_inherited(item.span, item.vis);
-        match item.node {
-            hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
-                for impl_item in impl_items {
-                    check_inherited(impl_item.span, impl_item.vis);
-                }
-            }
-            hir::ItemForeignMod(ref fm) => {
-                for fi in &fm.items {
-                    check_inherited(fi.span, fi.vis);
-                }
-            }
-            hir::ItemStruct(ref vdata, _) => {
-                for f in vdata.fields() {
-                    check_inherited(f.span, f.node.kind.visibility());
-                }
-            }
-            hir::ItemDefaultImpl(..) | hir::ItemEnum(..) | hir::ItemTrait(..) |
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
             hir::ItemMod(..) | hir::ItemExternCrate(..) |
             hir::ItemUse(..) | hir::ItemTy(..) => {}
@@ -1823,11 +1766,8 @@ pub fn check_crate(tcx: &ty::ctxt,
 
     // Sanity check to make sure that all privacy usage and controls are
     // reasonable.
-    let mut visitor = SanePrivacyVisitor {
-        tcx: tcx,
-        in_block: false,
-    };
-    intravisit::walk_crate(&mut visitor, krate);
+    let mut visitor = SanePrivacyVisitor { tcx: tcx };
+    krate.visit_all_items(&mut visitor);
 
     // Figure out who everyone's parent is
     let mut visitor = ParentVisitor {

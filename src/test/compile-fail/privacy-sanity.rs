@@ -40,37 +40,30 @@ pub extern "C" { //~ ERROR unnecessary visibility qualifier
 
 const MAIN: u8 = {
     trait MarkerTr {}
-    pub trait Tr { //~ ERROR visibility has no effect inside functions or block
+    pub trait Tr {
         fn f();
         const C: u8;
         type T;
     }
-    pub struct S { //~ ERROR visibility has no effect inside functions or block
-        pub a: u8 //~ ERROR visibility has no effect inside functions or block
+    pub struct S {
+        pub a: u8
     }
-    struct Ts(pub u8); //~ ERROR visibility has no effect inside functions or block
+    struct Ts(pub u8);
 
     pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
     pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
         pub fn f() {} //~ ERROR unnecessary visibility qualifier
-        //~^ ERROR visibility has no effect inside functions or block
         pub const C: u8 = 0; //~ ERROR unnecessary visibility qualifier
-        //~^ ERROR visibility has no effect inside functions or block
         pub type T = u8; //~ ERROR unnecessary visibility qualifier
-        //~^ ERROR visibility has no effect inside functions or block
     }
     pub impl S { //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
-        pub fn f() {} //~ ERROR visibility has no effect inside functions or block
-        pub const C: u8 = 0; //~ ERROR visibility has no effect inside functions or block
-        // pub type T = u8; // ERROR visibility has no effect inside functions or block
+        pub fn f() {}
+        pub const C: u8 = 0;
+        // pub type T = u8;
     }
     pub extern "C" { //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
-        pub fn f(); //~ ERROR visibility has no effect inside functions or block
-        pub static St: u8; //~ ERROR visibility has no effect inside functions or block
+        pub fn f();
+        pub static St: u8;
     }
 
     0
@@ -78,36 +71,29 @@ const MAIN: u8 = {
 
 fn main() {
     trait MarkerTr {}
-    pub trait Tr { //~ ERROR visibility has no effect inside functions or block
+    pub trait Tr {
         fn f();
         const C: u8;
         type T;
     }
-    pub struct S { //~ ERROR visibility has no effect inside functions or block
-        pub a: u8 //~ ERROR visibility has no effect inside functions or block
+    pub struct S {
+        pub a: u8
     }
-    struct Ts(pub u8); //~ ERROR visibility has no effect inside functions or block
+    struct Ts(pub u8);
 
     pub impl MarkerTr for .. {} //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
     pub impl Tr for S {  //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
         pub fn f() {} //~ ERROR unnecessary visibility qualifier
-        //~^ ERROR visibility has no effect inside functions or block
         pub const C: u8 = 0; //~ ERROR unnecessary visibility qualifier
-        //~^ ERROR visibility has no effect inside functions or block
         pub type T = u8; //~ ERROR unnecessary visibility qualifier
-        //~^ ERROR visibility has no effect inside functions or block
     }
     pub impl S { //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
-        pub fn f() {} //~ ERROR visibility has no effect inside functions or block
-        pub const C: u8 = 0; //~ ERROR visibility has no effect inside functions or block
-        // pub type T = u8; // ERROR visibility has no effect inside functions or block
+        pub fn f() {}
+        pub const C: u8 = 0;
+        // pub type T = u8;
     }
     pub extern "C" { //~ ERROR unnecessary visibility qualifier
-    //~^ ERROR visibility has no effect inside functions or block
-        pub fn f(); //~ ERROR visibility has no effect inside functions or block
-        pub static St: u8; //~ ERROR visibility has no effect inside functions or block
+        pub fn f();
+        pub static St: u8;
     }
 }
