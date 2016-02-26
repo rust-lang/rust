@@ -432,7 +432,7 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 # target
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(foreach dep,$$(TARGET_CRATES), \
+	$$(foreach dep,$$(TARGET_CRATES_$(2)), \
 	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
 	tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-$$(call TRIPLE_TO_DEBUGGER_SCRIPT_SETTING,$(2)).done
 
@@ -441,7 +441,7 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-	$$(foreach dep,$$(CRATES),$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
+	$$(foreach dep,$$(HOST_CRATES),$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep))
 
 ifeq ($(1),0)
 # Don't run the stage0 compiler under valgrind - that ship has sailed

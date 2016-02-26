@@ -22,3 +22,4 @@ CFG_LDPATH_x86_64-rumprun-netbsd :=
 CFG_RUN_x86_64-rumprun-netbsd=$(2)
 CFG_RUN_TARG_x86_64-rumprun-netbsd=$(call CFG_RUN_x86_64-rumprun-netbsd,,$(2))
 CFG_GNU_TRIPLE_x86_64-rumprun-netbsd := x86_64-rumprun-netbsd
+CFG_DISABLE_JEMALLOC_x86_64-rumprun-netbsd := 1
