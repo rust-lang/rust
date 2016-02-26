@@ -47,6 +47,15 @@
 //! are not automatically `use`'d, and must be imported manually. This is still
 //! easier than importing all of their constituent components.
 //!
+//! # Disabling
+//!
+//! To disable automatic inclusion of the standard prelude you can use the
+//! [`no_implicit_prelude` attribute][module-only-attributes]. This should be
+//! rarely used, but can be useful if you have a need for very careful control
+//! of what parts of `std` are included.
+//!
+//! [module-only-attributes]: ../../reference.html#module-only-attributes
+//!
 //! # Prelude contents
 //!
 //! The current version of the prelude (version 1) lives in
