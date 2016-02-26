@@ -87,4 +87,6 @@ register_diagnostics! {
     E0468, // an `extern crate` loading macros must be at the crate root
     E0469, // imported macro not found
     E0470, // reexported macro not found
+    E0519, // local crate and dependency have same (crate-name, disambiguator)
+    E0520, // two dependencies have same (crate-name, disambiguator) but different SVH
 }

@@ -78,11 +78,12 @@
 //!
 //! - In order to be able to also use symbols from two versions of the same
 //!   crate (which naturally also have the same name), a stronger measure is
-//!   required: The compiler accepts an arbitrary "salt" value via the
-//!   `-C metadata` commandline argument. This salt is then fed into the symbol
-//!   hash of every exported item. Consequently, the symbols in two identical
-//!   crates but with different salts are not in conflict with each other. This
-//!   facility is mainly intended to be used by build tools like Cargo.
+//!   required: The compiler accepts an arbitrary "disambiguator" value via the
+//!   `-C metadata` commandline argument. This disambiguator is then fed into
+//!   the symbol hash of every exported item. Consequently, the symbols in two
+//!   identical crates but with different disambiguators are not in conflict
+//!   with each other. This facility is mainly intended to be used by build
+//!   tools like Cargo.
 //!
 //! A note on symbol name stability
 //! -------------------------------
