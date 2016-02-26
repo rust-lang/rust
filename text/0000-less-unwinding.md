@@ -275,7 +275,7 @@ test` it cannot pass `-C panic=abort`.
   implementations, but it's unclear whether it's too heavily biased towards
   panic is either unwinding or aborting.
 
-* The current implementation of Cargo would mean that a native implementation of
+* The current implementation of Cargo would mean that a naive implementation of
   the profile option would cause recompiles between `cargo build` and `cargo
-  test` for projects that specify `panic = 'unwind'`. Is this acceptable? Should
+  test` for projects that specify `panic = 'abort'`. Is this acceptable? Should
   Cargo cache both copies of the crate?
