@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::DepGraph;
+use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::front;
 use rustc::front::map as hir_map;
 use rustc_mir as mir;
@@ -561,7 +561,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-        *sess.plugin_mir_passes.borrow_mut() = mir_passes;
+        sess.mir_passes.borrow_mut().extend(mir_passes);
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
     }));
 
@@ -861,9 +861,20 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                  "MIR dump",
                  || mir::mir_map::build_mir_for_crate(tcx));
 
-        time(time_passes,
-             "MIR passes",
-             || mir_map.run_passes(&mut sess.plugin_mir_passes.borrow_mut(), tcx));
+        time(time_passes, "MIR passes", || {
+            let _task = tcx.dep_graph.in_task(DepNode::MirPasses);
+            let mut passes = sess.mir_passes.borrow_mut();
+            // Push all the built-in passes.
+            passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+            passes.push_pass(box mir::transform::type_check::TypeckMir);
+            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg);
+            // Late passes
+            passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
+            passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+            passes.push_pass(box mir::transform::erase_regions::EraseRegions);
+            // And run everything.
+            passes.run_passes(tcx, &mut mir_map);
+        });
 
         time(time_passes,
              "borrow checking",
@@ -912,9 +923,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
-/// be discarded.
 pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
-                                       mut mir_map: MirMap<'tcx>,
+                                       mir_map: MirMap<'tcx>,
                                        analysis: ty::CrateAnalysis)
                                        -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
@@ -922,10 +932,6 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
     time(time_passes,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
-
-    time(time_passes,
-         "erasing regions from MIR",
-         || mir::transform::erase_regions::erase_regions(tcx, &mut mir_map));
 
     // Option dance to work around the lack of stack once closures.
     time(time_passes,

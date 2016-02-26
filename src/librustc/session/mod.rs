@@ -13,7 +13,7 @@ use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
 use util::nodemap::{NodeMap, FnvHashMap};
-use mir::transform::MirPass;
+use mir::transform as mir_pass;
 
 use syntax::ast::{NodeId, NodeIdAssigner, Name};
 use syntax::codemap::{Span, MultiSpan};
@@ -60,7 +60,7 @@ pub struct Session {
     pub lint_store: RefCell<lint::LintStore>,
     pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
-    pub plugin_mir_passes: RefCell<Vec<Box<MirPass>>>,
+    pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
@@ -477,7 +477,7 @@ pub fn build_session_(sopts: config::Options,
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
-        plugin_mir_passes: RefCell::new(Vec::new()),
+        mir_passes: RefCell::new(mir_pass::Passes::new()),
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FnvHashMap()),
