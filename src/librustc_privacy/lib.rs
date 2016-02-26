@@ -288,7 +288,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     self.update(def.id(), item_level);
                 }
                 for field in def.fields() {
-                    if field.node.kind.visibility() == hir::Public {
+                    if field.node.vis == hir::Public {
                         self.update(field.node.id, item_level);
                     }
                 }
@@ -1178,7 +1178,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
             hir::ItemEnum(ref def, _) => {
                 for variant in &def.variants {
                     for field in variant.node.data.fields() {
-                        check_inherited(field.span, field.node.kind.visibility(),
+                        check_inherited(field.span, field.vis,
                                         "visibility qualifiers have no effect on variant fields");
                     }
                 }
@@ -1514,10 +1514,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
     }
 
     fn visit_struct_field(&mut self, s: &hir::StructField) {
-        let vis = match s.node.kind {
-            hir::NamedField(_, vis) | hir::UnnamedField(vis) => vis
-        };
-        if vis == hir::Public || self.in_variant {
+        if s.node.vis == hir::Public || self.in_variant {
             intravisit::walk_struct_field(self, s);
         }
     }
@@ -1728,7 +1725,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
                 if item.vis == hir::Public {
                     check.visit_generics(generics);
                     for field in struct_def.fields() {
-                        if field.node.kind.visibility() == hir::Public {
+                        if field.node.vis == hir::Public {
                             check.visit_struct_field(field);
                         }
                     }

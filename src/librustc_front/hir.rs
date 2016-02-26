@@ -24,7 +24,6 @@ pub use self::Mutability::*;
 pub use self::PathListItem_::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
-pub use self::StructFieldKind::*;
 pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
@@ -1243,44 +1242,45 @@ impl Visibility {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct StructField_ {
-    pub kind: StructFieldKind,
+    pub name: Option<Name>,
+    pub vis: Visibility,
     pub id: NodeId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,
 }
 
-impl StructField_ {
-    pub fn name(&self) -> Option<Name> {
-        match self.kind {
-            NamedField(name, _) => Some(name),
-            UnnamedField(_) => None,
-        }
-    }
-}
+// impl StructField_ {
+//     pub fn name(&self) -> Option<Name> {
+//         match self.kind {
+//             NamedField(name, _) => Some(name),
+//             UnnamedField(_) => None,
+//         }
+//     }
+// }
 
 pub type StructField = Spanned<StructField_>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum StructFieldKind {
-    NamedField(Name, Visibility),
-    /// Element of a tuple-like struct
-    UnnamedField(Visibility),
-}
+// #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+// pub enum StructFieldKind {
+//     NamedField(Name, Visibility),
+//     /// Element of a tuple-like struct
+//     UnnamedField(Visibility),
+// }
 
-impl StructFieldKind {
-    pub fn is_unnamed(&self) -> bool {
-        match *self {
-            UnnamedField(..) => true,
-            NamedField(..) => false,
-        }
-    }
+// impl StructFieldKind {
+//     pub fn is_unnamed(&self) -> bool {
+//         match *self {
+//             UnnamedField(..) => true,
+//             NamedField(..) => false,
+//         }
+//     }
 
-    pub fn visibility(&self) -> Visibility {
-        match *self {
-            NamedField(_, vis) | UnnamedField(vis) => vis,
-        }
-    }
-}
+//     pub fn visibility(&self) -> Visibility {
+//         match *self {
+//             NamedField(_, vis) | UnnamedField(vis) => vis,
+//         }
+//     }
+// }
 
 /// Fields and Ids of enum variants and structs
 ///

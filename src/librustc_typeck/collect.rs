@@ -978,24 +978,21 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
     let fields = def.fields().iter().map(|f| {
         let fid = tcx.map.local_def_id(f.node.id);
-        match f.node.kind {
-            hir::NamedField(name, vis) => {
-                let dup_span = seen_fields.get(&name).cloned();
-                if let Some(prev_span) = dup_span {
-                    let mut err = struct_span_err!(tcx.sess, f.span, E0124,
-                                                   "field `{}` is already declared",
-                                                   name);
-                    span_note!(&mut err, prev_span, "previously declared here");
-                    err.emit();
-                } else {
-                    seen_fields.insert(name, f.span);
-                }
-
-                ty::FieldDefData::new(fid, name, vis)
-            },
-            hir::UnnamedField(vis) => {
-                ty::FieldDefData::new(fid, special_idents::unnamed_field.name, vis)
+        if let Some(name) = f.node.name {
+            let dup_span = seen_fields.get(&name).cloned();
+            if let Some(prev_span) = dup_span {
+                let mut err = struct_span_err!(tcx.sess, f.span, E0124,
+                                               "field `{}` is already declared",
+                                               name);
+                span_note!(&mut err, prev_span, "previously declared here");
+                err.emit();
+            } else {
+                seen_fields.insert(name, f.span);
             }
+
+            ty::FieldDefData::new(fid, name, f.node.vis)
+        } else {
+            ty::FieldDefData::new(fid, special_idents::unnamed_field.name, f.node.vis)
         }
     }).collect();
     ty::VariantDefData {
