@@ -271,7 +271,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         for (i, trait_did) in candidates.iter().enumerate() {
             err.fileline_help(span,
-                              &format!("candidate #{}: use `{}`",
+                              &format!("candidate #{}: `use {}`",
                                         i + 1,
                                         fcx.tcx().item_path_str(*trait_did)));
         }
