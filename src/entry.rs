@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
+use rustc_front::intravisit::{Visitor, walk_expr, walk_block};
 use syntax::codemap::Span;
 use utils::SpanlessEq;
 use utils::{BTREEMAP_PATH, HASHMAP_PATH};
@@ -41,73 +42,108 @@ impl LintPass for HashMapLint {
 
 impl LateLintPass for HashMapLint {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if_let_chain! {
-            [
-                let ExprIf(ref check, ref then, _) = expr.node,
-                let ExprUnary(UnOp::UnNot, ref check) = check.node,
-                let ExprMethodCall(ref name, _, ref params) = check.node,
-                params.len() >= 2,
-                name.node.as_str() == "contains_key"
-            ], {
-                let key = match params[1].node {
-                    ExprAddrOf(_, ref key) => key,
-                    _ => return
-                };
+        if let ExprIf(ref check, ref then_block, ref else_block) = expr.node {
+            if let ExprUnary(UnOp::UnNot, ref check) = check.node {
+                if let Some((ty, map, key)) = check_cond(cx, check) {
+                    // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
+                    // we can give a better error message
+                    let sole_expr = else_block.is_none() &&
+                        if then_block.expr.is_some() { 1 } else { 0 } + then_block.stmts.len() == 1;
 
-                let map = &params[0];
-                let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(map));
+                    let mut visitor = InsertVisitor {
+                        cx: cx,
+                        span: expr.span,
+                        ty: ty,
+                        map: map,
+                        key: key,
+                        sole_expr: sole_expr,
+                    };
 
-                let kind = if match_type(cx, obj_ty, &BTREEMAP_PATH) {
-                    "BTreeMap"
+                    walk_block(&mut visitor, then_block);
                 }
-                else if match_type(cx, obj_ty, &HASHMAP_PATH) {
-                    "HashMap"
-                }
-                else {
-                    return
-                };
+            } else if let Some(ref else_block) = *else_block {
+                if let Some((ty, map, key)) = check_cond(cx, check) {
+                    let mut visitor = InsertVisitor {
+                        cx: cx,
+                        span: expr.span,
+                        ty: ty,
+                        map: map,
+                        key: key,
+                        sole_expr: false,
+                    };
 
-                let sole_expr = if then.expr.is_some() { 1 } else { 0 } + then.stmts.len() == 1;
-
-                if let Some(ref then) = then.expr {
-                    check_for_insert(cx, expr.span, map, key, then, sole_expr, kind);
-                }
-
-                for stmt in &then.stmts {
-                    if let StmtSemi(ref stmt, _) = stmt.node {
-                        check_for_insert(cx, expr.span, map, key, stmt, sole_expr, kind);
-                    }
+                    walk_expr(&mut visitor, else_block);
                 }
             }
         }
     }
 }
 
-fn check_for_insert(cx: &LateContext, span: Span, map: &Expr, key: &Expr, expr: &Expr, sole_expr: bool, kind: &str) {
-    if_let_chain! {
-        [
+fn check_cond<'a, 'tcx, 'b>(cx: &'a LateContext<'a, 'tcx>, check: &'b Expr) -> Option<(&'static str, &'b Expr, &'b Expr)> {
+    if_let_chain! {[
+        let ExprMethodCall(ref name, _, ref params) = check.node,
+        params.len() >= 2,
+        name.node.as_str() == "contains_key",
+        let ExprAddrOf(_, ref key) = params[1].node
+    ], {
+        let map = &params[0];
+        let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(map));
+
+        return if match_type(cx, obj_ty, &BTREEMAP_PATH) {
+            Some(("BTreeMap", map, key))
+        }
+        else if match_type(cx, obj_ty, &HASHMAP_PATH) {
+            Some(("HashMap", map, key))
+        }
+        else {
+            None
+        };
+    }}
+
+    None
+}
+
+struct InsertVisitor<'a, 'tcx: 'a, 'b> {
+    cx: &'a LateContext<'a, 'tcx>,
+    span: Span,
+    ty: &'static str,
+    map: &'b Expr,
+    key: &'b Expr,
+    sole_expr: bool,
+}
+
+impl<'a, 'tcx, 'v, 'b> Visitor<'v> for InsertVisitor<'a, 'tcx, 'b> {
+    fn visit_expr(&mut self, expr: &'v Expr) {
+        if_let_chain! {[
             let ExprMethodCall(ref name, _, ref params) = expr.node,
             params.len() == 3,
             name.node.as_str() == "insert",
-            get_item_name(cx, map) == get_item_name(cx, &*params[0]),
-            SpanlessEq::new(cx).eq_expr(key, &params[1])
+            get_item_name(self.cx, self.map) == get_item_name(self.cx, &*params[0]),
+            SpanlessEq::new(self.cx).eq_expr(self.key, &params[1])
         ], {
-            let help = if sole_expr {
-                format!("{}.entry({}).or_insert({})",
-                        snippet(cx, map.span, "map"),
-                        snippet(cx, params[1].span, ".."),
-                        snippet(cx, params[2].span, ".."))
-            }
-            else {
-                format!("{}.entry({})",
-                        snippet(cx, map.span, "map"),
-                        snippet(cx, params[1].span, ".."))
-            };
 
-            span_lint_and_then(cx, MAP_ENTRY, span,
-                               &format!("usage of `contains_key` followed by `insert` on `{}`", kind), |db| {
-                db.span_suggestion(span, "Consider using", help);
+            span_lint_and_then(self.cx, MAP_ENTRY, self.span,
+                               &format!("usage of `contains_key` followed by `insert` on `{}`", self.ty), |db| {
+                if self.sole_expr {
+                    let help = format!("{}.entry({}).or_insert({})",
+                                       snippet(self.cx, self.map.span, "map"),
+                                       snippet(self.cx, params[1].span, ".."),
+                                       snippet(self.cx, params[2].span, ".."));
+
+                    db.span_suggestion(self.span, "Consider using", help);
+                }
+                else {
+                    let help = format!("Consider using `{}.entry({})`",
+                                       snippet(self.cx, self.map.span, "map"),
+                                       snippet(self.cx, params[1].span, ".."));
+
+                    db.span_note(self.span, &help);
+                }
             });
+        }}
+
+        if !self.sole_expr {
+            walk_expr(self, expr);
         }
     }
 }
