@@ -615,16 +615,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             // decision solely based on the privacy of the method
             // invocation.
             Some(ast_map::NodeImplItem(ii)) => {
-                match ii.node {
-                    hir::ImplItemKind::Const(..) |
-                    hir::ImplItemKind::Method(..) => {
-                        let imp = self.tcx.map.get_parent_did(node_id);
-                        match self.tcx.impl_trait_ref(imp) {
-                            Some(..) => hir::Public,
-                            _ => ii.vis
-                        }
-                    }
-                    hir::ImplItemKind::Type(_) => hir::Public,
+                let imp = self.tcx.map.get_parent_did(node_id);
+                match self.tcx.impl_trait_ref(imp) {
+                    Some(..) => hir::Public,
+                    _ => ii.vis,
                 }
             }
             Some(ast_map::NodeTraitItem(_)) => hir::Public,
@@ -804,8 +798,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
             ty::TraitContainer(trait_def_id) => {
-                self.report_error(self.ensure_public(span, trait_def_id,
-                                                     None, "source trait"));
+                let msg = format!("source trait `{}`", self.tcx.item_path_str(trait_def_id));
+                self.report_error(self.ensure_public(span, trait_def_id, None, &msg));
             }
         }
     }

@@ -20,7 +20,7 @@ struct S;
 impl m::Pub for S {}
 
 fn g<T: m::Pub>(arg: T) {
-    arg.f(); //~ ERROR: source trait is private
+    arg.f(); //~ ERROR: source trait `m::Priv` is private
 }
 
 fn main() {
