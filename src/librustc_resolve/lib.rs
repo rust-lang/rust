@@ -731,8 +731,8 @@ enum RibKind<'a> {
     // We're in a constant item. Can't refer to dynamic stuff.
     ConstantItemRibKind,
 
-    // We passed through an anonymous module.
-    AnonymousModuleRibKind(Module<'a>),
+    // We passed through a module.
+    ModuleRibKind(Module<'a>),
 }
 
 #[derive(Copy, Clone)]
@@ -1680,16 +1680,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn with_scope<F>(&mut self, id: NodeId, f: F)
         where F: FnOnce(&mut Resolver)
     {
-        let orig_module = self.current_module;
+        if let Some(module) = self.current_module.module_children.borrow().get(&id) {
+            // Move down in the graph.
+            let orig_module = ::std::mem::replace(&mut self.current_module, module);
+            self.value_ribs.push(Rib::new(ModuleRibKind(module)));
+            self.type_ribs.push(Rib::new(ModuleRibKind(module)));
 
-        // Move down in the graph.
-        if let Some(module) = orig_module.module_children.borrow().get(&id) {
-            self.current_module = module;
+            f(self);
+
+            self.current_module = orig_module;
+            self.value_ribs.pop();
+            self.type_ribs.pop();
+        } else {
+            f(self);
         }
-
-        f(self);
-
-        self.current_module = orig_module;
     }
 
     /// Searches the current set of local scopes for labels.
@@ -2266,8 +2270,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
-            self.value_ribs.push(Rib::new(AnonymousModuleRibKind(anonymous_module)));
-            self.type_ribs.push(Rib::new(AnonymousModuleRibKind(anonymous_module)));
+            self.value_ribs.push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.type_ribs.push(Rib::new(ModuleRibKind(anonymous_module)));
             self.current_module = anonymous_module;
         } else {
             self.value_ribs.push(Rib::new(NormalRibKind));
@@ -2811,8 +2815,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if check_ribs {
-            if let Some(def) = self.resolve_identifier_in_local_ribs(identifier, namespace) {
-                return Some(def);
+            match self.resolve_identifier_in_local_ribs(identifier, namespace, record_used) {
+                Some(def) => return Some(def),
+                None => {}
             }
         }
 
@@ -2844,7 +2849,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Def::Local(_, node_id) => {
                 for rib in ribs {
                     match rib.kind {
-                        NormalRibKind | AnonymousModuleRibKind(..) => {
+                        NormalRibKind | ModuleRibKind(..) => {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
@@ -2893,7 +2898,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | MethodRibKind | ClosureRibKind(..) |
-                        AnonymousModuleRibKind(..) => {
+                        ModuleRibKind(..) => {
                             // Nothing to do. Continue.
                         }
                         ItemRibKind => {
@@ -3024,7 +3029,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_identifier_in_local_ribs(&mut self,
                                         ident: hir::Ident,
-                                        namespace: Namespace)
+                                        namespace: Namespace,
+                                        record_used: bool)
                                         -> Option<LocalDef> {
         // Check the local set of ribs.
         let name = match namespace { ValueNS => ident.name, TypeNS => ident.unhygienic_name };
@@ -3051,16 +3057,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            if let AnonymousModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
+            if let ModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
                 if let Success(binding) = self.resolve_name_in_module(module,
                                                                       ident.unhygienic_name,
                                                                       namespace,
                                                                       true,
-                                                                      true) {
+                                                                      record_used) {
                     if let Some(def) = binding.def() {
                         return Some(LocalDef::from_def(def));
                     }
                 }
+                // We can only see through anonymous modules
+                if module.def.is_some() { return None; }
             }
         }
 

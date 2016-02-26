@@ -69,6 +69,13 @@ mod bar {
     }
 }
 
+fn g() {
+    use self::g; //~ ERROR unused import
+    fn f() {
+        self::g();
+    }
+}
+
 fn main() {
     cal(foo::Point{x:3, y:9});
     let mut a = 3;
