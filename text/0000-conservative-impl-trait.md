@@ -351,19 +351,12 @@ use something like a newtype.
 
 ### Anonymity
 
-A abstract return type can not be named -- this is similar to how closures
-and function items are already unnameable types, and might be considered
-a problem because it makes it not possible to build explicitly typed APIs
-around the return type of a function.
-
-The current semantics has been chosen for consistency and simplicity,
-since the issue already exists with closures and function items, and
-a solution to them will also apply here.
-
-For example, if named abstract types get added, then existing
-abstract return types could get upgraded to having a name transparently.
-Likewise, if `typeof` makes it into the language, then you could refer to the
-return type of a function without naming it.
+A abstract return type cannot be named in this proposal, which means that it
+cannot be placed into `structs` and so on. This is not a fundamental limitation
+in any sense; the limitation is there both to keep this RFC simple, and because
+the precise way we might want to allow naming of such types is still a bit
+unclear. Some possibilities include a `typeof` operator, or explicit named
+abstract types.
 
 ### Limitation to only return type position
 
@@ -371,10 +364,9 @@ There have been various proposed additional places where abstract types
 might be usable. For example, `fn x(y: @Trait)` as shorthand for
 `fn x<T: Trait>(y: T)`.
 
-Since the exact semantic and user experience for these
-locations are yet unclear
-(`@Trait` would effectively behave completely different before and after the `->`),
-this has also been excluded from this proposal.
+Since the exact semantics and user experience for these locations are yet
+unclear (`@Trait` would effectively behave completely different before and after
+the `->`), this has also been excluded from this proposal.
 
 ### Type transparency in recursive functions
 
