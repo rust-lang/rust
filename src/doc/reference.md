@@ -236,6 +236,8 @@ following forms:
 * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
   (`r`), or `U+0074` (`t`), denoting the Unicode values `U+000A` (LF),
   `U+000D` (CR) or `U+0009` (HT) respectively.
+* The _null escape_ is the character `U+0030` (`0`) and denotes the Unicode
+  value `U+0000` (NUL).
 * The _backslash escape_ is the character `U+005C` (`\`) which must be
   escaped in order to denote *itself*.
 
@@ -297,6 +299,8 @@ following forms:
 * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
   (`r`), or `U+0074` (`t`), denoting the bytes values `0x0A` (ASCII LF),
   `0x0D` (ASCII CR) or `0x09` (ASCII HT) respectively.
+* The _null escape_ is the character `U+0030` (`0`) and denotes the byte
+  value `0x00` (ASCII NUL).
 * The _backslash escape_ is the character `U+005C` (`\`) which must be
   escaped in order to denote its ASCII encoding `0x5C`.
 
