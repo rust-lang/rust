@@ -353,17 +353,23 @@ impl File {
 
     pub fn set_perm(&self, perm: FilePermissions) -> io::Result<()> {
         let attr = try!(self.file_attr()).attributes;
-        match (perm.readonly, attr & c::FILE_ATTRIBUTE_READONLY != 0) {
-            (true, false) =>
-                if attr & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
-                    // this matches directories, dir symlinks, and junctions.
-                    Err(io::Error::new(io::ErrorKind::PermissionDenied,
-                                       "directories can not be read-only"))
-                } else {
-                    self.set_attributes(attr | c::FILE_ATTRIBUTE_READONLY)
-                },
-            (false, true) => self.set_attributes(attr & !c::FILE_ATTRIBUTE_READONLY),
-            _ => Ok(()),
+        if attr & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
+            // this matches directories, dir symlinks, and junctions.
+            if perm.readonly {
+                Err(io::Error::new(io::ErrorKind::PermissionDenied,
+                                   "directories can not be read-only"))
+            } else {
+                Ok(()) // no reason to fail, as the result is what is expected.
+                     // (the directory will not be read-only)
+            }
+        } else {
+            if perm.readonly == (attr & c::FILE_ATTRIBUTE_READONLY != 0) {
+                Ok(())
+            } else if perm.readonly {
+                self.set_attributes(attr | c::FILE_ATTRIBUTE_READONLY)
+            } else {
+                self.set_attributes(attr & !c::FILE_ATTRIBUTE_READONLY)
+            }
         }
     }
 
