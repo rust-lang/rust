@@ -20,16 +20,10 @@ extern crate syntax;
 extern crate rustc_front;
 
 use build;
-use graphviz;
-use pretty;
-use transform::{clear_dead_blocks, simplify_cfg, type_check};
-use transform::{no_landing_pads};
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
-use std::fs::File;
 
-use rustc::mir::transform::MirPass;
 use rustc::mir::mir_map::MirMap;
 use rustc::middle::infer;
 use rustc::middle::region::CodeExtentData;
@@ -136,61 +130,16 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                 body: &'tcx hir::Block,
                 span: Span,
                 id: ast::NodeId) {
-        let (prefix, implicit_arg_tys) = match fk {
-            intravisit::FnKind::Closure =>
-                (format!("{}-", id), vec![closure_self_ty(&self.tcx, id, body.id)]),
-            _ =>
-                (format!(""), vec![]),
+        let implicit_arg_tys = if let intravisit::FnKind::Closure = fk {
+            vec![closure_self_ty(&self.tcx, id, body.id)]
+        } else {
+            vec![]
         };
 
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-
         let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env));
-
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
-            Ok(mut mir) => {
-                clear_dead_blocks::ClearDeadBlocks::new().run_on_mir(&mut mir, &infcx);
-                type_check::TypeckMir::new().run_on_mir(&mut mir, &infcx);
-                no_landing_pads::NoLandingPads.run_on_mir(&mut mir, &infcx);
-                if self.tcx.sess.opts.mir_opt_level > 0 {
-                    simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir, &infcx);
-                }
-                let meta_item_list = self.attr
-                                         .iter()
-                                         .flat_map(|a| a.meta_item_list())
-                                         .flat_map(|l| l.iter());
-                for item in meta_item_list {
-                    if item.check_name("graphviz") || item.check_name("pretty") {
-                        match item.value_str() {
-                            Some(s) => {
-                                let filename = format!("{}{}", prefix, s);
-                                let result = File::create(&filename).and_then(|ref mut output| {
-                                    if item.check_name("graphviz") {
-                                        graphviz::write_mir_graphviz(&mir, output)
-                                    } else {
-                                        pretty::write_mir_pretty(&mir, output)
-                                    }
-                                });
-
-                                if let Err(e) = result {
-                                    self.tcx.sess.span_fatal(
-                                        item.span,
-                                        &format!("Error writing MIR {} results to `{}`: {}",
-                                                 item.name(), filename, e));
-                                }
-                            }
-                            None => {
-                                self.tcx.sess.span_err(
-                                    item.span,
-                                    &format!("{} attribute requires a path", item.name()));
-                            }
-                        }
-                    }
-                }
-
-                let previous = self.map.map.insert(id, mir);
-                assert!(previous.is_none());
-            }
+            Ok(mir) => assert!(self.map.map.insert(id, mir).is_none()),
             Err(ErrorReported) => {}
         }
 

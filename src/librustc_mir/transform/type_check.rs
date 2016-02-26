@@ -16,8 +16,9 @@ use rustc::middle::traits;
 use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::middle::ty::fold::TypeFoldable;
 use rustc::mir::repr::*;
+use rustc::mir::mir_map::MirMap;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{MirMapPass, Pass};
 use rustc::mir::visit::{self, Visitor};
 
 use syntax::codemap::{Span, DUMMY_SP};
@@ -572,27 +573,29 @@ impl TypeckMir {
     }
 }
 
-impl MirPass for TypeckMir {
-    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, infcx: &InferCtxt<'a, 'tcx>)
-    {
-        if infcx.tcx.sess.err_count() > 0 {
+impl<'tcx> MirMapPass<'tcx> for TypeckMir {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, map: &mut MirMap<'tcx>) {
+        if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-
-        let mut checker = TypeChecker::new(infcx);
-
-        {
-            let mut verifier = TypeVerifier::new(&mut checker, mir);
-            verifier.visit_mir(mir);
-            if verifier.errors_reported {
-                // don't do further checks to avoid ICEs
-                return;
+        for (&id, mir) in &mut map.map {
+            let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+            let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+            let mut checker = TypeChecker::new(&infcx);
+            {
+                let mut verifier = TypeVerifier::new(&mut checker, mir);
+                verifier.visit_mir(mir);
+                if verifier.errors_reported {
+                    // don't do further checks to avoid ICEs
+                    continue;
+                }
             }
+            checker.typeck_mir(mir);
+            checker.verify_obligations(mir);
         }
-
-        checker.typeck_mir(mir);
-        checker.verify_obligations(mir);
     }
 }
+
+impl Pass for TypeckMir {}
