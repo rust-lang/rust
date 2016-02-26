@@ -311,6 +311,13 @@ fn main() {
         let _v = v;
     }
 
+    let mut m : HashMap<u64, u64> = HashMap::new();
+    for (_, v) in &mut m {
+        // Ok, there is no values_mut method or equivalent
+        let _v = v;
+    }
+
+
     let rm = &m;
     for (k, _value) in rm {
         //~^ you seem to want to iterate on a map's keys

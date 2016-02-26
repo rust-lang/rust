@@ -588,24 +588,23 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
     }
 }
 
-// Check for the FOR_KV_MAP lint.
+/// Check for the FOR_KV_MAP lint.
 fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
     if let PatKind::Tup(ref pat) = pat.node {
         if pat.len() == 2 {
-
             let (pat_span, kind) = match (&pat[0].node, &pat[1].node) {
                 (key, _) if pat_is_wild(key, body) => (&pat[1].span, "values"),
                 (_, value) if pat_is_wild(value, body) => (&pat[0].span, "keys"),
                 _ => return,
             };
 
-            let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
-            let arg_span = if let ExprAddrOf(_, ref expr) = arg.node {
-                expr.span
-            } else {
-                arg.span
+            let arg_span = match arg.node {
+                ExprAddrOf(MutImmutable, ref expr) => expr.span,
+                ExprAddrOf(MutMutable, _) => return, // for _ in &mut _, there is no {values,keys}_mut method
+                _ => arg.span,
             };
 
+            let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
             if match_type(cx, ty, &HASHMAP_PATH) || match_type(cx, ty, &BTREEMAP_PATH) {
                 span_lint_and_then(cx,
                                    FOR_KV_MAP,
@@ -625,7 +624,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
 
 }
 
-// Return true if the pattern is a `PatWild` or an ident prefixed with '_'.
+/// Return true if the pattern is a `PatWild` or an ident prefixed with '_'.
 fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
@@ -845,7 +844,7 @@ enum VarState {
     DontWarn,
 }
 
-// Scan a for loop for variables that are incremented exactly once.
+/// Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>, // context reference
     states: HashMap<NodeId, VarState>, // incremented variables
@@ -897,7 +896,7 @@ impl<'v, 't> Visitor<'v> for IncrementVisitor<'v, 't> {
     }
 }
 
-// Check whether a variable is initialized to zero at the start of a loop.
+/// Check whether a variable is initialized to zero at the start of a loop.
 struct InitializeVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>, // context reference
     end_expr: &'v Expr, // the for loop. Stop scanning here.
