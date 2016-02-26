@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,4 +19,21 @@ pub fn main() {
     assert_eq!(i as u8 as i8, 'Q' as u8 as i8);
     assert_eq!(0x51 as char, 'Q');
     assert_eq!(0 as u32, false as u32);
+    
+    unsafe {
+        let my_num: &[i32; 2] = &[10, 20];
+        let my_num: *const i32 = my_num as *const i32;
+        println!("{}", *my_num.offset(1));
+    }
+    unsafe {
+        let my_num: &mut [i32; 2] = &mut [10, 20];
+        let my_num: *mut i32 = my_num as *mut i32;
+        *my_num.offset(1) = 4;
+        println!("{}", *my_num.offset(1));
+    }
+    unsafe {
+        let my_num: &mut [i32; 2] = &mut [10, 20];
+        let my_num: *const i32 = my_num as *const i32;
+        println!("{}", *my_num.offset(1));
+    }
 }
