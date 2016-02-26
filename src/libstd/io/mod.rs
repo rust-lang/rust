@@ -1055,7 +1055,14 @@ pub trait Write {
         let mut output = Adaptor { inner: self, error: Ok(()) };
         match fmt::write(&mut output, fmt) {
             Ok(()) => Ok(()),
-            Err(..) => output.error
+            Err(..) => {
+                // check if the error came from the underlying `Write` or not
+                if output.error.is_err() {
+                    output.error
+                } else {
+                    Err(Error::new(ErrorKind::Other, "formatter error"))
+                }
+            }
         }
     }
 
