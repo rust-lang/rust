@@ -156,7 +156,7 @@ impl<'a> Read for &'a [u8] {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.len());
         let (a, b) = self.split_at(amt);
-        buf[..amt].clone_from_slice(a);
+        buf[..amt].copy_from_slice(a);
         *self = b;
         Ok(amt)
     }
@@ -168,7 +168,7 @@ impl<'a> Read for &'a [u8] {
                                   "failed to fill whole buffer"));
         }
         let (a, b) = self.split_at(buf.len());
-        buf.clone_from_slice(a);
+        buf.copy_from_slice(a);
         *self = b;
         Ok(())
     }
@@ -189,7 +189,7 @@ impl<'a> Write for &'a mut [u8] {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(data.len(), self.len());
         let (a, b) = mem::replace(self, &mut []).split_at_mut(amt);
-        a.clone_from_slice(&data[..amt]);
+        a.copy_from_slice(&data[..amt]);
         *self = b;
         Ok(amt)
     }

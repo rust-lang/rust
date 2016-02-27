@@ -210,7 +210,7 @@ impl<'a> Part<'a> {
                     }
                 }
                 Part::Copy(buf) => {
-                    out[..buf.len()].clone_from_slice(buf);
+                    out[..buf.len()].copy_from_slice(buf);
                 }
             }
             Some(len)
@@ -245,7 +245,7 @@ impl<'a> Formatted<'a> {
     /// (It may still leave partially written bytes in the buffer; do not rely on that.)
     pub fn write(&self, out: &mut [u8]) -> Option<usize> {
         if out.len() < self.sign.len() { return None; }
-        out[..self.sign.len()].clone_from_slice(self.sign);
+        out[..self.sign.len()].copy_from_slice(self.sign);
 
         let mut written = self.sign.len();
         for part in self.parts {

@@ -15,6 +15,7 @@
 #![feature(box_syntax)]
 #![feature(cell_extras)]
 #![feature(const_fn)]
+#![feature(copy_from_slice)]
 #![feature(core_float)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
