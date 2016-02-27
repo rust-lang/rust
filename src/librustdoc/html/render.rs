@@ -104,6 +104,8 @@ pub struct Context {
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     pub include_sources: bool,
+    /// The local file sources we've emitted and their respective url-paths.
+    pub local_sources: HashMap<PathBuf, String>,
     /// A flag, which when turned off, will render pages which redirect to the
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
@@ -262,8 +264,6 @@ pub struct Cache {
 struct SourceCollector<'a> {
     cx: &'a mut Context,
 
-    /// Processed source-file paths
-    seen: HashSet<String>,
     /// Root destination to place all HTML output into
     dst: PathBuf,
 }
@@ -423,6 +423,7 @@ pub fn run(mut krate: clean::Crate,
             playground_url: "".to_string(),
         },
         include_sources: true,
+        local_sources: HashMap::new(),
         render_redirect_pages: false,
         issue_tracker_base_url: None,
     };
@@ -770,11 +771,8 @@ fn render_sources(cx: &mut Context,
     try_err!(mkdir(&dst), &dst);
     let mut folder = SourceCollector {
         dst: dst,
-        seen: HashSet::new(),
         cx: cx,
     };
-    // skip all invalid spans
-    folder.seen.insert("".to_string());
     Ok(folder.fold_crate(krate))
 }
 
@@ -866,7 +864,13 @@ impl<'a> DocFolder for SourceCollector<'a> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem
-        if self.cx.include_sources && !self.seen.contains(&item.source.filename) {
+        if self.cx.include_sources
+            // skip all invalid spans
+            && item.source.filename != ""
+            // macros from other libraries get special filenames which we can
+            // safely ignore
+            && !(item.source.filename.starts_with("<")
+                && item.source.filename.ends_with("macros>")) {
 
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
@@ -884,7 +888,6 @@ impl<'a> DocFolder for SourceCollector<'a> {
                     false
                 }
             };
-            self.seen.insert(item.source.filename.clone());
         }
 
         self.fold_item_recur(item)
@@ -895,19 +898,14 @@ impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> io::Result<()> {
         let p = PathBuf::from(filename);
+        if self.cx.local_sources.contains_key(&p) {
+            // We've already emitted this source
+            return Ok(());
+        }
 
-        // If we couldn't open this file, then just returns because it
-        // probably means that it's some standard library macro thing and we
-        // can't have the source to it anyway.
         let mut contents = Vec::new();
-        match File::open(&p).and_then(|mut f| f.read_to_end(&mut contents)) {
-            Ok(r) => r,
-            // macros from other libraries get special filenames which we can
-            // safely ignore
-            Err(..) if filename.starts_with("<") &&
-                       filename.ends_with("macros>") => return Ok(()),
-            Err(e) => return Err(e)
-        };
+        try!(File::open(&p).and_then(|mut f| f.read_to_end(&mut contents)));
+
         let contents = str::from_utf8(&contents).unwrap();
 
         // Remove the utf-8 BOM if any
@@ -920,16 +918,20 @@ impl<'a> SourceCollector<'a> {
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from("../../");
+        let mut href = String::new();
         clean_srcpath(&self.cx.src_root, &p, false, |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
             root_path.push_str("../");
+            href.push_str(component);
+            href.push('/');
         });
-
         let mut fname = p.file_name().expect("source has no filename")
                          .to_os_string();
         fname.push(".html");
         cur.push(&fname[..]);
+        href.push_str(&fname.to_string_lossy());
+
         let mut w = BufWriter::new(try!(File::create(&cur)));
         let title = format!("{} -- source", cur.file_name().unwrap()
                                                .to_string_lossy());
@@ -944,7 +946,8 @@ impl<'a> SourceCollector<'a> {
         try!(layout::render(&mut w, &self.cx.layout,
                             &page, &(""), &Source(contents)));
         try!(w.flush());
-        return Ok(());
+        self.cx.local_sources.insert(p, href);
+        Ok(())
     }
 }
 
@@ -1459,7 +1462,7 @@ impl<'a> Item<'a> {
     /// If `None` is returned, then a source link couldn't be generated. This
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
-    fn href(&self, cx: &Context) -> Option<String> {
+    fn href(&self) -> Option<String> {
         let href = if self.item.source.loline == self.item.source.hiline {
             format!("{}", self.item.source.loline)
         } else {
@@ -1492,25 +1495,13 @@ impl<'a> Item<'a> {
         // know the span, so we plow forward and generate a proper url. The url
         // has anchors for the line numbers that we're linking to.
         } else if self.item.def_id.is_local() {
-            let mut path = Vec::new();
-            clean_srcpath(&cx.src_root, Path::new(&self.item.source.filename),
-                          true, |component| {
-                path.push(component.to_string());
-            });
-
-            // If the span points into an external macro the
-            // source-file will be bogus, i.e `<foo macros>`
-            let filename = &self.item.source.filename;
-            if !(filename.starts_with("<") && filename.ends_with("macros>")) {
-                Some(format!("{root}src/{krate}/{path}.html#{href}",
-                             root = self.cx.root_path,
-                             krate = self.cx.layout.krate,
-                             path = path.join("/"),
-                             href = href))
-            } else {
-                None
-            }
-
+            self.cx.local_sources.get(&PathBuf::from(&self.item.source.filename)).map(|path| {
+                format!("{root}src/{krate}/{path}.html#{href}",
+                        root = self.cx.root_path,
+                        krate = self.cx.layout.krate,
+                        path = path,
+                        href = href)
+            })
         // If this item is not part of the local crate, then things get a little
         // trickier. We don't actually know the span of the external item, but
         // we know that the documentation on the other end knows the span!
@@ -1590,7 +1581,7 @@ impl<'a> fmt::Display for Item<'a> {
         // this page, and this link will be auto-clicked. The `id` attribute is
         // used to find the link to auto-click.
         if self.cx.include_sources && !is_primitive {
-            match self.href(self.cx) {
+            match self.href() {
                 Some(l) => {
                     try!(write!(fmt, "<a id='src-{}' class='srclink' \
                                        href='{}' title='{}'>[src]</a>",
