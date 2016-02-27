@@ -46,7 +46,6 @@ use syntax::codemap::BytePos;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::errors::Handler;
-use syntax::parse::token::special_idents;
 use syntax;
 use rbml::writer::Encoder;
 
@@ -249,7 +248,7 @@ fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
 fn encode_struct_fields(rbml_w: &mut Encoder,
                         variant: ty::VariantDef) {
     for f in &variant.fields {
-        if f.name == special_idents::unnamed_field.name {
+        if variant.is_tuple_struct() {
             rbml_w.start_tag(tag_item_unnamed_field);
         } else {
             rbml_w.start_tag(tag_item_field);

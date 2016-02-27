@@ -1242,45 +1242,22 @@ impl Visibility {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct StructField_ {
-    pub name: Option<Name>,
+    pub name: Name,
     pub vis: Visibility,
     pub id: NodeId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,
 }
 
-// impl StructField_ {
-//     pub fn name(&self) -> Option<Name> {
-//         match self.kind {
-//             NamedField(name, _) => Some(name),
-//             UnnamedField(_) => None,
-//         }
-//     }
-// }
-
 pub type StructField = Spanned<StructField_>;
 
-// #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-// pub enum StructFieldKind {
-//     NamedField(Name, Visibility),
-//     /// Element of a tuple-like struct
-//     UnnamedField(Visibility),
-// }
-
-// impl StructFieldKind {
-//     pub fn is_unnamed(&self) -> bool {
-//         match *self {
-//             UnnamedField(..) => true,
-//             NamedField(..) => false,
-//         }
-//     }
-
-//     pub fn visibility(&self) -> Visibility {
-//         match *self {
-//             NamedField(_, vis) | UnnamedField(vis) => vis,
-//         }
-//     }
-// }
+impl StructField_ {
+    // Still necessary in couple of places
+    pub fn is_positional(&self) -> bool {
+        let first = self.name.as_str().as_bytes()[0];
+        first >= b'0' && first <= b'9'
+    }
+}
 
 /// Fields and Ids of enum variants and structs
 ///
