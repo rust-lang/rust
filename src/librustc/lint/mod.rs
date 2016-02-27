@@ -134,7 +134,9 @@ pub trait LateLintPass: LintPass {
     fn check_crate(&mut self, _: &LateContext, _: &hir::Crate) { }
     fn check_crate_post(&mut self, _: &LateContext, _: &hir::Crate) { }
     fn check_mod(&mut self, _: &LateContext, _: &hir::Mod, _: Span, _: ast::NodeId) { }
+    fn check_mod_post(&mut self, _: &LateContext, _: &hir::Mod, _: Span, _: ast::NodeId) { }
     fn check_foreign_item(&mut self, _: &LateContext, _: &hir::ForeignItem) { }
+    fn check_foreign_item_post(&mut self, _: &LateContext, _: &hir::ForeignItem) { }
     fn check_item(&mut self, _: &LateContext, _: &hir::Item) { }
     fn check_item_post(&mut self, _: &LateContext, _: &hir::Item) { }
     fn check_local(&mut self, _: &LateContext, _: &hir::Local) { }
@@ -150,8 +152,12 @@ pub trait LateLintPass: LintPass {
     fn check_generics(&mut self, _: &LateContext, _: &hir::Generics) { }
     fn check_fn(&mut self, _: &LateContext,
         _: FnKind, _: &hir::FnDecl, _: &hir::Block, _: Span, _: ast::NodeId) { }
+    fn check_fn_post(&mut self, _: &LateContext,
+        _: FnKind, _: &hir::FnDecl, _: &hir::Block, _: Span, _: ast::NodeId) { }
     fn check_trait_item(&mut self, _: &LateContext, _: &hir::TraitItem) { }
+    fn check_trait_item_post(&mut self, _: &LateContext, _: &hir::TraitItem) { }
     fn check_impl_item(&mut self, _: &LateContext, _: &hir::ImplItem) { }
+    fn check_impl_item_post(&mut self, _: &LateContext, _: &hir::ImplItem) { }
     fn check_struct_def(&mut self, _: &LateContext,
         _: &hir::VariantData, _: ast::Name, _: &hir::Generics, _: ast::NodeId) { }
     fn check_struct_def_post(&mut self, _: &LateContext,
@@ -179,7 +185,9 @@ pub trait EarlyLintPass: LintPass {
     fn check_crate(&mut self, _: &EarlyContext, _: &ast::Crate) { }
     fn check_crate_post(&mut self, _: &EarlyContext, _: &ast::Crate) { }
     fn check_mod(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
+    fn check_mod_post(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
     fn check_foreign_item(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
+    fn check_foreign_item_post(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
     fn check_item(&mut self, _: &EarlyContext, _: &ast::Item) { }
     fn check_item_post(&mut self, _: &EarlyContext, _: &ast::Item) { }
     fn check_local(&mut self, _: &EarlyContext, _: &ast::Local) { }
@@ -195,8 +203,12 @@ pub trait EarlyLintPass: LintPass {
     fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
     fn check_fn(&mut self, _: &EarlyContext,
         _: ast_visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
+    fn check_fn_post(&mut self, _: &EarlyContext,
+        _: ast_visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
     fn check_trait_item(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
+    fn check_trait_item_post(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
     fn check_impl_item(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
+    fn check_impl_item_post(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
     fn check_struct_def(&mut self, _: &EarlyContext,
         _: &ast::VariantData, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
     fn check_struct_def_post(&mut self, _: &EarlyContext,
