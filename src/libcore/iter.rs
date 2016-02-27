@@ -4665,11 +4665,15 @@ impl<A: Step + One> DoubleEndedIterator for ops::RangeInclusive<A> where
 
             NonEmpty { ref mut start, ref mut end } => {
                 let one = A::one();
-                let mut n = &*end - &one;
-                mem::swap(&mut n, end);
+                if start <= end {
+                    let mut n = &*end - &one;
+                    mem::swap(&mut n, end);
 
-                (if n == *start { Some(mem::replace(start, one)) } else { None },
-                 n)
+                    (if n == *start { Some(mem::replace(start, one)) } else { None },
+                     Some(n))
+                } else {
+                    (Some(mem::replace(end, one)), None)
+                }
             }
         };
 
@@ -4677,7 +4681,7 @@ impl<A: Step + One> DoubleEndedIterator for ops::RangeInclusive<A> where
             *self = Empty { at: start };
         }
 
-        Some(n)
+        n
     }
 }
 

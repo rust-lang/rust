@@ -99,6 +99,11 @@ pub fn main() {
     }
     assert_eq!(long, RangeInclusive::Empty { at: 251 });
 
+    // check underflow
+    let mut narrow = 1...0;
+    assert_eq!(narrow.next_back(), None);
+    assert_eq!(narrow, RangeInclusive::Empty { at: 0 });
+
     // what happens if you have a nonsense range?
     let mut nonsense = 10...5;
     assert_eq!(nonsense.next(), None);
