@@ -189,7 +189,7 @@
 //! ```
 //! let values = vec![1, 2, 3, 4, 5];
 //! {
-//!     let result = match values.into_iter() {
+//!     let result = match IntoIterator::into_iter(values) {
 //!         mut iter => loop {
 //!             match iter.next() {
 //!                 Some(x) => { println!("{}", x); },
