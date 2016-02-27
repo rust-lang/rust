@@ -206,7 +206,6 @@ fn lit_to_constant(lit: &LitKind) -> Constant {
 }
 
 fn constant_not(o: Constant) -> Option<Constant> {
-    use syntax::ast::LitIntType::*;
     use self::Constant::*;
     match o {
         Bool(b) => Some(Bool(!b)),
@@ -232,7 +231,6 @@ fn constant_not(o: Constant) -> Option<Constant> {
 }
 
 fn constant_negate(o: Constant) -> Option<Constant> {
-    use syntax::ast::LitIntType::*;
     use self::Constant::*;
     match o {
         Int(value, LitIntType::Signed(ity), sign) => Some(Int(value, LitIntType::Signed(ity), neg_sign(sign))),
