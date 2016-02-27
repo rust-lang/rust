@@ -603,7 +603,7 @@ impl<T> ops::Index<ops::RangeToInclusive<usize>> for [T] {
 
     #[inline]
     fn index(&self, index: ops::RangeToInclusive<usize>) -> &[T] {
-        // SNAP 3391630 change this to `0...index.end`
+        // SNAP 4d3eebf change this to `0...index.end`
         self.index(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
     }
 }
@@ -665,7 +665,7 @@ impl<T> ops::IndexMut<ops::RangeInclusive<usize>> for [T] {
 impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut [T] {
-        // SNAP 3391630 change this to `0...index.end`
+        // SNAP 4d3eebf change this to `0...index.end`
         self.index_mut(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
     }
 }

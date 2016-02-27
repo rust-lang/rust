@@ -1488,7 +1488,7 @@ mod traits {
 
         #[inline]
         fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
-            // SNAP 3391630 change this to `0...index.end`
+            // SNAP 4d3eebf change this to `0...index.end`
             self.index(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
         }
     }
@@ -1514,7 +1514,7 @@ mod traits {
     impl ops::IndexMut<ops::RangeToInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
-            // SNAP 3391630 change this to `0...index.end`
+            // SNAP 4d3eebf change this to `0...index.end`
             self.index_mut(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
         }
     }
