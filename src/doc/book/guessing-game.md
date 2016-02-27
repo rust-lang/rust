@@ -906,17 +906,17 @@ let guess: u32 = match guess.trim().parse() {
     Err(_) => continue,
 };
 ```
-
 This is how you generally move from ‘crash on error’ to ‘actually handle the
-error’, by switching from `expect()` to a `match` statement. The `Result`
-returned by `parse()` is an `enum`  like `Ordering`, but in this case, each
-variant has some data associated with it: `Ok` is a success, and `Err` is a
+error’, by switching from `expect()` to a `match` statement. A `Result` is
+returned by `parse()`, this is an `enum`  like `Ordering`, but in this case,
+each variant has some data associated with it: `Ok` is a success, and `Err` is a
 failure. Each contains more information: the successfully parsed integer, or an
-error type. In this case, we `match` on `Ok(num)`, which sets the inner value
-of the `Ok` to the name `num`, and then we  return it on the right-hand
-side. In the `Err` case, we don’t care what kind of error it is, so we
-use `_` instead of a name. This ignores the error, and `continue` causes us
-to go to the next iteration of the `loop`.
+error type. In this case, we `match` on `Ok(num)`, which sets the name `num` to
+the unwrapped `Ok` value (ythe integer), and then we  return it on the
+right-hand side. In the `Err` case, we don’t care what kind of error it is, so
+we just use the catch all `_` instead of a name. This catches everything that
+isn't `Ok`, and `continue` lets us move to the next iteration of the loop; in
+effect, this enables us to ignore all errors and continue with our program.
 
 Now we should be good! Let’s try:
 
