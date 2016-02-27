@@ -267,8 +267,10 @@ impl str {
     /// Converts a string slice to a raw pointer.
     ///
     /// As string slices are a slice of bytes, the raw pointer points to a
-    /// `u8`. This pointer will be pointing to the first byte of the string
+    /// [`u8`]. This pointer will be pointing to the first byte of the string
     /// slice.
+    ///
+    /// [`u8`]: primitive.u8.html
     ///
     /// # Examples
     ///
@@ -661,7 +663,7 @@ impl str {
     /// assert_eq!(None, chars.next());
     /// ```
     ///
-    /// Remember, `char`s may not match your human intuition about characters:
+    /// Remember, [`char`]s may not match your human intuition about characters:
     ///
     /// ```
     /// let y = "y̆";
@@ -678,15 +680,17 @@ impl str {
     pub fn chars(&self) -> Chars {
         core_str::StrExt::chars(self)
     }
-    /// Returns an iterator over the `char`s of a string slice, and their
+    /// Returns an iterator over the [`char`]s of a string slice, and their
     /// positions.
     ///
     /// As a string slice consists of valid UTF-8, we can iterate through a
-    /// string slice by `char`. This method returns an iterator of both
-    /// these `char`s, as well as their byte positions.
+    /// string slice by [`char`]. This method returns an iterator of both
+    /// these [`char`]s, as well as their byte positions.
     ///
-    /// The iterator yields tuples. The position is first, the `char` is
+    /// The iterator yields tuples. The position is first, the [`char`] is
     /// second.
+    ///
+    /// [`char`]: primitive.char.html
     ///
     /// # Examples
     ///
@@ -711,7 +715,7 @@ impl str {
     /// assert_eq!(None, char_indices.next());
     /// ```
     ///
-    /// Remember, `char`s may not match your human intuition about characters:
+    /// Remember, [`char`]s may not match your human intuition about characters:
     ///
     /// ```
     /// let y = "y̆";
@@ -918,12 +922,13 @@ impl str {
     /// Returns the byte index of the first character of this string slice that
     /// matches the pattern.
     ///
-    /// Returns `None` if the pattern doesn't match.
+    /// Returns [`None`] if the pattern doesn't match.
     ///
     /// The pattern can be a `&str`, [`char`], or a closure that determines if
     /// a character matches.
     ///
     /// [`char`]: primitive.char.html
+    /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -962,12 +967,13 @@ impl str {
     /// Returns the byte index of the last character of this string slice that
     /// matches the pattern.
     ///
-    /// Returns `None` if the pattern doesn't match.
+    /// Returns [`None`] if the pattern doesn't match.
     ///
     /// The pattern can be a `&str`, [`char`], or a closure that determines if
     /// a character matches.
     ///
     /// [`char`]: primitive.char.html
+    /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1187,13 +1193,17 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// The pattern can be a simple `&str`, [`char`], or a closure that
     /// determines the split.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
-    /// Equivalent to `split`, except that the trailing substring is
+    /// [`char`]: primitive.char.html
+    ///
+    /// Equivalent to [`split()`], except that the trailing substring is
     /// skipped if empty.
+    ///
+    /// [`split()`]: #method.split
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -1457,7 +1467,7 @@ impl str {
     /// # Iterator behavior
     ///
     /// The returned iterator requires that the pattern supports a reverse
-    /// search, and it will be a `[DoubleEndedIterator]` if a forward/reverse
+    /// search, and it will be a [`DoubleEndedIterator`] if a forward/reverse
     /// search yields the same elements.
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
@@ -1694,8 +1704,10 @@ impl str {
     ///
     /// # Errors
     ///
-    /// Will return `Err` if it's not possible to parse this string slice into
+    /// Will return [`Err`] if it's not possible to parse this string slice into
     /// the desired type.
+    ///
+    /// [`Err`]: str/trait.FromStr.html#associatedtype.Err
     ///
     /// # Example
     ///
@@ -1707,7 +1719,7 @@ impl str {
     /// assert_eq!(4, four);
     /// ```
     ///
-    /// Using the 'turbofish' instead of annotationg `four`:
+    /// Using the 'turbofish' instead of annotating `four`:
     ///
     /// ```
     /// let four = "4".parse::<u32>();
@@ -1765,10 +1777,12 @@ impl str {
         result
     }
 
-    /// Returns the lowercase equivalent of this string slice, as a new `String`.
+    /// Returns the lowercase equivalent of this string slice, as a new [`String`].
     ///
     /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Lowercase`.
+    ///
+    /// [`String`]: string/struct.String.html
     ///
     /// # Examples
     ///
@@ -1839,10 +1853,12 @@ impl str {
         }
     }
 
-    /// Returns the uppercase equivalent of this string slice, as a new `String`.
+    /// Returns the uppercase equivalent of this string slice, as a new [`String`].
     ///
     /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Uppercase`.
+    ///
+    /// [`String`]: string/struct.String.html
     ///
     /// # Examples
     ///
@@ -1884,7 +1900,9 @@ impl str {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
     }
 
-    /// Converts a `Box<str>` into a `String` without copying or allocating.
+    /// Converts a `Box<str>` into a [`String`] without copying or allocating.
+    ///
+    /// [`String`]: string/struct.String.html
     ///
     /// # Examples
     ///
