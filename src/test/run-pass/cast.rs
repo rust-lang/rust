@@ -19,20 +19,7 @@ pub fn main() {
     assert_eq!(0x51 as char, 'Q');
     assert_eq!(0 as u32, false as u32);
 
-    unsafe {
-        let my_num: &[i32; 2] = &[10, 20];
-        let my_num: *const i32 = my_num as *const i32;
-        println!("{}", *my_num.offset(1));
-    }
-    unsafe {
-        let my_num: &mut [i32; 2] = &mut [10, 20];
-        let my_num: *mut i32 = my_num as *mut i32;
-        *my_num.offset(1) = 4;
-        println!("{}", *my_num.offset(1));
-    }
-    unsafe {
-        let my_num: &mut [i32; 2] = &mut [10, 20];
-        let my_num: *const i32 = my_num as *const i32;
-        println!("{}", *my_num.offset(1));
-    }
+    let x = &[10, 20] as *const i32;
+    let y = &mut [10, 20] as *mut i32;
+    let z = &mut [10, 20] as *const i32;
 }
