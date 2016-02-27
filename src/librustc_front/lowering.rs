@@ -1236,7 +1236,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                     structpath,
                                     fields.into_iter().map(|&(s, e)| {
                                         field(token::intern(s),
-                                              lower_expr(lctx, &**e),
+                                              signal_block_expr(lctx,
+                                                                hir_vec![],
+                                                                lower_expr(lctx, &**e),
+                                                                e.span,
+                                                                hir::PopUnstableBlock,
+                                                                None),
                                               ast_expr.span)
                                     }).collect(),
                                     None,
