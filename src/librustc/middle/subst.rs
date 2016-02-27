@@ -555,6 +555,11 @@ impl<'a,T> Iterator for EnumeratedItems<'a,T> {
             None
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = self.vec.as_slice().len();
+        (size, Some(size))
+    }
 }
 
 impl<T> IntoIterator for VecPerParamSpace<T> {
