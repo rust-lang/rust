@@ -8,11 +8,12 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 126 lints included in this crate:
+There are 127 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [absurd_extreme_comparisons](https://github.com/Manishearth/rust-clippy/wiki#absurd_extreme_comparisons)             | warn    | a comparison involving a maximum or minimum value involves a case that is always true or always false
+[almost_swapped](https://github.com/Manishearth/rust-clippy/wiki#almost_swapped)                                     | warn    | `foo = bar; bar = foo` sequence
 [approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                                   | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                                         | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)             | warn    | braces can be eliminated in conditions that are expressions, e.g `if { true } ...`
@@ -62,6 +63,7 @@ name                                                                            
 [let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                                     | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                                     | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                                             | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque
+[manual_swap](https://github.com/Manishearth/rust-clippy/wiki#manual_swap)                                           | warn    | manual swap
 [map_clone](https://github.com/Manishearth/rust-clippy/wiki#map_clone)                                               | warn    | using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends `.cloned()` instead)
 [map_entry](https://github.com/Manishearth/rust-clippy/wiki#map_entry)                                               | warn    | use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`
 [match_bool](https://github.com/Manishearth/rust-clippy/wiki#match_bool)                                             | warn    | a match on boolean expression; recommends `if..else` block instead
@@ -114,7 +116,6 @@ name                                                                            
 [string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                                 | warn    | calling `String::to_string` which is inefficient
 [suspicious_assignment_formatting](https://github.com/Manishearth/rust-clippy/wiki#suspicious_assignment_formatting) | warn    | suspicious formatting of `*=`, `-=` or `!=`
 [suspicious_else_formatting](https://github.com/Manishearth/rust-clippy/wiki#suspicious_else_formatting)             | warn    | suspicious formatting of `else if`
-[suspicious_swap](https://github.com/Manishearth/rust-clippy/wiki#suspicious_swap)                                   | warn    | `foo = bar; bar = foo` sequence
 [temporary_assignment](https://github.com/Manishearth/rust-clippy/wiki#temporary_assignment)                         | warn    | assignments to temporaries
 [toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                                 | warn    | An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take references with `&`.
 [trivial_regex](https://github.com/Manishearth/rust-clippy/wiki#trivial_regex)                                       | warn    | finds trivial regular expressions in `Regex::new(_)` invocations
