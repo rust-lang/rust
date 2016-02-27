@@ -766,6 +766,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_foreign_item, late_passes, it);
             hir_visit::walk_foreign_item(cx, it);
+            run_lints!(cx, check_foreign_item_post, late_passes, it);
         })
     }
 
@@ -795,6 +796,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
                 body: &'v hir::Block, span: Span, id: ast::NodeId) {
         run_lints!(self, check_fn, late_passes, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body, span);
+        run_lints!(self, check_fn_post, late_passes, fk, decl, body, span, id);
     }
 
     fn visit_variant_data(&mut self,
@@ -835,6 +837,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     fn visit_mod(&mut self, m: &hir::Mod, s: Span, n: ast::NodeId) {
         run_lints!(self, check_mod, late_passes, m, s, n);
         hir_visit::walk_mod(self, m);
+        run_lints!(self, check_mod_post, late_passes, m, s, n);
     }
 
     fn visit_local(&mut self, l: &hir::Local) {
@@ -874,6 +877,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
             run_lints!(cx, check_trait_item, late_passes, trait_item);
             cx.visit_ids(|v| v.visit_trait_item(trait_item));
             hir_visit::walk_trait_item(cx, trait_item);
+            run_lints!(cx, check_trait_item_post, late_passes, trait_item);
         });
     }
 
@@ -882,6 +886,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
             run_lints!(cx, check_impl_item, late_passes, impl_item);
             cx.visit_ids(|v| v.visit_impl_item(impl_item));
             hir_visit::walk_impl_item(cx, impl_item);
+            run_lints!(cx, check_impl_item_post, late_passes, impl_item);
         });
     }
 
@@ -928,6 +933,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_foreign_item, early_passes, it);
             ast_visit::walk_foreign_item(cx, it);
+            run_lints!(cx, check_foreign_item_post, early_passes, it);
         })
     }
 
@@ -952,6 +958,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
                 body: &'v ast::Block, span: Span, id: ast::NodeId) {
         run_lints!(self, check_fn, early_passes, fk, decl, body, span, id);
         ast_visit::walk_fn(self, fk, decl, body, span);
+        run_lints!(self, check_fn_post, early_passes, fk, decl, body, span, id);
     }
 
     fn visit_variant_data(&mut self,
@@ -992,6 +999,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     fn visit_mod(&mut self, m: &ast::Mod, s: Span, n: ast::NodeId) {
         run_lints!(self, check_mod, early_passes, m, s, n);
         ast_visit::walk_mod(self, m);
+        run_lints!(self, check_mod_post, early_passes, m, s, n);
     }
 
     fn visit_local(&mut self, l: &ast::Local) {
@@ -1031,6 +1039,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
             run_lints!(cx, check_trait_item, early_passes, trait_item);
             cx.visit_ids(|v| v.visit_trait_item(trait_item));
             ast_visit::walk_trait_item(cx, trait_item);
+            run_lints!(cx, check_trait_item_post, early_passes, trait_item);
         });
     }
 
@@ -1039,6 +1048,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
             run_lints!(cx, check_impl_item, early_passes, impl_item);
             cx.visit_ids(|v| v.visit_impl_item(impl_item));
             ast_visit::walk_impl_item(cx, impl_item);
+            run_lints!(cx, check_impl_item_post, early_passes, impl_item);
         });
     }
 
