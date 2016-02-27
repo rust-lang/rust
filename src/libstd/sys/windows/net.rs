@@ -185,6 +185,60 @@ impl Socket {
         try!(cvt(unsafe { c::shutdown(self.0, how) }));
         Ok(())
     }
+
+    pub fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
+        let ms = keepalive.map(sys::dur2timeout).unwrap_or(c::INFINITE);
+        let ka = c::tcp_keepalive {
+            onoff: keepalive.is_some() as c::c_ulong,
+            keepalivetime: ms as c::c_ulong,
+            keepaliveinterval: ms as c::c_ulong,
+        };
+        sys::cvt(unsafe {
+            c::WSAIoctl(self.0,
+                        c::SIO_KEEPALIVE_VALS,
+                        &ka as *const _ as *mut _,
+                        mem::size_of_val(&ka) as c::DWORD,
+                        0 as *mut _,
+                        0,
+                        0 as *mut _,
+                        0 as *mut _,
+                        None)
+        }).map(|_| ())
+    }
+
+    pub fn keepalive(&self) -> io::Result<Option<Duration>> {
+        let mut ka = c::tcp_keepalive {
+            onoff: 0,
+            keepalivetime: 0,
+            keepaliveinterval: 0,
+        };
+        try!(sys::cvt(unsafe {
+            WSAIoctl(self.0,
+                     c::SIO_KEEPALIVE_VALS,
+                     0 as *mut _,
+                     0,
+                     &mut ka as *mut _ as *mut _,
+                     mem::size_of_val(&ka) as c::DWORD,
+                     0 as *mut _,
+                     0 as *mut _,
+                     None)
+        }));
+
+        if ka.onoff == 0 {
+            Ok(None)
+        } else {
+            let secs = ka.keepaliveinterval / 1000;
+            let nsec = (ka.keepaliveinterval % 1000) * 1000000;
+            Ok(Some(Duration::new(secs as u64, nsec as u32)))
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        let mut nonblocking = nonblocking as c::c_ulong;
+        sys::cvt(unsafe {
+            c::ioctlsocket(self.0, c::FIONBIO as c::c_int, &mut nonblocking)
+        }).map(|_| ())
+    }
 }
 
 impl Drop for Socket {

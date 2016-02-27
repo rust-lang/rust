@@ -228,6 +228,54 @@ impl TcpStream {
     pub fn duplicate(&self) -> io::Result<TcpStream> {
         self.inner.duplicate().map(|s| TcpStream { inner: s })
     }
+
+    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c_int)
+    }
+
+    pub fn nodelay(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_TCP, c::TCP_NODELAY));
+        Ok(raw != 0)
+    }
+
+    pub fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
+        self.inner.set_keepalive(keepalive)
+    }
+
+    pub fn keepalive(&self) -> io::Result<Option<Duration>> {
+        self.inner.keepalive()
+    }
+
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+    }
+
+    pub fn ttl(&self) -> io::Result<u32> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL));
+        Ok(raw as u32)
+    }
+
+    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
+    }
+
+    pub fn only_v6(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY));
+        Ok(raw != 0)
+    }
+
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
+        if raw == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.inner.set_nonblocking(nonblocking)
+    }
 }
 
 impl FromInner<Socket> for TcpStream {
@@ -306,6 +354,37 @@ impl TcpListener {
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
         self.inner.duplicate().map(|s| TcpListener { inner: s })
+    }
+
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+    }
+
+    pub fn ttl(&self) -> io::Result<u32> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL));
+        Ok(raw as u32)
+    }
+
+    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
+    }
+
+    pub fn only_v6(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY));
+        Ok(raw != 0)
+    }
+
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
+        if raw == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.inner.set_nonblocking(nonblocking)
     }
 }
 
