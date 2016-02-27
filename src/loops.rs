@@ -11,7 +11,7 @@ use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro, expr_block,
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, walk_ptrs_ty};
 use utils::{BTREEMAP_PATH, HASHMAP_PATH, LL_PATH, OPTION_PATH, RESULT_PATH, VEC_PATH};
 
@@ -241,20 +241,6 @@ impl LateLintPass for LoopsPass {
             // or extract the first expression (if any) from the block
             if let Some(inner) = inner_stmt_expr.or_else(|| extract_first_expr(block)) {
                 if let ExprMatch(ref matchexpr, ref arms, ref source) = inner.node {
-                    // collect the remaining statements below the match
-                    let mut other_stuff = block.stmts
-                                               .iter()
-                                               .skip(1)
-                                               .map(|stmt| snippet(cx, stmt.span, ".."))
-                                               .collect::<Vec<Cow<_>>>();
-                    if inner_stmt_expr.is_some() {
-                        // if we have a statement which has a match,
-                        if let Some(ref expr) = block.expr {
-                            // then collect the expression (without semicolon) below it
-                            other_stuff.push(snippet(cx, expr.span, ".."));
-                        }
-                    }
-
                     // ensure "if let" compatible match structure
                     match *source {
                         MatchSource::Normal | MatchSource::IfLetDesugar{..} => {
@@ -264,22 +250,20 @@ impl LateLintPass for LoopsPass {
                                 if in_external_macro(cx, expr.span) {
                                     return;
                                 }
-                                let loop_body = if inner_stmt_expr.is_some() {
-                                    // FIXME: should probably be an ellipsis
-                                    // tabbing and newline is probably a bad idea, especially for large blocks
-                                    Cow::Owned(format!("{{\n    {}\n}}", other_stuff.join("\n    ")))
-                                } else {
-                                    expr_block(cx, &arms[0].body, Some(other_stuff.join("\n    ")), "..")
-                                };
+
+                                // NOTE: we used to make build a body here instead of using
+                                // ellipsis, this was removed because:
+                                // 1) it was ugly with big bodies;
+                                // 2) it was not indented properly;
+                                // 3) it wasn’t very smart (see #675).
                                 span_lint_and_then(cx,
                                                    WHILE_LET_LOOP,
                                                    expr.span,
                                                    "this loop could be written as a `while let` loop",
                                                    |db| {
-                                                       let sug = format!("while let {} = {} {}",
+                                                       let sug = format!("while let {} = {} {{ .. }}",
                                                                          snippet(cx, arms[0].pats[0].span, ".."),
-                                                                         snippet(cx, matchexpr.span, ".."),
-                                                                         loop_body);
+                                                                         snippet(cx, matchexpr.span, ".."));
                                                        db.span_suggestion(expr.span, "try", sug);
                                                    });
                             }
