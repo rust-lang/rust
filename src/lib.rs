@@ -215,6 +215,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         eta_reduction::REDUNDANT_CLOSURE,
         format::USELESS_FORMAT,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
+        formatting::SUSPICIOUS_ELSE_FORMATTING,
         identity_op::IDENTITY_OP,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         len_zero::LEN_WITHOUT_IS_EMPTY,

@@ -6,7 +6,7 @@ use syntax::ptr::P;
 
 /// **What it does:** This lint looks for use of the non-existent `=*`, `=!` and `=-` operators.
 ///
-/// **Why is this bad?** This either a typo of `*=`, `!=` or `-=` or confusing.
+/// **Why is this bad?** This is either a typo of `*=`, `!=` or `-=` or confusing.
 ///
 /// **Known problems:** None.
 ///
@@ -20,18 +20,65 @@ declare_lint! {
     "suspicious formatting of `*=`, `-=` or `!=`"
 }
 
+/// **What it does:** This lint checks for formatting of `else if`. It lints if the `else` and `if`
+/// are not on the same line or the `else` seems to be missing.
+///
+/// **Why is this bad?** This is probably some refactoring remnant, even if the code is correct, it
+/// might look confusing.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust,ignore
+/// if foo {
+/// } if bar { // looks like an `else` is missing here
+/// }
+///
+/// if foo {
+/// } else
+///
+/// if bar { // this is the `else` block of the previous `if`, but should it be?
+/// }
+/// ```
+declare_lint! {
+    pub SUSPICIOUS_ELSE_FORMATTING,
+    Warn,
+    "suspicious formatting of `else if`"
+}
+
 #[derive(Copy,Clone)]
 pub struct Formatting;
 
 impl LintPass for Formatting {
     fn get_lints(&self) -> LintArray {
-        lint_array![SUSPICIOUS_ASSIGNMENT_FORMATTING]
+        lint_array![SUSPICIOUS_ASSIGNMENT_FORMATTING, SUSPICIOUS_ELSE_FORMATTING]
     }
 }
 
 impl EarlyLintPass for Formatting {
+    fn check_block(&mut self, cx: &EarlyContext, block: &ast::Block) {
+        for w in block.stmts.windows(2) {
+            match (&w[0].node, &w[1].node) {
+                (&ast::StmtKind::Expr(ref first, _), &ast::StmtKind::Expr(ref second, _)) |
+                (&ast::StmtKind::Expr(ref first, _), &ast::StmtKind::Semi(ref second, _)) => {
+                    check_consecutive_ifs(cx, first, second);
+                }
+                _ => (),
+            }
+        }
+
+        if let Some(ref expr) = block.expr {
+            if let Some(ref stmt) = block.stmts.iter().last() {
+                if let ast::StmtKind::Expr(ref first, _) = stmt.node {
+                    check_consecutive_ifs(cx, first, expr);
+                }
+            }
+        }
+    }
+
     fn check_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr) {
         check_assign(cx, expr);
+        check_else_if(cx, expr);
     }
 }
 
@@ -61,6 +108,65 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
 fn check_unop(expr: &ast::Expr) -> Option<(&P<ast::Expr>, &'static str)> {
     match expr.node {
         ast::ExprKind::Unary(op, ref expr) => Some((expr, ast::UnOp::to_string(op))),
+        _ => None,
+    }
+}
+
+/// Implementation of the SUSPICIOUS_ELSE_FORMATTING lint for weird `else if`.
+fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
+    if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
+        if unsugar_if(else_).is_some() &&
+        !differing_macro_contexts(then.span, else_.span) &&
+        !in_macro(cx, then.span) {
+            // this will be a span from the closing ‘}’ of the “then” block (excluding) to the
+            // “if” of the “else if” block (excluding)
+            let else_span = mk_sp(then.span.hi, else_.span.lo);
+
+            // the snippet should look like " else \n    " with maybe comments anywhere
+            // it’s bad when there is a ‘\n’ after the “else”
+            if let Some(else_snippet) = snippet_opt(cx, else_span) {
+                let else_pos = else_snippet.find("else").expect("there must be a `else` here");
+
+                if else_snippet[else_pos..].contains('\n') {
+                    span_note_and_lint(cx,
+                                       SUSPICIOUS_ELSE_FORMATTING,
+                                       else_span,
+                                       "this is an `else if` but the formatting might hide it",
+                                       else_span,
+                                       "to remove this lint, remove the `else` or remove the new line between `else` and `if`");
+                }
+            }
+        }
+    }
+}
+
+/// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for consecutive ifs.
+fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Expr) {
+    if !differing_macro_contexts(first.span, second.span) &&
+    !in_macro(cx, first.span) &&
+    unsugar_if(first).is_some() &&
+    unsugar_if(second).is_some() {
+        // where the else would be
+        let else_span = mk_sp(first.span.hi, second.span.lo);
+
+        if let Some(else_snippet) = snippet_opt(cx, else_span) {
+            if !else_snippet.contains('\n') {
+                span_note_and_lint(cx,
+                                   SUSPICIOUS_ELSE_FORMATTING,
+                                   else_span,
+                                   "this looks like an `else if` but the `else` is missing",
+                                   else_span,
+                                   "to remove this lint, add the missing `else` or add a new line before the second `if`");
+            }
+        }
+    }
+}
+
+/// Match `if` or `else if` expressions and return the `then` and `else` block.
+fn unsugar_if(expr: &ast::Expr) -> Option<(&P<ast::Block>, &Option<P<ast::Expr>>)>{
+    match expr.node {
+        ast::ExprKind::If(_, ref then, ref else_) |
+        ast::ExprKind::IfLet(_, _, ref then, ref else_) => Some((then, else_)),
         _ => None,
     }
 }
