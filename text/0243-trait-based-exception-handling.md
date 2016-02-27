@@ -210,7 +210,7 @@ are merely one way.
 
  * Construct:
 
-        try {
+        catch {
             foo()?.bar()
         }
 
