@@ -78,6 +78,13 @@ pub type SOCKET = ::os::windows::raw::SOCKET;
 pub type socklen_t = c_int;
 pub type ADDRESS_FAMILY = USHORT;
 
+pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE =
+    Option<unsafe extern "system" fn(dwError: DWORD,
+                                     cbTransferred: DWORD,
+                                     lpOverlapped: LPWSAOVERLAPPED,
+                                     dwFlags: DWORD)>;
+pub type LPWSAOVERLAPPED = *mut OVERLAPPED;
+
 pub const TRUE: BOOL = 1;
 pub const FALSE: BOOL = 0;
 
@@ -113,6 +120,9 @@ pub const FILE_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
 pub const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
 pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
+
+pub const SIO_KEEPALIVE_VALS: DWORD = 0x98000004;
+pub const FIONBIO: c_ulong = 0x8004667e;
 
 #[repr(C)]
 #[derive(Copy)]
@@ -775,6 +785,13 @@ pub struct in6_addr {
     pub s6_addr: [u8; 16],
 }
 
+#[repr(C)]
+pub struct tcp_keepalive {
+    pub onoff: c_ulong,
+    pub keepalivetime: c_ulong,
+    pub keepaliveinterval: c_ulong,
+}
+
 #[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub enum UNWIND_HISTORY_TABLE {}
 
@@ -833,6 +850,17 @@ extern "system" {
                       lpProtocolInfo: LPWSAPROTOCOL_INFO,
                       g: GROUP,
                       dwFlags: DWORD) -> SOCKET;
+    pub fn WSAIoctl(s: SOCKET,
+                    dwIoControlCode: DWORD,
+                    lpvInBuffer: LPVOID,
+                    cbInBuffer: DWORD,
+                    lpvOutBuffer: LPVOID,
+                    cbOutBuffer: DWORD,
+                    lpcbBytesReturned: LPDWORD,
+                    lpOverlapped: LPWSAOVERLAPPED,
+                    lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE)
+                    -> c_int;
+    pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut u_long) -> c_int;
     pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOLEAN;
