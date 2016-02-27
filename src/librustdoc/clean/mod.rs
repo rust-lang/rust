@@ -1735,16 +1735,15 @@ pub enum StructField {
 
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext) -> Item {
-        let name = if self.node.is_positional() { None } else { Some(self.node.name) };
         Item {
-            name: name.clean(cx),
-            attrs: self.node.attrs.clean(cx),
+            name: Some(self.name).clean(cx),
+            attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            visibility: Some(self.node.vis),
-            stability: get_stability(cx, cx.map.local_def_id(self.node.id)),
-            deprecation: get_deprecation(cx, cx.map.local_def_id(self.node.id)),
-            def_id: cx.map.local_def_id(self.node.id),
-            inner: StructFieldItem(TypedStructField(self.node.ty.clean(cx))),
+            visibility: Some(self.vis),
+            stability: get_stability(cx, cx.map.local_def_id(self.id)),
+            deprecation: get_deprecation(cx, cx.map.local_def_id(self.id)),
+            def_id: cx.map.local_def_id(self.id),
+            inner: StructFieldItem(TypedStructField(self.ty.clean(cx))),
         }
     }
 }
@@ -1752,22 +1751,10 @@ impl Clean<Item> for hir::StructField {
 impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         // FIXME: possible O(n^2)-ness! Not my fault.
-        let attr_map =
-            cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
-
-        let is_positional = {
-            let first = self.name.as_str().as_bytes()[0];
-            first >= b'0' && first <= b'9'
-        };
-        let (name, attrs) = if is_positional {
-            (None, None)
-        } else {
-            (Some(self.name), Some(attr_map.get(&self.did).unwrap()))
-        };
-
+        let attr_map = cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
         Item {
-            name: name.clean(cx),
-            attrs: attrs.unwrap_or(&Vec::new()).clean(cx),
+            name: Some(self.name).clean(cx),
+            attrs: attr_map.get(&self.did).unwrap_or(&Vec::new()).clean(cx),
             source: Span::empty(),
             visibility: Some(self.vis),
             stability: get_stability(cx, self.did),
@@ -1945,7 +1932,7 @@ fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) ->
     } else if struct_def.is_unit() {
         CLikeVariant
     } else {
-        TupleVariant(struct_def.fields().iter().map(|x| x.node.ty.clean(cx)).collect())
+        TupleVariant(struct_def.fields().iter().map(|x| x.ty.clean(cx)).collect())
     }
 }
 

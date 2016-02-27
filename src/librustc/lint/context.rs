@@ -811,7 +811,7 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &hir::StructField) {
-        self.with_lint_attrs(&s.node.attrs, |cx| {
+        self.with_lint_attrs(&s.attrs, |cx| {
             run_lints!(cx, check_struct_field, late_passes, s);
             hir_visit::walk_struct_field(cx, s);
         })

@@ -259,7 +259,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {
-        self.annotate(s.node.id, &s.node.attrs, s.span, AnnotationKind::Required, |v| {
+        self.annotate(s.id, &s.attrs, s.span, AnnotationKind::Required, |v| {
             intravisit::walk_struct_field(v, s);
         });
     }

@@ -271,7 +271,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
     }
 
     fn visit_struct_field(&mut self, struct_field: &StructField) {
-        self.operation.visit_id(struct_field.node.id);
+        self.operation.visit_id(struct_field.id);
         intravisit::walk_struct_field(self, struct_field)
     }
 

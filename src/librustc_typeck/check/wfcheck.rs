@@ -567,7 +567,7 @@ fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let fields =
         struct_def.fields().iter()
         .map(|field| {
-            let field_ty = fcx.tcx().node_id_to_type(field.node.id);
+            let field_ty = fcx.tcx().node_id_to_type(field.id);
             let field_ty = fcx.instantiate_type_scheme(field.span,
                                                        &fcx.inh
                                                            .infcx

@@ -1751,9 +1751,9 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
     impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for StructFieldVisitor<'a, 'b, 'c, 'tcx> {
         fn visit_struct_field(&mut self, field: &hir::StructField) {
             self.rbml_w.start_tag(tag_struct_field);
-            let def_id = self.ecx.tcx.map.local_def_id(field.node.id);
+            let def_id = self.ecx.tcx.map.local_def_id(field.id);
             encode_def_id(self.rbml_w, def_id);
-            encode_attributes(self.rbml_w, &field.node.attrs);
+            encode_attributes(self.rbml_w, &field.attrs);
             self.rbml_w.end_tag();
         }
     }
