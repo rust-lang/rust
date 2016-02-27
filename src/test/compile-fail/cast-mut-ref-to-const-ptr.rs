@@ -11,7 +11,8 @@
 fn main() {
     unsafe {
         let my_num: &[i32; 2] = &[10, 20];
-        let my_num: *mut i32 = my_num as *mut i32; //~ error: casting `&[i32; 2]` as `*mut i32` is invalid
+        let my_num: *mut i32 = my_num as *mut i32;
+        //~ error: casting `&[i32; 2]` as `*mut i32` is invalid
         *my_num.offset(1) = 4;
         println!("{}", *my_num.offset(1));
     }
