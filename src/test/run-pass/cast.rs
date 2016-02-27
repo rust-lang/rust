@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 pub fn main() {
     let i: isize = 'Q' as isize;
     assert_eq!(i, 0x51);
@@ -19,7 +18,7 @@ pub fn main() {
     assert_eq!(i as u8 as i8, 'Q' as u8 as i8);
     assert_eq!(0x51 as char, 'Q');
     assert_eq!(0 as u32, false as u32);
-    
+
     unsafe {
         let my_num: &[i32; 2] = &[10, 20];
         let my_num: *const i32 = my_num as *const i32;
