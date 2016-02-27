@@ -88,8 +88,9 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
         if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(cx, lhs.span) {
             let eq_span = mk_sp(lhs.span.hi, rhs.span.lo);
 
-            if let Some((sub_rhs, op)) = check_unop(rhs) {
+            if let ast::ExprKind::Unary(op, ref sub_rhs) = rhs.node {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
+                    let op = ast::UnOp::to_string(op);
                     let eqop_span = mk_sp(lhs.span.hi, sub_rhs.span.lo);
                     if eq_snippet.ends_with('=') {
                         span_note_and_lint(cx,
@@ -102,13 +103,6 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
                 }
             }
         }
-    }
-}
-
-fn check_unop(expr: &ast::Expr) -> Option<(&P<ast::Expr>, &'static str)> {
-    match expr.node {
-        ast::ExprKind::Unary(op, ref expr) => Some((expr, ast::UnOp::to_string(op))),
-        _ => None,
     }
 }
 
