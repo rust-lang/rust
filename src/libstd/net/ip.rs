@@ -92,7 +92,11 @@ impl Ipv4Addr {
     /// This property is defined by RFC 6890
     #[stable(since = "1.7.0", feature = "ip_17")]
     pub fn is_loopback(&self) -> bool {
-        self.octets()[0] == 127
+        let parts = self.octets();
+        match (parts[0], parts[1], parts[2], parts[3]) {
+            (127, 0 ... 255, 0 ... 255, 0 ... 255) => true,
+            _ => false
+        }
     }
 
     /// Returns true if this is a private address.
