@@ -75,8 +75,8 @@ Libraries
   improved by using `memchr` to search for newlines][1.7m].
 * [`f32::to_degrees` and `f32::to_radians` are stable][1.7f]. The
   `f64` variants were stabilized previously.
-* [`BTreeMap` was rewritten to use less memory improve performance of
-  insertion and iteration, the latter by as much as 5x`][1.7bm].
+* [`BTreeMap` was rewritten to use less memory and improve the performance
+  of insertion and iteration, the latter by as much as 5x`][1.7bm].
 * [`BTreeSet` and its iterators, `Iter`, `IntoIter`, and `Range` are
   covariant over their contained type][1.7bt].
 * [`LinkedList` and its iterators, `Iter` and `IntoIter` are covariant
