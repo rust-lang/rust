@@ -1735,15 +1735,12 @@ pub enum StructField {
 
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext) -> Item {
-        let (name, vis) = match self.node.kind {
-            hir::NamedField(id, vis) => (Some(id), vis),
-            hir::UnnamedField(vis) => (None, vis)
-        };
+        let name = if self.node.is_positional() { None } else { Some(self.node.name) };
         Item {
             name: name.clean(cx),
             attrs: self.node.attrs.clean(cx),
             source: self.span.clean(cx),
-            visibility: Some(vis),
+            visibility: Some(self.node.vis),
             stability: get_stability(cx, cx.map.local_def_id(self.node.id)),
             deprecation: get_deprecation(cx, cx.map.local_def_id(self.node.id)),
             def_id: cx.map.local_def_id(self.node.id),
@@ -1754,12 +1751,15 @@ impl Clean<Item> for hir::StructField {
 
 impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        use syntax::parse::token::special_idents::unnamed_field;
         // FIXME: possible O(n^2)-ness! Not my fault.
         let attr_map =
             cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
 
-        let (name, attrs) = if self.name == unnamed_field.name {
+        let is_positional = {
+            let first = self.name.as_str().as_bytes()[0];
+            first >= b'0' && first <= b'9'
+        };
+        let (name, attrs) = if is_positional {
             (None, None)
         } else {
             (Some(self.name), Some(attr_map.get(&self.did).unwrap()))
@@ -1884,7 +1884,6 @@ impl Clean<Item> for doctree::Variant {
 
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        // use syntax::parse::token::special_idents::unnamed_field;
         let kind = match self.kind() {
             ty::VariantKind::Unit => CLikeVariant,
             ty::VariantKind::Tuple => {

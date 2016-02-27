@@ -978,22 +978,18 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
     let fields = def.fields().iter().map(|f| {
         let fid = tcx.map.local_def_id(f.node.id);
-        if let Some(name) = f.node.name {
-            let dup_span = seen_fields.get(&name).cloned();
-            if let Some(prev_span) = dup_span {
-                let mut err = struct_span_err!(tcx.sess, f.span, E0124,
-                                               "field `{}` is already declared",
-                                               name);
-                span_note!(&mut err, prev_span, "previously declared here");
-                err.emit();
-            } else {
-                seen_fields.insert(name, f.span);
-            }
-
-            ty::FieldDefData::new(fid, name, f.node.vis)
+        let dup_span = seen_fields.get(&f.node.name).cloned();
+        if let Some(prev_span) = dup_span {
+            let mut err = struct_span_err!(tcx.sess, f.span, E0124,
+                                           "field `{}` is already declared",
+                                           f.node.name);
+            span_note!(&mut err, prev_span, "previously declared here");
+            err.emit();
         } else {
-            ty::FieldDefData::new(fid, special_idents::unnamed_field.name, f.node.vis)
+            seen_fields.insert(f.node.name, f.span);
         }
+
+        ty::FieldDefData::new(fid, f.node.name, f.node.vis)
     }).collect();
     ty::VariantDefData {
         did: did,

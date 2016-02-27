@@ -380,12 +380,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 }
 
                 // Record the def ID and fields of this struct.
-                let named_fields = struct_def.fields()
-                                             .iter()
-                                             .filter_map(|f| f.node.name)
-                                             .collect();
+                let field_names = struct_def.fields()
+                                            .iter()
+                                            .map(|f| f.node.name)
+                                            .collect();
                 let item_def_id = self.ast_map.local_def_id(item.id);
-                self.structs.insert(item_def_id, named_fields);
+                self.structs.insert(item_def_id, field_names);
 
                 parent
             }

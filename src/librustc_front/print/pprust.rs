@@ -938,7 +938,7 @@ impl<'a> State<'a> {
                 try!(self.maybe_print_comment(field.span.lo));
                 try!(self.print_outer_attributes(&field.node.attrs));
                 try!(self.print_visibility(field.node.vis));
-                try!(self.print_name(field.node.name.unwrap()));
+                try!(self.print_name(field.node.name));
                 try!(self.word_nbsp(":"));
                 try!(self.print_type(&field.node.ty));
                 try!(word(&mut self.s, ","));

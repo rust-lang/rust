@@ -83,7 +83,7 @@ pub enum DefPathData {
     TypeParam(ast::Name),
     LifetimeDef(ast::Name),
     EnumVariant(ast::Name),
-    Field(Option<ast::Name>),
+    Field(ast::Name),
     StructCtor, // implicit ctor for a tuple-like struct
     Initializer, // initializer for a const
     Binding(ast::Name), // pattern binding
@@ -185,12 +185,8 @@ impl DefPathData {
             EnumVariant(name) |
             DetachedCrate(name) |
             Binding(name) |
-            Field(Some(name)) => {
+            Field(name) => {
                 name.as_str()
-            }
-
-            Field(None) => {
-                InternedString::new("{{field}}")
             }
 
             // note that this does not show up in user printouts

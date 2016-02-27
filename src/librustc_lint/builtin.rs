@@ -428,7 +428,7 @@ impl LateLintPass for MissingDoc {
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, sf: &hir::StructField) {
-        if sf.node.name.is_some() {
+        if !sf.node.is_positional() {
             if sf.node.vis == hir::Public || self.in_variant {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");

@@ -429,13 +429,12 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, node: &hir::StructField_) -> bool {
-        let is_named = node.name.is_some();
         let field_type = self.tcx.node_id_to_type(node.id);
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
             _ => false
         };
-        is_named
+        !node.is_positional()
             && !self.symbol_is_live(node.id, None)
             && !is_marker_field
             && !has_allow_dead_code_or_lang_attr(&node.attrs)
@@ -546,7 +545,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_struct_field(&mut self, field: &hir::StructField) {
         if self.should_warn_about_field(&field.node) {
             self.warn_dead_code(field.node.id, field.span,
-                                field.node.name.unwrap(), "struct field");
+                                field.node.name, "struct field");
         }
 
         intravisit::walk_struct_field(self, field);
