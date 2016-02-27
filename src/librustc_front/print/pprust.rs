@@ -915,9 +915,9 @@ impl<'a> State<'a> {
             if struct_def.is_tuple() {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                    try!(s.print_visibility(field.node.vis));
+                    try!(s.print_visibility(field.vis));
                     try!(s.maybe_print_comment(field.span.lo));
-                    s.print_type(&field.node.ty)
+                    s.print_type(&field.ty)
                 }));
                 try!(self.pclose());
             }
@@ -936,11 +936,11 @@ impl<'a> State<'a> {
             for field in struct_def.fields() {
                 try!(self.hardbreak_if_not_bol());
                 try!(self.maybe_print_comment(field.span.lo));
-                try!(self.print_outer_attributes(&field.node.attrs));
-                try!(self.print_visibility(field.node.vis));
-                try!(self.print_name(field.node.name));
+                try!(self.print_outer_attributes(&field.attrs));
+                try!(self.print_visibility(field.vis));
+                try!(self.print_name(field.name));
                 try!(self.word_nbsp(":"));
-                try!(self.print_type(&field.node.ty));
+                try!(self.print_type(&field.ty));
                 try!(word(&mut self.s, ","));
             }
 

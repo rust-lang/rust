@@ -283,7 +283,7 @@ impl LateLintPass for NonSnakeCase {
     fn check_struct_def(&mut self, cx: &LateContext, s: &hir::VariantData,
                         _: ast::Name, _: &hir::Generics, _: ast::NodeId) {
         for sf in s.fields() {
-            self.check_snake_case(cx, "structure field", &sf.node.name.as_str(), Some(sf.span));
+            self.check_snake_case(cx, "structure field", &sf.name.as_str(), Some(sf.span));
         }
     }
 }

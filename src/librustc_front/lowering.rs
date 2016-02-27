@@ -612,16 +612,14 @@ pub fn lower_poly_trait_ref(lctx: &LoweringContext, p: &PolyTraitRef) -> hir::Po
 pub fn lower_struct_field(lctx: &LoweringContext,
                           (index, f): (usize, &StructField))
                           -> hir::StructField {
-    Spanned {
-        node: hir::StructField_ {
-            id: f.node.id,
-            name: f.node.ident().map(|ident| ident.name)
-                                .unwrap_or(token::intern(&index.to_string())),
-            vis: lower_visibility(lctx, f.node.kind.visibility()),
-            ty: lower_ty(lctx, &f.node.ty),
-            attrs: lower_attrs(lctx, &f.node.attrs),
-        },
+    hir::StructField {
         span: f.span,
+        id: f.node.id,
+        name: f.node.ident().map(|ident| ident.name)
+                            .unwrap_or(token::intern(&index.to_string())),
+        vis: lower_visibility(lctx, f.node.kind.visibility()),
+        ty: lower_ty(lctx, &f.node.ty),
+        attrs: lower_attrs(lctx, &f.node.attrs),
     }
 }
 

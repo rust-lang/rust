@@ -1241,7 +1241,8 @@ impl Visibility {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct StructField_ {
+pub struct StructField {
+    pub span: Span,
     pub name: Name,
     pub vis: Visibility,
     pub id: NodeId,
@@ -1249,9 +1250,7 @@ pub struct StructField_ {
     pub attrs: HirVec<Attribute>,
 }
 
-pub type StructField = Spanned<StructField_>;
-
-impl StructField_ {
+impl StructField {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
         let first = self.name.as_str().as_bytes()[0];
