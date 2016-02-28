@@ -94,6 +94,8 @@ pub mod visit_ast;
 pub mod test;
 mod flock;
 
+use clean::Attributes;
+
 type Pass = (&'static str,                                      // name
              fn(clean::Crate) -> plugins::PluginResult,         // fn
              &'static str);                                     // description
@@ -379,32 +381,25 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
-    match krate.module.as_ref().unwrap().doc_list() {
-        Some(nested) => {
-            for inner in nested {
-                match *inner {
-                    clean::Word(ref x)
-                            if "no_default_passes" == *x => {
-                        default_passes = false;
-                    }
-                    clean::NameValue(ref x, ref value)
-                            if "passes" == *x => {
-                        for pass in value.split_whitespace() {
-                            passes.push(pass.to_string());
-                        }
-                    }
-                    clean::NameValue(ref x, ref value)
-                            if "plugins" == *x => {
-                        for p in value.split_whitespace() {
-                            plugins.push(p.to_string());
-                        }
-                    }
-                    _ => {}
+    for attr in krate.module.as_ref().unwrap().attrs.list_def("doc") {
+        match *attr {
+            clean::Word(ref w) if "no_default_passes" == *w => {
+                default_passes = false;
+            },
+            clean::NameValue(ref name, ref value) => {
+                let sink = match &name[..] {
+                    "passes" => &mut passes,
+                    "plugins" => &mut plugins,
+                    _ => continue,
+                };
+                for p in value.split_whitespace() {
+                    sink.push(p.to_string());
                 }
             }
+            _ => (),
         }
-        None => {}
     }
+
     if default_passes {
         for name in DEFAULT_PASSES.iter().rev() {
             passes.insert(0, name.to_string());
