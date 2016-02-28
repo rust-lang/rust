@@ -11,7 +11,7 @@
 use io::prelude::*;
 use os::windows::prelude::*;
 
-use ffi::OsString;
+use ffi::{OsString, OsStr};
 use fmt;
 use io::{self, Error, SeekFrom};
 use mem;
@@ -23,6 +23,7 @@ use sys::handle::Handle;
 use sys::time::SystemTime;
 use sys::{c, cvt};
 use sys_common::FromInner;
+use vec::Vec;
 
 use super::to_u16s;
 
@@ -333,6 +334,51 @@ impl File {
         Ok(newpos as u64)
     }
 
+    pub fn remove(&self) -> io::Result<()> {
+        let mut info = c::FILE_DISPOSITION_INFO {
+            DeleteFile: -1,
+        };
+        let size = mem::size_of_val(&info);
+        try!(cvt(unsafe {
+            c::SetFileInformationByHandle(self.handle.raw(),
+                                          c::FileDispositionInfo,
+                                          &mut info as *mut _ as *mut _,
+                                          size as c::DWORD)
+        }));
+        Ok(())
+    }
+
+    pub fn rename(&self, new: &Path, replace: bool) -> io::Result<()> {
+        // &self must be opened with DELETE permission
+
+        #[cfg(target_arch = "x86")]
+        const STRUCT_SIZE: usize = 12;
+        #[cfg(target_arch = "x86_64")]
+        const STRUCT_SIZE: usize = 20;
+
+        // FIXME: check for internal NULs in 'new'
+        let reserved = OsStr::new(&"\0\0\0\0\0\0\0\0\0\0"[..STRUCT_SIZE/2]);
+        let mut data: Vec<u16> = reserved.encode_wide()
+                                 .chain(new.as_os_str().encode_wide())
+                                 .collect();
+        data.push(0);
+        let size = data.len() * 2;
+
+        unsafe {
+            // Thanks to alignment guarantees on Windows this works
+            // (8 for 32-bit and 16 for 64-bit)
+            let mut info = data.as_mut_ptr() as *mut c::FILE_RENAME_INFO;
+            (*info).ReplaceIfExists = if replace { -1 } else { c::FALSE };
+            (*info).RootDirectory = ptr::null_mut();
+            (*info).FileNameLength = (size - STRUCT_SIZE) as c::DWORD;
+            try!(cvt(c::SetFileInformationByHandle(self.handle().raw(),
+                                                   c::FileRenameInfo,
+                                                   data.as_mut_ptr() as *mut _ as *mut _,
+                                                   size as c::DWORD)));
+            Ok(())
+        }
+    }
+
     pub fn set_attributes(&self, attr: c::DWORD) -> io::Result<()> {
         let mut info = c::FILE_BASIC_INFO {
             CreationTime: 0, // do not change
@@ -539,9 +585,6 @@ impl FileType {
         *self == FileType::SymlinkDir ||
         *self == FileType::MountPoint
     }
-    pub fn is_symlink_dir(&self) -> bool {
-        *self == FileType::SymlinkDir || *self == FileType::MountPoint
-    }
 }
 
 impl DirBuilder {
@@ -604,23 +647,85 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
         // rmdir only deletes dir symlinks and junctions, not file symlinks.
         rmdir(path)
     } else {
-        remove_dir_all_recursive(path)
+        // canonicalize to get a `//?/`-path, which can handle files like `CON`
+        // and `morse .. .`,  and when a directory structure is so deep it needs
+        // long path names
+        let path = try!(path.canonicalize());
+        let base_dir = match path.parent() {
+            Some(dir) => dir,
+            None => return Err(io::Error::new(io::ErrorKind::PermissionDenied,
+                                              "can't delete root directory"))
+        };
+        try!(remove_dir_all_recursive(path.as_ref(), base_dir.as_ref(), 0));
+        Ok(())
     }
 }
 
-fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
+fn remove_dir_all_recursive(path: &Path, base_dir: &Path, mut counter: u64)
+        -> io::Result<u64> {
+    // On Windows it is not enough to just recursively remove the contents of a
+    // directory and then the directory itself. Deleting does not happen
+    // instantaneously, but is scheduled. So just before or after flagging a
+    // file for deletion, we move it to some `base_dir` to avoid races.
+
+    fn move_item(file: &File, base_dir: &Path, mut counter: u64)
+            -> io::Result<u64> {
+        let mut tmpname = base_dir.join(format!{"rm-{}", counter});
+        counter += 1;
+        // Try to rename the file. If it already exists, just retry with an other filename.
+        while let Err(err) = file.rename(tmpname.as_ref(), false) {
+            if err.kind() != io::ErrorKind::AlreadyExists { return Err(err) };
+            tmpname = base_dir.join(format!{"rm-{}", counter});
+            counter += 1;
+        }
+        Ok(counter)
+    }
+
+    fn remove_item(path: &Path,
+                   base_dir: &Path,
+                   mut counter: u64,
+                   readonly: bool) -> io::Result<u64> {
+        if !readonly {
+            let mut opts = OpenOptions::new();
+            opts.access_mode(c::DELETE);
+            opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | // delete directory
+                              c::FILE_FLAG_OPEN_REPARSE_POINT | // delete symlink
+                              c::FILE_FLAG_DELETE_ON_CLOSE);
+            let file = try!(File::open(path, &opts));
+            counter = try!(move_item(&file, base_dir, counter));
+        } else {
+            let mut opts = OpenOptions::new();
+            opts.access_mode(c::DELETE | c::FILE_WRITE_ATTRIBUTES);
+            opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
+            let file = try!(File::open(path, &opts));
+            // remove read-only permision
+            try!(file.set_perm(FilePermissions::new()));
+            counter = try!(move_item(&file, base_dir, counter));
+            try!(file.remove());
+            // restore read-only flag just in case there are other hard links
+            let mut perm = FilePermissions::new();
+            perm.set_readonly(true);
+            try!(file.set_perm(perm));
+        };
+        Ok(counter)
+    }
+
     for child in try!(readdir(path)) {
         let child = try!(child);
         let child_type = try!(child.file_type());
         if child_type.is_dir() {
-            try!(remove_dir_all_recursive(&child.path()));
-        } else if child_type.is_symlink_dir() {
-            try!(rmdir(&child.path()));
+            counter = try!(remove_dir_all_recursive(&child.path(),
+                                                    base_dir,
+                                                    counter));
         } else {
-            try!(unlink(&child.path()));
+            counter = try!(remove_item(&child.path().as_ref(),
+                                       base_dir,
+                                       counter,
+                                       try!(child.metadata()).perm().readonly()));
         }
     }
-    rmdir(path)
+    counter = try!(remove_item(path, base_dir, counter, false));
+    Ok(counter)
 }
 
 pub fn readlink(path: &Path) -> io::Result<PathBuf> {

@@ -1982,6 +1982,38 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)] // only tricky on Windows
+    fn recursive_rmdir_tricky() {
+        use os::windows::fs::OpenOptionsExt;
+        let tmpdir = tmpdir();
+        let dir = tmpdir.join("dir");
+        check!(fs::create_dir(&dir));
+        // filenames that can only be accessed with `/??/`-paths
+        let fullpath = check!(dir.canonicalize());
+        check!(File::create(fullpath.join("morse .. .")));
+        check!(File::create(fullpath.join("con")));
+        // read-only file
+        {
+            let mut opts = fs::OpenOptions::new();
+            opts.write(true);
+            opts.create(true);
+            opts.attributes(0x1); // FILE_ATTRIBUTE_READONLY
+            let _ = check!(opts.open(dir.join("readonly")));
+        }
+        // hardlink outside this directory should not lose its read-only flag
+        check!(fs::hard_link(dir.join("readonly"), tmpdir.join("canary_ro")));
+        // open file
+        let mut opts = fs::OpenOptions::new();
+        let mut file_open = check!(opts.write(true).create(true)
+                                       .open(dir.join("remains_open")));
+
+        check!(fs::remove_dir_all(&dir));
+        assert!(check!(tmpdir.join("canary_ro").metadata())
+                             .permissions().readonly());
+        check!(file_open.write("something".as_bytes()));
+    }
+
+    #[test]
     fn unicode_path_is_dir() {
         assert!(Path::new(".").is_dir());
         assert!(!Path::new("test/stdtest/fs.rs").is_dir());

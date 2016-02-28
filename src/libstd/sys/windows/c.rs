@@ -100,6 +100,7 @@ pub const FILE_APPEND_DATA: DWORD = 0x00000004;
 pub const FILE_WRITE_EA: DWORD = 0x00000010;
 pub const FILE_READ_ATTRIBUTES: DWORD = 0x00000080;
 pub const FILE_WRITE_ATTRIBUTES: DWORD = 0x00000100;
+pub const DELETE: DWORD = 0x00010000;
 pub const READ_CONTROL: DWORD = 0x00020000;
 pub const SYNCHRONIZE: DWORD = 0x00100000;
 pub const GENERIC_READ: DWORD = 0x80000000;
@@ -113,6 +114,7 @@ pub const FILE_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
 
 pub const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
 pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
+pub const FILE_FLAG_DELETE_ON_CLOSE: DWORD = 0x04000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 #[repr(C)]
@@ -372,6 +374,19 @@ pub struct FILE_BASIC_INFO {
     pub LastWriteTime: LARGE_INTEGER,
     pub ChangeTime: LARGE_INTEGER,
     pub FileAttributes: DWORD,
+}
+
+#[repr(C)]
+pub struct FILE_RENAME_INFO {
+    pub ReplaceIfExists: BOOL, // for true use -1, not TRUE
+    pub RootDirectory: HANDLE, // NULL, or obtained with NtOpenDirectoryObject
+    pub FileNameLength: DWORD,
+    pub FileName: [WCHAR; 0],
+}
+
+#[repr(C)]
+pub struct FILE_DISPOSITION_INFO {
+    pub DeleteFile: BOOL, // for true use -1, not TRUE
 }
 
 #[repr(C)]
