@@ -258,7 +258,7 @@ pub struct Item {
     pub source: Span,
     /// Not everything has a name. E.g., impls
     pub name: Option<String>,
-    pub attrs: Vec<Attribute> ,
+    pub attrs: Vec<Attribute>,
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
     pub def_id: DefId,
@@ -267,49 +267,10 @@ pub struct Item {
 }
 
 impl Item {
-    /// Finds the `doc` attribute as a List and returns the list of attributes
-    /// nested inside.
-    pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
-        for attr in &self.attrs {
-            match *attr {
-                List(ref x, ref list) if "doc" == *x => {
-                    return Some(list);
-                }
-                _ => {}
-            }
-        }
-        return None;
-    }
-
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
-        for attr in &self.attrs {
-            match *attr {
-                NameValue(ref x, ref v) if "doc" == *x => {
-                    return Some(v);
-                }
-                _ => {}
-            }
-        }
-        return None;
-    }
-
-    pub fn is_hidden_from_doc(&self) -> bool {
-        match self.doc_list() {
-            Some(l) => {
-                for innerattr in l {
-                    match *innerattr {
-                        Word(ref s) if "hidden" == *s => {
-                            return true
-                        }
-                        _ => (),
-                    }
-                }
-            },
-            None => ()
-        }
-        return false;
+        self.attrs.value("doc")
     }
 
     pub fn is_mod(&self) -> bool {
@@ -438,10 +399,54 @@ impl Clean<Item> for doctree::Module {
     }
 }
 
+pub trait Attributes {
+    fn has_word(&self, &str) -> bool;
+    fn value<'a>(&'a self, &str) -> Option<&'a str>;
+    fn list_def<'a>(&'a self, &str) -> &'a [Attribute];
+}
+
+impl Attributes for [Attribute] {
+    /// Returns whether the attribute list contains a specific `Word`
+    fn has_word(&self, word: &str) -> bool {
+        for attr in self {
+            if let Word(ref w) = *attr {
+                if word == *w {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Finds an attribute as NameValue and returns the corresponding value found.
+    fn value<'a>(&'a self, name: &str) -> Option<&'a str> {
+        for attr in self {
+            if let NameValue(ref x, ref v) = *attr {
+                if name == *x {
+                    return Some(v);
+                }
+            }
+        }
+        None
+    }
+
+    /// Finds an attribute as List and returns the list of attributes nested inside.
+    fn list_def<'a>(&'a self, name: &str) -> &'a [Attribute] {
+        for attr in self {
+            if let List(ref x, ref list) = *attr {
+                if name == *x {
+                    return &list[..];
+                }
+            }
+        }
+        &[]
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Attribute {
     Word(String),
-    List(String, Vec<Attribute> ),
+    List(String, Vec<Attribute>),
     NameValue(String, String)
 }
 
@@ -1513,24 +1518,16 @@ impl PrimitiveType {
     }
 
     fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
-        for attr in attrs {
-            let list = match *attr {
-                List(ref k, ref l) if *k == "doc" => l,
-                _ => continue,
-            };
-            for sub_attr in list {
-                let value = match *sub_attr {
-                    NameValue(ref k, ref v)
-                        if *k == "primitive" => v,
-                    _ => continue,
-                };
-                match PrimitiveType::from_str(value) {
-                    Some(p) => return Some(p),
-                    None => {}
+        for attr in attrs.list_def("doc") {
+            if let NameValue(ref k, ref v) = *attr {
+                if "primitive" == *k {
+                    if let ret@Some(..) = PrimitiveType::from_str(v) {
+                        return ret;
+                    }
                 }
             }
         }
-        return None
+        None
     }
 
     pub fn to_string(&self) -> &'static str {

@@ -16,7 +16,7 @@ use std::string::String;
 use std::usize;
 use rustc_front::hir;
 
-use clean;
+use clean::{self, Attributes};
 use clean::Item;
 use plugins;
 use fold;
@@ -33,7 +33,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
         }
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
-                if i.is_hidden_from_doc() {
+                if i.attrs.list_def("doc").has_word("hidden") {
                     debug!("found one in strip_hidden; removing");
                     self.stripped.insert(i.def_id);
 

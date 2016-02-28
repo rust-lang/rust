@@ -26,7 +26,7 @@ use rustc::middle::const_eval;
 
 use core::DocContext;
 use doctree;
-use clean;
+use clean::{self, Attributes};
 
 use super::{Clean, ToSource};
 
@@ -253,7 +253,7 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 cstore::DlDef(Def::Mod(did)) => {
                     // Don't recurse if this is a #[doc(hidden)] module
-                    if load_attrs(cx, tcx, did).iter().any(|a| is_doc_hidden(a)) {
+                    if load_attrs(cx, tcx, did).list_def("doc").has_word("hidden") {
                         return;
                     }
 
@@ -282,7 +282,7 @@ pub fn build_impl(cx: &DocContext,
     if let Some(ref t) = associated_trait {
         // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
         let trait_attrs = load_attrs(cx, tcx, t.def_id);
-        if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
+        if trait_attrs.list_def("doc").has_word("hidden") {
             return
         }
     }
@@ -420,20 +420,6 @@ pub fn build_impl(cx: &DocContext,
         deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
         def_id: did,
     });
-}
-
-fn is_doc_hidden(a: &clean::Attribute) -> bool {
-    match *a {
-        clean::List(ref name, ref inner) if *name == "doc" => {
-            inner.iter().any(|a| {
-                match *a {
-                    clean::Word(ref s) => *s == "hidden",
-                    _ => false,
-                }
-            })
-        }
-        _ => false
-    }
 }
 
 fn build_module(cx: &DocContext, tcx: &TyCtxt,

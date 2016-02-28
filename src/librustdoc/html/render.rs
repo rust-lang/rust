@@ -62,7 +62,7 @@ use rustc::middle::stability;
 use rustc::session::config::get_unstable_features_setting;
 use rustc_front::hir;
 
-use clean::{self, SelfTy};
+use clean::{self, SelfTy, Attributes};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -432,8 +432,7 @@ pub fn run(mut krate: clean::Crate,
 
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
-    let default: &[_] = &[];
-    if let Some(attrs) = krate.module.as_ref().map(|m| m.doc_list().unwrap_or(default)) {
+    if let Some(attrs) = krate.module.as_ref().map(|m| m.attrs.list_def("doc")) {
         for attr in attrs {
             match *attr {
                 clean::NameValue(ref x, ref s)
@@ -833,28 +832,13 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    for attr in &e.attrs {
-        match *attr {
-            clean::List(ref x, ref list) if "doc" == *x => {
-                for attr in list {
-                    match *attr {
-                        clean::NameValue(ref x, ref s)
-                                if "html_root_url" == *x => {
-                            if s.ends_with("/") {
-                                return Remote(s.to_string());
-                            }
-                            return Remote(format!("{}/", s));
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            _ => {}
+    e.attrs.list_def("doc").value("html_root_url").map(|url| {
+        let mut url = url.to_owned();
+        if !url.ends_with("/") {
+            url.push('/')
         }
-    }
-
-    // Well, at least we tried.
-    return Unknown;
+        Remote(url)
+    }).unwrap_or(Unknown) // Well, at least we tried.
 }
 
 impl<'a> DocFolder for SourceCollector<'a> {
@@ -1153,19 +1137,6 @@ impl DocFolder for Cache {
         // implementations elsewhere
         let ret = self.fold_item_recur(item).and_then(|item| {
             if let clean::Item { attrs, inner: clean::ImplItem(i), .. } = item {
-                // extract relevant documentation for this impl
-                let dox = match attrs.into_iter().find(|a| {
-                    match *a {
-                        clean::NameValue(ref x, _)
-                                if "doc" == *x => {
-                            true
-                        }
-                        _ => false
-                    }
-                }) {
-                    Some(clean::NameValue(_, dox)) => Some(dox),
-                    Some(..) | None => None,
-                };
                 // Figure out the id of this impl. This may map to a
                 // primitive rather than always to a struct/enum.
                 let did = match i.for_ {
@@ -1189,7 +1160,7 @@ impl DocFolder for Cache {
                 if let Some(did) = did {
                     self.impls.entry(did).or_insert(vec![]).push(Impl {
                         impl_: i,
-                        dox: dox,
+                        dox: attrs.value("doc").map(|s|s.to_owned()),
                         stability: item.stability.clone(),
                     });
                 }
