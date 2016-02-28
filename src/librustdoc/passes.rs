@@ -205,22 +205,19 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             self.fold_item_recur(i)
         };
 
-        match i {
-            Some(i) => {
-                match i.inner {
-                    // emptied modules/impls have no need to exist
-                    clean::ModuleItem(ref m)
-                        if m.items.is_empty() &&
-                           i.doc_value().is_none() => None,
-                    clean::ImplItem(ref i) if i.items.is_empty() => None,
-                    _ => {
-                        self.retained.insert(i.def_id);
-                        Some(i)
-                    }
+        i.and_then(|i| {
+            match i.inner {
+                // emptied modules/impls have no need to exist
+                clean::ModuleItem(ref m)
+                    if m.items.is_empty() &&
+                       i.doc_value().is_none() => None,
+                clean::ImplItem(ref i) if i.items.is_empty() => None,
+                _ => {
+                    self.retained.insert(i.def_id);
+                    Some(i)
                 }
             }
-            None => None,
-        }
+        })
     }
 }
 
@@ -275,13 +272,11 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
             let mut docstr = String::new();
             let mut i = i;
             for attr in &i.attrs {
-                match *attr {
-                    clean::NameValue(ref x, ref s)
-                            if "doc" == *x => {
+                if let clean::NameValue(ref x, ref s) = *attr {
+                    if "doc" == *x {
                         docstr.push_str(s);
                         docstr.push('\n');
-                    },
-                    _ => ()
+                    }
                 }
             }
             let mut a: Vec<clean::Attribute> = i.attrs.iter().filter(|&a| match a {

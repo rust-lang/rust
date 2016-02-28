@@ -283,19 +283,15 @@ pub fn main_args(args: &[String]) -> isize {
     info!("going to format");
     match matches.opt_str("w").as_ref().map(|s| &**s) {
         Some("html") | None => {
-            match html::render::run(krate, &external_html,
-                                    output.unwrap_or(PathBuf::from("doc")),
-                                    passes.into_iter().collect()) {
-                Ok(()) => {}
-                Err(e) => panic!("failed to generate documentation: {}", e),
-            }
+            html::render::run(krate, &external_html,
+                              output.unwrap_or(PathBuf::from("doc")),
+                              passes.into_iter().collect())
+                .expect("failed to generate documentation")
         }
         Some("json") => {
-            match json_output(krate, json_plugins,
-                              output.unwrap_or(PathBuf::from("doc.json"))) {
-                Ok(()) => {}
-                Err(e) => panic!("failed to write json: {}", e),
-            }
+            json_output(krate, json_plugins,
+                        output.unwrap_or(PathBuf::from("doc.json")))
+                .expect("failed to write json")
         }
         Some(s) => {
             println!("unknown output format: {}", s);
@@ -332,18 +328,10 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
     let mut externs = HashMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
-        let name = match parts.next() {
-            Some(s) => s,
-            None => {
-                return Err("--extern value must not be empty".to_string());
-            }
-        };
-        let location = match parts.next() {
-            Some(s) => s,
-            None => {
-                return Err("--extern value must be of the format `foo=bar`".to_string());
-            }
-        };
+        let name = try!(parts.next().ok_or("--extern value must not be empty".to_string()));
+        let location = try!(parts.next()
+                                 .ok_or("--extern value must be of the format `foo=bar`"
+                                    .to_string()));
         let name = name.to_string();
         externs.entry(name).or_insert(vec![]).push(location.to_string());
     }
@@ -448,17 +436,16 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     // Run everything!
     info!("Executing passes/plugins");
     let (krate, json) = pm.run_plugins(krate);
-    return Output { krate: krate, json_plugins: json, passes: passes, };
+    Output { krate: krate, json_plugins: json, passes: passes }
 }
 
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, String> {
     let mut bytes = Vec::new();
-    match File::open(input).and_then(|mut f| f.read_to_end(&mut bytes)) {
-        Ok(_) => {}
-        Err(e) => return Err(format!("couldn't open {}: {}", input, e)),
-    };
+    if let Err(e) = File::open(input).and_then(|mut f| f.read_to_end(&mut bytes)) {
+        return Err(format!("couldn't open {}: {}", input, e))
+    }
     match json::from_reader(&mut &bytes[..]) {
         Err(s) => Err(format!("{:?}", s)),
         Ok(Json::Object(obj)) => {
@@ -507,21 +494,13 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     json.insert("schema".to_string(), Json::String(SCHEMA_VERSION.to_string()));
     let plugins_json = res.into_iter()
                           .filter_map(|opt| {
-                              match opt {
-                                  None => None,
-                                  Some((string, json)) => {
-                                      Some((string.to_string(), json))
-                                  }
-                              }
+                              opt.map(|(string, json)| (string.to_string(), json))
                           }).collect();
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
     let crate_json_str = format!("{}", json::as_json(&krate));
-    let crate_json = match json::from_str(&crate_json_str) {
-        Ok(j) => j,
-        Err(e) => panic!("Rust generated JSON is invalid: {:?}", e)
-    };
+    let crate_json = json::from_str(&crate_json_str).expect("Rust generated JSON is invalid");
 
     json.insert("crate".to_string(), crate_json);
     json.insert("plugins".to_string(), Json::Object(plugins_json));
