@@ -32,7 +32,7 @@ use util::nodemap::FnvHashMap;
 
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use rustc_front::intravisit::Visitor;
 use rustc_front::hir;
@@ -185,10 +185,21 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
                 let cstore = &self.session.cstore;
-                span_err!(self.session, span, E0152,
-                          "duplicate entry for `{}`, first definition found in `{}`",
-                          LanguageItems::item_name(item_index),
-                          cstore.crate_name(item_def_id.krate));
+                let span = self.ast_map.span_if_local(original_def_id).unwrap_or(span);
+                let mut err = struct_span_err!(self.session,
+                                                span,
+                                                E0152,
+                                                "Duplicate lang item found: `{}`.",
+                                                LanguageItems::item_name(item_index));
+                if let Some(span) = self.ast_map.span_if_local(item_def_id) {
+                    span_note!(&mut err, span,
+                               "First defined here.");
+                } else {
+                    span_note!(&mut err, span,
+                               "First defined in crate `{}`.",
+                               cstore.crate_name(item_def_id.krate));
+                }
+                err.emit();
             }
             _ => {
                 // OK.
@@ -203,19 +214,19 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         krate.visit_all_items(self);
     }
 
-    pub fn collect_external_language_items(&mut self) {
+    pub fn collect_external_language_items(&mut self, krate: &hir::Crate) {
         let cstore = &self.session.cstore;
         for cnum in cstore.crates() {
             for (index, item_index) in cstore.lang_items(cnum) {
                 let def_id = DefId { krate: cnum, index: index };
-                self.collect_item(item_index, def_id, DUMMY_SP);
+                self.collect_item(item_index, def_id, krate.span);
             }
         }
     }
 
     pub fn collect(&mut self, krate: &hir::Crate) {
         self.collect_local_language_items(krate);
-        self.collect_external_language_items();
+        self.collect_external_language_items(krate);
     }
 }
 
