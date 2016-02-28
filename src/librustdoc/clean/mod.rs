@@ -175,9 +175,8 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             };
             let mut tmp = Vec::new();
             for child in &mut m.items {
-                match child.inner {
-                    ModuleItem(..) => {}
-                    _ => continue,
+                if !child.is_mod() {
+                    continue;
                 }
                 let prim = match PrimitiveType::find(&child.attrs) {
                     Some(prim) => prim,
@@ -272,7 +271,12 @@ impl Item {
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
         self.attrs.value("doc")
     }
-
+    pub fn is_crate(&self) -> bool {
+        match self.inner {
+            ModuleItem(Module { items: _, is_crate: true }) => true,
+            _ => false
+        }
+    }
     pub fn is_mod(&self) -> bool {
         match self.inner { ModuleItem(..) => true, _ => false }
     }
@@ -287,6 +291,18 @@ impl Item {
     }
     pub fn is_fn(&self) -> bool {
         match self.inner { FunctionItem(..) => true, _ => false }
+    }
+    pub fn is_associated_type(&self) -> bool {
+        match self.inner { AssociatedTypeItem(..) => true, _ => false }
+    }
+    pub fn is_associated_const(&self) -> bool {
+        match self.inner { AssociatedConstItem(..) => true, _ => false }
+    }
+    pub fn is_method(&self) -> bool {
+        match self.inner { MethodItem(..) => true, _ => false }
+    }
+    pub fn is_ty_method(&self) -> bool {
+        match self.inner { TyMethodItem(..) => true, _ => false }
     }
 
     pub fn stability_class(&self) -> String {
