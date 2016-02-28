@@ -35,16 +35,6 @@ use libc::SOCK_CLOEXEC;
 #[cfg(not(target_os = "linux"))]
 const SOCK_CLOEXEC: c_int = 0;
 
-#[cfg(any(target_os = "openbsd", taret_os = "freebsd"))]
-use libc::SO_KEEPALIVE as TCP_KEEPALIVE;
-#[cfg(any(target_os = "macos", taret_os = "ios"))]
-use libc::TCP_KEEPALIVE;
-#[cfg(not(any(target_os = "openbsd",
-              target_os = "freebsd",
-              target_os = "macos",
-              target_os = "ios")))]
-use libc::TCP_KEEPIDLE as TCP_KEEPALIVE;
-
 pub struct Socket(FileDesc);
 
 pub fn init() {}
@@ -179,37 +169,13 @@ impl Socket {
         Ok(())
     }
 
-    pub fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
-        try!(setsockopt(self,
-                        libc::SOL_SOCKET,
-                        libc::SO_KEEPALIVE,
-                        keepalive.is_some() as libc::c_int));
-        if let Some(dur) = keepalive {
-            let mut raw = dur.as_secs();
-            if dur.subsec_nanos() > 0 {
-                raw = raw.saturating_add(1);
-            }
-
-            let raw = if raw > libc::c_int::max_value() as u64 {
-                libc::c_int::max_value()
-            } else {
-                raw as libc::c_int
-            };
-
-            try!(setsockopt(self, libc::IPPROTO_TCP, TCP_KEEPALIVE, raw));
-        }
-
-        Ok(())
+    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int)
     }
 
-    pub fn keepalive(&self) -> io::Result<Option<Duration>> {
-        let raw: c_int = try!(getsockopt(self, libc::SOL_SOCKET, libc::SO_KEEPALIVE));
-        if raw == 0 {
-            return Ok(None);
-        }
-
-        let raw: c_int = try!(getsockopt(self, libc::IPPROTO_TCP, TCP_KEEPALIVE));
-        Ok(Some(Duration::from_secs(raw as u64)))
+    pub fn nodelay(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY));
+        Ok(raw != 0)
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {

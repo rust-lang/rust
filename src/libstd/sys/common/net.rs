@@ -14,7 +14,7 @@ use cmp;
 use ffi::{CStr, CString};
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{c_int, c_char, c_void};
+use libc::{c_int, c_char, c_void, c_uint};
 use mem;
 #[allow(deprecated)]
 use net::{SocketAddr, Shutdown, IpAddr, Ipv4Addr, Ipv6Addr};
@@ -84,13 +84,13 @@ fn sockaddr_to_addr(storage: &c::sockaddr_storage,
 }
 
 #[cfg(target_os = "android")]
-fn to_ipv6mr_interface(value: u32) -> c::c_int {
-    value as c::c_int
+fn to_ipv6mr_interface(value: u32) -> c_int {
+    value as c_int
 }
 
 #[cfg(not(target_os = "android"))]
-fn to_ipv6mr_interface(value: u32) -> c::c_uint {
-    value as c::c_uint
+fn to_ipv6mr_interface(value: u32) -> c_uint {
+    value as c_uint
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,20 +239,11 @@ impl TcpStream {
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        setsockopt(&self.inner, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c_int)
+        self.inner.set_nodelay(nodelay)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_TCP, c::TCP_NODELAY));
-        Ok(raw != 0)
-    }
-
-    pub fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
-        self.inner.set_keepalive(keepalive)
-    }
-
-    pub fn keepalive(&self) -> io::Result<Option<Duration>> {
-        self.inner.keepalive()
+        self.inner.nodelay()
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
