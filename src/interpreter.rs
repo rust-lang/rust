@@ -423,12 +423,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             }
 
             mir::Rvalue::UnaryOp(un_op, ref operand) => {
-                unimplemented!()
-                // match (un_op, self.operand_to_ptr(operand)) {
-                //     (mir::UnOp::Not, Value::Int(n)) => Value::Int(!n),
-                //     (mir::UnOp::Neg, Value::Int(n)) => Value::Int(-n),
-                //     _ => unimplemented!(),
-                // }
+                let ptr = self.operand_to_ptr(operand);
+                let m = byteorder::NativeEndian::read_i64(&self.memory.value(ptr.alloc_id).unwrap().bytes);
+                let n = match (un_op, ptr.repr) {
+                    (mir::UnOp::Not, Repr::Int) => !m,
+                    (mir::UnOp::Neg, Repr::Int) => -m,
+                    _ => unimplemented!(),
+                };
+                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(out.alloc_id).unwrap().bytes, n);
             }
 
             // mir::Rvalue::Ref(_region, _kind, ref lvalue) => {
@@ -477,7 +479,6 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> Pointer {
         match *const_val {
             const_eval::ConstVal::Float(_f)         => unimplemented!(),
-            // const_eval::ConstVal::Int(i)            => Value::new_int(i),
             const_eval::ConstVal::Int(i)            => Pointer {
                 alloc_id: self.memory.allocate_int(i),
                 offset: 0,
