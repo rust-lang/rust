@@ -1426,7 +1426,8 @@ impl Iterator for WalkDir {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `chmod` function on Unix
-/// and the `SetFileAttributes` function on Windows.
+/// and the `CreateFile`, `GetFileInformationByHandle` and
+/// `SetFileInformationByHandle` function on Windows.
 /// Note that, this [may change in the future][changes].
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
