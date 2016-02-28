@@ -250,7 +250,9 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             let text = lines.collect::<Vec<&str>>().join("\n");
             if rendered { return }
             PLAYGROUND_KRATE.with(|krate| {
-                let mut s = String::new();
+                // insert newline to clearly separate it from the
+                // previous block so we can shorten the html output
+                let mut s = String::from("\n");
                 krate.borrow().as_ref().map(|krate| {
                     let test = origtext.lines().map(|l| {
                         stripped_filtered_line(l).unwrap_or(l)
