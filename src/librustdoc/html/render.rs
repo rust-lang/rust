@@ -1266,11 +1266,7 @@ impl Context {
             }
             title.push_str(" - Rust");
             let tyname = shortty(it).to_static_str();
-            let is_crate = match it.inner {
-                clean::ModuleItem(clean::Module { items: _, is_crate: true }) => true,
-                _ => false
-            };
-            let desc = if is_crate {
+            let desc = if it.is_crate() {
                 format!("API documentation for the Rust `{}` crate.",
                         cx.layout.krate)
             } else {
@@ -1891,18 +1887,10 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   bounds,
                   WhereClause(&t.generics)));
 
-    let types = t.items.iter().filter(|m| {
-        match m.inner { clean::AssociatedTypeItem(..) => true, _ => false }
-    }).collect::<Vec<_>>();
-    let consts = t.items.iter().filter(|m| {
-        match m.inner { clean::AssociatedConstItem(..) => true, _ => false }
-    }).collect::<Vec<_>>();
-    let required = t.items.iter().filter(|m| {
-        match m.inner { clean::TyMethodItem(_) => true, _ => false }
-    }).collect::<Vec<_>>();
-    let provided = t.items.iter().filter(|m| {
-        match m.inner { clean::MethodItem(_) => true, _ => false }
-    }).collect::<Vec<_>>();
+    let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
+    let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
+    let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
+    let provided = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
 
     if t.items.is_empty() {
         try!(write!(w, "{{ }}"));
@@ -2600,7 +2588,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
         try!(write!(fmt, "</p>"));
 
         // sidebar refers to the enclosing module, not this module
-        let relpath = if shortty(it) == ItemType::Module { "../" } else { "" };
+        let relpath = if it.is_mod() { "../" } else { "" };
         try!(write!(fmt,
                     "<script>window.sidebarCurrent = {{\
                         name: '{name}', \
