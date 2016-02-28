@@ -8,10 +8,11 @@ use rustc::middle::cstore::CrateStore;
 use rustc::mir::repr::{self as mir, Mir};
 use rustc::mir::mir_map::MirMap;
 use std::collections::HashMap;
+use std::error::Error;
+use std::fmt;
+use std::iter;
 use syntax::ast::Attribute;
 use syntax::attr::AttrMetaMethods;
-
-use std::iter;
 
 const TRACE_EXECUTION: bool = true;
 
@@ -112,6 +113,27 @@ mod memory {
     }
 }
 use self::memory::{Pointer, Repr, Value};
+
+#[derive(Clone, Debug)]
+pub struct EvalError;
+
+pub type EvalResult<T> = Result<T, EvalError>;
+
+impl Error for EvalError {
+    fn description(&self) -> &str {
+        "error during MIR evaluation"
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        None
+    }
+}
+
+impl fmt::Display for EvalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
 
 // #[derive(Clone, Debug, PartialEq)]
 // enum Value {
@@ -228,7 +250,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     //     ptr
     // }
 
-    fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) {
+    fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) -> EvalResult<()> {
         // self.push_stack_frame(mir, args, return_ptr);
         let mut block = mir::START_BLOCK;
 
@@ -241,8 +263,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
                 match stmt.kind {
                     mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                        let ptr = self.lvalue_to_ptr(lvalue);
-                        self.eval_rvalue_into(rvalue, ptr);
+                        let ptr = try!(self.lvalue_to_ptr(lvalue));
+                        try!(self.eval_rvalue_into(rvalue, ptr));
                     }
                 }
             }
@@ -319,10 +341,12 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
 
         // self.pop_stack_frame();
+
+        Ok(())
     }
 
-    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue) -> Pointer {
-        match *lvalue {
+    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue) -> EvalResult<Pointer> {
+        let ptr = match *lvalue {
             mir::Lvalue::ReturnPointer => Pointer {
                 alloc_id: self::memory::alloc_id_hack(0),
                 offset: 0,
@@ -330,7 +354,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             },
 
             _ => unimplemented!(),
-        }
+        };
+
+        Ok(ptr)
 
         // let frame = self.call_stack.last().expect("missing call frame");
 
@@ -408,22 +434,22 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn eval_rvalue_into(&mut self, rvalue: &mir::Rvalue, out: Pointer) {
+    fn eval_rvalue_into(&mut self, rvalue: &mir::Rvalue, out: Pointer) -> EvalResult<()> {
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
-                let ptr = self.operand_to_ptr(operand);
+                let ptr = try!(self.operand_to_ptr(operand));
                 let val = self.read_pointer(ptr);
                 self.write_pointer(out, val);
             }
 
             mir::Rvalue::BinaryOp(bin_op, ref left, ref right) => {
-                let left_ptr = self.operand_to_ptr(left);
-                let right_ptr = self.operand_to_ptr(right);
+                let left_ptr = try!(self.operand_to_ptr(left));
+                let right_ptr = try!(self.operand_to_ptr(right));
                 self.eval_binary_op(bin_op, left_ptr, right_ptr, out)
             }
 
             mir::Rvalue::UnaryOp(un_op, ref operand) => {
-                let ptr = self.operand_to_ptr(operand);
+                let ptr = try!(self.operand_to_ptr(operand));
                 let m = byteorder::NativeEndian::read_i64(&self.memory.value(ptr.alloc_id).unwrap().bytes);
                 let n = match (un_op, ptr.repr) {
                     (mir::UnOp::Not, Repr::Int) => !m,
@@ -457,15 +483,17 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
             ref r => panic!("can't handle rvalue: {:?}", r),
         }
+
+        Ok(())
     }
 
-    fn operand_to_ptr(&mut self, op: &mir::Operand) -> Pointer {
+    fn operand_to_ptr(&mut self, op: &mir::Operand) -> EvalResult<Pointer> {
         match *op {
             mir::Operand::Consume(ref lvalue) => self.lvalue_to_ptr(lvalue),
 
             mir::Operand::Constant(ref constant) => {
                 match constant.literal {
-                    mir::Literal::Value { ref value } => self.const_to_ptr(value),
+                    mir::Literal::Value { ref value } => Ok(self.const_to_ptr(value)),
 
                     mir::Literal::Item { def_id, kind, .. } => match kind {
                         // mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
@@ -533,7 +561,7 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
                     }
                     ty::FnOutput::FnDiverging => None,
                 };
-                interpreter.call(mir, &[], return_ptr.clone());
+                interpreter.call(mir, &[], return_ptr.clone()).unwrap();
 
                 let val_str = format!("{:?}", interpreter.read_pointer(return_ptr.unwrap()));
                 if !check_expected(&val_str, attr) {
