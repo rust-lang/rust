@@ -86,6 +86,7 @@ pub mod regex;
 pub mod returns;
 pub mod shadow;
 pub mod strings;
+pub mod swap;
 pub mod temporary_assignment;
 pub mod transmute;
 pub mod types;
@@ -167,6 +168,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box copies::CopyAndPaste);
     reg.register_late_lint_pass(box format::FormatMacLint);
     reg.register_early_lint_pass(box formatting::Formatting);
+    reg.register_late_lint_pass(box swap::Swap);
 
     reg.register_lint_group("clippy_pedantic", vec![
         enum_glob_use::ENUM_GLOB_USE,
@@ -285,6 +287,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         strings::STRING_LIT_AS_BYTES,
+        swap::ALMOST_SWAPPED,
+        swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::USELESS_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
