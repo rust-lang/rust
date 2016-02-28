@@ -922,7 +922,7 @@ impl<'a> SourceCollector<'a> {
             ty: "source",
             root_path: &root_path,
             description: &desc,
-            keywords: get_basic_keywords(),
+            keywords: BASIC_KEYWORDS,
         };
         try!(layout::render(&mut w, &self.cx.layout,
                             &page, &(""), &Source(contents)));
@@ -2646,12 +2646,10 @@ fn item_primitive(w: &mut fmt::Formatter, cx: &Context,
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-fn get_basic_keywords() -> &'static str {
-    "rust, rustlang, rust-lang"
-}
+const BASIC_KEYWORDS: &'static str = "rust, rustlang, rust-lang";
 
 fn make_item_keywords(it: &clean::Item) -> String {
-    format!("{}, {}", get_basic_keywords(), it.name.as_ref().unwrap())
+    format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())
 }
 
 fn get_index_search_type(item: &clean::Item,
