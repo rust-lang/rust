@@ -11,7 +11,7 @@
 use io::prelude::*;
 use os::windows::prelude::*;
 
-use ffi::{OsString, OsStr};
+use ffi::OsString;
 use fmt;
 use io::{self, Error, SeekFrom};
 use mem;
@@ -350,15 +350,14 @@ impl File {
 
     pub fn rename(&self, new: &Path, replace: bool) -> io::Result<()> {
         // &self must be opened with DELETE permission
-
+        use iter;
         #[cfg(target_arch = "x86")]
         const STRUCT_SIZE: usize = 12;
         #[cfg(target_arch = "x86_64")]
         const STRUCT_SIZE: usize = 20;
 
         // FIXME: check for internal NULs in 'new'
-        let reserved = OsStr::new(&"\0\0\0\0\0\0\0\0\0\0"[..STRUCT_SIZE/2]);
-        let mut data: Vec<u16> = reserved.encode_wide()
+        let mut data: Vec<u16> = iter::repeat(0u16).take(STRUCT_SIZE/2)
                                  .chain(new.as_os_str().encode_wide())
                                  .collect();
         data.push(0);
