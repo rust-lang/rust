@@ -78,7 +78,7 @@ pub struct OpenOptions {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions { attrs: c::DWORD }
+pub struct FilePermissions { readonly: bool }
 
 pub struct DirBuilder;
 
@@ -333,6 +333,46 @@ impl File {
         Ok(newpos as u64)
     }
 
+    pub fn set_attributes(&self, attr: c::DWORD) -> io::Result<()> {
+        let mut info = c::FILE_BASIC_INFO {
+            CreationTime: 0, // do not change
+            LastAccessTime: 0, // do not change
+            LastWriteTime: 0, // do not change
+            ChangeTime: 0, // do not change
+            FileAttributes: attr,
+        };
+        let size = mem::size_of_val(&info);
+        try!(cvt(unsafe {
+            c::SetFileInformationByHandle(self.handle.raw(),
+                                          c::FileBasicInfo,
+                                          &mut info as *mut _ as *mut _,
+                                          size as c::DWORD)
+        }));
+        Ok(())
+    }
+
+    pub fn set_perm(&self, perm: FilePermissions) -> io::Result<()> {
+        let attr = try!(self.file_attr()).attributes;
+        if attr & c::FILE_ATTRIBUTE_DIRECTORY != 0 {
+            // this matches directories, dir symlinks, and junctions.
+            if perm.readonly {
+                Err(io::Error::new(io::ErrorKind::PermissionDenied,
+                                   "directories can not be read-only"))
+            } else {
+                Ok(()) // no reason to fail, as the result is what is expected.
+                     // (the directory will not be read-only)
+            }
+        } else {
+            if perm.readonly == (attr & c::FILE_ATTRIBUTE_READONLY != 0) {
+                Ok(())
+            } else if perm.readonly {
+                self.set_attributes(attr | c::FILE_ATTRIBUTE_READONLY)
+            } else {
+                self.set_attributes(attr & !c::FILE_ATTRIBUTE_READONLY)
+            }
+        }
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         Ok(File {
             handle: try!(self.handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)),
@@ -422,7 +462,12 @@ impl FileAttr {
     }
 
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { attrs: self.attributes }
+        FilePermissions {
+            // Only files can be read-only. If the flag is set on a directory this means the
+            // directory its view is customized by Windows (with a Desktop.ini file)
+            readonly: self.attributes & c::FILE_ATTRIBUTE_READONLY != 0 &&
+                      self.attributes & c::FILE_ATTRIBUTE_DIRECTORY == 0
+        }
     }
 
     pub fn attrs(&self) -> u32 { self.attributes as u32 }
@@ -465,17 +510,8 @@ fn to_u64(ft: &c::FILETIME) -> u64 {
 }
 
 impl FilePermissions {
-    pub fn readonly(&self) -> bool {
-        self.attrs & c::FILE_ATTRIBUTE_READONLY != 0
-    }
-
-    pub fn set_readonly(&mut self, readonly: bool) {
-        if readonly {
-            self.attrs |= c::FILE_ATTRIBUTE_READONLY;
-        } else {
-            self.attrs &= !c::FILE_ATTRIBUTE_READONLY;
-        }
-    }
+    pub fn readonly(&self) -> bool { self.readonly }
+    pub fn set_readonly(&mut self, readonly: bool) { self.readonly = readonly }
 }
 
 impl FileType {
@@ -640,12 +676,12 @@ pub fn lstat(path: &Path) -> io::Result<FileAttr> {
     file.file_attr()
 }
 
-pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = try!(to_u16s(p));
-    unsafe {
-        try!(cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs)));
-        Ok(())
-    }
+pub fn set_perm(path: &Path, perm: FilePermissions) -> io::Result<()> {
+    let mut opts = OpenOptions::new();
+    opts.access_mode(c::FILE_READ_ATTRIBUTES | c::FILE_WRITE_ATTRIBUTES);
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
+    let file = try!(File::open(path, &opts));
+    file.set_perm(perm)
 }
 
 fn get_path(f: &File) -> io::Result<PathBuf> {
