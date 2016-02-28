@@ -66,6 +66,19 @@ fn main() {
         println!("{}", x);
     }
 
+    // #675, this used to have a wrong suggestion
+    loop {
+    //~^ERROR this loop could be written as a `while let` loop
+    //~|HELP try
+    //~|SUGGESTION while let Some(word) = "".split_whitespace().next() { .. }
+        let (e, l) = match "".split_whitespace().next() {
+            Some(word) => (word.is_empty(), word.len()),
+            None => break
+        };
+
+        let _ = (e, l);
+    }
+
     let mut iter = 1..20;
     while let Option::Some(x) = iter.next() { //~ERROR this loop could be written as a `for` loop
         println!("{}", x);
