@@ -1605,6 +1605,63 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 });
             }
 
+            // Desugar ExprKind::Try
+            // From: `<expr>?`
+            ExprKind::Try(ref sub_expr) => {
+                // to:
+                //
+                // {
+                //     match <expr> {
+                //         Ok(val) => val,
+                //         Err(err) => {
+                //             return Err(From::from(err))
+                //         }
+                //     }
+                // }
+
+                return cache_ids(lctx, e.id, |lctx| {
+                    // expand <expr>
+                    let sub_expr = lower_expr(lctx, sub_expr);
+
+                    // Ok(val) => val
+                    let ok_arm = {
+                        let val_ident = lctx.str_to_ident("val");
+                        let val_pat = pat_ident(lctx, e.span, val_ident);
+                        let val_expr = expr_ident(lctx, e.span, val_ident, None);
+                        let ok_pat = pat_ok(lctx, e.span, val_pat);
+
+                        arm(hir_vec![ok_pat], val_expr)
+                    };
+
+                    // Err(err) => return Err(From::from(err))
+                    let err_arm = {
+                        let err_ident = lctx.str_to_ident("err");
+                        let from_expr = {
+                            let path = std_path(lctx, &["convert", "From", "from"]);
+                            let path = path_global(e.span, path);
+                            let from = expr_path(lctx, path, None);
+                            let err_expr = expr_ident(lctx, e.span, err_ident, None);
+
+                            expr_call(lctx, e.span, from, hir_vec![err_expr], None)
+                        };
+                        let err_expr = {
+                            let path = std_path(lctx, &["result", "Result", "Err"]);
+                            let path = path_global(e.span, path);
+                            let err_ctor = expr_path(lctx, path, None);
+                            expr_call(lctx, e.span, err_ctor, hir_vec![from_expr], None)
+                        };
+                        let err_pat = pat_err(lctx, e.span, pat_ident(lctx, e.span, err_ident));
+                        let ret_expr = expr(lctx, e.span,
+                                            hir::Expr_::ExprRet(Some(err_expr)), None);
+
+                        arm(hir_vec![err_pat], ret_expr)
+                    };
+
+                    expr_match(lctx, e.span, sub_expr, hir_vec![err_arm, ok_arm],
+                               hir::MatchSource::TryDesugar, None)
+                })
+            }
+
             ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         },
         span: e.span,
@@ -1817,6 +1874,18 @@ fn block_all(lctx: &LoweringContext,
         rules: hir::DefaultBlock,
         span: span,
     })
+}
+
+fn pat_ok(lctx: &LoweringContext, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+    let ok = std_path(lctx, &["result", "Result", "Ok"]);
+    let path = path_global(span, ok);
+    pat_enum(lctx, span, path, hir_vec![pat])
+}
+
+fn pat_err(lctx: &LoweringContext, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+    let err = std_path(lctx, &["result", "Result", "Err"]);
+    let path = path_global(span, err);
+    pat_enum(lctx, span, path, hir_vec![pat])
 }
 
 fn pat_some(lctx: &LoweringContext, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {

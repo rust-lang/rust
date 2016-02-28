@@ -1332,7 +1332,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                         fields.move_map(|x| folder.fold_field(x)),
                         maybe_expr.map(|x| folder.fold_expr(x)))
             },
-            ExprKind::Paren(ex) => ExprKind::Paren(folder.fold_expr(ex))
+            ExprKind::Paren(ex) => ExprKind::Paren(folder.fold_expr(ex)),
+            ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
         },
         span: folder.new_span(span),
         attrs: attrs.map_thin_attrs(|v| fold_attrs(v, folder)),
