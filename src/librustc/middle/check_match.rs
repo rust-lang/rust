@@ -344,6 +344,10 @@ fn check_arms(cx: &MatchCheckCtxt,
                         hir::MatchSource::Normal => {
                             span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
                         },
+
+                        hir::MatchSource::TryDesugar => {
+                            cx.tcx.sess.span_bug(pat.span, "unreachable try pattern")
+                        },
                     }
                 }
                 Useful => (),

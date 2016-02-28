@@ -2534,6 +2534,12 @@ impl<'a> Parser<'a> {
         let mut e = e0;
         let mut hi;
         loop {
+            // expr?
+            while self.eat(&token::Question) {
+                let hi = self.span.hi;
+                e = self.mk_expr(lo, hi, ExprKind::Try(e), None);
+            }
+
             // expr.f
             if self.eat(&token::Dot) {
                 match self.token {
@@ -2906,7 +2912,6 @@ impl<'a> Parser<'a> {
                 try!(self.parse_prefix_expr(attrs))
             }
         };
-
 
         if self.expr_is_complete(&lhs) {
             // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
