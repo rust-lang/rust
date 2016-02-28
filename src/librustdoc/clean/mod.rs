@@ -100,10 +100,7 @@ impl<T: Clean<U>, U> Clean<U> for Rc<T> {
 
 impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     fn clean(&self, cx: &DocContext) -> Option<U> {
-        match self {
-            &None => None,
-            &Some(ref v) => Some(v.clean(cx))
-        }
+        self.as_ref().map(|v| v.clean(cx))
     }
 }
 
@@ -332,27 +329,20 @@ impl Item {
     }
 
     pub fn stability_class(&self) -> String {
-        match self.stability {
-            Some(ref s) => {
-                let mut base = match s.level {
-                    stability::Unstable => "unstable".to_string(),
-                    stability::Stable => String::new(),
-                };
-                if !s.deprecated_since.is_empty() {
-                    base.push_str(" deprecated");
-                }
-                base
+        self.stability.as_ref().map(|ref s| {
+            let mut base = match s.level {
+                stability::Unstable => "unstable".to_string(),
+                stability::Stable => String::new(),
+            };
+            if !s.deprecated_since.is_empty() {
+                base.push_str(" deprecated");
             }
-            _ => String::new(),
-        }
+            base
+        }).unwrap_or(String::new())
     }
 
     pub fn stable_since(&self) -> Option<&str> {
-        if let Some(ref s) = self.stability {
-            return Some(&s.since[..]);
-        }
-
-        None
+        self.stability.as_ref().map(|s| &s.since[..])
     }
 }
 
@@ -711,7 +701,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
                         if let &ty::Region::ReLateBound(_, _) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(lt) = reg.clean(cx) {
-                                late_bounds.push(lt)
+                                late_bounds.push(lt);
                             }
                         }
                     }
@@ -780,8 +770,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
     fn clean(&self, cx: &DocContext) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BrNamed(_, name)) =>
-                Some(Lifetime(name.to_string())),
+            ty::ReLateBound(_, ty::BrNamed(_, name)) => Some(Lifetime(name.to_string())),
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name.clean(cx))),
 
             ty::ReLateBound(..) |
@@ -1151,12 +1140,12 @@ impl<'tcx> Clean<Type> for ty::FnOutput<'tcx> {
 impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
-        let mut names = if let Some(_) = cx.map.as_local_node_id(did) {
+        let mut names = if cx.map.as_local_node_id(did).is_some() {
             vec![].into_iter()
         } else {
             cx.tcx().sess.cstore.method_arg_names(did).into_iter()
         }.peekable();
-        if names.peek().map(|s| &**s) == Some("self") {
+        if let Some("self") = names.peek().map(|s| &s[..]) {
             let _ = names.next();
         }
         FnDecl {
@@ -1627,15 +1616,9 @@ impl Clean<Type> for hir::Ty {
                 }
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
-            TyPolyTraitRef(ref bounds) => {
-                PolyTraitRef(bounds.clean(cx))
-            },
-            TyInfer => {
-                Infer
-            },
-            TyTypeof(..) => {
-                panic!("Unimplemented type {:?}", self.node)
-            },
+            TyPolyTraitRef(ref bounds) => PolyTraitRef(bounds.clean(cx)),
+            TyInfer => Infer,
+            TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
     }
 }
@@ -2253,7 +2236,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                 polarity: Some(self.polarity.clean(cx)),
             }),
         });
-        return ret;
+        ret
     }
 }
 
@@ -2393,9 +2376,8 @@ impl Clean<Vec<Item>> for doctree::Import {
             }
             hir::ViewPathSimple(name, ref p) => {
                 if !denied {
-                    match inline::try_inline(cx, self.id, Some(name)) {
-                        Some(items) => return items,
-                        None => {}
+                    if let Some(items) = inline::try_inline(cx, self.id, Some(name)) {
+                        return items;
                     }
                 }
                 (vec![], SimpleImport(name.clean(cx),
@@ -2460,9 +2442,8 @@ impl Clean<Vec<Item>> for hir::ForeignMod {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
         let mut items = self.items.clean(cx);
         for item in &mut items {
-            match item.inner {
-                ForeignFunctionItem(ref mut f) => f.abi = self.abi,
-                _ => {}
+            if let ForeignFunctionItem(ref mut f) = item.inner {
+                f.abi = self.abi;
             }
         }
         items
@@ -2598,11 +2579,7 @@ fn resolve_type(cx: &DocContext,
             };
         }
     };
-    let def = match tcx.def_map.borrow().get(&id) {
-        Some(k) => k.full_def(),
-        None => panic!("unresolved id not in defmap")
-    };
-
+    let def = tcx.def_map.borrow().get(&id).expect("unresolved id not in defmap").full_def();
     debug!("resolve_type: def={:?}", def);
 
     let is_generic = match def {
@@ -2659,7 +2636,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         let t = inline::build_external_trait(cx, tcx, did);
         cx.external_traits.borrow_mut().as_mut().unwrap().insert(did, t);
     }
-    return did;
+    did
 }
 
 fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSource {
@@ -2732,12 +2709,10 @@ impl Clean<Stability> for attr::Stability {
                 _=> "".to_string(),
             },
             reason: {
-                if let Some(ref depr) = self.rustc_depr {
-                    depr.reason.to_string()
-                } else if let attr::Unstable {reason: Some(ref reason), ..} = self.level {
-                    reason.to_string()
-                } else {
-                    "".to_string()
+                match (&self.rustc_depr, &self.level) {
+                    (&Some(ref depr), _) => depr.reason.to_string(),
+                    (&None, &attr::Unstable {reason: Some(ref reason), ..}) => reason.to_string(),
+                    _ => "".to_string(),
                 }
             },
             issue: match self.level {

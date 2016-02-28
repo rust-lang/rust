@@ -121,9 +121,8 @@ pub fn run(input: &str,
     let mut v = RustdocVisitor::new(&ctx, None);
     v.visit(ctx.map.krate());
     let mut krate = v.clean(&ctx);
-    match crate_name {
-        Some(name) => krate.name = name,
-        None => {}
+    if let Some(name) = crate_name {
+        krate.name = name;
     }
     let (krate, _) = passes::collapse_docs(krate);
     let (krate, _) = passes::unindent_comments(krate);
@@ -334,13 +333,10 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
     if !s.contains("extern crate") && !opts.no_crate_inject && cratename != Some("std") {
-        match cratename {
-            Some(cratename) => {
-                if s.contains(cratename) {
-                    prog.push_str(&format!("extern crate {};\n", cratename));
-                }
+        if let Some(cratename) = cratename {
+            if s.contains(cratename) {
+                prog.push_str(&format!("extern crate {};\n", cratename));
             }
-            None => {}
         }
     }
     if dont_insert_main || s.contains("fn main") {
@@ -476,12 +472,7 @@ impl DocFolder for Collector {
             _ => typename_if_impl(&item)
         };
 
-        let pushed = if let Some(name) = current_name {
-            self.names.push(name);
-            true
-        } else {
-            false
-        };
+        let pushed = current_name.map(|name| self.names.push(name)).is_some();
 
         if let Some(doc) = item.doc_value() {
             self.cnt = 0;

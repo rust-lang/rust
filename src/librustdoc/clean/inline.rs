@@ -138,13 +138,10 @@ pub fn load_attrs(cx: &DocContext, tcx: &TyCtxt,
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
-    match cx.tcx_opt() {
-        Some(tcx) => {
-            let fqn = tcx.sess.cstore.extern_item_path(did);
-            let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
-            cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
-        }
-        None => {}
+    if let Some(tcx) = cx.tcx_opt() {
+        let fqn = tcx.sess.cstore.extern_item_path(did);
+        let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
+        cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
     }
 }
 
@@ -230,12 +227,9 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
     tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
 
-    match tcx.inherent_impls.borrow().get(&did) {
-        None => {}
-        Some(i) => {
-            for &did in i.iter() {
-                build_impl(cx, tcx, did, &mut impls);
-            }
+    if let Some(i) = tcx.inherent_impls.borrow().get(&did) {
+        for &did in i.iter() {
+            build_impl(cx, tcx, did, &mut impls);
         }
     }
 
@@ -464,9 +458,8 @@ fn build_module(cx: &DocContext, tcx: &TyCtxt,
                 }
                 cstore::DlDef(def) if item.vis == hir::Public => {
                     if !visited.insert(def) { continue }
-                    match try_inline_def(cx, tcx, def) {
-                        Some(i) => items.extend(i),
-                        None => {}
+                    if let Some(i) = try_inline_def(cx, tcx, def) {
+                        items.extend(i)
                     }
                 }
                 cstore::DlDef(..) => {}

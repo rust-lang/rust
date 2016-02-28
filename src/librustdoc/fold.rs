@@ -81,6 +81,7 @@ pub trait DocFolder : Sized {
         c.module = match replace(&mut c.module, None) {
             Some(module) => self.fold_item(module), None => None
         };
+
         let external_traits = replace(&mut c.external_traits, HashMap::new());
         c.external_traits = external_traits.into_iter().map(|(k, mut v)| {
             let items = replace(&mut v.items, Vec::new());
