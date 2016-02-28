@@ -13,7 +13,7 @@
 #![allow(bad_style)]
 #![cfg_attr(test, allow(dead_code))]
 
-use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort};
+use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort,};
 use os::raw::{c_char, c_ulonglong};
 use libc::{wchar_t, size_t, c_void};
 use ptr;
@@ -78,13 +78,6 @@ pub type SOCKET = ::os::windows::raw::SOCKET;
 pub type socklen_t = c_int;
 pub type ADDRESS_FAMILY = USHORT;
 
-pub type LPWSAOVERLAPPED_COMPLETION_ROUTINE =
-    Option<unsafe extern "system" fn(dwError: DWORD,
-                                     cbTransferred: DWORD,
-                                     lpOverlapped: LPWSAOVERLAPPED,
-                                     dwFlags: DWORD)>;
-pub type LPWSAOVERLAPPED = *mut OVERLAPPED;
-
 pub const TRUE: BOOL = 1;
 pub const FALSE: BOOL = 0;
 
@@ -121,7 +114,6 @@ pub const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
 pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
-pub const SIO_KEEPALIVE_VALS: DWORD = 0x98000004;
 pub const FIONBIO: c_ulong = 0x8004667e;
 
 #[repr(C)]
@@ -233,6 +225,33 @@ pub const SOL_SOCKET: c_int = 0xffff;
 pub const SO_RCVTIMEO: c_int = 0x1006;
 pub const SO_SNDTIMEO: c_int = 0x1005;
 pub const SO_REUSEADDR: c_int = 0x0004;
+pub const IPPROTO_IP: c_int = 0;
+pub const IPPROTO_TCP: c_int = 6;
+pub const IPPROTO_IPV6: c_int = 41;
+pub const TCP_NODELAY: c_int = 0x0001;
+pub const IP_TTL: c_int = 4;
+pub const IPV6_V6ONLY: c_int = 27;
+pub const SO_ERROR: c_int = 0x1007;
+pub const SO_BROADCAST: c_int = 0x0020;
+pub const IP_MULTICAST_LOOP: c_int = 11;
+pub const IPV6_MULTICAST_LOOP: c_int = 11;
+pub const IP_MULTICAST_TTL: c_int = 10;
+pub const IP_ADD_MEMBERSHIP: c_int = 12;
+pub const IP_DROP_MEMBERSHIP: c_int = 13;
+pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
+pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
+
+#[repr(C)]
+pub struct ip_mreq {
+    pub imr_multiaddr: in_addr,
+    pub imr_interface: in_addr,
+}
+
+#[repr(C)]
+pub struct ipv6_mreq {
+    pub ipv6mr_multiaddr: in6_addr,
+    pub ipv6mr_interface: c_uint,
+}
 
 pub const VOLUME_NAME_DOS: DWORD = 0x0;
 pub const MOVEFILE_REPLACE_EXISTING: DWORD = 1;
@@ -785,13 +804,6 @@ pub struct in6_addr {
     pub s6_addr: [u8; 16],
 }
 
-#[repr(C)]
-pub struct tcp_keepalive {
-    pub onoff: c_ulong,
-    pub keepalivetime: c_ulong,
-    pub keepaliveinterval: c_ulong,
-}
-
 #[cfg(all(target_arch = "x86_64", target_env = "gnu"))]
 pub enum UNWIND_HISTORY_TABLE {}
 
@@ -850,17 +862,7 @@ extern "system" {
                       lpProtocolInfo: LPWSAPROTOCOL_INFO,
                       g: GROUP,
                       dwFlags: DWORD) -> SOCKET;
-    pub fn WSAIoctl(s: SOCKET,
-                    dwIoControlCode: DWORD,
-                    lpvInBuffer: LPVOID,
-                    cbInBuffer: DWORD,
-                    lpvOutBuffer: LPVOID,
-                    cbOutBuffer: DWORD,
-                    lpcbBytesReturned: LPDWORD,
-                    lpOverlapped: LPWSAOVERLAPPED,
-                    lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE)
-                    -> c_int;
-    pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut u_long) -> c_int;
+    pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut c_ulong) -> c_int;
     pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOLEAN;

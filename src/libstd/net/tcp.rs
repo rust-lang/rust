@@ -203,34 +203,6 @@ impl TcpStream {
         self.0.nodelay()
     }
 
-    /// Sets whether keepalive messages are enabled to be sent on this socket.
-    ///
-    /// On Unix, this option will set the `SO_KEEPALIVE` as well as the
-    /// `TCP_KEEPALIVE` or `TCP_KEEPIDLE` option (depending on your platform).
-    /// On Windows, this will set the `SIO_KEEPALIVE_VALS` option.
-    ///
-    /// If `None` is specified then keepalive messages are disabled, otherwise
-    /// the duration specified will be the time to remain idle before sending a
-    /// TCP keepalive probe.
-    ///
-    /// Some platforms specify this value in seconds, so sub-second
-    /// specifications may be omitted.
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
-    pub fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()> {
-        self.0.set_keepalive(keepalive)
-    }
-
-    /// Returns whether keepalive messages are enabled on this socket, and if so
-    /// the duration of time between them.
-    ///
-    /// For more information about this option, see [`set_keepalive`][link].
-    ///
-    /// [link]: #tymethod.set_keepalive
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
-    pub fn keepalive(&self) -> io::Result<Option<Duration>> {
-        self.0.keepalive()
-    }
-
     /// Sets the value for the `IP_TTL` option on this socket.
     ///
     /// This value sets the time-to-live field that is used in every packet sent
@@ -1154,21 +1126,6 @@ mod tests {
         assert_eq!(true, t!(stream.nodelay()));
         t!(stream.set_nodelay(false));
         assert_eq!(false, t!(stream.nodelay()));
-    }
-
-    #[test]
-    fn keepalive() {
-        let addr = next_test_ip4();
-        let _listener = t!(TcpListener::bind(&addr));
-
-        let stream = t!(TcpStream::connect(&("localhost", addr.port())));
-        let dur = Duration::new(15410, 0);
-
-        assert_eq!(None, t!(stream.keepalive()));
-        t!(stream.set_keepalive(Some(dur)));
-        assert_eq!(Some(dur), t!(stream.keepalive()));
-        t!(stream.set_keepalive(None));
-        assert_eq!(None, t!(stream.keepalive()));
     }
 
     #[test]
