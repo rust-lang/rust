@@ -9,8 +9,6 @@
 // except according to those terms.
 
 use clean::*;
-use std::collections::HashMap;
-use std::mem::{replace, swap};
 
 pub trait DocFolder : Sized {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
@@ -20,12 +18,10 @@ pub trait DocFolder : Sized {
     /// don't override!
     fn fold_item_recur(&mut self, item: Item) -> Option<Item> {
         let Item { attrs, name, source, visibility, def_id, inner, stability, deprecation } = item;
-        let inner = inner;
         let inner = match inner {
             StructItem(mut i) => {
-                let mut foo = Vec::new(); swap(&mut foo, &mut i.fields);
-                let num_fields = foo.len();
-                i.fields.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
+                let num_fields = i.fields.len();
+                i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                 i.fields_stripped |= num_fields != i.fields.len();
                 StructItem(i)
             },
@@ -33,29 +29,25 @@ pub trait DocFolder : Sized {
                 ModuleItem(self.fold_mod(i))
             },
             EnumItem(mut i) => {
-                let mut foo = Vec::new(); swap(&mut foo, &mut i.variants);
-                let num_variants = foo.len();
-                i.variants.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
+                let num_variants = i.variants.len();
+                i.variants = i.variants.into_iter().filter_map(|x| self.fold_item(x)).collect();
                 i.variants_stripped |= num_variants != i.variants.len();
                 EnumItem(i)
             },
             TraitItem(mut i) => {
-                let mut foo = Vec::new(); swap(&mut foo, &mut i.items);
-                i.items.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
+                i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
                 TraitItem(i)
             },
             ImplItem(mut i) => {
-                let mut foo = Vec::new(); swap(&mut foo, &mut i.items);
-                i.items.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
+                i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
                 ImplItem(i)
             },
             VariantItem(i) => {
                 let i2 = i.clone(); // this clone is small
                 match i.kind {
                     StructVariant(mut j) => {
-                        let mut foo = Vec::new(); swap(&mut foo, &mut j.fields);
-                        let num_fields = foo.len();
-                        j.fields.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
+                        let num_fields = j.fields.len();
+                        j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
                         j.fields_stripped |= num_fields != j.fields.len();
                         VariantItem(Variant {kind: StructVariant(j), ..i2})
                     },
@@ -78,17 +70,13 @@ pub trait DocFolder : Sized {
     }
 
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
-        c.module = match replace(&mut c.module, None) {
-            Some(module) => self.fold_item(module), None => None
-        };
-
-        let external_traits = replace(&mut c.external_traits, HashMap::new());
-        c.external_traits = external_traits.into_iter().map(|(k, mut v)| {
-            let items = replace(&mut v.items, Vec::new());
-            v.items = items.into_iter().filter_map(|i| self.fold_item(i))
-                           .collect();
+        c.module = c.module.and_then(|module| {
+            self.fold_item(module)
+        });
+        c.external_traits = c.external_traits.into_iter().map(|(k, mut v)| {
+            v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
             (k, v)
         }).collect();
-        return c;
+        c
     }
 }

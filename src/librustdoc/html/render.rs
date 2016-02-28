@@ -374,7 +374,7 @@ fn init_ids() -> HashMap<String, usize> {
      "deref-methods",
      "implementations",
      "derived_implementations"
-     ].into_iter().map(|id| (String::from(*id), 1)).collect::<HashMap<_, _>>()
+     ].into_iter().map(|id| (String::from(*id), 1)).collect()
 }
 
 /// This method resets the local table of used ID attributes. This is typically

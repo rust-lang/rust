@@ -243,8 +243,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
 pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
     struct CommentCleaner;
     impl fold::DocFolder for CommentCleaner {
-        fn fold_item(&mut self, i: Item) -> Option<Item> {
-            let mut i = i;
+        fn fold_item(&mut self, mut i: Item) -> Option<Item> {
             let mut avec: Vec<clean::Attribute> = Vec::new();
             for attr in &i.attrs {
                 match attr {
@@ -268,9 +267,8 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
 pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     struct Collapser;
     impl fold::DocFolder for Collapser {
-        fn fold_item(&mut self, i: Item) -> Option<Item> {
+        fn fold_item(&mut self, mut i: Item) -> Option<Item> {
             let mut docstr = String::new();
-            let mut i = i;
             for attr in &i.attrs {
                 if let clean::NameValue(ref x, ref s) = *attr {
                     if "doc" == *x {
