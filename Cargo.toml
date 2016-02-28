@@ -1,11 +1,14 @@
 [package]
-name = "miri"
-version = "0.1.0"
 authors = ["Scott Olson <scott@solson.me>"]
 description = "An experimental interpreter for Rust MIR."
-repository = "https://github.com/tsion/miri"
 license = "ISC"
+name = "miri"
+repository = "https://github.com/tsion/miri"
+version = "0.1.0"
 
 [[bin]]
-name = "miri"
 doc = false
+name = "miri"
+
+[dependencies]
+byteorder = "0.4.2"

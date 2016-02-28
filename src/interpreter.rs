@@ -1,37 +1,127 @@
+// TODO(tsion): Remove this.
+#![allow(unused_imports, dead_code, unused_variables)]
+
+use byteorder;
+use byteorder::ByteOrder;
 use rustc::middle::{const_eval, def_id, ty};
 use rustc::middle::cstore::CrateStore;
 use rustc::mir::repr::{self as mir, Mir};
 use rustc::mir::mir_map::MirMap;
+use std::collections::HashMap;
 use syntax::ast::Attribute;
 use syntax::attr::AttrMetaMethods;
 
 use std::iter;
 
-const TRACE_EXECUTION: bool = false;
+const TRACE_EXECUTION: bool = true;
 
-#[derive(Clone, Debug, PartialEq)]
-enum Value {
-    Uninit,
-    Bool(bool),
-    Int(i64), // FIXME(tsion): Should be bit-width aware.
-    Pointer(Pointer),
-    Adt { variant: usize, data_ptr: Pointer },
-    Func(def_id::DefId),
-}
+mod memory {
+    use byteorder;
+    use byteorder::ByteOrder;
+    use rustc::middle::ty;
+    use std::collections::HashMap;
+    use std::mem;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum Pointer {
-    Stack(usize),
-    // TODO(tsion): Heap
-}
+    pub struct Memory {
+        next_id: u64,
+        alloc_map: HashMap<u64, Value>,
+    }
 
-impl Pointer {
-    fn offset(self, i: usize) -> Self {
-        match self {
-            Pointer::Stack(p) => Pointer::Stack(p + i),
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    pub struct AllocId(u64);
+
+    // TODO(tsion): Remove this hack.
+    pub fn alloc_id_hack(i: u64) -> AllocId {
+        AllocId(i)
+    }
+
+    // TODO(tsion): Shouldn't clone values.
+    #[derive(Clone, Debug)]
+    pub struct Value {
+        pub bytes: Vec<u8>,
+        // TODO(tsion): relocations
+        // TODO(tsion): undef mask
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct Pointer {
+        pub alloc_id: AllocId,
+        pub offset: usize,
+        pub repr: Repr,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub enum Repr {
+        Int,
+
+        StackFrame {
+            locals: Vec<Repr>,
+        }
+    }
+
+    impl Memory {
+        pub fn new() -> Self {
+            Memory { next_id: 0, alloc_map: HashMap::new() }
+        }
+
+        pub fn allocate(&mut self, size: usize) -> AllocId {
+            let id = AllocId(self.next_id);
+            let val = Value { bytes: vec![0; size] };
+            self.alloc_map.insert(self.next_id, val);
+            self.next_id += 1;
+            id
+        }
+
+        pub fn allocate_int(&mut self, n: i64) -> AllocId {
+            let id = self.allocate(mem::size_of::<i64>());
+            byteorder::NativeEndian::write_i64(&mut self.value_mut(id).unwrap().bytes, n);
+            id
+        }
+
+        pub fn value(&self, id: AllocId) -> Option<&Value> {
+            self.alloc_map.get(&id.0)
+        }
+
+        pub fn value_mut(&mut self, id: AllocId) -> Option<&mut Value> {
+            self.alloc_map.get_mut(&id.0)
+        }
+    }
+
+    impl Pointer {
+        pub fn offset(self, i: usize) -> Self {
+            Pointer { offset: self.offset + i, ..self }
+        }
+    }
+
+    impl Repr {
+        // TODO(tsion): Cache these outputs.
+        pub fn from_ty(ty: ty::Ty) -> Self {
+            match ty.sty {
+                ty::TyInt(_) => Repr::Int,
+                _ => unimplemented!(),
+            }
+        }
+
+        pub fn size(&self) -> usize {
+            match *self {
+                Repr::Int => 8,
+                Repr::StackFrame { ref locals } =>
+                    locals.iter().map(Repr::size).fold(0, |a, b| a + b)
+            }
         }
     }
 }
+use self::memory::{Pointer, Repr, Value};
+
+// #[derive(Clone, Debug, PartialEq)]
+// enum Value {
+//     Uninit,
+//     Bool(bool),
+//     Int(i64), // FIXME(tsion): Should be bit-width aware.
+//     Pointer(Pointer),
+//     Adt { variant: usize, data_ptr: Pointer },
+//     Func(def_id::DefId),
+// }
 
 /// A stack frame:
 ///
@@ -55,42 +145,43 @@ impl Pointer {
 /// | Aggregates            | aggregates
 /// +-----------------------+
 /// ```
-#[derive(Debug)]
-struct Frame {
-    /// A pointer to a stack cell to write the return value of the current call, if it's not a
-    /// divering call.
-    return_ptr: Option<Pointer>,
+// #[derive(Debug)]
+// struct Frame {
+//     /// A pointer to a stack cell to write the return value of the current call, if it's not a
+//     /// divering call.
+//     return_ptr: Option<Pointer>,
 
-    offset: usize,
-    num_args: usize,
-    num_vars: usize,
-    num_temps: usize,
-    num_aggregate_fields: usize,
-}
+//     offset: usize,
+//     num_args: usize,
+//     num_vars: usize,
+//     num_temps: usize,
+//     num_aggregate_fields: usize,
+// }
 
-impl Frame {
-    fn size(&self) -> usize {
-        self.num_args + self.num_vars + self.num_temps + self.num_aggregate_fields
-    }
+// impl Frame {
+//     fn size(&self) -> usize {
+//         self.num_args + self.num_vars + self.num_temps + self.num_aggregate_fields
+//     }
 
-    fn arg_offset(&self, i: usize) -> usize {
-        self.offset + i
-    }
+//     fn arg_offset(&self, i: usize) -> usize {
+//         self.offset + i
+//     }
 
-    fn var_offset(&self, i: usize) -> usize {
-        self.offset + self.num_args + i
-    }
+//     fn var_offset(&self, i: usize) -> usize {
+//         self.offset + self.num_args + i
+//     }
 
-    fn temp_offset(&self, i: usize) -> usize {
-        self.offset + self.num_args + self.num_vars + i
-    }
-}
+//     fn temp_offset(&self, i: usize) -> usize {
+//         self.offset + self.num_args + self.num_vars + i
+//     }
+// }
 
 struct Interpreter<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     mir_map: &'a MirMap<'tcx>,
-    value_stack: Vec<Value>,
-    call_stack: Vec<Frame>,
+    // value_stack: Vec<Value>,
+    // call_stack: Vec<Frame>,
+    memory: memory::Memory,
 }
 
 impl<'a, 'tcx> Interpreter<'a, 'tcx> {
@@ -98,47 +189,47 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
-            value_stack: vec![Value::Uninit], // Allocate a spot for the top-level return value.
-            call_stack: Vec::new(),
+            // value_stack: vec![Value::Uninit], // Allocate a spot for the top-level return value.
+            // call_stack: Vec::new(),
+            memory: memory::Memory::new(),
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) {
-        let frame = Frame {
-            return_ptr: return_ptr,
-            offset: self.value_stack.len(),
-            num_args: mir.arg_decls.len(),
-            num_vars: mir.var_decls.len(),
-            num_temps: mir.temp_decls.len(),
-            num_aggregate_fields: 0,
-        };
+    // fn push_stack_frame(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) {
+    //     let frame = Frame {
+    //         return_ptr: return_ptr,
+    //         offset: self.value_stack.len(),
+    //         num_args: mir.arg_decls.len(),
+    //         num_vars: mir.var_decls.len(),
+    //         num_temps: mir.temp_decls.len(),
+    //         num_aggregate_fields: 0,
+    //     };
 
-        self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
+    //     self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
 
-        for (i, arg) in args.iter().enumerate() {
-            self.value_stack[frame.arg_offset(i)] = arg.clone();
-        }
+    //     for (i, arg) in args.iter().enumerate() {
+    //         self.value_stack[frame.arg_offset(i)] = arg.clone();
+    //     }
 
-        self.call_stack.push(frame);
+    //     self.call_stack.push(frame);
+    // }
 
-    }
+    // fn pop_stack_frame(&mut self) {
+    //     let frame = self.call_stack.pop().expect("tried to pop stack frame, but there were none");
+    //     self.value_stack.truncate(frame.offset);
+    // }
 
-    fn pop_stack_frame(&mut self) {
-        let frame = self.call_stack.pop().expect("tried to pop stack frame, but there were none");
-        self.value_stack.truncate(frame.offset);
-    }
+    // fn allocate_aggregate(&mut self, size: usize) -> Pointer {
+    //     let frame = self.call_stack.last_mut().expect("missing call frame");
+    //     frame.num_aggregate_fields += size;
 
-    fn allocate_aggregate(&mut self, size: usize) -> Pointer {
-        let frame = self.call_stack.last_mut().expect("missing call frame");
-        frame.num_aggregate_fields += size;
-
-        let ptr = Pointer::Stack(self.value_stack.len());
-        self.value_stack.extend(iter::repeat(Value::Uninit).take(size));
-        ptr
-    }
+    //     let ptr = Pointer::Stack(self.value_stack.len());
+    //     self.value_stack.extend(iter::repeat(Value::Uninit).take(size));
+    //     ptr
+    // }
 
     fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) {
-        self.push_stack_frame(mir, args, return_ptr);
+        // self.push_stack_frame(mir, args, return_ptr);
         let mut block = mir::START_BLOCK;
 
         loop {
@@ -150,9 +241,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
                 match stmt.kind {
                     mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                        let ptr = self.eval_lvalue(lvalue);
-                        let value = self.eval_rvalue(rvalue);
-                        self.write_pointer(ptr, value);
+                        let ptr = self.lvalue_to_ptr(lvalue);
+                        self.eval_rvalue_into(rvalue, ptr);
                     }
                 }
             }
@@ -163,60 +253,60 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 mir::Terminator::Return => break,
                 mir::Terminator::Goto { target } => block = target,
 
-                mir::Terminator::Call { ref func, ref args, ref destination, .. } => {
-                    let ptr = destination.as_ref().map(|&(ref lv, _)| self.eval_lvalue(lv));
-                    let func_val = self.eval_operand(func);
+                // mir::Terminator::Call { ref func, ref args, ref destination, .. } => {
+                //     let ptr = destination.as_ref().map(|&(ref lv, _)| self.lvalue_to_ptr(lv));
+                //     let func_val = self.operand_to_ptr(func);
 
-                    if let Value::Func(def_id) = func_val {
-                        let mir_data;
-                        let mir = match self.tcx.map.as_local_node_id(def_id) {
-                            Some(node_id) => self.mir_map.map.get(&node_id).unwrap(),
-                            None => {
-                                let cstore = &self.tcx.sess.cstore;
-                                mir_data = cstore.maybe_get_item_mir(self.tcx, def_id).unwrap();
-                                &mir_data
-                            }
-                        };
+                //     if let Value::Func(def_id) = func_val {
+                //         let mir_data;
+                //         let mir = match self.tcx.map.as_local_node_id(def_id) {
+                //             Some(node_id) => self.mir_map.map.get(&node_id).unwrap(),
+                //             None => {
+                //                 let cstore = &self.tcx.sess.cstore;
+                //                 mir_data = cstore.maybe_get_item_mir(self.tcx, def_id).unwrap();
+                //                 &mir_data
+                //             }
+                //         };
 
-                        let arg_vals: Vec<Value> =
-                            args.iter().map(|arg| self.eval_operand(arg)).collect();
+                //         let arg_vals: Vec<Value> =
+                //             args.iter().map(|arg| self.operand_to_ptr(arg)).collect();
 
-                        self.call(mir, &arg_vals, ptr);
+                //         self.call(mir, &arg_vals, ptr);
 
-                        if let Some((_, target)) = *destination {
-                            block = target;
-                        }
-                    } else {
-                        panic!("tried to call a non-function value: {:?}", func_val);
-                    }
-                }
+                //         if let Some((_, target)) = *destination {
+                //             block = target;
+                //         }
+                //     } else {
+                //         panic!("tried to call a non-function value: {:?}", func_val);
+                //     }
+                // }
 
-                mir::Terminator::If { ref cond, targets: (then_target, else_target) } => {
-                    match self.eval_operand(cond) {
-                        Value::Bool(true) => block = then_target,
-                        Value::Bool(false) => block = else_target,
-                        cond_val => panic!("Non-boolean `if` condition value: {:?}", cond_val),
-                    }
-                }
+                // mir::Terminator::If { ref cond, targets: (then_target, else_target) } => {
+                //     match self.operand_to_ptr(cond) {
+                //         Value::Bool(true) => block = then_target,
+                //         Value::Bool(false) => block = else_target,
+                //         cond_val => panic!("Non-boolean `if` condition value: {:?}", cond_val),
+                //     }
+                // }
 
-                mir::Terminator::SwitchInt { ref discr, ref values, ref targets, .. } => {
-                    let discr_val = self.read_lvalue(discr);
+                // mir::Terminator::SwitchInt { ref discr, ref values, ref targets, .. } => {
+                //     let discr_val = self.read_lvalue(discr);
 
-                    let index = values.iter().position(|v| discr_val == self.eval_constant(v))
-                        .expect("discriminant matched no values");
+                //     let index = values.iter().position(|v| discr_val == self.eval_constant(v))
+                //         .expect("discriminant matched no values");
 
-                    block = targets[index];
-                }
+                //     block = targets[index];
+                // }
 
-                mir::Terminator::Switch { ref discr, ref targets, .. } => {
-                    let discr_val = self.read_lvalue(discr);
+                // mir::Terminator::Switch { ref discr, ref targets, .. } => {
+                //     let discr_val = self.read_lvalue(discr);
 
-                    if let Value::Adt { variant, .. } = discr_val {
-                        block = targets[variant];
-                    } else {
-                        panic!("Switch on non-Adt value: {:?}", discr_val);
-                    }
-                }
+                //     if let Value::Adt { variant, .. } = discr_val {
+                //         block = targets[variant];
+                //     } else {
+                //         panic!("Switch on non-Adt value: {:?}", discr_val);
+                //     }
+                // }
 
                 mir::Terminator::Drop { target, .. } => {
                     // TODO: Handle destructors and dynamic drop.
@@ -224,139 +314,159 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 }
 
                 mir::Terminator::Resume => unimplemented!(),
+                _ => unimplemented!(),
             }
         }
 
-        self.pop_stack_frame();
+        // self.pop_stack_frame();
     }
 
-    fn eval_lvalue(&self, lvalue: &mir::Lvalue) -> Pointer {
-        let frame = self.call_stack.last().expect("missing call frame");
-
+    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue) -> Pointer {
         match *lvalue {
-            mir::Lvalue::ReturnPointer =>
-                frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
-            mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i as usize)),
-            mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i as usize)),
-            mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i as usize)),
+            mir::Lvalue::ReturnPointer => Pointer {
+                alloc_id: self::memory::alloc_id_hack(0),
+                offset: 0,
+                repr: Repr::Int,
+            },
 
-            mir::Lvalue::Projection(ref proj) => {
-                let base_ptr = self.eval_lvalue(&proj.base);
+            _ => unimplemented!(),
+        }
 
-                match proj.elem {
-                    mir::ProjectionElem::Field(field, _) => {
-                        base_ptr.offset(field.index())
-                    }
+        // let frame = self.call_stack.last().expect("missing call frame");
 
-                    mir::ProjectionElem::Downcast(_, variant) => {
-                        let adt_val = self.read_pointer(base_ptr);
-                        if let Value::Adt { variant: actual_variant, data_ptr } = adt_val {
-                            debug_assert_eq!(variant, actual_variant);
-                            data_ptr
-                        } else {
-                            panic!("Downcast attempted on non-ADT: {:?}", adt_val)
-                        }
-                    }
+        // match *lvalue {
+        //     mir::Lvalue::ReturnPointer =>
+        //         frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
+        //     mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i as usize)),
+        //     mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i as usize)),
+        //     mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i as usize)),
 
-                    mir::ProjectionElem::Deref => {
-                        let ptr_val = self.read_pointer(base_ptr);
-                        if let Value::Pointer(ptr) = ptr_val {
-                            ptr
-                        } else {
-                            panic!("Deref attempted on non-pointer: {:?}", ptr_val)
-                        }
-                    }
+        //     mir::Lvalue::Projection(ref proj) => {
+        //         let base_ptr = self.lvalue_to_ptr(&proj.base);
 
-                    mir::ProjectionElem::Index(ref _operand) => unimplemented!(),
-                    mir::ProjectionElem::ConstantIndex { .. } => unimplemented!(),
-                }
+        //         match proj.elem {
+        //             mir::ProjectionElem::Field(field, _) => {
+        //                 base_ptr.offset(field.index())
+        //             }
+
+        //             mir::ProjectionElem::Downcast(_, variant) => {
+        //                 let adt_val = self.read_pointer(base_ptr);
+        //                 if let Value::Adt { variant: actual_variant, data_ptr } = adt_val {
+        //                     debug_assert_eq!(variant, actual_variant);
+        //                     data_ptr
+        //                 } else {
+        //                     panic!("Downcast attempted on non-ADT: {:?}", adt_val)
+        //                 }
+        //             }
+
+        //             mir::ProjectionElem::Deref => {
+        //                 let ptr_val = self.read_pointer(base_ptr);
+        //                 if let Value::Pointer(ptr) = ptr_val {
+        //                     ptr
+        //                 } else {
+        //                     panic!("Deref attempted on non-pointer: {:?}", ptr_val)
+        //                 }
+        //             }
+
+        //             mir::ProjectionElem::Index(ref _operand) => unimplemented!(),
+        //             mir::ProjectionElem::ConstantIndex { .. } => unimplemented!(),
+        //         }
+        //     }
+
+        //     _ => unimplemented!(),
+        // }
+    }
+
+    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, out: Pointer) {
+        match (left.repr, right.repr, out.repr) {
+            (Repr::Int, Repr::Int, Repr::Int) => {
+                let l = byteorder::NativeEndian::read_i64(&self.memory.value(left.alloc_id).unwrap().bytes);
+                let r = byteorder::NativeEndian::read_i64(&self.memory.value(right.alloc_id).unwrap().bytes);
+                let n = match bin_op {
+                    mir::BinOp::Add    => l + r,
+                    mir::BinOp::Sub    => l - r,
+                    mir::BinOp::Mul    => l * r,
+                    mir::BinOp::Div    => l / r,
+                    mir::BinOp::Rem    => l % r,
+                    mir::BinOp::BitXor => l ^ r,
+                    mir::BinOp::BitAnd => l & r,
+                    mir::BinOp::BitOr  => l | r,
+                    mir::BinOp::Shl    => l << r,
+                    mir::BinOp::Shr    => l >> r,
+                    _                  => unimplemented!(),
+                    // mir::BinOp::Eq     => Value::Bool(l == r),
+                    // mir::BinOp::Lt     => Value::Bool(l < r),
+                    // mir::BinOp::Le     => Value::Bool(l <= r),
+                    // mir::BinOp::Ne     => Value::Bool(l != r),
+                    // mir::BinOp::Ge     => Value::Bool(l >= r),
+                    // mir::BinOp::Gt     => Value::Bool(l > r),
+                };
+                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(out.alloc_id).unwrap().bytes, n);
             }
 
             _ => unimplemented!(),
         }
     }
 
-    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Value, right: Value) -> Value {
-        match (left, right) {
-            (Value::Int(l), Value::Int(r)) => {
-                match bin_op {
-                    mir::BinOp::Add    => Value::Int(l + r),
-                    mir::BinOp::Sub    => Value::Int(l - r),
-                    mir::BinOp::Mul    => Value::Int(l * r),
-                    mir::BinOp::Div    => Value::Int(l / r),
-                    mir::BinOp::Rem    => Value::Int(l % r),
-                    mir::BinOp::BitXor => Value::Int(l ^ r),
-                    mir::BinOp::BitAnd => Value::Int(l & r),
-                    mir::BinOp::BitOr  => Value::Int(l | r),
-                    mir::BinOp::Shl    => Value::Int(l << r),
-                    mir::BinOp::Shr    => Value::Int(l >> r),
-                    mir::BinOp::Eq     => Value::Bool(l == r),
-                    mir::BinOp::Lt     => Value::Bool(l < r),
-                    mir::BinOp::Le     => Value::Bool(l <= r),
-                    mir::BinOp::Ne     => Value::Bool(l != r),
-                    mir::BinOp::Ge     => Value::Bool(l >= r),
-                    mir::BinOp::Gt     => Value::Bool(l > r),
-                }
-            }
-
-            _ => unimplemented!(),
-        }
-    }
-
-    fn eval_rvalue(&mut self, rvalue: &mir::Rvalue) -> Value {
+    fn eval_rvalue_into(&mut self, rvalue: &mir::Rvalue, out: Pointer) {
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => self.eval_operand(operand),
+            mir::Rvalue::Use(ref operand) => {
+                let ptr = self.operand_to_ptr(operand);
+                let val = self.read_pointer(ptr);
+                self.write_pointer(out, val);
+            }
 
             mir::Rvalue::BinaryOp(bin_op, ref left, ref right) => {
-                let left_val = self.eval_operand(left);
-                let right_val = self.eval_operand(right);
-                self.eval_binary_op(bin_op, left_val, right_val)
+                let left_ptr = self.operand_to_ptr(left);
+                let right_ptr = self.operand_to_ptr(right);
+                self.eval_binary_op(bin_op, left_ptr, right_ptr, out)
             }
 
             mir::Rvalue::UnaryOp(un_op, ref operand) => {
-                match (un_op, self.eval_operand(operand)) {
-                    (mir::UnOp::Not, Value::Int(n)) => Value::Int(!n),
-                    (mir::UnOp::Neg, Value::Int(n)) => Value::Int(-n),
-                    _ => unimplemented!(),
-                }
+                unimplemented!()
+                // match (un_op, self.operand_to_ptr(operand)) {
+                //     (mir::UnOp::Not, Value::Int(n)) => Value::Int(!n),
+                //     (mir::UnOp::Neg, Value::Int(n)) => Value::Int(-n),
+                //     _ => unimplemented!(),
+                // }
             }
 
-            mir::Rvalue::Ref(_region, _kind, ref lvalue) => {
-                Value::Pointer(self.eval_lvalue(lvalue))
-            }
+            // mir::Rvalue::Ref(_region, _kind, ref lvalue) => {
+            //     Value::Pointer(self.lvalue_to_ptr(lvalue))
+            // }
 
-            mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, _substs),
-                                   ref operands) => {
-                let max_fields = adt_def.variants
-                    .iter()
-                    .map(|v| v.fields.len())
-                    .max()
-                    .unwrap_or(0);
+            // mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, _substs),
+            //                        ref operands) => {
+            //     let max_fields = adt_def.variants
+            //         .iter()
+            //         .map(|v| v.fields.len())
+            //         .max()
+            //         .unwrap_or(0);
 
-                let ptr = self.allocate_aggregate(max_fields);
+            //     let ptr = self.allocate_aggregate(max_fields);
 
-                for (i, operand) in operands.iter().enumerate() {
-                    let val = self.eval_operand(operand);
-                    self.write_pointer(ptr.offset(i), val);
-                }
+            //     for (i, operand) in operands.iter().enumerate() {
+            //         let val = self.operand_to_ptr(operand);
+            //         self.write_pointer(ptr.offset(i), val);
+            //     }
 
-                Value::Adt { variant: variant, data_ptr: ptr }
-            }
+            //     Value::Adt { variant: variant, data_ptr: ptr }
+            // }
 
             ref r => panic!("can't handle rvalue: {:?}", r),
         }
     }
 
-    fn eval_operand(&mut self, op: &mir::Operand) -> Value {
+    fn operand_to_ptr(&mut self, op: &mir::Operand) -> Pointer {
         match *op {
-            mir::Operand::Consume(ref lvalue) => self.read_lvalue(lvalue),
+            mir::Operand::Consume(ref lvalue) => self.lvalue_to_ptr(lvalue),
 
             mir::Operand::Constant(ref constant) => {
                 match constant.literal {
                     mir::Literal::Value { ref value } => self.eval_constant(value),
 
                     mir::Literal::Item { def_id, kind, .. } => match kind {
-                        mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
+                        // mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
                         _ => panic!("can't handle item literal: {:?}", constant.literal),
                     },
                 }
@@ -364,14 +474,19 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn eval_constant(&self, const_val: &const_eval::ConstVal) -> Value {
+    fn eval_constant(&mut self, const_val: &const_eval::ConstVal) -> Pointer {
         match *const_val {
             const_eval::ConstVal::Float(_f)         => unimplemented!(),
-            const_eval::ConstVal::Int(i)            => Value::Int(i),
+            // const_eval::ConstVal::Int(i)            => Value::new_int(i),
+            const_eval::ConstVal::Int(i)            => Pointer {
+                alloc_id: self.memory.allocate_int(i),
+                offset: 0,
+                repr: Repr::Int,
+            },
             const_eval::ConstVal::Uint(_u)          => unimplemented!(),
             const_eval::ConstVal::Str(ref _s)       => unimplemented!(),
             const_eval::ConstVal::ByteStr(ref _bs)  => unimplemented!(),
-            const_eval::ConstVal::Bool(b)           => Value::Bool(b),
+            const_eval::ConstVal::Bool(b)           => unimplemented!(),
             const_eval::ConstVal::Struct(_node_id)  => unimplemented!(),
             const_eval::ConstVal::Tuple(_node_id)   => unimplemented!(),
             const_eval::ConstVal::Function(_def_id) => unimplemented!(),
@@ -380,19 +495,19 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn read_lvalue(&self, lvalue: &mir::Lvalue) -> Value {
-        self.read_pointer(self.eval_lvalue(lvalue))
-    }
+    // fn read_lvalue(&self, lvalue: &mir::Lvalue) -> Value {
+    //     self.read_pointer(self.lvalue_to_ptr(lvalue))
+    // }
 
     fn read_pointer(&self, p: Pointer) -> Value {
-        match p {
-            Pointer::Stack(offset) => self.value_stack[offset].clone(),
-        }
+        self.memory.value(p.alloc_id).unwrap().clone()
     }
 
     fn write_pointer(&mut self, p: Pointer, val: Value) {
-        match p {
-            Pointer::Stack(offset) => self.value_stack[offset] = val,
+        // TODO(tsion): Remove panics.
+        let alloc = self.memory.value_mut(p.alloc_id).unwrap();
+        for (i, byte) in val.bytes.into_iter().enumerate() {
+            alloc.bytes[p.offset + i] = byte;
         }
     }
 }
@@ -406,10 +521,20 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
                 println!("Interpreting: {}", item.name);
 
                 let mut interpreter = Interpreter::new(tcx, mir_map);
-                let return_ptr = Pointer::Stack(0);
-                interpreter.call(mir, &[], Some(return_ptr));
+                let return_ptr = match mir.return_ty {
+                    ty::FnOutput::FnConverging(ty) => {
+                        let repr = Repr::from_ty(ty);
+                        Some(Pointer {
+                            alloc_id: interpreter.memory.allocate(repr.size()),
+                            offset: 0,
+                            repr: repr,
+                        })
+                    }
+                    ty::FnOutput::FnDiverging => None,
+                };
+                interpreter.call(mir, &[], return_ptr.clone());
 
-                let val_str = format!("{:?}", interpreter.read_pointer(return_ptr));
+                let val_str = format!("{:?}", interpreter.read_pointer(return_ptr.unwrap()));
                 if !check_expected(&val_str, attr) {
                     println!("=> {}\n", val_str);
                 }
