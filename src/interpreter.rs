@@ -292,7 +292,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 // mir::Terminator::SwitchInt { ref discr, ref values, ref targets, .. } => {
                 //     let discr_val = self.read_lvalue(discr);
 
-                //     let index = values.iter().position(|v| discr_val == self.eval_constant(v))
+                //     let index = values.iter().position(|v| discr_val == self.const_to_ptr(v))
                 //         .expect("discriminant matched no values");
 
                 //     block = targets[index];
@@ -463,7 +463,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
             mir::Operand::Constant(ref constant) => {
                 match constant.literal {
-                    mir::Literal::Value { ref value } => self.eval_constant(value),
+                    mir::Literal::Value { ref value } => self.const_to_ptr(value),
 
                     mir::Literal::Item { def_id, kind, .. } => match kind {
                         // mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
@@ -474,7 +474,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn eval_constant(&mut self, const_val: &const_eval::ConstVal) -> Pointer {
+    fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> Pointer {
         match *const_val {
             const_eval::ConstVal::Float(_f)         => unimplemented!(),
             // const_eval::ConstVal::Int(i)            => Value::new_int(i),
