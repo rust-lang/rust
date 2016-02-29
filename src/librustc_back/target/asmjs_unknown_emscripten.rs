@@ -15,6 +15,13 @@ pub fn target() -> Target {
         linker: "emcc".to_string(),
         ar: "emar".to_string(),
 
+        pre_link_args: vec![
+            // Emscripten has exceptions disabled by default when building with -01 or more.
+            // This flag forces them to be enabled.
+            "-s".to_owned(), "DISABLE_EXCEPTION_CATCHING=0".to_owned(),
+            "-s".to_owned(), "ERROR_ON_UNDEFINED_SYMBOLS=1".to_owned(),
+        ],
+
         dynamic_linking: false,
         executables: true,
         exe_suffix: ".js".to_string(),

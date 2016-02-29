@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-windows - this is a unix-specific test
+// ignore-emscripten
 // ignore-pretty
 
 #![feature(process_exec)]

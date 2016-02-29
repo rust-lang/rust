@@ -37,9 +37,11 @@
 #![feature(box_syntax)]
 #![feature(fnbox)]
 #![feature(libc)]
+#![feature(recover)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
+#![feature(std_panic)]
 #![feature(time2)]
 
 extern crate getopts;
@@ -70,6 +72,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io;
 use std::iter::repeat;
+use std::panic;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
@@ -1072,9 +1075,17 @@ pub fn run_test(opts: &TestOpts,
             }
         }
 
-        thread::spawn(move || {
-            let data = Arc::new(Mutex::new(Vec::new()));
-            let data2 = data.clone();
+        let testfn = Arc::new(Mutex::new(Some(testfn)));
+        let testfn2 = testfn.clone();
+        let desc2 = desc.clone();
+        let monitor_ch2 = monitor_ch.clone();
+
+        // This Vec will contain the output of stderr and stdout.
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let data2 = data.clone();
+        let data3 = data.clone();
+
+        let res = thread::Builder::new().spawn(move || {
             let cfg = thread::Builder::new().name(match desc.name {
                 DynTestName(ref name) => name.clone(),
                 StaticTestName(name) => name.to_owned(),
@@ -1085,6 +1096,7 @@ pub fn run_test(opts: &TestOpts,
                                           io::set_print(box Sink(data2.clone()));
                                           io::set_panic(box Sink(data2));
                                       }
+                                      let testfn = testfn.lock().unwrap().take().unwrap();
                                       testfn()
                                   })
                                   .unwrap();
@@ -1092,6 +1104,28 @@ pub fn run_test(opts: &TestOpts,
             let stdout = data.lock().unwrap().to_vec();
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
         });
+
+        // If the thread failed to spawn (for example if the platform doesn't support threads),
+        // we do everything in a single-threaded way instead.
+        if let Err(_) = res {
+            let testfn = testfn2.lock().unwrap().take().unwrap();
+            let mut testfn = panic::AssertRecoverSafe::new(Some(testfn));
+
+            let test_result = if !nocapture {
+                let old_print = io::set_print(box Sink(data3.clone()));
+                let old_panic = io::set_panic(box Sink(data3.clone()));
+                let r = panic::recover(move || (testfn.take().unwrap())());
+                if let Some(old_print) = old_print { io::set_print(old_print); }
+                if let Some(old_panic) = old_panic { io::set_panic(old_panic); }
+                r
+            } else {
+                panic::recover(move || (testfn.take().unwrap())())
+            };
+
+            let test_result = calc_result(&desc2, test_result);
+            let stdout = data3.lock().unwrap().to_vec();
+            monitor_ch2.send((desc2.clone(), test_result, stdout)).unwrap();
+        }
     }
 
     match testfn {

@@ -10,6 +10,7 @@
 
 // ignore-windows
 // ignore-macos
+// ignore-emscripten
 // aux-build:linkage1.rs
 
 #![feature(linkage)]

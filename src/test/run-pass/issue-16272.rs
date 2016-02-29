@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-aarch64
+// ignore-emscripten
 
 use std::process::Command;
 use std::env;
