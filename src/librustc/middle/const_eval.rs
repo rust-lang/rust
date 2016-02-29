@@ -1019,7 +1019,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               }
               Some(Def::AssociatedConst(def_id)) => {
                   if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-                      match tcx.impl_or_trait_item(def_id).container() {
+                      match impl_or_trait_container(tcx, def_id) {
                           ty::TraitContainer(trait_id) => match tcx.map.find(node_id) {
                               Some(ast_map::NodeTraitItem(ti)) => match ti.node {
                                   hir::ConstTraitItem(ref ty, _) => {
@@ -1220,6 +1220,23 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
     };
 
     Ok(result)
+}
+
+fn impl_or_trait_container(tcx: &ty::ctxt, def_id: DefId) -> ty::ImplOrTraitItemContainer {
+    // This is intended to be equivalent to tcx.impl_or_trait_item(def_id).container()
+    // for local def_id, but it can be called before tcx.impl_or_trait_items is complete.
+    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+        if let Some(ast_map::NodeItem(item)) = tcx.map.find(tcx.map.get_parent_node(node_id)) {
+            let container_id = tcx.map.local_def_id(item.id);
+            match item.node {
+                hir::ItemImpl(..) => return ty::ImplContainer(container_id),
+                hir::ItemTrait(..) => return ty::TraitContainer(container_id),
+                _ => ()
+            }
+        }
+        panic!("No impl or trait container for {:?}", def_id);
+    }
+    panic!("{:?} is not local", def_id);
 }
 
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
