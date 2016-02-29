@@ -18,9 +18,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
- "alloc_system 0.0.0",
  "core 0.0.0",
- "libc 0.0.0",
 ]
 
 [[package]]

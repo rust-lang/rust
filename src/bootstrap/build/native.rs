@@ -115,6 +115,11 @@ pub fn compiler_rt(build: &Build, target: &str) {
     let mode = if build.config.rust_optimize {"Release"} else {"Debug"};
     let (dir, build_target, libname) = if target.contains("linux") {
         let os = if target.contains("android") {"-android"} else {""};
+        let arch = if arch.starts_with("arm") && target.contains("eabihf") {
+            "armhf"
+        } else {
+            arch
+        };
         let target = format!("clang_rt.builtins-{}{}", arch, os);
         ("linux".to_string(), target.clone(), target)
     } else if target.contains("darwin") {
@@ -151,7 +156,10 @@ pub fn compiler_rt(build: &Build, target: &str) {
        .define("COMPILER_RT_DEFAULT_TARGET_TRIPLE", target)
        .define("COMPILER_RT_BUILD_SANITIZERS", "OFF")
        .define("COMPILER_RT_BUILD_EMUTLS", "OFF")
+       // inform about c/c++ compilers, the c++ compiler isn't actually used but
+       // it's needed to get the initial configure to work on all platforms.
        .define("CMAKE_C_COMPILER", build.cc(target))
+       .define("CMAKE_CXX_COMPILER", build.cc(target))
        .build_target(&build_target);
     cfg.build();
 }
