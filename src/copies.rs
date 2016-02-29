@@ -91,9 +91,7 @@ fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
         h.finish()
     };
 
-    let eq: &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool {
-        SpanlessEq::new(cx).eq_block(lhs, rhs)
-    };
+    let eq: &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
     if let Some((i, j)) = search_same(blocks, hash, eq) {
         span_note_and_lint(cx,

@@ -134,10 +134,11 @@ impl LateLintPass for MatchPass {
     }
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
-       arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
-       arms[1].pats.len() == 1 && arms[1].guard.is_none() {
+      arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
+      arms[1].pats.len() == 1 && arms[1].guard.is_none() {
         let els = if is_unit_expr(&arms[1].body) {
             None
         } else if let ExprBlock(_) = arms[1].body.node {
@@ -167,28 +168,28 @@ fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], 
                            lint,
                            expr.span,
                            "you seem to be trying to use match for destructuring a single pattern. \
-                           Consider using `if let`", |db| {
-                db.span_suggestion(expr.span, "try this",
-                                   format!("if let {} = {} {}{}",
-                                           snippet(cx, arms[0].pats[0].span, ".."),
-                                           snippet(cx, ex.span, ".."),
-                                           expr_block(cx, &arms[0].body, None, ".."),
-                                           els_str));
-            });
+                           Consider using `if let`",
+                           |db| {
+                               db.span_suggestion(expr.span,
+                                                  "try this",
+                                                  format!("if let {} = {} {}{}",
+                                                          snippet(cx, arms[0].pats[0].span, ".."),
+                                                          snippet(cx, ex.span, ".."),
+                                                          expr_block(cx, &arms[0].body, None, ".."),
+                                                          els_str));
+                           });
     }
 }
 
 fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: ty::Ty, els: Option<&Expr>) {
     // list of candidate Enums we know will never get any more members
-    let candidates = &[
-        (&COW_PATH, "Borrowed"),
-        (&COW_PATH, "Cow::Borrowed"),
-        (&COW_PATH, "Cow::Owned"),
-        (&COW_PATH, "Owned"),
-        (&OPTION_PATH, "None"),
-        (&RESULT_PATH, "Err"),
-        (&RESULT_PATH, "Ok"),
-    ];
+    let candidates = &[(&COW_PATH, "Borrowed"),
+                       (&COW_PATH, "Cow::Borrowed"),
+                       (&COW_PATH, "Cow::Owned"),
+                       (&COW_PATH, "Owned"),
+                       (&OPTION_PATH, "None"),
+                       (&RESULT_PATH, "Err"),
+                       (&RESULT_PATH, "Ok")];
 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, Some(ref inner)) => {

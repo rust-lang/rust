@@ -370,14 +370,14 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                     span_lint(cx,
                               NEEDLESS_RANGE_LOOP,
                               expr.span,
-                              &format!("the loop variable `{}` is used to index `{}`. \
-                                        Consider using `for ({}, item) in {}.iter().enumerate(){}{}` or similar iterators",
-                                        ident.node.name,
-                                        indexed,
-                                        ident.node.name,
-                                        indexed,
-                                        take,
-                                        skip));
+                              &format!("the loop variable `{}` is used to index `{}`. Consider using `for ({}, \
+                                        item) in {}.iter().enumerate(){}{}` or similar iterators",
+                                       ident.node.name,
+                                       indexed,
+                                       ident.node.name,
+                                       indexed,
+                                       take,
+                                       skip));
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
                         format!("&{}", indexed)
@@ -390,9 +390,9 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                               expr.span,
                               &format!("the loop variable `{}` is only used to index `{}`. \
                                         Consider using `for item in {}` or similar iterators",
-                                        ident.node.name,
-                                        indexed,
-                                        repl));
+                                       ident.node.name,
+                                       indexed,
+                                       repl));
                 }
             }
         }
@@ -447,9 +447,7 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                                               "consider using the following if \
                                                                you are attempting to iterate \
                                                                over this range in reverse",
-                                                               format!("({}..{}).rev()` ",
-                                                                       stop_snippet,
-                                                                       start_snippet));
+                                                              format!("({}..{}).rev()` ", stop_snippet, start_snippet));
                                        });
                 } else if eq {
                     // if they are equal, it's also problematic - this loop
@@ -744,6 +742,7 @@ impl<'v, 't> Visitor<'v> for VarUsedAfterLoopVisitor<'v, 't> {
 
 /// Return true if the type of expr is one that provides IntoIterator impls
 /// for &T and &mut T, such as Vec.
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards

@@ -38,10 +38,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&StmtDecl(ref l, _), &StmtDecl(ref r, _)) => {
                 if let (&DeclLocal(ref l), &DeclLocal(ref r)) = (&l.node, &r.node) {
                     // TODO: tys
-                    l.ty.is_none() && r.ty.is_none() &&
-                        both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
-                }
-                else {
+                    l.ty.is_none() && r.ty.is_none() && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
+                } else {
                     false
                 }
             }
@@ -71,15 +69,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
 
         match (&left.node, &right.node) {
-            (&ExprAddrOf(lmut, ref le), &ExprAddrOf(rmut, ref re)) => {
-                lmut == rmut && self.eq_expr(le, re)
-            }
-            (&ExprAgain(li), &ExprAgain(ri)) => {
-                both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str())
-            }
-            (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => {
-                self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
-            }
+            (&ExprAddrOf(lmut, ref le), &ExprAddrOf(rmut, ref re)) => lmut == rmut && self.eq_expr(le, re),
+            (&ExprAgain(li), &ExprAgain(ri)) => both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str()),
+            (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
             (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
                 lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             }
@@ -87,79 +79,50 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprBinary(lop, ref ll, ref lr), &ExprBinary(rop, ref rl, ref rr)) => {
                 lop.node == rop.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             }
-            (&ExprBreak(li), &ExprBreak(ri)) => {
-                both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str())
-            }
-            (&ExprBox(ref l), &ExprBox(ref r)) => {
-                self.eq_expr(l, r)
-            }
+            (&ExprBreak(li), &ExprBreak(ri)) => both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str()),
+            (&ExprBox(ref l), &ExprBox(ref r)) => self.eq_expr(l, r),
             (&ExprCall(ref lfun, ref largs), &ExprCall(ref rfun, ref rargs)) => {
-                !self.ignore_fn &&
-                    self.eq_expr(lfun, rfun) &&
-                    self.eq_exprs(largs, rargs)
+                !self.ignore_fn && self.eq_expr(lfun, rfun) && self.eq_exprs(largs, rargs)
             }
-            (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => {
-                self.eq_expr(lx, rx) && self.eq_ty(lt, rt)
-            }
+            (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) => self.eq_expr(lx, rx) && self.eq_ty(lt, rt),
             (&ExprField(ref lfexp, ref lfident), &ExprField(ref rfexp, ref rfident)) => {
                 lfident.node == rfident.node && self.eq_expr(lfexp, rfexp)
             }
-            (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => {
-                self.eq_expr(la, ra) && self.eq_expr(li, ri)
-            }
+            (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
             (&ExprIf(ref lc, ref lt, ref le), &ExprIf(ref rc, ref rt, ref re)) => {
-                self.eq_expr(lc, rc) &&
-                    self.eq_block(lt, rt) &&
-                    both(le, re, |l, r| self.eq_expr(l, r))
+                self.eq_expr(lc, rc) && self.eq_block(lt, rt) && both(le, re, |l, r| self.eq_expr(l, r))
             }
             (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
             (&ExprLoop(ref lb, ref ll), &ExprLoop(ref rb, ref rl)) => {
-                self.eq_block(lb, rb) &&
-                    both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
-
+                self.eq_block(lb, rb) && both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
             }
             (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
-                ls == rs &&
-                    self.eq_expr(le, re) &&
-                    over(la, ra, |l, r| {
-                        self.eq_expr(&l.body, &r.body) &&
-                            both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r)) &&
-                            over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
-                    })
+                ls == rs && self.eq_expr(le, re) &&
+                over(la, ra, |l, r| {
+                    self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r)) &&
+                    over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
+                })
             }
-            (&ExprMethodCall(ref lname, ref ltys, ref largs), &ExprMethodCall(ref rname, ref rtys, ref rargs)) => {
+            (&ExprMethodCall(ref lname, ref ltys, ref largs),
+             &ExprMethodCall(ref rname, ref rtys, ref rargs)) => {
                 // TODO: tys
-                !self.ignore_fn &&
-                    lname.node == rname.node &&
-                    ltys.is_empty() &&
-                    rtys.is_empty() &&
-                    self.eq_exprs(largs, rargs)
+                !self.ignore_fn && lname.node == rname.node && ltys.is_empty() && rtys.is_empty() &&
+                self.eq_exprs(largs, rargs)
             }
             (&ExprRange(ref lb, ref le), &ExprRange(ref rb, ref re)) => {
-                both(lb, rb, |l, r| self.eq_expr(l, r)) &&
-                both(le, re, |l, r| self.eq_expr(l, r))
+                both(lb, rb, |l, r| self.eq_expr(l, r)) && both(le, re, |l, r| self.eq_expr(l, r))
             }
-            (&ExprRepeat(ref le, ref ll), &ExprRepeat(ref re, ref rl)) => {
-                self.eq_expr(le, re) && self.eq_expr(ll, rl)
-            }
-            (&ExprRet(ref l), &ExprRet(ref r)) => {
-                both(l, r, |l, r| self.eq_expr(l, r))
-            }
+            (&ExprRepeat(ref le, ref ll), &ExprRepeat(ref re, ref rl)) => self.eq_expr(le, re) && self.eq_expr(ll, rl),
+            (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprPath(ref lqself, ref lsubpath), &ExprPath(ref rqself, ref rsubpath)) => {
                 both(lqself, rqself, |l, r| self.eq_qself(l, r)) && self.eq_path(lsubpath, rsubpath)
             }
             (&ExprTup(ref ltup), &ExprTup(ref rtup)) => self.eq_exprs(ltup, rtup),
-            (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => {
-                li.node == ri.node && self.eq_expr(le, re)
-            }
-            (&ExprUnary(lop, ref le), &ExprUnary(rop, ref re)) => {
-                lop == rop && self.eq_expr(le, re)
-            }
+            (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => li.node == ri.node && self.eq_expr(le, re),
+            (&ExprUnary(lop, ref le), &ExprUnary(rop, ref re)) => lop == rop && self.eq_expr(le, re),
             (&ExprVec(ref l), &ExprVec(ref r)) => self.eq_exprs(l, r),
             (&ExprWhile(ref lc, ref lb, ref ll), &ExprWhile(ref rc, ref rb, ref rl)) => {
-                self.eq_expr(lc, rc) &&
-                    self.eq_block(lb, rb) &&
-                    both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
+                self.eq_expr(lc, rc) && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.name.as_str() == r.name.as_str())
             }
             _ => false,
         }
@@ -172,39 +135,25 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     /// Check whether two patterns are the same.
     pub fn eq_pat(&self, left: &Pat, right: &Pat) -> bool {
         match (&left.node, &right.node) {
-            (&PatKind::Box(ref l), &PatKind::Box(ref r)) => {
-                self.eq_pat(l, r)
-            }
+            (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
             (&PatKind::TupleStruct(ref lp, ref la), &PatKind::TupleStruct(ref rp, ref ra)) => {
-                self.eq_path(lp, rp) &&
-                    both(la, ra, |l, r| {
-                        over(l, r, |l, r| self.eq_pat(l, r))
-                    })
+                self.eq_path(lp, rp) && both(la, ra, |l, r| over(l, r, |l, r| self.eq_pat(l, r)))
             }
             (&PatKind::Ident(ref lb, ref li, ref lp), &PatKind::Ident(ref rb, ref ri, ref rp)) => {
-                lb == rb && li.node.name.as_str() == ri.node.name.as_str() &&
-                    both(lp, rp, |l, r| self.eq_pat(l, r))
+                lb == rb && li.node.name.as_str() == ri.node.name.as_str() && both(lp, rp, |l, r| self.eq_pat(l, r))
             }
-            (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => {
-                self.eq_expr(l, r)
-            }
+            (&PatKind::Lit(ref l), &PatKind::Lit(ref r)) => self.eq_expr(l, r),
             (&PatKind::QPath(ref ls, ref lp), &PatKind::QPath(ref rs, ref rp)) => {
                 self.eq_qself(ls, rs) && self.eq_path(lp, rp)
             }
-            (&PatKind::Tup(ref l), &PatKind::Tup(ref r)) => {
-                over(l, r, |l, r| self.eq_pat(l, r))
-            }
+            (&PatKind::Tup(ref l), &PatKind::Tup(ref r)) => over(l, r, |l, r| self.eq_pat(l, r)),
             (&PatKind::Range(ref ls, ref le), &PatKind::Range(ref rs, ref re)) => {
-                self.eq_expr(ls, rs) &&
-                    self.eq_expr(le, re)
+                self.eq_expr(ls, rs) && self.eq_expr(le, re)
             }
-            (&PatKind::Ref(ref le, ref lm), &PatKind::Ref(ref re, ref rm)) => {
-                lm == rm && self.eq_pat(le, re)
-            }
+            (&PatKind::Ref(ref le, ref lm), &PatKind::Ref(ref re, ref rm)) => lm == rm && self.eq_pat(le, re),
             (&PatKind::Vec(ref ls, ref li, ref le), &PatKind::Vec(ref rs, ref ri, ref re)) => {
-                over(ls, rs, |l, r| self.eq_pat(l, r)) &&
-                    over(le, re, |l, r| self.eq_pat(l, r)) &&
-                    both(li, ri, |l, r| self.eq_pat(l, r))
+                over(ls, rs, |l, r| self.eq_pat(l, r)) && over(le, re, |l, r| self.eq_pat(l, r)) &&
+                both(li, ri, |l, r| self.eq_pat(l, r))
             }
             (&PatKind::Wild, &PatKind::Wild) => true,
             _ => false,

@@ -147,7 +147,11 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
         Some((b, _)) => base.lo + BytePos(b as u32),
         _ => base.hi,
     };
-    Span{ lo: lo, hi: lo, ..base }
+    Span {
+        lo: lo,
+        hi: lo,
+        ..base
+    }
 }
 
 fn const_str(cx: &LateContext, e: &Expr) -> Option<InternedString> {

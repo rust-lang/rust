@@ -92,8 +92,7 @@ impl LateLintPass for BlockInIfCondition {
                                                         snippet_block(cx, then.span, "..")));
                         }
                     } else {
-                        let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span,
-                                                                   |e| e.span);
+                        let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
                         if in_macro(cx, span) || differing_macro_contexts(expr.span, span) {
                             return;
                         }

@@ -144,7 +144,7 @@ impl LateLintPass for StringLitAsBytes {
                             let msg = format!("calling `as_bytes()` on a string literal. \
                                                Consider using a byte string literal instead: \
                                                `b{}`",
-                                               snippet(cx, args[0].span, r#""foo""#));
+                                              snippet(cx, args[0].span, r#""foo""#));
                             span_lint(cx, STRING_LIT_AS_BYTES, e.span, &msg);
                         }
                     }

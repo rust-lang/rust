@@ -137,8 +137,7 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
 
         iter.inspect(|_| len += 1)
             .zip(path)
-            .all(|(nm, p)| nm.name().as_str() == *p)
-        && len == path.len()
+            .all(|(nm, p)| nm.name().as_str() == *p) && len == path.len()
     })
 }
 
@@ -600,11 +599,10 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 /// Return the pre-expansion span if is this comes from an expansion of the macro `name`.
 pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = cx.tcx.sess.codemap().with_expn_info(span.expn_id, |expn| {
-            expn.map(|ei| {
-                (ei.callee.name(), ei.call_site)
-            })
-        });
+        let span_name_span = cx.tcx
+                               .sess
+                               .codemap()
+                               .with_expn_info(span.expn_id, |expn| expn.map(|ei| (ei.callee.name(), ei.call_site)));
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name.as_str() == name => return Some(new_span),

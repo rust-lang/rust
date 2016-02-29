@@ -390,7 +390,8 @@ impl LateLintPass for CastPass {
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                     }
                     (false, false) => {
-                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) = (&cast_from.sty, &cast_to.sty) {
+                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) = (&cast_from.sty,
+                                                                                           &cast_to.sty) {
                             span_lint(cx,
                                       CAST_POSSIBLE_TRUNCATION,
                                       expr.span,
@@ -570,7 +571,7 @@ impl LateLintPass for CharLitAsU8 {
                                    truncates them";
                         let help = format!("Consider using a byte literal \
                                             instead:\nb{}",
-                                          snippet(cx, e.span, "'x'"));
+                                           snippet(cx, e.span, "'x'"));
                         span_help_and_lint(cx, CHAR_LIT_AS_U8, expr.span, msg, &help);
                     }
                 }
@@ -623,7 +624,10 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
     type Extr<'a> = ExtremeExpr<'a>;
 
     // Put the expression in the form lhs < rhs or lhs <= rhs.
-    enum Rel { Lt, Le };
+    enum Rel {
+        Lt,
+        Le,
+    };
     let (rel, lhs2, rhs2) = match op {
         BiLt => (Rel::Lt, lhs, rhs),
         BiLe => (Rel::Le, lhs, rhs),

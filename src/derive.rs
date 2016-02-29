@@ -87,13 +87,7 @@ impl LateLintPass for Derive {
 }
 
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
-fn check_hash_peq(
-    cx: &LateContext,
-    span: Span,
-    trait_ref: &TraitRef,
-    ty: ty::Ty,
-    hash_is_automatically_derived: bool
-) {
+fn check_hash_peq(cx: &LateContext, span: Span, trait_ref: &TraitRef, ty: ty::Ty, hash_is_automatically_derived: bool) {
     if_let_chain! {[
         match_path(&trait_ref.path, &HASH_PATH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
@@ -143,9 +137,7 @@ fn check_hash_peq(
 }
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>,
-                              item: &Item,
-                              trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
+fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
     if match_path(&trait_ref.path, &CLONE_TRAIT_PATH) {
         let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
         let subst_ty = ty.subst(cx.tcx, &parameter_environment.free_substs);

@@ -155,17 +155,11 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], lit: &Lit, op: &str) {
     if let Spanned{node: LitKind::Int(0, _), ..} = *lit {
         if name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
-            span_lint_and_then(cx,
-                               LEN_ZERO,
-                               span,
-                               "length comparison to zero",
-                               |db| {
-                                   db.span_suggestion(span,
-                                                      "consider using `is_empty`",
-                                                       format!("{}{}.is_empty()",
-                                                               op,
-                                                               snippet(cx, args[0].span, "_")));
-                               });
+            span_lint_and_then(cx, LEN_ZERO, span, "length comparison to zero", |db| {
+                db.span_suggestion(span,
+                                   "consider using `is_empty`",
+                                   format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")));
+            });
         }
     }
 }

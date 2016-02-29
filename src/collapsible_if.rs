@@ -71,15 +71,13 @@ fn check_if(cx: &LateContext, e: &Expr) {
                 });
             }}
         } else if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
-                       single_stmt_of_block(then) {
+               single_stmt_of_block(then) {
             if e.span.expn_id != sp.expn_id {
                 return;
             }
-            span_lint_and_then(cx,
-                               COLLAPSIBLE_IF,
-                               e.span,
-                               "this if statement can be collapsed", |db| {
-                db.span_suggestion(e.span, "try",
+            span_lint_and_then(cx, COLLAPSIBLE_IF, e.span, "this if statement can be collapsed", |db| {
+                db.span_suggestion(e.span,
+                                   "try",
                                    format!("if {} && {} {}",
                                            check_to_string(cx, check),
                                            check_to_string(cx, check_inner),
