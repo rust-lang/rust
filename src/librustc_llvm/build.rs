@@ -38,6 +38,25 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", llvm_config.display());
 
+    // Test whether we're cross-compiling LLVM. This is a pretty rare case
+    // currently where we're producing an LLVM for a different platform than
+    // what this build script is currently running on.
+    //
+    // In that case, there's no guarantee that we can actually run the target,
+    // so the build system works around this by giving us the LLVM_CONFIG for
+    // the host platform. This only really works if the host LLVM and target
+    // LLVM are compiled the same way, but for us that's typically the case.
+    //
+    // We detect this cross compiling situation by asking llvm-config what it's
+    // host-target is. If that's not the TARGET, then we're cross compiling.
+    // This generally just means that we can't trust all the output of
+    // llvm-config becaues it might be targeted for the host rather than the
+    // target.
+    let target = env::var("TARGET").unwrap();
+    let host = output(Command::new(&llvm_config).arg("--host-target"));
+    let host = host.trim();
+    let is_crossed = target != host;
+
     let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc",
                                "pnacl"];
 
@@ -69,6 +88,10 @@ fn main() {
     let cxxflags = output(&mut cmd);
     let mut cfg = gcc::Config::new();
     for flag in cxxflags.split_whitespace() {
+        // Ignore flags like `-m64` when we're doing a cross build
+        if is_crossed && flag.starts_with("-m") {
+            continue
+        }
         cfg.flag(flag);
     }
     cfg.file("../rustllvm/ExecutionEngineWrapper.cpp")
@@ -79,9 +102,16 @@ fn main() {
        .cpp_link_stdlib(None) // we handle this below
        .compile("librustllvm.a");
 
-    // Link in all LLVM libraries
+    // Link in all LLVM libraries, if we're uwring the "wrong" llvm-config then
+    // we don't pick up system libs because unfortunately they're for the host
+    // of llvm-config, not the target that we're attempting to link.
     let mut cmd = Command::new(&llvm_config);
-    cmd.arg("--libs").arg("--system-libs").args(&components[..]);
+    cmd.arg("--libs");
+    if !is_crossed {
+        cmd.arg("--system-libs");
+    }
+    cmd.args(&components[..]);
+
     for lib in output(&mut cmd).split_whitespace() {
         let name = if lib.starts_with("-l") {
             &lib[2..]
@@ -105,10 +135,20 @@ fn main() {
     }
 
     // LLVM ldflags
+    //
+    // If we're a cross-compile of LLVM then unfortunately we can't trust these
+    // ldflags (largely where all the LLVM libs are located). Currently just
+    // hack around this by replacing the host triple with the target and pray
+    // that those -L directories are the same!
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
-        if lib.starts_with("-l") {
+        if is_crossed {
+            if lib.starts_with("-L") {
+                println!("cargo:rustc-link-search=native={}",
+                         lib[2..].replace(&host, &target));
+            }
+        } else if lib.starts_with("-l") {
             println!("cargo:rustc-link-lib={}", &lib[2..]);
         } else if lib.starts_with("-L") {
             println!("cargo:rustc-link-search=native={}", &lib[2..]);

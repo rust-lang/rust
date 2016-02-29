@@ -39,6 +39,14 @@ mod sanity;
 mod step;
 mod util;
 
+#[cfg(windows)]
+mod job;
+
+#[cfg(not(windows))]
+mod job {
+    pub unsafe fn setup() {}
+}
+
 pub use build::config::Config;
 pub use build::flags::Flags;
 
@@ -114,14 +122,9 @@ impl Build {
     pub fn build(&mut self) {
         use build::step::Source::*;
 
-        // see comments in job.rs for what's going on here
-        #[cfg(windows)]
-        fn setup_job() {
-            mod job;
-            unsafe { job::setup() }
+        unsafe {
+            job::setup();
         }
-        #[cfg(not(windows))] fn setup_job() {}
-        setup_job();
 
         if self.flags.clean {
             return clean::clean(self);
@@ -146,8 +149,19 @@ impl Build {
                 Librustc { stage, compiler } => {
                     compile::rustc(self, stage, target.target, &compiler);
                 }
+                LibstdLink { stage, compiler, host } => {
+                    compile::std_link(self, stage, target.target,
+                                      &compiler, host);
+                }
+                LibrustcLink { stage, compiler, host } => {
+                    compile::rustc_link(self, stage, target.target,
+                                        &compiler, host);
+                }
+                Rustc { stage: 0 } => {
+                    // nothing to do...
+                }
                 Rustc { stage } => {
-                    println!("ok, rustc stage{} in {}", stage, target.target);
+                    compile::assemble_rustc(self, stage, target.target);
                 }
             }
         }
@@ -425,21 +439,7 @@ impl Build {
     }
 
     fn rustc_flags(&self, target: &str) -> Vec<String> {
-        let mut base = match target {
-            "arm-unknown-linux-gnueabihf" => {
-                vec!["-Ctarget-feature=+v6,+vfp2".to_string()]
-            }
-            "mips-unknown-linux-gnu" => {
-                vec!["-Ctarget-cpu=mips32r2".to_string(),
-                     "-Ctarget-feature=+mips32r2".to_string(),
-                     "-Csoft-float".to_string()]
-            }
-            "mipsel-unknown-linux-gnu" => {
-                vec!["-Ctarget-cpu=mips32".to_string(),
-                     "-Ctarget-feature=+mips32".to_string()]
-            }
-            _ => Vec::new(),
-        };
+        let mut base = Vec::new();
         if target != self.config.build && !target.contains("msvc") {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }

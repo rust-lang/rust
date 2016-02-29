@@ -58,6 +58,30 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
     }
 
     build.run(&mut cargo);
+    std_link(build, stage, target, compiler, host);
+}
+
+/// Link all libstd rlibs/dylibs into the sysroot location.
+///
+/// Links those artifacts generated in the given `stage` for `target` produced
+/// by `compiler` into `host`'s sysroot.
+pub fn std_link(build: &Build,
+                stage: u32,
+                target: &str,
+                compiler: &Compiler,
+                host: &str) {
+    let libdir = build.sysroot_libdir(stage, host, target);
+    let out_dir = build.cargo_out(stage, compiler.host, true, target);
+
+    // If we're linking one compiler host's output into another, then we weren't
+    // called from the `std` method above. In that case we clean out what's
+    // already there and then also link compiler-rt into place.
+    if host != compiler.host {
+        let _ = fs::remove_dir_all(&libdir);
+        t!(fs::create_dir_all(&libdir));
+        t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
+                         libdir.join(staticlib("compiler-rt", target))));
+    }
     add_to_sysroot(&out_dir, &libdir);
 }
 
@@ -99,7 +123,6 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
              host, target);
 
     let out_dir = build.cargo_out(stage, &host, false, target);
-    let rustc = out_dir.join(exe("rustc", target));
     build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
 
     let mut cargo = build.cargo(stage, compiler, false, target, "build");
@@ -131,10 +154,13 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
     if !build.unstable_features {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
-    if let Some(config) = build.config.target_config.get(target) {
-        if let Some(ref s) = config.llvm_config {
-            cargo.env("LLVM_CONFIG", s);
-        }
+    let target_config = build.config.target_config.get(target);
+    if let Some(ref s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+        cargo.env("LLVM_CONFIG", s);
+    } else {
+        let llvm_config = build.llvm_out(&build.config.build).join("bin")
+                               .join(exe("llvm-config", target));
+        cargo.env("LLVM_CONFIG", llvm_config);
     }
     if build.config.llvm_static_stdcpp {
         cargo.env("LLVM_STATIC_STDCPP",
@@ -148,12 +174,21 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
     }
     build.run(&mut cargo);
 
-    let sysroot_libdir = build.sysroot_libdir(stage, host, target);
-    add_to_sysroot(&out_dir, &sysroot_libdir);
+    rustc_link(build, stage, target, compiler, compiler.host);
+}
 
-    if host == target {
-        assemble_compiler(build, stage, target, &rustc);
-    }
+/// Link all librustc rlibs/dylibs into the sysroot location.
+///
+/// Links those artifacts generated in the given `stage` for `target` produced
+/// by `compiler` into `host`'s sysroot.
+pub fn rustc_link(build: &Build,
+                  stage: u32,
+                  target: &str,
+                  compiler: &Compiler,
+                  host: &str) {
+    let libdir = build.sysroot_libdir(stage, host, target);
+    let out_dir = build.cargo_out(stage, compiler.host, false, target);
+    add_to_sysroot(&out_dir, &libdir);
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -169,21 +204,21 @@ fn compiler_file(compiler: &Path, file: &str) -> String {
 
 /// Prepare a new compiler from the artifacts in `stage`
 ///
-/// This will link the compiler built by `host` during the stage
-/// specified to the sysroot location for `host` to be the official
-/// `stage + 1` compiler for that host. This means that the `rustc` binary
-/// itself will be linked into place along with all supporting dynamic
-/// libraries.
-fn assemble_compiler(build: &Build, stage: u32, host: &str, rustc: &Path) {
+/// This will assemble a compiler in `build/$host/stage$stage`. The compiler
+/// must have been previously produced by the `stage - 1` build.config.build
+/// compiler.
+pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
+    assert!(stage > 0, "the stage0 compiler isn't assembled, it's downloaded");
+
     // Clear out old files
-    let sysroot = build.sysroot(stage + 1, host);
+    let sysroot = build.sysroot(stage, host);
     let _ = fs::remove_dir_all(&sysroot);
     t!(fs::create_dir_all(&sysroot));
 
     // Link in all dylibs to the libdir
     let sysroot_libdir = sysroot.join(libdir(host));
     t!(fs::create_dir_all(&sysroot_libdir));
-    let src_libdir = build.sysroot_libdir(stage, host, host);
+    let src_libdir = build.sysroot_libdir(stage - 1, &build.config.build, host);
     for f in t!(fs::read_dir(&src_libdir)).map(|f| t!(f)) {
         let filename = f.file_name().into_string().unwrap();
         if is_dylib(&filename) {
@@ -191,17 +226,20 @@ fn assemble_compiler(build: &Build, stage: u32, host: &str, rustc: &Path) {
         }
     }
 
+    let out_dir = build.cargo_out(stage - 1, &build.config.build, false, host);
+
     // Link the compiler binary itself into place
+    let rustc = out_dir.join(exe("rustc", host));
     let bindir = sysroot.join("bin");
     t!(fs::create_dir_all(&bindir));
-    let compiler = build.compiler_path(&Compiler::new(stage + 1, host));
+    let compiler = build.compiler_path(&Compiler::new(stage, host));
     let _ = fs::remove_file(&compiler);
     t!(fs::hard_link(rustc, compiler));
 
     // See if rustdoc exists to link it into place
-    let exe = exe("rustdoc", host);
-    let rustdoc_src = rustc.parent().unwrap().join(&exe);
-    let rustdoc_dst = bindir.join(exe);
+    let rustdoc = exe("rustdoc", host);
+    let rustdoc_src = out_dir.join(&rustdoc);
+    let rustdoc_dst = bindir.join(&rustdoc);
     if fs::metadata(&rustdoc_src).is_ok() {
         let _ = fs::remove_file(&rustdoc_dst);
         t!(fs::hard_link(&rustdoc_src, &rustdoc_dst));
