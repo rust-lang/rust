@@ -1,16 +1,6 @@
 Version 1.7.0 (2016-03-03)
 ==========================
 
-Language
---------
-
-* Soundness fixes to the interactions between associated types and
-  lifetimes, specified in [RFC 1214], [now generate errors][1.7sf] for
-  code that violates the new rules. This is a significant change that
-  is known to break existing code, so it has emitted warnings for the
-  new error cases since 1.4 to give crate authors time to adapt. The
-  details of what is changing are subtle; read the RFC for more.
-
 Libraries
 ---------
 
@@ -115,6 +105,12 @@ Cargo
 Compatibility Notes
 -------------------
 
+* Soundness fixes to the interactions between associated types and
+  lifetimes, specified in [RFC 1214], [now generate errors][1.7sf] for
+  code that violates the new rules. This is a significant change that
+  is known to break existing code, so it has emitted warnings for the
+  new error cases since 1.4 to give crate authors time to adapt. The
+  details of what is changing are subtle; read the RFC for more.
 * [Several bugs in the compiler's visibility calculations were
   fixed][1.7v]. Since this was found to break significant amounts of
   code, the new errors will be emitted as warnings for several release
