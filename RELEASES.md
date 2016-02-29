@@ -89,9 +89,6 @@ Libraries
 Misc
 ----
 
-* [The `--error-format=json` flag to `rustc` causes it to emit errors
-  in JSON format][1.7j]. This is an unstable flag and so also requires
-  the `-Z unstable-options` flag.
 * [When running tests with `--test`, rustdoc will pass `--cfg`
   arguments to the compiler][1.7dt].
 * [The compiler is built with RPATH information by default][1.7rpa].
@@ -135,7 +132,6 @@ Compatibility Notes
 [1.7dta]: https://github.com/rust-lang/rust/pull/30394
 [1.7f]: https://github.com/rust-lang/rust/pull/30672
 [1.7h]: https://github.com/rust-lang/rust/pull/30818
-[1.7j]: https://github.com/rust-lang/rust/pull/30711
 [1.7ll]: https://github.com/rust-lang/rust/pull/30663
 [1.7m]: https://github.com/rust-lang/rust/pull/30381
 [1.7p]: https://github.com/rust-lang/rust/pull/30681
