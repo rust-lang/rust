@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
 // pretty-expanded FIXME #23616
 
 #![feature(libc)]
