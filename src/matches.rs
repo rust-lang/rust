@@ -249,23 +249,21 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
             };
 
             if let Some((ref true_expr, ref false_expr)) = exprs {
-                if !is_unit_expr(true_expr) {
-                    if !is_unit_expr(false_expr) {
+                match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
+                    (false, false) =>
                         Some(format!("if {} {} else {}",
                                      snippet(cx, ex.span, "b"),
                                      expr_block(cx, true_expr, None, ".."),
-                                     expr_block(cx, false_expr, None, "..")))
-                    } else {
+                                     expr_block(cx, false_expr, None, ".."))),
+                    (false, true) =>
                         Some(format!("if {} {}",
                                      snippet(cx, ex.span, "b"),
-                                     expr_block(cx, true_expr, None, "..")))
-                    }
-                } else if !is_unit_expr(false_expr) {
-                    Some(format!("try\nif !{} {}",
-                                 snippet(cx, ex.span, "b"),
-                                 expr_block(cx, false_expr, None, "..")))
-                } else {
-                    None
+                                     expr_block(cx, true_expr, None, ".."))),
+                    (true, false) =>
+                        Some(format!("try\nif !{} {}",
+                                     snippet(cx, ex.span, "b"),
+                                     expr_block(cx, false_expr, None, ".."))),
+                    (true, true) => None,
                 }
             } else {
                 None

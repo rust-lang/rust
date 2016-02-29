@@ -159,10 +159,10 @@ impl PartialOrd for Constant {
     fn partial_cmp(&self, other: &Constant) -> Option<Ordering> {
         match (self, other) {
             (&Constant::Str(ref ls, ref lsty), &Constant::Str(ref rs, ref rsty)) => {
-                if lsty != rsty {
-                    None
-                } else {
+                if lsty == rsty {
                     Some(ls.cmp(rs))
+                } else {
+                    None
                 }
             }
             (&Constant::Byte(ref l), &Constant::Byte(ref r)) => Some(l.cmp(r)),

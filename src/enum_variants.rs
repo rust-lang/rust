@@ -89,12 +89,10 @@ impl EarlyLintPass for EnumVariantNames {
                 let post_camel = camel_case_from(&post);
                 post = &post[post_camel..];
             }
-            let (what, value) = if !pre.is_empty() {
-                ("pre", pre)
-            } else if !post.is_empty() {
-                ("post", post)
-            } else {
-                return;
+            let (what, value) = match (pre.is_empty(), post.is_empty()) {
+                (true, true) => return,
+                (false, _) => ("pre", pre),
+                (true, false) => ("post", post),
             };
             span_help_and_lint(cx,
                                ENUM_VARIANT_NAMES,
