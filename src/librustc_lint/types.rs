@@ -13,7 +13,7 @@
 use middle::{infer};
 use middle::def_id::DefId;
 use middle::subst::Substs;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::{FnvHashSet};
@@ -293,7 +293,7 @@ impl LateLintPass for TypeLimits {
             }
         }
 
-        fn check_limits(tcx: &ty::ctxt, binop: hir::BinOp,
+        fn check_limits(tcx: &TyCtxt, binop: hir::BinOp,
                         l: &hir::Expr, r: &hir::Expr) -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprLit(_), _) => (l, r, true),
@@ -374,7 +374,7 @@ enum FfiResult {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
-fn is_repr_nullable_ptr<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn is_repr_nullable_ptr<'tcx>(tcx: &TyCtxt<'tcx>,
                               def: ty::AdtDef<'tcx>,
                               substs: &Substs<'tcx>)
                               -> bool {
@@ -400,7 +400,7 @@ fn is_repr_nullable_ptr<'tcx>(tcx: &ty::ctxt<'tcx>,
     false
 }
 
-fn ast_ty_to_normalized<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn ast_ty_to_normalized<'tcx>(tcx: &TyCtxt<'tcx>,
                               id: ast::NodeId)
                               -> Ty<'tcx> {
     let tty = match tcx.ast_ty_to_ty_cache.borrow().get(&id) {

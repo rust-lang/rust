@@ -20,14 +20,14 @@ use rustc::mir::repr::*;
 
 use rustc::middle::const_eval::{self, ConstVal};
 use rustc::middle::infer::InferCtxt;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use rustc_front::hir;
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
 }
 
@@ -103,7 +103,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         self.tcx.sess.span_bug(span, message)
     }
 
-    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.tcx
     }
 }

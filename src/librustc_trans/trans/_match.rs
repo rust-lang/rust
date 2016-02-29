@@ -216,7 +216,7 @@ use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use trans::Disr;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
@@ -237,7 +237,7 @@ use syntax::ptr::P;
 struct ConstantExpr<'a>(&'a hir::Expr);
 
 impl<'a> ConstantExpr<'a> {
-    fn eq(self, other: ConstantExpr<'a>, tcx: &ty::ctxt) -> bool {
+    fn eq(self, other: ConstantExpr<'a>, tcx: &TyCtxt) -> bool {
         match const_eval::compare_lit_exprs(tcx, self.0, other.0) {
             Some(result) => result == Ordering::Equal,
             None => panic!("compare_list_exprs: type mismatch"),
@@ -258,7 +258,7 @@ enum Opt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Opt<'a, 'tcx> {
-    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: &ty::ctxt<'tcx>) -> bool {
+    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: &TyCtxt<'tcx>) -> bool {
         match (self, other) {
             (&ConstantValue(a, _), &ConstantValue(b, _)) => a.eq(b, tcx),
             (&ConstantRange(a1, a2, _), &ConstantRange(b1, b2, _)) => {
@@ -794,7 +794,7 @@ fn any_region_pat(m: &[Match], col: usize) -> bool {
     any_pat!(m, col, PatKind::Ref(..))
 }
 
-fn any_irrefutable_adt_pat(tcx: &ty::ctxt, m: &[Match], col: usize) -> bool {
+fn any_irrefutable_adt_pat(tcx: &TyCtxt, m: &[Match], col: usize) -> bool {
     m.iter().any(|br| {
         let pat = br.pats[col];
         match pat.node {

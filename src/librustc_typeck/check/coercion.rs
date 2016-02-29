@@ -68,7 +68,7 @@ use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use middle::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
-use middle::ty::{self, LvaluePreference, TypeAndMut, Ty};
+use middle::ty::{self, LvaluePreference, TypeAndMut, Ty, TyCtxt};
 use middle::ty::fold::TypeFoldable;
 use middle::ty::error::TypeError;
 use middle::ty::relate::RelateResult;
@@ -87,7 +87,7 @@ struct Coerce<'a, 'tcx: 'a> {
 type CoerceResult<'tcx> = RelateResult<'tcx, Option<AutoAdjustment<'tcx>>>;
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &TyCtxt<'tcx> {
         self.fcx.tcx()
     }
 

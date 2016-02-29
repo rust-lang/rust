@@ -15,7 +15,7 @@ use check::UnresolvedTypeAction;
 use middle::def_id::DefId;
 use middle::subst::{self};
 use middle::traits;
-use middle::ty::{self, NoPreference, PreferMutLvalue, Ty};
+use middle::ty::{self, NoPreference, PreferMutLvalue, Ty, TyCtxt};
 use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use middle::ty::fold::TypeFoldable;
 use middle::infer;
@@ -613,7 +613,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.fcx.tcx()
     }
 

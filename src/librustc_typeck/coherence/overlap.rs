@@ -14,7 +14,7 @@
 use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def_id::DefId;
 use middle::traits;
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 use middle::infer;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -23,7 +23,7 @@ use rustc_front::hir;
 use rustc_front::intravisit;
 use util::nodemap::{DefIdMap, DefIdSet};
 
-pub fn check(tcx: &ty::ctxt) {
+pub fn check(tcx: &TyCtxt) {
     let mut overlap = OverlapChecker { tcx: tcx,
                                        traits_checked: DefIdSet(),
                                        default_impls: DefIdMap() };
@@ -34,7 +34,7 @@ pub fn check(tcx: &ty::ctxt) {
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx ty::ctxt<'tcx>,
+    tcx: &'cx TyCtxt<'tcx>,
 
     // The set of traits where we have checked for overlap.  This is
     // used to avoid checking the same trait twice.

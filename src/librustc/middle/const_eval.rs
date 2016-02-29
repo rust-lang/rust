@@ -22,7 +22,7 @@ use middle::def::Def;
 use middle::subst::Subst;
 use middle::def_id::DefId;
 use middle::pat_util::def_to_path;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
 use util::nodemap::NodeMap;
@@ -46,7 +46,7 @@ use std::mem::transmute;
 use std::{i8, i16, i32, i64, u8, u16, u32, u64};
 use std::rc::Rc;
 
-fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
+fn lookup_variant_by_id<'a>(tcx: &'a TyCtxt,
                             enum_def: DefId,
                             variant_def: DefId)
                             -> Option<&'a Expr> {
@@ -84,7 +84,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
 /// `maybe_ref_id` and `param_substs` are optional and are used for
 /// finding substitutions in associated constants. This generally
 /// happens in late/trans const evaluation.
-pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
+pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                                         def_id: DefId,
                                         maybe_ref_id: Option<ast::NodeId>,
                                         param_substs: Option<&'tcx subst::Substs<'tcx>>)
@@ -189,7 +189,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
     }
 }
 
-fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: DefId)
+fn inline_const_fn_from_external_crate(tcx: &TyCtxt, def_id: DefId)
                                        -> Option<ast::NodeId> {
     match tcx.extern_const_fns.borrow().get(&def_id) {
         Some(&ast::DUMMY_NODE_ID) => return None,
@@ -212,7 +212,7 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: DefId)
     fn_id
 }
 
-pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: DefId)
+pub fn lookup_const_fn_by_id<'tcx>(tcx: &TyCtxt<'tcx>, def_id: DefId)
                                    -> Option<FnLikeNode<'tcx>>
 {
     let fn_id = if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
@@ -322,7 +322,7 @@ impl ConstVal {
     }
 }
 
-pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat> {
+pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
             PatKind::Tup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect()),
@@ -382,7 +382,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
     P(hir::Pat { id: expr.id, node: pat, span: span })
 }
 
-pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> ConstVal {
+pub fn eval_const_expr(tcx: &TyCtxt, e: &Expr) -> ConstVal {
     match eval_const_expr_partial(tcx, e, ExprTypeChecked, None) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(s.span, &s.description())
@@ -542,7 +542,7 @@ pub enum IntTy { I8, I16, I32, I64 }
 pub enum UintTy { U8, U16, U32, U64 }
 
 impl IntTy {
-    pub fn from(tcx: &ty::ctxt, t: ast::IntTy) -> IntTy {
+    pub fn from(tcx: &TyCtxt, t: ast::IntTy) -> IntTy {
         let t = if let ast::IntTy::Is = t {
             tcx.sess.target.int_type
         } else {
@@ -559,7 +559,7 @@ impl IntTy {
 }
 
 impl UintTy {
-    pub fn from(tcx: &ty::ctxt, t: ast::UintTy) -> UintTy {
+    pub fn from(tcx: &TyCtxt, t: ast::UintTy) -> UintTy {
         let t = if let ast::UintTy::Us = t {
             tcx.sess.target.uint_type
         } else {
@@ -810,7 +810,7 @@ pub_fn_checked_op!{ const_uint_checked_shr_via_int(a: u64, b: i64,.. UintTy) {
 /// guaranteed to be evaluatable. `ty_hint` is usually ExprTypeChecked,
 /// but a few places need to evaluate constants during type-checking, like
 /// computing the length of an array. (See also the FIXME above EvalHint.)
-pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                                      e: &Expr,
                                      ty_hint: EvalHint<'tcx>,
                                      fn_args: FnArgMap) -> EvalResult {
@@ -1222,7 +1222,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
     Ok(result)
 }
 
-fn impl_or_trait_container(tcx: &ty::ctxt, def_id: DefId) -> ty::ImplOrTraitItemContainer {
+fn impl_or_trait_container(tcx: &TyCtxt, def_id: DefId) -> ty::ImplOrTraitItemContainer {
     // This is intended to be equivalent to tcx.impl_or_trait_item(def_id).container()
     // for local def_id, but it can be called before tcx.impl_or_trait_items is complete.
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
@@ -1239,7 +1239,7 @@ fn impl_or_trait_container(tcx: &ty::ctxt, def_id: DefId) -> ty::ImplOrTraitItem
     panic!("{:?} is not local", def_id);
 }
 
-fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
+fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                                                 ti: &'tcx hir::TraitItem,
                                                 trait_id: DefId,
                                                 rcvr_substs: subst::Substs<'tcx>)
@@ -1289,7 +1289,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
     }
 }
 
-fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: Ty) -> CastResult {
+fn cast_const<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstVal, ty: Ty) -> CastResult {
     macro_rules! convert_val {
         ($intermediate_ty:ty, $const_type:ident, $target_ty:ty) => {
             match val {
@@ -1385,7 +1385,7 @@ pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
     })
 }
 
-pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn compare_lit_exprs<'tcx>(tcx: &TyCtxt<'tcx>,
                                a: &Expr,
                                b: &Expr) -> Option<Ordering> {
     let a = match eval_const_expr_partial(tcx, a, ExprTypeChecked, None) {

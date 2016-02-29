@@ -17,9 +17,9 @@ use rustc::session::{Session, CompileResult, compile_result_from_err_count};
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::middle::{dependency_format, stability, ty, reachable};
+use rustc::middle::{self, dependency_format, stability, ty, reachable};
 use rustc::middle::privacy::AccessLevels;
-use rustc::middle;
+use rustc::middle::ty::TyCtxt;
 use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
 use rustc_borrowck as borrowck;
@@ -313,7 +313,7 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
     pub mir_map: Option<&'a MirMap<'tcx>>,
     pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
-    pub tcx: Option<&'a ty::ctxt<'tcx>>,
+    pub tcx: Option<&'a TyCtxt<'tcx>>,
     pub lcx: Option<&'a LoweringContext<'a>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
@@ -389,7 +389,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
                             mir_map: Option<&'a MirMap<'tcx>>,
-                            tcx: &'a ty::ctxt<'tcx>,
+                            tcx: &'a TyCtxt<'tcx>,
                             lcx: &'a LoweringContext<'a>,
                             crate_name: &'a str)
                             -> CompileState<'a, 'ast, 'tcx> {
@@ -730,7 +730,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> Result<R, usize>
-    where F: FnOnce(&ty::ctxt<'tcx>, Option<MirMap<'tcx>>, ty::CrateAnalysis, CompileResult) -> R
+    where F: FnOnce(&TyCtxt<'tcx>, Option<MirMap<'tcx>>, ty::CrateAnalysis, CompileResult) -> R
 {
     macro_rules! try_with_f {
         ($e: expr, ($t: expr, $m: expr, $a: expr)) => {
@@ -803,7 +803,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let index = stability::Index::new(&hir_map);
 
-    ty::ctxt::create_and_enter(sess,
+    TyCtxt::create_and_enter(sess,
                                arenas,
                                def_map,
                                named_region_map,
@@ -913,7 +913,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
                                        mut mir_map: MirMap<'tcx>,
                                        analysis: ty::CrateAnalysis)
                                        -> trans::CrateTranslation {

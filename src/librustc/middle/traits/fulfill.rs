@@ -10,7 +10,7 @@
 
 use dep_graph::DepGraph;
 use middle::infer::InferCtxt;
-use middle::ty::{self, Ty, TypeFoldable, ToPolyTraitRef};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable, ToPolyTraitRef};
 use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
 use std::iter;
 use syntax::ast;
@@ -237,7 +237,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     fn is_duplicate_or_add(&mut self,
-                           tcx: &ty::ctxt<'tcx>,
+                           tcx: &TyCtxt<'tcx>,
                            predicate: &ty::Predicate<'tcx>)
                            -> bool {
         // For "global" predicates -- that is, predicates that don't

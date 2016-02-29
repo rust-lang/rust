@@ -34,7 +34,7 @@ use session::Session;
 
 use middle::def::Def;
 use middle::def_id::DefId;
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 
 use std::fs::File;
 use std::hash::*;
@@ -65,7 +65,7 @@ macro_rules! down_cast_data {
 pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
-    tcx: &'l ty::ctxt<'tcx>,
+    tcx: &'l TyCtxt<'tcx>,
     analysis: &'l ty::CrateAnalysis<'l>,
 
     span: SpanUtils<'l>,
@@ -83,7 +83,7 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
 }
 
 impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
-    pub fn new(tcx: &'l ty::ctxt<'tcx>,
+    pub fn new(tcx: &'l TyCtxt<'tcx>,
                lcx: &'l LoweringContext<'l>,
                analysis: &'l ty::CrateAnalysis<'l>,
                output_file: Box<File>)

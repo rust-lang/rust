@@ -11,7 +11,7 @@
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, ToPredicate, ToPolyTraitRef};
+use middle::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use syntax::codemap::Span;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
@@ -19,12 +19,12 @@ use util::nodemap::FnvHashSet;
 use super::{Obligation, ObligationCause, PredicateObligation};
 
 struct PredicateSet<'a,'tcx:'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     set: FnvHashSet<ty::Predicate<'tcx>>,
 }
 
 impl<'a,'tcx> PredicateSet<'a,'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>) -> PredicateSet<'a,'tcx> {
+    fn new(tcx: &'a TyCtxt<'tcx>) -> PredicateSet<'a,'tcx> {
         PredicateSet { tcx: tcx, set: FnvHashSet() }
     }
 
@@ -77,13 +77,13 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
 /// Foo : 'static`, and we know that `T : Foo`, then we know that `T :
 /// 'static`.
 pub struct Elaborator<'cx, 'tcx:'cx> {
-    tcx: &'cx ty::ctxt<'tcx>,
+    tcx: &'cx TyCtxt<'tcx>,
     stack: Vec<ty::Predicate<'tcx>>,
     visited: PredicateSet<'cx,'tcx>,
 }
 
 pub fn elaborate_trait_ref<'cx, 'tcx>(
-    tcx: &'cx ty::ctxt<'tcx>,
+    tcx: &'cx TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
     -> Elaborator<'cx, 'tcx>
 {
@@ -91,7 +91,7 @@ pub fn elaborate_trait_ref<'cx, 'tcx>(
 }
 
 pub fn elaborate_trait_refs<'cx, 'tcx>(
-    tcx: &'cx ty::ctxt<'tcx>,
+    tcx: &'cx TyCtxt<'tcx>,
     trait_refs: &[ty::PolyTraitRef<'tcx>])
     -> Elaborator<'cx, 'tcx>
 {
@@ -102,7 +102,7 @@ pub fn elaborate_trait_refs<'cx, 'tcx>(
 }
 
 pub fn elaborate_predicates<'cx, 'tcx>(
-    tcx: &'cx ty::ctxt<'tcx>,
+    tcx: &'cx TyCtxt<'tcx>,
     mut predicates: Vec<ty::Predicate<'tcx>>)
     -> Elaborator<'cx, 'tcx>
 {
@@ -205,14 +205,14 @@ impl<'cx, 'tcx> Iterator for Elaborator<'cx, 'tcx> {
 
 pub type Supertraits<'cx, 'tcx> = FilterToTraits<Elaborator<'cx, 'tcx>>;
 
-pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
+pub fn supertraits<'cx, 'tcx>(tcx: &'cx TyCtxt<'tcx>,
                               trait_ref: ty::PolyTraitRef<'tcx>)
                               -> Supertraits<'cx, 'tcx>
 {
     elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
-pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
+pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx TyCtxt<'tcx>,
                                     bounds: &[ty::PolyTraitRef<'tcx>])
                                     -> Supertraits<'cx, 'tcx>
 {
@@ -223,12 +223,12 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 // Iterator over def-ids of supertraits
 
 pub struct SupertraitDefIds<'cx, 'tcx:'cx> {
-    tcx: &'cx ty::ctxt<'tcx>,
+    tcx: &'cx TyCtxt<'tcx>,
     stack: Vec<DefId>,
     visited: FnvHashSet<DefId>,
 }
 
-pub fn supertrait_def_ids<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
+pub fn supertrait_def_ids<'cx, 'tcx>(tcx: &'cx TyCtxt<'tcx>,
                                      trait_def_id: DefId)
                                      -> SupertraitDefIds<'cx, 'tcx>
 {
@@ -330,7 +330,7 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 }
 
 pub fn trait_ref_for_builtin_bound<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &TyCtxt<'tcx>,
     builtin_bound: ty::BuiltinBound,
     param_ty: Ty<'tcx>)
     -> Result<ty::TraitRef<'tcx>, ErrorReported>
@@ -364,7 +364,7 @@ pub fn predicate_for_trait_ref<'tcx>(
 }
 
 pub fn predicate_for_trait_def<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &TyCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
     trait_def_id: DefId,
     recursion_depth: usize,
@@ -380,7 +380,7 @@ pub fn predicate_for_trait_def<'tcx>(
 }
 
 pub fn predicate_for_builtin_bound<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &TyCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
     builtin_bound: ty::BuiltinBound,
     recursion_depth: usize,
@@ -394,7 +394,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
 /// Cast a trait reference into a reference to one of its super
 /// traits; returns `None` if `target_trait_def_id` is not a
 /// supertrait.
-pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn upcast<'tcx>(tcx: &TyCtxt<'tcx>,
                     source_trait_ref: ty::PolyTraitRef<'tcx>,
                     target_trait_def_id: DefId)
                     -> Vec<ty::PolyTraitRef<'tcx>>
@@ -411,7 +411,7 @@ pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// Given a trait `trait_ref`, returns the number of vtable entries
 /// that come from `trait_ref`, excluding its supertraits. Used in
 /// computing the vtable base for an upcast trait of a trait object.
-pub fn count_own_vtable_entries<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn count_own_vtable_entries<'tcx>(tcx: &TyCtxt<'tcx>,
                                       trait_ref: ty::PolyTraitRef<'tcx>)
                                       -> usize {
     let mut entries = 0;
@@ -428,7 +428,7 @@ pub fn count_own_vtable_entries<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// Given an upcast trait object described by `object`, returns the
 /// index of the method `method_def_id` (which should be part of
 /// `object.upcast_trait_ref`) within the vtable for `object`.
-pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn get_vtable_index_of_object_method<'tcx>(tcx: &TyCtxt<'tcx>,
                                                object: &super::VtableObjectData<'tcx>,
                                                method_def_id: DefId) -> usize {
     // Count number of methods preceding the one we are selecting and
@@ -457,7 +457,7 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub enum TupleArgumentsFlag { Yes, No }
 
 pub fn closure_trait_ref_and_return_type<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
     sig: &ty::PolyFnSig<'tcx>,

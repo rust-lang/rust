@@ -12,7 +12,7 @@ use dep_graph::DepNode;
 use util::nodemap::NodeMap;
 use mir::repr::Mir;
 use mir::transform::MirPass;
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 use middle::infer;
 
 pub struct MirMap<'tcx> {
@@ -20,7 +20,7 @@ pub struct MirMap<'tcx> {
 }
 
 impl<'tcx> MirMap<'tcx> {
-    pub fn run_passes(&mut self, passes: &mut [Box<MirPass>], tcx: &ty::ctxt<'tcx>) {
+    pub fn run_passes(&mut self, passes: &mut [Box<MirPass>], tcx: &TyCtxt<'tcx>) {
         if passes.is_empty() { return; }
 
         for (&id, mir) in &mut self.map {

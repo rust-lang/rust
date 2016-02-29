@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::def_id::{DefId};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use util::common::MemoizationMap;
 use util::nodemap::FnvHashMap;
 
@@ -89,7 +89,7 @@ impl TypeContents {
         self.intersects(TC::InteriorUnsafe)
     }
 
-    pub fn needs_drop(&self, _: &ty::ctxt) -> bool {
+    pub fn needs_drop(&self, _: &TyCtxt) -> bool {
         self.intersects(TC::NeedsDrop)
     }
 
@@ -140,10 +140,10 @@ impl fmt::Debug for TypeContents {
 }
 
 impl<'tcx> ty::TyS<'tcx> {
-    pub fn type_contents(&'tcx self, cx: &ty::ctxt<'tcx>) -> TypeContents {
+    pub fn type_contents(&'tcx self, cx: &TyCtxt<'tcx>) -> TypeContents {
         return cx.tc_cache.memoize(self, || tc_ty(cx, self, &mut FnvHashMap()));
 
-        fn tc_ty<'tcx>(cx: &ty::ctxt<'tcx>,
+        fn tc_ty<'tcx>(cx: &TyCtxt<'tcx>,
                        ty: Ty<'tcx>,
                        cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
         {
@@ -255,7 +255,7 @@ impl<'tcx> ty::TyS<'tcx> {
             result
         }
 
-        fn apply_lang_items(cx: &ty::ctxt, did: DefId, tc: TypeContents)
+        fn apply_lang_items(cx: &TyCtxt, did: DefId, tc: TypeContents)
                             -> TypeContents {
             if Some(did) == cx.lang_items.unsafe_cell_type() {
                 tc | TC::InteriorUnsafe

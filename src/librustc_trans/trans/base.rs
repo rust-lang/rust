@@ -43,7 +43,7 @@ use middle::weak_lang_items;
 use middle::pat_util::simple_name;
 use middle::subst::{self, Substs};
 use middle::traits;
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
@@ -1471,7 +1471,7 @@ impl<'v> Visitor<'v> for FindNestedReturn {
     }
 }
 
-fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
+fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
     let blk = match tcx.map.find(id) {
         Some(hir_map::NodeItem(i)) => {
             match i.node {
@@ -1527,7 +1527,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
 // part of a larger expression that may have already partially-filled the
 // return slot alloca. This can cause errors related to clean-up due to
 // the clobbering of the existing value in the return slot.
-fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
+fn has_nested_returns(tcx: &TyCtxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
     for index in cfg.graph.depth_traverse(cfg.entry) {
         let n = cfg.graph.node_data(index);
         match tcx.map.find(n.id()) {
@@ -3137,7 +3137,7 @@ pub fn filter_reachable_ids(ccx: &SharedCrateContext) -> NodeSet {
     }).collect()
 }
 
-pub fn trans_crate<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
                          mir_map: &MirMap<'tcx>,
                          analysis: ty::CrateAnalysis)
                          -> CrateTranslation {
