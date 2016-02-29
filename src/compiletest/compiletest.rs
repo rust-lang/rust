@@ -118,9 +118,23 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         }
     }
 
+    fn make_absolute(path: PathBuf) -> PathBuf {
+        if path.is_relative() {
+            env::current_dir().unwrap().join(path)
+        } else {
+            path
+        }
+    }
+
+    let filter = if !matches.free.is_empty() {
+        Some(matches.free[0].clone())
+    } else {
+        None
+    };
+
     Config {
-        compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
-        run_lib_path: matches.opt_str("run-lib-path").unwrap(),
+        compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
+        run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
         rustdoc_path: opt_path(matches, "rustdoc-path"),
         python: matches.opt_str("python").unwrap(),
