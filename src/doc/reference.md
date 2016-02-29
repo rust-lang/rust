@@ -4065,7 +4065,7 @@ the guarantee that these issues are never caused by safe code.
 * Breaking the [pointer aliasing
   rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
   with raw pointers (a subset of the rules used by C)
-* `&mut` and `&` follow LLVM’s scoped [noalias] model, except if the `&T`
+* `&mut T` and `&T` follow LLVM’s scoped [noalias] model, except if the `&T`
   contains an `UnsafeCell<U>`. Unsafe code must not violate these aliasing
   guarantees.
 * Mutating non-mutable data (that is, data reached through a shared reference or
