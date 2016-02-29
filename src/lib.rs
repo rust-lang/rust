@@ -51,6 +51,7 @@ pub mod cyclomatic_complexity;
 pub mod derive;
 pub mod drop_ref;
 pub mod entry;
+pub mod enum_clike;
 pub mod enum_glob_use;
 pub mod enum_variants;
 pub mod eq_op;
@@ -108,6 +109,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box eq_op::EqOp);
     reg.register_early_lint_pass(box enum_variants::EnumVariantNames);
     reg.register_late_lint_pass(box enum_glob_use::EnumGlobUse);
+    reg.register_late_lint_pass(box enum_clike::EnumClikeUnportableVariant);
     reg.register_late_lint_pass(box bit_mask::BitMask);
     reg.register_late_lint_pass(box ptr_arg::PtrArg);
     reg.register_late_lint_pass(box needless_bool::NeedlessBool);
@@ -211,6 +213,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         derive::EXPL_IMPL_CLONE_ON_COPY,
         drop_ref::DROP_REF,
         entry::MAP_ENTRY,
+        enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
         enum_variants::ENUM_VARIANT_NAMES,
         eq_op::EQ_OP,
         escape::BOXED_LOCAL,
