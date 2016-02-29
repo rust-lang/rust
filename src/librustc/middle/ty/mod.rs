@@ -75,7 +75,7 @@ pub use self::sty::BuiltinBound::Copy as BoundCopy;
 pub use self::sty::BuiltinBound::Sync as BoundSync;
 
 pub use self::contents::TypeContents;
-pub use self::context::{ctxt, tls};
+pub use self::context::{TyCtxt, tls};
 pub use self::context::{CtxtArenas, Lift, Tables};
 
 pub use self::trait_def::{TraitDef, TraitFlags};
@@ -699,7 +699,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         }
     }
 
-    pub fn instantiate(&self, tcx: &ctxt<'tcx>, substs: &Substs<'tcx>)
+    pub fn instantiate(&self, tcx: &TyCtxt<'tcx>, substs: &Substs<'tcx>)
                        -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
             predicates: self.predicates.subst(tcx, substs),
@@ -707,7 +707,7 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 
     pub fn instantiate_supertrait(&self,
-                                  tcx: &ctxt<'tcx>,
+                                  tcx: &TyCtxt<'tcx>,
                                   poly_trait_ref: &ty::PolyTraitRef<'tcx>)
                                   -> InstantiatedPredicates<'tcx>
     {
@@ -751,7 +751,7 @@ impl<'tcx> Predicate<'tcx> {
     /// substitution in terms of what happens with bound regions.  See
     /// lengthy comment below for details.
     pub fn subst_supertrait(&self,
-                            tcx: &ctxt<'tcx>,
+                            tcx: &TyCtxt<'tcx>,
                             trait_ref: &ty::PolyTraitRef<'tcx>)
                             -> ty::Predicate<'tcx>
     {
@@ -1111,7 +1111,7 @@ impl<'tcx> TraitRef<'tcx> {
 /// more distinctions clearer.
 #[derive(Clone)]
 pub struct ParameterEnvironment<'a, 'tcx:'a> {
-    pub tcx: &'a ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
 
     /// See `construct_free_substs` for details.
     pub free_substs: Substs<'tcx>,
@@ -1160,7 +1160,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         }
     }
 
-    pub fn for_item(cx: &'a ctxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
+    pub fn for_item(cx: &'a TyCtxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
@@ -1460,7 +1460,7 @@ impl VariantKind {
 }
 
 impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
-    fn new(tcx: &ctxt<'tcx>,
+    fn new(tcx: &TyCtxt<'tcx>,
            did: DefId,
            kind: AdtKind,
            variants: Vec<VariantDefData<'tcx, 'container>>) -> Self {
@@ -1489,7 +1489,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
         }
     }
 
-    fn calculate_dtorck(&'tcx self, tcx: &ctxt<'tcx>) {
+    fn calculate_dtorck(&'tcx self, tcx: &TyCtxt<'tcx>) {
         if tcx.is_adt_dtorck(self) {
             self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
         }
@@ -1510,7 +1510,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// true, this type being safe for destruction requires it to be
     /// alive; Otherwise, only the contents are required to be.
     #[inline]
-    pub fn is_dtorck(&'tcx self, tcx: &ctxt<'tcx>) -> bool {
+    pub fn is_dtorck(&'tcx self, tcx: &TyCtxt<'tcx>) -> bool {
         if !self.flags.get().intersects(AdtFlags::IS_DTORCK_VALID) {
             self.calculate_dtorck(tcx)
         }
@@ -1551,12 +1551,12 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     }
 
     #[inline]
-    pub fn type_scheme(&self, tcx: &ctxt<'tcx>) -> TypeScheme<'tcx> {
+    pub fn type_scheme(&self, tcx: &TyCtxt<'tcx>) -> TypeScheme<'tcx> {
         tcx.lookup_item_type(self.did)
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: &ctxt<'tcx>) -> GenericPredicates<'tcx> {
+    pub fn predicates(&self, tcx: &TyCtxt<'tcx>) -> GenericPredicates<'tcx> {
         tcx.lookup_predicates(self.did)
     }
 
@@ -1674,7 +1674,7 @@ impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
         }
     }
 
-    pub fn ty(&self, tcx: &ctxt<'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
+    pub fn ty(&self, tcx: &TyCtxt<'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
         self.unsubst_ty().subst(tcx, subst)
     }
 
@@ -1705,7 +1705,7 @@ pub enum ClosureKind {
 }
 
 impl ClosureKind {
-    pub fn trait_did(&self, cx: &ctxt) -> DefId {
+    pub fn trait_did(&self, cx: &TyCtxt) -> DefId {
         let result = match *self {
             FnClosureKind => cx.lang_items.require(FnTraitLangItem),
             FnMutClosureKind => {
@@ -1855,7 +1855,7 @@ impl BorrowKind {
     }
 }
 
-impl<'tcx> ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn node_id_to_type(&self, id: NodeId) -> Ty<'tcx> {
         match self.node_id_to_type_opt(id) {
            Some(ty) => ty,
@@ -2666,7 +2666,7 @@ pub type TraitMap = NodeMap<Vec<DefId>>;
 // imported.
 pub type GlobMap = HashMap<NodeId, HashSet<Name>>;
 
-impl<'tcx> ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn with_freevars<T, F>(&self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[Freevar]) -> T,
     {

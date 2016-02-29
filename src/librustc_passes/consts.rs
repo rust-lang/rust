@@ -36,7 +36,7 @@ use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::traits;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;
@@ -65,7 +65,7 @@ enum Mode {
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     mode: Mode,
     qualif: ConstQualif,
     rvalue_borrows: NodeMap<hir::Mutability>
@@ -788,7 +788,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     tcx.visit_all_items_in_krate(DepNode::CheckConst, &mut CheckCrateVisitor {
         tcx: tcx,
         mode: Mode::Var,

@@ -20,7 +20,7 @@ use rustc_trans::back::link;
 use {driver, abort_on_err};
 
 use rustc::dep_graph::DepGraph;
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
@@ -431,7 +431,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 
 
 struct TypedAnnotation<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 }
 
 impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
@@ -913,7 +913,7 @@ pub fn pretty_print_input(sess: Session,
 }
 
 fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
-                             tcx: &ty::ctxt,
+                             tcx: &TyCtxt,
                              code: blocks::Code,
                              mode: PpFlowGraphMode,
                              mut out: W)

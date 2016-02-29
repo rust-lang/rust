@@ -18,7 +18,7 @@
 extern crate rustc_llvm as llvm;
 extern crate rustc;
 
-use rustc::middle::ty;
+use rustc::middle::ty::TyCtxt;
 
 pub struct Intrinsic {
     pub inputs: Vec<Type>,
@@ -66,7 +66,7 @@ mod arm;
 mod aarch64;
 
 impl Intrinsic {
-    pub fn find<'tcx>(tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
+    pub fn find<'tcx>(tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {
         if name.starts_with("x86_") {
             x86::find(tcx, name)
         } else if name.starts_with("arm_") {

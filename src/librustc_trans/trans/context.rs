@@ -27,7 +27,7 @@ use trans::monomorphize::MonoId;
 use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
 use middle::subst::Substs;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
 use util::sha2::Sha256;
@@ -70,7 +70,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
     symbol_hasher: RefCell<Sha256>,
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     stats: Stats,
     check_overflow: bool,
     check_drop_flag_for_sanity: bool,
@@ -271,7 +271,7 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(crate_name: &str,
                local_count: usize,
-               tcx: &'b ty::ctxt<'tcx>,
+               tcx: &'b TyCtxt<'tcx>,
                mir_map: &'b MirMap<'tcx>,
                export_map: ExportMap,
                symbol_hasher: Sha256,
@@ -430,7 +430,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.link_meta
     }
 
-    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    pub fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -574,7 +574,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
 
-    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    pub fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
         self.shared.tcx
     }
 

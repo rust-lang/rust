@@ -112,7 +112,7 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use middle::def::*;
 use middle::pat_util;
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 use lint;
 use util::nodemap::NodeMap;
 
@@ -166,7 +166,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &TyCtxt) -> String {
     let cm = cx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
@@ -192,7 +192,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &hir::Arm) { visit_arm(self, a); }
 }
 
-pub fn check_crate(tcx: &ty::ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     let _task = tcx.dep_graph.in_task(DepNode::Liveness);
     tcx.map.krate().visit_all_items(&mut IrMaps::new(tcx));
     tcx.sess.abort_if_errors();
@@ -260,7 +260,7 @@ enum VarKind {
 }
 
 struct IrMaps<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 
     num_live_nodes: usize,
     num_vars: usize,
@@ -272,7 +272,7 @@ struct IrMaps<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>) -> IrMaps<'a, 'tcx> {
+    fn new(tcx: &'a TyCtxt<'tcx>) -> IrMaps<'a, 'tcx> {
         IrMaps {
             tcx: tcx,
             num_live_nodes: 0,

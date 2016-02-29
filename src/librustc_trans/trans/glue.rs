@@ -20,7 +20,7 @@ use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst::{Substs};
 use middle::traits;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
 use trans::base::*;
@@ -89,7 +89,7 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn type_needs_drop<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_needs_drop<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
 }
 

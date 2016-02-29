@@ -23,7 +23,7 @@ use super::util;
 
 use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
-use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
@@ -257,7 +257,7 @@ impl<'a,'b,'tcx> AssociatedTypeNormalizer<'a,'b,'tcx> {
 }
 
 impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &TyCtxt<'tcx> {
         self.selcx.tcx()
     }
 

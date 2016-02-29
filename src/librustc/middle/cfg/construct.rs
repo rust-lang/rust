@@ -12,14 +12,14 @@ use rustc_data_structures::graph;
 use middle::cfg::*;
 use middle::def::Def;
 use middle::pat_util;
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::ptr::P;
 
 use rustc_front::hir::{self, PatKind};
 
 struct CFGBuilder<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
     loop_scopes: Vec<LoopScope>,
@@ -32,7 +32,7 @@ struct LoopScope {
     break_index: CFGIndex,    // where to go on a `break
 }
 
-pub fn construct(tcx: &ty::ctxt,
+pub fn construct(tcx: &TyCtxt,
                  blk: &hir::Block) -> CFG {
     let mut graph = graph::Graph::new();
     let entry = graph.add_node(CFGNodeData::Entry);

@@ -12,7 +12,7 @@
 //! Uses `Graph` as the underlying representation.
 
 use rustc_data_structures::graph;
-use middle::ty;
+use middle::ty::TyCtxt;
 use syntax::ast;
 use rustc_front::hir;
 
@@ -58,7 +58,7 @@ pub type CFGNode = graph::Node<CFGNodeData>;
 pub type CFGEdge = graph::Edge<CFGEdgeData>;
 
 impl CFG {
-    pub fn new(tcx: &ty::ctxt,
+    pub fn new(tcx: &TyCtxt,
                blk: &hir::Block) -> CFG {
         construct::construct(tcx, blk)
     }

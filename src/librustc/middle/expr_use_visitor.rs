@@ -24,8 +24,7 @@ use middle::def::Def;
 use middle::def_id::{DefId};
 use middle::infer;
 use middle::mem_categorization as mc;
-use middle::ty;
-use middle::ty::adjustment;
+use middle::ty::{self, TyCtxt, adjustment};
 
 use rustc_front::hir::{self, PatKind};
 
@@ -210,7 +209,7 @@ enum OverloadedCallType {
 }
 
 impl OverloadedCallType {
-    fn from_trait_id(tcx: &ty::ctxt, trait_id: DefId)
+    fn from_trait_id(tcx: &TyCtxt, trait_id: DefId)
                      -> OverloadedCallType {
         for &(maybe_function_trait, overloaded_call_type) in &[
             (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
@@ -228,7 +227,7 @@ impl OverloadedCallType {
         tcx.sess.bug("overloaded call didn't map to known function trait")
     }
 
-    fn from_method_id(tcx: &ty::ctxt, method_id: DefId)
+    fn from_method_id(tcx: &TyCtxt, method_id: DefId)
                       -> OverloadedCallType {
         let method = tcx.impl_or_trait_item(method_id);
         OverloadedCallType::from_trait_id(tcx, method.container().id())
@@ -307,7 +306,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         }
     }
 
-    fn tcx(&self) -> &'t ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'t TyCtxt<'tcx> {
         self.typer.tcx
     }
 

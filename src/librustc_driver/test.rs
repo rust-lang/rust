@@ -22,7 +22,7 @@ use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
-use rustc_typeck::middle::ty::{self, Ty, TypeFoldable};
+use rustc_typeck::middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_typeck::middle::ty::relate::TypeRelation;
 use rustc_typeck::middle::infer::{self, TypeOrigin};
 use rustc_typeck::middle::infer::lub::Lub;
@@ -133,7 +133,7 @@ fn test_env<F>(source_string: &str,
     let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &def_map.borrow());
     let region_map = region::resolve_crate(&sess, &ast_map);
     let index = stability::Index::new(&ast_map);
-    ty::ctxt::create_and_enter(&sess,
+    TyCtxt::create_and_enter(&sess,
                                &arenas,
                                def_map,
                                named_region_map.unwrap(),
@@ -153,7 +153,7 @@ fn test_env<F>(source_string: &str,
 }
 
 impl<'a, 'tcx> Env<'a, 'tcx> {
-    pub fn tcx(&self) -> &ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

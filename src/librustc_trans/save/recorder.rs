@@ -15,7 +15,7 @@ use super::span_utils::SpanUtils;
 
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
-use middle::ty;
+use middle::ty::TyCtxt;
 
 use std::io::Write;
 
@@ -55,7 +55,7 @@ impl Recorder {
 pub struct FmtStrs<'a, 'tcx: 'a> {
     pub recorder: Box<Recorder>,
     span: SpanUtils<'a>,
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 }
 
 macro_rules! s { ($e:expr) => { format!("{}", $e) }}
@@ -103,7 +103,7 @@ pub enum Row {
 impl<'a, 'tcx: 'a> FmtStrs<'a, 'tcx> {
     pub fn new(rec: Box<Recorder>,
                span: SpanUtils<'a>,
-               tcx: &'a ty::ctxt<'tcx>)
+               tcx: &'a TyCtxt<'tcx>)
                -> FmtStrs<'a, 'tcx> {
         FmtStrs {
             recorder: rec,

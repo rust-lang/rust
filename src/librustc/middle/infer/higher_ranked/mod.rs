@@ -14,7 +14,7 @@
 use super::{CombinedSnapshot, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::CombineFields;
 
-use middle::ty::{self, Binder, TypeFoldable};
+use middle::ty::{self, TyCtxt, Binder, TypeFoldable};
 use middle::ty::error::TypeError;
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax::codemap::Span;
@@ -351,7 +351,7 @@ fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     }
 }
 
-fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
+fn fold_regions_in<'tcx, T, F>(tcx: &TyCtxt<'tcx>,
                                unbound_value: &T,
                                mut fldr: F)
                                -> T

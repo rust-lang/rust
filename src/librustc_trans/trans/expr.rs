@@ -73,7 +73,7 @@ use trans::Disr;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use middle::ty::adjustment::CustomCoerceUnsized;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::MethodCall;
 use middle::ty::cast::{CastKind, CastTy};
 use util::common::indenter;
@@ -723,7 +723,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                               base: &hir::Expr,
                               get_idx: F)
                               -> DatumBlock<'blk, 'tcx, Expr> where
-    F: FnOnce(&'blk ty::ctxt<'tcx>, &VariantInfo<'tcx>) -> usize,
+    F: FnOnce(&'blk TyCtxt<'tcx>, &VariantInfo<'tcx>) -> usize,
 {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
@@ -1998,7 +1998,7 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     bcx
 }
 
-pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn cast_is_noop<'tcx>(tcx: &TyCtxt<'tcx>,
                           expr: &hir::Expr,
                           t_in: Ty<'tcx>,
                           t_out: Ty<'tcx>)
@@ -2365,7 +2365,7 @@ impl OverflowOpViaIntrinsic {
         let name = self.to_intrinsic_name(bcx.tcx(), lhs_ty);
         bcx.ccx().get_intrinsic(&name)
     }
-    fn to_intrinsic_name(&self, tcx: &ty::ctxt, ty: Ty) -> &'static str {
+    fn to_intrinsic_name(&self, tcx: &TyCtxt, ty: Ty) -> &'static str {
         use syntax::ast::IntTy::*;
         use syntax::ast::UintTy::*;
         use middle::ty::{TyInt, TyUint};
@@ -2557,7 +2557,7 @@ enum ExprKind {
     RvalueStmt
 }
 
-fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
+fn expr_kind(tcx: &TyCtxt, expr: &hir::Expr) -> ExprKind {
     if tcx.is_method_call(expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:

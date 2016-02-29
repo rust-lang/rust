@@ -34,7 +34,7 @@ use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
 
 use std::fmt;
 use std::mem;
@@ -98,7 +98,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
         free_region_map: FreeRegionMap::new(),
@@ -232,7 +232,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     fn_parts: FnParts<'a>,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
@@ -264,7 +264,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 // Type definitions
 
 pub struct BorrowckCtxt<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 
     // Hacky. As we visit various fns, we have to load up the
     // free-region map for each one. This map is computed by during
@@ -394,7 +394,7 @@ pub enum LoanPathElem {
 }
 
 pub fn closure_to_block(closure_id: ast::NodeId,
-                        tcx: &ty::ctxt) -> ast::NodeId {
+                        tcx: &TyCtxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(_, _, ref block) => {
@@ -409,7 +409,7 @@ pub fn closure_to_block(closure_id: ast::NodeId,
 }
 
 impl<'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, tcx: &ty::ctxt<'tcx>) -> region::CodeExtent {
+    pub fn kill_scope(&self, tcx: &TyCtxt<'tcx>) -> region::CodeExtent {
         match self.kind {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
@@ -1157,7 +1157,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-fn statement_scope_span(tcx: &ty::ctxt, region: ty::Region) -> Option<Span> {
+fn statement_scope_span(tcx: &TyCtxt, region: ty::Region) -> Option<Span> {
     match region {
         ty::ReScope(scope) => {
             match tcx.map.find(scope.node_id(&tcx.region_maps)) {

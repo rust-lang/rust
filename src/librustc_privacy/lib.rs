@@ -42,7 +42,7 @@ use rustc::middle::def::{self, Def};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::middle::privacy::ExternalExports;
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 use rustc::front::map as ast_map;
 
@@ -63,7 +63,7 @@ type CheckResult = Option<(Span, String, Option<(Span, String)>)>;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ParentVisitor<'a, 'tcx:'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     parents: NodeMap<ast::NodeId>,
     curparent: ast::NodeId,
 }
@@ -155,7 +155,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ParentVisitor<'a, 'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     export_map: &'a def::ExportMap,
 
     // Accessibility levels for reachable nodes
@@ -472,7 +472,7 @@ impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<
 ////////////////////////////////////////////////////////////////////////////////
 
 struct PrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     curitem: ast::NodeId,
     in_foreign: bool,
     parents: NodeMap<ast::NodeId>,
@@ -972,7 +972,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct SanePrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
@@ -1043,7 +1043,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////////
 
 struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     access_levels: &'a AccessLevels,
     in_variant: bool,
     // set of errors produced by this obsolete visitor
@@ -1382,7 +1382,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
 ///////////////////////////////////////////////////////////////////////////////
 
 struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     // Do not report an error when a private type is found
     is_quiet: bool,
     // Is private component found?
@@ -1513,7 +1513,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
 }
 
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     old_error_set: &'a NodeSet,
 }
 
@@ -1603,7 +1603,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
+pub fn check_crate(tcx: &TyCtxt,
                    export_map: &def::ExportMap,
                    external_exports: ExternalExports)
                    -> AccessLevels {

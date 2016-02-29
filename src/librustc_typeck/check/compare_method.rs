@@ -11,7 +11,7 @@
 use middle::free_region::FreeRegionMap;
 use middle::infer::{self, TypeOrigin};
 use middle::traits;
-use middle::ty::{self};
+use middle::ty::{self, TyCtxt};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
@@ -30,7 +30,7 @@ use super::assoc;
 /// - trait_m: the method in the trait
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
 
-pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
                                  impl_m: &ty::Method<'tcx>,
                                  impl_m_span: Span,
                                  impl_m_body_id: ast::NodeId,
@@ -364,7 +364,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
 
-    fn check_region_bounds_on_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+    fn check_region_bounds_on_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
                                                 span: Span,
                                                 impl_m: &ty::Method<'tcx>,
                                                 trait_generics: &ty::Generics<'tcx>,
@@ -408,7 +408,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn compare_const_impl<'tcx>(tcx: &TyCtxt<'tcx>,
                                 impl_c: &ty::AssociatedConst<'tcx>,
                                 impl_c_span: Span,
                                 trait_c: &ty::AssociatedConst<'tcx>,

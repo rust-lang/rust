@@ -90,7 +90,7 @@ use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::lang_items;
 use rustc::middle::subst::{Substs, Subst, VecPerParamSpace};
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::intern_and_get_ident;
@@ -551,7 +551,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
                              cfg: &mut CFG<'tcx>,
                              unit_temp: Lvalue<'tcx>,
                              scope: &mut Scope<'tcx>,
@@ -625,7 +625,7 @@ fn build_diverge_scope<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn build_free<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
                     unit_temp: Lvalue<'tcx>,
                     data: &FreeData<'tcx>,
                     target: BasicBlock) -> Terminator<'tcx> {

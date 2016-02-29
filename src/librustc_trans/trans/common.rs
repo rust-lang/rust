@@ -38,7 +38,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
 use rustc::mir::repr::Mir;
@@ -58,11 +58,11 @@ use syntax::parse::token;
 pub use trans::context::CrateContext;
 
 /// Is the type's representation size known at compile time?
-pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_is_sized<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_sized(&tcx.empty_parameter_environment(), DUMMY_SP)
 }
 
-pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_is_fat_ptr<'tcx>(cx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
@@ -184,7 +184,7 @@ pub struct VariantInfo<'tcx> {
 }
 
 impl<'tcx> VariantInfo<'tcx> {
-    pub fn from_ty(tcx: &ty::ctxt<'tcx>,
+    pub fn from_ty(tcx: &TyCtxt<'tcx>,
                    ty: Ty<'tcx>,
                    opt_def: Option<Def>)
                    -> Self
@@ -222,7 +222,7 @@ impl<'tcx> VariantInfo<'tcx> {
     }
 
     /// Return the variant corresponding to a given node (e.g. expr)
-    pub fn of_node(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>, id: ast::NodeId) -> Self {
+    pub fn of_node(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>, id: ast::NodeId) -> Self {
         let node_def = tcx.def_map.borrow().get(&id).map(|v| v.full_def());
         Self::from_ty(tcx, ty, node_def)
     }
@@ -621,7 +621,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn fcx(&self) -> &'blk FunctionContext<'blk, 'tcx> {
         self.fcx
     }
-    pub fn tcx(&self) -> &'blk ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &'blk TyCtxt<'tcx> {
         self.fcx.ccx.tcx()
     }
     pub fn sess(&self) -> &'blk Session { self.fcx.ccx.sess() }
@@ -752,7 +752,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
     pub fn fcx(&self) -> &'blk FunctionContext<'blk, 'tcx> {
         self.bcx.fcx()
     }
-    pub fn tcx(&self) -> &'blk ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &'blk TyCtxt<'tcx> {
         self.bcx.tcx()
     }
     pub fn sess(&self) -> &'blk Session {

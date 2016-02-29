@@ -13,7 +13,7 @@
 
 use rustc::middle::infer::{self, InferCtxt};
 use rustc::middle::traits;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::middle::ty::fold::TypeFoldable;
 use rustc::mir::repr::*;
 use rustc::mir::tcx::LvalueTy;
@@ -113,7 +113,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.cx.infcx.tcx
     }
 
@@ -346,7 +346,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                        a, b)
     }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

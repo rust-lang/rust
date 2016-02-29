@@ -82,7 +82,7 @@ use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::{Region, ReFree};
 use middle::ty::error::TypeError;
 
@@ -95,7 +95,7 @@ use syntax::codemap::{self, Pos, Span};
 use syntax::parse::token;
 use syntax::ptr::P;
 
-impl<'tcx> ty::ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_region(&self,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
@@ -112,7 +112,7 @@ impl<'tcx> ty::ctxt<'tcx> {
             }
         }
 
-        fn explain_span(tcx: &ty::ctxt, heading: &str, span: Span)
+        fn explain_span(tcx: &TyCtxt, heading: &str, span: Span)
                         -> (String, Option<Span>) {
             let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
             (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
@@ -419,7 +419,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
-        fn free_regions_from_same_fn(tcx: &ty::ctxt,
+        fn free_regions_from_same_fn(tcx: &TyCtxt,
                                      sub: Region,
                                      sup: Region)
                                      -> Option<FreeRegionsFromSameFn> {
@@ -1057,7 +1057,7 @@ struct RebuildPathInfo<'a> {
 }
 
 struct Rebuilder<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     fn_decl: &'a hir::FnDecl,
     expl_self_opt: Option<&'a hir::ExplicitSelf_>,
     generics: &'a hir::Generics,
@@ -1073,7 +1073,7 @@ enum FreshOrKept {
 }
 
 impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>,
+    fn new(tcx: &'a TyCtxt<'tcx>,
            fn_decl: &'a hir::FnDecl,
            expl_self_opt: Option<&'a hir::ExplicitSelf_>,
            generics: &'a hir::Generics,
@@ -1877,7 +1877,7 @@ impl<'tcx> Resolvable<'tcx> for ty::PolyTraitRef<'tcx> {
     }
 }
 
-fn lifetimes_in_scope(tcx: &ty::ctxt,
+fn lifetimes_in_scope(tcx: &TyCtxt,
                       scope_id: ast::NodeId)
                       -> Vec<hir::LifetimeDef> {
     let mut taken = Vec::new();

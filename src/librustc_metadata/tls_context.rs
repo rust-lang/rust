@@ -16,7 +16,7 @@ use rbml::opaque::Decoder as OpaqueDecoder;
 use rustc::middle::cstore::tls;
 use rustc::middle::def_id::DefId;
 use rustc::middle::subst::Substs;
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 
 use decoder::{self, Cmd};
 use encoder;
@@ -25,7 +25,7 @@ use tyencode;
 
 impl<'a, 'tcx: 'a> tls::EncodingContext<'tcx> for encoder::EncodeContext<'a, 'tcx> {
 
-    fn tcx<'s>(&'s self) -> &'s ty::ctxt<'tcx> {
+    fn tcx<'s>(&'s self) -> &'s TyCtxt<'tcx> {
         &self.tcx
     }
 
@@ -40,12 +40,12 @@ impl<'a, 'tcx: 'a> tls::EncodingContext<'tcx> for encoder::EncodeContext<'a, 'tc
 
 pub struct DecodingContext<'a, 'tcx: 'a> {
     pub crate_metadata: Cmd<'a>,
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> tls::DecodingContext<'tcx> for DecodingContext<'a, 'tcx> {
 
-    fn tcx<'s>(&'s self) -> &'s ty::ctxt<'tcx> {
+    fn tcx<'s>(&'s self) -> &'s TyCtxt<'tcx> {
         &self.tcx
     }
 
