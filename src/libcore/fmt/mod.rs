@@ -792,7 +792,9 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
         None => {
             // We can use default formatting parameters for all arguments.
             for (arg, piece) in args.args.iter().zip(pieces.by_ref()) {
-                try!(formatter.buf.write_str(*piece));
+                if !piece.is_empty() {
+                    try!(formatter.buf.write_str(*piece));
+                }
                 try!((arg.formatter)(arg.value, &mut formatter));
             }
         }
@@ -800,7 +802,9 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
             for (arg, piece) in fmt.iter().zip(pieces.by_ref()) {
-                try!(formatter.buf.write_str(*piece));
+                if !piece.is_empty() {
+                    try!(formatter.buf.write_str(*piece));
+                }
                 try!(formatter.run(arg));
             }
         }
@@ -809,7 +813,9 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
     // There can be only one trailing string piece left.
     match pieces.next() {
         Some(piece) => {
-            try!(formatter.buf.write_str(*piece));
+            if !piece.is_empty() {
+                try!(formatter.buf.write_str(*piece));
+            }
         }
         None => {}
     }
