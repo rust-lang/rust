@@ -11,12 +11,32 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, BinOpKind};
+use syntax::ast::{MetaItem, Expr, BinOpKind, ItemKind, VariantData};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+
+fn is_clike_enum(item: &Annotatable) -> bool {
+    match *item {
+        Annotatable::Item(ref item) => {
+            match item.node {
+                ItemKind::Enum(ref enum_def, _) => {
+                    enum_def.variants.iter().all(|v|
+                        if let VariantData::Unit(..) = v.node.data {
+                            true
+                        } else {
+                            false
+                        }
+                    )
+                }
+                _ => false,
+            }
+        }
+        _ => false,
+    }
+}
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
@@ -80,6 +100,12 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         } }
     }
 
+    // avoid defining `ne` if we can
+    let mut methods = vec![md!("eq", cs_eq)];
+    if !is_clike_enum(item) {
+        methods.push(md!("ne", cs_ne));
+    }
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -87,10 +113,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
-        methods: vec!(
-            md!("eq", cs_eq),
-            md!("ne", cs_ne)
-        ),
+        methods: methods,
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
