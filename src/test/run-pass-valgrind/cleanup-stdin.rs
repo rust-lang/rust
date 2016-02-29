@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
+
 fn main() {
     let _ = std::io::stdin();
     let _ = std::io::stdout();
