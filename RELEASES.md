@@ -14,60 +14,62 @@ Language
 Libraries
 ---------
 
-* Stabilized APIs:
-  [`Path::strip_prefix`][] (renamed from relative_from),
-  [`path::StripPrefixError`][] (new error type returned from strip_prefix),
-  [`Ipv4Addr::is_loopback`],
-  [`Ipv4Addr::is_private`],
-  [`Ipv4Addr::is_link_local`],
-  [`Ipv4Addr::is_multicast`],
-  [`Ipv4Addr::is_broadcast`],
-  [`Ipv4Addr::is_documentation`],
-  [`Ipv6Addr::is_unspecified`],
-  [`Ipv6Addr::is_loopback`],
-  [`Ipv6Addr::is_multicast`],
-  [`Vec::as_slice`],
-  [`Vec::as_mut_slice`],
-  [`String::as_str`],
-  [`String::as_mut_str`],
-  `<[T]>::`[`clone_from_slice`], which now requires the two slices to
-  be the same length
-  `<[T]>::`[`sort_by_key`],
-  [`i32::checked_rem`],
-  [`i32::checked_neg`],
-  [`i32::checked_shl`],
-  [`i32::checked_shr`],
-  [`i32::saturating_mul`],
-  [`i32::overflowing_add`],
-  [`i32::overflowing_sub`],
-  [`i32::overflowing_mul`],
-  [`i32::overflowing_div`],
-  [`i32::overflowing_rem`],
-  [`i32::overflowing_neg`],
-  [`i32::overflowing_shl`],
-  [`i32::overflowing_shr`],
-  [`u32::checked_rem`],
-  [`u32::checked_neg`],
-  [`u32::checked_shl`],
-  [`u32::checked_shl`],
-  [`u32::saturating_mul`],
-  [`u32::overflowing_add`],
-  [`u32::overflowing_sub`],
-  [`u32::overflowing_mul`],
-  [`u32::overflowing_div`],
-  [`u32::overflowing_rem`],
-  [`u32::overflowing_neg`],
-  [`u32::overflowing_shl`],
-  [`u32::overflowing_shr`],
-  checked, saturated, and overflowing operations for other primitive types,
-  [`ffi::IntoStringError`],
-  [`CString::into_string`],
-  [`CString::into_bytes`],
-  [`CString::into_bytes_with_nul`],
-  `From<CString> for Vec<u8>`,
-  [`IntoStringError::into_cstring`],
-  [`IntoStringError::utf8_error`],
-  `Error for IntoStringError`.
+* Stabilized APIs
+  * `Path`
+    * [`Path::strip_prefix`][] (renamed from relative_from)
+    * [`path::StripPrefixError`][] (new error type returned from strip_prefix)
+  * `Ipv4Addr`
+    * [`Ipv4Addr::is_loopback`]
+    * [`Ipv4Addr::is_private`]
+    * [`Ipv4Addr::is_link_local`]
+    * [`Ipv4Addr::is_multicast`]
+    * [`Ipv4Addr::is_broadcast`]
+    * [`Ipv4Addr::is_documentation`]
+  * `Ipv6Addr`
+    * [`Ipv6Addr::is_unspecified`]
+    * [`Ipv6Addr::is_loopback`]
+    * [`Ipv6Addr::is_multicast`]
+  * `Vec`
+    * [`Vec::as_slice`]
+    * [`Vec::as_mut_slice`]
+  * `String`
+    * [`String::as_str`]
+    * [`String::as_mut_str`]
+  * Slices
+    * `<[T]>::`[`clone_from_slice`], which now requires the two slices to
+    be the same length
+    * `<[T]>::`[`sort_by_key`]
+  * checked, saturated, and overflowing operations
+    * [`i32::checked_rem`], [`i32::checked_neg`], [`i32::checked_shl`], [`i32::checked_shr`]
+    * [`i32::saturating_mul`]
+    * [`i32::overflowing_add`], [`i32::overflowing_sub`], [`i32::overflowing_mul`], [`i32::overflowing_div`]
+    * [`i32::overflowing_rem`], [`i32::overflowing_neg`], [`i32::overflowing_shl`], [`i32::overflowing_shr`]
+    * [`u32::checked_rem`], [`u32::checked_neg`], [`u32::checked_shl`], [`u32::checked_shl`]
+    * [`u32::saturating_mul`]
+    * [`u32::overflowing_add`], [`u32::overflowing_sub`], [`u32::overflowing_mul`], [`u32::overflowing_div`]
+    * [`u32::overflowing_rem`], [`u32::overflowing_neg`], [`u32::overflowing_shl`], [`u32::overflowing_shr`]
+    * and checked, saturated, and overflowing operations for other primitive types
+  * FFI
+    * [`ffi::IntoStringError`]
+    * [`CString::into_string`]
+    * [`CString::into_bytes`]
+    * [`CString::into_bytes_with_nul`]
+    * `From<CString> for Vec<u8>`
+  * `IntoStringError`
+    * [`IntoStringError::into_cstring`]
+    * [`IntoStringError::utf8_error`]
+    * `Error for IntoStringError`
+  * Hashing
+    * [`std::hash::BuildHasher`]
+    * [`BuildHasher::Hasher`]
+    * [`BuildHasher::build_hasher`]
+    * [`std::hash::BuildHasherDefault`]
+    * [`HashMap::with_hasher`]
+    * [`HashMap::with_capacity_and_hasher`]
+    * [`HashSet::with_hasher`]
+    * [`HashSet::with_capacity_and_hasher`]
+    * [`std::collections::hash_map::RandomState`]
+    * [`RandomState::new`]
 * [Validating UTF-8 is faster by a factor of between 7 and 14x for
   ASCII input][1.7utf8]. This means that creating `String`s and `str`s
   from bytes is faster.
@@ -75,8 +77,8 @@ Libraries
   improved by using `memchr` to search for newlines][1.7m].
 * [`f32::to_degrees` and `f32::to_radians` are stable][1.7f]. The
   `f64` variants were stabilized previously.
-* [`BTreeMap` was rewritten to use less memory improve performance of
-  insertion and iteration, the latter by as much as 5x`][1.7bm].
+* [`BTreeMap` was rewritten to use less memory and improve the performance
+  of insertion and iteration, the latter by as much as 5x][1.7bm].
 * [`BTreeSet` and its iterators, `Iter`, `IntoIter`, and `Range` are
   covariant over their contained type][1.7bt].
 * [`LinkedList` and its iterators, `Iter` and `IntoIter` are covariant
@@ -89,9 +91,6 @@ Libraries
 Misc
 ----
 
-* [The `--error-format=json` flag to `rustc` causes it to emit errors
-  in JSON format][1.7j]. This is an unstable flag and so also requires
-  the `-Z unstable-options` flag.
 * [When running tests with `--test`, rustdoc will pass `--cfg`
   arguments to the compiler][1.7dt].
 * [The compiler is built with RPATH information by default][1.7rpa].
@@ -135,7 +134,6 @@ Compatibility Notes
 [1.7dta]: https://github.com/rust-lang/rust/pull/30394
 [1.7f]: https://github.com/rust-lang/rust/pull/30672
 [1.7h]: https://github.com/rust-lang/rust/pull/30818
-[1.7j]: https://github.com/rust-lang/rust/pull/30711
 [1.7ll]: https://github.com/rust-lang/rust/pull/30663
 [1.7m]: https://github.com/rust-lang/rust/pull/30381
 [1.7p]: https://github.com/rust-lang/rust/pull/30681
@@ -146,11 +144,15 @@ Compatibility Notes
 [1.7utf8]: https://github.com/rust-lang/rust/pull/30740
 [1.7v]: https://github.com/rust-lang/rust/pull/29973
 [RFC 1214]: https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md
-[`clone_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.clone_from_slice
-[`sort_by_key`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.sort_by_key
+[`BuildHasher::Hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hasher.html
+[`BuildHasher::build_hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.BuildHasher.html#tymethod.build_hasher
 [`CString::into_bytes_with_nul`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_bytes_with_nul
 [`CString::into_bytes`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_bytes
 [`CString::into_string`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_string
+[`HashMap::with_capacity_and_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.with_capacity_and_hasher
+[`HashMap::with_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.with_hasher
+[`HashSet::with_capacity_and_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.with_capacity_and_hasher
+[`HashSet::with_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.with_hasher
 [`IntoStringError::into_cstring`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html#method.into_cstring
 [`IntoStringError::utf8_error`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html#method.utf8_error
 [`Ipv4Addr::is_broadcast`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_broadcast
@@ -163,10 +165,12 @@ Compatibility Notes
 [`Ipv6Addr::is_multicast`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_multicast
 [`Ipv6Addr::is_unspecified`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_unspecified
 [`Path::strip_prefix`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.strip_prefix
+[`RandomState::new`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html#method.new
 [`String::as_mut_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_mut_str
 [`String::as_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_str
 [`Vec::as_mut_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_mut_slice
 [`Vec::as_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_slice
+[`clone_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.clone_from_slice
 [`ffi::IntoStringError`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html
 [`i32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_neg
 [`i32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_rem
@@ -182,6 +186,11 @@ Compatibility Notes
 [`i32::overflowing_sub`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_sub
 [`i32::saturating_mul`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.saturating_mul
 [`path::StripPrefixError`]: http://doc.rust-lang.org/nightly/std/path/struct.StripPrefixError.html
+[`sort_by_key`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.sort_by_key
+[`std::collections::hash_map::RandomState`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html
+[`std::hash::BuildHasherDefault`]: http://doc.rust-lang.org/nightly/std/hash/struct.BuildHasherDefault.html
+[`std::hash::BuildHasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.BuildHasher.html
+[`u32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_neg
 [`u32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_rem
 [`u32::checked_shl`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_shl
 [`u32::overflowing_add`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_add
