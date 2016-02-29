@@ -69,10 +69,10 @@ impl fmt::Display for Mode {
 #[derive(Clone)]
 pub struct Config {
     // The library paths required for running the compiler
-    pub compile_lib_path: String,
+    pub compile_lib_path: PathBuf,
 
     // The library paths required for running compiled programs
-    pub run_lib_path: String,
+    pub run_lib_path: PathBuf,
 
     // The rustc executable
     pub rustc_path: PathBuf,
