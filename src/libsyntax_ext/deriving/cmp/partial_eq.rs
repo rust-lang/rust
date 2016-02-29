@@ -11,30 +11,26 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, BinOpKind, ItemKind, VariantData};
+use syntax::ast::{MetaItem, Expr, BinOpKind, ItemKind};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
-fn is_clike_enum(item: &Annotatable) -> bool {
-    match *item {
-        Annotatable::Item(ref item) => {
-            match item.node {
-                ItemKind::Enum(ref enum_def, _) => {
-                    enum_def.variants.iter().all(|v|
-                        if let VariantData::Unit(..) = v.node.data {
-                            true
-                        } else {
-                            false
-                        }
-                    )
-                }
-                _ => false,
+fn is_type_without_fields(item: &Annotatable) -> bool {
+    if let Annotatable::Item(ref item) = *item {
+        match item.node {
+            ItemKind::Enum(ref enum_def, _) => {
+                enum_def.variants.iter().all(|v| v.node.data.fields().is_empty())
             }
+            ItemKind::Struct(ref variant_data, _) => {
+                variant_data.fields().is_empty()
+            }
+            _ => false
         }
-        _ => false,
+    } else {
+        false
     }
 }
 
@@ -101,8 +97,10 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
     }
 
     // avoid defining `ne` if we can
+    // c-like enums, enums without any fields and structs without fields
+    // can safely define only `eq`.
     let mut methods = vec![md!("eq", cs_eq)];
-    if !is_clike_enum(item) {
+    if !is_type_without_fields(item) {
         methods.push(md!("ne", cs_ne));
     }
 
