@@ -22,9 +22,7 @@ pub struct BlackListedName {
 
 impl BlackListedName {
     pub fn new(blacklist: Vec<String>) -> BlackListedName {
-        BlackListedName {
-            blacklist: blacklist
-        }
+        BlackListedName { blacklist: blacklist }
     }
 }
 
@@ -38,7 +36,10 @@ impl LateLintPass for BlackListedName {
     fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
         if let PatKind::Ident(_, ref ident, _) = pat.node {
             if self.blacklist.iter().any(|s| s == &*ident.node.name.as_str()) {
-                span_lint(cx, BLACKLISTED_NAME, pat.span, &format!("use of a blacklisted/placeholder name `{}`", ident.node.name));
+                span_lint(cx,
+                          BLACKLISTED_NAME,
+                          pat.span,
+                          &format!("use of a blacklisted/placeholder name `{}`", ident.node.name));
             }
         }
     }

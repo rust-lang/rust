@@ -19,7 +19,7 @@ pub fn conf_file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::Interne
                         Ok(Some(file.clone()))
                     } else {
                         Err(("`conf_file` value must be a string", value.span))
-                    }
+                    };
                 }
             }
         }
@@ -40,9 +40,7 @@ pub enum ConfError {
 impl fmt::Display for ConfError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            ConfError::IoError(ref err) => {
-                err.fmt(f)
-            }
+            ConfError::IoError(ref err) => err.fmt(f),
             ConfError::TomlError(ref errs) => {
                 let mut first = true;
                 for err in errs {
@@ -59,9 +57,7 @@ impl fmt::Display for ConfError {
             ConfError::TypeError(ref key, ref expected, ref got) => {
                 write!(f, "`{}` is expected to be a `{}` but is a `{}`", key, expected, got)
             }
-            ConfError::UnknownKey(ref key) => {
-                write!(f, "unknown key `{}`", key)
-            }
+            ConfError::UnknownKey(ref key) => write!(f, "unknown key `{}`", key),
         }
     }
 }
@@ -177,8 +173,7 @@ pub fn read_conf(path: &str, must_exist: bool) -> Result<Conf, ConfError> {
     let mut parser = toml::Parser::new(&file);
     let toml = if let Some(toml) = parser.parse() {
         toml
-    }
-    else {
+    } else {
         return Err(ConfError::TomlError(parser.errors));
     };
 
