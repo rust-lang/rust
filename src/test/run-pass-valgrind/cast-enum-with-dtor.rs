@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
+
 #![allow(dead_code)]
 #![feature(const_fn)]
 

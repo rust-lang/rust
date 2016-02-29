@@ -12,8 +12,6 @@
 
 // aux-build:empty-struct.rs
 
-#![feature(braced_empty_structs)]
-
 extern crate empty_struct;
 use empty_struct::*;
 

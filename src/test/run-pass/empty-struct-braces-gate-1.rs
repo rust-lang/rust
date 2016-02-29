@@ -8,19 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::AddAssign;
+// Feature gate test for empty struct with braces
+// Can't define an empty braced struct
 
-struct Int(i32);
+struct Empty1 {}
+struct Empty2;
 
-impl AddAssign<i32> for Int {
-    fn add_assign(&mut self, _: i32) {
-        unimplemented!()
-    }
+enum E {
+    Empty4 {},
+    Empty5,
 }
 
 fn main() {
-    let mut x = Int(0);
-    x += 1;
-    //~^ error: overloaded augmented assignments are not stable
-    //~| help: add #![feature(augmented_assignments)] to the crate root to enable
 }

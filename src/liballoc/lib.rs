@@ -78,7 +78,6 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
-#![feature(drop_in_place)]
 #![feature(dropck_parametricity)]
 #![feature(fundamental)]
 #![feature(lang_items)]

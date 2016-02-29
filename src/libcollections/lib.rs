@@ -35,7 +35,6 @@
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(decode_utf16)]
-#![feature(drop_in_place)]
 #![feature(dropck_parametricity)]
 #![feature(fmt_internals)]
 #![feature(fmt_radix)]

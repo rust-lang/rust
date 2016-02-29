@@ -12,9 +12,6 @@
 
 // aux-build:empty-struct.rs
 
-// remove prior feature after warning cycle and promoting warnings to errors
-#![feature(braced_empty_structs)]
-
 extern crate empty_struct;
 use empty_struct::*;
 

@@ -40,7 +40,6 @@
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
-#![feature(time2)]
 
 extern crate getopts;
 extern crate serialize;

@@ -41,6 +41,7 @@
 //! ```
 
 #![unstable(feature = "thread_local_internals", issue = "0")]
+#![allow(deprecated)]
 
 #[doc(hidden)]
 pub use self::imp::KeyInner as __KeyInner;
@@ -56,6 +57,8 @@ pub use self::imp::KeyInner as __KeyInner;
            reason = "scoped TLS has yet to have wide enough use to fully consider \
                      stabilizing its interface",
            issue = "27715")]
+#[rustc_deprecated(since = "1.8.0",
+                   reason = "hasn't proven itself over LocalKey")]
 pub struct ScopedKey<T:'static> { inner: fn() -> &'static imp::KeyInner<T> }
 
 /// Declare a new scoped thread local storage key.
@@ -68,6 +71,8 @@ pub struct ScopedKey<T:'static> { inner: fn() -> &'static imp::KeyInner<T> }
 #[unstable(feature = "thread_local_internals",
            reason = "should not be necessary",
            issue = "0")]
+#[rustc_deprecated(since = "1.8.0",
+                   reason = "hasn't proven itself over LocalKey")]
 #[macro_export]
 #[allow_internal_unstable]
 macro_rules! scoped_thread_local {
@@ -85,6 +90,8 @@ macro_rules! scoped_thread_local {
 #[unstable(feature = "thread_local_internals",
            reason = "should not be necessary",
            issue = "0")]
+#[rustc_deprecated(since = "1.8.0",
+                   reason = "hasn't proven itself over LocalKey")]
 #[macro_export]
 #[allow_internal_unstable]
 macro_rules! __scoped_thread_local_inner {
@@ -101,6 +108,8 @@ macro_rules! __scoped_thread_local_inner {
            reason = "scoped TLS has yet to have wide enough use to fully consider \
                      stabilizing its interface",
            issue = "27715")]
+#[rustc_deprecated(since = "1.8.0",
+                   reason = "hasn't proven itself over LocalKey")]
 impl<T> ScopedKey<T> {
     #[doc(hidden)]
     pub const fn new(inner: fn() -> &'static imp::KeyInner<T>) -> ScopedKey<T> {

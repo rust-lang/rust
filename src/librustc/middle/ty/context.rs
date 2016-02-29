@@ -619,6 +619,7 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
 pub mod tls {
     use middle::ty;
 
+    use std::cell::Cell;
     use std::fmt;
     use syntax::codemap;
 
@@ -627,7 +628,9 @@ pub mod tls {
     /// in libstd doesn't allow types generic over lifetimes.
     struct ThreadLocalTyCx;
 
-    scoped_thread_local!(static TLS_TCX: ThreadLocalTyCx);
+    thread_local! {
+        static TLS_TCX: Cell<Option<*const ThreadLocalTyCx>> = Cell::new(None)
+    }
 
     fn span_debug(span: codemap::Span, f: &mut fmt::Formatter) -> fmt::Result {
         with(|tcx| {
@@ -640,18 +643,27 @@ pub mod tls {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
             let tls_ptr = &tcx as *const _ as *const ThreadLocalTyCx;
-            let result = TLS_TCX.set(unsafe { &*tls_ptr }, || f(&tcx));
+            let result = TLS_TCX.with(|tls| {
+                let prev = tls.get();
+                tls.set(Some(tls_ptr));
+                let ret = f(&tcx);
+                tls.set(prev);
+                ret
+            });
             span_dbg.set(original_span_debug);
             result
         })
     }
 
     pub fn with<F: FnOnce(&ty::ctxt) -> R, R>(f: F) -> R {
-        TLS_TCX.with(|tcx| f(unsafe { &*(tcx as *const _ as *const ty::ctxt) }))
+        TLS_TCX.with(|tcx| {
+            let tcx = tcx.get().unwrap();
+            f(unsafe { &*(tcx as *const ty::ctxt) })
+        })
     }
 
     pub fn with_opt<F: FnOnce(Option<&ty::ctxt>) -> R, R>(f: F) -> R {
-        if TLS_TCX.is_set() {
+        if TLS_TCX.with(|tcx| tcx.get().is_some()) {
             with(|v| f(Some(v)))
         } else {
             f(None)

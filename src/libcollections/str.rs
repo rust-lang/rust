@@ -112,17 +112,22 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     }
 }
 
+/// Deprecated, renamed to EncodeUtf16
+#[unstable(feature = "str_utf16", issue = "27714")]
+#[rustc_deprecated(since = "1.8.0", reason = "renamed to EncodeUtf16")]
+pub type Utf16Units<'a> = EncodeUtf16<'a>;
+
 /// External iterator for a string's UTF-16 code units.
 ///
 /// For use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable(feature = "str_utf16", issue = "27714")]
-pub struct Utf16Units<'a> {
+#[stable(feature = "encode_utf16", since = "1.8.0")]
+pub struct EncodeUtf16<'a> {
     encoder: Utf16Encoder<Chars<'a>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for Utf16Units<'a> {
+impl<'a> Iterator for EncodeUtf16<'a> {
     type Item = u16;
 
     #[inline]
@@ -853,8 +858,16 @@ impl str {
     #[unstable(feature = "str_utf16",
                reason = "this functionality may only be provided by libunicode",
                issue = "27714")]
+    #[rustc_deprecated(since = "1.8.0", reason = "renamed to encode_utf16")]
+    #[allow(deprecated)]
     pub fn utf16_units(&self) -> Utf16Units {
         Utf16Units { encoder: Utf16Encoder::new(self[..].chars()) }
+    }
+
+    /// Returns an iterator of `u16` over the string encoded as UTF-16.
+    #[stable(feature = "encode_utf16", since = "1.8.0")]
+    pub fn encode_utf16(&self) -> EncodeUtf16 {
+        EncodeUtf16 { encoder: Utf16Encoder::new(self[..].chars()) }
     }
 
     /// Returns `true` if the given pattern matches a sub-slice of

@@ -31,7 +31,6 @@
 
 #![feature(alloc)]
 #![feature(core_intrinsics)]
-#![feature(drop_in_place)]
 #![feature(heap_api)]
 #![feature(raw)]
 #![feature(heap_api)]

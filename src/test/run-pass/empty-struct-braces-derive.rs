@@ -10,7 +10,6 @@
 
 // `#[derive(Trait)]` works for empty structs/variants with braces
 
-#![feature(braced_empty_structs)]
 #![feature(rustc_private)]
 
 extern crate serialize as rustc_serialize;

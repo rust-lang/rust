@@ -213,10 +213,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("unwind_attributes", "1.4.0", None, Active),
 
     // allow empty structs and enum variants with braces
-    ("braced_empty_structs", "1.5.0", Some(29720), Active),
+    ("braced_empty_structs", "1.5.0", Some(29720), Accepted),
 
     // allow overloading augmented assignment operations like `a += b`
-    ("augmented_assignments", "1.5.0", Some(28235), Active),
+    ("augmented_assignments", "1.5.0", Some(28235), Accepted),
 
     // allow `#[no_debug]`
     ("no_debug", "1.5.0", Some(29721), Active),
@@ -563,8 +563,6 @@ pub struct Features {
     pub cfg_target_feature: bool,
     pub cfg_target_vendor: bool,
     pub cfg_target_thread_local: bool,
-    pub augmented_assignments: bool,
-    pub braced_empty_structs: bool,
     pub staged_api: bool,
     pub stmt_expr_attributes: bool,
     pub deprecated: bool,
@@ -597,8 +595,6 @@ impl Features {
             cfg_target_feature: false,
             cfg_target_vendor: false,
             cfg_target_thread_local: false,
-            augmented_assignments: false,
-            braced_empty_structs: false,
             staged_api: false,
             stmt_expr_attributes: false,
             deprecated: false,
@@ -956,10 +952,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_variant_data(&mut self, s: &'v ast::VariantData, _: ast::Ident,
                         _: &'v ast::Generics, _: ast::NodeId, span: Span) {
         if s.fields().is_empty() {
-            if s.is_struct() {
-                self.gate_feature("braced_empty_structs", span,
-                                  "empty structs and enum variants with braces are unstable");
-            } else if s.is_tuple() {
+            if s.is_tuple() {
                 self.context.span_handler.struct_span_err(span, "empty tuple structs and enum \
                                                                  variants are not allowed, use \
                                                                  unit structs and enum variants \
@@ -1196,8 +1189,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
         cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
         cfg_target_thread_local: cx.has_feature("cfg_target_thread_local"),
-        augmented_assignments: cx.has_feature("augmented_assignments"),
-        braced_empty_structs: cx.has_feature("braced_empty_structs"),
         staged_api: cx.has_feature("staged_api"),
         stmt_expr_attributes: cx.has_feature("stmt_expr_attributes"),
         deprecated: cx.has_feature("deprecated"),

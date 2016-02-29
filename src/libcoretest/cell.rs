@@ -159,6 +159,7 @@ fn ref_map_accessor() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn ref_filter_map_accessor() {
     struct X(RefCell<Result<u32, ()>>);
     impl X {
@@ -189,6 +190,7 @@ fn ref_mut_map_accessor() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn ref_mut_filter_map_accessor() {
     struct X(RefCell<Result<u32, ()>>);
     impl X {

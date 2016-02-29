@@ -10,7 +10,6 @@
 
 // aux-build:reachable-unnameable-items.rs
 
-#![feature(braced_empty_structs)]
 #![feature(recover)]
 
 extern crate reachable_unnameable_items;

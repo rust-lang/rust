@@ -140,7 +140,7 @@ fn test_from_utf16() {
 
     for p in &pairs {
         let (s, u) = (*p).clone();
-        let s_as_utf16 = s.utf16_units().collect::<Vec<u16>>();
+        let s_as_utf16 = s.encode_utf16().collect::<Vec<u16>>();
         let u_as_string = String::from_utf16(&u).unwrap();
 
         assert!(::rustc_unicode::str::is_utf16(&u));
@@ -150,7 +150,7 @@ fn test_from_utf16() {
         assert_eq!(String::from_utf16_lossy(&u), s);
 
         assert_eq!(String::from_utf16(&s_as_utf16).unwrap(), s);
-        assert_eq!(u_as_string.utf16_units().collect::<Vec<u16>>(), u);
+        assert_eq!(u_as_string.encode_utf16().collect::<Vec<u16>>(), u);
     }
 }
 
