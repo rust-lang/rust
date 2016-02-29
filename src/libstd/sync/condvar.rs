@@ -209,6 +209,9 @@ impl Condvar {
     #[unstable(feature = "wait_timeout_with",
                reason = "unsure if this API is broadly needed or what form it should take",
                issue = "27748")]
+    #[rustc_deprecated(since = "1.8.0",
+                       reason = "wonky signature and questionable \
+                                 implementation didn't justify existence")]
     pub fn wait_timeout_with<'a, T, F>(&self,
                                        guard: MutexGuard<'a, T>,
                                        dur: Duration,

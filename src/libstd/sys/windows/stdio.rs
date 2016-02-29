@@ -56,7 +56,7 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
         Output::Pipe(ref p) => return p.get().write(data),
     };
     let utf16 = match str::from_utf8(data).ok() {
-        Some(utf8) => utf8.utf16_units().collect::<Vec<u16>>(),
+        Some(utf8) => utf8.encode_utf16().collect::<Vec<u16>>(),
         None => return Err(invalid_encoding()),
     };
     let mut written = 0;

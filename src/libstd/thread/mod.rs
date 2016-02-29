@@ -188,6 +188,7 @@ pub use self::local::{LocalKey, LocalKeyState};
            reason = "scoped TLS has yet to have wide enough use to fully \
                      consider stabilizing its interface",
            issue = "27715")]
+#[allow(deprecated)]
 pub use self::scoped_tls::ScopedKey;
 
 #[unstable(feature = "libstd_thread_internals", issue = "0")]

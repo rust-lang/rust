@@ -156,7 +156,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl AddAssign for Wrapping<$t> {
             #[inline(always)]
             fn add_assign(&mut self, other: Wrapping<$t>) {
@@ -174,7 +174,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl SubAssign for Wrapping<$t> {
             #[inline(always)]
             fn sub_assign(&mut self, other: Wrapping<$t>) {
@@ -192,7 +192,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl MulAssign for Wrapping<$t> {
             #[inline(always)]
             fn mul_assign(&mut self, other: Wrapping<$t>) {
@@ -210,7 +210,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl DivAssign for Wrapping<$t> {
             #[inline(always)]
             fn div_assign(&mut self, other: Wrapping<$t>) {
@@ -228,7 +228,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl RemAssign for Wrapping<$t> {
             #[inline(always)]
             fn rem_assign(&mut self, other: Wrapping<$t>) {
@@ -256,7 +256,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitXorAssign for Wrapping<$t> {
             #[inline(always)]
             fn bitxor_assign(&mut self, other: Wrapping<$t>) {
@@ -274,7 +274,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitOrAssign for Wrapping<$t> {
             #[inline(always)]
             fn bitor_assign(&mut self, other: Wrapping<$t>) {
@@ -292,7 +292,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitAndAssign for Wrapping<$t> {
             #[inline(always)]
             fn bitand_assign(&mut self, other: Wrapping<$t>) {

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-prefer-dynamic
 
 // This would previously leak the Box<Trait> because we wouldn't
 // schedule cleanups when auto borrowing trait objects.
