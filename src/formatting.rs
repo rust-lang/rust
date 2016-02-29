@@ -96,9 +96,11 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
                         span_note_and_lint(cx,
                                            SUSPICIOUS_ASSIGNMENT_FORMATTING,
                                            eqop_span,
-                                           &format!("this looks like you are trying to use `.. {op}= ..`, but you really are doing `.. = ({op} ..)`", op=op),
+                                           &format!("this looks like you are trying to use `.. {op}= ..`, but you \
+                                                     really are doing `.. = ({op} ..)`",
+                                                    op = op),
                                            eqop_span,
-                                           &format!("to remove this lint, use either `{op}=` or `= {op}`", op=op));
+                                           &format!("to remove this lint, use either `{op}=` or `= {op}`", op = op));
                     }
                 }
             }
@@ -109,9 +111,7 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
 /// Implementation of the SUSPICIOUS_ELSE_FORMATTING lint for weird `else if`.
 fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
     if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
-        if unsugar_if(else_).is_some() &&
-        !differing_macro_contexts(then.span, else_.span) &&
-        !in_macro(cx, then.span) {
+        if unsugar_if(else_).is_some() && !differing_macro_contexts(then.span, else_.span) && !in_macro(cx, then.span) {
             // this will be a span from the closing ‘}’ of the “then” block (excluding) to the
             // “if” of the “else if” block (excluding)
             let else_span = mk_sp(then.span.hi, else_.span.lo);
@@ -127,7 +127,8 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
                                        else_span,
                                        "this is an `else if` but the formatting might hide it",
                                        else_span,
-                                       "to remove this lint, remove the `else` or remove the new line between `else` and `if`");
+                                       "to remove this lint, remove the `else` or remove the new line between `else` \
+                                        and `if`");
                 }
             }
         }
@@ -136,10 +137,8 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for consecutive ifs.
 fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Expr) {
-    if !differing_macro_contexts(first.span, second.span) &&
-    !in_macro(cx, first.span) &&
-    unsugar_if(first).is_some() &&
-    unsugar_if(second).is_some() {
+    if !differing_macro_contexts(first.span, second.span) && !in_macro(cx, first.span) &&
+       unsugar_if(first).is_some() && unsugar_if(second).is_some() {
         // where the else would be
         let else_span = mk_sp(first.span.hi, second.span.lo);
 
@@ -150,14 +149,15 @@ fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Exp
                                    else_span,
                                    "this looks like an `else if` but the `else` is missing",
                                    else_span,
-                                   "to remove this lint, add the missing `else` or add a new line before the second `if`");
+                                   "to remove this lint, add the missing `else` or add a new line before the second \
+                                    `if`");
             }
         }
     }
 }
 
 /// Match `if` or `else if` expressions and return the `then` and `else` block.
-fn unsugar_if(expr: &ast::Expr) -> Option<(&P<ast::Block>, &Option<P<ast::Expr>>)>{
+fn unsugar_if(expr: &ast::Expr) -> Option<(&P<ast::Block>, &Option<P<ast::Expr>>)> {
     match expr.node {
         ast::ExprKind::If(_, ref then, ref else_) |
         ast::ExprKind::IfLet(_, _, ref then, ref else_) => Some((then, else_)),

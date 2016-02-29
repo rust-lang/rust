@@ -565,7 +565,9 @@ fn lint_clone_double_ref(cx: &LateContext, expr: &Expr, arg: &Expr) {
     let ty = cx.tcx.expr_ty(arg);
     if let ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) = ty.sty {
         if let ty::TyRef(..) = inner.sty {
-            let mut db = span_lint(cx, CLONE_DOUBLE_REF, expr.span,
+            let mut db = span_lint(cx,
+                                   CLONE_DOUBLE_REF,
+                                   expr.span,
                                    "using `clone` on a double-reference; \
                                     this will copy the reference instead of cloning \
                                     the inner type");
@@ -583,10 +585,7 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
     }
     let arg_ty = cx.tcx.expr_ty(&args[1]);
     if let Some((span, r)) = derefs_to_slice(cx, &args[1], &arg_ty) {
-        span_lint(cx,
-                  EXTEND_FROM_SLICE,
-                  expr.span,
-                  "use of `extend` to extend a Vec by a slice")
+        span_lint(cx, EXTEND_FROM_SLICE, expr.span, "use of `extend` to extend a Vec by a slice")
             .span_suggestion(expr.span,
                              "try this",
                              format!("{}.extend_from_slice({}{})",

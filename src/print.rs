@@ -60,9 +60,8 @@ impl LateLintPass for PrintLint {
                 // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
                 else if args.len() == 2 && match_path(path, &FMT_ARGUMENTV1_NEW_PATH) {
                     if let ExprPath(None, ref path) = args[1].node {
-                        if match_path(path, &DEBUG_FMT_METHOD_PATH) &&
-                            !is_in_debug_impl(cx, expr) &&
-                            is_expn_of(cx, expr.span, "panic").is_none() {
+                        if match_path(path, &DEBUG_FMT_METHOD_PATH) && !is_in_debug_impl(cx, expr) &&
+                           is_expn_of(cx, expr.span, "panic").is_none() {
                             span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                         }
                     }
@@ -75,8 +74,10 @@ impl LateLintPass for PrintLint {
 fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
     let map = &cx.tcx.map;
 
-    if let Some(NodeImplItem(item)) = map.find(map.get_parent(expr.id)) { // `fmt` method
-        if let Some(NodeItem(item)) = map.find(map.get_parent(item.id)) { // `Debug` impl
+    // `fmt` method
+    if let Some(NodeImplItem(item)) = map.find(map.get_parent(expr.id)) {
+        // `Debug` impl
+        if let Some(NodeItem(item)) = map.find(map.get_parent(item.id)) {
             if let ItemImpl(_, _, _, Some(ref tr), _, _) = item.node {
                 return match_path(&tr.path, &["Debug"]);
             }

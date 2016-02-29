@@ -48,7 +48,7 @@ impl LateLintPass for HashMapLint {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
                     // we can give a better error message
                     let sole_expr = else_block.is_none() &&
-                        if then_block.expr.is_some() { 1 } else { 0 } + then_block.stmts.len() == 1;
+                        ((then_block.expr.is_some() as usize) + then_block.stmts.len() == 1);
 
                     let mut visitor = InsertVisitor {
                         cx: cx,
