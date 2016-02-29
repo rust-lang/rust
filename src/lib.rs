@@ -60,6 +60,7 @@ pub mod eta_reduction;
 pub mod format;
 pub mod formatting;
 pub mod identity_op;
+pub mod if_not_else;
 pub mod items_after_statements;
 pub mod len_zero;
 pub mod lifetimes;
@@ -171,6 +172,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box format::FormatMacLint);
     reg.register_early_lint_pass(box formatting::Formatting);
     reg.register_late_lint_pass(box swap::Swap);
+    reg.register_early_lint_pass(box if_not_else::IfNotElse);
 
     reg.register_lint_group("clippy_pedantic", vec![
         enum_glob_use::ENUM_GLOB_USE,
@@ -222,6 +224,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         identity_op::IDENTITY_OP,
+        if_not_else::IF_NOT_ELSE,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,

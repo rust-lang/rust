@@ -45,9 +45,7 @@ impl<'v> Visitor<'v> for ExVisitor<'v> {
     fn visit_expr(&mut self, expr: &'v Expr) {
         if let ExprClosure(_, _, ref block) = expr.node {
             let complex = {
-                if !block.stmts.is_empty() {
-                    true
-                } else {
+                if block.stmts.is_empty() {
                     if let Some(ref ex) = block.expr {
                         match ex.node {
                             ExprBlock(_) => true,
@@ -56,6 +54,8 @@ impl<'v> Visitor<'v> for ExVisitor<'v> {
                     } else {
                         false
                     }
+                } else {
+                    true
                 }
             };
             if complex {

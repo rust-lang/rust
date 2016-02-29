@@ -357,10 +357,10 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                 };
 
                 let take: Cow<_> = if let Some(ref r) = *r {
-                    if !is_len_call(&r, &indexed) {
-                        format!(".take({})", snippet(cx, r.span, "..")).into()
-                    } else {
+                    if is_len_call(&r, &indexed) {
                         "".into()
+                    } else {
+                        format!(".take({})", snippet(cx, r.span, "..")).into()
                     }
                 } else {
                     "".into()
