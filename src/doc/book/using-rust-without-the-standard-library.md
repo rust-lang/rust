@@ -25,7 +25,7 @@ Much of the functionality that’s exposed in the standard library is also
 available via the [`core` crate](../core/). When we’re using the standard
 library, Rust automatically brings `std` into scope, allowing you to use
 its features without an explicit import. By the same token, when using
-`!#[no_std]`, Rust will bring `core` into scope for you, as well as [its
+`#![no_std]`, Rust will bring `core` into scope for you, as well as [its
 prelude](../core/prelude/v1/). This means that a lot of code will Just Work:
 
 ```rust
