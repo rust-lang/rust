@@ -183,6 +183,7 @@ Compatibility Notes
 [`i32::saturating_mul`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.saturating_mul
 [`path::StripPrefixError`]: http://doc.rust-lang.org/nightly/std/path/struct.StripPrefixError.html
 [`u32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_rem
+[`u32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_neg
 [`u32::checked_shl`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_shl
 [`u32::overflowing_add`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_add
 [`u32::overflowing_div`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_div
