@@ -1295,21 +1295,28 @@ pub fn init_zero_mem<'blk, 'tcx>(cx: Block<'blk, 'tcx>, llptr: ValueRef, t: Ty<'
 fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte: u8) {
     let _icx = push_ctxt("memfill");
     let ccx = b.ccx;
-
     let llty = type_of::type_of(ccx, ty);
-    let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
-    let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-
-    let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
     let llptr = b.pointercast(llptr, Type::i8(ccx).ptr_to());
     let llzeroval = C_u8(ccx, byte);
     let size = machine::llsize_of(ccx, llty);
     let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
-    let volatile = C_bool(ccx, false);
-    b.call(llintrinsicfn,
-           &[llptr, llzeroval, size, align, volatile],
-           None, None);
+    call_memset(b, llptr, llzeroval, size, align, false);
 }
+
+pub fn call_memset<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
+                               ptr: ValueRef,
+                               fill_byte: ValueRef,
+                               size: ValueRef,
+                               align: ValueRef,
+                               volatile: bool) {
+    let ccx = b.ccx;
+    let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
+    let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
+    let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
+    let volatile = C_bool(ccx, volatile);
+    b.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None, None);
+}
+
 
 /// In general, when we create an scratch value in an alloca, the
 /// creator may not know if the block (that initializes the scratch

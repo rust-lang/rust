@@ -20,11 +20,11 @@ use trans::common::{self, Block, BlockAndBuilder};
 use trans::debuginfo::DebugLoc;
 use trans::Disr;
 use trans::foreign;
-use trans::glue;
 use trans::type_of;
+use trans::glue;
 use trans::type_::Type;
 
-use super::MirContext;
+use super::{MirContext, drop};
 use super::operand::OperandValue::{FatPtr, Immediate, Ref};
 use super::operand::OperandRef;
 
@@ -188,8 +188,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                unwind.llbb(),
                                cleanup_bundle.as_ref(),
                                None);
+                    self.bcx(target).at_start(|bcx| drop::drop_fill(bcx, lvalue.llval, ty));
                 } else {
                     bcx.call(drop_fn, &[llvalue], cleanup_bundle.as_ref(), None);
+                    drop::drop_fill(&bcx, lvalue.llval, ty);
                     funclet_br(bcx, self.llblock(target));
                 }
             }
@@ -250,59 +252,41 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                    landingpad.llbb(),
                                    cleanup_bundle.as_ref(),
                                    Some(attrs));
+                        landingpad.at_start(|bcx| for op in args {
+                            self.set_operand_dropped(bcx, op);
+                        });
                     },
                     (false, &Some(cleanup), &Some((_, success))) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
-                        let (target, postinvoke) = if must_copy_dest {
-                            (self.fcx.new_block("", None).build(), Some(self.bcx(success)))
-                        } else {
-                            (self.bcx(success), None)
-                        };
                         let invokeret = bcx.invoke(callee.immediate(),
                                                    &llargs[..],
-                                                   target.llbb(),
+                                                   self.llblock(success),
                                                    landingpad.llbb(),
                                                    cleanup_bundle.as_ref(),
                                                    Some(attrs));
-                        if let Some(postinvoketarget) = postinvoke {
-                            // We translate the copy into a temporary block. The temporary block is
-                            // necessary because the current block has already been terminated (by
-                            // `invoke`) and we cannot really translate into the target block
-                            // because:
-                            //  * The target block may have more than a single precedesor;
-                            //  * Some LLVM insns cannot have a preceeding store insn (phi,
-                            //    cleanuppad), and adding/prepending the store now may render
-                            //    those other instructions invalid.
-                            //
-                            // NB: This approach still may break some LLVM code. For example if the
-                            // target block starts with a `phi` (which may only match on immediate
-                            // precedesors), it cannot know about this temporary block thus
-                            // resulting in an invalid code:
-                            //
-                            // this:
-                            //     …
-                            //     %0 = …
-                            //     %1 = invoke to label %temp …
-                            // temp:
-                            //     store ty %1, ty* %dest
-                            //     br label %actualtargetblock
-                            // actualtargetblock:            ; preds: %temp, …
-                            //     phi … [%this, …], [%0, …] ; ERROR: phi requires to match only on
-                            //                               ; immediate precedesors
+                        if must_copy_dest {
                             let (ret_dest, ret_ty) = ret_dest_ty
                                 .expect("return destination and type not set");
-                            target.with_block(|target| {
-                                base::store_ty(target, invokeret, ret_dest.llval, ret_ty);
-                            });
-                            target.br(postinvoketarget.llbb());
+                            // We translate the copy straight into the beginning of the target
+                            // block.
+                            self.bcx(success).at_start(|bcx| bcx.with_block( |bcx| {
+                                base::store_ty(bcx, invokeret, ret_dest.llval, ret_ty);
+                            }));
                         }
+                        self.bcx(success).at_start(|bcx| for op in args {
+                            self.set_operand_dropped(bcx, op);
+                        });
+                        landingpad.at_start(|bcx| for op in args {
+                            self.set_operand_dropped(bcx, op);
+                        });
                     },
                     (false, _, &None) => {
                         bcx.call(callee.immediate(),
                                  &llargs[..],
                                  cleanup_bundle.as_ref(),
                                  Some(attrs));
+                        // no need to drop args, because the call never returns
                         bcx.unreachable();
                     }
                     (false, _, &Some((_, target))) => {
@@ -316,6 +300,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             bcx.with_block(|bcx| {
                                 base::store_ty(bcx, llret, ret_dest.llval, ret_ty);
                             });
+                        }
+                        for op in args {
+                            self.set_operand_dropped(&bcx, op);
                         }
                         funclet_br(bcx, self.llblock(target));
                     }
@@ -333,6 +320,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                        debugloc)
                         });
                         if let Some((_, target)) = *destination {
+                            for op in args {
+                                self.set_operand_dropped(&bcx, op);
+                            }
                             funclet_br(bcx, self.llblock(target));
                         }
                     },
@@ -388,7 +378,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let use_funclets = base::wants_msvc_seh(bcx.sess()) && data.is_cleanup;
         let cleanup_pad = if use_funclets {
             bcx.set_personality_fn(self.fcx.eh_personality());
-            Some(bcx.cleanup_pad(None, &[]))
+            bcx.at_start(|bcx| Some(bcx.cleanup_pad(None, &[])))
         } else {
             None
         };
@@ -416,7 +406,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         self.blocks[bb.index()].build()
     }
 
-    fn llblock(&self, bb: mir::BasicBlock) -> BasicBlockRef {
+    pub fn llblock(&self, bb: mir::BasicBlock) -> BasicBlockRef {
         self.blocks[bb.index()].llbb
     }
 }

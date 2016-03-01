@@ -17,6 +17,7 @@ use trans::base;
 use trans::common::{self, BlockAndBuilder};
 use trans::machine;
 use trans::type_of;
+use trans::mir::drop;
 use llvm;
 use trans::Disr;
 
@@ -48,6 +49,7 @@ impl<'tcx> LvalueRef<'tcx> {
     {
         assert!(!ty.has_erasable_regions());
         let lltemp = bcx.with_block(|bcx| base::alloc_ty(bcx, ty, name));
+        drop::drop_fill(bcx, lltemp, ty);
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
 }

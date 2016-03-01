@@ -735,6 +735,15 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         BlockAndBuilder::new(bcx, owned_builder)
     }
 
+    pub fn at_start<F, R>(&self, f: F) -> R
+        where F: FnOnce(&BlockAndBuilder<'blk, 'tcx>) -> R
+    {
+        self.position_at_start(self.bcx.llbb);
+        let r = f(self);
+        self.position_at_end(self.bcx.llbb);
+        r
+    }
+
     // Methods delegated to bcx
 
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
