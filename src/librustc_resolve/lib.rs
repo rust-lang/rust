@@ -1989,7 +1989,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 // If it's a typedef, give a note
                 if let Def::TyAlias(..) = path_res.base_def {
-                    err.span_note(trait_path.span,
+                    err.fileline_note(trait_path.span,
                                   "`type` aliases cannot be used for traits");
                 }
                 err.emit();
