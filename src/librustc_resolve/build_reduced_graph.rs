@@ -19,7 +19,6 @@ use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind};
-use module_to_string;
 use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
@@ -547,34 +546,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         }
     }
 
-    /// Builds the reduced graph rooted at the given external module.
-    fn populate_external_module(&mut self, module: Module<'b>) {
-        debug!("(populating external module) attempting to populate {}",
-               module_to_string(module));
-
-        let def_id = match module.def_id() {
-            None => {
-                debug!("(populating external module) ... no def ID!");
-                return;
-            }
-            Some(def_id) => def_id,
-        };
-
-        for child in self.session.cstore.item_children(def_id) {
-            debug!("(populating external module) ... found ident: {}",
-                   child.name);
-            self.build_reduced_graph_for_external_crate_def(module, child);
-        }
-        module.populated.set(true)
-    }
-
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
     fn populate_module_if_necessary(&mut self, module: Module<'b>) {
-        if !module.populated.get() {
-            self.populate_external_module(module)
+        if module.populated.get() { return }
+        for child in self.session.cstore.item_children(module.def_id().unwrap()) {
+            self.build_reduced_graph_for_external_crate_def(module, child);
         }
-        assert!(module.populated.get())
+        module.populated.set(true)
     }
 
     /// Builds the reduced graph rooted at the 'use' directive for an external
