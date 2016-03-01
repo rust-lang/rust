@@ -732,18 +732,11 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
     }
 }
 
-/// Return whether a method returns `Self`.
-pub fn returns_self(cx: &LateContext, ret: &FunctionRetTy, ty: ty::Ty) -> bool {
-    if let FunctionRetTy::Return(ref ret_ty) = *ret {
-        let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
-        let ret_ty = ast_ty_to_ty_cache.get(&ret_ty.id);
-
-        if let Some(&ret_ty) = ret_ty {
-            ret_ty.walk().any(|t| t == ty)
-        } else {
-            false
-        }
+/// Convenience function to get the return type of a function or `None` if the function diverges.
+pub fn return_ty(fun: ty::Ty) -> Option<ty::Ty> {
+    if let ty::FnConverging(ret_ty) = fun.fn_sig().skip_binder().output {
+        Some(ret_ty)
     } else {
-        false
+        None
     }
 }

@@ -10,7 +10,7 @@ use std::{fmt, iter};
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
-            match_type, method_chain_args, returns_self, snippet, snippet_opt, span_lint,
+            match_type, method_chain_args, return_ty, snippet, snippet_opt, span_lint,
             span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::{BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH, STRING_PATH,
             VEC_PATH};
@@ -431,7 +431,8 @@ impl LateLintPass for MethodsPass {
                         }
                     }
 
-                    if &name.as_str() == &"new" && !returns_self(cx, &sig.decl.output, ty)  {
+                    let ret_ty = return_ty(cx.tcx.node_id_to_type(implitem.id));
+                    if &name.as_str() == &"new" && !ret_ty.map_or(false, |ret_ty| ret_ty.walk().any(|t| t == ty)) {
                         span_lint(cx,
                                   NEW_RET_NO_SELF,
                                   sig.explicit_self.span,

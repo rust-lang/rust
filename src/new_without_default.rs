@@ -3,7 +3,7 @@ use rustc_front::hir;
 use rustc_front::intravisit::FnKind;
 use syntax::ast;
 use syntax::codemap::Span;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, returns_self, span_lint, DEFAULT_TRAIT_PATH};
+use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, span_lint, DEFAULT_TRAIT_PATH};
 
 /// **What it does:** This lints about type with a `fn new() -> Self` method and no `Default`
 /// implementation.
@@ -47,13 +47,15 @@ impl LateLintPass for NewWithoutDefault {
 
         if let FnKind::Method(name, _, _) = kind {
             if decl.inputs.is_empty() && name.as_str() == "new" {
-                let ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id))).ty;
+                let self_ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id))).ty;
 
-                if  returns_self(cx, &decl.output, ty) {
+                let ret_ty = return_ty(cx.tcx.node_id_to_type(id));
+
+                if Some(self_ty) == ret_ty {
                     if let Some(default_trait_id) = get_trait_def_id(cx, &DEFAULT_TRAIT_PATH) {
-                        if !implements_trait(cx, ty, default_trait_id, Vec::new()) {
+                        if !implements_trait(cx, self_ty, default_trait_id, Vec::new()) {
                             span_lint(cx, NEW_WITHOUT_DEFAULT, span,
-                                      &format!("you should consider adding a `Default` implementation for `{}`", ty));
+                                      &format!("you should consider adding a `Default` implementation for `{}`", self_ty));
                         }
                     }
                 }

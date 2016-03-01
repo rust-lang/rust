@@ -6,6 +6,7 @@ use rustc::front::map::NodeItem;
 use rustc::lint::*;
 use rustc::middle::ty;
 use rustc_front::hir::*;
+use syntax::ast::NodeId;
 use utils::{STRING_PATH, VEC_PATH};
 use utils::{span_lint, match_type};
 
@@ -35,7 +36,7 @@ impl LintPass for PtrArg {
 impl LateLintPass for PtrArg {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemFn(ref decl, _, _, _, _, _) = item.node {
-            check_fn(cx, decl);
+            check_fn(cx, decl, item.id);
         }
     }
 
@@ -46,34 +47,34 @@ impl LateLintPass for PtrArg {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, &sig.decl);
+            check_fn(cx, &sig.decl, item.id);
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
-            check_fn(cx, &sig.decl);
+            check_fn(cx, &sig.decl, item.id);
         }
     }
 }
 
-fn check_fn(cx: &LateContext, decl: &FnDecl) {
-    for arg in &decl.inputs {
-        if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&arg.ty.id) {
-            if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = ty.sty {
-                if match_type(cx, ty, &VEC_PATH) {
-                    span_lint(cx,
-                              PTR_ARG,
-                              arg.ty.span,
-                              "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
-                               with non-Vec-based slices. Consider changing the type to `&[...]`");
-                } else if match_type(cx, ty, &STRING_PATH) {
-                    span_lint(cx,
-                              PTR_ARG,
-                              arg.ty.span,
-                              "writing `&String` instead of `&str` involves a new object where a slice will do. \
-                               Consider changing the type to `&str`");
-                }
+fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
+    let fn_ty = cx.tcx.node_id_to_type(fn_id).fn_sig().skip_binder();
+
+    for (arg, ty) in decl.inputs.iter().zip(&fn_ty.inputs) {
+        if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = ty.sty {
+            if match_type(cx, ty, &VEC_PATH) {
+                span_lint(cx,
+                          PTR_ARG,
+                          arg.ty.span,
+                          "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
+                           with non-Vec-based slices. Consider changing the type to `&[...]`");
+            } else if match_type(cx, ty, &STRING_PATH) {
+                span_lint(cx,
+                          PTR_ARG,
+                          arg.ty.span,
+                          "writing `&String` instead of `&str` involves a new object where a slice will do. \
+                           Consider changing the type to `&str`");
             }
         }
     }
