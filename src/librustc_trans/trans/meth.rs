@@ -11,7 +11,7 @@
 use std::rc::Rc;
 
 use arena::TypedArena;
-use back::link;
+use back::symbol_names;
 use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
@@ -89,7 +89,8 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let sig = infer::normalize_associated_type(tcx, &sig);
     let fn_ty = FnType::new(ccx, method_ty.fn_abi(), &sig, &[]);
 
-    let function_name = link::mangle_internal_name_by_type_and_seq(ccx, method_ty, "object_shim");
+    let function_name =
+        symbol_names::internal_name_from_type_and_suffix(ccx, method_ty, "object_shim");
     let llfn = declare::define_internal_fn(ccx, &function_name, method_ty);
 
     let empty_substs = tcx.mk_substs(Substs::empty());
