@@ -1,16 +1,6 @@
 Version 1.7.0 (2016-03-03)
 ==========================
 
-Language
---------
-
-* Soundness fixes to the interactions between associated types and
-  lifetimes, specified in [RFC 1214], [now generate errors][1.7sf] for
-  code that violates the new rules. This is a significant change that
-  is known to break existing code, so it has emitted warnings for the
-  new error cases since 1.4 to give crate authors time to adapt. The
-  details of what is changing are subtle; read the RFC for more.
-
 Libraries
 ---------
 
@@ -59,6 +49,17 @@ Libraries
     * [`IntoStringError::into_cstring`]
     * [`IntoStringError::utf8_error`]
     * `Error for IntoStringError`
+  * Hashing
+    * [`std::hash::BuildHasher`]
+    * [`BuildHasher::Hasher`]
+    * [`BuildHasher::build_hasher`]
+    * [`std::hash::BuildHasherDefault`]
+    * [`HashMap::with_hasher`]
+    * [`HashMap::with_capacity_and_hasher`]
+    * [`HashSet::with_hasher`]
+    * [`HashSet::with_capacity_and_hasher`]
+    * [`std::collections::hash_map::RandomState`]
+    * [`RandomState::new`]
 * [Validating UTF-8 is faster by a factor of between 7 and 14x for
   ASCII input][1.7utf8]. This means that creating `String`s and `str`s
   from bytes is faster.
@@ -101,6 +102,12 @@ Cargo
 Compatibility Notes
 -------------------
 
+* Soundness fixes to the interactions between associated types and
+  lifetimes, specified in [RFC 1214], [now generate errors][1.7sf] for
+  code that violates the new rules. This is a significant change that
+  is known to break existing code, so it has emitted warnings for the
+  new error cases since 1.4 to give crate authors time to adapt. The
+  details of what is changing are subtle; read the RFC for more.
 * [Several bugs in the compiler's visibility calculations were
   fixed][1.7v]. Since this was found to break significant amounts of
   code, the new errors will be emitted as warnings for several release
@@ -133,11 +140,15 @@ Compatibility Notes
 [1.7utf8]: https://github.com/rust-lang/rust/pull/30740
 [1.7v]: https://github.com/rust-lang/rust/pull/29973
 [RFC 1214]: https://github.com/rust-lang/rfcs/blob/master/text/1214-projections-lifetimes-and-wf.md
-[`clone_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.clone_from_slice
-[`sort_by_key`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.sort_by_key
+[`BuildHasher::Hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hasher.html
+[`BuildHasher::build_hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.BuildHasher.html#tymethod.build_hasher
 [`CString::into_bytes_with_nul`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_bytes_with_nul
 [`CString::into_bytes`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_bytes
 [`CString::into_string`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html#method.into_string
+[`HashMap::with_capacity_and_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.with_capacity_and_hasher
+[`HashMap::with_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.with_hasher
+[`HashSet::with_capacity_and_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.with_capacity_and_hasher
+[`HashSet::with_hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.with_hasher
 [`IntoStringError::into_cstring`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html#method.into_cstring
 [`IntoStringError::utf8_error`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html#method.utf8_error
 [`Ipv4Addr::is_broadcast`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#method.is_broadcast
@@ -150,10 +161,12 @@ Compatibility Notes
 [`Ipv6Addr::is_multicast`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_multicast
 [`Ipv6Addr::is_unspecified`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_unspecified
 [`Path::strip_prefix`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.strip_prefix
+[`RandomState::new`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html#method.new
 [`String::as_mut_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_mut_str
 [`String::as_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_str
 [`Vec::as_mut_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_mut_slice
 [`Vec::as_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_slice
+[`clone_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.clone_from_slice
 [`ffi::IntoStringError`]: http://doc.rust-lang.org/nightly/std/ffi/struct.IntoStringError.html
 [`i32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_neg
 [`i32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.checked_rem
@@ -169,6 +182,10 @@ Compatibility Notes
 [`i32::overflowing_sub`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_sub
 [`i32::saturating_mul`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.saturating_mul
 [`path::StripPrefixError`]: http://doc.rust-lang.org/nightly/std/path/struct.StripPrefixError.html
+[`sort_by_key`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.sort_by_key
+[`std::collections::hash_map::RandomState`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html
+[`std::hash::BuildHasherDefault`]: http://doc.rust-lang.org/nightly/std/hash/struct.BuildHasherDefault.html
+[`std::hash::BuildHasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.BuildHasher.html
 [`u32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_neg
 [`u32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_rem
 [`u32::checked_shl`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_shl
