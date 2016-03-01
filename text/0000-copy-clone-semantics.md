@@ -28,7 +28,8 @@ be able to, and we will be stuck looping over every value.
 [design]: #detailed-design
 
 Specify that `<T as Clone>::clone(t)` shall be equivalent to `ptr::read(t)`
-where `T: Copy, t: &T`.
+where `T: Copy, t: &T`. An implementation that does not uphold this *shall not*
+result in undefined behavior; `Clone` is not an `unsafe trait`.
 
 Also add something like the following sentence to the documentation for the
 `Clone` trait:
@@ -52,4 +53,4 @@ in this way, we document this separately. This is how we started off with
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-What the exact sentence should be.
+What the exact wording should be.
