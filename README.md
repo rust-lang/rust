@@ -8,7 +8,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 132 lints included in this crate:
+There are 133 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -83,6 +83,7 @@ name                                                                            
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                                   | warn    | using a return statement like `return expr;` where an expression would suffice
 [needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                                   | warn    | using `{ ..base }` when there are no missing fields
 [new_ret_no_self](https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self)                                   | warn    | not returning `Self` in a `new` method
+[new_without_default](https://github.com/Manishearth/rust-clippy/wiki#new_without_default)                           | warn    | `fn new() -> Self` method without `Default` implementation
 [no_effect](https://github.com/Manishearth/rust-clippy/wiki#no_effect)                                               | warn    | statements with no effect
 [non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                               | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
 [nonsensical_open_options](https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options)                 | warn    | nonsensical combination of options for opening a file

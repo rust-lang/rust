@@ -10,8 +10,8 @@ use std::{fmt, iter};
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
-            match_type, method_chain_args, snippet, snippet_opt, span_lint, span_lint_and_then, span_note_and_lint,
-            walk_ptrs_ty, walk_ptrs_ty_depth};
+            match_type, method_chain_args, returns_self, snippet, snippet_opt, span_lint,
+            span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::{BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH, STRING_PATH,
             VEC_PATH};
 use utils::MethodArgs;
@@ -431,26 +431,11 @@ impl LateLintPass for MethodsPass {
                         }
                     }
 
-                    if &name.as_str() == &"new" {
-                        let returns_self = if let FunctionRetTy::Return(ref ret_ty) = sig.decl.output {
-                            let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
-                            let ret_ty = ast_ty_to_ty_cache.get(&ret_ty.id);
-
-                            if let Some(&ret_ty) = ret_ty {
-                                ret_ty.walk().any(|t| t == ty)
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        };
-
-                        if !returns_self {
-                            span_lint(cx,
-                                      NEW_RET_NO_SELF,
-                                      sig.explicit_self.span,
-                                      "methods called `new` usually return `Self`");
-                        }
+                    if &name.as_str() == &"new" && !returns_self(cx, &sig.decl.output, ty)  {
+                        span_lint(cx,
+                                  NEW_RET_NO_SELF,
+                                  sig.explicit_self.span,
+                                  "methods called `new` usually return `Self`");
                     }
                 }
             }
@@ -485,7 +470,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
                         return false;
                     };
 
-                    if implements_trait(cx, arg_ty, default_trait_id, None) {
+                    if implements_trait(cx, arg_ty, default_trait_id, Vec::new()) {
                         span_lint(cx,
                                   OR_FUN_CALL,
                                   span,
@@ -869,7 +854,7 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
 /// This checks whether a given type is known to implement Debug.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     match cx.tcx.lang_items.debug_trait() {
-        Some(debug) => implements_trait(cx, ty, debug, Some(vec![])),
+        Some(debug) => implements_trait(cx, ty, debug, Vec::new()),
         None => false,
     }
 }

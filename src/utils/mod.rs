@@ -264,7 +264,7 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
 /// Check whether a type implements a trait.
 /// See also `get_trait_def_id`.
 pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId,
-                                  ty_params: Option<Vec<ty::Ty<'tcx>>>)
+                                  ty_params: Vec<ty::Ty<'tcx>>)
                                   -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
@@ -274,7 +274,7 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
                                                      trait_id,
                                                      0,
                                                      ty,
-                                                     ty_params.unwrap_or_default());
+                                                     ty_params);
 
     traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
 }
@@ -729,5 +729,21 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
         }
     } else {
         None
+    }
+}
+
+/// Return whether a method returns `Self`.
+pub fn returns_self(cx: &LateContext, ret: &FunctionRetTy, ty: ty::Ty) -> bool {
+    if let FunctionRetTy::Return(ref ret_ty) = *ret {
+        let ast_ty_to_ty_cache = cx.tcx.ast_ty_to_ty_cache.borrow();
+        let ret_ty = ast_ty_to_ty_cache.get(&ret_ty.id);
+
+        if let Some(&ret_ty) = ret_ty {
+            ret_ty.walk().any(|t| t == ty)
+        } else {
+            false
+        }
+    } else {
+        false
     }
 }
