@@ -226,12 +226,14 @@ and the *initial limitations* (which are likely to be lifted later).
 
 **Initial limitations**:
 
-- `@Trait` may only be written at return type position of a freestanding or
+- `@Trait` may only be written within the return type of a freestanding or
   inherent-impl function, not in trait definitions, closure traits, function
   pointers, or any non-return type position.
 
   - Eventually, we will want to allow the feature to be used within traits, and
     like in argument position as well (as an ergonomic improvement over today's generics).
+  - Using `@Trait` multiple times in the same return type would be valid,
+    like for example `-> (@Foo, @Bar)`.
 
 - The type produced when a function returns `@Trait` would be effectively
   unnameable, just like closures and function items.
