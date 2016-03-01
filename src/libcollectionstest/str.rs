@@ -1508,6 +1508,19 @@ generate_iterator_test! {
     with str::rsplitn;
 }
 
+#[test]
+fn different_str_pattern_forwarding_lifetimes() {
+    use std::str::pattern::Pattern;
+
+    fn foo<'a, P>(p: P) where for<'b> &'b P: Pattern<'a> {
+        for _ in 0..3 {
+            "asdf".find(&p);
+        }
+    }
+
+    foo::<&str>("x");
+}
+
 mod bench {
     use test::{Bencher, black_box};
 

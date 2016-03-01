@@ -492,7 +492,7 @@ impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
 /////////////////////////////////////////////////////////////////////////////
 
 /// Delegates to the `&str` impl.
-impl<'a, 'b> Pattern<'a> for &'b &'b str {
+impl<'a, 'b, 'c> Pattern<'a> for &'c &'b str {
     pattern_methods!(StrSearcher<'a, 'b>, |&s| s, |s| s);
 }
 
