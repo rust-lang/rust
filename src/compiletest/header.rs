@@ -54,96 +54,21 @@ pub struct TestProps {
 
 // Load any test directives embedded in the file
 pub fn load_props(testfile: &Path) -> TestProps {
-    let mut error_patterns = Vec::new();
-    let mut aux_builds = Vec::new();
-    let mut exec_env = Vec::new();
-    let mut compile_flags = None;
-    let mut run_flags = None;
-    let mut pp_exact = None;
-    let mut check_lines = Vec::new();
-    let mut build_aux_docs = false;
-    let mut force_host = false;
-    let mut check_stdout = false;
-    let mut no_prefer_dynamic = false;
-    let mut pretty_expanded = false;
-    let mut pretty_mode = None;
-    let mut pretty_compare_only = false;
-    let mut forbid_output = Vec::new();
-    iter_header(testfile, &mut |ln| {
-        if let Some(ep) = parse_error_pattern(ln) {
-           error_patterns.push(ep);
-        }
-
-        if compile_flags.is_none() {
-            compile_flags = parse_compile_flags(ln);
-        }
-
-        if run_flags.is_none() {
-            run_flags = parse_run_flags(ln);
-        }
-
-        if pp_exact.is_none() {
-            pp_exact = parse_pp_exact(ln, testfile);
-        }
-
-        if !build_aux_docs {
-            build_aux_docs = parse_build_aux_docs(ln);
-        }
-
-        if !force_host {
-            force_host = parse_force_host(ln);
-        }
-
-        if !check_stdout {
-            check_stdout = parse_check_stdout(ln);
-        }
-
-        if !no_prefer_dynamic {
-            no_prefer_dynamic = parse_no_prefer_dynamic(ln);
-        }
-
-        if !pretty_expanded {
-            pretty_expanded = parse_pretty_expanded(ln);
-        }
-
-        if pretty_mode.is_none() {
-            pretty_mode = parse_pretty_mode(ln);
-        }
-
-        if !pretty_compare_only {
-            pretty_compare_only = parse_pretty_compare_only(ln);
-        }
-
-        if let  Some(ab) = parse_aux_build(ln) {
-            aux_builds.push(ab);
-        }
-
-        if let Some(ee) = parse_exec_env(ln) {
-            exec_env.push(ee);
-        }
-
-        if let Some(cl) =  parse_check_line(ln) {
-            check_lines.push(cl);
-        }
-
-        if let Some(of) = parse_forbid_output(ln) {
-            forbid_output.push(of);
-        }
-
-        true
-    });
-
-    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
-        match env::var(key) {
-            Ok(val) =>
-                if exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
-                    exec_env.push((key.to_owned(), val))
-                },
-            Err(..) => {}
-        }
-    }
-
-    TestProps {
+    let error_patterns = Vec::new();
+    let aux_builds = Vec::new();
+    let exec_env = Vec::new();
+    let compile_flags = None;
+    let run_flags = None;
+    let pp_exact = None;
+    let check_lines = Vec::new();
+    let build_aux_docs = false;
+    let force_host = false;
+    let check_stdout = false;
+    let no_prefer_dynamic = false;
+    let pretty_expanded = false;
+    let pretty_compare_only = false;
+    let forbid_output = Vec::new();
+    let mut props = TestProps {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
         run_flags: run_flags,
@@ -156,9 +81,87 @@ pub fn load_props(testfile: &Path) -> TestProps {
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
         pretty_expanded: pretty_expanded,
-        pretty_mode: pretty_mode.unwrap_or("normal".to_owned()),
+        pretty_mode: format!("normal"),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
+    };
+    load_props_into(&mut props, testfile);
+    props
+}
+
+pub fn load_props_into(props: &mut TestProps, testfile: &Path) {
+    iter_header(testfile, &mut |ln| {
+        if let Some(ep) = parse_error_pattern(ln) {
+            props.error_patterns.push(ep);
+        }
+
+        if props.compile_flags.is_none() {
+            props.compile_flags = parse_compile_flags(ln);
+        }
+
+        if props.run_flags.is_none() {
+            props.run_flags = parse_run_flags(ln);
+        }
+
+        if props.pp_exact.is_none() {
+            props.pp_exact = parse_pp_exact(ln, testfile);
+        }
+
+        if !props.build_aux_docs {
+            props.build_aux_docs = parse_build_aux_docs(ln);
+        }
+
+        if !props.force_host {
+            props.force_host = parse_force_host(ln);
+        }
+
+        if !props.check_stdout {
+            props.check_stdout = parse_check_stdout(ln);
+        }
+
+        if !props.no_prefer_dynamic {
+            props.no_prefer_dynamic = parse_no_prefer_dynamic(ln);
+        }
+
+        if !props.pretty_expanded {
+            props.pretty_expanded = parse_pretty_expanded(ln);
+        }
+
+        if let Some(m) = parse_pretty_mode(ln) {
+            props.pretty_mode = m;
+        }
+
+        if !props.pretty_compare_only {
+            props.pretty_compare_only = parse_pretty_compare_only(ln);
+        }
+
+        if let  Some(ab) = parse_aux_build(ln) {
+            props.aux_builds.push(ab);
+        }
+
+        if let Some(ee) = parse_exec_env(ln) {
+            props.exec_env.push(ee);
+        }
+
+        if let Some(cl) =  parse_check_line(ln) {
+            props.check_lines.push(cl);
+        }
+
+        if let Some(of) = parse_forbid_output(ln) {
+            props.forbid_output.push(of);
+        }
+
+        true
+    });
+
+    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
+        match env::var(key) {
+            Ok(val) =>
+                if props.exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
+                    props.exec_env.push((key.to_owned(), val))
+                },
+            Err(..) => {}
+        }
     }
 }
 
@@ -253,8 +256,7 @@ fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
         // with a warm page cache. Maybe with a cold one.
         let ln = ln.unwrap();
         let ln = ln.trim();
-        if ln.starts_with("fn") ||
-                ln.starts_with("mod") {
+        if ln.starts_with("fn") || ln.starts_with("mod") {
             return true;
         } else if ln.starts_with("//") {
             if !it(&ln[2..]) {
