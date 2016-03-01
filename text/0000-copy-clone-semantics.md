@@ -21,8 +21,8 @@ Currently, `Vec::clone()` is implemented by creating a new `Vec`, and then
 cloning all of the elements from one into the other. This is slow in debug mode,
 and may not always be optimized (although it often will be). Specialization
 would allow us to simply `memcpy` the values from the old `Vec` to the new
-`Vec`. However, if we don't actually specify this, we will not be able to do
-this.
+`Vec` in the case of `T: Copy`. However, if we don't specify this, we will not
+be able to, and we will be stuck looping over every value.
 
 # Detailed design
 [design]: #detailed-design
@@ -30,8 +30,8 @@ this.
 Simply add something like the following sentence to the documentation for the
 `Clone` trait:
 
-"If `T: Copy`, `x: T`, and `y: &T`, then `let x = y.clone()` is equivalent to
-`let x = *y`;"
+"If `T: Copy`, `x: T`, and `y: &T`, then `let x = y.clone();` is equivalent to
+`let x = *y;`. Manual implementations must be careful to uphold this."
 
 # Drawbacks
 [drawbacks]: #drawbacks
