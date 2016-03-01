@@ -29,9 +29,9 @@ fn main() {
 
     let blubx: i32; //~ NOTE: existing binding defined here
     let bluby: i32; //~ ERROR: name is too similar
+    //~| HELP: separate the discriminating character by an underscore like: `blub_y`
 
     let cake: i32; //~ NOTE: existing binding defined here
-    let caked: i32; //~ NOTE: existing binding defined here
-    let cakes: i32; //~ ERROR: name is too similar
+    let cakes: i32;
     let coke: i32; //~ ERROR: name is too similar
 }

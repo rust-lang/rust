@@ -3,7 +3,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ast::*;
 use syntax::visit::{self, FnKind};
-use utils::{span_note_and_lint, in_macro};
+use utils::{span_lint_and_then, in_macro};
 use strsim::levenshtein;
 
 /// **What it does:** This lint warns about names that are very similar and thus confusing
@@ -95,17 +95,35 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                existing_name.ends_with(&*interned_name) {
                 continue;
             }
+            let mut split_at = None;
             if dist == 1 {
                 // are we doing stuff like a_bar, b_bar, c_bar?
-                if interned_name.chars().next() != existing_name.chars().next() && interned_name.chars().nth(1) == Some('_') {
-                    continue;
+                if interned_name.chars().next() != existing_name.chars().next() {
+                    if interned_name.chars().nth(1) == Some('_') {
+                        continue;
+                    }
+                    split_at = interned_name.chars().next().map(|c| c.len_utf8());
                 }
                 // are we doing stuff like foo_x, foo_y, foo_z?
-                if interned_name.chars().rev().next() != existing_name.chars().rev().next() && interned_name.chars().rev().nth(1) == Some('_') {
-                    continue;
+                if interned_name.chars().rev().next() != existing_name.chars().rev().next() {
+                    if interned_name.chars().rev().nth(1) == Some('_') {
+                        continue;
+                    }
+                    split_at = interned_name.char_indices().rev().next().map(|(i, _)| i);
                 }
             }
-            span_note_and_lint(self.0.cx, SIMILAR_NAMES, span, "binding's name is too similar to existing binding", sp, "existing binding defined here");
+            span_lint_and_then(self.0.cx,
+                               SIMILAR_NAMES,
+                               span,
+                               "binding's name is too similar to existing binding",
+                               |diag| {
+                                   diag.span_note(sp, "existing binding defined here");
+                                   if let Some(split) = split_at {
+                                       diag.span_help(span, &format!("separate the discriminating character by an underscore like: `{}_{}`",
+                                                                     &interned_name[..split],
+                                                                     &interned_name[split..]));
+                                   }
+                               });
             return;
         }
         self.0.names.push((interned_name, span));
