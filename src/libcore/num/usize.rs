@@ -10,7 +10,7 @@
 
 //! The pointer-sized unsigned integer type.
 //!
-//! *[See also the `usize` primitive type](../primitive.usize.html).*
+//! *[See also the `usize` primitive type](../../std/primitive.usize.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
