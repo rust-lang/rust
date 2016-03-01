@@ -277,10 +277,10 @@ impl<'a> CrateReader<'a> {
     }
 
     fn verify_no_symbol_conflicts(&self,
-                                  crate_name: &str,
                                   span: Span,
                                   metadata: &MetadataBlob) {
         let disambiguator = decoder::get_crate_disambiguator(metadata.as_slice());
+        let crate_name = decoder::get_crate_name(metadata.as_slice());
 
         // Check for (potential) conflicts with the local crate
         if self.local_crate_name == crate_name &&
@@ -318,7 +318,7 @@ impl<'a> CrateReader<'a> {
                       -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                           cstore::CrateSource) {
         self.verify_rustc_version(name, span, &lib.metadata);
-        self.verify_no_symbol_conflicts(name, span, &lib.metadata);
+        self.verify_no_symbol_conflicts(span, &lib.metadata);
 
         // Claim this crate number and cache it
         let cnum = self.next_crate_num;

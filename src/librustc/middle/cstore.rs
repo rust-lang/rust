@@ -204,7 +204,11 @@ pub trait CrateStore<'tcx> : Any {
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
+    /// The name of the crate as it is referred to in source code of the current
+    /// crate.
     fn crate_name(&self, cnum: ast::CrateNum) -> InternedString;
+    /// The name of the crate as it is stored in the crate's metadata.
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
     fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
@@ -385,6 +389,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
         { unimplemented!() }
     fn crate_name(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString {
+        unimplemented!()
+    }
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh { unimplemented!() }
     fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
