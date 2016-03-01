@@ -24,3 +24,15 @@ all:
 
 clean:
 	$(Q)$(BOOTSTRAP) --clean
+
+docs: doc
+doc:
+	$(Q)$(BOOTSTRAP) --step doc
+style:
+	$(Q)$(BOOTSTRAP) --step doc-style
+nomicon:
+	$(Q)$(BOOTSTRAP) --step doc-nomicon
+book:
+	$(Q)$(BOOTSTRAP) --step doc-book
+standalone-docs:
+	$(Q)$(BOOTSTRAP) --step doc-standalone
