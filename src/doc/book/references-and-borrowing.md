@@ -211,9 +211,10 @@ fn main() {
 ```
 
 In other words, the mutable borrow is held through the rest of our example. What
-we want is for the mutable borrow to end _before_ we try to call `println!` and
-make an immutable borrow. In Rust, borrowing is tied to the scope that the
-borrow is valid for. And our scopes look like this:
+we want is for the mutable borrow by `y` to end so that the resource can be
+returned to the owner, `x`. `x` can then provide a mutable borrow to `println!`.
+In Rust, borrowing is tied to the scope that the borrow is valid for. And our
+scopes look like this:
 
 ```rust,ignore
 let mut x = 5;
@@ -378,4 +379,3 @@ statement 1 at 3:14
 
 In the above example, `y` is declared before `x`, meaning that `y` lives longer
 than `x`, which is not allowed.
-
