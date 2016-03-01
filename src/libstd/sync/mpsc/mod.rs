@@ -299,6 +299,9 @@ pub struct Receiver<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for Receiver<T> { }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> !Sync for Receiver<T> { }
+
 /// An iterator over messages on a receiver, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
@@ -326,6 +329,9 @@ pub struct Sender<T> {
 // is not used to send non-sendable things.
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for Sender<T> { }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> !Sync for Sender<T> { }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one thread, but it can be cloned to send to other threads.
