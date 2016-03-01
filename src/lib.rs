@@ -94,6 +94,7 @@ pub mod temporary_assignment;
 pub mod transmute;
 pub mod types;
 pub mod unicode;
+pub mod unused_label;
 pub mod vec;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -175,6 +176,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box swap::Swap);
     reg.register_early_lint_pass(box if_not_else::IfNotElse);
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
+    reg.register_late_lint_pass(box unused_label::UnusedLabel);
 
     reg.register_lint_group("clippy_pedantic", vec![
         enum_glob_use::ENUM_GLOB_USE,
@@ -309,6 +311,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
+        unused_label::UNUSED_LABEL,
         vec::USELESS_VEC,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);

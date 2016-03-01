@@ -8,7 +8,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 131 lints included in this crate:
+There are 132 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -131,6 +131,7 @@ name                                                                            
 [unstable_as_mut_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice)                       | warn    | as_mut_slice is not stable and can be replaced by &mut v[..]see https://github.com/rust-lang/rust/issues/27729
 [unstable_as_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice)                               | warn    | as_slice is not stable and can be replaced by & v[..]see https://github.com/rust-lang/rust/issues/27729
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                                     | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
+[unused_label](https://github.com/Manishearth/rust-clippy/wiki#unused_label)                                         | warn    | unused label
 [unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                                 | warn    | unused lifetimes in function definitions
 [use_debug](https://github.com/Manishearth/rust-clippy/wiki#use_debug)                                               | allow   | use `Debug`-based formatting
 [used_underscore_binding](https://github.com/Manishearth/rust-clippy/wiki#used_underscore_binding)                   | warn    | using a binding which is prefixed with an underscore
