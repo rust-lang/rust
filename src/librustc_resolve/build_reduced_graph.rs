@@ -24,7 +24,7 @@ use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::{CrateStore, ChildItem, DlDef, DlField, DlImpl};
+use rustc::middle::cstore::{CrateStore, ChildItem, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::middle::ty::VariantKind;
@@ -42,7 +42,6 @@ use rustc_front::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaul
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use rustc_front::hir::{PathListIdent, PathListMod, StmtDecl};
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
-use rustc_front::hir::Visibility;
 use rustc_front::intravisit::{self, Visitor};
 
 use std::mem::replace;
@@ -439,42 +438,48 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         }
     }
 
-    fn handle_external_def(&mut self,
-                           def: Def,
-                           vis: Visibility,
-                           final_ident: &str,
-                           name: Name,
-                           new_parent: Module<'b>) {
-        debug!("(building reduced graph for external crate) building external def {}, priv {:?}",
-               final_ident,
-               vis);
-        let is_public = vis == hir::Public || new_parent.is_trait();
+    /// Builds the reduced graph for a single item in an external crate.
+    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'b>, xcdef: ChildItem) {
+        let def = match xcdef.def {
+            DlDef(def) => def,
+            _ => return,
+        };
+
+        if let Def::ForeignMod(def_id) = def {
+            // Foreign modules have no names. Recur and populate eagerly.
+            for child in self.session.cstore.item_children(def_id) {
+                self.build_reduced_graph_for_external_crate_def(parent, child);
+            }
+            return;
+        }
+
+        let name = xcdef.name;
+        let is_public = xcdef.vis == hir::Public || parent.is_trait();
 
         let mut modifiers = DefModifiers::empty();
         if is_public {
             modifiers = modifiers | DefModifiers::PUBLIC;
         }
-        if new_parent.is_normal() {
+        if parent.is_normal() {
             modifiers = modifiers | DefModifiers::IMPORTABLE;
         }
 
         match def {
             Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {}",
-                       final_ident,
+                       name,
                        is_public);
-                let parent_link = ModuleParentLink(new_parent, name);
+                let parent_link = ModuleParentLink(parent, name);
                 let module = self.new_module(parent_link, Some(def), true, is_public);
-                self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
+                self.try_define(parent, name, TypeNS, (module, DUMMY_SP));
             }
             Def::Variant(_, variant_id) => {
-                debug!("(building reduced graph for external crate) building variant {}",
-                       final_ident);
+                debug!("(building reduced graph for external crate) building variant {}", name);
                 // Variants are always treated as importable to allow them to be glob used.
                 // All variants are defined in both type and value namespaces as future-proofing.
                 let modifiers = DefModifiers::PUBLIC | DefModifiers::IMPORTABLE;
-                self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
-                self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
+                self.try_define(parent, name, TypeNS, (def, DUMMY_SP, modifiers));
+                self.try_define(parent, name, ValueNS, (def, DUMMY_SP, modifiers));
                 if self.session.cstore.variant_kind(variant_id) == Some(VariantKind::Struct) {
                     // Not adding fields for variants as they are not accessed with a self receiver
                     self.structs.insert(variant_id, Vec::new());
@@ -486,12 +491,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             Def::AssociatedConst(..) |
             Def::Method(..) => {
                 debug!("(building reduced graph for external crate) building value (fn/static) {}",
-                       final_ident);
-                self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
+                       name);
+                self.try_define(parent, name, ValueNS, (def, DUMMY_SP, modifiers));
             }
             Def::Trait(def_id) => {
-                debug!("(building reduced graph for external crate) building type {}",
-                       final_ident);
+                debug!("(building reduced graph for external crate) building type {}", name);
 
                 // If this is a trait, add all the trait item names to the trait
                 // info.
@@ -508,24 +512,22 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.trait_item_map.insert((trait_item_name, def_id), trait_item_def.def_id());
                 }
 
-                let parent_link = ModuleParentLink(new_parent, name);
+                let parent_link = ModuleParentLink(parent, name);
                 let module = self.new_module(parent_link, Some(def), true, is_public);
-                self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
+                self.try_define(parent, name, TypeNS, (module, DUMMY_SP));
             }
             Def::TyAlias(..) | Def::AssociatedTy(..) => {
-                debug!("(building reduced graph for external crate) building type {}",
-                       final_ident);
-                self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
+                debug!("(building reduced graph for external crate) building type {}", name);
+                self.try_define(parent, name, TypeNS, (def, DUMMY_SP, modifiers));
             }
             Def::Struct(def_id)
                 if self.session.cstore.tuple_struct_definition_if_ctor(def_id).is_none() => {
-                debug!("(building reduced graph for external crate) building type and value for \
-                        {}",
-                       final_ident);
-                self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
+                debug!("(building reduced graph for external crate) building type and value for {}",
+                       name);
+                self.try_define(parent, name, TypeNS, (def, DUMMY_SP, modifiers));
                 if let Some(ctor_def_id) = self.session.cstore.struct_ctor_def_id(def_id) {
                     let def = Def::Struct(ctor_def_id);
-                    self.try_define(new_parent, name, ValueNS, (def, DUMMY_SP, modifiers));
+                    self.try_define(parent, name, ValueNS, (def, DUMMY_SP, modifiers));
                 }
 
                 // Record the def ID and fields of this struct.
@@ -541,39 +543,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             Def::SelfTy(..) |
             Def::Err => {
                 panic!("didn't expect `{:?}`", def);
-            }
-        }
-    }
-
-    /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_def(&mut self,
-                                                  root: Module<'b>,
-                                                  xcdef: ChildItem) {
-        match xcdef.def {
-            DlDef(def) => {
-                // Add the new child item, if necessary.
-                match def {
-                    Def::ForeignMod(def_id) => {
-                        // Foreign modules have no names. Recur and populate
-                        // eagerly.
-                        for child in self.session.cstore.item_children(def_id) {
-                            self.build_reduced_graph_for_external_crate_def(root, child)
-                        }
-                    }
-                    _ => {
-                        self.handle_external_def(def,
-                                                 xcdef.vis,
-                                                 &xcdef.name.as_str(),
-                                                 xcdef.name,
-                                                 root);
-                    }
-                }
-            }
-            DlImpl(_) => {
-                debug!("(building reduced graph for external crate) ignoring impl");
-            }
-            DlField => {
-                debug!("(building reduced graph for external crate) ignoring field");
             }
         }
     }
