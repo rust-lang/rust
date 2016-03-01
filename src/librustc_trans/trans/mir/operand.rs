@@ -16,8 +16,9 @@ use trans::base;
 use trans::common::{self, Block, BlockAndBuilder};
 use trans::datum;
 use trans::Disr;
+use trans::glue;
 
-use super::{MirContext, TempRef};
+use super::{MirContext, TempRef, drop};
 use super::lvalue::LvalueRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -158,31 +159,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
-    pub fn trans_operand_into(&mut self,
-                              bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                              lldest: ValueRef,
-                              operand: &mir::Operand<'tcx>)
-    {
-        debug!("trans_operand_into(lldest={}, operand={:?})",
-               bcx.val_to_string(lldest),
-               operand);
-
-        // FIXME: consider not copying constants through the
-        // stack.
-
-        let o = self.trans_operand(bcx, operand);
-        self.store_operand(bcx, lldest, o);
-    }
-
     pub fn store_operand(&mut self,
                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
                          lldest: ValueRef,
                          operand: OperandRef<'tcx>)
     {
         debug!("store_operand: operand={}", operand.repr(bcx));
-        bcx.with_block(|bcx| {
-            self.store_operand_direct(bcx, lldest, operand)
-        })
+        bcx.with_block(|bcx| self.store_operand_direct(bcx, lldest, operand))
     }
 
     pub fn store_operand_direct(&mut self,
@@ -244,5 +227,30 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 adt::trans_field_ptr(bcx, &base_repr, base, Disr(0), n)
             }), ty)
         }).collect()
+    }
+
+    pub fn set_operand_dropped(&mut self,
+                               bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                               operand: &mir::Operand<'tcx>) {
+        match *operand {
+            mir::Operand::Constant(_) => return,
+            mir::Operand::Consume(ref lvalue) => {
+                if let mir::Lvalue::Temp(idx) = *lvalue {
+                    if let TempRef::Operand(..) = self.temps[idx as usize] {
+                        // All lvalues which have an associated drop are promoted to an alloca
+                        // beforehand. If this is an operand, it is safe to say this is never
+                        // dropped and there’s no reason for us to zero this out at all.
+                        return
+                    }
+                }
+                let lvalue = self.trans_lvalue(bcx, lvalue);
+                let ty = lvalue.ty.to_ty(bcx.tcx());
+                if !glue::type_needs_drop(bcx.tcx(), ty) {
+                    return
+                } else {
+                    drop::drop_fill(bcx, lvalue.llval, ty);
+                }
+            }
+        }
     }
 }

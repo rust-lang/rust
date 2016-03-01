@@ -197,6 +197,7 @@ mod analyze;
 mod block;
 mod constant;
 mod did;
+mod drop;
 mod lvalue;
 mod operand;
 mod rvalue;
