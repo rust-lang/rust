@@ -248,7 +248,7 @@ impl CStore {
 
 impl crate_metadata {
     pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
-    pub fn name(&self) -> String { decoder::get_crate_name(self.data()) }
+    pub fn name(&self) -> &str { decoder::get_crate_name(self.data()) }
     pub fn hash(&self) -> Svh { decoder::get_crate_hash(self.data()) }
     pub fn disambiguator(&self) -> &str {
         decoder::get_crate_disambiguator(self.data())

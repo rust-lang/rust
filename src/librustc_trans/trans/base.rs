@@ -77,6 +77,7 @@ use trans::expr;
 use trans::foreign;
 use trans::glue;
 use trans::intrinsic;
+use trans::link_guard;
 use trans::machine;
 use trans::machine::{llsize_of, llsize_of_real};
 use trans::meth;
@@ -2668,6 +2669,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
+            link_guard::insert_reference_to_link_guard(ccx, llbb);
             debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx);
 
             let (start_fn, args) = if use_start_lang_item {
@@ -3213,6 +3215,8 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         collector::print_collection_results(&ccx);
     }
 
+    emit_link_guard_if_necessary(&shared_ccx);
+
     for ccx in shared_ccx.iter() {
         if ccx.sess().opts.debuginfo != NoDebugInfo {
             debuginfo::finalize(&ccx);
@@ -3273,6 +3277,8 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
     if sess.entry_fn.borrow().is_some() {
         reachable_symbols.push("main".to_string());
     }
+    reachable_symbols.push(link_guard::link_guard_name(&link_meta.crate_name,
+                                                       &link_meta.crate_hash));
 
     // For the purposes of LTO, we add to the reachable set all of the upstream
     // reachable extern fns. These functions are all part of the public ABI of
@@ -3313,6 +3319,24 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         metadata: metadata,
         reachable: reachable_symbols,
         no_builtins: no_builtins,
+    }
+}
+
+fn emit_link_guard_if_necessary(shared_ccx: &SharedCrateContext) {
+    let link_meta = shared_ccx.link_meta();
+    let link_guard_name = link_guard::link_guard_name(&link_meta.crate_name,
+                                                      &link_meta.crate_hash);
+    let link_guard_name = CString::new(link_guard_name).unwrap();
+
+    // Check if the link-guard has already been emitted in a codegen unit
+    let link_guard_already_emitted = shared_ccx.iter().any(|ccx| {
+        let link_guard = unsafe { llvm::LLVMGetNamedValue(ccx.llmod(),
+                                                          link_guard_name.as_ptr()) };
+        !link_guard.is_null()
+    });
+
+    if !link_guard_already_emitted {
+        link_guard::get_or_insert_link_guard(&shared_ccx.get_ccx(0));
     }
 }
 
