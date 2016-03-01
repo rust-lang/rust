@@ -121,6 +121,8 @@ impl Ipv4Addr {
     }
 
     /// Returns true if the address appears to be globally routable.
+    /// See [iana-ipv4-special-registry][ipv4-sr].
+    /// [ipv4-sr]: http://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     ///
     /// The following return false:
     ///
@@ -131,7 +133,8 @@ impl Ipv4Addr {
     /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
     pub fn is_global(&self) -> bool {
         !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
-        !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
+        !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified() &&
+        !self.is_this_network()
     }
 
     /// Returns true if this is a multicast address.
