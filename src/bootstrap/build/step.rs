@@ -53,6 +53,11 @@ macro_rules! targets {
             // with braces are unstable so we just pick something that works.
             (llvm, Llvm { _dummy: () }),
             (compiler_rt, CompilerRt { _dummy: () }),
+            (doc, Doc { stage: u32 }),
+            (doc_book, DocBook { stage: u32 }),
+            (doc_nomicon, DocNomicon { stage: u32 }),
+            (doc_style, DocStyle { stage: u32 }),
+            (doc_standalone, DocStandalone { stage: u32 }),
         }
     }
 }
@@ -115,6 +120,7 @@ fn top_level(build: &Build) -> Vec<Step> {
             src: Source::Llvm { _dummy: () },
             target: &build.config.build,
         };
+        targets.push(t.doc(stage));
         for host in build.config.host.iter() {
             if !build.flags.host.contains(host) {
                 continue
@@ -164,6 +170,11 @@ fn add_steps<'a>(build: &'a Build,
             "rustc" => targets.push(host.rustc(stage)),
             "llvm" => targets.push(target.llvm(())),
             "compiler-rt" => targets.push(target.compiler_rt(())),
+            "doc-style" => targets.push(host.doc_style(stage)),
+            "doc-standalone" => targets.push(host.doc_standalone(stage)),
+            "doc-nomicon" => targets.push(host.doc_nomicon(stage)),
+            "doc-book" => targets.push(host.doc_book(stage)),
+            "doc" => targets.push(host.doc(stage)),
             _ => panic!("unknown build target: `{}`", step),
         }
     }
@@ -219,6 +230,16 @@ impl<'a> Step<'a> {
                 vec![self.llvm(()).target(&build.config.build)]
             }
             Source::Llvm { _dummy } => Vec::new(),
+            Source::DocBook { stage } |
+            Source::DocNomicon { stage } |
+            Source::DocStyle { stage } |
+            Source::DocStandalone { stage } => {
+                vec![self.rustc(stage)]
+            }
+            Source::Doc { stage } => {
+                vec![self.doc_book(stage), self.doc_nomicon(stage),
+                     self.doc_style(stage), self.doc_standalone(stage)]
+            }
         }
     }
 }
