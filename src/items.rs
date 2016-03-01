@@ -27,7 +27,6 @@ use syntax::{ast, abi};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
 use syntax::ast::ImplItem;
-use syntax::ptr::P;
 
 // Statements of the form
 // let pat: ty = init;
@@ -110,7 +109,7 @@ impl<'a> FmtVisitor<'a> {
         let span = mk_sp(item.span.lo, item.span.hi - BytePos(1));
 
         match item.node {
-            ast::ForeignItem_::ForeignItemFn(ref fn_decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => {
                 let indent = self.block_indent;
                 let rewrite = rewrite_fn_base(&self.get_context(),
                                               indent,
@@ -136,7 +135,7 @@ impl<'a> FmtVisitor<'a> {
                     None => self.format_missing(item.span.hi),
                 }
             }
-            ast::ForeignItem_::ForeignItemStatic(ref ty, is_mutable) => {
+            ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.
                 let mut_str = if is_mutable {
@@ -441,12 +440,12 @@ impl<'a> FmtVisitor<'a> {
 }
 
 pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
-    if let ast::Item_::ItemImpl(unsafety,
-                                polarity,
-                                ref generics,
-                                ref trait_ref,
-                                ref self_ty,
-                                ref items) = item.node {
+    if let ast::ItemKind::Impl(unsafety,
+                               polarity,
+                               ref generics,
+                               ref trait_ref,
+                               ref self_ty,
+                               ref items) = item.node {
         let mut result = String::new();
         result.push_str(format_visibility(item.vis));
         result.push_str(format_unsafety(unsafety));
@@ -562,7 +561,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
 }
 
 fn is_impl_single_line(context: &RewriteContext,
-                       items: &Vec<P<ImplItem>>,
+                       items: &Vec<ImplItem>,
                        result: &str,
                        where_clause_str: &str,
                        item: &ast::Item)
@@ -919,15 +918,15 @@ pub fn rewrite_static(prefix: &str,
 impl Rewrite for ast::FunctionRetTy {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match *self {
-            ast::FunctionRetTy::DefaultReturn(_) => Some(String::new()),
-            ast::FunctionRetTy::NoReturn(_) => {
+            ast::FunctionRetTy::Default(_) => Some(String::new()),
+            ast::FunctionRetTy::None(_) => {
                 if width >= 4 {
                     Some("-> !".to_owned())
                 } else {
                     None
                 }
             }
-            ast::FunctionRetTy::Return(ref ty) => {
+            ast::FunctionRetTy::Ty(ref ty) => {
                 let inner_width = try_opt!(width.checked_sub(3));
                 ty.rewrite(context, inner_width, offset + 3).map(|r| format!("-> {}", r))
             }
@@ -940,7 +939,7 @@ impl Rewrite for ast::Arg {
         if is_named_arg(self) {
             let mut result = try_opt!(self.pat.rewrite(context, width, offset));
 
-            if self.ty.node != ast::Ty_::TyInfer {
+            if self.ty.node != ast::TyKind::Infer {
                 result.push_str(": ");
                 let max_width = try_opt!(width.checked_sub(result.len()));
                 let ty_str = try_opt!(self.ty.rewrite(context, max_width, offset + result.len()));
@@ -959,7 +958,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
                          context: &RewriteContext)
                          -> Option<String> {
     match explicit_self.node {
-        ast::ExplicitSelf_::SelfRegion(lt, m, _) => {
+        ast::SelfKind::Region(lt, m, _) => {
             let mut_str = format_mutability(m);
             match lt {
                 Some(ref l) => {
@@ -971,7 +970,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
                 None => Some(format!("&{}self", mut_str)),
             }
         }
-        ast::ExplicitSelf_::SelfExplicit(ref ty, _) => {
+        ast::SelfKind::Explicit(ref ty, _) => {
             assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
 
             let mutability = explicit_self_mutability(&args[0]);
@@ -979,7 +978,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
 
             Some(format!("{}self: {}", format_mutability(mutability), type_str))
         }
-        ast::ExplicitSelf_::SelfValue(_) => {
+        ast::SelfKind::Value(_) => {
             assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
 
             let mutability = explicit_self_mutability(&args[0]);
@@ -993,7 +992,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
 // Hacky solution caused by absence of `Mutability` in `SelfValue` and
 // `SelfExplicit` variants of `ast::ExplicitSelf_`.
 fn explicit_self_mutability(arg: &ast::Arg) -> ast::Mutability {
-    if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _) = arg.pat.node {
+    if let ast::PatKind::Ident(ast::BindingMode::ByValue(mutability), _, _) = arg.pat.node {
         mutability
     } else {
         unreachable!()
@@ -1010,13 +1009,13 @@ pub fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
 
 pub fn span_hi_for_arg(arg: &ast::Arg) -> BytePos {
     match arg.ty.node {
-        ast::Ty_::TyInfer if is_named_arg(arg) => arg.pat.span.hi,
+        ast::TyKind::Infer if is_named_arg(arg) => arg.pat.span.hi,
         _ => arg.ty.span.hi,
     }
 }
 
 pub fn is_named_arg(arg: &ast::Arg) -> bool {
-    if let ast::Pat_::PatIdent(_, ident, _) = arg.pat.node {
+    if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
         ident.node != token::special_idents::invalid
     } else {
         true
@@ -1025,9 +1024,9 @@ pub fn is_named_arg(arg: &ast::Arg) -> bool {
 
 fn span_for_return(ret: &ast::FunctionRetTy) -> Span {
     match *ret {
-        ast::FunctionRetTy::NoReturn(ref span) |
-        ast::FunctionRetTy::DefaultReturn(ref span) => span.clone(),
-        ast::FunctionRetTy::Return(ref ty) => ty.span,
+        ast::FunctionRetTy::None(ref span) |
+        ast::FunctionRetTy::Default(ref span) => span.clone(),
+        ast::FunctionRetTy::Ty(ref ty) => ty.span,
     }
 }
 
@@ -1085,7 +1084,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         result.push_str("const ");
     }
 
-    if abi != abi::Rust {
+    if abi != abi::Abi::Rust {
         result.push_str(&::utils::format_abi(abi));
     }
 
