@@ -15,17 +15,20 @@ initially being restricted to:
 
 Abstract return types allow a function to hide a concrete return
 type behind a trait interface similar to trait objects, while
-still generating the same statically dispatched code as with concrete types:
+still generating the same statically dispatched code as with concrete types.
+
+With the placeholder syntax used in discussions so far,
+abstract return types would be used roughly like this:
 
 ```rust
-fn foo(n: u32) -> @Iterator<Item=u32> {
+fn foo(n: u32) -> impl Iterator<Item=u32> {
     (0..n).map(|x| x * 100)
 }
-// ^ behaves as if it had return type Map<Range<u32>, Clos>
-// where Clos = type of the |x| x * 100 closure.
+// ^ behaves as if it had return type Map<Range<u32>, Closure>
+// where Closure = type of the |x| x * 100 closure.
 
 for x in foo(10) {
-    // ...
+    // x = 0, 100, 200, ...
 }
 
 ```
