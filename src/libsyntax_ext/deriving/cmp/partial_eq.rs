@@ -11,28 +11,12 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, BinOpKind, ItemKind};
+use syntax::ast::{MetaItem, Expr, BinOpKind};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-
-fn is_type_without_fields(item: &Annotatable) -> bool {
-    if let Annotatable::Item(ref item) = *item {
-        match item.node {
-            ItemKind::Enum(ref enum_def, _) => {
-                enum_def.variants.iter().all(|v| v.node.data.fields().is_empty())
-            }
-            ItemKind::Struct(ref variant_data, _) => {
-                variant_data.fields().is_empty()
-            }
-            _ => false
-        }
-    } else {
-        false
-    }
-}
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
                                   span: Span,
