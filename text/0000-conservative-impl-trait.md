@@ -51,7 +51,7 @@ step requires resolving some of the core questions raised in
 [the blog post](http://aturon.github.io/blog/2015/09/28/impl-trait/).
 
 This RFC is closest in spirit to the
-[original RFC]((https://github.com/rust-lang/rfcs/pull/105), and we'll repeat
+[original RFC](https://github.com/rust-lang/rfcs/pull/105), and we'll repeat
 its motivation and some other parts of its text below.
 
 # Motivation
@@ -131,10 +131,6 @@ function's author to write down the concrete type implementing the bound.
 
 # Detailed design
 [design]: #detailed-design
-
-> This is the bulk of the RFC. Explain the design in enough detail for somebody familiar
-> with the language to understand, and for somebody familiar with the compiler to implement.
-> This should get into specifics and corner-cases, and include examples of how the feature is used.
 
 As explained at the start of the RFC, the focus here is a relatively narrow
 introduction of abstract types limited to the return type of inherent methods
