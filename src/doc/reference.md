@@ -556,7 +556,7 @@ Users of `rustc` can define new syntax extensions in two ways:
 ## Macros
 
 `macro_rules` allows users to define syntax extensions in a declarative way.
-We call such extensions "macros by example" or simply "macros" — to be
+We call such extensions "`macro_rules!` macros" or simply "macros" — to be
 distinguished from the "procedural macros" defined in [compiler plugins][plugin].
 
 As shown below, the body of a `macro_rules` macro consists of one or more
@@ -585,7 +585,7 @@ arm in turn. It transcribes the first successful match. Matching and
 transcription are closely related to each other, and we will describe them
 together.
 
-### Macros By Example
+### Macro By Example
 
 The macro expander matches and transcribes every token that does not begin with
 a `$` literally, including delimiters. For parsing reasons, delimiters must be
@@ -619,13 +619,13 @@ matches, in a structure that mimics the structure of the repetition encountered
 on a successful match. The job of the transcriber is to sort that structure
 out.
 
-The rules for transcription of these repetitions are called "Macros By Example".
+The rules for transcription of these repetitions are called "Macro By Example".
 Essentially, one "layer" of repetition is discharged at a time, and all of them
 must be discharged by the time a name is transcribed. Therefore, `( $( $i:ident
 ),* ) => ( $i )` is an invalid macro, but `( $( $i:ident ),* ) => ( $( $i ),*  )`
 is acceptable (though trivial).
 
-When Macros By Example encounters a repetition, it examines all of the `$`
+When Macro By Example encounters a repetition, it examines all of the `$`
 _name_ s that occur in its body. At the "current layer", they all must repeat
 the same number of times, so ` ( $( $i:ident ),* ; $( $j:ident ),* ) => ( $(
 ($i,$j) ),* )` is valid if given the argument `(a,b,c ; d,e,f)`, but not
