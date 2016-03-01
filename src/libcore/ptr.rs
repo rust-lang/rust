@@ -12,7 +12,7 @@
 
 //! Raw, unsafe pointers, `*const T`, and `*mut T`
 //!
-//! *[See also the pointer primitive types](../primitive.pointer.html).*
+//! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
