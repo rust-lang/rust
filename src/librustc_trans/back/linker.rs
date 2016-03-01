@@ -23,6 +23,7 @@ use session::config::CrateTypeDylib;
 use session::config;
 use syntax::ast;
 use trans::CrateTranslation;
+use trans::link_guard;
 
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.
@@ -359,6 +360,26 @@ impl<'a> Linker for MsvcLinker<'a> {
             for symbol in symbols {
                 writeln!(f, "  {}", symbol)?;
             }
+
+            // Add link-guard symbols
+            {
+                // local crate
+                let symbol = link_guard::link_guard_name(&trans.link.crate_name[..],
+                                                         &trans.link.crate_hash);
+                try!(writeln!(f, "  {}", symbol));
+            }
+            // statically linked dependencies
+            for (i, format) in formats[&CrateTypeDylib].iter().enumerate() {
+                if *format == Linkage::Static {
+                    let cnum = (i + 1) as ast::CrateNum;
+                    let crate_name = cstore.original_crate_name(cnum);
+                    let svh = cstore.crate_hash(cnum);
+
+                    let symbol = link_guard::link_guard_name(&crate_name[..], &svh);
+                    try!(writeln!(f, "  {}", symbol));
+                }
+            }
+
             Ok(())
         })();
         if let Err(e) = res {

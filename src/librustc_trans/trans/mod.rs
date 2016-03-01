@@ -53,6 +53,7 @@ mod expr;
 mod glue;
 mod inline;
 mod intrinsic;
+pub mod link_guard;
 mod machine;
 mod _match;
 mod meth;

@@ -339,6 +339,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         token::intern_and_get_ident(&self.get_crate_data(cnum).name[..])
     }
 
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
+    {
+        token::intern_and_get_ident(&self.get_crate_data(cnum).name())
+    }
+
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh
     {
         let cdata = self.get_crate_data(cnum);
