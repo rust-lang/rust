@@ -252,11 +252,12 @@ fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
         let ln = ln.unwrap();
+        let ln = ln.trim();
         if ln.starts_with("fn") ||
                 ln.starts_with("mod") {
             return true;
-        } else {
-            if !(it(ln.trim())) {
+        } else if ln.starts_with("//") {
+            if !it(&ln[2..]) {
                 return false;
             }
         }
