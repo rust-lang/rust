@@ -14,60 +14,51 @@ Language
 Libraries
 ---------
 
-* Stabilized APIs:
-  [`Path::strip_prefix`][] (renamed from relative_from),
-  [`path::StripPrefixError`][] (new error type returned from strip_prefix),
-  [`Ipv4Addr::is_loopback`],
-  [`Ipv4Addr::is_private`],
-  [`Ipv4Addr::is_link_local`],
-  [`Ipv4Addr::is_multicast`],
-  [`Ipv4Addr::is_broadcast`],
-  [`Ipv4Addr::is_documentation`],
-  [`Ipv6Addr::is_unspecified`],
-  [`Ipv6Addr::is_loopback`],
-  [`Ipv6Addr::is_multicast`],
-  [`Vec::as_slice`],
-  [`Vec::as_mut_slice`],
-  [`String::as_str`],
-  [`String::as_mut_str`],
-  `<[T]>::`[`clone_from_slice`], which now requires the two slices to
-  be the same length
-  `<[T]>::`[`sort_by_key`],
-  [`i32::checked_rem`],
-  [`i32::checked_neg`],
-  [`i32::checked_shl`],
-  [`i32::checked_shr`],
-  [`i32::saturating_mul`],
-  [`i32::overflowing_add`],
-  [`i32::overflowing_sub`],
-  [`i32::overflowing_mul`],
-  [`i32::overflowing_div`],
-  [`i32::overflowing_rem`],
-  [`i32::overflowing_neg`],
-  [`i32::overflowing_shl`],
-  [`i32::overflowing_shr`],
-  [`u32::checked_rem`],
-  [`u32::checked_neg`],
-  [`u32::checked_shl`],
-  [`u32::checked_shl`],
-  [`u32::saturating_mul`],
-  [`u32::overflowing_add`],
-  [`u32::overflowing_sub`],
-  [`u32::overflowing_mul`],
-  [`u32::overflowing_div`],
-  [`u32::overflowing_rem`],
-  [`u32::overflowing_neg`],
-  [`u32::overflowing_shl`],
-  [`u32::overflowing_shr`],
-  checked, saturated, and overflowing operations for other primitive types,
-  [`ffi::IntoStringError`],
-  [`CString::into_string`],
-  [`CString::into_bytes`],
-  [`CString::into_bytes_with_nul`],
-  `From<CString> for Vec<u8>`,
-  [`IntoStringError::into_cstring`],
-  [`IntoStringError::utf8_error`],
-  `Error for IntoStringError`.
+* Stabilized APIs
+  * `Path`
+    * [`Path::strip_prefix`][] (renamed from relative_from)
+    * [`path::StripPrefixError`][] (new error type returned from strip_prefix)
+  * `Ipv4Addr`
+    * [`Ipv4Addr::is_loopback`]
+    * [`Ipv4Addr::is_private`]
+    * [`Ipv4Addr::is_link_local`]
+    * [`Ipv4Addr::is_multicast`]
+    * [`Ipv4Addr::is_broadcast`]
+    * [`Ipv4Addr::is_documentation`]
+  * `Ipv6Addr`
+    * [`Ipv6Addr::is_unspecified`]
+    * [`Ipv6Addr::is_loopback`]
+    * [`Ipv6Addr::is_multicast`]
+  * `Vec`
+    * [`Vec::as_slice`]
+    * [`Vec::as_mut_slice`]
+  * `String`
+    * [`String::as_str`]
+    * [`String::as_mut_str`]
+  * Slices
+    * `<[T]>::`[`clone_from_slice`], which now requires the two slices to
+    be the same length
+    * `<[T]>::`[`sort_by_key`]
+  * checked, saturated, and overflowing operations
+    * [`i32::checked_rem`], [`i32::checked_neg`], [`i32::checked_shl`], [`i32::checked_shr`]
+    * [`i32::saturating_mul`]
+    * [`i32::overflowing_add`], [`i32::overflowing_sub`], [`i32::overflowing_mul`], [`i32::overflowing_div`]
+    * [`i32::overflowing_rem`], [`i32::overflowing_neg`], [`i32::overflowing_shl`], [`i32::overflowing_shr`]
+    * [`u32::checked_rem`], [`u32::checked_neg`], [`u32::checked_shl`], [`u32::checked_shl`]
+    * [`u32::saturating_mul`]
+    * [`u32::overflowing_add`], [`u32::overflowing_sub`], [`u32::overflowing_mul`], [`u32::overflowing_div`]
+    * [`u32::overflowing_rem`], [`u32::overflowing_neg`], [`u32::overflowing_shl`], [`u32::overflowing_shr`]
+    * and checked, saturated, and overflowing operations for other primitive types
+  * FFI
+    * [`ffi::IntoStringError`]
+    * [`CString::into_string`]
+    * [`CString::into_bytes`]
+    * [`CString::into_bytes_with_nul`]
+    * `From<CString> for Vec<u8>`
+  * `IntoStringError`
+    * [`IntoStringError::into_cstring`]
+    * [`IntoStringError::utf8_error`]
+    * `Error for IntoStringError`
 * [Validating UTF-8 is faster by a factor of between 7 and 14x for
   ASCII input][1.7utf8]. This means that creating `String`s and `str`s
   from bytes is faster.
@@ -76,7 +67,7 @@ Libraries
 * [`f32::to_degrees` and `f32::to_radians` are stable][1.7f]. The
   `f64` variants were stabilized previously.
 * [`BTreeMap` was rewritten to use less memory and improve the performance
-  of insertion and iteration, the latter by as much as 5x`][1.7bm].
+  of insertion and iteration, the latter by as much as 5x][1.7bm].
 * [`BTreeSet` and its iterators, `Iter`, `IntoIter`, and `Range` are
   covariant over their contained type][1.7bt].
 * [`LinkedList` and its iterators, `Iter` and `IntoIter` are covariant
@@ -182,6 +173,7 @@ Compatibility Notes
 [`i32::overflowing_sub`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.overflowing_sub
 [`i32::saturating_mul`]: http://doc.rust-lang.org/nightly/std/primitive.i32.html#method.saturating_mul
 [`path::StripPrefixError`]: http://doc.rust-lang.org/nightly/std/path/struct.StripPrefixError.html
+[`u32::checked_neg`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_neg
 [`u32::checked_rem`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_rem
 [`u32::checked_shl`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.checked_shl
 [`u32::overflowing_add`]: http://doc.rust-lang.org/nightly/std/primitive.u32.html#method.overflowing_add
