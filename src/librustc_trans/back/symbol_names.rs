@@ -107,9 +107,8 @@ use rustc::front::map::definitions::DefPath;
 
 use std::fmt::Write;
 use syntax::ast;
-use syntax::parse::token;
+use syntax::parse::token::{self, InternedString};
 use serialize::hex::ToHex;
-use super::link;
 
 pub fn def_id_to_string<'tcx>(tcx: &ty::TyCtxt<'tcx>, def_id: DefId) -> String {
 
@@ -207,7 +206,7 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         path.push(token::intern_and_get_ident(suffix));
     }
 
-    link::mangle(path.into_iter(), Some(&hash[..]))
+    mangle(path.into_iter(), Some(&hash[..]))
 }
 
 pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -232,5 +231,90 @@ pub fn internal_name_from_type_and_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>
     let path = [token::intern(&t.to_string()).as_str(),
                 gensym_name(suffix).as_str()];
     let hash = get_symbol_hash(ccx, &Vec::new(), cstore::LOCAL_CRATE, &[t]);
-    link::mangle(path.iter().cloned(), Some(&hash[..]))
+    mangle(path.iter().cloned(), Some(&hash[..]))
+}
+
+// Name sanitation. LLVM will happily accept identifiers with weird names, but
+// gas doesn't!
+// gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
+pub fn sanitize(s: &str) -> String {
+    let mut result = String::new();
+    for c in s.chars() {
+        match c {
+            // Escape these with $ sequences
+            '@' => result.push_str("$SP$"),
+            '*' => result.push_str("$BP$"),
+            '&' => result.push_str("$RF$"),
+            '<' => result.push_str("$LT$"),
+            '>' => result.push_str("$GT$"),
+            '(' => result.push_str("$LP$"),
+            ')' => result.push_str("$RP$"),
+            ',' => result.push_str("$C$"),
+
+            // '.' doesn't occur in types and functions, so reuse it
+            // for ':' and '-'
+            '-' | ':' => result.push('.'),
+
+            // These are legal symbols
+            'a' ... 'z'
+            | 'A' ... 'Z'
+            | '0' ... '9'
+            | '_' | '.' | '$' => result.push(c),
+
+            _ => {
+                result.push('$');
+                for c in c.escape_unicode().skip(1) {
+                    match c {
+                        '{' => {},
+                        '}' => result.push('$'),
+                        c => result.push(c),
+                    }
+                }
+            }
+        }
+    }
+
+    // Underscore-qualify anything that didn't start as an ident.
+    if !result.is_empty() &&
+        result.as_bytes()[0] != '_' as u8 &&
+        ! (result.as_bytes()[0] as char).is_xid_start() {
+        return format!("_{}", &result[..]);
+    }
+
+    return result;
+}
+
+pub fn mangle<PI: Iterator<Item=InternedString>>(path: PI, hash: Option<&str>) -> String {
+    // Follow C++ namespace-mangling style, see
+    // http://en.wikipedia.org/wiki/Name_mangling for more info.
+    //
+    // It turns out that on OSX you can actually have arbitrary symbols in
+    // function names (at least when given to LLVM), but this is not possible
+    // when using unix's linker. Perhaps one day when we just use a linker from LLVM
+    // we won't need to do this name mangling. The problem with name mangling is
+    // that it seriously limits the available characters. For example we can't
+    // have things like &T in symbol names when one would theoretically
+    // want them for things like impls of traits on that type.
+    //
+    // To be able to work on all platforms and get *some* reasonable output, we
+    // use C++ name-mangling.
+
+    let mut n = String::from("_ZN"); // _Z == Begin name-sequence, N == nested
+
+    fn push(n: &mut String, s: &str) {
+        let sani = sanitize(s);
+        n.push_str(&format!("{}{}", sani.len(), sani));
+    }
+
+    // First, connect each component with <len, name> pairs.
+    for data in path {
+        push(&mut n, &data);
+    }
+
+    if let Some(s) = hash {
+        push(&mut n, s)
+    }
+
+    n.push('E'); // End name-sequence.
+    n
 }
