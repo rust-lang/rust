@@ -22,7 +22,6 @@ use {NameBinding, NameBindingKind};
 use module_to_string;
 use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
-use resolve_imports::Shadowable;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::middle::cstore::{CrateStore, ChildItem, DlDef, DlField, DlImpl};
@@ -161,14 +160,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 };
 
                 // Build up the import directives.
-                let shadowable = item.attrs.iter().any(|attr| {
+                let is_prelude = item.attrs.iter().any(|attr| {
                     attr.name() == special_idents::prelude_import.name.as_str()
                 });
-                let shadowable = if shadowable {
-                    Shadowable::Always
-                } else {
-                    Shadowable::Never
-                };
 
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path) => {
@@ -186,7 +180,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                     view_path.span,
                                                     item.id,
                                                     is_public,
-                                                    shadowable);
+                                                    is_prelude);
                     }
                     ViewPathList(_, ref source_items) => {
                         // Make sure there's at most one `mod` import in the list.
@@ -237,7 +231,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                         source_item.span,
                                                         source_item.node.id(),
                                                         is_public,
-                                                        shadowable);
+                                                        is_prelude);
                         }
                     }
                     ViewPathGlob(_) => {
@@ -247,7 +241,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                     view_path.span,
                                                     item.id,
                                                     is_public,
-                                                    shadowable);
+                                                    is_prelude);
                     }
                 }
                 parent
@@ -631,7 +625,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                               span: Span,
                               id: NodeId,
                               is_public: bool,
-                              shadowable: Shadowable) {
+                              is_prelude: bool) {
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
 
@@ -648,7 +642,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         }
 
         let directive =
-            ImportDirective::new(module_path, subclass, span, id, is_public, shadowable);
+            ImportDirective::new(module_path, subclass, span, id, is_public, is_prelude);
         module_.add_import_directive(directive);
         self.unresolved_imports += 1;
     }

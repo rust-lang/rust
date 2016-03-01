@@ -57,13 +57,6 @@ impl ImportDirectiveSubclass {
     }
 }
 
-/// Whether an import can be shadowed by another import.
-#[derive(Debug,PartialEq,Clone,Copy)]
-pub enum Shadowable {
-    Always,
-    Never,
-}
-
 /// One import directive.
 #[derive(Debug,Clone)]
 pub struct ImportDirective {
@@ -72,7 +65,7 @@ pub struct ImportDirective {
     pub span: Span,
     pub id: NodeId,
     pub is_public: bool, // see note in ImportResolutionPerNamespace about how to use this
-    pub shadowable: Shadowable,
+    pub is_prelude: bool,
 }
 
 impl ImportDirective {
@@ -81,7 +74,7 @@ impl ImportDirective {
                span: Span,
                id: NodeId,
                is_public: bool,
-               shadowable: Shadowable)
+               is_prelude: bool)
                -> ImportDirective {
         ImportDirective {
             module_path: module_path,
@@ -89,7 +82,7 @@ impl ImportDirective {
             span: span,
             id: id,
             is_public: is_public,
-            shadowable: shadowable,
+            is_prelude: is_prelude,
         }
     }
 
@@ -105,7 +98,7 @@ impl ImportDirective {
         if let GlobImport = self.subclass {
             modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
         }
-        if self.shadowable == Shadowable::Always {
+        if self.is_prelude {
             modifiers = modifiers | DefModifiers::PRELUDE;
         }
 
