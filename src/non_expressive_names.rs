@@ -3,7 +3,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ast::*;
 use syntax::visit::{self, FnKind};
-use utils::{span_lint_and_then, in_macro};
+use utils::{span_lint_and_then, in_macro, span_lint};
 use strsim::levenshtein;
 
 /// **What it does:** This lint warns about names that are very similar and thus confusing
@@ -19,18 +19,35 @@ declare_lint! {
     "similarly named items and bindings"
 }
 
-pub struct SimilarNames(pub usize);
+/// **What it does:** This lint warns about having too many variables whose name consists of a single character
+///
+/// **Why is this bad?** It's hard to memorize what a variable means without a descriptive name.
+///
+/// **Known problems:** None?
+///
+/// **Example:** let (a, b, c, d, e, f, g) = (...);
+declare_lint! {
+    pub MANY_SINGLE_CHAR_NAMES,
+    Warn,
+    "too many single character bindings"
+}
 
-impl LintPass for SimilarNames {
+pub struct NonExpressiveNames {
+    pub similarity_threshold: usize,
+    pub max_single_char_names: usize,
+}
+
+impl LintPass for NonExpressiveNames {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SIMILAR_NAMES)
+        lint_array!(SIMILAR_NAMES, MANY_SINGLE_CHAR_NAMES)
     }
 }
 
 struct SimilarNamesLocalVisitor<'a, 'b: 'a> {
     names: Vec<(InternedString, Span)>,
     cx: &'a EarlyContext<'b>,
-    limit: usize,
+    lint: &'a NonExpressiveNames,
+    single_char_names: Vec<char>,
 }
 
 const WHITELIST: &'static [&'static str] = &[
@@ -57,7 +74,15 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
         if interned_name.chars().any(char::is_uppercase) {
             return;
         }
-        if interned_name.chars().count() < 3 {
+        let count = interned_name.chars().count();
+        if count < 3 {
+            if count == 1 {
+                let c = interned_name.chars().next().expect("already checked");
+                // make sure we ignore shadowing
+                if !self.0.single_char_names.contains(&c) {
+                    self.0.single_char_names.push(c);
+                }
+            }
             return;
         }
         for &allow in WHITELIST {
@@ -85,7 +110,7 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                 continue;
             }
             // if they differ enough it's all good
-            if dist > self.0.limit {
+            if dist > self.0.lint.similarity_threshold {
                 continue;
             }
             // are we doing stuff like `for item in items`?
@@ -119,7 +144,8 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                                |diag| {
                                    diag.span_note(sp, "existing binding defined here");
                                    if let Some(split) = split_at {
-                                       diag.span_help(span, &format!("separate the discriminating character by an underscore like: `{}_{}`",
+                                       diag.span_help(span, &format!("separate the discriminating character \
+                                                                      by an underscore like: `{}_{}`",
                                                                      &interned_name[..split],
                                                                      &interned_name[split..]));
                                    }
@@ -130,6 +156,19 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
     }
 }
 
+impl<'a, 'b> SimilarNamesLocalVisitor<'a, 'b> {
+    fn check_single_char_count(&self, span: Span) {
+        if self.single_char_names.len() < self.lint.max_single_char_names {
+            return;
+        }
+        span_lint(self.cx,
+                  MANY_SINGLE_CHAR_NAMES,
+                  span,
+                  &format!("scope contains {} bindings whose name are just one char",
+                           self.single_char_names.len()));
+    }
+}
+
 impl<'v, 'a, 'b> visit::Visitor<'v> for SimilarNamesLocalVisitor<'a, 'b> {
     fn visit_local(&mut self, local: &'v Local) {
         SimilarNamesNameVisitor(self).visit_local(local)
@@ -137,26 +176,33 @@ impl<'v, 'a, 'b> visit::Visitor<'v> for SimilarNamesLocalVisitor<'a, 'b> {
     fn visit_block(&mut self, blk: &'v Block) {
         // ensure scoping rules work
         let n = self.names.len();
+        let single_char_count = self.single_char_names.len();
         visit::walk_block(self, blk);
         self.names.truncate(n);
+        self.check_single_char_count(blk.span);
+        self.single_char_names.truncate(single_char_count);
     }
     fn visit_arm(&mut self, arm: &'v Arm) {
         let n = self.names.len();
+        let single_char_count = self.single_char_names.len();
         // just go through the first pattern, as either all patterns bind the same bindings or rustc would have errored much earlier
         SimilarNamesNameVisitor(self).visit_pat(&arm.pats[0]);
         self.names.truncate(n);
+        self.check_single_char_count(arm.body.span);
+        self.single_char_names.truncate(single_char_count);
     }
     fn visit_item(&mut self, _: &'v Item) {
         // do nothing
     }
 }
 
-impl EarlyLintPass for SimilarNames {
+impl EarlyLintPass for NonExpressiveNames {
     fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, decl: &FnDecl, blk: &Block, _: Span, _: NodeId) {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),
             cx: cx,
-            limit: self.0,
+            lint: &self,
+            single_char_names: Vec::new(),
         };
         // initialize with function arguments
         for arg in &decl.inputs {

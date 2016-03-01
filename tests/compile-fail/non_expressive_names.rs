@@ -35,3 +35,30 @@ fn main() {
     let cakes: i32;
     let coke: i32; //~ ERROR: name is too similar
 }
+
+
+fn bla() {
+    let a: i32;
+    let (b, c, d): (i32, i64, i16);
+    {
+        {
+            let cdefg: i32;
+            let blar: i32;
+        }
+        { //~ ERROR: scope contains 5 bindings whose name are just one char
+            let e: i32;
+        }
+        { //~ ERROR: scope contains 6 bindings whose name are just one char
+            let e: i32;
+            let f: i32;
+        }
+        match 5 {
+            1 => println!(""),
+            e => panic!(), //~ ERROR: scope contains 5 bindings whose name are just one char
+        }
+        match 5 {
+            1 => println!(""),
+            _ => panic!(),
+        }
+    }
+}

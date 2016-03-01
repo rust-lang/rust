@@ -74,6 +74,7 @@ name                                                                            
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                                     | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                                             | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque
 [manual_swap](https://github.com/Manishearth/rust-clippy/wiki#manual_swap)                                           | warn    | manual swap
+[many_single_char_names](https://github.com/Manishearth/rust-clippy/wiki#many_single_char_names)                     | warn    | too many single character bindings
 [map_clone](https://github.com/Manishearth/rust-clippy/wiki#map_clone)                                               | warn    | using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends `.cloned()` instead)
 [map_entry](https://github.com/Manishearth/rust-clippy/wiki#map_entry)                                               | warn    | use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`
 [match_bool](https://github.com/Manishearth/rust-clippy/wiki#match_bool)                                             | warn    | a match on boolean expression; recommends `if..else` block instead
