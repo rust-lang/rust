@@ -23,6 +23,7 @@ regex_macros = { version = "0.1.33", optional = true }
 semver = "0.2.1"
 toml = "0.1"
 unicode-normalization = "0.1"
+strsim = "0.4.0"
 
 [dev-dependencies]
 compiletest_rs = "0.1.0"

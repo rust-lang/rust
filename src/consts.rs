@@ -82,7 +82,7 @@ impl Constant {
 impl PartialEq for Constant {
     fn eq(&self, other: &Constant) -> bool {
         match (self, other) {
-            (&Constant::Str(ref ls, ref lsty), &Constant::Str(ref rs, ref rsty)) => ls == rs && lsty == rsty,
+            (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => ls == rs && l_sty == r_sty,
             (&Constant::Binary(ref l), &Constant::Binary(ref r)) => l == r,
             (&Constant::Char(l), &Constant::Char(r)) => l == r,
             (&Constant::Int(l), &Constant::Int(r)) => l.is_negative() == r.is_negative() && l.to_u64_unchecked() == r.to_u64_unchecked(),
@@ -145,8 +145,8 @@ impl Hash for Constant {
 impl PartialOrd for Constant {
     fn partial_cmp(&self, other: &Constant) -> Option<Ordering> {
         match (self, other) {
-            (&Constant::Str(ref ls, ref lsty), &Constant::Str(ref rs, ref rsty)) => {
-                if lsty == rsty {
+            (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => {
+                if l_sty == r_sty {
                     Some(ls.cmp(rs))
                 } else {
                     None
@@ -353,6 +353,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             _ => None,
         }
     }
+
 
     fn binop_apply<F>(&mut self, left: &Expr, right: &Expr, op: F) -> Option<Constant>
         where F: Fn(Constant, Constant) -> Option<Constant>

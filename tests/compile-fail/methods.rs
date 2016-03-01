@@ -286,6 +286,7 @@ fn or_fun_call() {
     //~|SUGGESTION btree.entry(42).or_insert_with(String::new);
 }
 
+#[allow(similar_names)]
 fn main() {
     use std::io;
 
