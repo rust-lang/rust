@@ -555,28 +555,45 @@ Users of `rustc` can define new syntax extensions in two ways:
 
 ## Macros
 
-`macro_rules` allows users to define syntax extension in a declarative way.  We
-call such extensions "macros by example" or simply "macros" — to be distinguished
-from the "procedural macros" defined in [compiler plugins][plugin].
+`macro_rules` allows users to define syntax extensions in a declarative way.
+We call such extensions "macros by example" or simply "macros" — to be
+distinguished from the "procedural macros" defined in [compiler plugins][plugin].
 
-Currently, macros can expand to expressions, statements, items, or patterns.
+As shown below, the body of a `macro_rules` macro consists of one or more
+semicolon-separated arms, similar in appearance to a `match` statement. On
+the left side of the `=>` is a matcher describing the syntax that the macro
+accepts, optionally capturing parts of it for use in the transcriber, which
+is on the right side of the `=>`. (Choice of delimiters for the macro body,
+matchers, and transcribers is arbitrary.)
 
-(A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
-any token other than a delimiter or `$`.)
+```rust,ignore
+macro_rules! /* name of macro */ {
+    (/* matcher for arm 1 */) => { /* transcriber for arm 1 */ };
+    (/* matcher for arm 2 */) => { /* transcriber for arm 2 */ }
+}
+```
 
-The macro expander looks up macro invocations by name, and tries each macro
-rule in turn. It transcribes the first successful match. Matching and
+Currently, macros can expand to expressions, statements, items, patterns, or
+types[^typemacros]. This distinction is inferred from the context in which the
+macro is invoked, and carefully written macros may work in multiple contexts.
+
+[^typemacros]: Gated by
+[the `type_macros` feature](https://github.com/rust-lang/rust/issues/27245).
+
+The macro expander looks up macro invocations by name, and tries each
+arm in turn. It transcribes the first successful match. Matching and
 transcription are closely related to each other, and we will describe them
 together.
 
-### Macro By Example
+### Macros By Example
 
 The macro expander matches and transcribes every token that does not begin with
 a `$` literally, including delimiters. For parsing reasons, delimiters must be
 balanced, but they are otherwise not special.
 
 In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the Rust
-syntax named by _designator_. Valid designators are:
+syntax named by _designator_ (also called a _fragment specifier_). Valid
+designators are:
 
 * `item`: an [item](#items)
 * `block`: a [block](#block-expressions)
@@ -586,36 +603,36 @@ syntax named by _designator_. Valid designators are:
 * `ty`: a [type](#types)
 * `ident`: an [identifier](#identifiers)
 * `path`: a [path](#paths)
-* `tt`: either side of the `=>` in macro rules
+* `tt`: a "token tree": either one [token](#token) or a delimited sequence
+   of token trees
 * `meta`: the contents of an [attribute](#attributes)
 
-In the transcriber, the
-designator is already known, and so only the name of a matched nonterminal comes
-after the dollar sign.
+In the transcriber, the designator is already known, and so only the name of a matched
+nonterminal comes after the dollar sign.
 
-In both the matcher and transcriber, the Kleene star-like operator indicates
+In both the matcher and transcriber, the Kleene star operator indicates
 repetition. The Kleene star operator consists of `$` and parentheses, optionally
 followed by a separator token, followed by `*` or `+`. `*` means zero or more
-repetitions, `+` means at least one repetition. The parentheses are not matched or
+repetitions; `+` means at least one repetition. The parentheses are not matched or
 transcribed. On the matcher side, a name is bound to _all_ of the names it
 matches, in a structure that mimics the structure of the repetition encountered
 on a successful match. The job of the transcriber is to sort that structure
 out.
 
-The rules for transcription of these repetitions are called "Macro By Example".
+The rules for transcription of these repetitions are called "Macros By Example".
 Essentially, one "layer" of repetition is discharged at a time, and all of them
 must be discharged by the time a name is transcribed. Therefore, `( $( $i:ident
-),* ) => ( $i )` is an invalid macro, but `( $( $i:ident ),* ) => ( $( $i:ident
-),*  )` is acceptable (if trivial).
+),* ) => ( $i )` is an invalid macro, but `( $( $i:ident ),* ) => ( $( $i ),*  )`
+is acceptable (though trivial).
 
-When Macro By Example encounters a repetition, it examines all of the `$`
+When Macros By Example encounters a repetition, it examines all of the `$`
 _name_ s that occur in its body. At the "current layer", they all must repeat
 the same number of times, so ` ( $( $i:ident ),* ; $( $j:ident ),* ) => ( $(
 ($i,$j) ),* )` is valid if given the argument `(a,b,c ; d,e,f)`, but not
 `(a,b,c ; d,e)`. The repetition walks through the choices at that layer in
 lockstep, so the former input transcribes to `(a,d), (b,e), (c,f)`.
 
-Nested repetitions are allowed.
+Nested repetitions are allowed. In the transcriber, `*` vs `+` does not matter.
 
 ### Parsing limitations
 
@@ -633,6 +650,8 @@ Rust syntax is restricted in two ways:
    requiring a distinctive token in front can solve the problem.
 
 [RFC 550]: https://github.com/rust-lang/rfcs/blob/master/text/0550-macro-future-proofing.md
+
+### Scoping
 
 # Crates and source files
 
