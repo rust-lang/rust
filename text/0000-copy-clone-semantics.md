@@ -27,7 +27,10 @@ be able to, and we will be stuck looping over every value.
 # Detailed design
 [design]: #detailed-design
 
-Simply add something like the following sentence to the documentation for the
+Specify that `<T as Clone>::clone(t)` shall be equivalent to `ptr::read(t)`
+where `T: Copy, t: &T`.
+
+Also add something like the following sentence to the documentation for the
 `Clone` trait:
 
 "If `T: Copy`, `x: T`, and `y: &T`, then `let x = y.clone();` is equivalent to
