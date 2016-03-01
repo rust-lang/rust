@@ -4,7 +4,7 @@ Rust’s main draw is its powerful static guarantees about behavior. But safety
 checks are conservative by nature: there are some programs that are actually
 safe, but the compiler is not able to verify this is true. To write these kinds
 of programs, we need to tell the compiler to relax its restrictions a bit. For
-this, Rust has a keyword, `unsafe`. Code using `unsafe` has less restrictions
+this, Rust has a keyword, `unsafe`. Code using `unsafe` has fewer restrictions
 than normal code does.
 
 Let’s go over the syntax, and then we’ll talk semantics. `unsafe` is used in
