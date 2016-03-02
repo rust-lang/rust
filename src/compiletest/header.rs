@@ -20,16 +20,6 @@ use util;
 
 #[derive(Clone, Debug)]
 pub struct TestProps {
-    // For the main test file, this is initialized to `None`. But
-    // when running tests that test multiple revisions, such as
-    // incremental tests, we will set this to `Some(foo)` where `foo`
-    // is the current revision identifier.
-    //
-    // Note that, unlike the other options here, this value is never
-    // loaded from the input file (though it is always set to one of
-    // the values listed in the vec `self.revisions`, which is loaded
-    // from the file).
-    pub revision: Option<String>,
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String> ,
     // Extra flags to pass to the compiler
@@ -81,7 +71,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let pretty_compare_only = false;
     let forbid_output = Vec::new();
     let mut props = TestProps {
-        revision: None,
         error_patterns: error_patterns,
         compile_flags: vec![],
         run_flags: run_flags,

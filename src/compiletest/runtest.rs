@@ -70,7 +70,36 @@ fn get_output(props: &TestProps, proc_res: &ProcRes) -> String {
     }
 }
 
+
+fn for_each_revision<OP>(config: &Config, props: &TestProps, testpaths: &TestPaths,
+                         mut op: OP)
+    where OP: FnMut(&Config, &TestProps, &TestPaths, Option<&str>)
+{
+    if props.revisions.is_empty() {
+        op(config, props, testpaths, None)
+    } else {
+        for revision in &props.revisions {
+            let mut revision_props = props.clone();
+            header::load_props_into(&mut revision_props,
+                                    &testpaths.file,
+                                    Some(&revision));
+            revision_props.compile_flags.extend(vec![
+                format!("--cfg"),
+                format!("{}", revision),
+            ]);
+            op(config, &revision_props, testpaths, Some(revision));
+        }
+    }
+}
+
 fn run_cfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    for_each_revision(config, props, testpaths, run_cfail_test_revision);
+}
+
+fn run_cfail_test_revision(config: &Config,
+                           props: &TestProps,
+                           testpaths: &TestPaths,
+                           revision: Option<&str>) {
     let proc_res = compile_test(config, props, testpaths);
 
     if proc_res.status.success() {
@@ -85,7 +114,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
     }
 
     let output_to_check = get_output(props, &proc_res);
-    let expected_errors = errors::load_errors(&testpaths.file, &props.revision);
+    let expected_errors = errors::load_errors(&testpaths.file, revision);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
             fatal("both error pattern and expected errors specified");
@@ -99,6 +128,13 @@ fn run_cfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
 }
 
 fn run_rfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    for_each_revision(config, props, testpaths, run_rfail_test_revision);
+}
+
+fn run_rfail_test_revision(config: &Config,
+                           props: &TestProps,
+                           testpaths: &TestPaths,
+                           _revision: Option<&str>) {
     let proc_res = compile_test(config, props, testpaths);
 
     if !proc_res.status.success() {
@@ -130,6 +166,13 @@ fn check_correct_failure_status(proc_res: &ProcRes) {
 }
 
 fn run_rpass_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    for_each_revision(config, props, testpaths, run_rpass_test_revision);
+}
+
+fn run_rpass_test_revision(config: &Config,
+                           props: &TestProps,
+                           testpaths: &TestPaths,
+                           _revision: Option<&str>) {
     let proc_res = compile_test(config, props, testpaths);
 
     if !proc_res.status.success() {
@@ -144,6 +187,8 @@ fn run_rpass_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
 }
 
 fn run_valgrind_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant to rpass tests");
+
     if config.valgrind_path.is_none() {
         assert!(!config.force_valgrind);
         return run_rpass_test(config, props, testpaths);
@@ -1804,6 +1849,8 @@ fn run_rustdoc_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
 }
 
 fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant to codegen units");
+
     let proc_res = compile_test(config, props, testpaths);
 
     if !proc_res.status.success() {
@@ -1821,7 +1868,7 @@ fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPa
         .map(|s| (&s[prefix.len()..]).to_string())
         .collect();
 
-    let expected: HashSet<String> = errors::load_errors(&testpaths.file, &props.revision)
+    let expected: HashSet<String> = errors::load_errors(&testpaths.file, None)
         .iter()
         .map(|e| e.msg.trim().to_string())
         .collect();
