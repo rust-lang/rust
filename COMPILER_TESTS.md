@@ -42,3 +42,34 @@ whole, instead of just a few lines inside the test.
 * `ignore-test` always ignores the test
 * `ignore-lldb` and `ignore-gdb` will skip the debuginfo tests
 * `min-{gdb,lldb}-version`
+
+## Revisions
+
+Certain classes of tests support "revisions" (as of the time of this
+writing, this includes run-pass, compile-fail, run-fail, and
+incremental, though incremental tests are somewhat
+different). Revisions allow a single test file to be used for multiple
+tests. This is done by adding a special header at the top of the file:
+
+```
+// revisions: foo bar baz
+```
+
+This will result in the test being compiled (and tested) three times,
+once with `--cfg foo`, once with `--cfg bar`, and once with `--cfg
+baz`. You can therefore use `#[cfg(foo)]` etc within the test to tweak
+each of these results.
+
+You can also customize headers and expected error messages to a particular
+revision. To do this, add `[foo]` (or `bar`, `baz`, etc) after the `//`
+comment, like so:
+
+```
+// A flag to pass in only for cfg `foo`:
+//[foo]compile-flags: -Z verbose
+
+#[cfg(foo)]
+fn test_foo() {
+    let x: usize = 32_u32; //[foo]~ ERROR mismatched types
+}
+```
