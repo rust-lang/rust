@@ -1,5 +1,5 @@
 - Feature Name: N/A
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Start Date: 01 March, 2016
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
 
