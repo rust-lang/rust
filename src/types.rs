@@ -53,7 +53,7 @@ pub fn rewrite_path(context: &RewriteContext,
             // 3 = ">::".len()
             let budget = try_opt!(width.checked_sub(extra_offset + 3));
 
-            result = try_opt!(rewrite_path_segments(expr_context,
+            result = try_opt!(rewrite_path_segments(false,
                                                     result,
                                                     path.segments.iter().take(skip_count),
                                                     span_lo,
