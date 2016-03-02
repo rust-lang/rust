@@ -24,6 +24,13 @@ would allow us to simply `memcpy` the values from the old `Vec` to the new
 `Vec` in the case of `T: Copy`. However, if we don't specify this, we will not
 be able to, and we will be stuck looping over every value.
 
+It's always been the intention that `Clone::clone == ptr::read for T: Copy`; see 
+[issue #23790][issue-copy]: "It really makes sense for `Clone` to be a
+supertrait of `Copy` -- `Copy` is a refinement of `Clone` where `memcpy`
+suffices, basically." This idea was also implicit in accepting
+[rfc #0839][rfc-extend] where "[B]ecause Copy: Clone, it would be backwards
+compatible to upgrade to Clone in the future if demand is high enough."
+
 # Detailed design
 [design]: #detailed-design
 
@@ -54,3 +61,6 @@ in this way, we document this separately. This is how we started off with
 [unresolved]: #unresolved-questions
 
 What the exact wording should be.
+
+[issue-copy]: https://github.com/rust-lang/rust/issues/23790
+[rfc-extend]: https://github.com/rust-lang/rfcs/blob/master/text/0839-embrace-extend-extinguish.md
