@@ -141,7 +141,7 @@ for i in &v {
 }
 
 for i in &v {
-    println!("This is a reference {}", i);
+    println!("This is a reference to {}", i);
 }
 ```
 
