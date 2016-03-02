@@ -275,7 +275,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
                             "-L".to_owned(),
                             aux_dir.to_str().unwrap().to_owned());
         args.extend(split_maybe_args(&config.target_rustcflags));
-        args.extend(split_maybe_args(&props.compile_flags));
+        args.extend(props.compile_flags.iter().cloned());
         return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_owned(),
             args: args,
@@ -322,7 +322,7 @@ actual:\n\
                             "-L".to_owned(),
                             aux_dir.to_str().unwrap().to_owned());
         args.extend(split_maybe_args(&config.target_rustcflags));
-        args.extend(split_maybe_args(&props.compile_flags));
+        args.extend(props.compile_flags.iter().cloned());
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_owned(),
@@ -1184,7 +1184,7 @@ fn document(config: &Config,
                         "-o".to_owned(),
                         out_dir.to_str().unwrap().to_owned(),
                         testpaths.file.to_str().unwrap().to_owned()];
-    args.extend(split_maybe_args(&props.compile_flags));
+    args.extend(props.compile_flags.iter().cloned());
     let args = ProcArgs {
         prog: config.rustdoc_path.to_str().unwrap().to_owned(),
         args: args,
@@ -1369,7 +1369,7 @@ fn make_compile_args<F>(config: &Config,
     } else {
         args.extend(split_maybe_args(&config.target_rustcflags));
     }
-    args.extend(split_maybe_args(&props.compile_flags));
+    args.extend(props.compile_flags.iter().cloned());
     return ProcArgs {
         prog: config.rustc_path.to_str().unwrap().to_owned(),
         args: args,
