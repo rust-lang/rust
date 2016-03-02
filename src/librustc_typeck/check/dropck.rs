@@ -21,7 +21,6 @@ use util::nodemap::FnvHashSet;
 
 use syntax::ast;
 use syntax::codemap::{self, Span};
-use syntax::parse::token::special_idents;
 
 /// check_drop_impl confirms that the Drop implementation identfied by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -299,7 +298,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                     // no need for an additional note if the overflow
                     // was somehow on the root.
                 }
-                TypeContext::ADT { def_id, variant, field, field_index } => {
+                TypeContext::ADT { def_id, variant, field } => {
                     let adt = tcx.lookup_adt_def(def_id);
                     let variant_name = match adt.adt_kind() {
                         ty::AdtKind::Enum => format!("enum {} variant {}",
@@ -308,17 +307,12 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                         ty::AdtKind::Struct => format!("struct {}",
                                                        tcx.item_path_str(def_id))
                     };
-                    let field_name = if field == special_idents::unnamed_field.name {
-                        format!("#{}", field_index)
-                    } else {
-                        format!("`{}`", field)
-                    };
                     span_note!(
                         &mut err,
                         span,
                         "overflowed on {} field {} type: {}",
                         variant_name,
-                        field_name,
+                        field,
                         detected_on_typ);
                 }
             }
@@ -338,7 +332,6 @@ enum TypeContext {
         def_id: DefId,
         variant: ast::Name,
         field: ast::Name,
-        field_index: usize
     }
 }
 
@@ -452,7 +445,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
         ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
             let did = def.did;
             for variant in &def.variants {
-                for (i, field) in variant.fields.iter().enumerate() {
+                for field in variant.fields.iter() {
                     let fty = field.ty(tcx, substs);
                     let fty = cx.rcx.fcx.resolve_type_vars_if_possible(
                         cx.rcx.fcx.normalize_associated_types_in(cx.span, &fty));
@@ -462,7 +455,6 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
                             def_id: did,
                             field: field.name,
                             variant: variant.name,
-                            field_index: i
                         },
                         fty,
                         depth+1))

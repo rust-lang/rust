@@ -48,8 +48,7 @@ use rbml::reader;
 use rbml;
 use serialize::Decodable;
 use syntax::attr;
-use syntax::parse::token::{IdentInterner, special_idents};
-use syntax::parse::token;
+use syntax::parse::token::{self, IdentInterner};
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap::{self, Span, BytePos, NO_EXPANSION};
@@ -406,6 +405,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                                 cdata: Cmd,
                                 doc: rbml::Doc,
                                 tcx: &ty::ctxt<'tcx>) -> Vec<ty::FieldDefData<'tcx, 'tcx>> {
+        let mut index = 0;
         reader::tagged_docs(doc, tag_item_field).map(|f| {
             let ff = item_family(f);
             match ff {
@@ -417,8 +417,9 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                                   struct_field_family_to_visibility(ff))
         }).chain(reader::tagged_docs(doc, tag_item_unnamed_field).map(|f| {
             let ff = item_family(f);
-            ty::FieldDefData::new(item_def_id(f, cdata),
-                                  special_idents::unnamed_field.name,
+            let name = intr.intern(&index.to_string());
+            index += 1;
+            ty::FieldDefData::new(item_def_id(f, cdata), name,
                                   struct_field_family_to_visibility(ff))
         })).collect()
     }
@@ -1153,10 +1154,13 @@ fn struct_field_family_to_visibility(family: Family) -> hir::Visibility {
 pub fn get_struct_field_names(intr: &IdentInterner, cdata: Cmd, id: DefIndex)
     -> Vec<ast::Name> {
     let item = cdata.lookup_item(id);
+    let mut index = 0;
     reader::tagged_docs(item, tag_item_field).map(|an_item| {
         item_name(intr, an_item)
     }).chain(reader::tagged_docs(item, tag_item_unnamed_field).map(|_| {
-        special_idents::unnamed_field.name
+        let name = intr.intern(&index.to_string());
+        index += 1;
+        name
     })).collect()
 }
 

@@ -46,7 +46,6 @@ use syntax::codemap::BytePos;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::errors::Handler;
-use syntax::parse::token::special_idents;
 use syntax;
 use rbml::writer::Encoder;
 
@@ -249,7 +248,7 @@ fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
 fn encode_struct_fields(rbml_w: &mut Encoder,
                         variant: ty::VariantDef) {
     for f in &variant.fields {
-        if f.name == special_idents::unnamed_field.name {
+        if variant.is_tuple_struct() {
             rbml_w.start_tag(tag_item_unnamed_field);
         } else {
             rbml_w.start_tag(tag_item_field);
@@ -1752,9 +1751,9 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
     impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for StructFieldVisitor<'a, 'b, 'c, 'tcx> {
         fn visit_struct_field(&mut self, field: &hir::StructField) {
             self.rbml_w.start_tag(tag_struct_field);
-            let def_id = self.ecx.tcx.map.local_def_id(field.node.id);
+            let def_id = self.ecx.tcx.map.local_def_id(field.id);
             encode_def_id(self.rbml_w, def_id);
-            encode_attributes(self.rbml_w, &field.node.attrs);
+            encode_attributes(self.rbml_w, &field.attrs);
             self.rbml_w.end_tag();
         }
     }

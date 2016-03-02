@@ -36,7 +36,6 @@ use middle::infer::{self, InferCtxt, TypeOrigin, new_infer_ctxt};
 use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::codemap::Span;
-use syntax::parse::token;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
@@ -449,13 +448,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                    for a coercion between structures with one field \
                                    being coerced, but {} fields need coercions: {}",
                                    diff_fields.len(), diff_fields.iter().map(|&(i, a, b)| {
-                                        let name = fields[i].name;
-                                        format!("{} ({} to {})",
-                                                if name == token::special_names::unnamed_field {
-                                                    i.to_string()
-                                                } else {
-                                                    name.to_string()
-                                                }, a, b)
+                                        format!("{} ({} to {})", fields[i].name, a, b)
                                    }).collect::<Vec<_>>().join(", "));
                         return;
                     }

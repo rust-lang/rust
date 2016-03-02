@@ -188,8 +188,6 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean
 }
 
 fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::Struct {
-    use syntax::parse::token::special_idents::unnamed_field;
-
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     let variant = tcx.lookup_adt_def(did).struct_variant();
@@ -197,8 +195,8 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::Struct {
     clean::Struct {
         struct_type: match &*variant.fields {
             [] => doctree::Unit,
-            [ref f] if f.name == unnamed_field.name => doctree::Newtype,
-            [ref f, ..] if f.name == unnamed_field.name => doctree::Tuple,
+            [_] if variant.kind == ty::VariantKind::Tuple => doctree::Newtype,
+            [..] if variant.kind == ty::VariantKind::Tuple => doctree::Tuple,
             _ => doctree::Plain,
         },
         generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
