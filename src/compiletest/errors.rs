@@ -33,7 +33,7 @@ enum WhichLine { ThisLine, FollowPrevious(usize), AdjustBackward(usize) }
 ///
 /// If cfg is not None (i.e., in an incremental test), then we look
 /// for `//[X]~` instead, where `X` is the current `cfg`.
-pub fn load_errors(testfile: &Path, cfg: &Option<String>) -> Vec<ExpectedError> {
+pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<ExpectedError> {
     let rdr = BufReader::new(File::open(testfile).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen
@@ -46,8 +46,8 @@ pub fn load_errors(testfile: &Path, cfg: &Option<String>) -> Vec<ExpectedError> 
     // updating it in the map callback below.)
     let mut last_nonfollow_error = None;
 
-    let tag = match *cfg {
-        Some(ref rev) => format!("//[{}]~", rev),
+    let tag = match cfg {
+        Some(rev) => format!("//[{}]~", rev),
         None => format!("//~")
     };
 
