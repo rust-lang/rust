@@ -1371,8 +1371,6 @@ pub struct FieldDefData<'tcx, 'container: 'tcx> {
     /// The field's DefId. NOTE: the fields of tuple-like enum variants
     /// are not real items, and don't have entries in tcache etc.
     pub did: DefId,
-    /// special_idents::unnamed_field.name
-    /// if this is a tuple-like field
     pub name: Name,
     pub vis: hir::Visibility,
     /// TyIVar is used here to allow for variance (see the doc at

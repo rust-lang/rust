@@ -41,9 +41,7 @@ use rustc_front::hir::{ForeignItem, ForeignItemFn, ForeignItemStatic};
 use rustc_front::hir::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
 use rustc_front::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
 use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use rustc_front::hir::{NamedField, PathListIdent, PathListMod};
-use rustc_front::hir::StmtDecl;
-use rustc_front::hir::UnnamedField;
+use rustc_front::hir::{PathListIdent, PathListMod, StmtDecl};
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::hir::Visibility;
 use rustc_front::intravisit::{self, Visitor};
@@ -382,17 +380,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 }
 
                 // Record the def ID and fields of this struct.
-                let named_fields = struct_def.fields()
-                                             .iter()
-                                             .filter_map(|f| {
-                                                 match f.node.kind {
-                                                     NamedField(name, _) => Some(name),
-                                                     UnnamedField(_) => None,
-                                                 }
-                                             })
-                                             .collect();
+                let field_names = struct_def.fields()
+                                            .iter()
+                                            .map(|f| f.name)
+                                            .collect();
                 let item_def_id = self.ast_map.local_def_id(item.id);
-                self.structs.insert(item_def_id, named_fields);
+                self.structs.insert(item_def_id, field_names);
 
                 parent
             }

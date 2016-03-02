@@ -126,7 +126,7 @@ impl LateLintPass for BoxPointers {
             hir::ItemStruct(ref struct_def, _) => {
                 for struct_field in struct_def.fields() {
                     self.check_heap_type(cx, struct_field.span,
-                                         cx.tcx.node_id_to_type(struct_field.node.id));
+                                         cx.tcx.node_id_to_type(struct_field.id));
                 }
             }
             _ => ()
@@ -428,12 +428,12 @@ impl LateLintPass for MissingDoc {
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, sf: &hir::StructField) {
-        if let hir::NamedField(_, vis) = sf.node.kind {
-            if vis == hir::Public || self.in_variant {
+        if !sf.is_positional() {
+            if sf.vis == hir::Public || self.in_variant {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");
                 self.check_missing_docs_attrs(cx, Some(cur_struct_def),
-                                              &sf.node.attrs, sf.span,
+                                              &sf.attrs, sf.span,
                                               "a struct field")
             }
         }

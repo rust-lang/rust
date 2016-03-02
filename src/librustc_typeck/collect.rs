@@ -574,20 +574,20 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            struct_generics: &ty::Generics<'tcx>,
                            struct_predicates: &ty::GenericPredicates<'tcx>,
-                           v: &hir::StructField,
+                           field: &hir::StructField,
                            ty_f: ty::FieldDefMaster<'tcx>)
 {
-    let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &v.node.ty);
+    let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &field.ty);
     ty_f.fulfill_ty(tt);
-    write_ty_to_tcx(ccx.tcx, v.node.id, tt);
+    write_ty_to_tcx(ccx.tcx, field.id, tt);
 
     /* add the field to the tcache */
-    ccx.tcx.register_item_type(ccx.tcx.map.local_def_id(v.node.id),
+    ccx.tcx.register_item_type(ccx.tcx.map.local_def_id(field.id),
                                ty::TypeScheme {
                                    generics: struct_generics.clone(),
                                    ty: tt
                                });
-    ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(v.node.id),
+    ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(field.id),
                                            struct_predicates.clone());
 }
 
@@ -977,26 +977,19 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
                                 def: &hir::VariantData) -> ty::VariantDefData<'tcx, 'tcx> {
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
     let fields = def.fields().iter().map(|f| {
-        let fid = tcx.map.local_def_id(f.node.id);
-        match f.node.kind {
-            hir::NamedField(name, vis) => {
-                let dup_span = seen_fields.get(&name).cloned();
-                if let Some(prev_span) = dup_span {
-                    let mut err = struct_span_err!(tcx.sess, f.span, E0124,
-                                                   "field `{}` is already declared",
-                                                   name);
-                    span_note!(&mut err, prev_span, "previously declared here");
-                    err.emit();
-                } else {
-                    seen_fields.insert(name, f.span);
-                }
-
-                ty::FieldDefData::new(fid, name, vis)
-            },
-            hir::UnnamedField(vis) => {
-                ty::FieldDefData::new(fid, special_idents::unnamed_field.name, vis)
-            }
+        let fid = tcx.map.local_def_id(f.id);
+        let dup_span = seen_fields.get(&f.name).cloned();
+        if let Some(prev_span) = dup_span {
+            let mut err = struct_span_err!(tcx.sess, f.span, E0124,
+                                           "field `{}` is already declared",
+                                           f.name);
+            span_note!(&mut err, prev_span, "previously declared here");
+            err.emit();
+        } else {
+            seen_fields.insert(f.name, f.span);
         }
+
+        ty::FieldDefData::new(fid, f.name, f.vis)
     }).collect();
     ty::VariantDefData {
         did: did,

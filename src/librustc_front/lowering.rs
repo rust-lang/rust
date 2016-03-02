@@ -578,12 +578,14 @@ pub fn lower_variant_data(lctx: &LoweringContext, vdata: &VariantData) -> hir::V
     match *vdata {
         VariantData::Struct(ref fields, id) => {
             hir::VariantData::Struct(fields.iter()
+                                           .enumerate()
                                            .map(|f| lower_struct_field(lctx, f))
                                            .collect(),
                                      id)
         }
         VariantData::Tuple(ref fields, id) => {
             hir::VariantData::Tuple(fields.iter()
+                                          .enumerate()
                                           .map(|f| lower_struct_field(lctx, f))
                                           .collect(),
                                     id)
@@ -607,15 +609,17 @@ pub fn lower_poly_trait_ref(lctx: &LoweringContext, p: &PolyTraitRef) -> hir::Po
     }
 }
 
-pub fn lower_struct_field(lctx: &LoweringContext, f: &StructField) -> hir::StructField {
-    Spanned {
-        node: hir::StructField_ {
-            id: f.node.id,
-            kind: lower_struct_field_kind(lctx, &f.node.kind),
-            ty: lower_ty(lctx, &f.node.ty),
-            attrs: lower_attrs(lctx, &f.node.attrs),
-        },
+pub fn lower_struct_field(lctx: &LoweringContext,
+                          (index, f): (usize, &StructField))
+                          -> hir::StructField {
+    hir::StructField {
         span: f.span,
+        id: f.node.id,
+        name: f.node.ident().map(|ident| ident.name)
+                            .unwrap_or(token::intern(&index.to_string())),
+        vis: lower_visibility(lctx, f.node.kind.visibility()),
+        ty: lower_ty(lctx, &f.node.ty),
+        attrs: lower_attrs(lctx, &f.node.attrs),
     }
 }
 
@@ -1586,15 +1590,6 @@ pub fn lower_binding_mode(lctx: &LoweringContext, b: &BindingMode) -> hir::Bindi
     match *b {
         BindingMode::ByRef(m) => hir::BindByRef(lower_mutability(lctx, m)),
         BindingMode::ByValue(m) => hir::BindByValue(lower_mutability(lctx, m)),
-    }
-}
-
-pub fn lower_struct_field_kind(lctx: &LoweringContext,
-                               s: &StructFieldKind)
-                               -> hir::StructFieldKind {
-    match *s {
-        NamedField(ident, vis) => hir::NamedField(ident.name, lower_visibility(lctx, vis)),
-        UnnamedField(vis) => hir::UnnamedField(lower_visibility(lctx, vis)),
     }
 }
 

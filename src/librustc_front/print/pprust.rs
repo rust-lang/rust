@@ -915,14 +915,9 @@ impl<'a> State<'a> {
             if struct_def.is_tuple() {
                 try!(self.popen());
                 try!(self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                    match field.node.kind {
-                        hir::NamedField(..) => panic!("unexpected named field"),
-                        hir::UnnamedField(vis) => {
-                            try!(s.print_visibility(vis));
-                            try!(s.maybe_print_comment(field.span.lo));
-                            s.print_type(&field.node.ty)
-                        }
-                    }
+                    try!(s.print_visibility(field.vis));
+                    try!(s.maybe_print_comment(field.span.lo));
+                    s.print_type(&field.ty)
                 }));
                 try!(self.pclose());
             }
@@ -939,19 +934,14 @@ impl<'a> State<'a> {
             try!(self.hardbreak_if_not_bol());
 
             for field in struct_def.fields() {
-                match field.node.kind {
-                    hir::UnnamedField(..) => panic!("unexpected unnamed field"),
-                    hir::NamedField(name, visibility) => {
-                        try!(self.hardbreak_if_not_bol());
-                        try!(self.maybe_print_comment(field.span.lo));
-                        try!(self.print_outer_attributes(&field.node.attrs));
-                        try!(self.print_visibility(visibility));
-                        try!(self.print_name(name));
-                        try!(self.word_nbsp(":"));
-                        try!(self.print_type(&field.node.ty));
-                        try!(word(&mut self.s, ","));
-                    }
-                }
+                try!(self.hardbreak_if_not_bol());
+                try!(self.maybe_print_comment(field.span.lo));
+                try!(self.print_outer_attributes(&field.attrs));
+                try!(self.print_visibility(field.vis));
+                try!(self.print_name(field.name));
+                try!(self.word_nbsp(":"));
+                try!(self.print_type(&field.ty));
+                try!(word(&mut self.s, ","));
             }
 
             self.bclose(span)

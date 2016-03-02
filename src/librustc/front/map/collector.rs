@@ -150,8 +150,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     for field in v.node.data.fields() {
                         self.create_def_with_parent(
                             Some(variant_def_index),
-                            field.node.id,
-                            DefPathData::Field(field.node.kind));
+                            field.id,
+                            DefPathData::Field(field.name));
                     }
                 }
             }
@@ -166,7 +166,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 }
 
                 for field in struct_def.fields() {
-                    self.create_def(field.node.id, DefPathData::Field(field.node.kind));
+                    self.create_def(field.id, DefPathData::Field(field.name));
                 }
             }
             ItemTrait(_, _, ref bounds, _) => {

@@ -24,7 +24,6 @@ pub use self::Mutability::*;
 pub use self::PathListItem_::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
-pub use self::StructFieldKind::*;
 pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
@@ -1242,43 +1241,20 @@ impl Visibility {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct StructField_ {
-    pub kind: StructFieldKind,
+pub struct StructField {
+    pub span: Span,
+    pub name: Name,
+    pub vis: Visibility,
     pub id: NodeId,
     pub ty: P<Ty>,
     pub attrs: HirVec<Attribute>,
 }
 
-impl StructField_ {
-    pub fn name(&self) -> Option<Name> {
-        match self.kind {
-            NamedField(name, _) => Some(name),
-            UnnamedField(_) => None,
-        }
-    }
-}
-
-pub type StructField = Spanned<StructField_>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum StructFieldKind {
-    NamedField(Name, Visibility),
-    /// Element of a tuple-like struct
-    UnnamedField(Visibility),
-}
-
-impl StructFieldKind {
-    pub fn is_unnamed(&self) -> bool {
-        match *self {
-            UnnamedField(..) => true,
-            NamedField(..) => false,
-        }
-    }
-
-    pub fn visibility(&self) -> Visibility {
-        match *self {
-            NamedField(_, vis) | UnnamedField(vis) => vis,
-        }
+impl StructField {
+    // Still necessary in couple of places
+    pub fn is_positional(&self) -> bool {
+        let first = self.name.as_str().as_bytes()[0];
+        first >= b'0' && first <= b'9'
     }
 }
 

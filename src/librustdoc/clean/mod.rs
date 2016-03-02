@@ -1735,39 +1735,26 @@ pub enum StructField {
 
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext) -> Item {
-        let (name, vis) = match self.node.kind {
-            hir::NamedField(id, vis) => (Some(id), vis),
-            hir::UnnamedField(vis) => (None, vis)
-        };
         Item {
-            name: name.clean(cx),
-            attrs: self.node.attrs.clean(cx),
+            name: Some(self.name).clean(cx),
+            attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            visibility: Some(vis),
-            stability: get_stability(cx, cx.map.local_def_id(self.node.id)),
-            deprecation: get_deprecation(cx, cx.map.local_def_id(self.node.id)),
-            def_id: cx.map.local_def_id(self.node.id),
-            inner: StructFieldItem(TypedStructField(self.node.ty.clean(cx))),
+            visibility: Some(self.vis),
+            stability: get_stability(cx, cx.map.local_def_id(self.id)),
+            deprecation: get_deprecation(cx, cx.map.local_def_id(self.id)),
+            def_id: cx.map.local_def_id(self.id),
+            inner: StructFieldItem(TypedStructField(self.ty.clean(cx))),
         }
     }
 }
 
 impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        use syntax::parse::token::special_idents::unnamed_field;
         // FIXME: possible O(n^2)-ness! Not my fault.
-        let attr_map =
-            cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
-
-        let (name, attrs) = if self.name == unnamed_field.name {
-            (None, None)
-        } else {
-            (Some(self.name), Some(attr_map.get(&self.did).unwrap()))
-        };
-
+        let attr_map = cx.tcx().sess.cstore.crate_struct_field_attrs(self.did.krate);
         Item {
-            name: name.clean(cx),
-            attrs: attrs.unwrap_or(&Vec::new()).clean(cx),
+            name: Some(self.name).clean(cx),
+            attrs: attr_map.get(&self.did).unwrap_or(&Vec::new()).clean(cx),
             source: Span::empty(),
             visibility: Some(self.vis),
             stability: get_stability(cx, self.did),
@@ -1884,7 +1871,6 @@ impl Clean<Item> for doctree::Variant {
 
 impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
-        // use syntax::parse::token::special_idents::unnamed_field;
         let kind = match self.kind() {
             ty::VariantKind::Unit => CLikeVariant,
             ty::VariantKind::Tuple => {
@@ -1946,7 +1932,7 @@ fn struct_def_to_variant_kind(struct_def: &hir::VariantData, cx: &DocContext) ->
     } else if struct_def.is_unit() {
         CLikeVariant
     } else {
-        TupleVariant(struct_def.fields().iter().map(|x| x.node.ty.clean(cx)).collect())
+        TupleVariant(struct_def.fields().iter().map(|x| x.ty.clean(cx)).collect())
     }
 }
 
