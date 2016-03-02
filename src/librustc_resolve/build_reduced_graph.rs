@@ -43,7 +43,6 @@ use rustc_front::hir::{PathListIdent, PathListMod, StmtDecl};
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::intravisit::{self, Visitor};
 
-use std::mem::replace;
 use std::ops::{Deref, DerefMut};
 
 struct GraphBuilder<'a, 'b: 'a, 'tcx: 'b> {
@@ -122,7 +121,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item, parent: Module<'b>) -> Module<'b> {
+    fn build_reduced_graph_for_item(&mut self, item: &Item, parent_ref: &mut Module<'b>) {
+        let parent = *parent_ref;
         let name = item.name;
         let sp = item.span;
         let is_public = item.vis == hir::Public;
@@ -242,7 +242,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                     is_prelude);
                     }
                 }
-                parent
             }
 
             ItemExternCrate(_) => {
@@ -260,7 +259,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                     self.build_reduced_graph_for_external_crate(module);
                 }
-                parent
             }
 
             ItemMod(..) => {
@@ -269,34 +267,30 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module = self.new_module(parent_link, Some(def), false, is_public);
                 self.define(parent, name, TypeNS, (module, sp));
                 parent.module_children.borrow_mut().insert(item.id, module);
-                module
+                *parent_ref = module;
             }
 
-            ItemForeignMod(..) => parent,
+            ItemForeignMod(..) => {}
 
             // These items live in the value namespace.
             ItemStatic(_, m, _) => {
                 let mutbl = m == hir::MutMutable;
                 let def = Def::Static(self.ast_map.local_def_id(item.id), mutbl);
                 self.define(parent, name, ValueNS, (def, sp, modifiers));
-                parent
             }
             ItemConst(_, _) => {
                 let def = Def::Const(self.ast_map.local_def_id(item.id));
                 self.define(parent, name, ValueNS, (def, sp, modifiers));
-                parent
             }
             ItemFn(_, _, _, _, _, _) => {
                 let def = Def::Fn(self.ast_map.local_def_id(item.id));
                 self.define(parent, name, ValueNS, (def, sp, modifiers));
-                parent
             }
 
             // These items live in the type namespace.
             ItemTy(..) => {
                 let def = Def::TyAlias(self.ast_map.local_def_id(item.id));
                 self.define(parent, name, TypeNS, (def, sp, modifiers));
-                parent
             }
 
             ItemEnum(ref enum_definition, _) => {
@@ -315,7 +309,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.build_reduced_graph_for_variant(variant, item_def_id,
                                                          module, variant_modifiers);
                 }
-                parent
             }
 
             // These items live in both the type and value namespaces.
@@ -338,12 +331,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                             .collect();
                 let item_def_id = self.ast_map.local_def_id(item.id);
                 self.structs.insert(item_def_id, field_names);
-
-                parent
             }
 
-            ItemDefaultImpl(_, _) |
-            ItemImpl(..) => parent,
+            ItemDefaultImpl(_, _) | ItemImpl(..) => {}
 
             ItemTrait(_, _, _, ref items) => {
                 let def_id = self.ast_map.local_def_id(item.id);
@@ -368,8 +358,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                     self.trait_item_map.insert((item.name, def_id), item_def_id);
                 }
-
-                parent
             }
         }
     }
@@ -420,7 +408,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         self.define(parent, name, ValueNS, (def, foreign_item.span, modifiers));
     }
 
-    fn build_reduced_graph_for_block(&mut self, block: &Block, parent: Module<'b>) -> Module<'b> {
+    fn build_reduced_graph_for_block(&mut self, block: &Block, parent: &mut Module<'b>) {
         if self.block_needs_anonymous_module(block) {
             let block_id = block.id;
 
@@ -431,9 +419,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             let parent_link = BlockParentLink(parent, block_id);
             let new_module = self.new_module(parent_link, None, false, false);
             parent.module_children.borrow_mut().insert(block_id, new_module);
-            new_module
-        } else {
-            parent
+            *parent = new_module;
         }
     }
 
@@ -610,8 +596,8 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &Item) {
-        let p = self.builder.build_reduced_graph_for_item(item, &self.parent);
-        let old_parent = replace(&mut self.parent, p);
+        let old_parent = self.parent;
+        self.builder.build_reduced_graph_for_item(item, &mut self.parent);
         intravisit::walk_item(self, item);
         self.parent = old_parent;
     }
@@ -621,8 +607,8 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     fn visit_block(&mut self, block: &Block) {
-        let np = self.builder.build_reduced_graph_for_block(block, &self.parent);
-        let old_parent = replace(&mut self.parent, np);
+        let old_parent = self.parent;
+        self.builder.build_reduced_graph_for_block(block, &mut self.parent);
         intravisit::walk_block(self, block);
         self.parent = old_parent;
     }
