@@ -18,7 +18,18 @@ use common::Config;
 use common;
 use util;
 
+#[derive(Clone, Debug)]
 pub struct TestProps {
+    // For the main test file, this is initialized to `None`. But
+    // when running tests that test multiple revisions, such as
+    // incremental tests, we will set this to `Some(foo)` where `foo`
+    // is the current revision identifier.
+    //
+    // Note that, unlike the other options here, this value is never
+    // loaded from the input file (though it is always set to one of
+    // the values listed in the vec `self.revisions`, which is loaded
+    // from the file).
+    pub revision: Option<String>,
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String> ,
     // Extra flags to pass to the compiler
@@ -50,6 +61,8 @@ pub struct TestProps {
     pub pretty_compare_only: bool,
     // Patterns which must not appear in the output of a cfail test.
     pub forbid_output: Vec<String>,
+    // Revisions to test for incremental compilation.
+    pub revisions: Vec<String>,
 }
 
 // Load any test directives embedded in the file
@@ -68,11 +81,13 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let pretty_compare_only = false;
     let forbid_output = Vec::new();
     let mut props = TestProps {
+        revision: None,
         error_patterns: error_patterns,
         compile_flags: vec![],
         run_flags: run_flags,
         pp_exact: pp_exact,
         aux_builds: aux_builds,
+        revisions: vec![],
         exec_env: exec_env,
         check_lines: check_lines,
         build_aux_docs: build_aux_docs,
@@ -84,12 +99,16 @@ pub fn load_props(testfile: &Path) -> TestProps {
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
     };
-    load_props_into(&mut props, testfile);
+    load_props_into(&mut props, testfile, None);
     props
 }
 
-pub fn load_props_into(props: &mut TestProps, testfile: &Path) {
-    iter_header(testfile, &mut |ln| {
+/// Load properties from `testfile` into `props`. If a property is
+/// tied to a particular revision `foo` (indicated by writing
+/// `//[foo]`), then the property is ignored unless `cfg` is
+/// `Some("foo")`.
+pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>)  {
+    iter_header(testfile, cfg, &mut |ln| {
         if let Some(ep) = parse_error_pattern(ln) {
             props.error_patterns.push(ep);
         }
@@ -99,6 +118,10 @@ pub fn load_props_into(props: &mut TestProps, testfile: &Path) {
                 flags
                     .split_whitespace()
                     .map(|s| s.to_owned()));
+        }
+
+        if let Some(r) = parse_revisions(ln) {
+            props.revisions.extend(r);
         }
 
         if props.run_flags.is_none() {
@@ -235,7 +258,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         }
     }
 
-    let val = iter_header(testfile, &mut |ln| {
+    let val = iter_header(testfile, None, &mut |ln| {
         !parse_name_directive(ln, "ignore-test") &&
         !parse_name_directive(ln, &ignore_target(config)) &&
         !parse_name_directive(ln, &ignore_architecture(config)) &&
@@ -250,7 +273,10 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     !val
 }
 
-fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
+fn iter_header(testfile: &Path,
+               cfg: Option<&str>,
+               it: &mut FnMut(&str) -> bool)
+               -> bool {
     let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
@@ -260,6 +286,21 @@ fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return true;
+        } else if ln.starts_with("//[") {
+            // A comment like `//[foo]` is specific to revision `foo`
+            if let Some(close_brace) = ln.find("]") {
+                let lncfg = &ln[3..close_brace];
+                let matches = match cfg {
+                    Some(s) => s == &lncfg[..],
+                    None => false,
+                };
+                if matches && !it(&ln[close_brace+1..]) {
+                    return false;
+                }
+            } else {
+                panic!("malformed condition directive: expected `//[foo]`, found `{}`",
+                       ln)
+            }
         } else if ln.starts_with("//") {
             if !it(&ln[2..]) {
                 return false;
@@ -283,6 +324,11 @@ fn parse_aux_build(line: &str) -> Option<String> {
 
 fn parse_compile_flags(line: &str) -> Option<String> {
     parse_name_value_directive(line, "compile-flags")
+}
+
+fn parse_revisions(line: &str) -> Option<Vec<String>> {
+    parse_name_value_directive(line, "revisions")
+        .map(|r| r.split_whitespace().map(|t| t.to_string()).collect())
 }
 
 fn parse_run_flags(line: &str) -> Option<String> {

@@ -85,7 +85,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
     }
 
     let output_to_check = get_output(props, &proc_res);
-    let expected_errors = errors::load_errors(&testpaths.file);
+    let expected_errors = errors::load_errors(&testpaths.file, &props.revision);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
             fatal("both error pattern and expected errors specified");
@@ -1821,7 +1821,7 @@ fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPa
         .map(|s| (&s[prefix.len()..]).to_string())
         .collect();
 
-    let expected: HashSet<String> = errors::load_errors(&testpaths.file)
+    let expected: HashSet<String> = errors::load_errors(&testpaths.file, &props.revision)
         .iter()
         .map(|e| e.msg.trim().to_string())
         .collect();
