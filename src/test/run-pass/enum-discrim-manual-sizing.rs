@@ -71,6 +71,18 @@ enum Euint {
     Buint = 1
 }
 
+#[repr(i64)]
+enum Ei64_non_c_like<T> {
+    _None,
+    _Some(T),
+}
+
+#[repr(u64)]
+enum Eu64_non_c_like<T> {
+    _None,
+    _Some(T),
+}
+
 pub fn main() {
     assert_eq!(size_of::<Ei8>(), 1);
     assert_eq!(size_of::<Eu8>(), 1);
@@ -82,4 +94,6 @@ pub fn main() {
     assert_eq!(size_of::<Eu64>(), 8);
     assert_eq!(size_of::<Eint>(), size_of::<isize>());
     assert_eq!(size_of::<Euint>(), size_of::<usize>());
+    assert_eq!(size_of::<Ei64_non_c_like<()>>(), 8);
+    assert_eq!(size_of::<Eu64_non_c_like<()>>(), 8);
 }
