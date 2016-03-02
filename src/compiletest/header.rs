@@ -22,7 +22,7 @@ pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String> ,
     // Extra flags to pass to the compiler
-    pub compile_flags: Option<String>,
+    pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
     pub run_flags: Option<String>,
     // If present, the name of a file that this test should match when
@@ -57,7 +57,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let error_patterns = Vec::new();
     let aux_builds = Vec::new();
     let exec_env = Vec::new();
-    let compile_flags = None;
     let run_flags = None;
     let pp_exact = None;
     let check_lines = Vec::new();
@@ -70,7 +69,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let forbid_output = Vec::new();
     let mut props = TestProps {
         error_patterns: error_patterns,
-        compile_flags: compile_flags,
+        compile_flags: vec![],
         run_flags: run_flags,
         pp_exact: pp_exact,
         aux_builds: aux_builds,
@@ -95,8 +94,11 @@ pub fn load_props_into(props: &mut TestProps, testfile: &Path) {
             props.error_patterns.push(ep);
         }
 
-        if props.compile_flags.is_none() {
-            props.compile_flags = parse_compile_flags(ln);
+        if let Some(flags) = parse_compile_flags(ln) {
+            props.compile_flags.extend(
+                flags
+                    .split_whitespace()
+                    .map(|s| s.to_owned()));
         }
 
         if props.run_flags.is_none() {
