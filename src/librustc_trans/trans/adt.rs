@@ -400,6 +400,15 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     }
                 }
             }
+
+            // If the alignment is smaller than the chosen discriminant size, don't use the
+            // alignment as the final size.
+            let min_ty = ll_inttype(&cx, min_ity);
+            let min_size = machine::llsize_of_real(cx, min_ty);
+            if (align as u64) < min_size {
+                use_align = false;
+            }
+
             let ity = if use_align {
                 // Use the overall alignment
                 match align {
@@ -817,11 +826,11 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // FIXME #10604: this breaks when vector types are present.
             let (size, align) = union_size_and_align(&sts[..]);
             let align_s = align as u64;
-            assert_eq!(size % align_s, 0);
-            let align_units = size / align_s - 1;
-
             let discr_ty = ll_inttype(cx, ity);
             let discr_size = machine::llsize_of_alloc(cx, discr_ty);
+            let padded_discr_size = roundup(discr_size, align);
+            assert_eq!(size % align_s, 0); // Ensure division in align_units comes out evenly
+            let align_units = (size - padded_discr_size) / align_s;
             let fill_ty = match align_s {
                 1 => Type::array(&Type::i8(cx), align_units),
                 2 => Type::array(&Type::i16(cx), align_units),
@@ -833,10 +842,10 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 _ => panic!("unsupported enum alignment: {}", align)
             };
             assert_eq!(machine::llalign_of_min(cx, fill_ty), align);
-            assert_eq!(align_s % discr_size, 0);
+            assert_eq!(padded_discr_size % discr_size, 0); // Ensure discr_ty can fill pad evenly
             let mut fields: Vec<Type> =
                 [discr_ty,
-                 Type::array(&discr_ty, align_s / discr_size - 1),
+                 Type::array(&discr_ty, (padded_discr_size - discr_size)/discr_size),
                  fill_ty].iter().cloned().collect();
             if delay_drop_flag && dtor_needed {
                 fields.pop();
