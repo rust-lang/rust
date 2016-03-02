@@ -42,7 +42,7 @@ whole, instead of just a few lines inside the test.
 * `ignore-test` always ignores the test
 * `ignore-lldb` and `ignore-gdb` will skip the debuginfo tests
 * `min-{gdb,lldb}-version`
-* `should-panic` indicates that the test should fail; used for "meta testing",
+* `should-fail` indicates that the test should fail; used for "meta testing",
   where we test the compiletest program itself to check that it will generate
   errors in appropriate scenarios
 

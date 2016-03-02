@@ -359,7 +359,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
             ignore: early_props.ignore,
-            should_panic: if early_props.should_panic {
+            should_panic: if early_props.should_fail {
                 test::ShouldPanic::Yes
             } else {
                 test::ShouldPanic::No

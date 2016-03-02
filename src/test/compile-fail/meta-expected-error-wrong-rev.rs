@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: a
-// should-panic
+// should-fail
 // pretty-expanded FIXME #23616
 
 // This is a "meta-test" of the compilertest framework itself.  In
