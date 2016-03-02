@@ -1542,7 +1542,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               -> ResolveResult<&'a NameBinding<'a>> {
         debug!("(resolving name in module) resolving `{}` in `{}`", name, module_to_string(module));
 
-        build_reduced_graph::populate_module_if_necessary(self, module);
+        self.populate_module_if_necessary(module);
         match use_lexical_scope {
             true => module.resolve_name_in_lexical_scope(name, namespace)
                           .map(Success).unwrap_or(Failed(None)),
@@ -3363,7 +3363,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         while let Some((in_module,
                         path_segments,
                         in_module_is_extern)) = worklist.pop() {
-            build_reduced_graph::populate_module_if_necessary(self, &in_module);
+            self.populate_module_if_necessary(in_module);
 
             in_module.for_each_child(|name, ns, name_binding| {
 

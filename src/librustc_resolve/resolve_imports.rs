@@ -21,8 +21,6 @@ use UseLexicalScopeFlag;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
-use build_reduced_graph;
-
 use rustc::lint;
 use rustc::middle::def::*;
 
@@ -610,7 +608,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             let msg = "Cannot glob-import a module into itself.".into();
             return Failed(Some((directive.span, msg)));
         }
-        build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
+        self.resolver.populate_module_if_necessary(target_module);
 
         if directive.is_prelude {
             *module_.prelude.borrow_mut() = Some(target_module);

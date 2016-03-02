@@ -532,16 +532,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         }
     }
 
-    /// Ensures that the reduced graph rooted at the given external module
-    /// is built, building it if it is not.
-    fn populate_module_if_necessary(&mut self, module: Module<'b>) {
-        if module.populated.get() { return }
-        for child in self.session.cstore.item_children(module.def_id().unwrap()) {
-            self.build_reduced_graph_for_external_crate_def(module, child);
-        }
-        module.populated.set(true)
-    }
-
     /// Builds the reduced graph rooted at the 'use' directive for an external
     /// crate.
     fn build_reduced_graph_for_external_crate(&mut self, root: Module<'b>) {
@@ -585,6 +575,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> Resolver<'a, 'tcx> {
+    /// Ensures that the reduced graph rooted at the given external module
+    /// is built, building it if it is not.
+    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
+        if module.populated.get() { return }
+        let mut builder = GraphBuilder { resolver: self };
+        for child in self.session.cstore.item_children(module.def_id().unwrap()) {
+            builder.build_reduced_graph_for_external_crate_def(module, child);
+        }
+        module.populated.set(true)
+    }
+}
+
 struct BuildReducedGraphVisitor<'a, 'b: 'a, 'tcx: 'b> {
     builder: GraphBuilder<'a, 'b, 'tcx>,
     parent: Module<'b>,
@@ -616,9 +619,4 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
 pub fn build_reduced_graph(resolver: &mut Resolver, krate: &hir::Crate) {
     GraphBuilder { resolver: resolver }.build_reduced_graph(krate);
-}
-
-pub fn populate_module_if_necessary<'a, 'tcx>(resolver: &mut Resolver<'a, 'tcx>,
-                                              module: Module<'a>) {
-    GraphBuilder { resolver: resolver }.populate_module_if_necessary(module);
 }
