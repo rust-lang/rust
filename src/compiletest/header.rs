@@ -179,7 +179,7 @@ pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>
 
 pub struct EarlyProps {
     pub ignore: bool,
-    pub should_panic: bool,
+    pub should_fail: bool,
 }
 
 // scan the file to detect whether the test should be ignored and
@@ -188,7 +188,7 @@ pub struct EarlyProps {
 pub fn early_props(config: &Config, testfile: &Path) -> EarlyProps {
     let mut props = EarlyProps {
         ignore: false,
-        should_panic: false,
+        should_fail: false,
     };
 
     iter_header(testfile, None, &mut |ln| {
@@ -206,9 +206,9 @@ pub fn early_props(config: &Config, testfile: &Path) -> EarlyProps {
             ignore_gdb(config, ln) ||
             ignore_lldb(config, ln);
 
-        props.should_panic =
-            props.should_panic ||
-            parse_name_directive(ln, "should-panic");
+        props.should_fail =
+            props.should_fail ||
+            parse_name_directive(ln, "should-fail");
     });
 
     return props;
