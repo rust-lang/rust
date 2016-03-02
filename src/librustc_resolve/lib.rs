@@ -1988,9 +1988,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       path_depth)));
 
                 // If it's a typedef, give a note
-                if let Def::TyAlias(..) = path_res.base_def {
-                    err.span_note(trait_path.span,
+                if let Def::TyAlias(did) = path_res.base_def {
+                    err.fileline_note(trait_path.span,
                                   "`type` aliases cannot be used for traits");
+                    if let Some(sp) = self.ast_map.span_if_local(did) {
+                        err.span_note(sp, "type defined here");
+                    }
                 }
                 err.emit();
                 Err(())
