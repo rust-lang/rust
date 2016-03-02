@@ -432,7 +432,7 @@ impl LateLintPass for TypeComplexityPass {
 
     fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
         // enum variants are also struct fields now
-        check_type(cx, &field.node.ty);
+        check_type(cx, &field.ty);
     }
 
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
