@@ -70,7 +70,12 @@ impl<T: Clone> Clone for VecDeque<T> {
 impl<T> Drop for VecDeque<T> {
     #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
-        self.clear();
+        let (front, back) = self.as_mut_slices();
+        unsafe {
+            // use drop for [T]
+            ptr::drop_in_place(front);
+            ptr::drop_in_place(back);
+        }
         // RawVec handles deallocation
     }
 }
