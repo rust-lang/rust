@@ -273,6 +273,7 @@ pub struct Parser<'a> {
     /// extra detail when the same error is seen twice
     pub obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
+    pub filename: Option<String>,
     pub mod_path_stack: Vec<InternedString>,
     /// Stack of spans of open delimiters. Used for error message.
     pub open_braces: Vec<Span>,
@@ -354,6 +355,9 @@ impl<'a> Parser<'a> {
     {
         let tok0 = rdr.real_token();
         let span = tok0.sp;
+        let filename = if span != codemap::DUMMY_SP {
+            Some(sess.codemap().span_to_filename(span))
+        } else { None };
         let placeholder = TokenAndSpan {
             tok: token::Underscore,
             sp: span,
@@ -382,6 +386,7 @@ impl<'a> Parser<'a> {
             quote_depth: 0,
             obsolete_set: HashSet::new(),
             mod_path_stack: Vec::new(),
+            filename: filename,
             open_braces: Vec::new(),
             owns_directory: true,
             root_module_name: None,
@@ -5325,7 +5330,7 @@ impl<'a> Parser<'a> {
                    id: ast::Ident,
                    outer_attrs: &[ast::Attribute],
                    id_sp: Span) -> PResult<'a, ModulePathSuccess> {
-        let mut prefix = PathBuf::from(&self.sess.codemap().span_to_filename(self.span));
+        let mut prefix = PathBuf::from(self.filename.as_ref().unwrap());
         prefix.pop();
         let mut dir_path = prefix;
         for part in &self.mod_path_stack {
