@@ -3734,7 +3734,7 @@ pub fn create_resolver<'a, 'tcx>(session: &'a Session,
 
     resolver.callback = callback;
 
-    build_reduced_graph::build_reduced_graph(&mut resolver, krate);
+    resolver.build_reduced_graph(krate);
 
     resolve_imports::resolve_imports(&mut resolver);
 
