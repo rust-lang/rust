@@ -43,26 +43,6 @@ use rustc_front::hir::{PathListIdent, PathListMod, StmtDecl};
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::intravisit::{self, Visitor};
 
-use std::ops::{Deref, DerefMut};
-
-struct GraphBuilder<'a, 'b: 'a, 'tcx: 'b> {
-    resolver: &'a mut Resolver<'b, 'tcx>,
-}
-
-impl<'a, 'b:'a, 'tcx:'b> Deref for GraphBuilder<'a, 'b, 'tcx> {
-    type Target = Resolver<'b, 'tcx>;
-
-    fn deref(&self) -> &Resolver<'b, 'tcx> {
-        &*self.resolver
-    }
-}
-
-impl<'a, 'b:'a, 'tcx:'b> DerefMut for GraphBuilder<'a, 'b, 'tcx> {
-    fn deref_mut(&mut self) -> &mut Resolver<'b, 'tcx> {
-        &mut *self.resolver
-    }
-}
-
 trait ToNameBinding<'a> {
     fn to_name_binding(self) -> NameBinding<'a>;
 }
@@ -80,12 +60,12 @@ impl<'a> ToNameBinding<'a> for (Def, Span, DefModifiers) {
     }
 }
 
-impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
+impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
     /// Constructs the reduced graph for the entire crate.
-    fn build_reduced_graph(self, krate: &hir::Crate) {
+    pub fn build_reduced_graph(&mut self, krate: &hir::Crate) {
         let mut visitor = BuildReducedGraphVisitor {
             parent: self.graph_root,
-            builder: self,
+            resolver: self,
         };
         intravisit::walk_crate(&mut visitor, krate);
     }
@@ -573,50 +553,43 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         module_.add_import_directive(directive);
         self.unresolved_imports += 1;
     }
-}
 
-impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
+    pub fn populate_module_if_necessary(&mut self, module: Module<'b>) {
         if module.populated.get() { return }
-        let mut builder = GraphBuilder { resolver: self };
         for child in self.session.cstore.item_children(module.def_id().unwrap()) {
-            builder.build_reduced_graph_for_external_crate_def(module, child);
+            self.build_reduced_graph_for_external_crate_def(module, child);
         }
         module.populated.set(true)
     }
 }
 
 struct BuildReducedGraphVisitor<'a, 'b: 'a, 'tcx: 'b> {
-    builder: GraphBuilder<'a, 'b, 'tcx>,
+    resolver: &'a mut Resolver<'b, 'tcx>,
     parent: Module<'b>,
 }
 
 impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.builder.resolver.ast_map.expect_item(item.id))
+        self.visit_item(self.resolver.ast_map.expect_item(item.id))
     }
 
     fn visit_item(&mut self, item: &Item) {
         let old_parent = self.parent;
-        self.builder.build_reduced_graph_for_item(item, &mut self.parent);
+        self.resolver.build_reduced_graph_for_item(item, &mut self.parent);
         intravisit::walk_item(self, item);
         self.parent = old_parent;
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
-        self.builder.build_reduced_graph_for_foreign_item(foreign_item, &self.parent);
+        self.resolver.build_reduced_graph_for_foreign_item(foreign_item, &self.parent);
     }
 
     fn visit_block(&mut self, block: &Block) {
         let old_parent = self.parent;
-        self.builder.build_reduced_graph_for_block(block, &mut self.parent);
+        self.resolver.build_reduced_graph_for_block(block, &mut self.parent);
         intravisit::walk_block(self, block);
         self.parent = old_parent;
     }
-}
-
-pub fn build_reduced_graph(resolver: &mut Resolver, krate: &hir::Crate) {
-    GraphBuilder { resolver: resolver }.build_reduced_graph(krate);
 }
