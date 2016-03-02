@@ -565,7 +565,9 @@ impl RustcDefaultCalls {
                     }
                 }
                 PrintRequest::Cfg => {
-                    for cfg in config::build_configuration(sess) {
+                    let mut cfg = config::build_configuration(&sess);
+                    target_features::add_configuration(&mut cfg, &sess);
+                    for cfg in cfg {
                         match cfg.node {
                             ast::MetaItemKind::Word(ref word) => println!("{}", word),
                             ast::MetaItemKind::NameValue(ref name, ref value) => {
