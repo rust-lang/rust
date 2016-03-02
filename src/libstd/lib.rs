@@ -281,7 +281,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #[cfg(test)] extern crate test;
-#[cfg(test)] #[macro_use] extern crate log;
 
 // We want to reexport a few macros from core but libcore has already been
 // imported by the compiler (via our #[no_std] attribute) In this case we just

@@ -36,16 +36,13 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 
-#![cfg_attr(test, feature(test, rand, rustc_private))]
+#![cfg_attr(test, feature(test, rand))]
 
 #![allow(deprecated)]
 
 #[cfg(test)]
 #[macro_use]
 extern crate std;
-#[cfg(test)]
-#[macro_use]
-extern crate log;
 
 use core::f64;
 use core::intrinsics;
