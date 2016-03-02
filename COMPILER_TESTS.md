@@ -42,6 +42,9 @@ whole, instead of just a few lines inside the test.
 * `ignore-test` always ignores the test
 * `ignore-lldb` and `ignore-gdb` will skip the debuginfo tests
 * `min-{gdb,lldb}-version`
+* `should-panic` indicates that the test should fail; used for "meta testing",
+  where we test the compiletest program itself to check that it will generate
+  errors in appropriate scenarios
 
 ## Revisions
 
@@ -73,3 +76,9 @@ fn test_foo() {
     let x: usize = 32_u32; //[foo]~ ERROR mismatched types
 }
 ```
+
+Note that not all headers have meaning when customized too a revision.
+For example, the `ignore-test` header (and all "ignore" headers)
+currently only apply to the test as a whole, not to particular
+revisions. The only headers that are intended to really work when
+customized to a revision are error patterns and compiler flags.

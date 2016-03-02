@@ -354,11 +354,16 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
 }
 
 pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
+    let early_props = header::early_props(config, &testpaths.file);
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
-            ignore: header::is_test_ignored(config, &testpaths.file),
-            should_panic: test::ShouldPanic::No,
+            ignore: early_props.ignore,
+            should_panic: if early_props.should_panic {
+                test::ShouldPanic::Yes
+            } else {
+                test::ShouldPanic::No
+            },
         },
         testfn: make_test_closure(config, testpaths),
     }

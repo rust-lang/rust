@@ -164,8 +164,6 @@ pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>
         if let Some(of) = parse_forbid_output(ln) {
             props.forbid_output.push(of);
         }
-
-        true
     });
 
     for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
@@ -179,7 +177,42 @@ pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>
     }
 }
 
-pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
+pub struct EarlyProps {
+    pub ignore: bool,
+    pub should_panic: bool,
+}
+
+// scan the file to detect whether the test should be ignored and
+// whether it should panic; these are two things the test runner needs
+// to know early, before actually running the test
+pub fn early_props(config: &Config, testfile: &Path) -> EarlyProps {
+    let mut props = EarlyProps {
+        ignore: false,
+        should_panic: false,
+    };
+
+    iter_header(testfile, None, &mut |ln| {
+        props.ignore =
+            props.ignore ||
+            parse_name_directive(ln, "ignore-test") ||
+            parse_name_directive(ln, &ignore_target(config)) ||
+            parse_name_directive(ln, &ignore_architecture(config)) ||
+            parse_name_directive(ln, &ignore_stage(config)) ||
+            parse_name_directive(ln, &ignore_env(config)) ||
+            (config.mode == common::Pretty &&
+             parse_name_directive(ln, "ignore-pretty")) ||
+            (config.target != config.host &&
+             parse_name_directive(ln, "ignore-cross-compile")) ||
+            ignore_gdb(config, ln) ||
+            ignore_lldb(config, ln);
+
+        props.should_panic =
+            props.should_panic ||
+            parse_name_directive(ln, "should-panic");
+    });
+
+    return props;
+
     fn ignore_target(config: &Config) -> String {
         format!("ignore-{}", util::get_os(&config.target))
     }
@@ -246,26 +279,11 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
             false
         }
     }
-
-    let val = iter_header(testfile, None, &mut |ln| {
-        !parse_name_directive(ln, "ignore-test") &&
-        !parse_name_directive(ln, &ignore_target(config)) &&
-        !parse_name_directive(ln, &ignore_architecture(config)) &&
-        !parse_name_directive(ln, &ignore_stage(config)) &&
-        !parse_name_directive(ln, &ignore_env(config)) &&
-        !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
-        !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
-        !ignore_gdb(config, ln) &&
-        !ignore_lldb(config, ln)
-    });
-
-    !val
 }
 
 fn iter_header(testfile: &Path,
                cfg: Option<&str>,
-               it: &mut FnMut(&str) -> bool)
-               -> bool {
+               it: &mut FnMut(&str)) {
     let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
@@ -274,7 +292,7 @@ fn iter_header(testfile: &Path,
         let ln = ln.unwrap();
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
-            return true;
+            return;
         } else if ln.starts_with("//[") {
             // A comment like `//[foo]` is specific to revision `foo`
             if let Some(close_brace) = ln.find("]") {
@@ -283,20 +301,18 @@ fn iter_header(testfile: &Path,
                     Some(s) => s == &lncfg[..],
                     None => false,
                 };
-                if matches && !it(&ln[close_brace+1..]) {
-                    return false;
+                if matches {
+                    it(&ln[close_brace+1..]);
                 }
             } else {
                 panic!("malformed condition directive: expected `//[foo]`, found `{}`",
                        ln)
             }
         } else if ln.starts_with("//") {
-            if !it(&ln[2..]) {
-                return false;
-            }
+            it(&ln[2..]);
         }
     }
-    return true;
+    return;
 }
 
 fn parse_error_pattern(line: &str) -> Option<String> {
