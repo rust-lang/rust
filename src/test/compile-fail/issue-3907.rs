@@ -11,7 +11,7 @@
 // aux-build:issue_3907.rs
 extern crate issue_3907;
 
-type Foo = issue_3907::Foo;
+type Foo = issue_3907::Foo; //~ NOTE: type defined here
 
 struct S {
     name: isize
