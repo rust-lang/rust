@@ -858,6 +858,11 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        if &*attr.name() == "no_implicit_prelude" {
+            self.context.span_handler.span_warn(attr.span,
+                                                "the `#[no_implicit_prelude]` attribute is \
+                                                 deprecated, use `#[no_prelude]` instead");
+        }
         if !self.context.cm.span_allows_unstable(attr.span) {
             self.context.check_attribute(attr, false);
         }
