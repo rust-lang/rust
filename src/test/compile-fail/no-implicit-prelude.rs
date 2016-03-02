@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![no_implicit_prelude]
+//~^ WARN deprecated
+//~^^ WARN deprecated
 
 // Test that things from the prelude aren't in scope. Use many of them
 // so that renaming some things won't magically make this test fail

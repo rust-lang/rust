@@ -15,6 +15,8 @@
 // fail with the same error message).
 
 #[no_implicit_prelude]
+//~^ WARNING: deprecated
+//~^^ WARNING: deprecated
 mod foo {
     mod baz {
         struct Test;
@@ -43,6 +45,8 @@ mod foo {
 
 fn qux() {
     #[no_implicit_prelude]
+    //~^ WARNING: deprecated
+    //~^^ WARNING: deprecated
     mod qux_inner {
         struct Test;
         impl Add for Test {} //~ ERROR: not in scope
