@@ -753,6 +753,7 @@ symbols! {
         no_main,
         no_mangle,
         no_niche,
+        no_prelude,
         no_sanitize,
         no_stack_check,
         no_start,

@@ -493,7 +493,12 @@ pub struct ModuleData<'a> {
     unexpanded_invocations: RefCell<FxHashSet<ExpnId>>,
 
     /// Whether `#[no_implicit_prelude]` is active.
+    /// And therefore the current modul and all decendents should use no prelude
     no_implicit_prelude: bool,
+
+    // wheter the current module should use the prelude
+    // no_implicit_prelude => no_prelude
+    no_prelude: bool,
 
     glob_importers: RefCell<Vec<&'a Import<'a>>>,
     globs: RefCell<Vec<&'a Import<'a>>>,
@@ -525,6 +530,7 @@ impl<'a> ModuleData<'a> {
             populate_on_access: Cell::new(!nearest_parent_mod.is_local()),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude: false,
+            no_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
             traits: RefCell::new(None),
@@ -1207,13 +1213,17 @@ impl<'a> Resolver<'a> {
         let root_local_def_id = LocalDefId { local_def_index: CRATE_DEF_INDEX };
         let root_def_id = root_local_def_id.to_def_id();
         let root_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
+        let inheritable_no_prelude = session.contains_name(&krate.attrs, sym::no_implicit_prelude);
+        let local_no_prelude = session.contains_name(&krate.attrs, sym::no_prelude);
         let graph_root = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: session.contains_name(&krate.attrs, sym::no_implicit_prelude),
+            no_implicit_prelude: inheritable_no_prelude,
+            no_prelude: local_no_prelude || inheritable_no_prelude,
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
         let empty_module_kind = ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty);
         let empty_module = arenas.alloc_module(ModuleData {
             no_implicit_prelude: true,
+            no_prelude: true,
             ..ModuleData::new(
                 Some(graph_root),
                 empty_module_kind,
@@ -1724,7 +1734,7 @@ impl<'a> Resolver<'a> {
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
         let mut ctxt = ctxt.normalize_to_macros_2_0();
-        let mut use_prelude = !module.no_implicit_prelude;
+        let mut use_prelude = !module.no_prelude;
 
         loop {
             let visit = match scope {
@@ -1795,7 +1805,7 @@ impl<'a> Resolver<'a> {
                     ValueNS | MacroNS => break,
                 },
                 Scope::Module(module) => {
-                    use_prelude = !module.no_implicit_prelude;
+                    use_prelude = !module.no_prelude;
                     match self.hygienic_lexical_parent(module, &mut ctxt) {
                         Some(parent_module) => Scope::Module(parent_module),
                         None => {
@@ -1967,7 +1977,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        if !module.no_implicit_prelude {
+        if !module.no_prelude {
             ident.span.adjust(ExpnId::root());
             if ns == TypeNS {
                 if let Some(binding) = self.extern_prelude_get(ident, !record_used) {

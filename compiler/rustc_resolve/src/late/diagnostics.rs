@@ -1174,7 +1174,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         // We can see through blocks
                     } else {
                         // Items from the prelude
-                        if !module.no_implicit_prelude {
+                        if !module.no_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r.crate_loader.maybe_process_path_extern(ident.name).and_then(
