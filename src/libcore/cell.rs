@@ -242,6 +242,9 @@ impl<T:Copy> Cell<T> {
 unsafe impl<T> Send for Cell<T> where T: Send {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<T> !Sync for Cell<T> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Copy> Clone for Cell<T> {
     #[inline]
     fn clone(&self) -> Cell<T> {
@@ -460,6 +463,9 @@ impl<T: ?Sized> RefCell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized> Send for RefCell<T> where T: Send {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> !Sync for RefCell<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for RefCell<T> {

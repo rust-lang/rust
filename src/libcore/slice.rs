@@ -285,12 +285,12 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     unsafe fn get_unchecked(&self, index: usize) -> &T {
-        &*(self.repr().data.offset(index as isize))
+        &*(self.as_ptr().offset(index as isize))
     }
 
     #[inline]
     fn as_ptr(&self) -> *const T {
-        self.repr().data
+        self as *const [T] as *const T
     }
 
     fn binary_search_by<F>(&self, mut f: F) -> Result<usize, usize> where
@@ -448,12 +448,12 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
-        &mut *(self.repr().data as *mut T).offset(index as isize)
+        &mut *self.as_mut_ptr().offset(index as isize)
     }
 
     #[inline]
     fn as_mut_ptr(&mut self) -> *mut T {
-        self.repr().data as *mut T
+        self as *mut [T] as *mut T
     }
 
     #[inline]

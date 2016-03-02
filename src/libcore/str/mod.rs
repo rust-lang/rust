@@ -1894,7 +1894,7 @@ impl StrExt for str {
 
     #[inline]
     fn as_ptr(&self) -> *const u8 {
-        self.repr().data
+        self as *const str as *const u8
     }
 
     #[inline]
