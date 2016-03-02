@@ -1129,43 +1129,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
 struct SanePrivacyVisitor<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    in_block: bool,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
-    /// We want to visit items in the context of their containing
-    /// module and so forth, so supply a crate for doing a deep walk.
-    fn visit_nested_item(&mut self, item: hir::ItemId) {
-        self.visit_item(self.tcx.map.expect_item(item.id))
-    }
-
     fn visit_item(&mut self, item: &hir::Item) {
         self.check_sane_privacy(item);
-        if self.in_block {
-            self.check_all_inherited(item);
-        }
-
-        let orig_in_block = self.in_block;
-
-        // Modules turn privacy back on, otherwise we inherit
-        self.in_block = if let hir::ItemMod(..) = item.node { false } else { orig_in_block };
-
         intravisit::walk_item(self, item);
-        self.in_block = orig_in_block;
-    }
-
-    fn visit_block(&mut self, b: &'v hir::Block) {
-        let orig_in_block = replace(&mut self.in_block, true);
-        intravisit::walk_block(self, b);
-        self.in_block = orig_in_block;
     }
 }
 
 impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
-    /// Validates all of the visibility qualifiers placed on the item given. This
-    /// ensures that there are no extraneous qualifiers that don't actually do
-    /// anything. In theory these qualifiers wouldn't parse, but that may happen
-    /// later on down the road...
+    /// Validate that items that shouldn't have visibility qualifiers don't have them.
+    /// Such qualifiers can be set by syntax extensions even if the parser doesn't allow them,
+    /// so we check things like variant fields too.
     fn check_sane_privacy(&self, item: &hir::Item) {
         let check_inherited = |sp, vis, note: &str| {
             if vis != hir::Inherited {
@@ -1179,13 +1155,12 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         };
 
         match item.node {
-            // implementations of traits don't need visibility qualifiers because
-            // that's controlled by having the trait in scope.
             hir::ItemImpl(_, _, _, Some(..), _, ref impl_items) => {
                 check_inherited(item.span, item.vis,
                                 "visibility qualifiers have no effect on trait impls");
                 for impl_item in impl_items {
-                    check_inherited(impl_item.span, impl_item.vis, "");
+                    check_inherited(impl_item.span, impl_item.vis,
+                                    "visibility qualifiers have no effect on trait impl items");
                 }
             }
             hir::ItemImpl(_, _, _, None, _, _) => {
@@ -1200,41 +1175,15 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 check_inherited(item.span, item.vis,
                                 "place qualifiers on individual functions instead");
             }
-            hir::ItemStruct(..) | hir::ItemEnum(..) | hir::ItemTrait(..) |
-            hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
-            hir::ItemMod(..) | hir::ItemExternCrate(..) |
-            hir::ItemUse(..) | hir::ItemTy(..) => {}
-        }
-    }
-
-    /// When inside of something like a function or a method, visibility has no
-    /// control over anything so this forbids any mention of any visibility
-    fn check_all_inherited(&self, item: &hir::Item) {
-        let check_inherited = |sp, vis| {
-            if vis != hir::Inherited {
-                span_err!(self.tcx.sess, sp, E0447,
-                          "visibility has no effect inside functions or block expressions");
-            }
-        };
-
-        check_inherited(item.span, item.vis);
-        match item.node {
-            hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
-                for impl_item in impl_items {
-                    check_inherited(impl_item.span, impl_item.vis);
+            hir::ItemEnum(ref def, _) => {
+                for variant in &def.variants {
+                    for field in variant.node.data.fields() {
+                        check_inherited(field.span, field.node.kind.visibility(),
+                                        "visibility qualifiers have no effect on variant fields");
+                    }
                 }
             }
-            hir::ItemForeignMod(ref fm) => {
-                for fi in &fm.items {
-                    check_inherited(fi.span, fi.vis);
-                }
-            }
-            hir::ItemStruct(ref vdata, _) => {
-                for f in vdata.fields() {
-                    check_inherited(f.span, f.node.kind.visibility());
-                }
-            }
-            hir::ItemDefaultImpl(..) | hir::ItemEnum(..) | hir::ItemTrait(..) |
+            hir::ItemStruct(..) | hir::ItemTrait(..) |
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
             hir::ItemMod(..) | hir::ItemExternCrate(..) |
             hir::ItemUse(..) | hir::ItemTy(..) => {}
@@ -1821,13 +1770,9 @@ pub fn check_crate(tcx: &ty::ctxt,
 
     let krate = tcx.map.krate();
 
-    // Sanity check to make sure that all privacy usage and controls are
-    // reasonable.
-    let mut visitor = SanePrivacyVisitor {
-        tcx: tcx,
-        in_block: false,
-    };
-    intravisit::walk_crate(&mut visitor, krate);
+    // Sanity check to make sure that all privacy usage is reasonable.
+    let mut visitor = SanePrivacyVisitor { tcx: tcx };
+    krate.visit_all_items(&mut visitor);
 
     // Figure out who everyone's parent is
     let mut visitor = ParentVisitor {
