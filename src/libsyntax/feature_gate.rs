@@ -251,6 +251,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // impl specialization (RFC 1210)
     ("specialization", "1.7.0", Some(31844), Active),
+
+    // Allows using #![no_prelude]
+    ("no_prelude", "1.9.0", Some(20561), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -297,6 +300,9 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("should_panic", Normal, Ungated),
     ("ignore", Normal, Ungated),
     ("no_implicit_prelude", Normal, Ungated),
+    ("no_prelude", Normal, Gated("no_prelude",
+                                 "the `#[no_prelude]` attribute is an \
+                                  experimental feature")),
     ("reexport_test_harness_main", Normal, Ungated),
     ("link_args", Normal, Ungated),
     ("macro_escape", Normal, Ungated),
