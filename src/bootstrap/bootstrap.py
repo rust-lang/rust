@@ -73,7 +73,8 @@ class RustBuild:
 
         if self.rustc().startswith(self.bin_root()) and \
            (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
-            shutil.rmtree(self.bin_root())
+            if os.path.exists(self.bin_root()):
+                shutil.rmtree(self.bin_root())
             filename = "rust-std-nightly-" + self.build + ".tar.gz"
             url = "https://static.rust-lang.org/dist/" + self.snap_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
