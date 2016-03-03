@@ -169,8 +169,6 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii)]
-    ///
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii: String = "a".to_owned();
@@ -179,7 +177,7 @@ pub trait AsciiExt {
     ///
     /// assert_eq!(upper, "A");
     /// ```
-    #[unstable(feature = "ascii", issue = "27809")]
+    #[stable(feature = "into_ascii", since = "1.8.0")]
     fn into_ascii_uppercase(self) -> Self::Owned where Self: Sized {
         self.to_ascii_uppercase()
     }
@@ -192,8 +190,6 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ascii)]
-    ///
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii: String = "A".to_owned();
@@ -202,7 +198,7 @@ pub trait AsciiExt {
     ///
     /// assert_eq!(lower, "a");
     /// ```
-    #[unstable(feature = "ascii", issue = "27809")]
+    #[stable(feature = "into_ascii", since = "1.8.0")]
     fn into_ascii_lowercase(self) -> Self::Owned where Self: Sized {
         self.to_ascii_lowercase()
     }
@@ -210,7 +206,7 @@ pub trait AsciiExt {
 
 /// Implement `into_ascii_lowercase` and `into_ascii_uppercase` without memory allocation,
 /// defer other methods to `str`.
-#[unstable(feature = "ascii", issue = "27809")]
+#[stable(feature = "into_ascii", since = "1.8.0")]
 impl AsciiExt for String {
     type Owned = Self;
 
@@ -242,7 +238,7 @@ impl AsciiExt for String {
 
 /// Implement `into_ascii_lowercase` and `into_ascii_uppercase` without memory allocation,
 /// defer other methods to `[u8]`.
-#[unstable(feature = "ascii", issue = "27809")]
+#[stable(feature = "into_ascii", since = "1.8.0")]
 impl AsciiExt for Vec<u8> {
     type Owned = Self;
 
