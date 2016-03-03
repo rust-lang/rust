@@ -20,9 +20,11 @@ use std::marker::PhantomData;
 use std::mem;
 use std::u32;
 use rustc_data_structures::snapshot_vec as sv;
+use rustc_data_structures::unify as ut;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate<'tcx>>,
+    eq_relations: ut::UnificationTable<ty::TyVid>,
 }
 
 struct TypeVariableData<'tcx> {
@@ -50,20 +52,22 @@ pub struct Default<'tcx> {
 }
 
 pub struct Snapshot {
-    snapshot: sv::Snapshot
+    snapshot: sv::Snapshot,
+    eq_snapshot: ut::Snapshot<ty::TyVid>,
 }
 
 enum UndoEntry<'tcx> {
     // The type of the var was specified.
     SpecifyVar(ty::TyVid, Vec<Relation>, Option<Default<'tcx>>),
     Relate(ty::TyVid, ty::TyVid),
+    RelateRange(ty::TyVid, usize),
 }
 
 struct Delegate<'tcx>(PhantomData<&'tcx ()>);
 
 type Relation = (RelationDir, ty::TyVid);
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo, BiTo
 }
@@ -81,7 +85,10 @@ impl RelationDir {
 
 impl<'tcx> TypeVariableTable<'tcx> {
     pub fn new() -> TypeVariableTable<'tcx> {
-        TypeVariableTable { values: sv::SnapshotVec::new() }
+        TypeVariableTable {
+            values: sv::SnapshotVec::new(),
+            eq_relations: ut::UnificationTable::new(),
+        }
     }
 
     fn relations<'a>(&'a mut self, a: ty::TyVid) -> &'a mut Vec<Relation> {
@@ -103,22 +110,48 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///
     /// Precondition: neither `a` nor `b` are known.
     pub fn relate_vars(&mut self, a: ty::TyVid, dir: RelationDir, b: ty::TyVid) {
+        let a = self.root_var(a);
+        let b = self.root_var(b);
         if a != b {
-            self.relations(a).push((dir, b));
-            self.relations(b).push((dir.opposite(), a));
-            self.values.record(Relate(a, b));
+            if dir == EqTo {
+                // a and b must be equal which we mark in the unification table
+                let root = self.eq_relations.union(a, b);
+                // In addition to being equal, all relations from the variable which is no longer
+                // the root must be added to the root so they are not forgotten as the other
+                // variable should no longer be referenced (other than to get the root)
+                let other = if a == root { b } else { a };
+                let count = {
+                    let (relations, root_relations) = if other.index < root.index {
+                        let (pre, post) = self.values.split_at_mut(root.index as usize);
+                        (relations(&mut pre[other.index as usize]), relations(&mut post[0]))
+                    } else {
+                        let (pre, post) = self.values.split_at_mut(other.index as usize);
+                        (relations(&mut post[0]), relations(&mut pre[root.index as usize]))
+                    };
+                    root_relations.extend_from_slice(relations);
+                    relations.len()
+                };
+                self.values.record(RelateRange(root, count));
+            } else {
+                self.relations(a).push((dir, b));
+                self.relations(b).push((dir.opposite(), a));
+                self.values.record(Relate(a, b));
+            }
         }
     }
 
     /// Instantiates `vid` with the type `ty` and then pushes an entry onto `stack` for each of the
     /// relations of `vid` to other variables. The relations will have the form `(ty, dir, vid1)`
     /// where `vid1` is some other variable id.
+    ///
+    /// Precondition: `vid` must be a root in the unification table
     pub fn instantiate_and_push(
         &mut self,
         vid: ty::TyVid,
         ty: Ty<'tcx>,
         stack: &mut Vec<(Ty<'tcx>, RelationDir, ty::TyVid)>)
     {
+        debug_assert!(self.root_var(vid) == vid);
         let old_value = {
             let value_ptr = &mut self.values.get_mut(vid.index as usize).value;
             mem::replace(value_ptr, Known(ty))
@@ -140,6 +173,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     pub fn new_var(&mut self,
                    diverging: bool,
                    default: Option<Default<'tcx>>) -> ty::TyVid {
+        self.eq_relations.new_key(());
         let index = self.values.push(TypeVariableData {
             value: Bounded { relations: vec![], default: default },
             diverging: diverging
@@ -147,14 +181,25 @@ impl<'tcx> TypeVariableTable<'tcx> {
         ty::TyVid { index: index as u32 }
     }
 
-    pub fn probe(&self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
+    pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
+        self.eq_relations.find(vid)
+    }
+
+    pub fn probe(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
+        let vid = self.root_var(vid);
+        self.probe_root(vid)
+    }
+
+    /// Retrieves the type of `vid` given that it is currently a root in the unification table
+    pub fn probe_root(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
+        debug_assert!(self.root_var(vid) == vid);
         match self.values.get(vid.index as usize).value {
             Bounded { .. } => None,
             Known(t) => Some(t)
         }
     }
 
-    pub fn replace_if_possible(&self, t: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn replace_if_possible(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
             ty::TyInfer(ty::TyVar(v)) => {
                 match self.probe(v) {
@@ -167,18 +212,23 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     pub fn snapshot(&mut self) -> Snapshot {
-        Snapshot { snapshot: self.values.start_snapshot() }
+        Snapshot {
+            snapshot: self.values.start_snapshot(),
+            eq_snapshot: self.eq_relations.snapshot(),
+        }
     }
 
     pub fn rollback_to(&mut self, s: Snapshot) {
         self.values.rollback_to(s.snapshot);
+        self.eq_relations.rollback_to(s.eq_snapshot);
     }
 
     pub fn commit(&mut self, s: Snapshot) {
         self.values.commit(s.snapshot);
+        self.eq_relations.commit(s.eq_snapshot);
     }
 
-    pub fn types_escaping_snapshot(&self, s: &Snapshot) -> Vec<Ty<'tcx>> {
+    pub fn types_escaping_snapshot(&mut self, s: &Snapshot) -> Vec<Ty<'tcx>> {
         /*!
          * Find the set of type variables that existed *before* `s`
          * but which have only been unified since `s` started, and
@@ -208,7 +258,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
-                        let escaping_type = self.probe(vid).unwrap();
+                        let escaping_type = match self.values.get(vid.index as usize).value {
+                            Bounded { .. } => unreachable!(),
+                            Known(ty) => ty,
+                        };
                         escaping_types.push(escaping_type);
                     }
                     debug!("SpecifyVar({:?}) new_elem_threshold={}", vid, new_elem_threshold);
@@ -221,13 +274,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
         escaping_types
     }
 
-    pub fn unsolved_variables(&self) -> Vec<ty::TyVid> {
-        self.values
-            .iter()
-            .enumerate()
-            .filter_map(|(i, value)| match &value.value {
-                &TypeVariableValue::Known(_) => None,
-                &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 })
+    pub fn unsolved_variables(&mut self) -> Vec<ty::TyVid> {
+        (0..self.values.len())
+            .filter_map(|i| {
+                let vid = ty::TyVid { index: i as u32 };
+                if self.probe(vid).is_some() {
+                    None
+                } else {
+                    Some(vid)
+                }
             })
             .collect()
     }
@@ -249,6 +304,13 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
             Relate(a, b) => {
                 relations(&mut (*values)[a.index as usize]).pop();
                 relations(&mut (*values)[b.index as usize]).pop();
+            }
+
+            RelateRange(i, n) => {
+                let relations = relations(&mut (*values)[i.index as usize]);
+                for _ in 0..n {
+                    relations.pop();
+                }
             }
         }
     }

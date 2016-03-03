@@ -434,7 +434,7 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
             self.region_vars.vars_created_since_snapshot(&snapshot.region_vars_snapshot);
 
         let escaping_types =
-            self.type_variables.borrow().types_escaping_snapshot(&snapshot.type_snapshot);
+            self.type_variables.borrow_mut().types_escaping_snapshot(&snapshot.type_snapshot);
 
         let mut escaping_region_vars = FnvHashSet();
         for ty in &escaping_types {
