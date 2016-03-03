@@ -119,7 +119,7 @@ Note: You cannot use the vector again once you have iterated by taking ownership
 You can iterate the vector multiple times by taking a reference to the vector whilst iterating. 
 For example, the following code does not compile.
 
-```rust
+```rust,ignore
 let mut v = vec![1, 2, 3, 4, 5];
 
 for i in v {
