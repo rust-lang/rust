@@ -887,7 +887,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                  "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout",
-                 "[crate-name|file-names|sysroot|target-list]"),
+                 "[crate-name|file-names|sysroot|cfg|target-list]"),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
