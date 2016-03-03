@@ -14,7 +14,7 @@ use cmp;
 use ffi::{CStr, CString};
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{c_int, c_char, c_void, c_uint};
+use libc::{c_int, c_char, c_void};
 use mem;
 #[allow(deprecated)]
 use net::{SocketAddr, Shutdown, IpAddr, Ipv4Addr, Ipv6Addr};
@@ -107,8 +107,8 @@ fn to_ipv6mr_interface(value: u32) -> c_int {
 }
 
 #[cfg(not(target_os = "android"))]
-fn to_ipv6mr_interface(value: u32) -> c_uint {
-    value as c_uint
+fn to_ipv6mr_interface(value: u32) -> ::libc::c_uint {
+    value as ::libc::c_uint
 }
 
 ////////////////////////////////////////////////////////////////////////////////
