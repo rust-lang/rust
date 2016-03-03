@@ -102,6 +102,7 @@ mod foo {
                                 //~^ ERROR: method `bar` is private
         ::bar::baz::A.foo2();   //~ ERROR: module `baz` is private
         ::bar::baz::A.bar2();   //~ ERROR: module `baz` is private
+                                //~^ ERROR: method `bar2` is private
 
         let _: isize =
         ::bar::B::foo();        //~ ERROR: trait `B` is private
