@@ -210,6 +210,12 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                 None => break,
                 Some(e) => e,
             };
+            // Get the actual variable that b_vid has been inferred to
+            let (b_vid, b_ty) = {
+                let mut variables = self.infcx.type_variables.borrow_mut();
+                let b_vid = variables.root_var(b_vid);
+                (b_vid, variables.probe_root(b_vid))
+            };
 
             debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})",
                    a_ty,
@@ -219,7 +225,6 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // Check whether `vid` has been instantiated yet.  If not,
             // make a generalized form of `ty` and instantiate with
             // that.
-            let b_ty = self.infcx.type_variables.borrow().probe(b_vid);
             let b_ty = match b_ty {
                 Some(t) => t, // ...already instantiated.
                 None => {     // ...not yet instantiated:
@@ -307,12 +312,17 @@ impl<'cx, 'tcx> ty::fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
         //  where `$1` has already been instantiated with `Box<$0>`)
         match t.sty {
             ty::TyInfer(ty::TyVar(vid)) => {
+                let mut variables = self.infcx.type_variables.borrow_mut();
+                let vid = variables.root_var(vid);
                 if vid == self.for_vid {
                     self.cycle_detected = true;
                     self.tcx().types.err
                 } else {
-                    match self.infcx.type_variables.borrow().probe(vid) {
-                        Some(u) => self.fold_ty(u),
+                    match variables.probe_root(vid) {
+                        Some(u) => {
+                            drop(variables);
+                            self.fold_ty(u)
+                        }
                         None => t,
                     }
                 }

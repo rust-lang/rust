@@ -50,8 +50,8 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
         if a == b { return Ok(a); }
 
         let infcx = self.fields.infcx;
-        let a = infcx.type_variables.borrow().replace_if_possible(a);
-        let b = infcx.type_variables.borrow().replace_if_possible(b);
+        let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
+        let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
         match (&a.sty, &b.sty) {
             (&ty::TyInfer(TyVar(a_id)), &ty::TyInfer(TyVar(b_id))) => {
                 infcx.type_variables.borrow_mut().relate_vars(a_id, EqTo, b_id);
