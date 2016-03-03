@@ -30,8 +30,10 @@ enum WhichLine { ThisLine, FollowPrevious(usize), AdjustBackward(usize) }
 /// Goal is to enable tests both like: //~^^^ ERROR go up three
 /// and also //~^ ERROR message one for the preceding line, and
 ///          //~| ERROR message two for that same line.
-// Load any test directives embedded in the file
-pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
+///
+/// If cfg is not None (i.e., in an incremental test), then we look
+/// for `//[X]~` instead, where `X` is the current `cfg`.
+pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<ExpectedError> {
     let rdr = BufReader::new(File::open(testfile).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen
@@ -44,30 +46,41 @@ pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
     // updating it in the map callback below.)
     let mut last_nonfollow_error = None;
 
-    rdr.lines().enumerate().filter_map(|(line_no, ln)| {
-        parse_expected(last_nonfollow_error,
-                       line_no + 1,
-                       &ln.unwrap())
-            .map(|(which, error)| {
-                match which {
-                    FollowPrevious(_) => {}
-                    _ => last_nonfollow_error = Some(error.line),
-                }
-                error
-            })
-    }).collect()
+    let tag = match cfg {
+        Some(rev) => format!("//[{}]~", rev),
+        None => format!("//~")
+    };
+
+    rdr.lines()
+       .enumerate()
+       .filter_map(|(line_no, ln)| {
+           parse_expected(last_nonfollow_error,
+                          line_no + 1,
+                          &ln.unwrap(),
+                          &tag)
+               .map(|(which, error)| {
+                   match which {
+                       FollowPrevious(_) => {}
+                       _ => last_nonfollow_error = Some(error.line),
+                   }
+                   error
+               })
+       })
+       .collect()
 }
 
 fn parse_expected(last_nonfollow_error: Option<usize>,
                   line_num: usize,
-                  line: &str) -> Option<(WhichLine, ExpectedError)> {
-    let start = match line.find("//~") { Some(i) => i, None => return None };
-    let (follow, adjusts) = if line.char_at(start + 3) == '|' {
+                  line: &str,
+                  tag: &str)
+                  -> Option<(WhichLine, ExpectedError)> {
+    let start = match line.find(tag) { Some(i) => i, None => return None };
+    let (follow, adjusts) = if line.char_at(start + tag.len()) == '|' {
         (true, 0)
     } else {
-        (false, line[start + 3..].chars().take_while(|c| *c == '^').count())
+        (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())
     };
-    let kind_start = start + 3 + adjusts + (follow as usize);
+    let kind_start = start + tag.len() + adjusts + (follow as usize);
     let letters = line[kind_start..].chars();
     let kind = letters.skip_while(|c| c.is_whitespace())
                       .take_while(|c| !c.is_whitespace())
@@ -91,7 +104,9 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         (which, line)
     };
 
-    debug!("line={} which={:?} kind={:?} msg={:?}", line_num, which, kind, msg);
+    debug!("line={} tag={:?} which={:?} kind={:?} msg={:?}",
+           line_num, tag, which, kind, msg);
+
     Some((which, ExpectedError { line: line,
                                  kind: kind,
                                  msg: msg, }))

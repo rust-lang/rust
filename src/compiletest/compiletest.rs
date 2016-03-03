@@ -354,11 +354,25 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
 }
 
 pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
+    let early_props = header::early_props(config, &testpaths.file);
+
+    // The `should-fail` annotation doesn't apply to pretty tests,
+    // since we run the pretty printer across all tests by default.
+    // If desired, we could add a `should-fail-pretty` annotation.
+    let should_panic = match config.mode {
+        Pretty => test::ShouldPanic::No,
+        _ => if early_props.should_fail {
+            test::ShouldPanic::Yes
+        } else {
+            test::ShouldPanic::No
+        }
+    };
+
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
-            ignore: header::is_test_ignored(config, &testpaths.file),
-            should_panic: test::ShouldPanic::No,
+            ignore: early_props.ignore,
+            should_panic: should_panic,
         },
         testfn: make_test_closure(config, testpaths),
     }

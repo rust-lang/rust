@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence_lib.rs
+// revisions: a
+// pretty-expanded FIXME #23616
 
-// Test that it's not ok for T to appear uncovered
+// Counterpart to `meta-expected-error-wrong-rev.rs`
 
-extern crate coherence_lib as lib;
-use lib::{Remote,Pair};
-
-pub struct Cover<T>(T);
-
-impl<T,U> Remote for Pair<Cover<T>,U> { }
-//~^ ERROR type parameter `T` must be used as the type parameter for some local type
+#[cfg(a)]
+fn foo() {
+    let x: u32 = 22_usize; //[a]~ ERROR mismatched types
+}
 
 fn main() { }

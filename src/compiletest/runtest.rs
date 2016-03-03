@@ -70,39 +70,77 @@ fn get_output(props: &TestProps, proc_res: &ProcRes) -> String {
     }
 }
 
+
+fn for_each_revision<OP>(config: &Config, props: &TestProps, testpaths: &TestPaths,
+                         mut op: OP)
+    where OP: FnMut(&Config, &TestProps, &TestPaths, Option<&str>)
+{
+    if props.revisions.is_empty() {
+        op(config, props, testpaths, None)
+    } else {
+        for revision in &props.revisions {
+            let mut revision_props = props.clone();
+            header::load_props_into(&mut revision_props,
+                                    &testpaths.file,
+                                    Some(&revision));
+            revision_props.compile_flags.extend(vec![
+                format!("--cfg"),
+                format!("{}", revision),
+            ]);
+            op(config, &revision_props, testpaths, Some(revision));
+        }
+    }
+}
+
 fn run_cfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    for_each_revision(config, props, testpaths, run_cfail_test_revision);
+}
+
+fn run_cfail_test_revision(config: &Config,
+                           props: &TestProps,
+                           testpaths: &TestPaths,
+                           revision: Option<&str>) {
     let proc_res = compile_test(config, props, testpaths);
 
     if proc_res.status.success() {
-        fatal_proc_rec(&format!("{} test compiled successfully!", config.mode)[..],
-                      &proc_res);
+        fatal_proc_rec(
+            revision,
+            &format!("{} test compiled successfully!", config.mode)[..],
+            &proc_res);
     }
 
-    check_correct_failure_status(&proc_res);
+    check_correct_failure_status(revision, &proc_res);
 
     if proc_res.status.success() {
-        fatal("process did not return an error status");
+        fatal(revision, "process did not return an error status");
     }
 
     let output_to_check = get_output(props, &proc_res);
-    let expected_errors = errors::load_errors(&testpaths.file);
+    let expected_errors = errors::load_errors(&testpaths.file, revision);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
-            fatal("both error pattern and expected errors specified");
+            fatal(revision, "both error pattern and expected errors specified");
         }
-        check_expected_errors(expected_errors, testpaths, &proc_res);
+        check_expected_errors(revision, expected_errors, testpaths, &proc_res);
     } else {
-        check_error_patterns(props, testpaths, &output_to_check, &proc_res);
+        check_error_patterns(revision, props, testpaths, &output_to_check, &proc_res);
     }
-    check_no_compiler_crash(&proc_res);
-    check_forbid_output(props, &output_to_check, &proc_res);
+    check_no_compiler_crash(revision, &proc_res);
+    check_forbid_output(revision, props, &output_to_check, &proc_res);
 }
 
 fn run_rfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    for_each_revision(config, props, testpaths, run_rfail_test_revision);
+}
+
+fn run_rfail_test_revision(config: &Config,
+                           props: &TestProps,
+                           testpaths: &TestPaths,
+                           revision: Option<&str>) {
     let proc_res = compile_test(config, props, testpaths);
 
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!", &proc_res);
+        fatal_proc_rec(revision, "compilation failed!", &proc_res);
     }
 
     let proc_res = exec_compiled_test(config, props, testpaths);
@@ -110,19 +148,20 @@ fn run_rfail_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
     // The value our Makefile configures valgrind to return on failure
     const VALGRIND_ERR: i32 = 100;
     if proc_res.status.code() == Some(VALGRIND_ERR) {
-        fatal_proc_rec("run-fail test isn't valgrind-clean!", &proc_res);
+        fatal_proc_rec(revision, "run-fail test isn't valgrind-clean!", &proc_res);
     }
 
     let output_to_check = get_output(props, &proc_res);
-    check_correct_failure_status(&proc_res);
-    check_error_patterns(props, testpaths, &output_to_check, &proc_res);
+    check_correct_failure_status(revision, &proc_res);
+    check_error_patterns(revision, props, testpaths, &output_to_check, &proc_res);
 }
 
-fn check_correct_failure_status(proc_res: &ProcRes) {
+fn check_correct_failure_status(revision: Option<&str>, proc_res: &ProcRes) {
     // The value the rust runtime returns on failure
     const RUST_ERR: i32 = 101;
     if proc_res.status.code() != Some(RUST_ERR) {
         fatal_proc_rec(
+            revision,
             &format!("failure produced the wrong error: {}",
                      proc_res.status),
             proc_res);
@@ -130,20 +169,29 @@ fn check_correct_failure_status(proc_res: &ProcRes) {
 }
 
 fn run_rpass_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    for_each_revision(config, props, testpaths, run_rpass_test_revision);
+}
+
+fn run_rpass_test_revision(config: &Config,
+                           props: &TestProps,
+                           testpaths: &TestPaths,
+                           revision: Option<&str>) {
     let proc_res = compile_test(config, props, testpaths);
 
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!", &proc_res);
+        fatal_proc_rec(revision, "compilation failed!", &proc_res);
     }
 
     let proc_res = exec_compiled_test(config, props, testpaths);
 
     if !proc_res.status.success() {
-        fatal_proc_rec("test run failed!", &proc_res);
+        fatal_proc_rec(revision, "test run failed!", &proc_res);
     }
 }
 
 fn run_valgrind_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant here");
+
     if config.valgrind_path.is_none() {
         assert!(!config.force_valgrind);
         return run_rpass_test(config, props, testpaths);
@@ -152,7 +200,7 @@ fn run_valgrind_test(config: &Config, props: &TestProps, testpaths: &TestPaths) 
     let mut proc_res = compile_test(config, props, testpaths);
 
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!", &proc_res);
+        fatal_proc_rec(None, "compilation failed!", &proc_res);
     }
 
     let mut new_config = config.clone();
@@ -160,11 +208,18 @@ fn run_valgrind_test(config: &Config, props: &TestProps, testpaths: &TestPaths) 
     proc_res = exec_compiled_test(&new_config, props, testpaths);
 
     if !proc_res.status.success() {
-        fatal_proc_rec("test run failed!", &proc_res);
+        fatal_proc_rec(None, "test run failed!", &proc_res);
     }
 }
 
 fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    for_each_revision(config, props, testpaths, run_pretty_test_revision);
+}
+
+fn run_pretty_test_revision(config: &Config,
+                            props: &TestProps,
+                            testpaths: &TestPaths,
+                            revision: Option<&str>) {
     if props.pp_exact.is_some() {
         logv(config, "testing for exact pretty-printing".to_owned());
     } else {
@@ -180,7 +235,8 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
 
     let mut round = 0;
     while round < rounds {
-        logv(config, format!("pretty-printing round {}", round));
+        logv(config, format!("pretty-printing round {} revision {:?}",
+                             round, revision));
         let proc_res = print_source(config,
                                     props,
                                     testpaths,
@@ -188,8 +244,10 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
                                     &props.pretty_mode);
 
         if !proc_res.status.success() {
-            fatal_proc_rec(&format!("pretty-printing failed in round {}", round),
-                          &proc_res);
+            fatal_proc_rec(revision,
+                           &format!("pretty-printing failed in round {} revision {:?}",
+                                    round, revision),
+                           &proc_res);
         }
 
         let ProcRes{ stdout, .. } = proc_res;
@@ -215,30 +273,32 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
         expected = expected.replace(&cr, "").to_owned();
     }
 
-    compare_source(&expected, &actual);
+    compare_source(revision, &expected, &actual);
 
     // If we're only making sure that the output matches then just stop here
     if props.pretty_compare_only { return; }
 
     // Finally, let's make sure it actually appears to remain valid code
     let proc_res = typecheck_source(config, props, testpaths, actual);
-
     if !proc_res.status.success() {
-        fatal_proc_rec("pretty-printed source does not typecheck", &proc_res);
+        fatal_proc_rec(revision, "pretty-printed source does not typecheck", &proc_res);
     }
+
     if !props.pretty_expanded { return }
 
     // additionally, run `--pretty expanded` and try to build it.
     let proc_res = print_source(config, props, testpaths, srcs[round].clone(), "expanded");
     if !proc_res.status.success() {
-        fatal_proc_rec("pretty-printing (expanded) failed", &proc_res);
+        fatal_proc_rec(revision, "pretty-printing (expanded) failed", &proc_res);
     }
 
     let ProcRes{ stdout: expanded_src, .. } = proc_res;
     let proc_res = typecheck_source(config, props, testpaths, expanded_src);
     if !proc_res.status.success() {
-        fatal_proc_rec("pretty-printed source (expanded) does not typecheck",
-                      &proc_res);
+        fatal_proc_rec(
+            revision,
+            "pretty-printed source (expanded) does not typecheck",
+            &proc_res);
     }
 
     return;
@@ -275,16 +335,16 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
                             "-L".to_owned(),
                             aux_dir.to_str().unwrap().to_owned());
         args.extend(split_maybe_args(&config.target_rustcflags));
-        args.extend(split_maybe_args(&props.compile_flags));
+        args.extend(props.compile_flags.iter().cloned());
         return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_owned(),
             args: args,
         };
     }
 
-    fn compare_source(expected: &str, actual: &str) {
+    fn compare_source(revision: Option<&str>, expected: &str, actual: &str) {
         if expected != actual {
-            error("pretty-printed source does not match expected source");
+            error(revision, "pretty-printed source does not match expected source");
             println!("\n\
 expected:\n\
 ------------------------------------------\n\
@@ -322,7 +382,7 @@ actual:\n\
                             "-L".to_owned(),
                             aux_dir.to_str().unwrap().to_owned());
         args.extend(split_maybe_args(&config.target_rustcflags));
-        args.extend(split_maybe_args(&props.compile_flags));
+        args.extend(props.compile_flags.iter().cloned());
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {
             prog: config.rustc_path.to_str().unwrap().to_owned(),
@@ -332,6 +392,8 @@ actual:\n\
 }
 
 fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant here");
+
     let mut config = Config {
         target_rustcflags: cleanup_debug_info_options(&config.target_rustcflags),
         host_rustcflags: cleanup_debug_info_options(&config.host_rustcflags),
@@ -349,7 +411,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testpaths: &TestPa
     // compile test file (it should have 'compile-flags:-g' in the header)
     let compiler_run_result = compile_test(config, props, testpaths);
     if !compiler_run_result.status.success() {
-        fatal_proc_rec("compilation failed!", &compiler_run_result);
+        fatal_proc_rec(None, "compilation failed!", &compiler_run_result);
     }
 
     let exe_file = make_exe_name(config, testpaths);
@@ -441,7 +503,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testpaths: &TestPa
 
             let tool_path = match config.android_cross_path.to_str() {
                 Some(x) => x.to_owned(),
-                None => fatal("cannot find android cross path")
+                None => fatal(None, "cannot find android cross path")
             };
 
             let debugger_script = make_out_name(config, testpaths, "debugger.script");
@@ -580,7 +642,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testpaths: &TestPa
     }
 
     if !debugger_run_result.status.success() {
-        fatal("gdb failed to execute");
+        fatal(None, "gdb failed to execute");
     }
 
     check_debugger_output(&debugger_run_result, &check_lines);
@@ -600,8 +662,10 @@ fn find_rust_src_root(config: &Config) -> Option<PathBuf> {
 }
 
 fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant here");
+
     if config.lldb_python_dir.is_none() {
-        fatal("Can't run LLDB test because LLDB's python path is not set.");
+        fatal(None, "Can't run LLDB test because LLDB's python path is not set.");
     }
 
     let mut config = Config {
@@ -615,7 +679,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testpaths: &TestP
     // compile test file (it should have 'compile-flags:-g' in the header)
     let compile_result = compile_test(config, props, testpaths);
     if !compile_result.status.success() {
-        fatal_proc_rec("compilation failed!", &compile_result);
+        fatal_proc_rec(None, "compilation failed!", &compile_result);
     }
 
     let exe_file = make_exe_name(config, testpaths);
@@ -692,7 +756,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testpaths: &TestP
                                        &rust_src_root);
 
     if !debugger_run_result.status.success() {
-        fatal_proc_rec("Error while running LLDB", &debugger_run_result);
+        fatal_proc_rec(None, "Error while running LLDB", &debugger_run_result);
     }
 
     check_debugger_output(&debugger_run_result, &check_lines);
@@ -725,7 +789,7 @@ fn cmd2procres(config: &Config, testpaths: &TestPaths, cmd: &mut Command)
              String::from_utf8(stderr).unwrap())
         },
         Err(e) => {
-            fatal(&format!("Failed to setup Python process for \
+            fatal(None, &format!("Failed to setup Python process for \
                             LLDB script: {}", e))
         }
     };
@@ -775,7 +839,7 @@ fn parse_debugger_commands(testpaths: &TestPaths, debugger_prefix: &str)
                 });
             }
             Err(e) => {
-                fatal(&format!("Error while parsing debugger commands: {}", e))
+                fatal(None, &format!("Error while parsing debugger commands: {}", e))
             }
         }
         counter += 1;
@@ -857,19 +921,21 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
             }
         }
         if i != num_check_lines {
-            fatal_proc_rec(&format!("line not found in debugger output: {}",
+            fatal_proc_rec(None, &format!("line not found in debugger output: {}",
                                     check_lines.get(i).unwrap()),
                           debugger_run_result);
         }
     }
 }
 
-fn check_error_patterns(props: &TestProps,
+fn check_error_patterns(revision: Option<&str>,
+                        props: &TestProps,
                         testpaths: &TestPaths,
                         output_to_check: &str,
                         proc_res: &ProcRes) {
     if props.error_patterns.is_empty() {
-        fatal(&format!("no error pattern specified in {:?}",
+        fatal(revision,
+              &format!("no error pattern specified in {:?}",
                        testpaths.file.display()));
     }
     let mut next_err_idx = 0;
@@ -891,44 +957,50 @@ fn check_error_patterns(props: &TestProps,
 
     let missing_patterns = &props.error_patterns[next_err_idx..];
     if missing_patterns.len() == 1 {
-        fatal_proc_rec(&format!("error pattern '{}' not found!", missing_patterns[0]),
-                      proc_res);
+        fatal_proc_rec(
+            revision,
+            &format!("error pattern '{}' not found!", missing_patterns[0]),
+            proc_res);
     } else {
         for pattern in missing_patterns {
-            error(&format!("error pattern '{}' not found!", *pattern));
+            error(revision, &format!("error pattern '{}' not found!", *pattern));
         }
-        fatal_proc_rec("multiple error patterns not found", proc_res);
+        fatal_proc_rec(revision, "multiple error patterns not found", proc_res);
     }
 }
 
-fn check_no_compiler_crash(proc_res: &ProcRes) {
+fn check_no_compiler_crash(revision: Option<&str>, proc_res: &ProcRes) {
     for line in proc_res.stderr.lines() {
         if line.starts_with("error: internal compiler error:") {
-            fatal_proc_rec("compiler encountered internal error",
-                          proc_res);
+            fatal_proc_rec(revision,
+                           "compiler encountered internal error",
+                           proc_res);
         }
     }
 }
 
-fn check_forbid_output(props: &TestProps,
+fn check_forbid_output(revision: Option<&str>,
+                       props: &TestProps,
                        output_to_check: &str,
                        proc_res: &ProcRes) {
     for pat in &props.forbid_output {
         if output_to_check.contains(pat) {
-            fatal_proc_rec("forbidden pattern found in compiler output", proc_res);
+            fatal_proc_rec(revision,
+                           "forbidden pattern found in compiler output",
+                           proc_res);
         }
     }
 }
 
-fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
+fn check_expected_errors(revision: Option<&str>,
+                         expected_errors: Vec<errors::ExpectedError>,
                          testpaths: &TestPaths,
                          proc_res: &ProcRes) {
-
     // true if we found the error in question
     let mut found_flags = vec![false; expected_errors.len()];
 
     if proc_res.status.success() {
-        fatal("process did not return an error status");
+        fatal_proc_rec(revision, "process did not return an error status", proc_res);
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
@@ -944,23 +1016,6 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
                                   (acc_help || ee.kind == "help:", acc_note ||
                                    ee.kind == "note:"));
 
-    fn prefix_matches(line: &str, prefix: &str) -> bool {
-        use std::ascii::AsciiExt;
-        // On windows just translate all '\' path separators to '/'
-        let line = line.replace(r"\", "/");
-        if cfg!(windows) {
-            line.to_ascii_lowercase().starts_with(&prefix.to_ascii_lowercase())
-        } else {
-            line.starts_with(prefix)
-        }
-    }
-
-    // A multi-line error will have followup lines which start with a space
-    // or open paren.
-    fn continuation( line: &str) -> bool {
-        line.starts_with(" ") || line.starts_with("(")
-    }
-
     // Scan and extract our error/warning messages,
     // which look like:
     //    filename:line1:col1: line2:col2: *error:* msg
@@ -970,6 +1025,8 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
     //
     // This pattern is ambiguous on windows, because filename may contain
     // a colon, so any path prefix must be detected and removed first.
+    let mut unexpected = 0;
+    let mut not_found = 0;
     for line in proc_res.stderr.lines() {
         let mut was_expected = false;
         let mut prev = 0;
@@ -991,9 +1048,11 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
                         break;
                     }
                 }
-                if (prefix_matches(line, &prefixes[i]) || continuation(line)) &&
+                if
+                    (prefix_matches(line, &prefixes[i]) || continuation(line)) &&
                     line.contains(&ee.kind) &&
-                    line.contains(&ee.msg) {
+                    line.contains(&ee.msg)
+                {
                     found_flags[i] = true;
                     was_expected = true;
                     break;
@@ -1008,19 +1067,43 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
         }
 
         if !was_expected && is_unexpected_compiler_message(line, expect_help, expect_note) {
-            fatal_proc_rec(&format!("unexpected compiler message: '{}'",
-                                    line),
-                          proc_res);
+            error(revision, &format!("unexpected compiler message: '{}'", line));
+            unexpected += 1;
         }
     }
 
     for (i, &flag) in found_flags.iter().enumerate() {
         if !flag {
             let ee = &expected_errors[i];
-            fatal_proc_rec(&format!("expected {} on line {} not found: {}",
-                                    ee.kind, ee.line, ee.msg),
-                          proc_res);
+            error(revision, &format!("expected {} on line {} not found: {}",
+                                     ee.kind, ee.line, ee.msg));
+            not_found += 1;
         }
+    }
+
+    if unexpected > 0 || not_found > 0 {
+        fatal_proc_rec(
+            revision,
+            &format!("{} unexpected errors found, {} expected errors not found",
+                     unexpected, not_found),
+            proc_res);
+    }
+
+    fn prefix_matches(line: &str, prefix: &str) -> bool {
+        use std::ascii::AsciiExt;
+        // On windows just translate all '\' path separators to '/'
+        let line = line.replace(r"\", "/");
+        if cfg!(windows) {
+            line.to_ascii_lowercase().starts_with(&prefix.to_ascii_lowercase())
+        } else {
+            line.starts_with(prefix)
+        }
+    }
+
+    // A multi-line error will have followup lines which start with a space
+    // or open paren.
+    fn continuation( line: &str) -> bool {
+        line.starts_with(" ") || line.starts_with("(")
     }
 }
 
@@ -1184,7 +1267,7 @@ fn document(config: &Config,
                         "-o".to_owned(),
                         out_dir.to_str().unwrap().to_owned(),
                         testpaths.file.to_str().unwrap().to_owned()];
-    args.extend(split_maybe_args(&props.compile_flags));
+    args.extend(props.compile_flags.iter().cloned());
     let args = ProcArgs {
         prog: config.rustdoc_path.to_str().unwrap().to_owned(),
         args: args,
@@ -1286,6 +1369,7 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
                                      None);
         if !auxres.status.success() {
             fatal_proc_rec(
+                None,
                 &format!("auxiliary build of {:?} failed to compile: ",
                         aux_testpaths.file.display()),
                 &auxres);
@@ -1369,7 +1453,7 @@ fn make_compile_args<F>(config: &Config,
     } else {
         args.extend(split_maybe_args(&config.target_rustcflags));
     }
-    args.extend(split_maybe_args(&props.compile_flags));
+    args.extend(props.compile_flags.iter().cloned());
     return ProcArgs {
         prog: config.rustc_path.to_str().unwrap().to_owned(),
         args: args,
@@ -1537,13 +1621,20 @@ fn maybe_dump_to_stdout(config: &Config, out: &str, err: &str) {
     }
 }
 
-fn error(err: &str) { println!("\nerror: {}", err); }
+fn error(revision: Option<&str>, err: &str) {
+    match revision {
+        Some(rev) => println!("\nerror in revision `{}`: {}", rev, err),
+        None => println!("\nerror: {}", err)
+    }
+}
 
-fn fatal(err: &str) -> ! { error(err); panic!(); }
+fn fatal(revision: Option<&str>, err: &str) -> ! {
+    error(revision, err); panic!();
+}
 
-fn fatal_proc_rec(err: &str, proc_res: &ProcRes) -> ! {
-    print!("\n\
-error: {}\n\
+fn fatal_proc_rec(revision: Option<&str>, err: &str, proc_res: &ProcRes) -> ! {
+    error(revision, err);
+    print!("\
 status: {}\n\
 command: {}\n\
 stdout:\n\
@@ -1555,7 +1646,7 @@ stderr:\n\
 {}\n\
 ------------------------------------------\n\
 \n",
-             err, proc_res.status, proc_res.cmdline, proc_res.stdout,
+             proc_res.status, proc_res.cmdline, proc_res.stdout,
              proc_res.stderr);
     panic!();
 }
@@ -1753,20 +1844,22 @@ fn check_ir_with_filecheck(config: &Config, testpaths: &TestPaths) -> ProcRes {
 }
 
 fn run_codegen_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant here");
 
     if config.llvm_bin_path.is_none() {
-        fatal("missing --llvm-bin-path");
+        fatal(None, "missing --llvm-bin-path");
     }
 
     let mut proc_res = compile_test_and_save_ir(config, props, testpaths);
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!", &proc_res);
+        fatal_proc_rec(None, "compilation failed!", &proc_res);
     }
 
     proc_res = check_ir_with_filecheck(config, testpaths);
     if !proc_res.status.success() {
-        fatal_proc_rec("verification with 'FileCheck' failed",
-                      &proc_res);
+        fatal_proc_rec(None,
+                       "verification with 'FileCheck' failed",
+                       &proc_res);
     }
 }
 
@@ -1782,13 +1875,15 @@ fn charset() -> &'static str {
 }
 
 fn run_rustdoc_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant here");
+
     let out_dir = output_base_name(config, testpaths);
     let _ = fs::remove_dir_all(&out_dir);
     ensure_dir(&out_dir);
 
     let proc_res = document(config, props, testpaths, &out_dir);
     if !proc_res.status.success() {
-        fatal_proc_rec("rustdoc failed!", &proc_res);
+        fatal_proc_rec(None, "rustdoc failed!", &proc_res);
     }
     let root = find_rust_src_root(config).unwrap();
 
@@ -1799,18 +1894,20 @@ fn run_rustdoc_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
                                   .arg(out_dir)
                                   .arg(&testpaths.file));
     if !res.status.success() {
-        fatal_proc_rec("htmldocck failed!", &res);
+        fatal_proc_rec(None, "htmldocck failed!", &res);
     }
 }
 
 fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    assert!(props.revisions.is_empty(), "revisions not relevant here");
+
     let proc_res = compile_test(config, props, testpaths);
 
     if !proc_res.status.success() {
-        fatal_proc_rec("compilation failed!", &proc_res);
+        fatal_proc_rec(None, "compilation failed!", &proc_res);
     }
 
-    check_no_compiler_crash(&proc_res);
+    check_no_compiler_crash(None, &proc_res);
 
     let prefix = "TRANS_ITEM ";
 
@@ -1821,7 +1918,7 @@ fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPa
         .map(|s| (&s[prefix.len()..]).to_string())
         .collect();
 
-    let expected: HashSet<String> = errors::load_errors(&testpaths.file)
+    let expected: HashSet<String> = errors::load_errors(&testpaths.file, None)
         .iter()
         .map(|e| e.msg.trim().to_string())
         .collect();
