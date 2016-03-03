@@ -227,7 +227,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id), Some(param_substs)) {
-        Some(ref expr) => expr,
+        Some((ref expr, _ty)) => expr,
         None => {
             ccx.sess().span_bug(ref_expr.span, "constant item not found")
         }

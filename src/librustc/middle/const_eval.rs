@@ -98,13 +98,13 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                                         def_id: DefId,
                                         maybe_ref_id: Option<ast::NodeId>,
                                         param_substs: Option<&'tcx subst::Substs<'tcx>>)
-                                        -> Option<&'tcx Expr> {
+                                        -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)> {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         match tcx.map.find(node_id) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
-                hir::ItemConst(_, ref const_expr) => {
-                    Some(&const_expr)
+                hir::ItemConst(ref ty, ref const_expr) => {
+                    Some((&const_expr, ast_ty_to_prim_ty(tcx, ty)))
                 }
                 _ => None
             },
@@ -123,8 +123,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                             if let Some(param_substs) = param_substs {
                                 substs = substs.subst(tcx, param_substs);
                             }
-                            resolve_trait_associated_const(tcx, ti, trait_id,
-                                                           substs)
+                            resolve_trait_associated_const(tcx, ti, trait_id, substs)
                         }
                         // Technically, without knowing anything about the
                         // expression that generates the obligation, we could
@@ -138,8 +137,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                 _ => None
             },
             Some(ast_map::NodeImplItem(ii)) => match ii.node {
-                hir::ImplItemKind::Const(_, ref expr) => {
-                    Some(&expr)
+                hir::ImplItemKind::Const(ref ty, ref expr) => {
+                    Some((&expr, ast_ty_to_prim_ty(tcx, ty)))
                 }
                 _ => None
             },
@@ -147,16 +146,18 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
         }
     } else {
         match tcx.extern_const_statics.borrow().get(&def_id) {
-            Some(&ast::DUMMY_NODE_ID) => return None,
-            Some(&expr_id) => {
-                return Some(tcx.map.expect_expr(expr_id));
+            Some(&None) => return None,
+            Some(&Some((expr_id, ty))) => {
+                return Some((tcx.map.expect_expr(expr_id), ty));
             }
             None => {}
         }
         let mut used_ref_id = false;
-        let expr_id = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
+        let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
             cstore::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
-                hir::ItemConst(_, ref const_expr) => Some(const_expr.id),
+                hir::ItemConst(ref ty, ref const_expr) => {
+                    Some((&**const_expr, ast_ty_to_prim_ty(tcx, ty)))
+                },
                 _ => None
             },
             cstore::FoundAst::Found(&InlinedItem::TraitItem(trait_id, ref ti)) => match ti.node {
@@ -173,8 +174,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                             if let Some(param_substs) = param_substs {
                                 substs = substs.subst(tcx, param_substs);
                             }
-                            resolve_trait_associated_const(tcx, ti, trait_id,
-                                                           substs).map(|e| e.id)
+                            resolve_trait_associated_const(tcx, ti, trait_id, substs)
                         }
                         None => None
                     }
@@ -182,7 +182,9 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                 _ => None
             },
             cstore::FoundAst::Found(&InlinedItem::ImplItem(_, ref ii)) => match ii.node {
-                hir::ImplItemKind::Const(_, ref expr) => Some(expr.id),
+                hir::ImplItemKind::Const(ref ty, ref expr) => {
+                    Some((&**expr, ast_ty_to_prim_ty(tcx, ty)))
+                },
                 _ => None
             },
             _ => None
@@ -192,10 +194,10 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
         // lookup with the same def_id may yield a different result.
         if !used_ref_id {
             tcx.extern_const_statics
-               .borrow_mut().insert(def_id,
-                                    expr_id.unwrap_or(ast::DUMMY_NODE_ID));
+               .borrow_mut()
+               .insert(def_id, expr_ty.map(|(e, t)| (e.id, t)));
         }
-        expr_id.map(|id| tcx.map.expect_expr(id))
+        expr_ty
     }
 }
 
@@ -386,7 +388,7 @@ pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
                     PatKind::Path(path.clone()),
                 Some(Def::Const(def_id)) |
                 Some(Def::AssociatedConst(def_id)) => {
-                    let expr = lookup_const_by_id(tcx, def_id, Some(expr.id), None).unwrap();
+                    let (expr, _ty) = lookup_const_by_id(tcx, def_id, Some(expr.id), None).unwrap();
                     return const_expr_to_pat(tcx, expr, span);
                 },
                 _ => unreachable!(),
@@ -778,90 +780,49 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
               if def.depth != 0 {
                   signal!(e, UnresolvedPath);
               }
-              Some(def.full_def())
+              def.full_def()
           } else {
-              None
+              signal!(e, NonConstPath);
           };
-          let (const_expr, const_ty) = match opt_def {
-              Some(Def::Const(def_id)) => {
-                  if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-                      match tcx.map.find(node_id) {
-                          Some(ast_map::NodeItem(it)) => match it.node {
-                              hir::ItemConst(ref ty, ref expr) => {
-                                  (Some(&**expr), Some(&**ty))
-                              }
-                              _ => (None, None)
-                          },
-                          _ => (None, None)
-                      }
+          match opt_def {
+              Def::Const(def_id) |
+              Def::AssociatedConst(def_id) => {
+                  let maybe_ref_id = if let ExprTypeChecked = ty_hint {
+                      Some(e.id)
                   } else {
-                      (lookup_const_by_id(tcx, def_id, Some(e.id), None), None)
+                      None
+                  };
+                  if let Some((e, ty)) = lookup_const_by_id(tcx, def_id, maybe_ref_id, None) {
+                      let item_hint = match ty {
+                          Some(ty) => ty_hint.checked_or(ty),
+                          None => ty_hint,
+                      };
+                      try!(eval_const_expr_partial(tcx, e, item_hint, None))
+                  } else {
+                      signal!(e, NonConstPath);
+                  }
+              },
+              Def::Variant(enum_def, variant_def) => {
+                  if let Some(const_expr) = lookup_variant_by_id(tcx, enum_def, variant_def) {
+                      try!(eval_const_expr_partial(tcx, const_expr, ty_hint, None))
+                  } else {
+                      signal!(e, NonConstPath);
                   }
               }
-              Some(Def::AssociatedConst(def_id)) => {
-                  if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-                      match impl_or_trait_container(tcx, def_id) {
-                          ty::TraitContainer(trait_id) => match tcx.map.find(node_id) {
-                              Some(ast_map::NodeTraitItem(ti)) => match ti.node {
-                                  hir::ConstTraitItem(ref ty, _) => {
-                                      if let ExprTypeChecked = ty_hint {
-                                          let substs = tcx.node_id_item_substs(e.id).substs;
-                                          (resolve_trait_associated_const(tcx,
-                                                                          ti,
-                                                                          trait_id,
-                                                                          substs),
-                                           Some(&**ty))
-                                       } else {
-                                           (None, None)
-                                       }
-                                  }
-                                  _ => (None, None)
-                              },
-                              _ => (None, None)
-                          },
-                          ty::ImplContainer(_) => match tcx.map.find(node_id) {
-                              Some(ast_map::NodeImplItem(ii)) => match ii.node {
-                                  hir::ImplItemKind::Const(ref ty, ref expr) => {
-                                      (Some(&**expr), Some(&**ty))
-                                  }
-                                  _ => (None, None)
-                              },
-                              _ => (None, None)
-                          },
-                      }
-                  } else {
-                      (lookup_const_by_id(tcx, def_id, Some(e.id), None), None)
-                  }
+              Def::Struct(..) => {
+                  ConstVal::Struct(e.id)
               }
-              Some(Def::Variant(enum_def, variant_def)) => {
-                  (lookup_variant_by_id(tcx, enum_def, variant_def), None)
-              }
-              Some(Def::Struct(..)) => {
-                  return Ok(ConstVal::Struct(e.id))
-              }
-              Some(Def::Local(_, id)) => {
+              Def::Local(_, id) => {
                   debug!("Def::Local({:?}): {:?}", id, fn_args);
                   if let Some(val) = fn_args.and_then(|args| args.get(&id)) {
-                      return Ok(val.clone());
+                      val.clone()
                   } else {
-                      (None, None)
+                      signal!(e, NonConstPath);
                   }
               },
-              Some(Def::Method(id)) | Some(Def::Fn(id)) => return Ok(Function(id)),
-              _ => (None, None)
-          };
-          let const_expr = match const_expr {
-              Some(actual_e) => actual_e,
-              None => signal!(e, NonConstPath)
-          };
-          let item_hint = match const_ty {
-              Some(ty) => match ast_ty_to_prim_ty(tcx, ty) {
-                  Some(ty) => ty_hint.checked_or(ty),
-                  None => ty_hint.erase_hint(),
-              },
-              None => ty_hint.erase_hint(),
-          };
-          try!(eval_const_expr_partial(tcx, const_expr, item_hint, fn_args))
+              Def::Method(id) | Def::Fn(id) => Function(id),
+              _ => signal!(e, NonConstPath),
+          }
       }
       hir::ExprCall(ref callee, ref args) => {
           let sub_ty_hint = ty_hint.erase_hint();
@@ -1097,28 +1058,11 @@ fn infer<'tcx>(
     }
 }
 
-fn impl_or_trait_container(tcx: &TyCtxt, def_id: DefId) -> ty::ImplOrTraitItemContainer {
-    // This is intended to be equivalent to tcx.impl_or_trait_item(def_id).container()
-    // for local def_id, but it can be called before tcx.impl_or_trait_items is complete.
-    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
-        if let Some(ast_map::NodeItem(item)) = tcx.map.find(tcx.map.get_parent_node(node_id)) {
-            let container_id = tcx.map.local_def_id(item.id);
-            match item.node {
-                hir::ItemImpl(..) => return ty::ImplContainer(container_id),
-                hir::ItemTrait(..) => return ty::TraitContainer(container_id),
-                _ => ()
-            }
-        }
-        panic!("No impl or trait container for {:?}", def_id);
-    }
-    panic!("{:?} is not local", def_id);
-}
-
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                                                 ti: &'tcx hir::TraitItem,
                                                 trait_id: DefId,
                                                 rcvr_substs: subst::Substs<'tcx>)
-                                                -> Option<&'tcx Expr>
+                                                -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>
 {
     let trait_ref = ty::Binder(
         rcvr_substs.erase_regions().to_trait_ref(tcx, trait_id)
@@ -1151,7 +1095,9 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                      .iter().find(|ic| ic.name == ti.name) {
                 Some(ic) => lookup_const_by_id(tcx, ic.def_id, None, None),
                 None => match ti.node {
-                    hir::ConstTraitItem(_, Some(ref expr)) => Some(&*expr),
+                    hir::ConstTraitItem(ref ty, Some(ref expr)) => {
+                        Some((&*expr, ast_ty_to_prim_ty(tcx, ty)))
+                    },
                     _ => None,
                 },
             }

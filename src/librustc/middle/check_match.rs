@@ -476,7 +476,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                     Some(Def::AssociatedConst(did)) |
                     Some(Def::Const(did)) => match lookup_const_by_id(self.tcx, did,
                                                                     Some(pat.id), None) {
-                        Some(const_expr) => {
+                        Some((const_expr, _const_ty)) => {
                             const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
 
                                 if let Some(ref mut renaming_map) = self.renaming_map {

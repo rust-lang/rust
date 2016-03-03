@@ -342,8 +342,12 @@ pub struct TyCtxt<'tcx> {
     /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
-    /// These caches are used by const_eval when decoding external constants.
-    pub extern_const_statics: RefCell<DefIdMap<NodeId>>,
+    /// Cache used by const_eval when decoding external constants.
+    /// Contains `None` when the constant has been fetched but doesn't exist.
+    /// Constains `Some(expr_id, type)` otherwise.
+    /// `type` is `None` in case it's not a primitive type
+    pub extern_const_statics: RefCell<DefIdMap<Option<(NodeId, Option<Ty<'tcx>>)>>>,
+    /// Cache used by const_eval when decoding extern const fns
     pub extern_const_fns: RefCell<DefIdMap<NodeId>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
