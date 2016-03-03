@@ -697,6 +697,9 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         "windows" | "unix" => ret.push(attr::mk_word_item(fam)),
         _ => (),
     }
+    if sess.target.target.options.has_floating_point {
+        ret.push(attr::mk_word_item(InternedString::new("target_float")));
+    }
     if sess.target.target.options.has_elf_tls {
         ret.push(attr::mk_word_item(InternedString::new("target_thread_local")));
     }

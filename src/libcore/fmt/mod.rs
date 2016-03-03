@@ -17,6 +17,7 @@ use prelude::v1::*;
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use marker::PhantomData;
 use mem;
+#[cfg_attr(not(stage0), cfg(target_float))]
 use num::flt2dec;
 use ops::Deref;
 use result;
@@ -1018,6 +1019,7 @@ impl<'a> Formatter<'a> {
     /// Takes the formatted parts and applies the padding.
     /// Assumes that the caller already has rendered the parts with required precision,
     /// so that `self.precision` can be ignored.
+    #[cfg_attr(not(stage0), cfg(target_float))]
     fn pad_formatted_parts(&mut self, formatted: &flt2dec::Formatted) -> Result {
         if let Some(mut width) = self.width {
             // for the sign-aware zero padding, we render the sign first and
@@ -1054,6 +1056,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    #[cfg_attr(not(stage0), cfg(target_float))]
     fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted) -> Result {
         fn write_bytes(buf: &mut Write, s: &[u8]) -> Result {
             buf.write_str(unsafe { str::from_utf8_unchecked(s) })
@@ -1436,6 +1439,7 @@ impl<'a, T: ?Sized> Pointer for &'a mut T {
     }
 }
 
+#[cfg_attr(not(stage0), cfg(target_float))]
 // Common code of floating point Debug and Display.
 fn float_to_decimal_common<T>(fmt: &mut Formatter, num: &T, negative_zero: bool) -> Result
     where T: flt2dec::DecodableFloat
@@ -1460,6 +1464,7 @@ fn float_to_decimal_common<T>(fmt: &mut Formatter, num: &T, negative_zero: bool)
     fmt.pad_formatted_parts(&formatted)
 }
 
+#[cfg_attr(not(stage0), cfg(target_float))]
 // Common code of floating point LowerExp and UpperExp.
 fn float_to_exponential_common<T>(fmt: &mut Formatter, num: &T, upper: bool) -> Result
     where T: flt2dec::DecodableFloat
@@ -1513,7 +1518,9 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 } }
+#[cfg_attr(not(stage0), cfg(target_float))]
 floating! { f32 }
+#[cfg_attr(not(stage0), cfg(target_float))]
 floating! { f64 }
 
 // Implementation of Display/Debug for various core types

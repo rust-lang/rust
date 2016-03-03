@@ -44,7 +44,9 @@ pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 pub mod wrapping;
 
 // All these modules are technically private and only exposed for libcoretest:
+#[cfg_attr(not(stage0), cfg(target_float))]
 pub mod flt2dec;
+#[cfg_attr(not(stage0), cfg(target_float))]
 pub mod dec2flt;
 pub mod bignum;
 pub mod diy_float;
@@ -111,6 +113,7 @@ macro_rules! zero_one_impl_float {
         }
     )*)
 }
+#[cfg_attr(not(stage0), cfg(target_float))]
 zero_one_impl_float! { f32 f64 }
 
 macro_rules! checked_op {
@@ -2210,6 +2213,7 @@ pub enum FpCategory {
 #[unstable(feature = "core_float",
            reason = "stable interface is via `impl f{32,64}` in later crates",
            issue = "27702")]
+#[cfg_attr(not(stage0), cfg(target_float))]
 pub trait Float: Sized {
     /// Returns the NaN value.
     #[unstable(feature = "float_extras", reason = "needs removal",
@@ -2448,6 +2452,7 @@ impl fmt::Display for ParseIntError {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(stage0), cfg(target_float))]
 pub use num::dec2flt::ParseFloatError;
 
 // Conversion traits for primitive integer and float types
@@ -2495,19 +2500,23 @@ impl_from! { u32, i64 }
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
 // Lossy float conversions are not implemented at this time.
 
-// Signed -> Float
-impl_from! { i8, f32 }
-impl_from! { i8, f64 }
-impl_from! { i16, f32 }
-impl_from! { i16, f64 }
-impl_from! { i32, f64 }
+#[cfg_attr(not(stage0), cfg(target_float))]
+mod int_flot_conv {
+    use convert::From;
+    // Signed -> Float
+    impl_from! { i8, f32 }
+    impl_from! { i8, f64 }
+    impl_from! { i16, f32 }
+    impl_from! { i16, f64 }
+    impl_from! { i32, f64 }
 
-// Unsigned -> Float
-impl_from! { u8, f32 }
-impl_from! { u8, f64 }
-impl_from! { u16, f32 }
-impl_from! { u16, f64 }
-impl_from! { u32, f64 }
+    // Unsigned -> Float
+    impl_from! { u8, f32 }
+    impl_from! { u8, f64 }
+    impl_from! { u16, f32 }
+    impl_from! { u16, f64 }
+    impl_from! { u32, f64 }
 
-// Float -> Float
-impl_from! { f32, f64 }
+    // Float -> Float
+    impl_from! { f32, f64 }
+}
