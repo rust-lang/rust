@@ -854,16 +854,12 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
               Some(actual_e) => actual_e,
               None => signal!(e, NonConstPath)
           };
-          let item_hint = if let UncheckedExprNoHint = ty_hint {
-              match const_ty {
-                  Some(ty) => match ast_ty_to_prim_ty(tcx, ty) {
-                      Some(ty) => UncheckedExprHint(ty),
-                      None => UncheckedExprNoHint
-                  },
-                  None => UncheckedExprNoHint
-              }
-          } else {
-              ty_hint
+          let item_hint = match const_ty {
+              Some(ty) => match ast_ty_to_prim_ty(tcx, ty) {
+                  Some(ty) => ty_hint.checked_or(ty),
+                  None => ty_hint.erase_hint(),
+              },
+              None => ty_hint.erase_hint(),
           };
           try!(eval_const_expr_partial(tcx, const_expr, item_hint, fn_args))
       }
