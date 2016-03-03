@@ -213,12 +213,13 @@ fn run_valgrind_test(config: &Config, props: &TestProps, testpaths: &TestPaths) 
 }
 
 fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
-    // Note: because we run the --pretty tests on the code in run-pass etc,
-    // we may see a list of revisions -- but we can just ignore them.
-    // We cannot assert that the list is empty as we do elsewhere.
-    //
-    // assert!(props.revisions.is_empty(), "revisions not relevant here");
+    for_each_revision(config, props, testpaths, run_pretty_test_revision);
+}
 
+fn run_pretty_test_revision(config: &Config,
+                            props: &TestProps,
+                            testpaths: &TestPaths,
+                            revision: Option<&str>) {
     if props.pp_exact.is_some() {
         logv(config, "testing for exact pretty-printing".to_owned());
     } else {
@@ -234,7 +235,8 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
 
     let mut round = 0;
     while round < rounds {
-        logv(config, format!("pretty-printing round {}", round));
+        logv(config, format!("pretty-printing round {} revision {:?}",
+                             round, revision));
         let proc_res = print_source(config,
                                     props,
                                     testpaths,
@@ -242,8 +244,9 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
                                     &props.pretty_mode);
 
         if !proc_res.status.success() {
-            fatal_proc_rec(None,
-                           &format!("pretty-printing failed in round {}", round),
+            fatal_proc_rec(revision,
+                           &format!("pretty-printing failed in round {} revision {:?}",
+                                    round, revision),
                            &proc_res);
         }
 
@@ -270,30 +273,30 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
         expected = expected.replace(&cr, "").to_owned();
     }
 
-    compare_source(&expected, &actual);
+    compare_source(revision, &expected, &actual);
 
     // If we're only making sure that the output matches then just stop here
     if props.pretty_compare_only { return; }
 
     // Finally, let's make sure it actually appears to remain valid code
     let proc_res = typecheck_source(config, props, testpaths, actual);
-
     if !proc_res.status.success() {
-        fatal_proc_rec(None, "pretty-printed source does not typecheck", &proc_res);
+        fatal_proc_rec(revision, "pretty-printed source does not typecheck", &proc_res);
     }
+
     if !props.pretty_expanded { return }
 
     // additionally, run `--pretty expanded` and try to build it.
     let proc_res = print_source(config, props, testpaths, srcs[round].clone(), "expanded");
     if !proc_res.status.success() {
-        fatal_proc_rec(None, "pretty-printing (expanded) failed", &proc_res);
+        fatal_proc_rec(revision, "pretty-printing (expanded) failed", &proc_res);
     }
 
     let ProcRes{ stdout: expanded_src, .. } = proc_res;
     let proc_res = typecheck_source(config, props, testpaths, expanded_src);
     if !proc_res.status.success() {
         fatal_proc_rec(
-            None,
+            revision,
             "pretty-printed source (expanded) does not typecheck",
             &proc_res);
     }
@@ -339,9 +342,9 @@ fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
         };
     }
 
-    fn compare_source(expected: &str, actual: &str) {
+    fn compare_source(revision: Option<&str>, expected: &str, actual: &str) {
         if expected != actual {
-            error(None, "pretty-printed source does not match expected source");
+            error(revision, "pretty-printed source does not match expected source");
             println!("\n\
 expected:\n\
 ------------------------------------------\n\
