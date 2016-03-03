@@ -13,7 +13,7 @@ use self::ImportDirectiveSubclass::*;
 use DefModifiers;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
-use {NameBinding, NameBindingKind};
+use {NameBinding, NameBindingKind, PrivacyError};
 use ResolveResult;
 use ResolveResult::*;
 use Resolver;
@@ -25,7 +25,6 @@ use build_reduced_graph;
 
 use rustc::lint;
 use rustc::middle::def::*;
-use rustc::middle::privacy::*;
 
 use syntax::ast::{NodeId, Name};
 use syntax::attr::AttrMetaMethods;
@@ -79,7 +78,9 @@ impl ImportDirective {
 
     // Given the binding to which this directive resolves in a particular namespace,
     // this returns the binding for the name this directive defines in that namespace.
-    fn import<'a>(&self, binding: &'a NameBinding<'a>) -> NameBinding<'a> {
+    fn import<'a>(&self,
+                  binding: &'a NameBinding<'a>,
+                  privacy_error: Option<Box<PrivacyError<'a>>>) -> NameBinding<'a> {
         let mut modifiers = match self.is_public {
             true => DefModifiers::PUBLIC | DefModifiers::IMPORTABLE,
             false => DefModifiers::empty(),
@@ -92,7 +93,11 @@ impl ImportDirective {
         }
 
         NameBinding {
-            kind: NameBindingKind::Import { binding: binding, id: self.id },
+            kind: NameBindingKind::Import {
+                binding: binding,
+                id: self.id,
+                privacy_error: privacy_error,
+            },
             span: Some(self.span),
             modifiers: modifiers,
         }
@@ -220,7 +225,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 span: None,
             });
             let dummy_binding =
-                self.resolver.new_name_binding(e.import_directive.import(dummy_binding));
+                self.resolver.new_name_binding(e.import_directive.import(dummy_binding, None));
 
             let _ = e.source_module.try_define_child(target, ValueNS, dummy_binding);
             let _ = e.source_module.try_define_child(target, TypeNS, dummy_binding);
@@ -296,7 +301,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                  &import_directive.module_path,
                                  UseLexicalScopeFlag::DontUseLexicalScope,
                                  import_directive.span)
-            .and_then(|(containing_module, lp)| {
+            .and_then(|containing_module| {
                 // We found the module that the target is contained
                 // within. Attempt to resolve the import within it.
                 if let SingleImport(target, source) = import_directive.subclass {
@@ -304,10 +309,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                containing_module,
                                                target,
                                                source,
-                                               import_directive,
-                                               lp)
+                                               import_directive)
                 } else {
-                    self.resolve_glob_import(module_, containing_module, import_directive, lp)
+                    self.resolve_glob_import(module_, containing_module, import_directive)
                 }
             })
             .and_then(|()| {
@@ -333,26 +337,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                              target_module: Module<'b>,
                              target: Name,
                              source: Name,
-                             directive: &ImportDirective,
-                             lp: LastPrivate)
+                             directive: &ImportDirective)
                              -> ResolveResult<()> {
-        debug!("(resolving single import) resolving `{}` = `{}::{}` from `{}` id {}, last \
-                private {:?}",
+        debug!("(resolving single import) resolving `{}` = `{}::{}` from `{}` id {}",
                target,
                module_to_string(&target_module),
                source,
                module_to_string(module_),
-               directive.id,
-               lp);
-
-        let lp = match lp {
-            LastMod(lp) => lp,
-            LastImport {..} => {
-                self.resolver
-                    .session
-                    .span_bug(directive.span, "not expecting Import here, must be LastMod")
-            }
-        };
+               directive.id);
 
         // If this is a circular import, we temporarily count it as determined so that
         // it fails (as opposed to being indeterminate) when nothing else can define it.
@@ -433,6 +425,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             _ => {}
         }
 
+        let mut privacy_error = None;
+        let mut report_privacy_error = true;
         for &(ns, result) in &[(ValueNS, &value_result), (TypeNS, &type_result)] {
             if let Success(binding) = *result {
                 if !binding.defined_with(DefModifiers::IMPORTABLE) {
@@ -440,8 +434,20 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
                 }
 
-                self.define(module_, target, ns, directive.import(binding));
+                privacy_error = if !self.resolver.is_visible(binding, target_module) {
+                    Some(Box::new(PrivacyError(directive.span, source, binding)))
+                } else {
+                    report_privacy_error = false;
+                    None
+                };
+
+                self.define(module_, target, ns, directive.import(binding, privacy_error.clone()));
             }
+        }
+
+        if report_privacy_error { // then all successful namespaces are privacy errors
+            // We report here so there is an error even if the imported name is not used
+            self.resolver.privacy_errors.push(*privacy_error.unwrap());
         }
 
         // Record what this import resolves to for later uses in documentation,
@@ -450,28 +456,12 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         module_.decrement_outstanding_references_for(target, ValueNS);
         module_.decrement_outstanding_references_for(target, TypeNS);
 
-        let def_and_priv = |binding: &NameBinding| {
-            let last_private =
-                if binding.is_public() { lp } else { DependsOn(binding.local_def_id().unwrap()) };
-            (binding.def().unwrap(), last_private)
+        let def = match type_result.success().and_then(NameBinding::def) {
+            Some(def) => def,
+            None => value_result.success().and_then(NameBinding::def).unwrap(),
         };
-        let value_def_and_priv = value_result.success().map(&def_and_priv);
-        let type_def_and_priv = type_result.success().map(&def_and_priv);
-
-        let import_lp = LastImport {
-            value_priv: value_def_and_priv.map(|(_, p)| p),
-            value_used: Used,
-            type_priv: type_def_and_priv.map(|(_, p)| p),
-            type_used: Used,
-        };
-
-        let write_path_resolution = |(def, _)| {
-            let path_resolution =
-                PathResolution { base_def: def, last_private: import_lp, depth: 0 };
-            self.resolver.def_map.borrow_mut().insert(directive.id, path_resolution);
-        };
-        value_def_and_priv.map(&write_path_resolution);
-        type_def_and_priv.map(&write_path_resolution);
+        let path_resolution = PathResolution { base_def: def, depth: 0 };
+        self.resolver.def_map.borrow_mut().insert(directive.id, path_resolution);
 
         debug!("(resolving single import) successfully resolved import");
         return Success(());
@@ -484,8 +474,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     fn resolve_glob_import(&mut self,
                            module_: Module<'b>,
                            target_module: Module<'b>,
-                           directive: &ImportDirective,
-                           lp: LastPrivate)
+                           directive: &ImportDirective)
                            -> ResolveResult<()> {
         // We must bail out if the node has unresolved imports of any kind (including globs).
         if target_module.pub_count.get() > 0 {
@@ -503,7 +492,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
         target_module.for_each_child(|name, ns, binding| {
             if !binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) { return }
-            self.define(module_, name, ns, directive.import(binding));
+            self.define(module_, name, ns, directive.import(binding, None));
 
             if ns == TypeNS && directive.is_public &&
                binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
@@ -521,7 +510,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             self.resolver.def_map.borrow_mut().insert(directive.id,
                                                       PathResolution {
                                                           base_def: Def::Mod(did),
-                                                          last_private: lp,
                                                           depth: 0,
                                                       });
         }

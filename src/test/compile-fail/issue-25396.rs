@@ -32,6 +32,6 @@ mod foo {
 mod bar {
     pub mod baz {}
     pub type Quux = i32;
-    struct blah { x: i8 }
+    pub struct blah { x: i8 }
     pub const WOMP: i8 = -5;
 }

@@ -91,7 +91,6 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{TypeOrigin, type_variable};
 use middle::pat_util::{self, pat_id_map};
-use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{GenericPredicates, TypeScheme};
@@ -2013,6 +2012,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
         }
     }
+
+    fn private_item_is_visible(&self, def_id: DefId) -> bool {
+        match self.tcx().map.as_local_node_id(def_id) {
+            Some(node_id) => self.tcx().map.private_item_is_visible_from(node_id, self.body_id),
+            None => false, // Private items from other crates are never visible
+        }
+    }
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
@@ -3348,7 +3354,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 // Create some fake resolution that can't possibly be a type.
                 def::PathResolution {
                     base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
-                    last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
             } else {
@@ -3787,12 +3792,11 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
         let item_segment = path.segments.last().unwrap();
         let item_name = item_segment.identifier.name;
         match method::resolve_ufcs(fcx, span, item_name, ty, node_id) {
-            Ok((def, lp)) => {
+            Ok(def) => {
                 // Write back the new resolution.
                 fcx.ccx.tcx.def_map.borrow_mut()
                        .insert(node_id, def::PathResolution {
                    base_def: def,
-                   last_private: path_res.last_private.or(lp),
                    depth: 0
                 });
                 Some((Some(ty), slice::ref_slice(item_segment), def))
