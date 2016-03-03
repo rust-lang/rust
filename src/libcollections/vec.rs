@@ -66,7 +66,7 @@ use borrow::ToOwned;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::intrinsics::{arith_offset, assume, needs_drop};
+use core::intrinsics::{arith_offset, assume};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::{Index, IndexMut};
@@ -497,10 +497,11 @@ impl<T> Vec<T> {
         unsafe {
             // drop any extra elements
             while len < self.len {
-                // decrement len before the read(), so a panic on Drop doesn't
-                // re-drop the just-failed value.
+                // decrement len before the drop_in_place(), so a panic on Drop
+                // doesn't re-drop the just-failed value.
                 self.len -= 1;
-                ptr::read(self.get_unchecked(self.len));
+                let len = self.len;
+                ptr::drop_in_place(self.get_unchecked_mut(len));
             }
         }
     }
@@ -1471,13 +1472,8 @@ impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         if self.buf.unsafe_no_drop_flag_needs_drop() {
             unsafe {
-                // The branch on needs_drop() is an -O1 performance optimization.
-                // Without the branch, dropping Vec<u8> takes linear time.
-                if needs_drop::<T>() {
-                    for x in self.iter_mut() {
-                        ptr::drop_in_place(x);
-                    }
-                }
+                // use drop for [T]
+                ptr::drop_in_place(&mut self[..]);
             }
         }
         // RawVec handles deallocation
