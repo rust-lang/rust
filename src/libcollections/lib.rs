@@ -31,6 +31,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(alloc)]
+#![feature(allow_internal_unstable)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
