@@ -727,7 +727,7 @@ pub struct SyntaxExtension {
     /// Edition of the crate in which this macro is defined.
     pub edition: Edition,
     /// Built-in macros have a couple of special properties like availability
-    /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
+    /// in `#[no_prelude]` modules, so we have to keep this flag.
     pub builtin_name: Option<Symbol>,
 }
 
