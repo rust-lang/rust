@@ -21,13 +21,16 @@ use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 pub trait HigherRankedRelations<'a,'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_sub<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>;
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>;
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>;
 }
 
@@ -39,8 +42,8 @@ trait InferCtxtExt {
                                         -> Vec<ty::RegionVid>;
 }
 
-impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
+impl<'a,'o,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'o,'tcx> {
+    fn higher_ranked_sub<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
                             -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
     {
@@ -101,7 +104,8 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
         });
     }
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_lub<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
     {
         // Start a snapshot so we can examine "all bindings that were
@@ -191,7 +195,8 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
         }
     }
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_glb<T>(&mut self, a: &Binder<T>, b: &Binder<T>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
     {
         debug!("higher_ranked_glb({:?}, {:?})",
@@ -329,9 +334,10 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
     }
 }
 
-fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx>,
-                      map: &FnvHashMap<ty::BoundRegion, ty::Region>)
-                     -> Vec<ty::RegionVid> {
+fn var_ids<'a, 'o, 'tcx>(fields: &CombineFields<'a, 'o, 'tcx>,
+                         map: &FnvHashMap<ty::BoundRegion, ty::Region>)
+    -> Vec<ty::RegionVid>
+{
     map.iter()
        .map(|(_, r)| match *r {
            ty::ReVar(r) => { r }
@@ -486,7 +492,7 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                            -> Result<(),(ty::BoundRegion,ty::Region)>
 {
     /*!
-     * Searches the region constriants created since `snapshot` was started
+     * Searches the region constraints created since `snapshot` was started
      * and checks to determine whether any of the skolemized regions created
      * in `skol_map` would "escape" -- meaning that they are related to
      * other regions in some way. If so, the higher-ranked subtyping doesn't
@@ -531,7 +537,7 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 ///
 /// This routine is only intended to be used when the leak-check has
 /// passed; currently, it's used in the trait matching code to create
-/// a set of nested obligations frmo an impl that matches against
+/// a set of nested obligations from an impl that matches against
 /// something higher-ranked.  More details can be found in
 /// `librustc/middle/traits/README.md`.
 ///

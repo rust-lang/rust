@@ -13,25 +13,28 @@ use super::higher_ranked::HigherRankedRelations;
 use super::{Subtype};
 use super::type_variable::{EqTo};
 
+use middle::traits::PredicateObligation;
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
-pub struct Equate<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+pub struct Equate<'a, 'o, 'tcx: 'a + 'o> {
+    fields: CombineFields<'a, 'o, 'tcx>
 }
 
-impl<'a, 'tcx> Equate<'a, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'tcx>) -> Equate<'a, 'tcx> {
+impl<'a, 'o, 'tcx> Equate<'a, 'o, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'o, 'tcx>) -> Equate<'a, 'o, 'tcx> {
         Equate { fields: fields }
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
+impl<'a, 'o, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'o, 'tcx> {
     fn tag(&self) -> &'static str { "Equate" }
 
     fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.tcx() }
+
+    fn obligations(&self) -> &Vec<PredicateObligation<'tcx>> { self.fields.obligations }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

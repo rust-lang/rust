@@ -37,7 +37,7 @@ use super::util;
 
 use middle::def_id::DefId;
 use middle::infer;
-use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin};
+use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin, InferOk};
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TypeFoldable};
 use middle::ty::fast_reject;
@@ -453,7 +453,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn evaluate_predicate_recursively<'o>(&mut self,
                                           previous_stack: TraitObligationStackList<'o, 'tcx>,
                                           obligation: &PredicateObligation<'tcx>)
-                                           -> EvaluationResult
+        -> EvaluationResult
     {
         debug!("evaluate_predicate_recursively({:?})",
                obligation);
@@ -476,7 +476,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Predicate::Equate(ref p) => {
                 // does this code ever run?
                 match self.infcx.equality_predicate(obligation.cause.span, p) {
-                    Ok(()) => EvaluatedToOk,
+                    Ok(InferOk { obligations, .. }) =>
+                        self.evaluate_predicates_recursively(previous_stack, obligations.iter()),
                     Err(_) => EvaluatedToErr
                 }
             }
@@ -1164,7 +1165,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              trait_bound.clone(),
                                              ty::Binder(skol_trait_ref.clone())) {
-            Ok(()) => { }
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME Once obligations start getting generated, they ought to be propagated.
+                assert!(obligations.is_empty());
+            }
             Err(_) => { return false; }
         }
 
@@ -2453,7 +2457,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              expected_trait_ref.clone(),
                                              obligation_trait_ref.clone()) {
-            Ok(()) => Ok(()),
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME Once obligations start getting generated, they ought tobe propagated.
+                assert!(obligations.is_empty());
+                Ok(())
+            },
             Err(e) => Err(OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
         }
     }
@@ -2770,7 +2778,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              origin,
                                              poly_trait_ref,
                                              obligation.predicate.to_poly_trait_ref()) {
-            Ok(()) => Ok(()),
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME Once obligations start getting generated, they ought to be propagated.
+                assert!(obligations.is_empty());
+                Ok(())
+            },
             Err(_) => Err(()),
         }
     }
@@ -2783,7 +2795,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                               current: &ty::PolyTraitRef<'tcx>)
                               -> bool
     {
-        let mut matcher = ty::_match::Match::new(self.tcx());
+        let mut obligations = Vec::new();
+        let mut matcher = ty::_match::Match::new(self.tcx(), &mut obligations);
         matcher.relate(previous, current).is_ok()
     }
 

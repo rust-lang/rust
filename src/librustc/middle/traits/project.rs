@@ -10,6 +10,8 @@
 
 //! Code for projecting associated types out of trait references.
 
+use std::mem;
+
 use super::elaborate_predicates;
 use super::report_overflow_error;
 use super::Obligation;
@@ -21,7 +23,7 @@ use super::VtableClosureData;
 use super::VtableImplData;
 use super::util;
 
-use middle::infer::{self, TypeOrigin};
+use middle::infer::{self, TypeOrigin, InferOk};
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
@@ -121,15 +123,14 @@ fn project_and_unify_type<'cx,'tcx>(
     debug!("project_and_unify_type(obligation={:?})",
            obligation);
 
-    let Normalized { value: normalized_ty, obligations } =
+    let Normalized { value: normalized_ty, mut obligations } =
         match opt_normalize_projection_type(selcx,
                                             obligation.predicate.projection_ty.clone(),
                                             obligation.cause.clone(),
                                             obligation.recursion_depth) {
             Some(n) => n,
             None => {
-                consider_unification_despite_ambiguity(selcx, obligation);
-                return Ok(None);
+                return Ok(consider_unification_despite_ambiguity(selcx, obligation));
             }
         };
 
@@ -140,20 +141,25 @@ fn project_and_unify_type<'cx,'tcx>(
     let infcx = selcx.infcx();
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
     match infer::mk_eqty(infcx, true, origin, normalized_ty, obligation.predicate.ty) {
-        Ok(()) => Ok(Some(obligations)),
+        Ok(InferOk { obligations: new_obligations, .. }) => {
+            obligations.extend(new_obligations);
+            Ok(Some(obligations))
+        },
         Err(err) => Err(MismatchedProjectionTypes { err: err }),
     }
 }
 
 fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext<'cx,'tcx>,
-                                                    obligation: &ProjectionObligation<'tcx>) {
+                                                    obligation: &ProjectionObligation<'tcx>)
+    -> Option<Vec<PredicateObligation<'tcx>>>
+{
     debug!("consider_unification_despite_ambiguity(obligation={:?})",
            obligation);
 
     let def_id = obligation.predicate.projection_ty.trait_ref.def_id;
     match selcx.tcx().lang_items.fn_trait_kind(def_id) {
         Some(_) => { }
-        None => { return; }
+        None => { return None; }
     }
 
     let infcx = selcx.infcx();
@@ -186,11 +192,11 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
             let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let obligation_ty = obligation.predicate.ty;
             match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
-                Ok(()) => { }
-                Err(_) => { /* ignore errors */ }
+                Ok(InferOk { obligations, .. }) => { Some(obligations) }
+                Err(_) => { /* ignore errors */ None }
             }
         }
-        _ => { }
+        _ => { None }
     }
 }
 
@@ -917,11 +923,12 @@ fn confirm_param_env_candidate<'cx,'tcx>(
                obligation.predicate.item_name);
 
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
+    let mut infer_obligations = Vec::new();
     match infcx.eq_trait_refs(false,
                               origin,
                               obligation.predicate.trait_ref.clone(),
                               projection.projection_ty.trait_ref.clone()) {
-        Ok(()) => { }
+        Ok(InferOk { obligations, .. }) => { mem::replace(&mut infer_obligations, obligations); }
         Err(e) => {
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
@@ -932,7 +939,7 @@ fn confirm_param_env_candidate<'cx,'tcx>(
         }
     }
 
-    (projection.ty, vec!())
+    (projection.ty, infer_obligations)
 }
 
 fn confirm_impl_candidate<'cx,'tcx>(

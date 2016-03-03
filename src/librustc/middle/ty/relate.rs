@@ -15,6 +15,7 @@
 
 use middle::def_id::DefId;
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
+use middle::traits::PredicateObligation;
 use middle::ty::{self, Ty, TypeFoldable};
 use middle::ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
@@ -30,6 +31,9 @@ pub enum Cause {
 
 pub trait TypeRelation<'a,'tcx> : Sized {
     fn tcx(&self) -> &'a ty::ctxt<'tcx>;
+
+    /// Obligations that have been collected over the course of using this relation.
+    fn obligations(&self) -> &Vec<PredicateObligation<'tcx>>;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;

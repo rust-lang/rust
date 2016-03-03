@@ -41,6 +41,7 @@ use super::{InferCtxt};
 use super::{MiscVariable, TypeTrace};
 use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
+use middle::traits::PredicateObligation;
 use middle::ty::{IntType, UintType};
 use middle::ty::{self, Ty};
 use middle::ty::error::TypeError;
@@ -50,12 +51,12 @@ use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax::ast;
 use syntax::codemap::Span;
 
-#[derive(Clone)]
-pub struct CombineFields<'a, 'tcx: 'a> {
+pub struct CombineFields<'a, 'o, 'tcx: 'a + 'o> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
     pub a_is_expected: bool,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
+    pub obligations: &'o mut Vec<PredicateObligation<'tcx>>,
 }
 
 pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
@@ -148,39 +149,49 @@ fn unify_float_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     Ok(infcx.tcx.mk_mach_float(val))
 }
 
-impl<'a, 'tcx> CombineFields<'a, 'tcx> {
+impl<'a, 'o, 'tcx> CombineFields<'a, 'o, 'tcx> {
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.infcx.tcx
     }
 
-    pub fn switch_expected(&self) -> CombineFields<'a, 'tcx> {
+    pub fn switch_expected<'s>(&'s mut self) -> CombineFields<'a, 's, 'tcx> {
         CombineFields {
             a_is_expected: !self.a_is_expected,
-            ..(*self).clone()
+            ..(*self).clone_and_reborrow()
         }
     }
 
-    pub fn equate(&self) -> Equate<'a, 'tcx> {
-        Equate::new(self.clone())
+    pub fn clone_and_reborrow<'s>(&'s mut self) -> CombineFields<'a, 's, 'tcx> {
+        CombineFields {
+            infcx: self.infcx,
+            a_is_expected: self.a_is_expected,
+            trace: self.trace.clone(),
+            cause: self.cause.clone(),
+            obligations: self.obligations,
+        }
     }
 
-    pub fn bivariate(&self) -> Bivariate<'a, 'tcx> {
-        Bivariate::new(self.clone())
+    pub fn equate<'s>(&'s mut self) -> Equate<'a, 's, 'tcx> {
+        Equate::new(self.clone_and_reborrow())
     }
 
-    pub fn sub(&self) -> Sub<'a, 'tcx> {
-        Sub::new(self.clone())
+    pub fn bivariate<'s>(&'s mut self) -> Bivariate<'a, 's, 'tcx> {
+        Bivariate::new(self.clone_and_reborrow())
     }
 
-    pub fn lub(&self) -> Lub<'a, 'tcx> {
-        Lub::new(self.clone())
+    pub fn sub<'s>(&'s mut self) -> Sub<'a, 's, 'tcx> {
+        Sub::new(self.clone_and_reborrow())
     }
 
-    pub fn glb(&self) -> Glb<'a, 'tcx> {
-        Glb::new(self.clone())
+    pub fn lub<'s>(&'s mut self) -> Lub<'a, 's, 'tcx> {
+        Lub::new(self.clone_and_reborrow())
     }
 
-    pub fn instantiate(&self,
+    pub fn glb<'s>(&'s mut self) -> Glb<'a, 's, 'tcx> {
+        Glb::new(self.clone_and_reborrow())
+    }
+
+    pub fn instantiate(&mut self,
                        a_ty: Ty<'tcx>,
                        dir: RelationDir,
                        b_vid: ty::TyVid)
