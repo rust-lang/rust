@@ -77,7 +77,7 @@ use middle::infer;
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
 use middle::ty::adjustment;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 
 use rustc_front::hir::{MutImmutable, MutMutable, PatKind};
 use rustc_front::hir;
@@ -302,7 +302,7 @@ impl MutabilityCategory {
         ret
     }
 
-    fn from_local(tcx: &ty::ctxt, id: ast::NodeId) -> MutabilityCategory {
+    fn from_local(tcx: &TyCtxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
             ast_map::NodeLocal(p) => match p.node {
                 PatKind::Ident(bind_mode, _, _) => {
@@ -363,7 +363,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         MemCategorizationContext { typer: typer }
     }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.typer.tcx
     }
 
@@ -1081,7 +1081,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
         /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
         /// have to recurse through rptrs.
-        fn vec_slice_info(tcx: &ty::ctxt,
+        fn vec_slice_info(tcx: &TyCtxt,
                           pat: &hir::Pat,
                           slice_ty: Ty)
                           -> (hir::Mutability, ty::Region) {
@@ -1387,7 +1387,7 @@ impl<'tcx> cmt_<'tcx> {
     }
 
     /// Returns `FreelyAliasable(_)` if this lvalue represents a freely aliasable pointer type.
-    pub fn freely_aliasable(&self, ctxt: &ty::ctxt<'tcx>)
+    pub fn freely_aliasable(&self, ctxt: &TyCtxt<'tcx>)
                             -> Aliasability {
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
@@ -1462,7 +1462,7 @@ impl<'tcx> cmt_<'tcx> {
     }
 
 
-    pub fn descriptive_string(&self, tcx: &ty::ctxt) -> String {
+    pub fn descriptive_string(&self, tcx: &TyCtxt) -> String {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".to_string()

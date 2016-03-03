@@ -12,7 +12,7 @@ use dep_graph::DepNode;
 use middle::def::Def;
 use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, EnumeratedItems};
-use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
+use middle::ty::{TransmuteRestriction, TyCtxt, TyBareFn};
 use middle::ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
@@ -23,7 +23,7 @@ use syntax::codemap::Span;
 use rustc_front::intravisit::{self, Visitor, FnKind};
 use rustc_front::hir;
 
-pub fn check_crate(tcx: &ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     let mut visitor = IntrinsicCheckingVisitor {
         tcx: tcx,
         param_envs: Vec::new(),
@@ -34,7 +34,7 @@ pub fn check_crate(tcx: &ctxt) {
 }
 
 struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 
     // As we traverse the AST, we keep a stack of the parameter
     // environments for each function we encounter. When we find a

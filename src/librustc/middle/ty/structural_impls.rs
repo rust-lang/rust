@@ -10,7 +10,7 @@
 
 use middle::subst::{self, VecPerParamSpace};
 use middle::traits;
-use middle::ty::{self, Lift, TraitRef, Ty};
+use middle::ty::{self, Lift, TraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::rc::Rc;
@@ -24,14 +24,14 @@ use rustc_front::hir;
 
 impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
     type Lifted = (A::Lifted, B::Lifted);
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.0).and_then(|a| tcx.lift(&self.1).map(|b| (a, b)))
     }
 }
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for [T] {
     type Lifted = Vec<T::Lifted>;
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Self::Lifted> {
         // type annotation needed to inform `projection_must_outlive`
         let mut result : Vec<<T as Lift<'tcx>>::Lifted>
             = Vec::with_capacity(self.len());
@@ -48,14 +48,14 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for [T] {
 
 impl<'tcx> Lift<'tcx> for ty::Region {
     type Lifted = Self;
-    fn lift_to_tcx(&self, _: &ty::ctxt<'tcx>) -> Option<ty::Region> {
+    fn lift_to_tcx(&self, _: &TyCtxt<'tcx>) -> Option<ty::Region> {
         Some(*self)
     }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for TraitRef<'a> {
     type Lifted = TraitRef<'tcx>;
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<TraitRef<'tcx>> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<TraitRef<'tcx>> {
         tcx.lift(&self.substs).map(|substs| TraitRef {
             def_id: self.def_id,
             substs: substs
@@ -65,7 +65,7 @@ impl<'a, 'tcx> Lift<'tcx> for TraitRef<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     type Lifted = ty::TraitPredicate<'tcx>;
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
         tcx.lift(&self.trait_ref).map(|trait_ref| ty::TraitPredicate {
             trait_ref: trait_ref
         })
@@ -74,21 +74,21 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for ty::EquatePredicate<'a> {
     type Lifted = ty::EquatePredicate<'tcx>;
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<ty::EquatePredicate<'tcx>> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<ty::EquatePredicate<'tcx>> {
         tcx.lift(&(self.0, self.1)).map(|(a, b)| ty::EquatePredicate(a, b))
     }
 }
 
 impl<'tcx, A: Copy+Lift<'tcx>, B: Copy+Lift<'tcx>> Lift<'tcx> for ty::OutlivesPredicate<A, B> {
     type Lifted = ty::OutlivesPredicate<A::Lifted, B::Lifted>;
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&(self.0, self.1)).map(|(a, b)| ty::OutlivesPredicate(a, b))
     }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
     type Lifted = ty::ProjectionPredicate<'tcx>;
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<ty::ProjectionPredicate<'tcx>> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<ty::ProjectionPredicate<'tcx>> {
         tcx.lift(&(self.projection_ty.trait_ref, self.ty)).map(|(trait_ref, ty)| {
             ty::ProjectionPredicate {
                 projection_ty: ty::ProjectionTy {
@@ -103,7 +103,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<T> {
     type Lifted = ty::Binder<T::Lifted>;
-    fn lift_to_tcx(&self, tcx: &ty::ctxt<'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.0).map(|x| ty::Binder(x))
     }
 }

@@ -11,17 +11,17 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use middle::ty;
+use middle::ty::TyCtxt;
 use rustc_front::intravisit;
 use rustc_front::hir;
 
-pub fn check(tcx: &ty::ctxt) {
+pub fn check(tcx: &TyCtxt) {
     let mut orphan = UnsafetyChecker { tcx: tcx };
     tcx.map.krate().visit_all_items(&mut orphan);
 }
 
 struct UnsafetyChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx ty::ctxt<'tcx>
+    tcx: &'cx TyCtxt<'tcx>
 }
 
 impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {

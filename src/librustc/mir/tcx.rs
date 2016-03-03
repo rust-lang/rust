@@ -16,7 +16,7 @@
 use mir::repr::*;
 use middle::const_eval::ConstVal;
 use middle::subst::{Subst, Substs};
-use middle::ty::{self, AdtDef, Ty};
+use middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_front::hir;
 
 #[derive(Copy, Clone, Debug)]
@@ -35,7 +35,7 @@ impl<'tcx> LvalueTy<'tcx> {
         LvalueTy::Ty { ty: ty }
     }
 
-    pub fn to_ty(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             LvalueTy::Ty { ty } =>
                 ty,
@@ -45,7 +45,7 @@ impl<'tcx> LvalueTy<'tcx> {
     }
 
     pub fn projection_ty(self,
-                         tcx: &ty::ctxt<'tcx>,
+                         tcx: &TyCtxt<'tcx>,
                          elem: &LvalueElem<'tcx>)
                          -> LvalueTy<'tcx>
     {
@@ -80,7 +80,7 @@ impl<'tcx> LvalueTy<'tcx> {
 
 impl<'tcx> Mir<'tcx> {
     pub fn operand_ty(&self,
-                      tcx: &ty::ctxt<'tcx>,
+                      tcx: &TyCtxt<'tcx>,
                       operand: &Operand<'tcx>)
                       -> Ty<'tcx>
     {
@@ -91,7 +91,7 @@ impl<'tcx> Mir<'tcx> {
     }
 
     pub fn binop_ty(&self,
-                    tcx: &ty::ctxt<'tcx>,
+                    tcx: &TyCtxt<'tcx>,
                     op: BinOp,
                     lhs_ty: Ty<'tcx>,
                     rhs_ty: Ty<'tcx>)
@@ -116,7 +116,7 @@ impl<'tcx> Mir<'tcx> {
     }
 
     pub fn lvalue_ty(&self,
-                     tcx: &ty::ctxt<'tcx>,
+                     tcx: &TyCtxt<'tcx>,
                      lvalue: &Lvalue<'tcx>)
                      -> LvalueTy<'tcx>
     {
@@ -137,7 +137,7 @@ impl<'tcx> Mir<'tcx> {
     }
 
     pub fn rvalue_ty(&self,
-                     tcx: &ty::ctxt<'tcx>,
+                     tcx: &TyCtxt<'tcx>,
                      rvalue: &Rvalue<'tcx>)
                      -> Option<Ty<'tcx>>
     {

@@ -69,7 +69,7 @@ use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use middle::ty::{self, ToPolyTraitRef, Ty, TypeScheme};
+use middle::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use middle::ty::{VariantKind};
 use middle::ty::fold::{TypeFolder};
 use middle::ty::util::IntTypeExt;
@@ -97,7 +97,7 @@ use rustc_front::print::pprust;
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
-pub fn collect_item_types(tcx: &ty::ctxt) {
+pub fn collect_item_types(tcx: &TyCtxt) {
     let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
     let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
     ccx.tcx.visit_all_items_in_krate(DepNode::CollectItem, &mut visitor);
@@ -106,7 +106,7 @@ pub fn collect_item_types(tcx: &ty::ctxt) {
 ///////////////////////////////////////////////////////////////////////////
 
 struct CrateCtxt<'a,'tcx:'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 
     // This stack is used to identify cycles in the user's source.
     // Note that these cycles can cross multiple items.
@@ -304,7 +304,7 @@ impl<'a,'tcx> ItemCtxt<'a,'tcx> {
 }
 
 impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
+    fn tcx(&self) -> &TyCtxt<'tcx> { self.ccx.tcx }
 
     fn get_item_type_scheme(&self, span: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
@@ -500,7 +500,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for hir::Generics {
 /// parameter with id `param_id`. We use this so as to avoid running
 /// `ast_ty_to_ty`, because we want to avoid triggering an all-out
 /// conversion of the type to avoid inducing unnecessary cycles.
-fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn is_param<'tcx>(tcx: &TyCtxt<'tcx>,
                   ast_ty: &hir::Ty,
                   param_id: ast::NodeId)
                   -> bool
@@ -920,7 +920,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     }
 }
 
-fn convert_variant_ctor<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
+fn convert_variant_ctor<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
                                   ctor_id: ast::NodeId,
                                   variant: ty::VariantDef<'tcx>,
                                   scheme: ty::TypeScheme<'tcx>,
@@ -970,7 +970,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn convert_struct_variant<'tcx>(tcx: &TyCtxt<'tcx>,
                                 did: DefId,
                                 name: ast::Name,
                                 disr_val: ty::Disr,
@@ -1000,7 +1000,7 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn convert_struct_def<'tcx>(tcx: &TyCtxt<'tcx>,
                             it: &hir::Item,
                             def: &hir::VariantData)
                             -> ty::AdtDefMaster<'tcx>
@@ -1019,12 +1019,12 @@ fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     )
 }
 
-fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
                           it: &hir::Item,
                           def: &hir::EnumDef)
                           -> ty::AdtDefMaster<'tcx>
 {
-    fn evaluate_disr_expr<'tcx>(tcx: &ty::ctxt<'tcx>,
+    fn evaluate_disr_expr<'tcx>(tcx: &TyCtxt<'tcx>,
                                 repr_ty: Ty<'tcx>,
                                 e: &hir::Expr) -> Option<ty::Disr> {
         debug!("disr expr, checking {}", pprust::expr_to_string(e));
@@ -1057,7 +1057,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     }
 
-    fn report_discrim_overflow(tcx: &ty::ctxt,
+    fn report_discrim_overflow(tcx: &TyCtxt,
                                variant_span: Span,
                                variant_name: &str,
                                repr_type: attr::IntType,
@@ -1072,7 +1072,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                   prev_val, repr_type, variant_name, computed_value);
     }
 
-    fn next_disr(tcx: &ty::ctxt,
+    fn next_disr(tcx: &TyCtxt,
                  v: &hir::Variant,
                  repr_type: attr::IntType,
                  prev_disr_val: Option<ty::Disr>) -> Option<ty::Disr> {
@@ -1087,7 +1087,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
             Some(ty::INITIAL_DISCRIMINANT_VALUE)
         }
     }
-    fn convert_enum_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
+    fn convert_enum_variant<'tcx>(tcx: &TyCtxt<'tcx>,
                                   v: &hir::Variant,
                                   disr: ty::Disr)
                                   -> ty::VariantDefData<'tcx, 'tcx>
@@ -2171,7 +2171,7 @@ fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 /// Checks that all the type parameters on an impl
-fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn enforce_impl_params_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
                                              ast_generics: &hir::Generics,
                                              impl_predicates: &mut ty::GenericPredicates<'tcx>,
                                              impl_def_id: DefId)
@@ -2206,7 +2206,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
                                                 ast_generics: &hir::Generics,
                                                 impl_def_id: DefId,
                                                 impl_items: &[hir::ImplItem])
@@ -2271,7 +2271,7 @@ fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: &ty::ctxt,
+fn report_unused_parameter(tcx: &TyCtxt,
                            span: Span,
                            kind: &str,
                            name: &str)

@@ -16,7 +16,7 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use middle::subst;
 use middle::traits;
-use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
+use middle::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use middle::infer;
 
@@ -350,7 +350,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 /// Find item with name `item_name` defined in `trait_def_id`
 /// and return it, or `None`, if no such item.
-fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn trait_item<'tcx>(tcx: &TyCtxt<'tcx>,
                     trait_def_id: DefId,
                     item_name: ast::Name)
                     -> Option<ty::ImplOrTraitItem<'tcx>>
@@ -361,7 +361,7 @@ fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
                .cloned()
 }
 
-fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn impl_item<'tcx>(tcx: &TyCtxt<'tcx>,
                    impl_def_id: DefId,
                    item_name: ast::Name)
                    -> Option<ty::ImplOrTraitItem<'tcx>>

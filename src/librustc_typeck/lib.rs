@@ -104,7 +104,7 @@ use front::map as hir_map;
 use middle::def::Def;
 use middle::infer::{self, TypeOrigin};
 use middle::subst;
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use session::{config, CompileResult};
 use util::common::time;
 use rustc_front::hir;
@@ -140,17 +140,17 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
     /// error reporting, and so is lazily initialised and generally
     /// shouldn't taint the common path (hence the RefCell).
     pub all_traits: RefCell<Option<check::method::AllTraitsVec>>,
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
 }
 
 // Functions that write types into the node type table
-fn write_ty_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
+fn write_ty_to_tcx<'tcx>(tcx: &TyCtxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
     debug!("write_ty_to_tcx({}, {:?})", node_id,  ty);
     assert!(!ty.needs_infer());
     tcx.node_type_insert(node_id, ty);
 }
 
-fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn write_substs_to_tcx<'tcx>(tcx: &TyCtxt<'tcx>,
                                  node_id: ast::NodeId,
                                  item_substs: ty::ItemSubsts<'tcx>) {
     if !item_substs.is_noop() {
@@ -164,7 +164,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> Def {
+fn lookup_full_def(tcx: &TyCtxt, sp: Span, id: ast::NodeId) -> Def {
     match tcx.def_map.borrow().get(&id) {
         Some(x) => x.full_def(),
         None => {
@@ -173,7 +173,7 @@ fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> Def {
     }
 }
 
-fn require_c_abi_if_variadic(tcx: &ty::ctxt,
+fn require_c_abi_if_variadic(tcx: &TyCtxt,
                              decl: &hir::FnDecl,
                              abi: Abi,
                              span: Span) {
@@ -183,7 +183,7 @@ fn require_c_abi_if_variadic(tcx: &ty::ctxt,
     }
 }
 
-fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
+fn require_same_types<'a, 'tcx, M>(tcx: &TyCtxt<'tcx>,
                                    maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
                                    t1_is_expected: bool,
                                    span: Span,
@@ -325,7 +325,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) -> CompileResult {
+pub fn check_crate(tcx: &TyCtxt, trait_map: ty::TraitMap) -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,

@@ -14,7 +14,7 @@ use self::RootUnsafeContext::*;
 
 use dep_graph::DepNode;
 use middle::def::Def;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::MethodCall;
 
 use syntax::ast;
@@ -50,7 +50,7 @@ fn type_is_unsafe_function(ty: Ty) -> bool {
 }
 
 struct EffectCheckVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
@@ -182,7 +182,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     let _task = tcx.dep_graph.in_task(DepNode::EffectCheck);
 
     let mut visitor = EffectCheckVisitor {

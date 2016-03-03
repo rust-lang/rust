@@ -13,7 +13,7 @@ use middle::infer::InferCtxt;
 use middle::ty::outlives::{self, Component};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, ToPredicate, Ty, TypeFoldable};
+use middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -487,7 +487,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 /// `'static` would appear in the list. The hard work is done by
 /// `ty::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &TyCtxt<'tcx>,
     principal: &ty::PolyTraitRef<'tcx>,
     others: ty::BuiltinBounds)
     -> Vec<ty::Region>

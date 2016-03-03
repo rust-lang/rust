@@ -33,7 +33,7 @@ use rustc::mir::transform::MirPass;
 use rustc::mir::mir_map::MirMap;
 use rustc::middle::infer;
 use rustc::middle::region::CodeExtentData;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc_front::hir;
@@ -42,7 +42,7 @@ use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
-pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
+pub fn build_mir_for_crate<'tcx>(tcx: &TyCtxt<'tcx>) -> MirMap<'tcx> {
     let mut map = MirMap {
         map: NodeMap(),
     };
@@ -60,7 +60,7 @@ pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
 // OuterDump -- walks a crate, looking for fn items and methods to build MIR from
 
 struct OuterDump<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     map: &'a mut MirMap<'tcx>,
 }
 
@@ -116,7 +116,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterDump<'a, 'tcx> {
 // InnerDump -- dumps MIR for a single fn and its contained closures
 
 struct InnerDump<'a, 'm, 'tcx: 'a + 'm> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     map: &'m mut MirMap<'tcx>,
     attr: Option<&'a ast::Attribute>,
 }
@@ -236,7 +236,7 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
                         body))
 }
 
-fn closure_self_ty<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
+fn closure_self_ty<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
                              closure_expr_id: ast::NodeId,
                              body_id: ast::NodeId)
                              -> Ty<'tcx> {

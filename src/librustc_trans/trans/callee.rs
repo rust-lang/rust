@@ -51,7 +51,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use trans::Disr;
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::MethodCall;
 use rustc_front::hir;
 
@@ -408,7 +408,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     // def_id to the local id of the inlined copy.
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
-    fn is_named_tuple_constructor(tcx: &ty::ctxt, def_id: DefId) -> bool {
+    fn is_named_tuple_constructor(tcx: &TyCtxt, def_id: DefId) -> bool {
         let node_id = match tcx.map.as_local_node_id(def_id) {
             Some(n) => n,
             None => { return false; }

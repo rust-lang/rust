@@ -91,7 +91,7 @@ use middle::mem_categorization::Categorization;
 use middle::region::{self, CodeExtent};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, Ty, MethodCall, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, MethodCall, TypeFoldable};
 use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound};
 use middle::pat_util;
 use middle::ty::adjustment;
@@ -208,7 +208,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         }
     }
 
-    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.fcx.ccx.tcx
     }
 

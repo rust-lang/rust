@@ -15,7 +15,7 @@
 
 use middle::def_id::DefId;
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
 use syntax::abi;
@@ -29,7 +29,7 @@ pub enum Cause {
 }
 
 pub trait TypeRelation<'a,'tcx> : Sized {
-    fn tcx(&self) -> &'a ty::ctxt<'tcx>;
+    fn tcx(&self) -> &'a TyCtxt<'tcx>;
 
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;

@@ -15,7 +15,7 @@ use middle::def_id::DefId;
 use middle::region;
 use middle::subst::{self, Substs};
 use middle::traits;
-use middle::ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyS, TypeFoldable};
+use middle::ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
 use util::common::ErrorReported;
 
 use collections::enum_set::{self, EnumSet, CLike};
@@ -281,7 +281,7 @@ impl<'tcx> TraitTy<'tcx> {
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
     pub fn principal_trait_ref_with_self_ty(&self,
-                                            tcx: &ty::ctxt<'tcx>,
+                                            tcx: &TyCtxt<'tcx>,
                                             self_ty: Ty<'tcx>)
                                             -> ty::PolyTraitRef<'tcx>
     {
@@ -295,7 +295,7 @@ impl<'tcx> TraitTy<'tcx> {
     }
 
     pub fn projection_bounds_with_self_ty(&self,
-                                          tcx: &ty::ctxt<'tcx>,
+                                          tcx: &TyCtxt<'tcx>,
                                           self_ty: Ty<'tcx>)
                                           -> Vec<ty::PolyProjectionPredicate<'tcx>>
     {
@@ -540,7 +540,7 @@ impl ParamTy {
         ParamTy::new(def.space, def.index, def.name)
     }
 
-    pub fn to_ty<'tcx>(self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty<'tcx>(self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_param(self.space, self.idx, self.name)
     }
 
@@ -775,7 +775,7 @@ impl BuiltinBounds {
     }
 
     pub fn to_predicates<'tcx>(&self,
-                               tcx: &ty::ctxt<'tcx>,
+                               tcx: &TyCtxt<'tcx>,
                                self_ty: Ty<'tcx>) -> Vec<ty::Predicate<'tcx>> {
         self.iter().filter_map(|builtin_bound|
             match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, self_ty) {
@@ -822,7 +822,7 @@ impl CLike for BuiltinBound {
     }
 }
 
-impl<'tcx> ty::ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn try_add_builtin_trait(&self,
                                  trait_def_id: DefId,
                                  builtin_bounds: &mut EnumSet<BuiltinBound>)
@@ -902,7 +902,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_empty(&self, _cx: &ty::ctxt) -> bool {
+    pub fn is_empty(&self, _cx: &TyCtxt) -> bool {
         // FIXME(#24885): be smarter here
         match self.sty {
             TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
@@ -974,7 +974,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn sequence_element_type(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn sequence_element_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
             TyStr => cx.mk_mach_uint(ast::UintTy::U8),
@@ -983,7 +983,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn simd_type(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn simd_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyStruct(def, substs) => {
                 def.struct_variant().fields[0].ty(cx, substs)
@@ -992,7 +992,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn simd_size(&self, _cx: &ty::ctxt) -> usize {
+    pub fn simd_size(&self, _cx: &TyCtxt) -> usize {
         match self.sty {
             TyStruct(def, _) => def.struct_variant().fields.len(),
             _ => panic!("simd_size called on invalid type")

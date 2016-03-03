@@ -56,7 +56,7 @@ use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use middle::traits;
-use middle::ty::{self, Ty, ToPredicate, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use middle::ty::wf::object_region_bounds;
 use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
@@ -76,7 +76,7 @@ use rustc_front::hir;
 use rustc_back::slice;
 
 pub trait AstConv<'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
+    fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;
 
     /// Identify the type scheme for an item with a type, like a type
     /// alias, fn, or struct. This allows you to figure out the set of
@@ -153,7 +153,7 @@ pub trait AstConv<'tcx> {
                     -> Ty<'tcx>;
 }
 
-pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &hir::Lifetime)
+pub fn ast_region_to_region(tcx: &TyCtxt, lifetime: &hir::Lifetime)
                             -> ty::Region {
     let r = match tcx.named_region_map.get(&lifetime.id) {
         None => {
@@ -571,7 +571,7 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
 /// Returns the appropriate lifetime to use for any output lifetimes
 /// (if one exists) and a vector of the (pattern, number of lifetimes)
 /// corresponding to each input type/pattern.
-fn find_implied_output_region<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn find_implied_output_region<'tcx>(tcx: &TyCtxt<'tcx>,
                                     input_tys: &[Ty<'tcx>],
                                     input_pats: Vec<String>) -> ElidedLifetime
 {
@@ -1166,7 +1166,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
     tcx.mk_trait(object.principal, object.bounds)
 }
 
-fn report_ambiguous_associated_type(tcx: &ty::ctxt,
+fn report_ambiguous_associated_type(tcx: &TyCtxt,
                                     span: Span,
                                     type_str: &str,
                                     trait_str: &str,
@@ -1220,7 +1220,7 @@ fn find_bound_for_assoc_item<'tcx>(this: &AstConv<'tcx>,
 
 // Checks that bounds contains exactly one element and reports appropriate
 // errors otherwise.
-fn one_bound_for_assoc_type<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn one_bound_for_assoc_type<'tcx>(tcx: &TyCtxt<'tcx>,
                                   bounds: Vec<ty::PolyTraitRef<'tcx>>,
                                   ty_param_name: &str,
                                   assoc_name: &str,
@@ -2153,7 +2153,7 @@ pub struct PartitionedBounds<'a> {
 
 /// Divides a list of bounds from the AST into three groups: builtin bounds (Copy, Sized etc),
 /// general trait bounds, and region bounds.
-pub fn partition_bounds<'a>(tcx: &ty::ctxt,
+pub fn partition_bounds<'a>(tcx: &TyCtxt,
                             _span: Span,
                             ast_bounds: &'a [hir::TyParamBound])
                             -> PartitionedBounds<'a>
@@ -2202,7 +2202,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     }
 }
 
-fn prohibit_projections<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn prohibit_projections<'tcx>(tcx: &TyCtxt<'tcx>,
                               bindings: &[ConvertedBinding<'tcx>])
 {
     for binding in bindings.iter().take(1) {
@@ -2210,7 +2210,7 @@ fn prohibit_projections<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn check_type_argument_count(tcx: &ty::ctxt, span: Span, supplied: usize,
+fn check_type_argument_count(tcx: &TyCtxt, span: Span, supplied: usize,
                              required: usize, accepted: usize) {
     if supplied < required {
         let expected = if required < accepted {
@@ -2235,7 +2235,7 @@ fn check_type_argument_count(tcx: &ty::ctxt, span: Span, supplied: usize,
     }
 }
 
-fn report_lifetime_number_error(tcx: &ty::ctxt, span: Span, number: usize, expected: usize) {
+fn report_lifetime_number_error(tcx: &TyCtxt, span: Span, number: usize, expected: usize) {
     span_err!(tcx.sess, span, E0107,
               "wrong number of lifetime parameters: expected {}, found {}",
               expected, number);
@@ -2253,7 +2253,7 @@ pub struct Bounds<'tcx> {
 
 impl<'tcx> Bounds<'tcx> {
     pub fn predicates(&self,
-        tcx: &ty::ctxt<'tcx>,
+        tcx: &TyCtxt<'tcx>,
         param_ty: Ty<'tcx>)
         -> Vec<ty::Predicate<'tcx>>
     {

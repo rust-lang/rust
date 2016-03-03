@@ -12,23 +12,23 @@
 //! We want to do this once just before trans, so trans does not have to take
 //! care erasing regions all over the place.
 
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::mir_map::MirMap;
 
-pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
+pub fn erase_regions<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
     for (_, mir) in &mut mir_map.map {
         EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> Self {
+    pub fn new(tcx: &'a TyCtxt<'tcx>) -> Self {
         EraseRegionsVisitor {
             tcx: tcx
         }

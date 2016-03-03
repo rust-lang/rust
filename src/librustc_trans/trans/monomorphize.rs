@@ -23,7 +23,7 @@ use trans::base;
 use trans::common::*;
 use trans::declare;
 use trans::foreign;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use trans::Disr;
 use rustc::front::map as hir_map;
 
@@ -296,7 +296,7 @@ pub struct MonoId<'tcx> {
 
 /// Monomorphizes a type from the AST by first applying the in-scope
 /// substitutions and then normalizing any associated types.
-pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
+pub fn apply_param_substs<'tcx,T>(tcx: &TyCtxt<'tcx>,
                                   param_substs: &Substs<'tcx>,
                                   value: &T)
                                   -> T
@@ -308,7 +308,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
 
 
 /// Returns the normalized type of a struct field
-pub fn field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn field_ty<'tcx>(tcx: &TyCtxt<'tcx>,
                       param_substs: &Substs<'tcx>,
                       f: ty::FieldDef<'tcx>)
                       -> Ty<'tcx>

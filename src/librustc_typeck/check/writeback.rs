@@ -17,7 +17,7 @@ use astconv::AstConv;
 use check::FnCtxt;
 use middle::def_id::DefId;
 use middle::pat_util;
-use middle::ty::{self, Ty, MethodCall, MethodCallee};
+use middle::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use middle::ty::adjustment;
 use middle::ty::fold::{TypeFolder,TypeFoldable};
 use middle::infer;
@@ -85,7 +85,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         WritebackCx { fcx: fcx }
     }
 
-    fn tcx(&self) -> &'cx ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'cx TyCtxt<'tcx> {
         self.fcx.tcx()
     }
 
@@ -381,7 +381,7 @@ enum ResolveReason {
 }
 
 impl ResolveReason {
-    fn span(&self, tcx: &ty::ctxt) -> Span {
+    fn span(&self, tcx: &TyCtxt) -> Span {
         match *self {
             ResolvingExpr(s) => s,
             ResolvingLocal(s) => s,
@@ -411,7 +411,7 @@ impl ResolveReason {
 // unresolved types and so forth.
 
 struct Resolver<'cx, 'tcx: 'cx> {
-    tcx: &'cx ty::ctxt<'tcx>,
+    tcx: &'cx TyCtxt<'tcx>,
     infcx: &'cx infer::InferCtxt<'cx, 'tcx>,
     writeback_errors: &'cx Cell<bool>,
     reason: ResolveReason,
@@ -487,7 +487,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
         self.tcx
     }
 

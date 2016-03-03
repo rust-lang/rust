@@ -13,7 +13,7 @@ use super::higher_ranked::HigherRankedRelations;
 use super::SubregionOrigin;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::TyVar;
 use middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
@@ -31,7 +31,7 @@ impl<'a, 'tcx> Sub<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.infcx.tcx }
+    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R

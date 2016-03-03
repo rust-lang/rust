@@ -18,7 +18,7 @@
 /// For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 use middle::region::CodeExtent;
 use super::Constraint;
 use middle::infer::SubregionOrigin;
@@ -119,7 +119,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
 }
 
 struct ConstraintGraph<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     graph_name: String,
     map: &'a FnvHashMap<Constraint, SubregionOrigin<'tcx>>,
     node_ids: FnvHashMap<Node, usize>,
@@ -139,7 +139,7 @@ enum Edge {
 }
 
 impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>,
+    fn new(tcx: &'a TyCtxt<'tcx>,
            name: String,
            map: &'a ConstraintMap<'tcx>)
            -> ConstraintGraph<'a, 'tcx> {
@@ -254,7 +254,7 @@ impl<'a, 'tcx> dot::GraphWalk<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
 
 pub type ConstraintMap<'tcx> = FnvHashMap<Constraint, SubregionOrigin<'tcx>>;
 
-fn dump_region_constraints_to<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
+fn dump_region_constraints_to<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                                             map: &ConstraintMap<'tcx>,
                                             path: &str)
                                             -> io::Result<()> {
