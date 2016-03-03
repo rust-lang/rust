@@ -604,7 +604,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
                 Some(Def::Const(did)) |
                 Some(Def::AssociatedConst(did)) => {
-                    if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did,
+                    if let Some((expr, _ty)) = const_eval::lookup_const_by_id(v.tcx, did,
                                                                        Some(e.id),
                                                                        None) {
                         let inner = v.global_expr(Mode::Const, expr);
