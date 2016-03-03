@@ -213,7 +213,11 @@ fn run_valgrind_test(config: &Config, props: &TestProps, testpaths: &TestPaths) 
 }
 
 fn run_pretty_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
-    assert!(props.revisions.is_empty(), "revisions not relevant here");
+    // Note: because we run the --pretty tests on the code in run-pass etc,
+    // we may see a list of revisions -- but we can just ignore them.
+    // We cannot assert that the list is empty as we do elsewhere.
+    //
+    // assert!(props.revisions.is_empty(), "revisions not relevant here");
 
     if props.pp_exact.is_some() {
         logv(config, "testing for exact pretty-printing".to_owned());
