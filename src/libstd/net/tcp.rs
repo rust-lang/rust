@@ -1152,9 +1152,16 @@ mod tests {
         t!(listener.set_nonblocking(true));
         t!(listener.set_nonblocking(false));
 
-        let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+        let mut stream = t!(TcpStream::connect(&("localhost", addr.port())));
 
-        t!(stream.set_nonblocking(true));
         t!(stream.set_nonblocking(false));
+        t!(stream.set_nonblocking(true));
+
+        let mut buf = [0];
+        match stream.read(&mut buf) {
+            Ok(_) => panic!("expected error"),
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
+            Err(e) => panic!("unexpected error {}", e),
+        }
     }
 }

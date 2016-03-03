@@ -25,6 +25,23 @@ use sys::net::netc as c;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
+#[cfg(any(target_os = "dragonfly", target_os = "freebsd",
+          target_os = "ios", target_os = "macos",
+          target_os = "openbsd"))]
+use sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
+#[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
+              target_os = "ios", target_os = "macos",
+              target_os = "openbsd")))]
+use sys::net::netc::IPV6_ADD_MEMBERSHIP;
+#[cfg(any(target_os = "dragonfly", target_os = "freebsd",
+          target_os = "ios", target_os = "macos",
+          target_os = "openbsd"))]
+use sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+#[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
+              target_os = "ios", target_os = "macos",
+              target_os = "openbsd")))]
+use sys::net::netc::IPV6_DROP_MEMBERSHIP;
+
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +57,8 @@ pub fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
 }
 
 pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
-                       val: c_int) -> io::Result<T> { unsafe {
+                       val: c_int) -> io::Result<T> {
+    unsafe {
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as c::socklen_t;
         try!(cvt(c::getsockopt(*sock.as_inner(), opt, val,
@@ -532,7 +550,7 @@ impl UdpSocket {
             ipv6mr_multiaddr: *multiaddr.as_inner(),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
-        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_ADD_MEMBERSHIP, mreq)
+        setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq)
     }
 
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
@@ -550,7 +568,7 @@ impl UdpSocket {
             ipv6mr_multiaddr: *multiaddr.as_inner(),
             ipv6mr_interface: to_ipv6mr_interface(interface),
         };
-        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_DROP_MEMBERSHIP, mreq)
+        setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq)
     }
 
     pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
