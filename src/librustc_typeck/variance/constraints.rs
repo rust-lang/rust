@@ -18,7 +18,7 @@ use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::ParamSpace;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::maps::ItemVariances;
 use rustc::front::map as hir_map;
 use syntax::ast;
@@ -127,7 +127,7 @@ fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
 }
 
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.terms_cx.tcx
     }
 

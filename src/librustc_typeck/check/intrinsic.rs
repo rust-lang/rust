@@ -15,7 +15,7 @@ use astconv::AstConv;
 use intrinsics;
 use middle::subst;
 use middle::ty::FnSig;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::fold::TypeFolder;
 use {CrateCtxt, require_same_types};
 
@@ -28,7 +28,7 @@ use syntax::parse::token;
 
 use rustc_front::hir;
 
-fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &hir::ForeignItem,
+fn equate_intrinsic_type<'a, 'tcx>(tcx: &TyCtxt<'tcx>, it: &hir::ForeignItem,
                                    n_tps: usize,
                                    abi: Abi,
                                    inputs: Vec<ty::Ty<'tcx>>,
@@ -412,7 +412,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
 // the same, in a kinda-structural way, i.e. `Vector`s have to be simd structs with
 // exactly the right element type
 fn match_intrinsic_type_to_type<'tcx, 'a>(
-        tcx: &ty::ctxt<'tcx>,
+        tcx: &TyCtxt<'tcx>,
         position: &str,
         span: Span,
         structural_to_nominal: &mut HashMap<&'a intrinsics::Type, ty::Ty<'tcx>>,

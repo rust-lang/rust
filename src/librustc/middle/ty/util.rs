@@ -18,7 +18,7 @@ use middle::subst::{self, Subst, Substs};
 use middle::infer;
 use middle::pat_util;
 use middle::traits;
-use middle::ty::{self, Ty, TypeAndMut, TypeFlags, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use middle::ty::{Disr, ParameterEnvironment};
 use middle::ty::TypeVariants::*;
 use util::num::ToPrimitive;
@@ -33,7 +33,7 @@ use syntax::codemap::Span;
 use rustc_front::hir;
 
 pub trait IntTypeExt {
-    fn to_ty<'tcx>(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx>;
+    fn to_ty<'tcx>(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx>;
     fn i64_to_disr(&self, val: i64) -> Option<Disr>;
     fn u64_to_disr(&self, val: u64) -> Option<Disr>;
     fn disr_incr(&self, val: Disr) -> Option<Disr>;
@@ -42,7 +42,7 @@ pub trait IntTypeExt {
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'tcx>(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    fn to_ty<'tcx>(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             SignedInt(ast::IntTy::I8)      => cx.types.i8,
             SignedInt(ast::IntTy::I16)     => cx.types.i16,
@@ -218,7 +218,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     }
 }
 
-impl<'tcx> ty::ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn pat_contains_ref_binding(&self, pat: &hir::Pat) -> Option<hir::Mutability> {
         pat_util::pat_contains_ref_binding(&self.def_map, pat)
     }
@@ -430,7 +430,7 @@ impl<'tcx> ty::ctxt<'tcx> {
         helper(self, ty, svh, &mut state);
         return state.finish();
 
-        fn helper<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh,
+        fn helper<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>, svh: &Svh,
                         state: &mut SipHasher) {
             macro_rules! byte { ($b:expr) => { ($b as u8).hash(state) } }
             macro_rules! hash { ($e:expr) => { $e.hash(state) }  }
@@ -603,7 +603,7 @@ pub struct ImplMethod<'tcx> {
     pub is_provided: bool
 }
 
-impl<'tcx> ty::ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn get_impl_method(&self,
                            impl_def_id: DefId,
                            substs: Substs<'tcx>,
@@ -742,10 +742,10 @@ impl<'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self, cx: &ty::ctxt<'tcx>, sp: Span) -> Representability {
+    pub fn is_representable(&'tcx self, cx: &TyCtxt<'tcx>, sp: Span) -> Representability {
 
         // Iterate until something non-representable is found
-        fn find_nonrepresentable<'tcx, It: Iterator<Item=Ty<'tcx>>>(cx: &ty::ctxt<'tcx>,
+        fn find_nonrepresentable<'tcx, It: Iterator<Item=Ty<'tcx>>>(cx: &TyCtxt<'tcx>,
                                                                     sp: Span,
                                                                     seen: &mut Vec<Ty<'tcx>>,
                                                                     iter: It)
@@ -754,7 +754,7 @@ impl<'tcx> ty::TyS<'tcx> {
                       |r, ty| cmp::max(r, is_type_structurally_recursive(cx, sp, seen, ty)))
         }
 
-        fn are_inner_types_recursive<'tcx>(cx: &ty::ctxt<'tcx>, sp: Span,
+        fn are_inner_types_recursive<'tcx>(cx: &TyCtxt<'tcx>, sp: Span,
                                            seen: &mut Vec<Ty<'tcx>>, ty: Ty<'tcx>)
                                            -> Representability {
             match ty.sty {
@@ -813,7 +813,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
         // Does the type `ty` directly (without indirection through a pointer)
         // contain any types on stack `seen`?
-        fn is_type_structurally_recursive<'tcx>(cx: &ty::ctxt<'tcx>,
+        fn is_type_structurally_recursive<'tcx>(cx: &TyCtxt<'tcx>,
                                                 sp: Span,
                                                 seen: &mut Vec<Ty<'tcx>>,
                                                 ty: Ty<'tcx>) -> Representability {

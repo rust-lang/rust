@@ -30,7 +30,7 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::fold::TypeFolder;
 use std::collections::hash_map::{self, Entry};
 
@@ -78,7 +78,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> &'b ty::ctxt<'tcx> {
+    fn tcx<'b>(&'b self) -> &'b TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

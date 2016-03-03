@@ -30,7 +30,7 @@ use middle::subst::Subst;
 use middle::traits;
 use middle::ty::adjustment;
 use middle::ty::{TyVid, IntVid, FloatVid};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
@@ -68,7 +68,7 @@ pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
 
     pub tables: &'a RefCell<ty::Tables<'tcx>>,
 
@@ -352,7 +352,7 @@ pub fn fixup_err_to_string(f: FixupError) -> String {
     }
 }
 
-pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
                                 tables: &'a RefCell<ty::Tables<'tcx>>,
                                 param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>)
                                 -> InferCtxt<'a, 'tcx> {
@@ -370,7 +370,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
     }
 }
 
-pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
+pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
                                         tables: &'a RefCell<ty::Tables<'tcx>>)
                                         -> InferCtxt<'a, 'tcx> {
     let mut infcx = new_infer_ctxt(tcx, tables, None);
@@ -501,7 +501,7 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
-pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
+pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx>
 {
     debug!("normalize_associated_type(t={:?})", value);
@@ -1553,7 +1553,7 @@ impl<'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: &ty::ctxt<'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: &TyCtxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(ExpectedFound {

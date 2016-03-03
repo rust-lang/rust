@@ -15,7 +15,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::front::map as hir_map;
 use rustc::lint;
 use rustc_trans::back::link;
@@ -41,7 +41,7 @@ pub use rustc::session::search_paths::SearchPaths;
 
 /// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
 pub enum MaybeTyped<'a, 'tcx: 'a> {
-    Typed(&'a ty::ctxt<'tcx>),
+    Typed(&'a TyCtxt<'tcx>),
     NotTyped(&'a session::Session)
 }
 
@@ -68,14 +68,14 @@ impl<'b, 'tcx> DocContext<'b, 'tcx> {
         }
     }
 
-    pub fn tcx_opt<'a>(&'a self) -> Option<&'a ty::ctxt<'tcx>> {
+    pub fn tcx_opt<'a>(&'a self) -> Option<&'a TyCtxt<'tcx>> {
         match self.maybe_typed {
             Typed(tcx) => Some(tcx),
             NotTyped(_) => None
         }
     }
 
-    pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
+    pub fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
         let tcx_opt = self.tcx_opt();
         tcx_opt.expect("tcx not present")
     }

@@ -12,7 +12,7 @@
 
 use syntax::codemap::DUMMY_SP;
 use rustc::front::map;
-use rustc::middle::ty::{self, Ty, TypeFoldable};
+use rustc::middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::middle::subst::Substs;
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
@@ -156,7 +156,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
    }
 }
 
-fn is_named_tuple_constructor(tcx: &ty::ctxt, def_id: DefId) -> bool {
+fn is_named_tuple_constructor(tcx: &TyCtxt, def_id: DefId) -> bool {
     let node_id = match tcx.map.as_local_node_id(def_id) {
         Some(n) => n,
         None => { return false; }

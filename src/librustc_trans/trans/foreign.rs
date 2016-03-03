@@ -28,7 +28,7 @@ use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
 use middle::infer;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::subst::Substs;
 
 use std::cmp;
@@ -467,7 +467,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 // feature gate SIMD types in FFI, since I (huonw) am not sure the
 // ABIs are handled at all correctly.
-fn gate_simd_ffi(tcx: &ty::ctxt, decl: &hir::FnDecl, ty: &ty::BareFnTy) {
+fn gate_simd_ffi(tcx: &TyCtxt, decl: &hir::FnDecl, ty: &ty::BareFnTy) {
     if !tcx.sess.features.borrow().simd_ffi {
         let check = |ast_ty: &hir::Ty, ty: ty::Ty| {
             if ty.is_simd() {

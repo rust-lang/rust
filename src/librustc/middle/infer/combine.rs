@@ -42,7 +42,7 @@ use super::{MiscVariable, TypeTrace};
 use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
 use middle::ty::{IntType, UintType};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::error::TypeError;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
@@ -149,7 +149,7 @@ fn unify_float_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 }
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
-    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -293,7 +293,7 @@ struct Generalizer<'cx, 'tcx:'cx> {
 }
 
 impl<'cx, 'tcx> ty::fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

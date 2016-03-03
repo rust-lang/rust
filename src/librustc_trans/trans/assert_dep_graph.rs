@@ -40,7 +40,7 @@
 use graphviz as dot;
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::middle::def_id::DefId;
-use rustc::middle::ty;
+use rustc::middle::ty::TyCtxt;
 use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
 use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
 use rustc_front::hir;
@@ -58,7 +58,7 @@ const IF_THIS_CHANGED: &'static str = "rustc_if_this_changed";
 const THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";
 const ID: &'static str = "id";
 
-pub fn assert_dep_graph(tcx: &ty::ctxt) {
+pub fn assert_dep_graph(tcx: &TyCtxt) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if tcx.sess.opts.dump_dep_graph {
@@ -84,7 +84,7 @@ type TargetHashMap = FnvHashMap<InternedString,
                                 FnvHashSet<(Span, InternedString, ast::NodeId, DepNode)>>;
 
 struct IfThisChanged<'a, 'tcx:'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     if_this_changed: SourceHashMap,
     then_this_would_need: TargetHashMap,
 }
@@ -171,7 +171,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
     }
 }
 
-fn check_paths(tcx: &ty::ctxt,
+fn check_paths(tcx: &TyCtxt,
                if_this_changed: &SourceHashMap,
                then_this_would_need: &TargetHashMap)
 {
@@ -212,7 +212,7 @@ fn check_paths(tcx: &ty::ctxt,
     }
 }
 
-fn dump_graph(tcx: &ty::ctxt) {
+fn dump_graph(tcx: &TyCtxt) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| format!("dep_graph"));
     let query = tcx.dep_graph.query();
 

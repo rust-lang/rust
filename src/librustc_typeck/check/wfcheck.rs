@@ -16,7 +16,7 @@ use middle::def_id::DefId;
 use middle::region::{CodeExtent};
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::fold::{TypeFolder};
 
 use std::cell::RefCell;
@@ -42,7 +42,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &TyCtxt<'tcx> {
         self.ccx.tcx
     }
 
@@ -516,7 +516,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 }
 
-fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn reject_shadowing_type_parameters<'tcx>(tcx: &TyCtxt<'tcx>,
                                           span: Span,
                                           generics: &ty::Generics<'tcx>) {
     let impl_params = generics.types.get_slice(subst::TypeSpace).iter()
@@ -623,13 +623,13 @@ pub fn error_380<'ccx,'tcx>(ccx: &'ccx CrateCtxt<'ccx, 'tcx>, span: Span) {
                Trait for ..`) must have no methods or associated items")
 }
 
-pub fn error_392<'tcx>(tcx: &ty::ctxt<'tcx>, span: Span, param_name: ast::Name)
+pub fn error_392<'tcx>(tcx: &TyCtxt<'tcx>, span: Span, param_name: ast::Name)
                        -> DiagnosticBuilder<'tcx> {
     struct_span_err!(tcx.sess, span, E0392,
                      "parameter `{}` is never used", param_name)
 }
 
-pub fn error_194<'tcx>(tcx: &ty::ctxt<'tcx>, span: Span, name: ast::Name) {
+pub fn error_194<'tcx>(tcx: &TyCtxt<'tcx>, span: Span, name: ast::Name) {
     span_err!(tcx.sess, span, E0194,
               "type parameter `{}` shadows another type parameter of the same name",
               name);

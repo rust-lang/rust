@@ -14,7 +14,7 @@ use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
@@ -31,7 +31,7 @@ impl<'a, 'tcx> Glb<'a, 'tcx> {
 impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Glb" }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

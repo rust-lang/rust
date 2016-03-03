@@ -25,7 +25,7 @@ use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use middle::stability;
 use middle::subst;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 
 use rustc::back::svh::Svh;
 use rustc::front::map::{LinkedPath, PathElem, PathElems};
@@ -58,7 +58,7 @@ pub type EncodeInlinedItem<'a> =
 
 pub struct EncodeParams<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
     pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
@@ -70,7 +70,7 @@ pub struct EncodeParams<'a, 'tcx: 'a> {
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
     pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
@@ -1766,7 +1766,7 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
 
 
 struct ImplVisitor<'a, 'tcx:'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     impls: FnvHashMap<DefId, Vec<DefId>>
 }
 
@@ -2093,7 +2093,7 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> Vec<u8> {
+pub fn encoded_ty<'tcx>(tcx: &TyCtxt<'tcx>, t: Ty<'tcx>) -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),

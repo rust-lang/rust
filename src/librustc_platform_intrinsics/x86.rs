@@ -15,12 +15,12 @@
 
 use {Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void};
 use IntrinsicDef::Named;
-use rustc::middle::ty;
+use rustc::middle::ty::TyCtxt;
 
 // The default inlining settings trigger a pathological behaviour in
 // LLVM, which causes makes compilation very slow. See #28273.
 #[inline(never)]
-pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
+pub fn find<'tcx>(_tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {
     if !name.starts_with("x86_mm") { return None }
     Some(match &name["x86_mm".len()..] {
         "_movemask_ps" => Intrinsic {

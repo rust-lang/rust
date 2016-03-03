@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::{InferCtxt, FixupError, FixupResult};
-use middle::ty::{self, Ty, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC TYPE RESOLVER
@@ -30,7 +30,7 @@ impl<'a, 'tcx> OpportunisticTypeResolver<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -58,7 +58,7 @@ impl<'a, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver<'a, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -104,7 +104,7 @@ struct FullTypeResolver<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
+    fn tcx(&self) -> &TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

@@ -39,7 +39,7 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin};
 use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TypeFoldable};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use middle::ty::fast_reject;
 use middle::ty::relate::TypeRelation;
 
@@ -273,7 +273,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx
     }
 
-    pub fn tcx(&self) -> &'cx ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &'cx TyCtxt<'tcx> {
         self.infcx.tcx
     }
 

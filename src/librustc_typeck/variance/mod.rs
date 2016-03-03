@@ -12,7 +12,7 @@
 //! parameters. See README.md for details.
 
 use arena;
-use middle::ty;
+use middle::ty::TyCtxt;
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.
@@ -27,7 +27,7 @@ mod solve;
 /// Code for transforming variances.
 mod xform;
 
-pub fn infer_variance(tcx: &ty::ctxt) {
+pub fn infer_variance(tcx: &TyCtxt) {
     let mut arena = arena::TypedArena::new();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);

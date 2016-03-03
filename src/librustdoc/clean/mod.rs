@@ -1408,7 +1408,7 @@ pub struct PolyTrait {
 }
 
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
-/// type out of the AST/ty::ctxt given one of these, if more information is needed. Most importantly
+/// type out of the AST/TyCtxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Type {

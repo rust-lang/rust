@@ -46,7 +46,7 @@ use check::demand;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::infer::{InferCtxt, UpvarRegion};
 use std::collections::HashSet;
 use syntax::ast;
@@ -114,7 +114,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
         SeedBorrowKind { fcx: fcx, closures_with_inferred_kinds: HashSet::new() }
     }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.fcx.tcx()
     }
 

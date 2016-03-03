@@ -12,7 +12,7 @@ use dep_graph::DepNode;
 use middle::def_id::DefId;
 use middle::ty;
 use middle::ty::fast_reject;
-use middle::ty::Ty;
+use middle::ty::{Ty, TyCtxt};
 use std::borrow::{Borrow};
 use std::cell::{Cell, Ref, RefCell};
 use syntax::ast::Name;
@@ -106,17 +106,17 @@ impl<'tcx> TraitDef<'tcx> {
         );
     }
 
-    fn write_trait_impls(&self, tcx: &ty::ctxt<'tcx>) {
+    fn write_trait_impls(&self, tcx: &TyCtxt<'tcx>) {
         tcx.dep_graph.write(DepNode::TraitImpls(self.trait_ref.def_id));
     }
 
-    fn read_trait_impls(&self, tcx: &ty::ctxt<'tcx>) {
+    fn read_trait_impls(&self, tcx: &TyCtxt<'tcx>) {
         tcx.dep_graph.read(DepNode::TraitImpls(self.trait_ref.def_id));
     }
 
     /// Records a trait-to-implementation mapping.
     pub fn record_impl(&self,
-                       tcx: &ty::ctxt<'tcx>,
+                       tcx: &TyCtxt<'tcx>,
                        impl_def_id: DefId,
                        impl_trait_ref: ty::TraitRef<'tcx>) {
         debug!("TraitDef::record_impl for {:?}, from {:?}",
@@ -147,7 +147,7 @@ impl<'tcx> TraitDef<'tcx> {
         }
     }
 
-    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &ty::ctxt<'tcx>, mut f: F)  {
+    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &TyCtxt<'tcx>, mut f: F)  {
         self.read_trait_impls(tcx);
 
         tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
@@ -166,7 +166,7 @@ impl<'tcx> TraitDef<'tcx> {
     /// Iterate over every impl that could possibly match the
     /// self-type `self_ty`.
     pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
-                                                   tcx: &ty::ctxt<'tcx>,
+                                                   tcx: &TyCtxt<'tcx>,
                                                    self_ty: Ty<'tcx>,
                                                    mut f: F)
     {
@@ -205,7 +205,7 @@ impl<'tcx> TraitDef<'tcx> {
         }
     }
 
-    pub fn borrow_impl_lists<'s>(&'s self, tcx: &ty::ctxt<'tcx>)
+    pub fn borrow_impl_lists<'s>(&'s self, tcx: &TyCtxt<'tcx>)
                                  -> (Ref<'s, Vec<DefId>>,
                                      Ref<'s, FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>>) {
         self.read_trait_impls(tcx);
