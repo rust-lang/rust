@@ -161,13 +161,17 @@ pub fn addr_of(ccx: &CrateContext,
     gv
 }
 
-fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
+/// Deref a constant pointer
+fn load_const(cx: &CrateContext, v: ValueRef, t: Ty) -> ValueRef {
     let v = match cx.const_unsized().borrow().get(&v) {
         Some(&v) => v,
         None => v
     };
-    unsafe {
-        llvm::LLVMGetInitializer(v)
+    let d = unsafe { llvm::LLVMGetInitializer(v) };
+    if t.is_bool() {
+        unsafe { llvm::LLVMConstTrunc(d, Type::i1(cx).to_ref()) }
+    } else {
+        d
     }
 }
 
@@ -178,7 +182,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     match ty.builtin_deref(true, ty::NoPreference) {
         Some(mt) => {
             if type_is_sized(cx.tcx(), mt.ty) {
-                (const_deref_ptr(cx, v), mt.ty)
+                (load_const(cx, v, mt.ty), mt.ty)
             } else {
                 // Derefing a fat pointer does not change the representation,
                 // just the type to the unsized contents.
@@ -588,7 +592,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let is_float = ty.is_fp();
             let signed = ty.is_signed();
 
-            let (te2, _) = try!(const_expr(cx, &e2, param_substs, fn_args, trueconst));
+            let (te2, ty2) = try!(const_expr(cx, &e2, param_substs, fn_args, trueconst));
+            debug!("const_expr_unadjusted: te2={}, ty={:?}",
+                   cx.tn().val_to_string(te2),
+                   ty2);
 
             try!(check_binary_expr_validity(cx, e, ty, te1, te2, trueconst));
 
@@ -671,13 +678,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             };
             let (arr, len) = match bt.sty {
                 ty::TyArray(_, u) => (bv, C_uint(cx, u)),
-                ty::TySlice(_) | ty::TyStr => {
+                ty::TySlice(..) | ty::TyStr => {
                     let e1 = const_get_elt(cx, bv, &[0]);
-                    (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
+                    (load_const(cx, e1, bt), const_get_elt(cx, bv, &[1]))
                 },
                 ty::TyRef(_, mt) => match mt.ty.sty {
                     ty::TyArray(_, u) => {
-                        (const_deref_ptr(cx, bv), C_uint(cx, u))
+                        (load_const(cx, bv, mt.ty), C_uint(cx, u))
                     },
                     _ => cx.sess().span_bug(base.span,
                                             &format!("index-expr base must be a vector \
@@ -891,7 +898,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
-                    const_deref_ptr(cx, try!(get_const_val(cx, def_id, e, param_substs)))
+                    load_const(cx, try!(get_const_val(cx, def_id, e, param_substs)),
+                               ety)
                 }
                 Def::Variant(enum_did, variant_did) => {
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);
