@@ -185,19 +185,19 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
                 let cstore = &self.session.cstore;
-                let span = self.ast_map.span_if_local(original_def_id).unwrap_or(span);
+                let span = self.ast_map.span_if_local(item_def_id).unwrap_or(span);
                 let mut err = struct_span_err!(self.session,
                                                 span,
                                                 E0152,
                                                 "Duplicate lang item found: `{}`.",
                                                 LanguageItems::item_name(item_index));
-                if let Some(span) = self.ast_map.span_if_local(item_def_id) {
+                if let Some(span) = self.ast_map.span_if_local(original_def_id) {
                     span_note!(&mut err, span,
                                "First defined here.");
                 } else {
                     span_note!(&mut err, span,
                                "First defined in crate `{}`.",
-                               cstore.crate_name(item_def_id.krate));
+                               cstore.crate_name(original_def_id.krate));
                 }
                 err.emit();
             }
@@ -225,8 +225,8 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 
     pub fn collect(&mut self, krate: &hir::Crate) {
-        self.collect_local_language_items(krate);
         self.collect_external_language_items(krate);
+        self.collect_local_language_items(krate);
     }
 }
 
