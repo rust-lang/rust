@@ -140,11 +140,10 @@ attributes by the compiler:
   staticlibs. If no panic runtime is explicitly linked, then the compiler will
   select an appropriate runtime to inject.
 * Finally, the compiler will ensure that panic runtimes and compilation modes
-  are not mismatched. For a resolved DAG, the panic runtime will have been
-  compiled with a particular `-C panic` option, let's call it PS (panic
-  strategy). If PS is "abort", then no validation is performed (doesn't matter
-  how the rest of the DAG is compiled). Otherwise, all other crates must also
-  be compiled with the same PS.
+  are not mismatched. For a final product (outputs that aren't rlibs) the
+  `-C panic` mode of the panic runtime must match the final product itself. If
+  the panic mode is `abort`, then no other validation is performed, but
+  otherwise all crates in the DAG must have the same value of `-C panic`.
 
 The purpose of these limitations is to solve a number of problems that arise
 when switching panic strategies. For example with aborting panic crates won't
@@ -230,13 +229,6 @@ test` it cannot pass `-C panic=abort`.
   a crates.io crate it would arguably support these options via Cargo features,
   but without that option is this the best way to be implementing these switches
   for the standard library?
-
-* Applications may silently revert to the wrong panic runtime given the
-  heuristics here. For example if an application relies on unwinding panics, if
-  a dependency is pulled in with an explicit `extern crate panic_abort`, then
-  the entire application will switch to aborting panics silently. This can be
-  corrected, however, with an explicit `extern crate panic_unwind` on behalf of
-  the application.
 
 # Alternatives
 [alternatives]: #alternatives
