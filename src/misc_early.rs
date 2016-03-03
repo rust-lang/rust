@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{span_lint, span_help_and_lint};
-
+use utils::{span_lint, span_help_and_lint, snippet, span_lint_and_then};
 /// **What it does:** This lint checks for structure field patterns bound to wildcards.
 ///
 /// **Why is this bad?** Using `..` instead is shorter and leaves the focus on the fields that are actually bound.
@@ -29,12 +28,24 @@ declare_lint! {
     "Function arguments having names which only differ by an underscore"
 }
 
+/// **What it does:** This lint detects closures called in the same expression where they are defined.
+///
+/// **Why is this bad?** It is unnecessarily adding to the expression's complexity.
+///
+/// **Known problems:** None.
+///
+/// **Example:** `(|| 42)()`
+declare_lint! {
+    pub REDUNDANT_CLOSURE_CALL, Warn,
+    "Closures should not be called in the expression they are defined"
+}
+
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT)
+        lint_array!(UNNEEDED_FIELD_PATTERN, DUPLICATE_UNDERSCORE_ARGUMENT, REDUNDANT_CLOSURE_CALL)
     }
 }
 
@@ -105,12 +116,51 @@ impl EarlyLintPass for MiscEarly {
                                   *correspondance,
                                   &format!("`{}` already exists, having another argument having almost the same \
                                             name makes code comprehension and documentation more difficult",
-                                           arg_name[1..].to_owned()));
+                                           arg_name[1..].to_owned()));;
                     }
                 } else {
                     registered_names.insert(arg_name, arg.pat.span);
                 }
             }
+        }
+    }
+
+    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
+        if let ExprKind::Call(ref paren, _) = expr.node {
+            if let ExprKind::Paren(ref closure) = paren.node {
+                if let ExprKind::Closure(_, ref decl, ref block) = closure.node {
+                    span_lint_and_then(cx,
+                                       REDUNDANT_CLOSURE_CALL,
+                                       expr.span,
+                                       "Try not to call a closure in the expression where it is declared.",
+                                       |db| {
+                                            if decl.inputs.len() == 0 {
+                                                let hint = format!("{}", snippet(cx, block.span, ".."));
+                                                db.span_suggestion(expr.span, "Try doing something like: ", hint);
+                                            }
+                                        });
+                }
+            }
+        }
+    }
+
+    fn check_block(&mut self, cx: &EarlyContext, block: &Block) {
+        for w in block.stmts.windows(2) {
+            if_let_chain! {[
+                let StmtKind::Decl(ref first, _) = w[0].node,
+                let DeclKind::Local(ref local) = first.node,
+                let Option::Some(ref t) = local.init,
+                let ExprKind::Closure(_,_,_) = t.node,
+                let PatKind::Ident(_,sp_ident,_) = local.pat.node,
+                let StmtKind::Semi(ref second,_) = w[1].node,
+                let ExprKind::Assign(_,ref call) = second.node,
+                let ExprKind::Call(ref closure,_) = call.node,
+                let ExprKind::Path(_,ref path) = closure.node
+            ], {
+                if sp_ident.node == (&path.segments[0]).identifier {
+                    span_lint(cx, REDUNDANT_CLOSURE_CALL, second.span, "Closure called just once immediately after it was declared");
+                }
+            }}
         }
     }
 }
