@@ -32,7 +32,6 @@ use util::nodemap::FnvHashMap;
 
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use rustc_front::intravisit::Visitor;
 use rustc_front::hir;
@@ -158,7 +157,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for LanguageItemCollector<'a, 'tcx> {
             let item_index = self.item_refs.get(&value[..]).cloned();
 
             if let Some(item_index) = item_index {
-                self.collect_item(item_index, self.ast_map.local_def_id(item.id), item.span)
+                self.collect_item(item_index, self.ast_map.local_def_id(item.id))
             }
         }
     }
@@ -180,24 +179,24 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 
     pub fn collect_item(&mut self, item_index: usize,
-                        item_def_id: DefId, span: Span) {
+                        item_def_id: DefId) {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
                 let cstore = &self.session.cstore;
-                let span = self.ast_map.span_if_local(item_def_id).unwrap_or(span);
+                let span = self.ast_map.span_if_local(item_def_id)
+                                       .expect("we should have found local duplicate earlier");
                 let mut err = struct_span_err!(self.session,
-                                                span,
-                                                E0152,
-                                                "Duplicate lang item found: `{}`.",
-                                                LanguageItems::item_name(item_index));
+                                               span,
+                                               E0152,
+                                               "duplicate lang item found: `{}`.",
+                                               LanguageItems::item_name(item_index));
                 if let Some(span) = self.ast_map.span_if_local(original_def_id) {
                     span_note!(&mut err, span,
-                               "First defined here.");
+                               "first defined here.");
                 } else {
-                    span_note!(&mut err, span,
-                               "First defined in crate `{}`.",
-                               cstore.crate_name(original_def_id.krate));
+                    err.note(&format!("first defined in crate `{}`.",
+                                      cstore.crate_name(original_def_id.krate)));
                 }
                 err.emit();
             }
@@ -214,18 +213,19 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         krate.visit_all_items(self);
     }
 
-    pub fn collect_external_language_items(&mut self, krate: &hir::Crate) {
+    pub fn collect_external_language_items(&mut self) {
         let cstore = &self.session.cstore;
+
         for cnum in cstore.crates() {
             for (index, item_index) in cstore.lang_items(cnum) {
                 let def_id = DefId { krate: cnum, index: index };
-                self.collect_item(item_index, def_id, krate.span);
+                self.collect_item(item_index, def_id);
             }
         }
     }
 
     pub fn collect(&mut self, krate: &hir::Crate) {
-        self.collect_external_language_items(krate);
+        self.collect_external_language_items();
         self.collect_local_language_items(krate);
     }
 }
