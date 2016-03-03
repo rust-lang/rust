@@ -758,7 +758,7 @@ impl<'a> TraitDef<'a> {
 
 fn find_repr_type_name(diagnostic: &Handler,
                        type_attrs: &[ast::Attribute]) -> &'static str {
-    let mut repr_type_name = "i32";
+    let mut repr_type_name = "isize";
     for a in type_attrs {
         for r in &attr::find_repr_attrs(diagnostic, a) {
             repr_type_name = match *r {
