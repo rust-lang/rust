@@ -18,11 +18,12 @@ use common::Config;
 use common;
 use util;
 
+#[derive(Clone, Debug)]
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String> ,
     // Extra flags to pass to the compiler
-    pub compile_flags: Option<String>,
+    pub compile_flags: Vec<String>,
     // Extra flags to pass when the compiled code is run (such as --bench)
     pub run_flags: Option<String>,
     // If present, the name of a file that this test should match when
@@ -50,105 +51,32 @@ pub struct TestProps {
     pub pretty_compare_only: bool,
     // Patterns which must not appear in the output of a cfail test.
     pub forbid_output: Vec<String>,
+    // Revisions to test for incremental compilation.
+    pub revisions: Vec<String>,
 }
 
 // Load any test directives embedded in the file
 pub fn load_props(testfile: &Path) -> TestProps {
-    let mut error_patterns = Vec::new();
-    let mut aux_builds = Vec::new();
-    let mut exec_env = Vec::new();
-    let mut compile_flags = None;
-    let mut run_flags = None;
-    let mut pp_exact = None;
-    let mut check_lines = Vec::new();
-    let mut build_aux_docs = false;
-    let mut force_host = false;
-    let mut check_stdout = false;
-    let mut no_prefer_dynamic = false;
-    let mut pretty_expanded = false;
-    let mut pretty_mode = None;
-    let mut pretty_compare_only = false;
-    let mut forbid_output = Vec::new();
-    iter_header(testfile, &mut |ln| {
-        if let Some(ep) = parse_error_pattern(ln) {
-           error_patterns.push(ep);
-        }
-
-        if compile_flags.is_none() {
-            compile_flags = parse_compile_flags(ln);
-        }
-
-        if run_flags.is_none() {
-            run_flags = parse_run_flags(ln);
-        }
-
-        if pp_exact.is_none() {
-            pp_exact = parse_pp_exact(ln, testfile);
-        }
-
-        if !build_aux_docs {
-            build_aux_docs = parse_build_aux_docs(ln);
-        }
-
-        if !force_host {
-            force_host = parse_force_host(ln);
-        }
-
-        if !check_stdout {
-            check_stdout = parse_check_stdout(ln);
-        }
-
-        if !no_prefer_dynamic {
-            no_prefer_dynamic = parse_no_prefer_dynamic(ln);
-        }
-
-        if !pretty_expanded {
-            pretty_expanded = parse_pretty_expanded(ln);
-        }
-
-        if pretty_mode.is_none() {
-            pretty_mode = parse_pretty_mode(ln);
-        }
-
-        if !pretty_compare_only {
-            pretty_compare_only = parse_pretty_compare_only(ln);
-        }
-
-        if let  Some(ab) = parse_aux_build(ln) {
-            aux_builds.push(ab);
-        }
-
-        if let Some(ee) = parse_exec_env(ln) {
-            exec_env.push(ee);
-        }
-
-        if let Some(cl) =  parse_check_line(ln) {
-            check_lines.push(cl);
-        }
-
-        if let Some(of) = parse_forbid_output(ln) {
-            forbid_output.push(of);
-        }
-
-        true
-    });
-
-    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
-        match env::var(key) {
-            Ok(val) =>
-                if exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
-                    exec_env.push((key.to_owned(), val))
-                },
-            Err(..) => {}
-        }
-    }
-
-    TestProps {
+    let error_patterns = Vec::new();
+    let aux_builds = Vec::new();
+    let exec_env = Vec::new();
+    let run_flags = None;
+    let pp_exact = None;
+    let check_lines = Vec::new();
+    let build_aux_docs = false;
+    let force_host = false;
+    let check_stdout = false;
+    let no_prefer_dynamic = false;
+    let pretty_expanded = false;
+    let pretty_compare_only = false;
+    let forbid_output = Vec::new();
+    let mut props = TestProps {
         error_patterns: error_patterns,
-        compile_flags: compile_flags,
+        compile_flags: vec![],
         run_flags: run_flags,
         pp_exact: pp_exact,
         aux_builds: aux_builds,
+        revisions: vec![],
         exec_env: exec_env,
         check_lines: check_lines,
         build_aux_docs: build_aux_docs,
@@ -156,13 +84,135 @@ pub fn load_props(testfile: &Path) -> TestProps {
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
         pretty_expanded: pretty_expanded,
-        pretty_mode: pretty_mode.unwrap_or("normal".to_owned()),
+        pretty_mode: format!("normal"),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
+    };
+    load_props_into(&mut props, testfile, None);
+    props
+}
+
+/// Load properties from `testfile` into `props`. If a property is
+/// tied to a particular revision `foo` (indicated by writing
+/// `//[foo]`), then the property is ignored unless `cfg` is
+/// `Some("foo")`.
+pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>)  {
+    iter_header(testfile, cfg, &mut |ln| {
+        if let Some(ep) = parse_error_pattern(ln) {
+            props.error_patterns.push(ep);
+        }
+
+        if let Some(flags) = parse_compile_flags(ln) {
+            props.compile_flags.extend(
+                flags
+                    .split_whitespace()
+                    .map(|s| s.to_owned()));
+        }
+
+        if let Some(r) = parse_revisions(ln) {
+            props.revisions.extend(r);
+        }
+
+        if props.run_flags.is_none() {
+            props.run_flags = parse_run_flags(ln);
+        }
+
+        if props.pp_exact.is_none() {
+            props.pp_exact = parse_pp_exact(ln, testfile);
+        }
+
+        if !props.build_aux_docs {
+            props.build_aux_docs = parse_build_aux_docs(ln);
+        }
+
+        if !props.force_host {
+            props.force_host = parse_force_host(ln);
+        }
+
+        if !props.check_stdout {
+            props.check_stdout = parse_check_stdout(ln);
+        }
+
+        if !props.no_prefer_dynamic {
+            props.no_prefer_dynamic = parse_no_prefer_dynamic(ln);
+        }
+
+        if !props.pretty_expanded {
+            props.pretty_expanded = parse_pretty_expanded(ln);
+        }
+
+        if let Some(m) = parse_pretty_mode(ln) {
+            props.pretty_mode = m;
+        }
+
+        if !props.pretty_compare_only {
+            props.pretty_compare_only = parse_pretty_compare_only(ln);
+        }
+
+        if let  Some(ab) = parse_aux_build(ln) {
+            props.aux_builds.push(ab);
+        }
+
+        if let Some(ee) = parse_exec_env(ln) {
+            props.exec_env.push(ee);
+        }
+
+        if let Some(cl) =  parse_check_line(ln) {
+            props.check_lines.push(cl);
+        }
+
+        if let Some(of) = parse_forbid_output(ln) {
+            props.forbid_output.push(of);
+        }
+    });
+
+    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
+        match env::var(key) {
+            Ok(val) =>
+                if props.exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
+                    props.exec_env.push((key.to_owned(), val))
+                },
+            Err(..) => {}
+        }
     }
 }
 
-pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
+pub struct EarlyProps {
+    pub ignore: bool,
+    pub should_fail: bool,
+}
+
+// scan the file to detect whether the test should be ignored and
+// whether it should panic; these are two things the test runner needs
+// to know early, before actually running the test
+pub fn early_props(config: &Config, testfile: &Path) -> EarlyProps {
+    let mut props = EarlyProps {
+        ignore: false,
+        should_fail: false,
+    };
+
+    iter_header(testfile, None, &mut |ln| {
+        props.ignore =
+            props.ignore ||
+            parse_name_directive(ln, "ignore-test") ||
+            parse_name_directive(ln, &ignore_target(config)) ||
+            parse_name_directive(ln, &ignore_architecture(config)) ||
+            parse_name_directive(ln, &ignore_stage(config)) ||
+            parse_name_directive(ln, &ignore_env(config)) ||
+            (config.mode == common::Pretty &&
+             parse_name_directive(ln, "ignore-pretty")) ||
+            (config.target != config.host &&
+             parse_name_directive(ln, "ignore-cross-compile")) ||
+            ignore_gdb(config, ln) ||
+            ignore_lldb(config, ln);
+
+        props.should_fail =
+            props.should_fail ||
+            parse_name_directive(ln, "should-fail");
+    });
+
+    return props;
+
     fn ignore_target(config: &Config) -> String {
         format!("ignore-{}", util::get_os(&config.target))
     }
@@ -229,39 +279,40 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
             false
         }
     }
-
-    let val = iter_header(testfile, &mut |ln| {
-        !parse_name_directive(ln, "ignore-test") &&
-        !parse_name_directive(ln, &ignore_target(config)) &&
-        !parse_name_directive(ln, &ignore_architecture(config)) &&
-        !parse_name_directive(ln, &ignore_stage(config)) &&
-        !parse_name_directive(ln, &ignore_env(config)) &&
-        !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
-        !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
-        !ignore_gdb(config, ln) &&
-        !ignore_lldb(config, ln)
-    });
-
-    !val
 }
 
-fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
+fn iter_header(testfile: &Path,
+               cfg: Option<&str>,
+               it: &mut FnMut(&str)) {
     let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
         let ln = ln.unwrap();
-        if ln.starts_with("fn") ||
-                ln.starts_with("mod") {
-            return true;
-        } else {
-            if !(it(ln.trim())) {
-                return false;
+        let ln = ln.trim();
+        if ln.starts_with("fn") || ln.starts_with("mod") {
+            return;
+        } else if ln.starts_with("//[") {
+            // A comment like `//[foo]` is specific to revision `foo`
+            if let Some(close_brace) = ln.find("]") {
+                let lncfg = &ln[3..close_brace];
+                let matches = match cfg {
+                    Some(s) => s == &lncfg[..],
+                    None => false,
+                };
+                if matches {
+                    it(&ln[close_brace+1..]);
+                }
+            } else {
+                panic!("malformed condition directive: expected `//[foo]`, found `{}`",
+                       ln)
             }
+        } else if ln.starts_with("//") {
+            it(&ln[2..]);
         }
     }
-    return true;
+    return;
 }
 
 fn parse_error_pattern(line: &str) -> Option<String> {
@@ -278,6 +329,11 @@ fn parse_aux_build(line: &str) -> Option<String> {
 
 fn parse_compile_flags(line: &str) -> Option<String> {
     parse_name_value_directive(line, "compile-flags")
+}
+
+fn parse_revisions(line: &str) -> Option<Vec<String>> {
+    parse_name_value_directive(line, "revisions")
+        .map(|r| r.split_whitespace().map(|t| t.to_string()).collect())
 }
 
 fn parse_run_flags(line: &str) -> Option<String> {

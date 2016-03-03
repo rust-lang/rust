@@ -8,20 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence_lib.rs
-
-// Test that the `Pair` type reports an error if it contains type
-// parameters, even when they are covered by local types. This test
-// was originally intended to test the opposite, but the rules changed
-// with RFC 1023 and this became illegal.
-
+// revisions: a
+// should-fail
 // pretty-expanded FIXME #23616
 
-extern crate coherence_lib as lib;
-use lib::{Remote,Pair};
+// This is a "meta-test" of the compilertest framework itself.  In
+// particular, it includes the right error message, but the message
+// targets the wrong revision, so we expect the execution to fail.
+// See also `meta-expected-error-correct-rev.rs`.
 
-pub struct Cover<T>(T);
-
-impl<T> Remote for Pair<Cover<T>,T> { } //~ ERROR E0210
+#[cfg(a)]
+fn foo() {
+    let x: u32 = 22_usize; //[b]~ ERROR mismatched types
+}
 
 fn main() { }
