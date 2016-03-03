@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo { struct bar; }
+mod foo { pub struct bar; }
 
 fn main() {
     let bar = 5;

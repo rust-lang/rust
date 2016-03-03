@@ -291,10 +291,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent, name);
                     let def = Def::Mod(def_id);
-                    let local_def_id = self.ast_map.local_def_id(item.id);
-                    let external_module =
-                        self.new_extern_crate_module(parent_link, def, is_public, local_def_id);
-                    self.define(parent, name, TypeNS, (external_module, sp));
+                    let module = self.new_extern_crate_module(parent_link, def, is_public, item.id);
+                    self.define(parent, name, TypeNS, (module, sp));
 
                     if is_public {
                         let export = Export { name: name, def_id: def_id };
@@ -304,7 +302,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         }
                     }
 
-                    self.build_reduced_graph_for_external_crate(external_module);
+                    self.build_reduced_graph_for_external_crate(module);
                 }
                 parent
             }
@@ -494,7 +492,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         debug!("(building reduced graph for external crate) building external def {}, priv {:?}",
                final_ident,
                vis);
-        let is_public = vis == hir::Public;
+        let is_public = vis == hir::Public || new_parent.is_trait();
 
         let mut modifiers = DefModifiers::empty();
         if is_public {

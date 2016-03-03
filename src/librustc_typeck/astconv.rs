@@ -54,7 +54,6 @@ use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use middle::traits;
 use middle::ty::{self, Ty, ToPredicate, TypeFoldable};
@@ -1650,7 +1649,6 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 // Create some fake resolution that can't possibly be a type.
                 def::PathResolution {
                     base_def: Def::Mod(tcx.map.local_def_id(ast::CRATE_NODE_ID)),
-                    last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
             } else {
@@ -1674,7 +1672,6 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 // Write back the new resolution.
                 tcx.def_map.borrow_mut().insert(ast_ty.id, def::PathResolution {
                     base_def: def,
-                    last_private: path_res.last_private,
                     depth: 0
                 });
             }

@@ -72,7 +72,6 @@ mod bar {
         self::baz::A::foo();
         self::baz::A::bar(); //~ ERROR: method `bar` is private
         self::baz::A.foo2();
-        self::baz::A.bar2(); //~ ERROR: method `bar2` is private
 
         // this used to cause an ICE in privacy traversal.
         super::gpub();
@@ -91,7 +90,6 @@ fn lol() {
     bar::A::foo();
     bar::A::bar(); //~ ERROR: method `bar` is private
     bar::A.foo2();
-    bar::A.bar2(); //~ ERROR: method `bar2` is private
 }
 
 mod foo {
@@ -99,19 +97,14 @@ mod foo {
         ::bar::A::foo();
         ::bar::A::bar();        //~ ERROR: method `bar` is private
         ::bar::A.foo2();
-        ::bar::A.bar2();        //~ ERROR: method `bar2` is private
-        ::bar::baz::A::foo();   //~ ERROR: method `foo` is inaccessible
-                                //~^ NOTE: module `baz` is private
-        ::bar::baz::A::bar();   //~ ERROR: method `bar` is private
-        ::bar::baz::A.foo2();   //~ ERROR: struct `A` is inaccessible
-                                //~^ NOTE: module `baz` is private
-        ::bar::baz::A.bar2();   //~ ERROR: struct `A` is inaccessible
-                                //~^ ERROR: method `bar2` is private
-                                //~^^ NOTE: module `baz` is private
+        ::bar::baz::A::foo();   //~ ERROR: module `baz` is private
+        ::bar::baz::A::bar();   //~ ERROR: module `baz` is private
+                                //~^ ERROR: method `bar` is private
+        ::bar::baz::A.foo2();   //~ ERROR: module `baz` is private
+        ::bar::baz::A.bar2();   //~ ERROR: module `baz` is private
 
         let _: isize =
-        ::bar::B::foo();        //~ ERROR: method `foo` is inaccessible
-                                //~^ NOTE: trait `B` is private
+        ::bar::B::foo();        //~ ERROR: trait `B` is private
         ::lol();
 
         ::bar::Enum::Pub;
@@ -126,19 +119,14 @@ mod foo {
 
         ::bar::gpub();
 
-        ::bar::baz::foo(); //~ ERROR: function `foo` is inaccessible
-                           //~^ NOTE: module `baz` is private
-        ::bar::baz::bar(); //~ ERROR: function `bar` is inaccessible
-                           //~^ NOTE: module `baz` is private
+        ::bar::baz::foo(); //~ ERROR: module `baz` is private
+        ::bar::baz::bar(); //~ ERROR: module `baz` is private
     }
 
     fn test2() {
         use bar::baz::{foo, bar};
-        //~^ ERROR: function `foo` is inaccessible
-        //~| NOTE: module `baz` is private
-        //~| ERROR: function `bar` is inaccessible
-        //~| NOTE: module `baz` is private
-
+        //~^ ERROR: module `baz` is private
+        //~| ERROR: module `baz` is private
 
         foo();
         bar();
@@ -169,8 +157,7 @@ pub mod mytest {
     // Even though the inner `A` struct is a publicly exported item (usable from
     // external crates through `foo::foo`, it should not be accessible through
     // its definition path (which has the private `i` module).
-    use self::foo::i::A; //~ ERROR: struct `A` is inaccessible
-                         //~^ NOTE: module `i` is private
+    use self::foo::i::A; //~ ERROR: module `i` is private
 
     pub mod foo {
         pub use self::i::A as foo;

@@ -25,14 +25,13 @@ pub mod foo1 {
 }
 
 fn test_single1() {
-    // In an ideal world, these would be private instead of inaccessible.
-    use foo1::Bar;  //~ ERROR `Bar` is inaccessible
+    use foo1::Bar;  //~ ERROR function `Bar` is private
 
     Bar();
 }
 
 fn test_list1() {
-    use foo1::{Bar,Baz};  //~ ERROR `Bar` is inaccessible
+    use foo1::{Bar,Baz};  //~ ERROR `Bar` is private
 
     Bar();
 }
@@ -47,7 +46,7 @@ pub mod foo2 {
 }
 
 fn test_single2() {
-    use foo2::Bar;  //~ ERROR `Bar` is private
+    use foo2::Bar;  //~ ERROR trait `Bar` is private
 
     let _x : Box<Bar>;
 }

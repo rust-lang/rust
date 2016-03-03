@@ -19,6 +19,5 @@ mod foo {
 }
 
 fn main() {
-    <i32 as ::foo::Bar>::baz(); //~ERROR method `baz` is inaccessible
-                                //~^NOTE: trait `Bar` is private
+    <i32 as ::foo::Bar>::baz(); //~ERROR trait `Bar` is private
 }

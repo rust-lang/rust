@@ -32,7 +32,6 @@ use middle::ty::cast;
 use middle::const_qualif::ConstQualif;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
-use middle::privacy::{AllPublic, LastMod};
 use middle::region;
 use middle::subst;
 use middle::ty::{self, Ty};
@@ -254,7 +253,7 @@ trait def_id_encoder_helpers {
 }
 
 impl<S:serialize::Encoder> def_id_encoder_helpers for S
-    where <S as serialize::serialize::Encoder>::Error: Debug
+    where <S as serialize::Encoder>::Error: Debug
 {
     fn emit_def_id(&mut self, did: DefId) {
         did.encode(self).unwrap()
@@ -268,7 +267,7 @@ trait def_id_decoder_helpers {
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D
-    where <D as serialize::serialize::Decoder>::Error: Debug
+    where <D as serialize::Decoder>::Error: Debug
 {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId {
         let did: DefId = Decodable::decode(self).unwrap();
@@ -1161,8 +1160,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let def = decode_def(dcx, val_dsr);
                         dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
                             base_def: def,
-                            // This doesn't matter cross-crate.
-                            last_private: LastMod(AllPublic),
                             depth: 0
                         });
                     }
