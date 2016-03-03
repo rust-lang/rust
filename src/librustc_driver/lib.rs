@@ -94,7 +94,7 @@ use syntax::errors;
 use syntax::errors::emitter::Emitter;
 use syntax::diagnostics;
 use syntax::parse::token;
-use syntax::feature_gate::UnstableFeatures;
+use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 
 #[cfg(test)]
 pub mod test;
@@ -565,7 +565,18 @@ impl RustcDefaultCalls {
                     }
                 }
                 PrintRequest::Cfg => {
-                    for cfg in config::build_configuration(sess) {
+                    let mut cfg = config::build_configuration(&sess);
+                    target_features::add_configuration(&mut cfg, &sess);
+
+                    let allow_unstable_cfg = match get_unstable_features_setting() {
+                        UnstableFeatures::Disallow => false,
+                        _ => true,
+                    };
+
+                    for cfg in cfg {
+                        if !allow_unstable_cfg && GatedCfg::gate(&*cfg).is_some() {
+                            continue;
+                        }
                         match cfg.node {
                             ast::MetaItemKind::Word(ref word) => println!("{}", word),
                             ast::MetaItemKind::NameValue(ref name, ref value) => {
