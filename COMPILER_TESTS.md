@@ -44,7 +44,7 @@ whole, instead of just a few lines inside the test.
 * `min-{gdb,lldb}-version`
 * `should-fail` indicates that the test should fail; used for "meta testing",
   where we test the compiletest program itself to check that it will generate
-  errors in appropriate scenarios
+  errors in appropriate scenarios. This header is ignored for pretty-printer tests.
 
 ## Revisions
 
