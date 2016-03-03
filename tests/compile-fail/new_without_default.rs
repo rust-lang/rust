@@ -32,4 +32,13 @@ impl Params {
     fn new(_: u32) -> Self { Params }
 }
 
+struct Generics<'a, T> {
+    foo: &'a bool,
+    bar: T,
+}
+
+impl<'c, V> Generics<'c, V> {
+    fn new<'b>() -> Generics<'b, V> { unimplemented!() } //~ERROR: you should consider adding a `Default` implementation for
+}
+
 fn main() {}

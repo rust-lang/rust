@@ -28,6 +28,25 @@ impl T {
     //~| ERROR methods called `new` usually return `Self`
 }
 
+struct Lt<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt<'a> {
+    // The lifetime is different, but that’s irrelevant, see #734
+    #[allow(needless_lifetimes)]
+    pub fn new<'b>(s: &'b str) -> Lt<'b> { unimplemented!() }
+}
+
+struct Lt2<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt2<'a> {
+    // The lifetime is different, but that’s irrelevant, see #734
+    pub fn new(s: &str) -> Lt2 { unimplemented!() }
+}
+
 #[derive(Clone,Copy)]
 struct U;
 

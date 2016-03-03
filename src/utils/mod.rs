@@ -740,3 +740,11 @@ pub fn return_ty(fun: ty::Ty) -> Option<ty::Ty> {
         None
     }
 }
+
+/// Check if two types are the same.
+// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
+// not for type parameters.
+pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> bool {
+    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None);
+    infcx.can_equate(&cx.tcx.erase_regions(&a), &cx.tcx.erase_regions(&b)).is_ok()
+}
