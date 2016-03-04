@@ -320,7 +320,7 @@ pub fn build_impl(cx: &DocContext,
                 let type_scheme = tcx.lookup_item_type(did);
                 let default = if assoc_const.has_value {
                     Some(const_eval::lookup_const_by_id(tcx, did, None, None)
-                         .unwrap().span.to_src(cx))
+                         .unwrap().0.span.to_src(cx))
                 } else {
                     None
                 };
@@ -462,7 +462,7 @@ fn build_const(cx: &DocContext, tcx: &TyCtxt,
     use rustc::middle::const_eval;
     use rustc_front::print::pprust;
 
-    let expr = const_eval::lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
+    let (expr, ty) = const_eval::lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });
     debug!("converting constant expr {:?} to snippet", expr);
@@ -470,7 +470,7 @@ fn build_const(cx: &DocContext, tcx: &TyCtxt,
     debug!("got snippet {}", sn);
 
     clean::Constant {
-        type_: tcx.lookup_item_type(did).ty.clean(cx),
+        type_: ty.map(|t| t.clean(cx)).unwrap_or_else(|| tcx.lookup_item_type(did).ty.clean(cx)),
         expr: sn
     }
 }
