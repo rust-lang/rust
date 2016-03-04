@@ -1415,7 +1415,9 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        this.check_lvalue(&l);
+        if !this.ir.tcx.is_method_call(expr.id) {
+            this.check_lvalue(&l);
+        }
 
         intravisit::walk_expr(this, expr);
       }

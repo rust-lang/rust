@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(unused_assignments)]
+
 use std::mem;
 use std::ops::{
     AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, DivAssign, Index, MulAssign, RemAssign,
@@ -26,6 +28,8 @@ impl Slice {
         }
     }
 }
+
+struct View<'a>(&'a mut [i32]);
 
 fn main() {
     let mut x = Int(1);
@@ -78,6 +82,12 @@ fn main() {
     assert_eq!(array[0], 1);
     assert_eq!(array[1], 2);
     assert_eq!(array[2], 3);
+
+    // sized indirection
+    // check that this does *not* trigger the unused_assignments lint
+    let mut array = [0, 1, 2];
+    let mut view = View(&mut array);
+    view += 1;
 }
 
 impl AddAssign for Int {
@@ -155,6 +165,14 @@ impl SubAssign for Int {
 impl AddAssign<i32> for Slice {
     fn add_assign(&mut self, rhs: i32) {
         for lhs in &mut self.0 {
+            *lhs += rhs;
+        }
+    }
+}
+
+impl<'a> AddAssign<i32> for View<'a> {
+    fn add_assign(&mut self, rhs: i32) {
+        for lhs in self.0.iter_mut() {
             *lhs += rhs;
         }
     }
