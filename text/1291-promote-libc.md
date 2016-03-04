@@ -166,9 +166,9 @@ In order to have a well defined scope while satisfying these constraints, this
 RFC proposes that this crate will have a scope that is defined separately for
 each platform that it targets. The proposals are:
 
-* Linux (and other unix-like platforms) - the libc, libm, librt, libdl, and
-  libpthread libraries. Additional platforms can include libraries whose symbols
-  are found in these libraries on Linux as well.
+* Linux (and other unix-like platforms) - the libc, libm, librt, libdl,
+  libutil, and libpthread libraries. Additional platforms can include libraries
+  whose symbols are found in these libraries on Linux as well.
 * OSX - the common library to link to on this platform is libSystem, but this
   transitively brings in quite a few dependencies, so this crate will refine
   what it depends upon from libSystem a little further, specifically:
