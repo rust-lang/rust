@@ -4605,8 +4605,10 @@ impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
             Empty { .. } => (None, None), // empty iterators yield no values
 
             NonEmpty { ref mut start, ref mut end } => {
-                let one = A::one();
-                if start <= end {
+                if start == end {
+                    (Some(mem::replace(end, A::one())), Some(mem::replace(start, A::one())))
+                } else if start < end {
+                    let one = A::one();
                     let mut n = &*start + &one;
                     mem::swap(&mut n, start);
 
@@ -4620,7 +4622,7 @@ impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
                     // ^ are we done yet?
                     Some(n)) // < the value to output
                 } else {
-                    (Some(mem::replace(start, one)), None)
+                    (Some(mem::replace(start, A::one())), None)
                 }
             }
         };
@@ -4664,15 +4666,17 @@ impl<A: Step + One> DoubleEndedIterator for ops::RangeInclusive<A> where
             Empty { .. } => return None,
 
             NonEmpty { ref mut start, ref mut end } => {
-                let one = A::one();
-                if start <= end {
+                if start == end {
+                    (Some(mem::replace(start, A::one())), Some(mem::replace(end, A::one())))
+                } else if start < end {
+                    let one = A::one();
                     let mut n = &*end - &one;
                     mem::swap(&mut n, end);
 
                     (if n == *start { Some(mem::replace(start, one)) } else { None },
                      Some(n))
                 } else {
-                    (Some(mem::replace(end, one)), None)
+                    (Some(mem::replace(end, A::one())), None)
                 }
             }
         };
