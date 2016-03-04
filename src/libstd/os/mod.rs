@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! OS-specific functionality
+//! OS-specific functionality.
 
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, bad_style)]

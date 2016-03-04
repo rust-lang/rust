@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for formatting and printing strings
+//! Utilities for formatting and printing strings.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
