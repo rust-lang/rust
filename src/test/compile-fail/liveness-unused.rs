@@ -12,6 +12,8 @@
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types, trivial_numeric_casts)]
 
+use std::ops::AddAssign;
+
 fn f1(x: isize) {
     //~^ ERROR unused variable: `x`
 }
@@ -98,6 +100,31 @@ fn f5c() {
         continue;
         drop(*x as i32); //~ WARNING unreachable statement
     }
+}
+
+struct View<'a>(&'a mut [i32]);
+
+impl<'a> AddAssign<i32> for View<'a> {
+    fn add_assign(&mut self, rhs: i32) {
+        for lhs in self.0.iter_mut() {
+            *lhs += rhs;
+        }
+    }
+}
+
+fn f6() {
+    let mut array = [1, 2, 3];
+    let mut v = View(&mut array);
+
+    // ensure an error shows up for x even if lhs of an overloaded add assign
+
+    let x;
+    //~^ ERROR variable `x` is assigned to, but never used
+
+    *({
+        x = 0;  //~ ERROR value assigned to `x` is never read
+        &mut v
+    }) += 1;
 }
 
 fn main() {
