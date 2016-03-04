@@ -48,18 +48,22 @@ impl CyclomaticComplexity {
         let n = cfg.graph.len_nodes() as u64;
         let e = cfg.graph.len_edges() as u64;
         let cc = e + 2 - n;
-        let mut arm_counter = MatchArmCounter(0);
-        arm_counter.visit_block(block);
-        let narms = arm_counter.0;
+        let mut helper = CCHelper {
+            match_arms: 0,
+            divergence: 0,
+            tcx: &cx.tcx,
+        };
+        helper.visit_block(block);
+        let CCHelper {
+            match_arms,
+            divergence,
+            ..
+        } = helper;
 
-        let mut diverge_counter = DivergenceCounter(0, &cx.tcx);
-        diverge_counter.visit_block(block);
-        let divergence = diverge_counter.0;
-
-        if cc + divergence < narms {
-            report_cc_bug(cx, cc, narms, divergence, span);
+        if cc + divergence < match_arms {
+            report_cc_bug(cx, cc, match_arms, divergence, span);
         } else {
-            let rust_cc = cc + divergence - narms;
+            let rust_cc = cc + divergence - match_arms;
             if rust_cc > self.limit.limit() {
                 span_help_and_lint(cx,
                                    CYCLOMATIC_COMPLEXITY,
@@ -98,35 +102,28 @@ impl LateLintPass for CyclomaticComplexity {
     }
 }
 
-struct MatchArmCounter(u64);
+struct CCHelper<'a, 'tcx: 'a> {
+    match_arms: u64,
+    divergence: u64,
+    tcx: &'a ty::TyCtxt<'tcx>,
+}
 
-impl<'a> Visitor<'a> for MatchArmCounter {
+impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
     fn visit_expr(&mut self, e: &'a Expr) {
         match e.node {
             ExprMatch(_, ref arms, _) => {
                 walk_expr(self, e);
                 let arms_n: u64 = arms.iter().map(|arm| arm.pats.len() as u64).sum();
                 if arms_n > 1 {
-                    self.0 += arms_n - 2;
+                    self.match_arms += arms_n - 2;
                 }
             }
-            ExprClosure(..) => {}
-            _ => walk_expr(self, e),
-        }
-    }
-}
-
-struct DivergenceCounter<'a, 'tcx: 'a>(u64, &'a ty::TyCtxt<'tcx>);
-
-impl<'a, 'b, 'tcx> Visitor<'a> for DivergenceCounter<'b, 'tcx> {
-    fn visit_expr(&mut self, e: &'a Expr) {
-        match e.node {
             ExprCall(ref callee, _) => {
                 walk_expr(self, e);
-                let ty = self.1.node_id_to_type(callee.id);
+                let ty = self.tcx.node_id_to_type(callee.id);
                 if let ty::TyBareFn(_, ty) = ty.sty {
                     if ty.sig.skip_binder().output.diverges() {
-                        self.0 += 1;
+                        self.divergence += 1;
                     }
                 }
             }
