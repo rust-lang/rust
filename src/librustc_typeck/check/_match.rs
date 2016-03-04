@@ -203,7 +203,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_enum(pcx, pat, path, subpats.as_ref().map(|v| &v[..]), expected, true);
         }
         PatKind::Path(ref path) => {
-            check_pat_enum(pcx, pat, path, None, expected, false);
+            check_pat_enum(pcx, pat, path, Some(&[]), expected, false);
         }
         PatKind::QPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);
@@ -597,12 +597,12 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
     }
 }
 
-pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
-                                pat: &hir::Pat,
-                                path: &hir::Path,
-                                subpats: Option<&'tcx [P<hir::Pat>]>,
-                                expected: Ty<'tcx>,
-                                is_tuple_struct_pat: bool)
+fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                            pat: &hir::Pat,
+                            path: &hir::Path,
+                            subpats: Option<&'tcx [P<hir::Pat>]>,
+                            expected: Ty<'tcx>,
+                            is_tuple_struct_pat: bool)
 {
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -685,46 +685,14 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let real_path_ty = fcx.node_ty(pat.id);
-    let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
+    let (kind_name, variant, expected_substs) = match real_path_ty.sty {
         ty::TyEnum(enum_def, expected_substs) => {
             let variant = enum_def.variant_of_def(def);
-            if variant.kind() == ty::VariantKind::Struct {
-                report_bad_struct_kind(false);
-                return;
-            }
-            if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
-                // Matching unit variants with tuple variant patterns (`UnitVariant(..)`)
-                // is allowed for backward compatibility.
-                let is_special_case = variant.kind() == ty::VariantKind::Unit;
-                report_bad_struct_kind(is_special_case);
-                if !is_special_case {
-                    return
-                }
-            }
-            (variant.fields
-                    .iter()
-                    .map(|f| fcx.instantiate_type_scheme(pat.span,
-                                                         expected_substs,
-                                                         &f.unsubst_ty()))
-                    .collect(),
-             "variant")
+            ("variant", variant, expected_substs)
         }
         ty::TyStruct(struct_def, expected_substs) => {
             let variant = struct_def.struct_variant();
-            if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
-                // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
-                // is allowed for backward compatibility.
-                let is_special_case = variant.kind() == ty::VariantKind::Unit;
-                report_bad_struct_kind(is_special_case);
-                return;
-            }
-            (variant.fields
-                    .iter()
-                    .map(|f| fcx.instantiate_type_scheme(pat.span,
-                                                         expected_substs,
-                                                         &f.unsubst_ty()))
-                    .collect(),
-             "struct")
+            ("struct", variant, expected_substs)
         }
         _ => {
             report_bad_struct_kind(false);
@@ -732,12 +700,26 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
     };
 
+    match (is_tuple_struct_pat, variant.kind()) {
+        (true, ty::VariantKind::Unit) => {
+            // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
+            // is allowed for backward compatibility.
+            report_bad_struct_kind(true);
+        }
+        (_, ty::VariantKind::Struct) => {
+            report_bad_struct_kind(false);
+            return
+        }
+        _ => {}
+    }
+
     if let Some(subpats) = subpats {
-        if subpats.len() == arg_tys.len() {
-            for (subpat, arg_ty) in subpats.iter().zip(arg_tys) {
-                check_pat(pcx, &subpat, arg_ty);
+        if subpats.len() == variant.fields.len() {
+            for (subpat, field) in subpats.iter().zip(&variant.fields) {
+                let field_ty = fcx.field_ty(subpat.span, field, expected_substs);
+                check_pat(pcx, &subpat, field_ty);
             }
-        } else if arg_tys.is_empty() {
+        } else if variant.fields.is_empty() {
             span_err!(tcx.sess, pat.span, E0024,
                       "this pattern has {} field{}, but the corresponding {} has no fields",
                       subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);
@@ -750,7 +732,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                       "this pattern has {} field{}, but the corresponding {} has {} field{}",
                       subpats.len(), if subpats.len() == 1 {""} else {"s"},
                       kind_name,
-                      arg_tys.len(), if arg_tys.len() == 1 {""} else {"s"});
+                      variant.fields.len(), if variant.fields.len() == 1 {""} else {"s"});
 
             for pat in subpats {
                 check_pat(pcx, &pat, tcx.types.err);
