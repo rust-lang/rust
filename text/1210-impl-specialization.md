@@ -992,8 +992,8 @@ is more specific than the other in the overlapping region.
 ### Interaction with lifetimes
 
 A hard constraint in the design of the trait system is that *dispatch cannot
-depend on lifetime information*. In particular, we both cannot, and allow
-specialization based on lifetimes:
+depend on lifetime information*. In particular, we both cannot, and should not
+allow specialization based on lifetimes:
 
 - We can't, because when the compiler goes to actually generate code ("trans"),
   lifetime information has been erased -- so we'd have no idea what
