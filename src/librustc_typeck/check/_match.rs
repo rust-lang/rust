@@ -204,7 +204,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_enum(pcx, pat, path, subpats.as_ref().map(|v| &v[..]), expected, true);
         }
         PatKind::Path(ref path) => {
-            check_pat_enum(pcx, pat, path, None, expected, false);
+            check_pat_enum(pcx, pat, path, Some(&[]), expected, false);
         }
         PatKind::QPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);
