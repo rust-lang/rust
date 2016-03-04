@@ -304,6 +304,44 @@ fn test_iterator_skip() {
 }
 
 #[test]
+fn test_iterator_skip_doubleended() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+    let mut it = xs.iter().rev().skip(5);
+    assert_eq!(it.next(), Some(&15));
+    assert_eq!(it.by_ref().rev().next(), Some(&0));
+    assert_eq!(it.next(), Some(&13));
+    assert_eq!(it.by_ref().rev().next(), Some(&1));
+    assert_eq!(it.next(), Some(&5));
+    assert_eq!(it.by_ref().rev().next(), Some(&2));
+    assert_eq!(it.next(), Some(&3));
+    assert_eq!(it.next(), None);
+    let mut it = xs.iter().rev().skip(5).rev();
+    assert_eq!(it.next(), Some(&0));
+    assert_eq!(it.rev().next(), Some(&15));
+    let mut it_base = xs.iter();
+    {
+        let mut it = it_base.by_ref().skip(5).rev();
+        assert_eq!(it.next(), Some(&30));
+        assert_eq!(it.next(), Some(&20));
+        assert_eq!(it.next(), Some(&19));
+        assert_eq!(it.next(), Some(&17));
+        assert_eq!(it.next(), Some(&16));
+        assert_eq!(it.next(), Some(&15));
+        assert_eq!(it.next(), Some(&13));
+        assert_eq!(it.next(), None);
+    }
+    // make sure the skipped parts have not been consumed
+    assert_eq!(it_base.next(), Some(&0));
+    assert_eq!(it_base.next(), Some(&1));
+    assert_eq!(it_base.next(), Some(&2));
+    assert_eq!(it_base.next(), Some(&3));
+    assert_eq!(it_base.next(), Some(&5));
+    assert_eq!(it_base.next(), None);
+    let it = xs.iter().skip(5).rev();
+    assert_eq!(it.last(), Some(&13));
+}
+
+#[test]
 fn test_iterator_skip_nth() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
 
