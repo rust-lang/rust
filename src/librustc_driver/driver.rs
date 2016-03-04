@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::{DepGraph, DepNode};
+use rustc::dep_graph::DepGraph;
 use rustc::front;
 use rustc::front::map as hir_map;
 use rustc_mir as mir;
@@ -862,7 +862,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                  || mir::mir_map::build_mir_for_crate(tcx));
 
         time(time_passes, "MIR passes", || {
-            let _task = tcx.dep_graph.in_task(DepNode::MirPasses);
             let mut passes = sess.mir_passes.borrow_mut();
             // Push all the built-in passes.
             passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);

@@ -11,6 +11,7 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use rustc::dep_graph::DepNode;
 use rustc::middle::infer::{self, InferCtxt};
 use rustc::middle::traits;
 use rustc::middle::ty::{self, Ty, TyCtxt};
@@ -581,6 +582,7 @@ impl<'tcx> MirMapPass<'tcx> for TypeckMir {
             return;
         }
         for (&id, mir) in &mut map.map {
+            let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(id));
             let param_env = ty::ParameterEnvironment::for_item(tcx, id);
             let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
             let mut checker = TypeChecker::new(&infcx);
