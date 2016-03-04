@@ -10,7 +10,7 @@
 
 use cmp;
 use io;
-use libc::{c_int, c_void};
+use libc::{c_int, c_void, c_ulong};
 use mem;
 use net::{SocketAddr, Shutdown};
 use num::One;
@@ -184,6 +184,25 @@ impl Socket {
         };
         try!(cvt(unsafe { c::shutdown(self.0, how) }));
         Ok(())
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        let mut nonblocking = nonblocking as c_ulong;
+        let r = unsafe { c::ioctlsocket(self.0, c::FIONBIO as c_int, &mut nonblocking) };
+        if r == 0 {
+            Ok(())
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
+
+    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        net::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BYTE)
+    }
+
+    pub fn nodelay(&self) -> io::Result<bool> {
+        let raw: c::BYTE = try!(net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY));
+        Ok(raw != 0)
     }
 }
 
