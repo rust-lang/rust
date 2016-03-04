@@ -38,7 +38,10 @@ Postgres server will listen on a Unix socket located at
 `/run/postgresql/.s.PGSQL.5432` in some configurations. However, the
 `socketpair` function can make a pair of *unnamed* connected Unix sockets not
 associated with a filesystem path. In addition, Linux provides a separate
-*abstract* namespace not associated with the filesystem.
+*abstract* namespace not associated with the filesystem, indicated by a leading
+null byte in the address. In the initial implementation, the abstract namespace
+will not be supported - the various socket constructors will check for and
+reject addresses with interior null bytes.
 
 A `std::os::unix::net` module will be created with the following contents:
 
@@ -51,11 +54,7 @@ pub struct UnixStream {
 impl UnixStream {
     /// Connects to the socket named by `path`.
     ///
-    /// Linux provides, as a nonportable extension, a separate "abstract"
-    /// address namespace as opposed to filesystem-based addressing. If `path`
-    /// begins with a null byte, it will be interpreted as an "abstract"
-    /// address. Otherwise, it will be interpreted as a "pathname" address,
-    /// corresponding to a path on the filesystem.
+    /// `path` may not contain any null bytes.
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         ...
     }
@@ -196,15 +195,6 @@ impl SocketAddr {
 }
 ```
 
-A Linux-specific extension trait is provided for the abstract namespace:
-```rust
-pub trait SocketAddrExt {
-    /// Returns the contents of this address (without the leading null byte) if
-    /// it is an abstract address.
-    fn as_abstract(&self) -> Option<&[u8]>
-}
-```
-
 The `UnixListener` type mirrors the `TcpListener` type:
 ```rust
 pub struct UnixListener {
@@ -214,11 +204,7 @@ pub struct UnixListener {
 impl UnixListener {
     /// Creates a new `UnixListener` bound to the specified socket.
     ///
-    /// Linux provides, as a nonportable extension, a separate "abstract"
-    /// address namespace as opposed to filesystem-based addressing. If `path`
-    /// begins with a null byte, it will be interpreted as an "abstract"
-    /// address. Otherwise, it will be interpreted as a "pathname" address,
-    /// corresponding to a path on the filesystem.
+    /// `path` may not contain any null bytes.
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         ...
     }
@@ -294,11 +280,7 @@ pub struct UnixDatagram {
 impl UnixDatagram {
     /// Creates a Unix datagram socket bound to the given path.
     ///
-    /// Linux provides, as a nonportable extension, a separate "abstract"
-    /// address namespace as opposed to filesystem-based addressing. If `path`
-    /// begins with a null byte, it will be interpreted as an "abstract"
-    /// address. Otherwise, it will be interpreted as a "pathname" address,
-    /// corresponding to a path on the filesystem.
+    /// `path` may not contain any null bytes.
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixDatagram> {
         ...
     }
@@ -329,6 +311,8 @@ impl UnixDatagram {
     ///
     /// The `send` method may be used to send data to the specified address.
     /// `recv` and `recv_from` will only receive data from that address.
+    ///
+    /// `path` may not contain any null bytes.
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         ...
     }
@@ -363,6 +347,8 @@ impl UnixDatagram {
     /// Sends data on the socket to the specified address.
     ///
     /// On success, returns the number of bytes written.
+    ///
+    /// `path` may not contain any null bytes.
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
         ...
     }
@@ -454,6 +440,8 @@ Differences from `UdpSocket`:
 
 Some functionality is notably absent from this proposal:
 
+* Linux's abstract namespace is not supported. Functionality may be added in
+  the future via extension traits in `std::os::linux::net`.
 * No support for `SOCK_SEQPACKET` sockets is proposed, as it has not yet been
   implemented. Since it is connection oriented, there will be a socket type
   `UnixSeqPacket` and a listener type `UnixSeqListener`. The naming of the
@@ -480,15 +468,6 @@ Unix socket support could be left out of tree.
 The naming convention of `UnixStream` and `UnixDatagram` doesn't perfectly
 mirror `TcpStream` and `UdpSocket`, but `UnixStream` and `UnixSocket` seems way
 too confusing.
-
-Constructors for the various socket types take an `AsRef<Path>`, which makes
-construction of sockets associated with Linux abstract namespaces somewhat
-nonobvious, as the leading null byte has to be explicitly added. However, it is
-still possible, either via `&str` for UTF8 names or via `&OsStr` and
-`std::os::unix::ffi::OsStrExt` for arbitrary names. Use of the abstract
-namespace appears to be very obscure, so it seems best to optimize for
-ergonomics of normal pathname addresses. We can add extension traits providing
-methods taking `&[u8]` in the future if deemed necessary.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
