@@ -35,9 +35,6 @@ impl TcpStream {
     fn set_nodelay(&self, nodelay: bool) -> io::Result<()>;
     fn nodelay(&self) -> io::Result<bool>;
 
-    fn set_keepalive(&self, keepalive: Option<Duration>) -> io::Result<()>;
-    fn keepalive(&self) -> io::Result<Option<Duration>>;
-
     fn set_ttl(&self, ttl: u32) -> io::Result<()>;
     fn ttl(&self) -> io::Result<u32>;
 
