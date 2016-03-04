@@ -13,7 +13,7 @@
 #![allow(bad_style)]
 #![cfg_attr(test, allow(dead_code))]
 
-use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort};
+use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort,};
 use os::raw::{c_char, c_ulonglong};
 use libc::{wchar_t, size_t, c_void};
 use ptr;
@@ -113,6 +113,8 @@ pub const FILE_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
 pub const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
 pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
+
+pub const FIONBIO: c_ulong = 0x8004667e;
 
 #[repr(C)]
 #[derive(Copy)]
@@ -223,6 +225,33 @@ pub const SOL_SOCKET: c_int = 0xffff;
 pub const SO_RCVTIMEO: c_int = 0x1006;
 pub const SO_SNDTIMEO: c_int = 0x1005;
 pub const SO_REUSEADDR: c_int = 0x0004;
+pub const IPPROTO_IP: c_int = 0;
+pub const IPPROTO_TCP: c_int = 6;
+pub const IPPROTO_IPV6: c_int = 41;
+pub const TCP_NODELAY: c_int = 0x0001;
+pub const IP_TTL: c_int = 4;
+pub const IPV6_V6ONLY: c_int = 27;
+pub const SO_ERROR: c_int = 0x1007;
+pub const SO_BROADCAST: c_int = 0x0020;
+pub const IP_MULTICAST_LOOP: c_int = 11;
+pub const IPV6_MULTICAST_LOOP: c_int = 11;
+pub const IP_MULTICAST_TTL: c_int = 10;
+pub const IP_ADD_MEMBERSHIP: c_int = 12;
+pub const IP_DROP_MEMBERSHIP: c_int = 13;
+pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
+pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
+
+#[repr(C)]
+pub struct ip_mreq {
+    pub imr_multiaddr: in_addr,
+    pub imr_interface: in_addr,
+}
+
+#[repr(C)]
+pub struct ipv6_mreq {
+    pub ipv6mr_multiaddr: in6_addr,
+    pub ipv6mr_interface: c_uint,
+}
 
 pub const VOLUME_NAME_DOS: DWORD = 0x0;
 pub const MOVEFILE_REPLACE_EXISTING: DWORD = 1;
@@ -833,6 +862,7 @@ extern "system" {
                       lpProtocolInfo: LPWSAPROTOCOL_INFO,
                       g: GROUP,
                       dwFlags: DWORD) -> SOCKET;
+    pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut c_ulong) -> c_int;
     pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOLEAN;
