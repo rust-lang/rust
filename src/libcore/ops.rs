@@ -1538,15 +1538,30 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 pub enum RangeInclusive<Idx> {
     /// Empty range (iteration has finished)
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
     Empty {
         /// The point at which iteration finished
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
         at: Idx
     },
     /// Non-empty range (iteration will yield value(s))
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
     NonEmpty {
         /// The lower bound of the range (inclusive).
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
         start: Idx,
         /// The upper bound of the range (inclusive).
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
         end: Idx,
     },
 }
