@@ -116,7 +116,7 @@ impl<'a> Visitor<'a> for MatchArmCounter {
     }
 }
 
-struct DivergenceCounter<'a, 'tcx: 'a>(u64, &'a ty::ctxt<'tcx>);
+struct DivergenceCounter<'a, 'tcx: 'a>(u64, &'a ty::TyCtxt<'tcx>);
 
 impl<'a, 'b, 'tcx> Visitor<'a> for DivergenceCounter<'b, 'tcx> {
     fn visit_expr(&mut self, e: &'a Expr) {
