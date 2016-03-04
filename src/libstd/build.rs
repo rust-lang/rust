@@ -28,7 +28,7 @@ fn main() {
     }
 
     if target.contains("unknown-linux") {
-        if target.contains("musl") {
+        if target.contains("musl") && target.contains("x86_64") {
             println!("cargo:rustc-link-lib=static=unwind");
         } else {
             println!("cargo:rustc-link-lib=dl");
