@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Useful synchronization primitives
+//! Useful synchronization primitives.
 //!
 //! This module contains useful safe and unsafe synchronization primitives.
 //! Most of the primitives in this module do not provide any sort of locking

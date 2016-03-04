@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations on ASCII strings and characters
+//! Operations on ASCII strings and characters.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

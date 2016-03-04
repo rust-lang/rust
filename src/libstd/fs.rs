@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Filesystem manipulation operations
+//! Filesystem manipulation operations.
 //!
 //! This module contains basic methods to manipulate the contents of the local
 //! filesystem. All methods in this module represent cross-platform filesystem
