@@ -1047,10 +1047,7 @@ fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F) -> Option<A>
 {
     let pats = Matrix(vec!(vec!(pat)));
     match is_useful(cx, &pats, &[DUMMY_WILD_PAT], ConstructWitness) {
-        UsefulWithWitness(pats) => {
-            assert_eq!(pats.len(), 1);
-            Some(refutable(&pats[0]))
-        },
+        UsefulWithWitness(pats) => Some(refutable(&pats[0])),
         NotUseful => None,
         Useful => unreachable!()
     }
