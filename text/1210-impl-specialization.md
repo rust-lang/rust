@@ -817,8 +817,8 @@ simultaneously, but it's not like high school algebra; the equations involved
 all have the limited form of `type1 = type2`.
 
 One immediate way in which unification is relevant to this RFC is in determining
-when two impls "overlap": roughly speaking, they overlap if you can each pair of
-input types can be unified simultaneously. For example:
+when two impls "overlap": roughly speaking, they overlap if each pair of input 
+types can be unified simultaneously. For example:
 
 ```rust
 // No overlap: String and bool do not unify
