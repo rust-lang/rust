@@ -16,7 +16,7 @@ use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::parse;
 use parse::lexer::new_tt_reader;
-use parse::parser::Parser;
+use parse::parser::{Parser, Restrictions};
 use parse::token::{self, special_idents, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
 use print;
@@ -195,6 +195,12 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                            imported_from,
                                            rhs);
                 let mut p = Parser::new(cx.parse_sess(), cx.cfg(), Box::new(trncbr));
+                p.filename = cx.filename.clone();
+                p.mod_path_stack = cx.mod_path_stack.clone();
+                p.restrictions = match cx.in_block {
+                    true => Restrictions::NO_NONINLINE_MOD,
+                    false => Restrictions::empty(),
+                };
                 p.check_unknown_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.

@@ -552,6 +552,10 @@ pub struct ExtCtxt<'a> {
 
     pub syntax_env: SyntaxEnv,
     pub recursion_count: usize,
+
+    pub filename: Option<String>,
+    pub mod_path_stack: Vec<InternedString>,
+    pub in_block: bool,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -570,6 +574,10 @@ impl<'a> ExtCtxt<'a> {
             exported_macros: Vec::new(),
             syntax_env: env,
             recursion_count: 0,
+
+            filename: None,
+            mod_path_stack: Vec::new(),
+            in_block: false,
         }
     }
 
