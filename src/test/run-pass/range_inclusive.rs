@@ -103,6 +103,14 @@ pub fn main() {
     let mut narrow = 1...0;
     assert_eq!(narrow.next_back(), None);
     assert_eq!(narrow, RangeInclusive::Empty { at: 0 });
+    let mut zero = 0u8...0;
+    assert_eq!(zero.next_back(), Some(0));
+    assert_eq!(zero.next_back(), None);
+    assert_eq!(zero, RangeInclusive::Empty { at: 0 });
+    let mut high = 255u8...255;
+    assert_eq!(high.next_back(), Some(255));
+    assert_eq!(high.next_back(), None);
+    assert_eq!(high, RangeInclusive::Empty { at: 255 });
 
     // what happens if you have a nonsense range?
     let mut nonsense = 10...5;
