@@ -3,7 +3,7 @@ use rustc::middle::ty::TypeVariants;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
 use syntax::ptr::P;
-use utils::{BOX_NEW_PATH, VEC_FROM_ELEM_PATH};
+use utils::VEC_FROM_ELEM_PATH;
 use utils::{is_expn_of, match_path, snippet, span_lint_and_then};
 
 /// **What it does:** This lint warns about using `&vec![..]` when using `&[..]` would be possible.
@@ -33,9 +33,7 @@ impl LintPass for UselessVec {
 
 impl LateLintPass for UselessVec {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        unexpand_vec(cx, expr);
-
-        // search for `&!vec[_]` expressions where the adjusted type is `&[_]`
+        // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_let_chain!{[
             let TypeVariants::TyRef(_, ref ty) = cx.tcx.expr_ty_adjusted(expr).sty,
             let TypeVariants::TySlice(..) = ty.ty.sty,
@@ -71,7 +69,7 @@ impl LateLintPass for UselessVec {
 
 /// Represent the pre-expansion arguments of a `vec!` invocation.
 pub enum VecArgs<'a> {
-    /// `vec![elem, len]`
+    /// `vec![elem; len]`
     Repeat(&'a P<Expr>, &'a P<Expr>),
     /// `vec![a, b, c]`
     Vec(&'a [P<Expr>]),
@@ -91,10 +89,8 @@ pub fn unexpand_vec<'e>(cx: &LateContext, expr: &'e Expr) -> Option<VecArgs<'e>>
         else if match_path(path, &["into_vec"]) && args.len() == 1 {
             // `vec![a, b, c]` case
             if_let_chain!{[
-                let ExprCall(ref fun, ref args) = args[0].node,
-                let ExprPath(_, ref path) = fun.node,
-                match_path(path, &BOX_NEW_PATH) && args.len() == 1,
-                let ExprVec(ref args) = args[0].node
+                let ExprBox(ref boxed) = args[0].node,
+                let ExprVec(ref args) = boxed.node
             ], {
                 return Some(VecArgs::Vec(&*args));
             }}
