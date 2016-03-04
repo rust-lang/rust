@@ -1095,8 +1095,6 @@ fn eq_slice(a: &str, b: &str) -> bool {
 /// faster than comparing each byte in a loop.
 #[inline]
 unsafe fn cmp_slice(a: &str, b: &str, len: usize) -> i32 {
-    // NOTE: In theory n should be libc::size_t and not usize, but libc is not available here
-    #[allow(improper_ctypes)]
     extern { fn memcmp(s1: *const i8, s2: *const i8, n: usize) -> i32; }
     memcmp(a.as_ptr() as *const i8, b.as_ptr() as *const i8, len)
 }
