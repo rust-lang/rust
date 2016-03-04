@@ -127,5 +127,24 @@ fn f6() {
     }) += 1;
 }
 
+
+struct MutRef<'a>(&'a mut i32);
+
+impl<'a> AddAssign<i32> for MutRef<'a> {
+    fn add_assign(&mut self, rhs: i32) {
+        *self.0 += rhs;
+    }
+}
+
+fn f7() {
+    let mut a = 1;
+    {
+        // `b` does not trigger unused_variables
+        let mut b = MutRef(&mut a);
+        b += 1;
+    }
+    drop(a);
+}
+
 fn main() {
 }
