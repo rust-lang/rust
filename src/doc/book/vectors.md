@@ -115,6 +115,36 @@ for i in v {
 }
 ```
 
+Note: You cannot use the vector again once you have iterated by taking ownership of the vector.
+You can iterate the vector multiple times by taking a reference to the vector whilst iterating. 
+For example, the following code does not compile.
+
+```rust,ignore
+let mut v = vec![1, 2, 3, 4, 5];
+
+for i in v {
+    println!("Take ownership of the vector and its element {}", i);
+}
+
+for i in v {
+    println!("Take ownership of the vector and its element {}", i);
+}
+```
+
+Whereas the following works perfectly,
+
+```rust
+let mut v = vec![1, 2, 3, 4, 5];
+
+for i in &v {
+    println!("This is a reference to {}", i);
+}
+
+for i in &v {
+    println!("This is a reference to {}", i);
+}
+```
+
 Vectors have many more useful methods, which you can read about in [their
 API documentation][vec].
 

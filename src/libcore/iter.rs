@@ -1532,7 +1532,7 @@ pub trait Iterator {
     /// An iterator adaptor that applies a function, producing a single, final value.
     ///
     /// `fold()` takes two arguments: an initial value, and a closure with two
-    /// arguments: an 'accumulator', and an element. It returns the value that
+    /// arguments: an 'accumulator', and an element. The closure returns the value that
     /// the accumulator should have for the next iteration.
     ///
     /// The initial value is the value the accumulator will have on the first

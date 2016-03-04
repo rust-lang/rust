@@ -79,7 +79,7 @@ pub fn check(build: &mut Build) {
         }
 
         // Make sure musl-root is valid if specified
-        if target.contains("musl") {
+        if target.contains("musl") && target.contains("x86_64") {
             match build.config.musl_root {
                 Some(ref root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
