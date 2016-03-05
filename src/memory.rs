@@ -15,8 +15,7 @@ pub struct Memory {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AllocId(u64);
 
-// TODO(tsion): Shouldn't clone Allocation. (Audit the rest of the code.)
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Allocation {
     pub bytes: Vec<u8>,
     // TODO(tsion): relocations
