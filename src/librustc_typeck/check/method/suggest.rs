@@ -130,18 +130,18 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             if is_fn_ty(&rcvr_ty, &fcx, span) {
-                let expr_string = match rcvr_expr {
-                    Some(expr) => match cx.sess.codemap().span_to_snippet(expr.span) {
-                        Ok(expr_string) => expr_string,
-                        _ => "s".into()
-                    },
-                    _ => "s".into()
-                };
-                err.fileline_note(
-                    span,
-                    &format!("method invoked on function type. did you \
-                             mean `{}().{}(...)`?",
-                             expr_string, item_name));
+                if let Some(expr) = rcvr_expr {
+                    if let Ok (expr_string) = cx.sess.codemap().span_to_snippet(expr.span) {
+                        err.fileline_note(
+                            expr.span,
+                            &format!("{} is a function, perhaps you wish to call it?",
+                                     expr_string));
+                        err.span_suggestion(expr.span,
+                                            "try calling the base function:",
+                                            format!("{}()",
+                                                    expr_string));
+                    }
+                }
             }
 
             if !static_sources.is_empty() {
