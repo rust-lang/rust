@@ -8,7 +8,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 129 lints included in this crate:
+There are 130 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -99,6 +99,7 @@ name                                                                            
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)                             | warn    | using Range::step_by(0), which produces an infinite iterator
 [range_zip_with_len](https://github.com/Manishearth/rust-clippy/wiki#range_zip_with_len)                             | warn    | zipping iterator with a range when enumerate() would do
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                               | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
+[redundant_closure_call](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure_call)                     | warn    | Closures should not be called in the expression they are defined
 [redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                               | warn    | using `name @ _` in a pattern
 [regex_macro](https://github.com/Manishearth/rust-clippy/wiki#regex_macro)                                           | warn    | finds use of `regex!(_)`, suggests `Regex::new(_)` instead
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)                             | allow   | using `Result.unwrap()`, which might be better handled
