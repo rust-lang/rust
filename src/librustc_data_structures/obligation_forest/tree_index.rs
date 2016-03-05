@@ -12,7 +12,7 @@ use std::u32;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct TreeIndex {
-    index: u32
+    index: u32,
 }
 
 impl TreeIndex {
@@ -25,4 +25,3 @@ impl TreeIndex {
         self.index as usize
     }
 }
-
