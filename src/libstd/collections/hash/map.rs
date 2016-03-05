@@ -1662,7 +1662,7 @@ impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 /// A particular instance `RandomState` will create the same instances of
 /// `Hasher`, but the hashers created by two different `RandomState`
 /// instances are unlikely to produce the same result for the same values.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
 pub struct RandomState {
     k0: u64,
@@ -2453,5 +2453,15 @@ mod test_map {
         // Insert at capacity should cause allocation.
         a.insert(item, 0);
         assert!(a.capacity() > a.len());
+    }
+
+
+    #[test]
+    fn test_randomstate_eq() {
+        let a = RandomState::new();
+        let b = a.clone();
+        assert!(a == b);
+
+        assert!(1u32.hash(a.build_hasher()) == 1u32.hash(b.build_hasher()))
     }
 }
