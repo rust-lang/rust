@@ -49,6 +49,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_deprecation(&cdata, def.index)
     }
 
+    fn visibility(&self, def: DefId) -> hir::Visibility {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::get_visibility(&cdata, def.index)
+    }
+
     fn closure_kind(&self, _tcx: &TyCtxt<'tcx>, def_id: DefId) -> ty::ClosureKind
     {
         assert!(!def_id.is_local());
