@@ -13,6 +13,7 @@
 //!
 //! These definitions are similar to their `ct` equivalents, but differ in that
 //! these can be statically allocated and are slightly optimized for the runtime
+#![allow(missing_debug_implementations)]
 
 #[derive(Copy, Clone)]
 pub struct Argument {

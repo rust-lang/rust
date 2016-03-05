@@ -14,7 +14,7 @@
 
 use prelude::v1::*;
 
-use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
+use cell::{UnsafeCell, Cell, RefCell, Ref, RefMut, BorrowState};
 use marker::PhantomData;
 use mem;
 use num::flt2dec;
@@ -25,6 +25,7 @@ use str;
 
 #[unstable(feature = "fmt_flags_align", issue = "27726")]
 /// Possible alignments returned by `Formatter::align`
+#[derive(Debug)]
 pub enum Alignment {
     /// Indication that contents should be left-aligned.
     Left,
@@ -152,6 +153,7 @@ impl<'a, W: Write + ?Sized> Write for &'a mut W {
 /// A struct to represent both where to emit formatting strings to and how they
 /// should be formatted. A mutable version of this is passed to all formatting
 /// traits.
+#[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {
     flags: u32,
@@ -175,6 +177,7 @@ enum Void {}
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 #[derive(Copy)]
+#[allow(missing_debug_implementations)]
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
            issue = "0")]
 #[doc(hidden)]
@@ -1585,7 +1588,9 @@ impl<T: ?Sized> Debug for PhantomData<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Copy + Debug> Debug for Cell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "Cell {{ value: {:?} }}", self.get())
+        f.debug_struct("Cell")
+            .field("value", &self.get())
+            .finish()
     }
 }
 
@@ -1594,9 +1599,15 @@ impl<T: ?Sized + Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self.borrow_state() {
             BorrowState::Unused | BorrowState::Reading => {
-                write!(f, "RefCell {{ value: {:?} }}", self.borrow())
+                f.debug_struct("RefCell")
+                    .field("value", &self.borrow())
+                    .finish()
             }
-            BorrowState::Writing => write!(f, "RefCell {{ <borrowed> }}"),
+            BorrowState::Writing => {
+                f.debug_struct("RefCell")
+                    .field("value", &"<borrowed>")
+                    .finish()
+            }
         }
     }
 }
@@ -1612,6 +1623,13 @@ impl<'b, T: ?Sized + Debug> Debug for Ref<'b, T> {
 impl<'b, T: ?Sized + Debug> Debug for RefMut<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Debug::fmt(&*(self.deref()), f)
+    }
+}
+
+#[stable(feature = "core_impl_debug", since = "1.9.0")]
+impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.pad("UnsafeCell")
     }
 }
 

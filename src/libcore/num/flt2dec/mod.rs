@@ -222,6 +222,7 @@ impl<'a> Part<'a> {
 
 /// Formatted result containing one or more parts.
 /// This can be written to the byte buffer or converted to the allocated string.
+#[allow(missing_debug_implementations)]
 #[derive(Clone)]
 pub struct Formatted<'a> {
     /// A byte slice representing a sign, either `""`, `"-"` or `"+"`.
