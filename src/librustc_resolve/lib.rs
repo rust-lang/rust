@@ -18,6 +18,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
+#![feature(borrow_state)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -812,7 +813,7 @@ pub struct ModuleS<'a> {
     extern_crate_id: Option<NodeId>,
 
     resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
-    unresolved_imports: RefCell<Vec<ImportDirective>>,
+    unresolved_imports: RefCell<Vec<&'a ImportDirective>>,
 
     // The module children of this node, including normal modules and anonymous modules.
     // Anonymous children are pseudo-modules that are implicitly created around items
@@ -832,26 +833,31 @@ pub struct ModuleS<'a> {
 
     shadowed_traits: RefCell<Vec<&'a NameBinding<'a>>>,
 
-    // The number of unresolved globs that this module exports.
-    glob_count: Cell<usize>,
+    glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective)>>,
+    resolved_globs: RefCell<(Vec<Module<'a>> /* public */, Vec<Module<'a>> /* private */)>,
 
-    // The number of unresolved pub imports (both regular and globs) in this module
-    pub_count: Cell<usize>,
+    // The number of public glob imports in this module.
+    public_glob_count: Cell<usize>,
 
-    // The number of unresolved pub glob imports in this module
-    pub_glob_count: Cell<usize>,
+    // The number of private glob imports in this module.
+    private_glob_count: Cell<usize>,
 
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
     populated: Cell<bool>,
+
+    arenas: &'a ResolverArenas<'a>,
 }
 
 pub type Module<'a> = &'a ModuleS<'a>;
 
 impl<'a> ModuleS<'a> {
-
-    fn new(parent_link: ParentLink<'a>, def: Option<Def>, external: bool, is_public: bool) -> Self {
+    fn new(parent_link: ParentLink<'a>,
+           def: Option<Def>,
+           external: bool,
+           is_public: bool,
+           arenas: &'a ResolverArenas<'a>) -> Self {
         ModuleS {
             parent_link: parent_link,
             def: def,
@@ -861,53 +867,18 @@ impl<'a> ModuleS<'a> {
             unresolved_imports: RefCell::new(Vec::new()),
             module_children: RefCell::new(NodeMap()),
             shadowed_traits: RefCell::new(Vec::new()),
-            glob_count: Cell::new(0),
-            pub_count: Cell::new(0),
-            pub_glob_count: Cell::new(0),
+            glob_importers: RefCell::new(Vec::new()),
+            resolved_globs: RefCell::new((Vec::new(), Vec::new())),
+            public_glob_count: Cell::new(0),
+            private_glob_count: Cell::new(0),
             populated: Cell::new(!external),
+            arenas: arenas
         }
     }
 
-    fn resolve_name(&self, name: Name, ns: Namespace, allow_private_imports: bool)
-                    -> ResolveResult<&'a NameBinding<'a>> {
-        let glob_count =
-            if allow_private_imports { self.glob_count.get() } else { self.pub_glob_count.get() };
-
-        self.resolutions.borrow().get(&(name, ns)).cloned().unwrap_or_default().result(glob_count)
-            .and_then(|binding| {
-                let allowed = allow_private_imports || !binding.is_import() || binding.is_public();
-                if allowed { Success(binding) } else { Failed(None) }
-            })
-    }
-
-    // Define the name or return the existing binding if there is a collision.
-    fn try_define_child(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>)
-                        -> Result<(), &'a NameBinding<'a>> {
-        let mut children = self.resolutions.borrow_mut();
-        let resolution = children.entry((name, ns)).or_insert_with(Default::default);
-
-        // FIXME #31379: We can use methods from imported traits shadowed by non-import items
-        if let Some(old_binding) = resolution.binding {
-            if !old_binding.is_import() && binding.is_import() {
-                if let Some(Def::Trait(_)) = binding.def() {
-                    self.shadowed_traits.borrow_mut().push(binding);
-                }
-            }
-        }
-
-        resolution.try_define(binding)
-    }
-
-    fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        let mut children = self.resolutions.borrow_mut();
-        children.entry((name, ns)).or_insert_with(Default::default).outstanding_references += 1;
-    }
-
-    fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        match self.resolutions.borrow_mut().get_mut(&(name, ns)).unwrap().outstanding_references {
-            0 => panic!("No more outstanding references!"),
-            ref mut outstanding_references => { *outstanding_references -= 1; }
-        }
+    fn add_import_directive(&self, import_directive: ImportDirective) {
+        let import_directive = self.arenas.alloc_import_directive(import_directive);
+        self.unresolved_imports.borrow_mut().push(import_directive);
     }
 
     fn for_each_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
@@ -943,26 +914,9 @@ impl<'a> ModuleS<'a> {
         }
     }
 
-    pub fn inc_glob_count(&self) {
-        self.glob_count.set(self.glob_count.get() + 1);
-    }
-    pub fn dec_glob_count(&self) {
-        assert!(self.glob_count.get() > 0);
-        self.glob_count.set(self.glob_count.get() - 1);
-    }
-    pub fn inc_pub_count(&self) {
-        self.pub_count.set(self.pub_count.get() + 1);
-    }
-    pub fn dec_pub_count(&self) {
-        assert!(self.pub_count.get() > 0);
-        self.pub_count.set(self.pub_count.get() - 1);
-    }
-    pub fn inc_pub_glob_count(&self) {
-        self.pub_glob_count.set(self.pub_glob_count.get() + 1);
-    }
-    pub fn dec_pub_glob_count(&self) {
-        assert!(self.pub_glob_count.get() > 0);
-        self.pub_glob_count.set(self.pub_glob_count.get() - 1);
+    fn inc_glob_count(&self, is_public: bool) {
+        let glob_count = if is_public { &self.public_glob_count } else { &self.private_glob_count };
+        glob_count.set(glob_count.get() + 1);
     }
 }
 
@@ -995,14 +949,14 @@ bitflags! {
 }
 
 // Records a possibly-private value, type, or module definition.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     modifiers: DefModifiers,
     kind: NameBindingKind<'a>,
     span: Option<Span>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum NameBindingKind<'a> {
     Def(Def),
     Module(Module<'a>),
@@ -1167,6 +1121,19 @@ pub struct Resolver<'a, 'tcx: 'a> {
 pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
+    import_directives: arena::TypedArena<ImportDirective>,
+}
+
+impl<'a> ResolverArenas<'a> {
+    fn alloc_module(&'a self, module: ModuleS<'a>) -> Module<'a> {
+        self.modules.alloc(module)
+    }
+    fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
+        self.name_bindings.alloc(name_binding)
+    }
+    fn alloc_import_directive(&'a self, import_directive: ImportDirective) -> &'a ImportDirective {
+        self.import_directives.alloc(import_directive)
+    }
 }
 
 #[derive(PartialEq)]
@@ -1182,8 +1149,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
            arenas: &'a ResolverArenas<'a>)
            -> Resolver<'a, 'tcx> {
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
-        let graph_root = ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, true);
-        let graph_root = arenas.modules.alloc(graph_root);
+        let graph_root =
+            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, true, arenas);
+        let graph_root = arenas.alloc_module(graph_root);
 
         Resolver {
             session: session,
@@ -1234,6 +1202,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ResolverArenas {
             modules: arena::TypedArena::new(),
             name_bindings: arena::TypedArena::new(),
+            import_directives: arena::TypedArena::new(),
         }
     }
 
@@ -1242,11 +1211,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                   def: Option<Def>,
                   external: bool,
                   is_public: bool) -> Module<'a> {
-        self.arenas.modules.alloc(ModuleS::new(parent_link, def, external, is_public))
-    }
-
-    fn new_name_binding(&self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
-        self.arenas.name_bindings.alloc(name_binding)
+        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, is_public, self.arenas))
     }
 
     fn new_extern_crate_module(&self,
@@ -1255,7 +1220,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                is_public: bool,
                                local_node_id: NodeId)
                                -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), false, is_public);
+        let mut module = ModuleS::new(parent_link, Some(def), false, is_public, self.arenas);
         module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }
@@ -1624,18 +1589,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Success(binding)
         })
-    }
-
-    fn report_unresolved_imports(&mut self, module_: Module<'a>) {
-        for import in module_.unresolved_imports.borrow().iter() {
-            resolve_error(self, import.span, ResolutionError::UnresolvedImport(None));
-            break;
-        }
-
-        // Descend into children and anonymous children.
-        for (_, module_) in module_.module_children.borrow().iter() {
-            self.report_unresolved_imports(module_);
-        }
     }
 
     // AST resolution
