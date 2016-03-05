@@ -30,16 +30,15 @@ mod memory {
 
     pub struct Memory {
         next_id: u64,
-        alloc_map: HashMap<u64, Value>,
+        alloc_map: HashMap<u64, Allocation>,
     }
 
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     pub struct AllocId(u64);
 
-    // TODO(tsion): Shouldn't clone Values. (Audit the rest of the code.)
-    // TODO(tsion): Rename to Allocation.
+    // TODO(tsion): Shouldn't clone Allocation. (Audit the rest of the code.)
     #[derive(Clone, Debug)]
-    pub struct Value {
+    pub struct Allocation {
         pub bytes: Vec<u8>,
         // TODO(tsion): relocations
         // TODO(tsion): undef mask
@@ -74,8 +73,8 @@ mod memory {
 
         pub fn allocate_raw(&mut self, size: usize) -> AllocId {
             let id = AllocId(self.next_id);
-            let val = Value { bytes: vec![0; size] };
-            self.alloc_map.insert(self.next_id, val);
+            let alloc = Allocation { bytes: vec![0; size] };
+            self.alloc_map.insert(self.next_id, alloc);
             self.next_id += 1;
             id
         }
@@ -90,22 +89,22 @@ mod memory {
 
         pub fn allocate_int(&mut self, n: i64) -> AllocId {
             let id = self.allocate_raw(mem::size_of::<i64>());
-            byteorder::NativeEndian::write_i64(&mut self.value_mut(id).unwrap().bytes, n);
+            byteorder::NativeEndian::write_i64(&mut self.get_mut(id).unwrap().bytes, n);
             id
         }
 
-        pub fn value(&self, id: AllocId) -> EvalResult<&Value> {
+        pub fn get(&self, id: AllocId) -> EvalResult<&Allocation> {
             self.alloc_map.get(&id.0).ok_or(EvalError::DanglingPointerDeref)
         }
 
-        pub fn value_mut(&mut self, id: AllocId) -> EvalResult<&mut Value> {
+        pub fn get_mut(&mut self, id: AllocId) -> EvalResult<&mut Allocation> {
             self.alloc_map.get_mut(&id.0).ok_or(EvalError::DanglingPointerDeref)
         }
 
         pub fn copy(&mut self, src: &Pointer, dest: &Pointer, size: usize) -> EvalResult<()> {
-            let src_bytes = try!(self.value_mut(src.alloc_id))
+            let src_bytes = try!(self.get_mut(src.alloc_id))
                 .bytes[src.offset..src.offset + size].as_mut_ptr();
-            let dest_bytes = try!(self.value_mut(dest.alloc_id))
+            let dest_bytes = try!(self.get_mut(dest.alloc_id))
                 .bytes[dest.offset..dest.offset + size].as_mut_ptr();
 
             // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
@@ -158,7 +157,7 @@ mod memory {
         }
     }
 }
-use self::memory::{Pointer, Repr, Value};
+use self::memory::{Pointer, Repr, Allocation};
 
 #[derive(Clone, Debug)]
 pub enum EvalError {
@@ -300,7 +299,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     //     ptr
     // }
 
-    fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) -> EvalResult<()> {
+    fn call(&mut self, mir: &Mir, args: &[Allocation], return_ptr: Option<Pointer>) -> EvalResult<()> {
         self.return_ptr = return_ptr;
         // self.push_stack_frame(mir, args, return_ptr);
         let mut block = mir::START_BLOCK;
@@ -453,8 +452,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: &Pointer) {
         match (left.repr, right.repr, &dest.repr) {
             (Repr::Int, Repr::Int, &Repr::Int) => {
-                let l = byteorder::NativeEndian::read_i64(&self.memory.value(left.alloc_id).unwrap().bytes);
-                let r = byteorder::NativeEndian::read_i64(&self.memory.value(right.alloc_id).unwrap().bytes);
+                let l = byteorder::NativeEndian::read_i64(&self.memory.get(left.alloc_id).unwrap().bytes);
+                let r = byteorder::NativeEndian::read_i64(&self.memory.get(right.alloc_id).unwrap().bytes);
                 let n = match bin_op {
                     mir::BinOp::Add    => l + r,
                     mir::BinOp::Sub    => l - r,
@@ -474,7 +473,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     // mir::BinOp::Ge     => Value::Bool(l >= r),
                     // mir::BinOp::Gt     => Value::Bool(l > r),
                 };
-                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(dest.alloc_id).unwrap().bytes, n);
+                byteorder::NativeEndian::write_i64(&mut self.memory.get_mut(dest.alloc_id).unwrap().bytes, n);
             }
             (ref l, ref r, ref o) =>
                 panic!("unhandled binary operation: {:?}({:?}, {:?}) into {:?}", bin_op, l, r, o),
@@ -496,13 +495,13 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
             mir::Rvalue::UnaryOp(un_op, ref operand) => {
                 let ptr = try!(self.operand_to_ptr(operand));
-                let m = byteorder::NativeEndian::read_i64(&self.memory.value(ptr.alloc_id).unwrap().bytes);
+                let m = byteorder::NativeEndian::read_i64(&self.memory.get(ptr.alloc_id).unwrap().bytes);
                 let n = match (un_op, ptr.repr) {
                     (mir::UnOp::Not, Repr::Int) => !m,
                     (mir::UnOp::Neg, Repr::Int) => -m,
                     (_, ref p) => panic!("unhandled binary operation: {:?}({:?})", un_op, p),
                 };
-                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(dest.alloc_id).unwrap().bytes, n);
+                byteorder::NativeEndian::write_i64(&mut self.memory.get_mut(dest.alloc_id).unwrap().bytes, n);
             }
 
             mir::Rvalue::Aggregate(mir::AggregateKind::Tuple, ref operands) => {
@@ -601,7 +600,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 miri.call(mir, &[], return_ptr.clone()).unwrap();
 
                 if let Some(ret) = return_ptr {
-                    println!("Returned: {:?}\n", miri.memory.value(ret.alloc_id).unwrap());
+                    println!("Returned: {:?}\n", miri.memory.get(ret.alloc_id).unwrap());
                 }
             }
         }
