@@ -1,35 +1,35 @@
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
-#[miri_run(expected = "Int(1)")]
+#[miri_run]
 fn ret() -> i32 {
     1
 }
 
-#[miri_run(expected = "Int(-1)")]
+#[miri_run]
 fn neg() -> i32 {
     -1
 }
 
-#[miri_run(expected = "Int(3)")]
+#[miri_run]
 fn add() -> i32 {
     1 + 2
 }
 
-#[miri_run(expected = "Int(3)")]
+#[miri_run]
 fn empty() {}
 
-#[miri_run(expected = "Int(3)")]
+#[miri_run]
 fn tuple() -> (i32,) {
     (1,)
 }
 
-#[miri_run(expected = "Int(3)")]
+#[miri_run]
 fn tuple_2() -> (i32, i32) {
     (1, 2)
 }
 
-#[miri_run(expected = "Int(3)")]
+#[miri_run]
 fn tuple_5() -> (i32, i32, i32, i32, i32) {
     (1, 2, 3, 4, 5)
 }

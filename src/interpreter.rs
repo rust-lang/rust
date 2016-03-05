@@ -87,12 +87,6 @@ mod memory {
             }
         }
 
-        pub fn allocate_int(&mut self, n: i64) -> AllocId {
-            let id = self.allocate_raw(mem::size_of::<i64>());
-            byteorder::NativeEndian::write_i64(&mut self.get_mut(id).unwrap().bytes, n);
-            id
-        }
-
         pub fn get(&self, id: AllocId) -> EvalResult<&Allocation> {
             self.alloc_map.get(&id.0).ok_or(EvalError::DanglingPointerDeref)
         }
@@ -129,6 +123,16 @@ mod memory {
             }
 
             Ok(())
+        }
+
+        pub fn read_int(&self, ptr: &Pointer) -> EvalResult<i64> {
+            let bytes = try!(self.get_bytes(ptr, Repr::Int.size()));
+            Ok(byteorder::NativeEndian::read_i64(bytes))
+        }
+
+        pub fn write_int(&mut self, ptr: &Pointer, n: i64) -> EvalResult<()> {
+            let bytes = try!(self.get_bytes_mut(ptr, Repr::Int.size()));
+            Ok(byteorder::NativeEndian::write_i64(bytes, n))
         }
     }
 
@@ -170,7 +174,7 @@ mod memory {
 
         pub fn size(&self) -> usize {
             match *self {
-                Repr::Int => 8,
+                Repr::Int => mem::size_of::<i64>(),
                 Repr::Aggregate { size, .. } => size,
             }
         }
@@ -470,11 +474,12 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         // }
     }
 
-    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: &Pointer) {
-        match (left.repr, right.repr, &dest.repr) {
-            (Repr::Int, Repr::Int, &Repr::Int) => {
-                let l = byteorder::NativeEndian::read_i64(&self.memory.get(left.alloc_id).unwrap().bytes);
-                let r = byteorder::NativeEndian::read_i64(&self.memory.get(right.alloc_id).unwrap().bytes);
+    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: &Pointer)
+            -> EvalResult<()> {
+        match (&left.repr, &right.repr, &dest.repr) {
+            (&Repr::Int, &Repr::Int, &Repr::Int) => {
+                let l = try!(self.memory.read_int(&left));
+                let r = try!(self.memory.read_int(&right));
                 let n = match bin_op {
                     mir::BinOp::Add    => l + r,
                     mir::BinOp::Sub    => l - r,
@@ -494,9 +499,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     // mir::BinOp::Ge     => Value::Bool(l >= r),
                     // mir::BinOp::Gt     => Value::Bool(l > r),
                 };
-                byteorder::NativeEndian::write_i64(&mut self.memory.get_mut(dest.alloc_id).unwrap().bytes, n);
+                self.memory.write_int(dest, n)
             }
-            (ref l, ref r, ref o) =>
+            (l, r, o) =>
                 panic!("unhandled binary operation: {:?}({:?}, {:?}) into {:?}", bin_op, l, r, o),
         }
     }
@@ -511,18 +516,18 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             mir::Rvalue::BinaryOp(bin_op, ref left, ref right) => {
                 let left_ptr = try!(self.operand_to_ptr(left));
                 let right_ptr = try!(self.operand_to_ptr(right));
-                self.eval_binary_op(bin_op, left_ptr, right_ptr, dest);
+                try!(self.eval_binary_op(bin_op, left_ptr, right_ptr, dest));
             }
 
             mir::Rvalue::UnaryOp(un_op, ref operand) => {
                 let ptr = try!(self.operand_to_ptr(operand));
-                let m = byteorder::NativeEndian::read_i64(&self.memory.get(ptr.alloc_id).unwrap().bytes);
+                let m = try!(self.memory.read_int(&ptr));
                 let n = match (un_op, ptr.repr) {
                     (mir::UnOp::Not, Repr::Int) => !m,
                     (mir::UnOp::Neg, Repr::Int) => -m,
                     (_, ref p) => panic!("unhandled binary operation: {:?}({:?})", un_op, p),
                 };
-                byteorder::NativeEndian::write_i64(&mut self.memory.get_mut(dest.alloc_id).unwrap().bytes, n);
+                try!(self.memory.write_int(dest, n));
             }
 
             mir::Rvalue::Aggregate(mir::AggregateKind::Tuple, ref operands) => {
@@ -573,7 +578,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
             mir::Operand::Constant(ref constant) => {
                 match constant.literal {
-                    mir::Literal::Value { ref value } => Ok(self.const_to_ptr(value)),
+                    mir::Literal::Value { ref value } => self.const_to_ptr(value),
 
                     mir::Literal::Item { def_id, kind, .. } => match kind {
                         // mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
@@ -584,14 +589,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> Pointer {
+    fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {
         match *const_val {
             const_eval::ConstVal::Float(_f)         => unimplemented!(),
-            const_eval::ConstVal::Int(i)            => Pointer {
-                alloc_id: self.memory.allocate_int(i),
-                offset: 0,
-                repr: Repr::Int,
-            },
+            const_eval::ConstVal::Int(n) => {
+                let ptr = self.memory.allocate(Repr::Int);
+                try!(self.memory.write_int(&ptr, n));
+                Ok(ptr)
+            }
             const_eval::ConstVal::Uint(_u)          => unimplemented!(),
             const_eval::ConstVal::Str(ref _s)       => unimplemented!(),
             const_eval::ConstVal::ByteStr(ref _bs)  => unimplemented!(),
