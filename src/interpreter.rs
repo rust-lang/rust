@@ -36,11 +36,6 @@ mod memory {
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     pub struct AllocId(u64);
 
-    // TODO(tsion): Remove this hack.
-    pub fn alloc_id_hack(i: u64) -> AllocId {
-        AllocId(i)
-    }
-
     // TODO(tsion): Shouldn't clone Values. (Audit the rest of the code.)
     // TODO(tsion): Rename to Allocation.
     #[derive(Clone, Debug)]
