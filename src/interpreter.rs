@@ -3,8 +3,10 @@
 
 use byteorder;
 use byteorder::ByteOrder;
-use rustc::middle::{const_eval, def_id, ty};
+use rustc::middle::const_eval;
+use rustc::middle::def_id;
 use rustc::middle::cstore::CrateStore;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::repr::{self as mir, Mir};
 use rustc::mir::mir_map::MirMap;
 use std::collections::HashMap;
@@ -22,6 +24,9 @@ mod memory {
     use rustc::middle::ty;
     use std::collections::HashMap;
     use std::mem;
+    use std::ops::Add;
+    use std::ptr;
+    use super::{EvalError, EvalResult};
 
     pub struct Memory {
         next_id: u64,
@@ -36,7 +41,8 @@ mod memory {
         AllocId(i)
     }
 
-    // TODO(tsion): Shouldn't clone values.
+    // TODO(tsion): Shouldn't clone Values. (Audit the rest of the code.)
+    // TODO(tsion): Rename to Allocation.
     #[derive(Clone, Debug)]
     pub struct Value {
         pub bytes: Vec<u8>,
@@ -52,12 +58,18 @@ mod memory {
     }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
+    pub struct FieldRepr {
+        pub offset: usize,
+        pub repr: Repr,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub enum Repr {
         Int,
-
-        StackFrame {
-            locals: Vec<Repr>,
-        }
+        Aggregate {
+            size: usize,
+            fields: Vec<FieldRepr>,
+        },
     }
 
     impl Memory {
@@ -65,7 +77,7 @@ mod memory {
             Memory { next_id: 0, alloc_map: HashMap::new() }
         }
 
-        pub fn allocate(&mut self, size: usize) -> AllocId {
+        pub fn allocate_raw(&mut self, size: usize) -> AllocId {
             let id = AllocId(self.next_id);
             let val = Value { bytes: vec![0; size] };
             self.alloc_map.insert(self.next_id, val);
@@ -73,24 +85,52 @@ mod memory {
             id
         }
 
+        pub fn allocate(&mut self, repr: Repr) -> Pointer {
+            Pointer {
+                alloc_id: self.allocate_raw(repr.size()),
+                offset: 0,
+                repr: repr,
+            }
+        }
+
         pub fn allocate_int(&mut self, n: i64) -> AllocId {
-            let id = self.allocate(mem::size_of::<i64>());
+            let id = self.allocate_raw(mem::size_of::<i64>());
             byteorder::NativeEndian::write_i64(&mut self.value_mut(id).unwrap().bytes, n);
             id
         }
 
-        pub fn value(&self, id: AllocId) -> Option<&Value> {
-            self.alloc_map.get(&id.0)
+        pub fn value(&self, id: AllocId) -> EvalResult<&Value> {
+            self.alloc_map.get(&id.0).ok_or(EvalError::DanglingPointerDeref)
         }
 
-        pub fn value_mut(&mut self, id: AllocId) -> Option<&mut Value> {
-            self.alloc_map.get_mut(&id.0)
+        pub fn value_mut(&mut self, id: AllocId) -> EvalResult<&mut Value> {
+            self.alloc_map.get_mut(&id.0).ok_or(EvalError::DanglingPointerDeref)
+        }
+
+        pub fn copy(&mut self, src: &Pointer, dest: &Pointer, size: usize) -> EvalResult<()> {
+            let src_bytes = try!(self.value_mut(src.alloc_id))
+                .bytes[src.offset..src.offset + size].as_mut_ptr();
+            let dest_bytes = try!(self.value_mut(dest.alloc_id))
+                .bytes[dest.offset..dest.offset + size].as_mut_ptr();
+
+            // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
+            // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
+            // `dest` could possibly overlap.
+            unsafe {
+                if src.alloc_id == dest.alloc_id {
+                    ptr::copy(src_bytes, dest_bytes, size);
+                } else {
+                    ptr::copy_nonoverlapping(src_bytes, dest_bytes, size);
+                }
+            }
+
+            Ok(())
         }
     }
 
     impl Pointer {
-        pub fn offset(self, i: usize) -> Self {
-            Pointer { offset: self.offset + i, ..self }
+        pub fn offset(&self, i: usize) -> Self {
+            Pointer { offset: self.offset + i, ..self.clone() }
         }
     }
 
@@ -99,6 +139,18 @@ mod memory {
         pub fn from_ty(ty: ty::Ty) -> Self {
             match ty.sty {
                 ty::TyInt(_) => Repr::Int,
+
+                ty::TyTuple(ref fields) => {
+                    let mut size = 0;
+                    let fields = fields.iter().map(|ty| {
+                        let repr = Repr::from_ty(ty);
+                        let old_size = size;
+                        size += repr.size();
+                        FieldRepr { offset: old_size, repr: repr }
+                    }).collect();
+                    Repr::Aggregate { size: size, fields: fields }
+                },
+
                 _ => unimplemented!(),
             }
         }
@@ -106,8 +158,7 @@ mod memory {
         pub fn size(&self) -> usize {
             match *self {
                 Repr::Int => 8,
-                Repr::StackFrame { ref locals } =>
-                    locals.iter().map(Repr::size).fold(0, |a, b| a + b)
+                Repr::Aggregate { size, .. } => size,
             }
         }
     }
@@ -115,7 +166,9 @@ mod memory {
 use self::memory::{Pointer, Repr, Value};
 
 #[derive(Clone, Debug)]
-pub struct EvalError;
+pub enum EvalError {
+    DanglingPointerDeref
+}
 
 pub type EvalResult<T> = Result<T, EvalError>;
 
@@ -199,21 +252,23 @@ impl fmt::Display for EvalError {
 // }
 
 struct Interpreter<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     mir_map: &'a MirMap<'tcx>,
     // value_stack: Vec<Value>,
     // call_stack: Vec<Frame>,
     memory: memory::Memory,
+    return_ptr: Option<Pointer>,
 }
 
 impl<'a, 'tcx> Interpreter<'a, 'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
+    fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
             // value_stack: vec![Value::Uninit], // Allocate a spot for the top-level return value.
             // call_stack: Vec::new(),
             memory: memory::Memory::new(),
+            return_ptr: None,
         }
     }
 
@@ -251,6 +306,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     // }
 
     fn call(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) -> EvalResult<()> {
+        self.return_ptr = return_ptr;
         // self.push_stack_frame(mir, args, return_ptr);
         let mut block = mir::START_BLOCK;
 
@@ -264,7 +320,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 match stmt.kind {
                     mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                         let ptr = try!(self.lvalue_to_ptr(lvalue));
-                        try!(self.eval_rvalue_into(rvalue, ptr));
+                        try!(self.eval_rvalue_into(rvalue, &ptr));
                     }
                 }
             }
@@ -347,12 +403,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
     fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue) -> EvalResult<Pointer> {
         let ptr = match *lvalue {
-            mir::Lvalue::ReturnPointer => Pointer {
-                alloc_id: self::memory::alloc_id_hack(0),
-                offset: 0,
-                repr: Repr::Int,
-            },
-
+            mir::Lvalue::ReturnPointer =>
+                self.return_ptr.clone().expect("fn has no return pointer"),
             _ => unimplemented!(),
         };
 
@@ -403,9 +455,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         // }
     }
 
-    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, out: Pointer) {
-        match (left.repr, right.repr, out.repr) {
-            (Repr::Int, Repr::Int, Repr::Int) => {
+    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: &Pointer) {
+        match (left.repr, right.repr, &dest.repr) {
+            (Repr::Int, Repr::Int, &Repr::Int) => {
                 let l = byteorder::NativeEndian::read_i64(&self.memory.value(left.alloc_id).unwrap().bytes);
                 let r = byteorder::NativeEndian::read_i64(&self.memory.value(right.alloc_id).unwrap().bytes);
                 let n = match bin_op {
@@ -427,25 +479,24 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                     // mir::BinOp::Ge     => Value::Bool(l >= r),
                     // mir::BinOp::Gt     => Value::Bool(l > r),
                 };
-                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(out.alloc_id).unwrap().bytes, n);
+                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(dest.alloc_id).unwrap().bytes, n);
             }
-
-            _ => unimplemented!(),
+            (ref l, ref r, ref o) =>
+                panic!("unhandled binary operation: {:?}({:?}, {:?}) into {:?}", bin_op, l, r, o),
         }
     }
 
-    fn eval_rvalue_into(&mut self, rvalue: &mir::Rvalue, out: Pointer) -> EvalResult<()> {
+    fn eval_rvalue_into(&mut self, rvalue: &mir::Rvalue, dest: &Pointer) -> EvalResult<()> {
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
-                let ptr = try!(self.operand_to_ptr(operand));
-                let val = self.read_pointer(ptr);
-                self.write_pointer(out, val);
+                let src = try!(self.operand_to_ptr(operand));
+                try!(self.memory.copy(&src, dest, src.repr.size()));
             }
 
             mir::Rvalue::BinaryOp(bin_op, ref left, ref right) => {
                 let left_ptr = try!(self.operand_to_ptr(left));
                 let right_ptr = try!(self.operand_to_ptr(right));
-                self.eval_binary_op(bin_op, left_ptr, right_ptr, out)
+                self.eval_binary_op(bin_op, left_ptr, right_ptr, dest);
             }
 
             mir::Rvalue::UnaryOp(un_op, ref operand) => {
@@ -454,9 +505,23 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 let n = match (un_op, ptr.repr) {
                     (mir::UnOp::Not, Repr::Int) => !m,
                     (mir::UnOp::Neg, Repr::Int) => -m,
-                    _ => unimplemented!(),
+                    (_, ref p) => panic!("unhandled binary operation: {:?}({:?})", un_op, p),
                 };
-                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(out.alloc_id).unwrap().bytes, n);
+                byteorder::NativeEndian::write_i64(&mut self.memory.value_mut(dest.alloc_id).unwrap().bytes, n);
+            }
+
+            mir::Rvalue::Aggregate(mir::AggregateKind::Tuple, ref operands) => {
+                match dest.repr {
+                    Repr::Aggregate { ref fields, .. } => {
+                        for (field, operand) in fields.iter().zip(operands) {
+                            let src = try!(self.operand_to_ptr(operand));
+                            try!(self.memory.copy(&src, &dest.offset(field.offset), src.repr.size()));
+                        }
+                    }
+
+                    _ => panic!("attempted to write tuple rvalue '{:?}' into non-aggregate pointer '{:?}'",
+                                rvalue, dest)
+                }
             }
 
             // mir::Rvalue::Ref(_region, _kind, ref lvalue) => {
@@ -523,25 +588,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             const_eval::ConstVal::Repeat(_, _)      => unimplemented!(),
         }
     }
-
-    // fn read_lvalue(&self, lvalue: &mir::Lvalue) -> Value {
-    //     self.read_pointer(self.lvalue_to_ptr(lvalue))
-    // }
-
-    fn read_pointer(&self, p: Pointer) -> Value {
-        self.memory.value(p.alloc_id).unwrap().clone()
-    }
-
-    fn write_pointer(&mut self, p: Pointer, val: Value) {
-        // TODO(tsion): Remove panics.
-        let alloc = self.memory.value_mut(p.alloc_id).unwrap();
-        for (i, byte) in val.bytes.into_iter().enumerate() {
-            alloc.bytes[p.offset + i] = byte;
-        }
-    }
 }
 
-pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>) {
+pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
     for (&id, mir) in &mir_map.map {
         for attr in tcx.map.attrs(id) {
             if attr.check_name("miri_run") {
@@ -549,23 +598,15 @@ pub fn interpret_start_points<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &MirMap<'tcx>
 
                 println!("Interpreting: {}", item.name);
 
-                let mut interpreter = Interpreter::new(tcx, mir_map);
+                let mut miri = Interpreter::new(tcx, mir_map);
                 let return_ptr = match mir.return_ty {
-                    ty::FnOutput::FnConverging(ty) => {
-                        let repr = Repr::from_ty(ty);
-                        Some(Pointer {
-                            alloc_id: interpreter.memory.allocate(repr.size()),
-                            offset: 0,
-                            repr: repr,
-                        })
-                    }
-                    ty::FnOutput::FnDiverging => None,
+                    ty::FnConverging(ty) => Some(miri.memory.allocate(Repr::from_ty(ty))),
+                    ty::FnDiverging => None,
                 };
-                interpreter.call(mir, &[], return_ptr.clone()).unwrap();
+                miri.call(mir, &[], return_ptr.clone()).unwrap();
 
-                let val_str = format!("{:?}", interpreter.read_pointer(return_ptr.unwrap()));
-                if !check_expected(&val_str, attr) {
-                    println!("=> {}\n", val_str);
+                if let Some(ret) = return_ptr {
+                    println!("Returned: {:?}\n", miri.memory.value(ret.alloc_id).unwrap());
                 }
             }
         }

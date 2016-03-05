@@ -16,6 +16,24 @@ fn add() -> i32 {
     1 + 2
 }
 
+#[miri_run(expected = "Int(3)")]
+fn empty() {}
+
+#[miri_run(expected = "Int(3)")]
+fn tuple() -> (i32,) {
+    (1,)
+}
+
+#[miri_run(expected = "Int(3)")]
+fn tuple_2() -> (i32, i32) {
+    (1, 2)
+}
+
+#[miri_run(expected = "Int(3)")]
+fn tuple_5() -> (i32, i32, i32, i32, i32) {
+    (1, 2, 3, 4, 5)
+}
+
 // #[miri_run(expected = "Int(3)")]
 // fn indirect_add() -> i32 {
 //     let x = 1;
