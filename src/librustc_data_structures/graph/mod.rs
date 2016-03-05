@@ -121,8 +121,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Simple accessors
+    // # Simple accessors
 
     #[inline]
     pub fn all_nodes(&self) -> &[Node<N>] {
@@ -144,8 +143,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.edges.len()
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Node construction
+    // # Node construction
 
     pub fn next_node_index(&self) -> NodeIndex {
         NodeIndex(self.nodes.len())
@@ -172,8 +170,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         &self.nodes[idx.0]
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Edge construction and queries
+    // # Edge construction and queries
 
     pub fn next_edge_index(&self) -> EdgeIndex {
         EdgeIndex(self.edges.len())
@@ -232,8 +229,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.edges[edge.0].next_edge[dir.repr]
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Iterating over nodes, edges
+    // # Iterating over nodes, edges
 
     pub fn each_node<'a, F>(&'a self, mut f: F) -> bool
         where F: FnMut(NodeIndex, &'a Node<N>) -> bool
@@ -274,8 +270,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.incoming_edges(target).sources()
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Fixed-point iteration
+    // # Fixed-point iteration
     //
     // A common use for graphs in our compiler is to perform
     // fixed-point iteration. In this case, each edge represents a
@@ -306,8 +301,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-// Iterators
+// # Iterators
 
 pub struct AdjacentEdges<'g, N, E>
     where N: 'g,
