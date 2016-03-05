@@ -1108,6 +1108,126 @@ pub fn find<'tcx>(_tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(u(16), 16),
             definition: Named("llvm.x86.avx2.psubus.w")
         },
+        "_fmadd_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+        "_fmadd_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+        "256_fmadd_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), v(f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+        "256_fmadd_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), v(f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+        "_fmaddsub_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.fma.vfmaddsub.ps")
+        },
+        "_fmaddsub_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.fma.vfmaddsub.pd")
+        },
+        "256_fmaddsub_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), v(f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.fma.vfmaddsub.ps.256")
+        },
+        "256_fmaddsub_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), v(f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.fma.vfmaddsub.pd.256")
+        },
+        "_fmsub_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.fma.vfmsub.ps")
+        },
+        "_fmsub_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.fma.vfmsub.pd")
+        },
+        "256_fmsub_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), v(f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.fma.vfmsub.ps.256")
+        },
+        "256_fmsub_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), v(f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.fma.vfmsub.pd.256")
+        },
+        "_fmsubadd_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.fma.vfmsubadd.ps")
+        },
+        "_fmsubadd_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.fma.vfmsubadd.pd")
+        },
+        "256_fmsubadd_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), v(f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.fma.vfmsubadd.ps.256")
+        },
+        "256_fmsubadd_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), v(f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.fma.vfmsubadd.pd.256")
+        },
+        "_fnmadd_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.fma.vfnmadd.ps")
+        },
+        "_fnmadd_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.fma.vfnmadd.pd")
+        },
+        "256_fnmadd_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), v(f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.fma.vfnmadd.ps.256")
+        },
+        "256_fnmadd_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), v(f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.fma.vfnmadd.pd.256")
+        },
+        "_fnmsub_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.fma.vfnmsub.ps")
+        },
+        "_fnmsub_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.fma.vfnmsub.pd")
+        },
+        "256_fnmsub_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), v(f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.fma.vfnmsub.ps.256")
+        },
+        "256_fnmsub_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), v(f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.fma.vfnmsub.pd.256")
+        },
         _ => return None,
     })
 }
