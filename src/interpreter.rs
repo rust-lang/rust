@@ -101,11 +101,21 @@ mod memory {
             self.alloc_map.get_mut(&id.0).ok_or(EvalError::DanglingPointerDeref)
         }
 
+        fn get_bytes(&self, ptr: &Pointer, size: usize) -> EvalResult<&[u8]> {
+            let alloc = try!(self.get(ptr.alloc_id));
+            try!(alloc.check_bytes(ptr.offset, ptr.offset + size));
+            Ok(&alloc.bytes[ptr.offset..ptr.offset + size])
+        }
+
+        fn get_bytes_mut(&mut self, ptr: &Pointer, size: usize) -> EvalResult<&mut [u8]> {
+            let alloc = try!(self.get_mut(ptr.alloc_id));
+            try!(alloc.check_bytes(ptr.offset, ptr.offset + size));
+            Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
+        }
+
         pub fn copy(&mut self, src: &Pointer, dest: &Pointer, size: usize) -> EvalResult<()> {
-            let src_bytes = try!(self.get_mut(src.alloc_id))
-                .bytes[src.offset..src.offset + size].as_mut_ptr();
-            let dest_bytes = try!(self.get_mut(dest.alloc_id))
-                .bytes[dest.offset..dest.offset + size].as_mut_ptr();
+            let src_bytes = try!(self.get_bytes_mut(src, size)).as_mut_ptr();
+            let dest_bytes = try!(self.get_bytes_mut(dest, size)).as_mut_ptr();
 
             // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
             // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -118,6 +128,15 @@ mod memory {
                 }
             }
 
+            Ok(())
+        }
+    }
+
+    impl Allocation {
+        fn check_bytes(&self, start: usize, end: usize) -> EvalResult<()> {
+            if start >= self.bytes.len() || end > self.bytes.len() {
+                return Err(EvalError::PointerOutOfBounds);
+            }
             Ok(())
         }
     }
@@ -161,19 +180,21 @@ use self::memory::{Pointer, Repr, Allocation};
 
 #[derive(Clone, Debug)]
 pub enum EvalError {
-    DanglingPointerDeref
+    DanglingPointerDeref,
+    PointerOutOfBounds,
 }
 
 pub type EvalResult<T> = Result<T, EvalError>;
 
 impl Error for EvalError {
     fn description(&self) -> &str {
-        "error during MIR evaluation"
+        match *self {
+            EvalError::DanglingPointerDeref => "dangling pointer was dereferenced",
+            EvalError::PointerOutOfBounds => "pointer offset outside bounds of allocation",
+        }
     }
 
-    fn cause(&self) -> Option<&Error> {
-        None
-    }
+    fn cause(&self) -> Option<&Error> { None }
 }
 
 impl fmt::Display for EvalError {
