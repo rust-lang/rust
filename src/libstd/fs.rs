@@ -1982,9 +1982,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(windows)] // only tricky on Windows
     fn recursive_rmdir_tricky() {
-        use os::windows::fs::OpenOptionsExt;
         let tmpdir = tmpdir();
         let dir = tmpdir.join("dir");
         check!(fs::create_dir(&dir));
@@ -1993,15 +1991,20 @@ mod tests {
         check!(File::create(fullpath.join("morse .. .")));
         check!(File::create(fullpath.join("con")));
         // read-only file
-        {
-            let mut opts = fs::OpenOptions::new();
-            opts.write(true);
-            opts.create(true);
-            opts.attributes(0x1); // FILE_ATTRIBUTE_READONLY
-            let _ = check!(opts.open(dir.join("readonly")));
-        }
+        let readonly = dir.join("readonly");
+        check!(File::create(&readonly));
+        let mut perms = check!(readonly.metadata()).permissions();
+        perms.set_readonly(true);
+        check!(fs::set_permissions(&readonly, perms));
         // hardlink outside this directory should not lose its read-only flag
-        check!(fs::hard_link(dir.join("readonly"), tmpdir.join("canary_ro")));
+        check!(fs::hard_link(&readonly, tmpdir.join("canary_ro")));
+        // read-only dir
+        let readonly_dir = dir.join("readonly_dir");
+        check!(fs::create_dir(&readonly_dir));
+        check!(File::create(readonly_dir.join("file")));
+        let mut perms = check!(readonly_dir.metadata()).permissions();
+        perms.set_readonly(true);
+        check!(fs::set_permissions(&readonly_dir, perms));
         // open file
         let mut opts = fs::OpenOptions::new();
         let mut file_open = check!(opts.write(true).create(true)

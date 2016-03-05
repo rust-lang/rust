@@ -82,6 +82,8 @@ pub const TRUE: BOOL = 1;
 pub const FALSE: BOOL = 0;
 
 pub const FILE_ATTRIBUTE_READONLY: DWORD = 0x1;
+#[cfg(test)]
+pub const FILE_ATTRIBUTE_SYSTEM: DWORD = 0x4;
 pub const FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x10;
 pub const FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x400;
 
@@ -382,11 +384,6 @@ pub struct FILE_RENAME_INFO {
     pub RootDirectory: HANDLE, // NULL, or obtained with NtOpenDirectoryObject
     pub FileNameLength: DWORD,
     pub FileName: [WCHAR; 0],
-}
-
-#[repr(C)]
-pub struct FILE_DISPOSITION_INFO {
-    pub DeleteFile: BOOL, // for true use -1, not TRUE
 }
 
 #[repr(C)]
