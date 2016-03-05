@@ -323,7 +323,7 @@ Section: Iterators
 /// Created with the method [`chars()`].
 ///
 /// [`chars()`]: ../../std/primitive.str.html#method.chars
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
@@ -468,7 +468,7 @@ impl<'a> Chars<'a> {
 }
 
 /// Iterator for a string's characters and their byte offsets.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
     front_offset: usize,
@@ -533,7 +533,7 @@ impl<'a> CharIndices<'a> {
 ///
 /// [`bytes()`]: ../../std/primitive.str.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -663,6 +663,17 @@ macro_rules! generate_pattern_iterators {
         pub struct $forward_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
 
         $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> fmt::Debug for $forward_iterator<'a, P>
+            where P::Searcher: fmt::Debug
+        {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_tuple(stringify!($forward_iterator))
+                    .field(&self.0)
+                    .finish()
+            }
+        }
+
+        $(#[$common_stability_attribute])*
         impl<'a, P: Pattern<'a>> Iterator for $forward_iterator<'a, P> {
             type Item = $iterty;
 
@@ -684,6 +695,17 @@ macro_rules! generate_pattern_iterators {
         $(#[$reverse_iterator_attribute])*
         $(#[$common_stability_attribute])*
         pub struct $reverse_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
+
+        $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> fmt::Debug for $reverse_iterator<'a, P>
+            where P::Searcher: fmt::Debug
+        {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_tuple(stringify!($reverse_iterator))
+                    .field(&self.0)
+                    .finish()
+            }
+        }
 
         $(#[$common_stability_attribute])*
         impl<'a, P: Pattern<'a>> Iterator for $reverse_iterator<'a, P>
@@ -746,12 +768,25 @@ derive_pattern_clone!{
     clone SplitInternal
     with |s| SplitInternal { matcher: s.matcher.clone(), ..*s }
 }
+
 struct SplitInternal<'a, P: Pattern<'a>> {
     start: usize,
     end: usize,
     matcher: P::Searcher,
     allow_trailing_empty: bool,
     finished: bool,
+}
+
+impl<'a, P: Pattern<'a>> fmt::Debug for SplitInternal<'a, P> where P::Searcher: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SplitInternal")
+            .field("start", &self.start)
+            .field("end", &self.end)
+            .field("matcher", &self.matcher)
+            .field("allow_trailing_empty", &self.allow_trailing_empty)
+            .field("finished", &self.finished)
+            .finish()
+    }
 }
 
 impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
@@ -852,10 +887,20 @@ derive_pattern_clone!{
     clone SplitNInternal
     with |s| SplitNInternal { iter: s.iter.clone(), ..*s }
 }
+
 struct SplitNInternal<'a, P: Pattern<'a>> {
     iter: SplitInternal<'a, P>,
     /// The number of splits remaining
     count: usize,
+}
+
+impl<'a, P: Pattern<'a>> fmt::Debug for SplitNInternal<'a, P> where P::Searcher: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SplitNInternal")
+            .field("iter", &self.iter)
+            .field("count", &self.count)
+            .finish()
+    }
 }
 
 impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
@@ -902,7 +947,16 @@ derive_pattern_clone!{
     clone MatchIndicesInternal
     with |s| MatchIndicesInternal(s.0.clone())
 }
+
 struct MatchIndicesInternal<'a, P: Pattern<'a>>(P::Searcher);
+
+impl<'a, P: Pattern<'a>> fmt::Debug for MatchIndicesInternal<'a, P> where P::Searcher: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("MatchIndicesInternal")
+            .field(&self.0)
+            .finish()
+    }
+}
 
 impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     #[inline]
@@ -944,7 +998,16 @@ derive_pattern_clone!{
     clone MatchesInternal
     with |s| MatchesInternal(s.0.clone())
 }
+
 struct MatchesInternal<'a, P: Pattern<'a>>(P::Searcher);
+
+impl<'a, P: Pattern<'a>> fmt::Debug for MatchesInternal<'a, P> where P::Searcher: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("MatchesInternal")
+            .field(&self.0)
+            .finish()
+    }
+}
 
 impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
     #[inline]
@@ -988,7 +1051,7 @@ generate_pattern_iterators! {
 ///
 /// [`lines()`]: ../../std/primitive.str.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1019,7 +1082,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 /// [`lines_any()`]: ../../std/primitive.str.html#method.lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[allow(deprecated)]
 pub struct LinesAny<'a>(Lines<'a>);
 
@@ -1242,7 +1305,7 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 /// Struct that contains a `char` and the index of the first byte of
 /// the next `char` in a string.  This can be used as a data structure
 /// for iterating over the UTF-8 bytes of a string.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[unstable(feature = "str_char",
            reason = "existence of this struct is uncertain as it is frequently \
                      able to be replaced with char.len_utf8() and/or \
