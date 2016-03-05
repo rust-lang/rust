@@ -98,14 +98,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
         where T: ToNameBinding<'b>
     {
-        let _ = parent.try_define_child(name, ns, self.new_name_binding(def.to_name_binding()));
+        let _ = parent.try_define_child(name, ns, def.to_name_binding());
     }
 
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
-        let binding = self.new_name_binding(def.to_name_binding());
-        let old_binding = match parent.try_define_child(name, ns, binding) {
+        let binding = def.to_name_binding();
+        let old_binding = match parent.try_define_child(name, ns, binding.clone()) {
             Ok(()) => return,
             Err(old_binding) => old_binding,
         };
@@ -207,7 +207,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
                         }
 
-                        let subclass = SingleImport(binding, source_name);
+                        let subclass = ImportDirectiveSubclass::single(binding, source_name);
                         self.build_import_directive(parent,
                                                     module_path,
                                                     subclass,
@@ -258,9 +258,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                     (module_path.to_vec(), name, rename)
                                 }
                             };
+                            let subclass = ImportDirectiveSubclass::single(rename, name);
                             self.build_import_directive(parent,
                                                         module_path,
-                                                        SingleImport(rename, name),
+                                                        subclass,
                                                         source_item.span,
                                                         source_item.node.id(),
                                                         is_public,
@@ -293,14 +294,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     let def = Def::Mod(def_id);
                     let module = self.new_extern_crate_module(parent_link, def, is_public, item.id);
                     self.define(parent, name, TypeNS, (module, sp));
-
-                    if is_public {
-                        let export = Export { name: name, def_id: def_id };
-                        if let Some(def_id) = parent.def_id() {
-                            let node_id = self.resolver.ast_map.as_local_node_id(def_id).unwrap();
-                            self.export_map.entry(node_id).or_insert(Vec::new()).push(export);
-                        }
-                    }
 
                     self.build_reduced_graph_for_external_crate(module);
                 }
@@ -683,33 +676,25 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                               id: NodeId,
                               is_public: bool,
                               shadowable: Shadowable) {
-        module_.unresolved_imports
-               .borrow_mut()
-               .push(ImportDirective::new(module_path, subclass, span, id, is_public, shadowable));
-        self.unresolved_imports += 1;
-
-        if is_public {
-            module_.inc_pub_count();
-        }
-
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
 
         match subclass {
-            SingleImport(target, _) => {
+            SingleImport { target, .. } => {
                 module_.increment_outstanding_references_for(target, ValueNS);
                 module_.increment_outstanding_references_for(target, TypeNS);
             }
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the
                 // module's exports ahead of time.
-
-                module_.inc_glob_count();
-                if is_public {
-                    module_.inc_pub_glob_count();
-                }
+                module_.inc_glob_count(is_public)
             }
         }
+
+        let directive =
+            ImportDirective::new(module_path, subclass, span, id, is_public, shadowable);
+        module_.add_import_directive(directive);
+        self.unresolved_imports += 1;
     }
 }
 
