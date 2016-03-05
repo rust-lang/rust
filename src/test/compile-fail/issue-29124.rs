@@ -22,10 +22,10 @@ fn func() -> ret {
 }
 
 fn main() {
-    obj::func.x(); 
+    obj::func.x();
     //~^ ERROR no method named `x` found for type `fn() -> ret {obj::func}` in the current scope
     //~^^ NOTE obj::func is a function, perhaps you wish to call it
-    func.x(); 
+    func.x();
     //~^ ERROR no method named `x` found for type `fn() -> ret {func}` in the current scope
     //~^^ NOTE func is a function, perhaps you wish to call it
 }
