@@ -394,7 +394,7 @@ fn search_hashed<K, V, M, F>(table: M,
         }
 
         probe = full.next();
-        assert!(probe.index() as isize != ib + size + 1);
+        debug_assert!(probe.index() as isize != ib + size + 1);
     }
 }
 
@@ -447,7 +447,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
 
         loop {
             let probe = bucket.next();
-            assert!(probe.index() != idx_end);
+            debug_assert!(probe.index() != idx_end);
 
             let full_bucket = match probe.peek() {
                 Empty(bucket) => {
