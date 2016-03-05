@@ -220,6 +220,28 @@ impl<K, V, M> Bucket<K, V, M> {
     }
 }
 
+impl<K, V, M> Deref for FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> {
+    type Target = RawTable<K, V>;
+    fn deref(&self) -> &RawTable<K, V> {
+        &self.table
+    }
+}
+
+impl<K, V, M> DerefMut for FullBucket<K, V, M> where M: DerefMut<Target=RawTable<K, V>> {
+    fn deref_mut(&mut self) -> &mut RawTable<K, V> {
+        &mut self.table
+    }
+}
+
+
+/// `Put` is implemented for types which provide access to a table and cannot be invalidated
+///  by filling a bucket. A similar implementation for `Take` is possible.
+pub trait Put {}
+impl<K, V> Put for RawTable<K, V> {}
+impl<'t, K, V> Put for &'t mut RawTable<K, V> {}
+impl<K, V, M: Put> Put for Bucket<K, V, M> {}
+impl<K, V, M: Put> Put for FullBucket<K, V, M> {}
+
 impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
     pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as usize)
@@ -320,7 +342,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> EmptyBucket<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> EmptyBucket<K, V, M> {
+impl<K, V, M> EmptyBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefMut + Put {
     /// Puts given key and value pair, along with the key's hash,
     /// into this bucket in the hashtable. Note how `self` is 'moved' into
     /// this function, because this slot will no longer be empty when
@@ -359,6 +381,16 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
         }
     }
 
+    /// Duplicates the current position. This can be useful for operations
+    /// on two or more buckets.
+    pub fn stash(self) -> FullBucket<K, V, Self> {
+        FullBucket {
+            raw: self.raw,
+            idx: self.idx,
+            table: self,
+        }
+    }
+
     /// Get the distance between this bucket and the 'ideal' location
     /// as determined by the key's hash stored in it.
     ///
@@ -389,12 +421,14 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
+// We don't need a `Take` trait currently. This is why a mutable reference
+// to the table is required.
+impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
     /// Removes this bucket's key and value from the hashtable.
     ///
     /// This works similarly to `put`, building an `EmptyBucket` out of the
     /// taken bucket.
-    pub fn take(mut self) -> (EmptyBucket<K, V, M>, K, V) {
+    pub fn take(mut self) -> (EmptyBucket<K, V, &'t mut RawTable<K, V>>, K, V) {
         self.table.size -= 1;
 
         unsafe {
@@ -410,7 +444,9 @@ impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
             )
         }
     }
+}
 
+impl<K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefMut {
     pub fn replace(&mut self, h: SafeHash, k: K, v: V) -> (SafeHash, K, V) {
         unsafe {
             let old_hash = ptr::replace(self.raw.hash as *mut SafeHash, h);
@@ -451,16 +487,6 @@ impl<'t, K, V, M: Deref<Target=RawTable<K, V>> + DerefMut + 't> FullBucket<K, V,
         unsafe {
             (&mut *self.raw.key,
              &mut *self.raw.val)
-        }
-    }
-}
-
-impl<K, V, M> BucketState<K, V, M> {
-    // For convenience.
-    pub fn expect_full(self) -> FullBucket<K, V, M> {
-        match self {
-            Full(full) => full,
-            Empty(..) => panic!("Expected full bucket")
         }
     }
 }
