@@ -134,7 +134,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     if let Ok (expr_string) = cx.sess.codemap().span_to_snippet(expr.span) {
                         err.fileline_note(
                             expr.span,
-                            &format!("{} is a function, perhaps you wish to call it?",
+                            &format!("{} is a function, perhaps you wish to call it",
                                      expr_string));
                         err.span_suggestion(expr.span,
                                             "try calling the base function:",
