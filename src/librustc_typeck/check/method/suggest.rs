@@ -25,11 +25,13 @@ use middle::subst::Substs;
 use middle::traits::{Obligation, SelectionContext};
 use util::nodemap::{FnvHashSet};
 
+
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 use rustc_front::print::pprust;
 use rustc_front::hir;
+use rustc_front::hir::Expr_;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -130,16 +132,27 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             if is_fn_ty(&rcvr_ty, &fcx, span) {
+                macro_rules! report_function {
+                    ($span:expr, $name:expr) => {
+                        err.fileline_note(
+                            $span,
+                            &format!("{} is a function, perhaps you wish to call it",
+                                     $name));
+                    }
+                }
+
                 if let Some(expr) = rcvr_expr {
                     if let Ok (expr_string) = cx.sess.codemap().span_to_snippet(expr.span) {
-                        err.fileline_note(
-                            expr.span,
-                            &format!("{} is a function, perhaps you wish to call it",
-                                     expr_string));
+                        report_function!(expr.span, expr_string);
                         err.span_suggestion(expr.span,
                                             "try calling the base function:",
                                             format!("{}()",
                                                     expr_string));
+                    }
+                    else if let Expr_::ExprPath(_, path) = expr.node.clone() {
+                        if let Some(segment) = path.segments.last() {
+                            report_function!(expr.span, segment.identifier.name);
+                        }
                     }
                 }
             }
