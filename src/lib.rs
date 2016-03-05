@@ -6,3 +6,4 @@ extern crate rustc_mir;
 extern crate syntax;
 
 pub mod interpreter;
+mod memory;
