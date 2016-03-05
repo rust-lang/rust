@@ -21,7 +21,7 @@ use path::{Path, PathBuf};
 use ptr;
 use sync::Arc;
 use sys::fd::FileDesc;
-use sys::time::SystemTime;
+use sys::time::{self, SystemTime};
 use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 
@@ -498,6 +498,65 @@ impl File {
         Ok(n as u64)
     }
 
+    pub fn set_times(&self,
+                     accessed: SystemTime,
+                     modified: SystemTime,
+                     created: Option<SystemTime>) -> io::Result<()> {
+        if let Some(birthtime) = created {
+            // On some (and maybe all) versions of BSD the birth time can be set
+            // thanks to the guarantee that the birth time is always equal to or
+            // earlier then the last modified time.
+            // So the birth time can be set by setting the times twice:
+            // once with times[1] set to the birth time, and then with times[1]
+            // set to the modified time.
+            try!(self.set_times_inner(accessed, birthtime));
+        }
+        self.set_times_inner(accessed, modified)
+    }
+
+    #[cfg(any(target_os = "linux",
+              target_os = "openbsd",
+              target_os = "netbsd",
+              target_os = "bitrig"))]
+    fn set_times_inner(&self, accessed: SystemTime, modified: SystemTime)
+                           -> io::Result<()> {
+        let atime = accessed.sub_time(&time::UNIX_EPOCH).unwrap();
+        let mtime = modified.sub_time(&time::UNIX_EPOCH).unwrap();
+        let times = [
+            libc::timespec {
+                tv_sec: atime.as_secs() as libc::time_t,
+                tv_nsec: atime.subsec_nanos() as libc::c_long,
+            },
+            libc::timespec {
+                tv_sec: mtime.as_secs() as libc::time_t,
+                tv_nsec: mtime.subsec_nanos() as libc::c_long,
+            }];
+        try!(cvt(unsafe { libc::futimens(self.0.raw(), times.as_ptr()) }));
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "linux",
+                  target_os = "openbsd",
+                  target_os = "netbsd",
+                  target_os = "bitrig")))]
+    // for all os'es that do not yet support the more accurate `futimens`
+    fn set_times_inner(&self, accessed: SystemTime, modified: SystemTime)
+                           -> io::Result<()> {
+        let atime = accessed.sub_time(&time::UNIX_EPOCH).unwrap();
+        let mtime = modified.sub_time(&time::UNIX_EPOCH).unwrap();
+        let times = [
+            libc::timeval {
+                tv_sec: atime.as_secs() as libc::time_t,
+                tv_usec: (atime.subsec_nanos() / 1000) as libc::suseconds_t,
+            },
+            libc::timeval {
+                tv_sec: mtime.as_secs() as libc::time_t,
+                tv_usec: (mtime.subsec_nanos() / 1000)  as libc::suseconds_t,
+            }];
+        try!(cvt(unsafe { libc::futimes(self.0.raw(), times.as_ptr()) }));
+        Ok(())
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         self.0.duplicate().map(File)
     }
@@ -732,17 +791,126 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use fs::{File, set_permissions};
-    if !from.is_file() {
+    use fs::OpenOptions;
+    let mut from_opts = OpenOptions::new();
+    let mut reader = try!(from_opts.read(true).open(&from));
+    let metadata = try!(reader.metadata());
+    let attr = metadata.as_inner();
+    if attr.file_type().is_file() == false {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))
     }
 
-    let mut reader = try!(File::open(from));
-    let mut writer = try!(File::create(to));
-    let perm = try!(reader.metadata()).permissions();
+    let mut to_opts = OpenOptions::new();
+    let mut writer = try!(to_opts.write(true)
+                                 .create(true)
+                                 .truncate(true)
+                                 .mode(attr.perm().mode())
+                                 .open(&to));
 
     let ret = try!(io::copy(&mut reader, &mut writer));
-    try!(set_permissions(to, perm));
+    try!(writer.as_inner().set_times(try!(attr.accessed()),
+                                     try!(attr.modified()),
+                                     attr.created().ok()
+    ));
     Ok(ret)
+}
+
+#[cfg(test)]
+mod tests {
+    use prelude::v1::*;
+    use env;
+    use fs;
+    use path::PathBuf;
+    use rand::{self, Rng};
+    use time::Duration;
+
+    macro_rules! check { ($e:expr) => (
+        match $e {
+            Ok(t) => t,
+            Err(e) => panic!("{} failed with: {}", stringify!($e), e),
+        }
+    ) }
+
+    macro_rules! error { ($e:expr, $s:expr) => (
+        match $e {
+            Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
+            Err(ref err) => assert!(err.to_string().contains($s),
+                                    format!("`{}` did not contain `{}`", err, $s))
+        }
+    ) }
+
+    // from std::time, but with a resolution of 1 second.
+    macro_rules! assert_almost_eq {
+        ($a:expr, $b:expr) => ({
+            let (a, b) = ($a, $b);
+            if a != b {
+                let (a, b) = if a > b {(a, b)} else {(b, a)};
+                assert!(a.sub_duration(&Duration::new(1, 0)) <= b);
+            }
+        })
+    }
+
+    pub struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn join(&self, path: &str) -> PathBuf {
+            let TempDir(ref p) = *self;
+            p.join(path)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            // Gee, seeing how we're testing the fs module I sure hope that we
+            // at least implement this correctly!
+            let TempDir(ref p) = *self;
+            check!(fs::remove_dir_all(p));
+        }
+    }
+
+    pub fn tmpdir() -> TempDir {
+        let p = env::temp_dir();
+        let mut r = rand::thread_rng();
+        let ret = p.join(&format!("rust-{}", r.next_u32()));
+        check!(fs::create_dir(&ret));
+        TempDir(ret)
+    }
+
+    #[test]
+    fn copy_preserves_times() {
+        // This test is in this module and a bit clumsy because `set_times` only
+        // works with `sys::SystemTime`.
+        // note: we can't check the access time, as it may be updated as soon as
+        // we try to check it
+        let tmpdir = tmpdir();
+        let orig = tmpdir.join("file");
+        let copy = tmpdir.join("copy");
+
+        let mtime = {
+            // create a file with times set to up to two minutes ago
+            // (otherwise the time of the copy may be almost the same)
+            let mut opts = super::OpenOptions::new();
+            opts.create(true);
+            opts.write(true);
+            let file = check!(super::File::open(&orig, &opts));
+            let metadata = check!(file.file_attr());
+            let accessed = check!(metadata.accessed())
+                .sub_duration(&Duration::new(30, 0));
+            let modified = check!(metadata.modified())
+                .sub_duration(&Duration::new(60, 0));
+            let created = metadata.created().ok()
+                .map(|t| t.sub_duration(&Duration::new(120, 0)));
+            check!(file.set_times(accessed, modified, created));
+            modified
+        };
+
+        check!(fs::copy(&orig, &copy));
+
+        let mut opts = super::OpenOptions::new();
+        opts.read(true);
+        let file = check!(super::File::open(&orig, &opts));
+        let metadata = check!(file.file_attr());
+        assert_almost_eq!(check!(metadata.modified()), mtime);
+    }
 }
