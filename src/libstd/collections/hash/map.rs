@@ -421,24 +421,30 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> (K, V) {
 /// to recalculate it.
 ///
 /// `hash`, `k`, and `v` are the elements to "robin hood" into the hashtable.
-fn robin_hood<'a, K: 'a, V: 'a>(mut bucket: FullBucketMut<'a, K, V>,
+fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                         mut ib: usize,
                         mut hash: SafeHash,
-                        mut k: K,
-                        mut v: V)
+                        mut key: K,
+                        mut val: V)
                         -> &'a mut V {
     let starting_index = bucket.index();
     let size = {
         let table = bucket.table(); // FIXME "lifetime too short".
         table.size()
     };
+    // Save the *starting point*.
+    let mut bucket = bucket.stash();
     // There can be at most `size - dib` buckets to displace, because
     // in the worst case, there are `size` elements and we already are
-    // `distance` buckets away from the initial one.
+    // `displacement` buckets away from the initial one.
     let idx_end = starting_index + size - bucket.displacement();
 
     loop {
-        let (old_hash, old_key, old_val) = bucket.replace(hash, k, v);
+        let (old_hash, old_key, old_val) = bucket.replace(hash, key, val);
+        hash = old_hash;
+        key = old_key;
+        val = old_val;
+
         loop {
             let probe = bucket.next();
             assert!(probe.index() != idx_end);
@@ -446,14 +452,10 @@ fn robin_hood<'a, K: 'a, V: 'a>(mut bucket: FullBucketMut<'a, K, V>,
             let full_bucket = match probe.peek() {
                 Empty(bucket) => {
                     // Found a hole!
-                    let b = bucket.put(old_hash, old_key, old_val);
+                    let bucket = bucket.put(hash, key, val);
                     // Now that it's stolen, just read the value's pointer
-                    // right out of the table!
-                    return Bucket::at_index(b.into_table(), starting_index)
-                               .peek()
-                               .expect_full()
-                               .into_mut_refs()
-                               .1;
+                    // right out of the table! Go back to the *starting point*.
+                    return bucket.into_table().into_mut_refs().1;
                 },
                 Full(bucket) => bucket
             };
@@ -465,9 +467,6 @@ fn robin_hood<'a, K: 'a, V: 'a>(mut bucket: FullBucketMut<'a, K, V>,
             // Robin hood! Steal the spot.
             if ib < probe_ib {
                 ib = probe_ib;
-                hash = old_hash;
-                k = old_key;
-                v = old_val;
                 break;
             }
         }
