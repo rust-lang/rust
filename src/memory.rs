@@ -1,5 +1,4 @@
-use byteorder;
-use byteorder::ByteOrder;
+use byteorder::{self, ByteOrder};
 use rustc::middle::ty;
 use std::collections::HashMap;
 use std::mem;

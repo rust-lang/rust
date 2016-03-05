@@ -1,14 +1,13 @@
 // TODO(tsion): Remove this.
 #![allow(unused_imports, dead_code, unused_variables)]
 
-use byteorder;
-use byteorder::ByteOrder;
+use byteorder::{self, ByteOrder};
 use rustc::middle::const_eval;
-use rustc::middle::def_id;
 use rustc::middle::cstore::CrateStore;
+use rustc::middle::def_id;
 use rustc::middle::ty::{self, TyCtxt};
-use rustc::mir::repr::{self as mir, Mir};
 use rustc::mir::mir_map::MirMap;
+use rustc::mir::repr::{self as mir, Mir};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
