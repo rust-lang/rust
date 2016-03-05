@@ -639,10 +639,17 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let filetype = try!(lstat(path)).file_type();
-    if filetype.is_symlink() {
+    let metadata = try!(lstat(path));
+    if metadata.file_type().is_symlink() {
         unlink(path)
     } else {
+        let mut mode = metadata.perm();
+        if mode.readonly() {
+            // we can only remove the contents of a directory if it is not
+            // readonly
+            mode.set_readonly(false);
+            try!(set_perm(&path, mode));
+        }
         remove_dir_all_recursive(path)
     }
 }
@@ -651,6 +658,13 @@ fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
     for child in try!(readdir(path)) {
         let child = try!(child);
         if try!(child.file_type()).is_dir() {
+            let mut mode = try!(child.metadata()).perm();
+            if mode.readonly() {
+                // we can only remove the contents of a directory if it is not
+                // readonly
+                mode.set_readonly(false);
+                try!(set_perm(&child.path(), mode));
+            }
             try!(remove_dir_all_recursive(&child.path()));
         } else {
             try!(unlink(&child.path()));
