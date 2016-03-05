@@ -251,8 +251,7 @@ impl<K: UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
     fn reverse(_: &mut Vec<VarValue<K>>, _: ()) {}
 }
 
-///////////////////////////////////////////////////////////////////////////
-// Base union-find algorithm, where we are just making sets
+// # Base union-find algorithm, where we are just making sets
 
 impl<'tcx, K: UnifyKey> UnificationTable<K>
     where K::Value: Combine
@@ -281,7 +280,8 @@ impl<'tcx, K: UnifyKey> UnificationTable<K>
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
+// # Non-subtyping unification
+//
 // Code to handle keys which carry a value, like ints,
 // floats---anything that doesn't have a subtyping relationship we
 // need to worry about.
