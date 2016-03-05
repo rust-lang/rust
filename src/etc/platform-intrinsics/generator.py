@@ -691,7 +691,7 @@ def parse_args():
     parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
                         help = 'File to output to (default stdout).')
     parser.add_argument('-i', '--info', type=argparse.FileType('r'),
-                        help = 'File containing platform specific information to merge into'
+                        help = 'File containing platform specific information to merge into '
                                 'the input files\' header.')
     parser.add_argument('in_', metavar="FILE", type=argparse.FileType('r'), nargs='+',
                         help = 'JSON files to load')
@@ -735,12 +735,12 @@ class CompilerDefs(object):
 
 use {{Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void}};
 use IntrinsicDef::Named;
-use rustc::middle::ty;
+use rustc::middle::ty::TyCtxt;
 
 // The default inlining settings trigger a pathological behaviour in
 // LLVM, which causes makes compilation very slow. See #28273.
 #[inline(never)]
-pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {{
+pub fn find<'tcx>(_tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {{
     if !name.starts_with("{0}") {{ return None }}
     Some(match &name["{0}".len()..] {{'''.format(platform.intrinsic_prefix())
 
