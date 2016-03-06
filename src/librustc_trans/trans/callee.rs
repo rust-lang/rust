@@ -210,6 +210,23 @@ impl<'tcx> Callee<'tcx> {
         }
     }
 
+    /// Get the abi::FnType for a direct call. Mainly deals with the fact
+    /// that a Virtual call doesn't take the vtable, like its shim does.
+    /// The extra argument types are for variadic (extern "C") functions.
+    pub fn direct_fn_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
+                              extra_args: &[Ty<'tcx>]) -> FnType {
+        let abi = self.ty.fn_abi();
+        let sig = ccx.tcx().erase_late_bound_regions(self.ty.fn_sig());
+        let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+        let mut fn_ty = FnType::unadjusted(ccx, abi, &sig, extra_args);
+        if let Virtual(_) = self.data {
+            // Don't pass the vtable, it's not an argument of the virtual fn.
+            fn_ty.args[1].ignore();
+        }
+        fn_ty.adjust_for_abi(ccx, abi, &sig);
+        fn_ty
+    }
+
     /// This behemoth of a function translates function calls. Unfortunately, in
     /// order to generate more efficient LLVM output at -O0, it has quite a complex
     /// signature (refactoring this into two functions seems like a good idea).
