@@ -270,7 +270,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let val = if datum.kind.is_by_ref() {
                         load_ty(bcx, datum.val, datum.ty)
                     } else {
-                        from_arg_ty(bcx, datum.val, datum.ty)
+                        from_immediate(bcx, datum.val)
                     };
 
                     let cast_val = BitCast(bcx, val, llret_ty);
@@ -509,14 +509,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "init_dropped") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            if !return_type_is_void(ccx, tp_ty) {
+            if !type_is_zero_size(ccx, tp_ty) {
                 drop_done_fill_mem(bcx, llresult, tp_ty);
             }
             C_nil(ccx)
         }
         (_, "init") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            if !return_type_is_void(ccx, tp_ty) {
+            if !type_is_zero_size(ccx, tp_ty) {
                 // Just zero out the stack slot. (See comment on base::memzero for explanation)
                 init_zero_mem(bcx, llresult, tp_ty);
             }
@@ -603,21 +603,24 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "volatile_load") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+            let mut ptr = llargs[0];
+            if let Some(ty) = fn_ty.ret.cast {
+                ptr = PointerCast(bcx, ptr, ty.ptr_to());
+            }
             let load = VolatileLoad(bcx, ptr);
             unsafe {
                 llvm::LLVMSetAlignment(load, type_of::align_of(ccx, tp_ty));
             }
-            to_arg_ty(bcx, load, tp_ty)
+            to_immediate(bcx, load, tp_ty)
         },
         (_, "volatile_store") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
             let val = if type_is_immediate(bcx.ccx(), tp_ty) {
-                from_arg_ty(bcx, llargs[1], tp_ty)
+                from_immediate(bcx, llargs[1])
             } else {
                 Load(bcx, llargs[1])
             };
+            let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
             let store = VolatileStore(bcx, val, ptr);
             unsafe {
                 llvm::LLVMSetAlignment(store, type_of::align_of(ccx, tp_ty));
@@ -684,7 +687,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 
         (_, "return_address") => {
-            if !fcx.caller_expects_out_pointer {
+            if !fcx.fn_ty.ret.is_indirect() {
                 span_err!(tcx.sess, call_info.span, E0510,
                           "invalid use of `return_address` intrinsic: function \
                            does not use out pointer");
@@ -746,19 +749,17 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
             match split[1] {
                 "cxchg" => {
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let cmp = from_arg_ty(bcx, llargs[1], tp_ty);
-                    let src = from_arg_ty(bcx, llargs[2], tp_ty);
+                    let cmp = from_immediate(bcx, llargs[1]);
+                    let src = from_immediate(bcx, llargs[2]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(src).ptr_to());
                     let res = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::False);
                     ExtractValue(bcx, res, 0)
                 }
 
                 "cxchgweak" => {
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let cmp = from_arg_ty(bcx, llargs[1], tp_ty);
-                    let src = from_arg_ty(bcx, llargs[2], tp_ty);
+                    let cmp = from_immediate(bcx, llargs[1]);
+                    let src = from_immediate(bcx, llargs[2]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(src).ptr_to());
                     let val = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::True);
                     let result = ExtractValue(bcx, val, 0);
                     let success = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
@@ -769,13 +770,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
                 "load" => {
                     let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    to_arg_ty(bcx, AtomicLoad(bcx, ptr, order), tp_ty)
+                    let mut ptr = llargs[0];
+                    if let Some(ty) = fn_ty.ret.cast {
+                        ptr = PointerCast(bcx, ptr, ty.ptr_to());
+                    }
+                    to_immediate(bcx, AtomicLoad(bcx, ptr, order), tp_ty)
                 }
                 "store" => {
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let val = from_arg_ty(bcx, llargs[1], tp_ty);
+                    let val = from_immediate(bcx, llargs[1]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
                     AtomicStore(bcx, val, ptr, order);
                     C_nil(ccx)
                 }
@@ -807,9 +810,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let val = from_arg_ty(bcx, llargs[1], tp_ty);
+                    let val = from_immediate(bcx, llargs[1]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
                     AtomicRMW(bcx, atom_op, ptr, val, order)
                 }
             }
@@ -1279,21 +1281,33 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // This is currently primarily used for the `try` intrinsic functions above.
 fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                     name: &str,
-                    ty: Ty<'tcx>,
+                    inputs: Vec<Ty<'tcx>>,
                     output: ty::FnOutput<'tcx>,
                     trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                     -> ValueRef {
     let ccx = fcx.ccx;
-    let llfn = declare::define_internal_fn(ccx, name, ty);
+    let sig = ty::FnSig {
+        inputs: inputs,
+        output: output,
+        variadic: false,
+    };
+    let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+
+    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::BareFnTy {
+        unsafety: hir::Unsafety::Unsafe,
+        abi: Abi::Rust,
+        sig: ty::Binder(sig)
+    });
+    let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
     let (fcx, block_arena);
     block_arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                      output, ccx.tcx().mk_substs(Substs::trans_empty()),
-                      None, &block_arena);
-    let bcx = init_function(&fcx, true, output);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, ast::DUMMY_NODE_ID,
+                               ccx.tcx().mk_substs(Substs::trans_empty()),
+                               None, &block_arena);
+    let bcx = fcx.init(true);
     trans(bcx);
     fcx.cleanup();
-    return llfn
+    llfn
 }
 
 // Helper function used to get a handle to the `__rust_try` function used to
@@ -1321,17 +1335,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         }),
     });
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
-    let try_fn_ty  = ty::BareFnTy {
-        unsafety: hir::Unsafety::Unsafe,
-        abi: Abi::Rust,
-        sig: ty::Binder(ty::FnSig {
-            inputs: vec![fn_ty, i8p, i8p],
-            output: output,
-            variadic: false,
-        }),
-    };
-    let rust_try = gen_fn(fcx, "__rust_try", tcx.mk_fn_ptr(try_fn_ty), output,
-                          trans);
+    let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
     ccx.rust_try_fn().set(Some(rust_try));
     return rust_try
 }
@@ -1399,16 +1403,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // going on here, all I can say is that there's a few tests cases in
         // LLVM's test suite which follow this pattern of instructions, so we
         // just do the same.
-        let filter_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
-            unsafety: hir::Unsafety::Unsafe,
-            abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: vec![],
-                output: output,
-                variadic: false,
-            }),
-        });
-        gen_fn(fcx, "__rustc_try_filter", filter_fn_ty, output, &mut |bcx| {
+        gen_fn(fcx, "__rustc_try_filter", vec![], output, &mut |bcx| {
             let ebp = Call(bcx, frameaddress, &[C_i32(ccx, 1)], dloc);
             let exn = InBoundsGEP(bcx, ebp, &[C_i32(ccx, -20)]);
             let exn = Load(bcx, BitCast(bcx, exn, Type::i8p(ccx).ptr_to()));
@@ -1418,16 +1413,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // Conveniently on x86_64 the EXCEPTION_POINTERS handle and base pointer
         // are passed in as arguments to the filter function, so we just pass
         // those along.
-        let filter_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
-            unsafety: hir::Unsafety::Unsafe,
-            abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: vec![i8p, i8p],
-                output: output,
-                variadic: false,
-            }),
-        });
-        gen_fn(fcx, "__rustc_try_filter", filter_fn_ty, output, &mut |bcx| {
+        gen_fn(fcx, "__rustc_try_filter", vec![i8p, i8p], output, &mut |bcx| {
             let exn = llvm::get_param(bcx.fcx.llfn, 0);
             let rbp = llvm::get_param(bcx.fcx.llfn, 1);
             do_trans(bcx, exn, rbp);

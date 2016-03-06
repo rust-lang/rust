@@ -10,11 +10,11 @@
 
 use arena::TypedArena;
 use back::link::{self, mangle_internal_name_by_path_and_seq};
-use llvm::{ValueRef, get_params};
+use llvm::{ValueRef, get_param, get_params};
 use middle::def_id::DefId;
 use middle::infer;
 use middle::traits::ProjectionMode;
-use trans::abi::Abi;
+use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -22,12 +22,12 @@ use trans::build::*;
 use trans::callee::{self, ArgVals, Callee};
 use trans::cleanup::{CleanupMethods, CustomScope, ScopeId};
 use trans::common::*;
-use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue};
+use trans::datum::{ByRef, Datum, lvalue_scratch_datum};
+use trans::datum::{rvalue_scratch_datum, Rvalue};
 use trans::debuginfo::{self, DebugLoc};
 use trans::declare;
 use trans::expr;
 use trans::monomorphize::{Instance};
-use trans::type_of::*;
 use trans::value::Value;
 use trans::Disr;
 use middle::ty::{self, Ty, TyCtxt};
@@ -38,28 +38,26 @@ use syntax::attr::{ThinAttributes, ThinAttributesExt};
 
 use rustc_front::hir;
 
+use libc::c_uint;
 
 fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         closure_def_id: DefId,
                                         arg_scope_id: ScopeId,
-                                        freevars: &[ty::Freevar])
-                                        -> Block<'blk, 'tcx>
-{
+                                        freevars: &[ty::Freevar]) {
     let _icx = push_ctxt("closure::load_closure_environment");
+    let kind = kind_for_closure(bcx.ccx(), closure_def_id);
+
+    let env_arg = &bcx.fcx.fn_ty.args[0];
+    let mut env_idx = bcx.fcx.fn_ty.ret.is_indirect() as usize;
 
     // Special case for small by-value selfs.
-    let closure_ty = node_id_type(bcx, bcx.fcx.id);
-    let self_type = get_self_type(bcx.tcx(), closure_def_id, closure_ty);
-    let kind = kind_for_closure(bcx.ccx(), closure_def_id);
-    let llenv = if kind == ty::ClosureKind::FnOnce &&
-            !arg_is_indirect(bcx.ccx(), self_type) {
-        let datum = rvalue_scratch_datum(bcx,
-                                         self_type,
-                                         "closure_env");
-        store_ty(bcx, bcx.fcx.llenv.unwrap(), datum.val, self_type);
-        datum.val
+    let llenv = if kind == ty::ClosureKind::FnOnce && !env_arg.is_indirect() {
+        let closure_ty = node_id_type(bcx, bcx.fcx.id);
+        let llenv = rvalue_scratch_datum(bcx, closure_ty, "closure_env").val;
+        env_arg.store_fn_arg(bcx, &mut env_idx, llenv);
+        llenv
     } else {
-        bcx.fcx.llenv.unwrap()
+        get_param(bcx.fcx.llfn, env_idx as c_uint)
     };
 
     // Store the pointer to closure data in an alloca for debug info because that's what the
@@ -105,8 +103,6 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 freevar.span);
         }
     }
-
-    bcx
 }
 
 pub enum ClosureEnv<'a> {
@@ -115,26 +111,19 @@ pub enum ClosureEnv<'a> {
 }
 
 impl<'a> ClosureEnv<'a> {
-    pub fn load<'blk,'tcx>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId)
-                           -> Block<'blk, 'tcx>
-    {
-        match self {
-            ClosureEnv::NotClosure => bcx,
-            ClosureEnv::Closure(def_id, freevars) => {
-                if freevars.is_empty() {
-                    bcx
-                } else {
-                    load_closure_environment(bcx, def_id, arg_scope, freevars)
-                }
+    pub fn load<'blk,'tcx>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId) {
+        if let ClosureEnv::Closure(def_id, freevars) = self {
+            if !freevars.is_empty() {
+                load_closure_environment(bcx, def_id, arg_scope, freevars);
             }
         }
     }
 }
 
-pub fn get_self_type<'tcx>(tcx: &TyCtxt<'tcx>,
-                           closure_id: DefId,
-                           fn_ty: Ty<'tcx>)
-                           -> Ty<'tcx> {
+fn get_self_type<'tcx>(tcx: &TyCtxt<'tcx>,
+                       closure_id: DefId,
+                       fn_ty: Ty<'tcx>)
+                       -> Ty<'tcx> {
     match tcx.closure_kind(closure_id) {
         ty::ClosureKind::Fn => {
             tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), fn_ty)
@@ -148,10 +137,10 @@ pub fn get_self_type<'tcx>(tcx: &TyCtxt<'tcx>,
 
 /// Returns the LLVM function declaration for a closure, creating it if
 /// necessary. If the ID does not correspond to a closure ID, returns None.
-pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                   closure_id: DefId,
-                                                   substs: &ty::ClosureSubsts<'tcx>)
-                                                   -> ValueRef {
+fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                               closure_id: DefId,
+                                               substs: &ty::ClosureSubsts<'tcx>)
+                                               -> ValueRef {
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
     let tcx = ccx.tcx();
@@ -246,6 +235,16 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let sig = tcx.erase_late_bound_regions(&function_type.sig);
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
 
+    let closure_type = tcx.mk_closure_from_closure_substs(closure_def_id,
+        Box::new(closure_substs.clone()));
+    let sig = ty::FnSig {
+        inputs: Some(get_self_type(tcx, closure_def_id, closure_type))
+                    .into_iter().chain(sig.inputs).collect(),
+        output: sig.output,
+        variadic: false
+    };
+    let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
+
     trans_closure(ccx,
                   decl,
                   body,
@@ -253,8 +252,8 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   param_substs,
                   id,
                   closure_expr_attrs.as_attr_slice(),
-                  sig.output,
-                  function_type.abi,
+                  fn_ty,
+                  Abi::RustCall,
                   ClosureEnv::Closure(closure_def_id, &freevars));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
@@ -373,17 +372,20 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
 
-    let ret_ty = tcx.erase_late_bound_regions(&sig.output());
-    let ret_ty = infer::normalize_associated_type(ccx.tcx(), &ret_ty);
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
     assert_eq!(abi, Abi::RustCall);
     sig.0.inputs[0] = closure_ty;
+
+    let sig = tcx.erase_late_bound_regions(&sig);
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
+
     let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
-        sig: sig
+        sig: ty::Binder(sig)
     });
 
     // Create the by-value helper.
@@ -392,36 +394,49 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx,
-                      lloncefn,
-                      ast::DUMMY_NODE_ID,
-                      false,
-                      ret_ty,
-                      substs.func_substs,
-                      None,
-                      &block_arena);
-    let mut bcx = init_function(&fcx, false, ret_ty);
+    fcx = FunctionContext::new(ccx, lloncefn, fn_ty, ast::DUMMY_NODE_ID,
+                               substs.func_substs, None, &block_arena);
+    let mut bcx = fcx.init(false);
 
-    let mut llargs = get_params(fcx.llfn);
 
     // the first argument (`self`) will be the (by value) closure env.
     let self_scope = fcx.push_custom_cleanup_scope();
     let self_scope_id = CustomScope(self_scope);
-    let rvalue_mode = datum::appropriate_rvalue_mode(ccx, closure_ty);
-    let self_idx = fcx.arg_offset();
-    let llself = llargs[self_idx];
-    let env_datum = Datum::new(llself, closure_ty, Rvalue::new(rvalue_mode));
-    let env_datum = unpack_datum!(bcx,
-                                  env_datum.to_lvalue_datum_in_scope(bcx, "self",
-                                                                     self_scope_id));
 
-    debug!("trans_fn_once_adapter_shim: env_datum={:?}",
-           Value(env_datum.val));
-    llargs[self_idx] = env_datum.val;
+    let mut llargs = get_params(fcx.llfn);
+    let mut self_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    let env_arg = &fcx.fn_ty.args[0];
+    let llenv = if env_arg.is_indirect() {
+        Datum::new(llargs[self_idx], closure_ty, Rvalue::new(ByRef))
+            .add_clean(&fcx, self_scope_id)
+    } else {
+        unpack_datum!(bcx, lvalue_scratch_datum(bcx, closure_ty, "self",
+                                                InitAlloca::Dropped,
+                                                self_scope_id, |bcx, llval| {
+            let mut llarg_idx = self_idx;
+            env_arg.store_fn_arg(bcx, &mut llarg_idx, llval);
+            bcx.fcx.schedule_lifetime_end(self_scope_id, llval);
+            bcx
+        })).val
+    };
+
+    debug!("trans_fn_once_adapter_shim: env={:?}", Value(llenv));
+    // Adjust llargs such that llargs[self_idx..] has the call arguments.
+    // For zero-sized closures that means sneaking in a new argument.
+    if env_arg.is_ignore() {
+        if self_idx > 0 {
+            self_idx -= 1;
+            llargs[self_idx] = llenv;
+        } else {
+            llargs.insert(0, llenv);
+        }
+    } else {
+        llargs[self_idx] = llenv;
+    }
 
     let dest =
         fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot")));
+            |_| expr::SaveIn(fcx.get_ret_slot(bcx, "ret_slot")));
 
     let callee = Callee {
         data: callee::Fn(llreffn),
@@ -431,7 +446,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
-    finish_fn(&fcx, bcx, ret_ty, DebugLoc::None);
+    fcx.finish(bcx, DebugLoc::None);
 
     lloncefn
 }

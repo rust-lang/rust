@@ -246,8 +246,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         debug_assert!(common::type_is_immediate(bcx.ccx(), cast_ty));
                         let r_t_in = CastTy::from_ty(operand.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                        let ll_t_in = type_of::arg_type_of(bcx.ccx(), operand.ty);
-                        let ll_t_out = type_of::arg_type_of(bcx.ccx(), cast_ty);
+                        let ll_t_in = type_of::immediate_type_of(bcx.ccx(), operand.ty);
+                        let ll_t_out = type_of::immediate_type_of(bcx.ccx(), cast_ty);
                         let (llval, ll_t_in, signed) = if let CastTy::Int(IntTy::CEnum) = r_t_in {
                             let repr = adt::represent_type(bcx.ccx(), operand.ty);
                             let llval = operand.immediate();
@@ -308,8 +308,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         OperandValue::Immediate(newval)
                     }
                     mir::CastKind::Misc => { // Casts from a fat-ptr.
-                        let ll_cast_ty = type_of::arg_type_of(bcx.ccx(), cast_ty);
-                        let ll_from_ty = type_of::arg_type_of(bcx.ccx(), operand.ty);
+                        let ll_cast_ty = type_of::immediate_type_of(bcx.ccx(), cast_ty);
+                        let ll_from_ty = type_of::immediate_type_of(bcx.ccx(), operand.ty);
                         if let OperandValue::FatPtr(data_ptr, meta_ptr) = operand.val {
                             if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                                 let ll_cft = ll_cast_ty.field_types();

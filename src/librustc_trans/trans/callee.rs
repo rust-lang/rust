@@ -255,15 +255,18 @@ impl<'tcx> Callee<'tcx> {
     /// Turn the callee into a function pointer.
     pub fn reify<'a>(self, ccx: &CrateContext<'a, 'tcx>)
                      -> Datum<'tcx, Rvalue> {
+        let fn_ptr_ty = match self.ty.sty {
+            ty::TyFnDef(_, _, f) => ccx.tcx().mk_ty(ty::TyFnPtr(f)),
+            _ => self.ty
+        };
         match self.data {
             Fn(llfn) => {
-                let fn_ptr_ty = match self.ty.sty {
-                    ty::TyFnDef(_, _, f) => ccx.tcx().mk_ty(ty::TyFnPtr(f)),
-                    _ => self.ty
-                };
                 immediate_rvalue(llfn, fn_ptr_ty)
             }
-            Virtual(idx) => meth::trans_object_shim(ccx, self.ty, idx),
+            Virtual(idx) => {
+                let llfn = meth::trans_object_shim(ccx, self.ty, idx);
+                immediate_rvalue(llfn, fn_ptr_ty)
+            }
             NamedTupleConstructor(_) => match self.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
                     return get_fn(ccx, def_id, substs);
@@ -313,6 +316,21 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         ty::ClosureKind::Fn | ty::ClosureKind::FnMut => true,
         ty::ClosureKind::FnOnce => false,
     };
+
+    let llfnpointer = match bare_fn_ty.sty {
+        ty::TyFnDef(def_id, substs, _) => {
+            // Function definitions have to be turned into a pointer.
+            let llfn = Callee::def(ccx, def_id, substs).reify(ccx).val;
+            if !is_by_ref {
+                // A by-value fn item is ignored, so the shim has
+                // the same signature as the original function.
+                return llfn;
+            }
+            Some(llfn)
+        }
+        _ => None
+    };
+
     let bare_fn_ty_maybe_ref = if is_by_ref {
         tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), bare_fn_ty)
     } else {
@@ -347,15 +365,17 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let sig = tcx.erase_late_bound_regions(sig);
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
+    let sig = ty::FnSig {
+        inputs: vec![bare_fn_ty_maybe_ref,
+                     tuple_input_ty],
+        output: sig.output,
+        variadic: false
+    };
+    let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
     let tuple_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
         abi: Abi::RustCall,
-        sig: ty::Binder(ty::FnSig {
-            inputs: vec![bare_fn_ty_maybe_ref,
-                         tuple_input_ty],
-            output: sig.output,
-            variadic: false
-        })
+        sig: ty::Binder(sig)
     });
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
@@ -368,37 +388,26 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx,
-                      llfn,
-                      ast::DUMMY_NODE_ID,
-                      false,
-                      sig.output,
-                      empty_substs,
-                      None,
-                      &block_arena);
-    let mut bcx = init_function(&fcx, false, sig.output);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, ast::DUMMY_NODE_ID,
+                               empty_substs, None, &block_arena);
+    let mut bcx = fcx.init(false);
 
     let llargs = get_params(fcx.llfn);
 
-    let self_idx = fcx.arg_offset();
-    let llfnpointer = match bare_fn_ty.sty {
-        ty::TyFnDef(def_id, substs, _) => {
-            // Function definitions have to be turned into a pointer.
-            Callee::def(ccx, def_id, substs).reify(ccx).val
-        }
-
+    let self_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    let llfnpointer = llfnpointer.unwrap_or_else(|| {
         // the first argument (`self`) will be ptr to the fn pointer
-        _ => if is_by_ref {
+        if is_by_ref {
             Load(bcx, llargs[self_idx])
         } else {
             llargs[self_idx]
         }
-    };
+    });
 
     assert!(!fcx.needs_ret_allocas);
 
     let dest = fcx.llretslotptr.get().map(|_|
-        expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot"))
+        expr::SaveIn(fcx.get_ret_slot(bcx, "ret_slot"))
     );
 
     let callee = Callee {
@@ -407,7 +416,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     };
     bcx = callee.call(bcx, DebugLoc::None, ArgVals(&llargs[(self_idx + 1)..]), dest).bcx;
 
-    finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
+    fcx.finish(bcx, DebugLoc::None);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 

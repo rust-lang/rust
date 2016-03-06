@@ -35,58 +35,6 @@ fn ensure_array_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn arg_is_indirect<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                 arg_ty: Ty<'tcx>) -> bool {
-    !type_is_immediate(ccx, arg_ty) && !type_is_fat_ptr(ccx.tcx(), arg_ty)
-}
-
-pub fn return_uses_outptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    ty: Ty<'tcx>) -> bool {
-    arg_is_indirect(ccx, ty)
-}
-
-pub fn type_of_explicit_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                      arg_ty: Ty<'tcx>) -> Type {
-    let llty = arg_type_of(ccx, arg_ty);
-    if arg_is_indirect(ccx, arg_ty) {
-        llty.ptr_to()
-    } else {
-        llty
-    }
-}
-
-/// Yields the types of the "real" arguments for a function using the `RustCall`
-/// ABI by untupling the arguments of the function.
-pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                   inputs: &[Ty<'tcx>])
-                                   -> Vec<Ty<'tcx>> {
-    if inputs.is_empty() {
-        return Vec::new()
-    }
-
-    let mut result = Vec::new();
-    for (i, &arg_prior_to_tuple) in inputs.iter().enumerate() {
-        if i < inputs.len() - 1 {
-            result.push(arg_prior_to_tuple);
-        }
-    }
-
-    match inputs[inputs.len() - 1].sty {
-        ty::TyTuple(ref tupled_arguments) => {
-            debug!("untuple_arguments(): untupling arguments");
-            for &tupled_argument in tupled_arguments {
-                result.push(tupled_argument);
-            }
-        }
-        _ => {
-            ccx.tcx().sess.bug("argument to function with \"rust-call\" ABI \
-                                is neither a tuple nor unit")
-        }
-    }
-
-    result
-}
-
 // A "sizing type" is an LLVM type, the size and alignment of which are
 // guaranteed to be equivalent to what you would get out of `type_of()`. It's
 // useful because:
@@ -189,16 +137,9 @@ fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type
     }
 }
 
-pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     if t.is_bool() {
         Type::i1(cx)
-    } else if type_is_immediate(cx, t) && type_of(cx, t).is_aggregate() {
-        // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
-        // for this leads to bad optimizations, so its arg type is an appropriately sized integer
-        match machine::llsize_of_alloc(cx, sizing_type_of(cx, t)) {
-            0 => type_of(cx, t),
-            n => Type::ix(cx, n * 8),
-        }
     } else {
         type_of(cx, t)
     }

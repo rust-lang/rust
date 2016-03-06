@@ -21,6 +21,7 @@ use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst::{Substs};
 use middle::traits;
 use middle::ty::{self, Ty, TyCtxt};
+use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
 use trans::base::*;
@@ -40,7 +41,6 @@ use trans::type_::Type;
 use trans::value::Value;
 
 use arena::TypedArena;
-use libc::c_uint;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 
@@ -240,13 +240,17 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
     let t = g.ty();
 
-    let llty = if type_is_sized(ccx.tcx(), t) {
-        type_of(ccx, t).ptr_to()
-    } else {
-        type_of(ccx, ccx.tcx().mk_box(t)).ptr_to()
+    let tcx = ccx.tcx();
+    let sig = ty::FnSig {
+        inputs: vec![tcx.mk_mut_ptr(tcx.types.i8)],
+        output: ty::FnOutput::FnConverging(tcx.mk_nil()),
+        variadic: false,
     };
-
-    let llfnty = Type::glue_fn(ccx, llty);
+    // Create a FnType for fn(*mut i8) and substitute the real type in
+    // later - that prevents FnType from splitting fat pointers up.
+    let mut fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+    fn_ty.args[0].original_ty = type_of(ccx, t).ptr_to();
+    let llfnty = fn_ty.llvm_type(ccx);
 
     // To avoid infinite recursion, don't `make_drop_glue` until after we've
     // added the entry to the `drop_glues` cache.
@@ -260,17 +264,17 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert!(declare::get_defined_value(ccx, &fn_nm).is_none());
     let llfn = declare::declare_cfn(ccx, &fn_nm, llfnty);
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
+    ccx.drop_glues().borrow_mut().insert(g, llfn);
 
     let _s = StatRecorder::new(ccx, format!("drop {:?}", t));
 
-    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+    let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                      ty::FnConverging(ccx.tcx().mk_nil()),
-                      empty_substs, None, &arena);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, ast::DUMMY_NODE_ID,
+                               empty_substs, None, &arena);
 
-    let bcx = init_function(&fcx, false, ty::FnConverging(ccx.tcx().mk_nil()));
+    let bcx = fcx.init(false);
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
 
@@ -283,9 +287,8 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let llrawptr0 = get_param(llfn, fcx.arg_offset() as c_uint);
-    let bcx = make_drop_glue(bcx, llrawptr0, g);
-    finish_fn(&fcx, bcx, ty::FnConverging(ccx.tcx().mk_nil()), DebugLoc::None);
+    let bcx = make_drop_glue(bcx, get_param(llfn, 0), g);
+    fcx.finish(bcx, DebugLoc::None);
 
     llfn
 }

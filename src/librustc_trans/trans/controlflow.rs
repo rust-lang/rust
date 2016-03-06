@@ -25,7 +25,6 @@ use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::expr;
 use trans::machine;
 use trans;
-use middle::ty;
 
 use rustc_front::hir;
 use rustc_front::util as ast_util;
@@ -363,14 +362,12 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let fcx = bcx.fcx;
     let mut bcx = bcx;
-    let dest = match (fcx.llretslotptr.get(), retval_expr) {
-        (Some(_), Some(retval_expr)) => {
-            let ret_ty = expr_ty_adjusted(bcx, &retval_expr);
-            expr::SaveIn(fcx.get_ret_slot(bcx, ty::FnConverging(ret_ty), "ret_slot"))
-        }
-        _ => expr::Ignore,
-    };
     if let Some(x) = retval_expr {
+        let dest = if fcx.llretslotptr.get().is_some() {
+            expr::SaveIn(fcx.get_ret_slot(bcx, "ret_slot"))
+        } else {
+            expr::Ignore
+        };
         bcx = expr::trans_into(bcx, &x, dest);
         match dest {
             expr::SaveIn(slot) if fcx.needs_ret_allocas => {

@@ -18,13 +18,13 @@ use middle::infer;
 use middle::subst::{Subst, Substs};
 use middle::subst;
 use middle::traits::{self, ProjectionMode};
+use trans::abi::FnType;
 use trans::base::*;
 use trans::build::*;
 use trans::callee::{Callee, Virtual, ArgVals, trans_fn_pointer_shim};
 use trans::closure;
 use trans::common::*;
 use trans::consts;
-use trans::datum::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
 use trans::expr;
@@ -77,7 +77,7 @@ pub fn get_virtual_method<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                    method_ty: Ty<'tcx>,
                                    vtable_index: usize)
-                                   -> Datum<'tcx, Rvalue> {
+                                   -> ValueRef {
     let _icx = push_ctxt("trans_object_shim");
     let tcx = ccx.tcx();
 
@@ -85,58 +85,41 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
            vtable_index,
            method_ty);
 
-    let ret_ty = tcx.erase_late_bound_regions(&method_ty.fn_ret());
-    let ret_ty = infer::normalize_associated_type(tcx, &ret_ty);
+    let sig = tcx.erase_late_bound_regions(&method_ty.fn_sig());
+    let sig = infer::normalize_associated_type(tcx, &sig);
+    let fn_ty = FnType::new(ccx, method_ty.fn_abi(), &sig, &[]);
 
-    let shim_fn_ty = match method_ty.sty {
-        ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
-        _ => unreachable!("expected fn item type, found {}", method_ty)
-    };
-
-    //
-    let function_name = link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
-    let llfn = declare::define_internal_fn(ccx, &function_name, shim_fn_ty);
+    let function_name = link::mangle_internal_name_by_type_and_seq(ccx, method_ty, "object_shim");
+    let llfn = declare::define_internal_fn(ccx, &function_name, method_ty);
 
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx,
-                      llfn,
-                      ast::DUMMY_NODE_ID,
-                      false,
-                      ret_ty,
-                      empty_substs,
-                      None,
-                      &block_arena);
-    let mut bcx = init_function(&fcx, false, ret_ty);
-
-    let llargs = get_params(fcx.llfn);
-
-    let self_idx = fcx.arg_offset();
-    let llself = llargs[self_idx];
-    let llvtable = llargs[self_idx + 1];
-
-    debug!("trans_object_shim: llself={:?}, llvtable={:?}",
-           Value(llself), Value(llvtable));
-
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, ast::DUMMY_NODE_ID,
+                               empty_substs, None, &block_arena);
+    let mut bcx = fcx.init(false);
     assert!(!fcx.needs_ret_allocas);
+
 
     let dest =
         fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot")));
+            |_| expr::SaveIn(fcx.get_ret_slot(bcx, "ret_slot")));
 
     debug!("trans_object_shim: method_offset_in_vtable={}",
            vtable_index);
+
+    let llargs = get_params(fcx.llfn);
+    let args = ArgVals(&llargs[fcx.fn_ty.ret.is_indirect() as usize..]);
 
     let callee = Callee {
         data: Virtual(vtable_index),
         ty: method_ty
     };
-    bcx = callee.call(bcx, DebugLoc::None, ArgVals(&llargs[self_idx..]), dest).bcx;
+    bcx = callee.call(bcx, DebugLoc::None, args, dest).bcx;
 
-    finish_fn(&fcx, bcx, ret_ty, DebugLoc::None);
+    fcx.finish(bcx, DebugLoc::None);
 
-    immediate_rvalue(llfn, shim_fn_ty)
+    llfn
 }
 
 /// Creates a returns a dynamic vtable for the given type and vtable origin.

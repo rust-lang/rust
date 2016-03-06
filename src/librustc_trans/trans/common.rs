@@ -22,7 +22,7 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::LangItem;
 use middle::subst::Substs;
-use trans::abi::Abi;
+use trans::abi::{Abi, FnType};
 use trans::base;
 use trans::build;
 use trans::builder::Builder;
@@ -35,7 +35,6 @@ use trans::declare;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
-use trans::type_of;
 use trans::value::Value;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::traits::{self, SelectionContext, ProjectionMode};
@@ -105,12 +104,6 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     use trans::type_of::sizing_type_of;
     let llty = sizing_type_of(ccx, ty);
     llsize_of_alloc(ccx, llty) == 0
-}
-
-/// Identifies types which we declare to be equivalent to `void` in C for the purpose of function
-/// return types. These are `()`, bot, uninhabited enums and all other zero-sized types.
-pub fn return_type_is_void<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_nil() || ty.is_empty(ccx.tcx()) || type_is_zero_size(ccx, ty)
 }
 
 /// Generates a unique symbol based off the name given. This is used to create
@@ -291,9 +284,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // always an empty parameter-environment NOTE: @jroesch another use of ParamEnv
     pub param_env: ty::ParameterEnvironment<'a, 'tcx>,
 
-    // The environment argument in a closure.
-    pub llenv: Option<ValueRef>,
-
     // A pointer to where to store the return value. If the return type is
     // immediate, this points to an alloca in the function. Otherwise, it's a
     // pointer to the hidden first parameter of the function. After function
@@ -321,11 +311,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // Note that for cleanuppad-based exceptions this is not used.
     pub landingpad_alloca: Cell<Option<ValueRef>>,
 
-    // True if the caller expects this fn to use the out pointer to
-    // return. Either way, your code should write into the slot llretslotptr
-    // points to, but if this value is false, that slot will be a local alloca.
-    pub caller_expects_out_pointer: bool,
-
     // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
     pub lllocals: RefCell<NodeMap<LvalueDatum<'tcx>>>,
@@ -336,6 +321,9 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // Carries info about drop-flags for local bindings (longer term,
     // paths) for the code being compiled.
     pub lldropflag_hints: RefCell<DropFlagHintsMap<'tcx>>,
+
+    // Describes the return/argument LLVM types and their ABI handling.
+    pub fn_ty: FnType,
 
     // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.
@@ -372,18 +360,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         self.mir.unwrap()
     }
 
-    pub fn arg_offset(&self) -> usize {
-        self.env_arg_pos() + if self.llenv.is_some() { 1 } else { 0 }
-    }
-
-    pub fn env_arg_pos(&self) -> usize {
-        if self.caller_expects_out_pointer {
-            1
-        } else {
-            0
-        }
-    }
-
     pub fn cleanup(&self) {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
@@ -404,14 +380,9 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         self.llreturn.get().unwrap()
     }
 
-    pub fn get_ret_slot(&self, bcx: Block<'a, 'tcx>,
-                        output: ty::FnOutput<'tcx>,
-                        name: &str) -> ValueRef {
+    pub fn get_ret_slot(&self, bcx: Block<'a, 'tcx>, name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca(bcx, match output {
-                ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
-                ty::FnDiverging => Type::void(bcx.ccx())
-            }, name)
+            base::alloca(bcx, self.fn_ty.ret.memory_ty(self.ccx), name)
         } else {
             self.llretslotptr.get().unwrap()
         }

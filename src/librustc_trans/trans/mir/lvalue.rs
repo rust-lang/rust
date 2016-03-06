@@ -17,7 +17,6 @@ use trans::base;
 use trans::common::{self, BlockAndBuilder};
 use trans::consts;
 use trans::machine;
-use trans::type_of;
 use trans::mir::drop;
 use llvm;
 use trans::Disr;
@@ -93,11 +92,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 LvalueRef::new_sized(consts::get_static(ccx, def_id).val, const_ty)
             },
             mir::Lvalue::ReturnPointer => {
-                let fn_return_ty = bcx.monomorphize(&self.mir.return_ty);
-                let return_ty = fn_return_ty.unwrap();
-                let llval = if !common::return_type_is_void(bcx.ccx(), return_ty) {
+                let llval = if !fcx.fn_ty.ret.is_ignore() {
                     bcx.with_block(|bcx| {
-                        fcx.get_ret_slot(bcx, fn_return_ty, "")
+                        fcx.get_ret_slot(bcx, "")
                     })
                 } else {
                     // This is a void return; that is, there’s no place to store the value and
@@ -105,11 +102,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // Ergo, we return an undef ValueRef, so we do not have to special-case every
                     // place using lvalues, and could use it the same way you use a regular
                     // ReturnPointer LValue (i.e. store into it, load from it etc).
-                    let llty = type_of::type_of(bcx.ccx(), return_ty).ptr_to();
+                    let llty = fcx.fn_ty.ret.original_ty.ptr_to();
                     unsafe {
                         llvm::LLVMGetUndef(llty.to_ref())
                     }
                 };
+                let fn_return_ty = bcx.monomorphize(&self.mir.return_ty);
+                let return_ty = fn_return_ty.unwrap();
                 LvalueRef::new_sized(llval, LvalueTy::from_ty(return_ty))
             },
             mir::Lvalue::Projection(ref projection) => {
