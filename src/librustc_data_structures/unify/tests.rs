@@ -19,9 +19,15 @@ struct UnitKey(u32);
 
 impl UnifyKey for UnitKey {
     type Value = ();
-    fn index(&self) -> u32 { self.0 }
-    fn from_index(u: u32) -> UnitKey { UnitKey(u) }
-    fn tag(_: Option<UnitKey>) -> &'static str { "UnitKey" }
+    fn index(&self) -> u32 {
+        self.0
+    }
+    fn from_index(u: u32) -> UnitKey {
+        UnitKey(u)
+    }
+    fn tag(_: Option<UnitKey>) -> &'static str {
+        "UnitKey"
+    }
 }
 
 #[test]
@@ -45,7 +51,7 @@ fn big_array() {
     }
 
     for i in 1..MAX {
-        let l = keys[i-1];
+        let l = keys[i - 1];
         let r = keys[i];
         ut.union(l, r);
     }
@@ -68,7 +74,7 @@ fn big_array_bench(b: &mut Bencher) {
 
     b.iter(|| {
         for i in 1..MAX {
-            let l = keys[i-1];
+            let l = keys[i - 1];
             let r = keys[i];
             ut.union(l, r);
         }
@@ -90,16 +96,16 @@ fn even_odd() {
         keys.push(key);
 
         if i >= 2 {
-            ut.union(key, keys[i-2]);
+            ut.union(key, keys[i - 2]);
         }
     }
 
     for i in 1..MAX {
-        assert!(!ut.unioned(keys[i-1], keys[i]));
+        assert!(!ut.unioned(keys[i - 1], keys[i]));
     }
 
     for i in 2..MAX {
-        assert!(ut.unioned(keys[i-2], keys[i]));
+        assert!(ut.unioned(keys[i - 2], keys[i]));
     }
 }
 
@@ -108,9 +114,15 @@ struct IntKey(u32);
 
 impl UnifyKey for IntKey {
     type Value = Option<i32>;
-    fn index(&self) -> u32 { self.0 }
-    fn from_index(u: u32) -> IntKey { IntKey(u) }
-    fn tag(_: Option<IntKey>) -> &'static str { "IntKey" }
+    fn index(&self) -> u32 {
+        self.0
+    }
+    fn from_index(u: u32) -> IntKey {
+        IntKey(u)
+    }
+    fn tag(_: Option<IntKey>) -> &'static str {
+        "IntKey"
+    }
 }
 
 /// Test unifying a key whose value is `Some(_)`  with a key whose value is `None`.
@@ -191,4 +203,3 @@ fn unify_key_Some_x_val_x() {
     assert!(ut.unify_var_value(k1, 22).is_ok());
     assert_eq!(ut.probe(k1), Some(22));
 }
-
