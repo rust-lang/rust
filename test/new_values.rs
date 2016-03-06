@@ -34,17 +34,17 @@ fn tuple_5() -> (i32, i32, i32, i32, i32) {
     (1, 2, 3, 4, 5)
 }
 
-// #[miri_run(expected = "Int(3)")]
-// fn indirect_add() -> i32 {
-//     let x = 1;
-//     let y = 2;
-//     x + y
-// }
+#[miri_run]
+fn indirect_add() -> i32 {
+    let x = 1;
+    let y = 2;
+    x + y
+}
 
-// #[miri_run(expected = "Int(25)")]
-// fn arith() -> i32 {
-//     3*3 + 4*4
-// }
+#[miri_run]
+fn arith() -> i32 {
+    3*3 + 4*4
+}
 
 // #[miri_run(expected = "Int(0)")]
 // fn if_false() -> i32 {
@@ -190,5 +190,3 @@ fn tuple_5() -> (i32, i32, i32, i32, i32) {
 // fn cross_crate_fn_call() -> i32 {
 //     if 1i32.is_positive() { 1 } else { 0 }
 // }
-
-// fn main() {}

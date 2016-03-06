@@ -54,66 +54,43 @@ impl fmt::Display for EvalError {
 //     Func(def_id::DefId),
 // }
 
-/// A stack frame:
-///
-/// ```text
-/// +-----------------------+
-/// | Arg(0)                |
-/// | Arg(1)                | arguments
-/// | ...                   |
-/// | Arg(num_args - 1)     |
-/// + - - - - - - - - - - - +
-/// | Var(0)                |
-/// | Var(1)                | variables
-/// | ...                   |
-/// | Var(num_vars - 1)     |
-/// + - - - - - - - - - - - +
-/// | Temp(0)               |
-/// | Temp(1)               | temporaries
-/// | ...                   |
-/// | Temp(num_temps - 1)   |
-/// + - - - - - - - - - - - +
-/// | Aggregates            | aggregates
-/// +-----------------------+
-/// ```
-// #[derive(Debug)]
-// struct Frame {
-//     /// A pointer to a stack cell to write the return value of the current call, if it's not a
-//     /// divering call.
-//     return_ptr: Option<Pointer>,
+/// A stack frame.
+#[derive(Debug)]
+struct Frame {
+    /// A pointer for writing the return value of the current call, if it's not a diverging call.
+    return_ptr: Option<Pointer>,
 
-//     offset: usize,
-//     num_args: usize,
-//     num_vars: usize,
-//     num_temps: usize,
-//     num_aggregate_fields: usize,
-// }
+    /// The list of locals for the current function, stored in order as
+    /// `[arguments..., variables..., temporaries...]`. The variables begin at `self.var_offset`
+    /// and the temporaries at `self.temp_offset`.
+    locals: Vec<Pointer>,
 
-// impl Frame {
-//     fn size(&self) -> usize {
-//         self.num_args + self.num_vars + self.num_temps + self.num_aggregate_fields
-//     }
+    /// The offset of the first variable in `self.locals`.
+    var_offset: usize,
 
-//     fn arg_offset(&self, i: usize) -> usize {
-//         self.offset + i
-//     }
+    /// The offset of the first temporary in `self.locals`.
+    temp_offset: usize,
+}
 
-//     fn var_offset(&self, i: usize) -> usize {
-//         self.offset + self.num_args + i
-//     }
+impl Frame {
+    fn arg_ptr(&self, i: u32) -> Pointer {
+        self.locals[i as usize].clone()
+    }
 
-//     fn temp_offset(&self, i: usize) -> usize {
-//         self.offset + self.num_args + self.num_vars + i
-//     }
-// }
+    fn var_ptr(&self, i: u32) -> Pointer {
+        self.locals[self.var_offset + i as usize].clone()
+    }
+
+    fn temp_ptr(&self, i: u32) -> Pointer {
+        self.locals[self.temp_offset + i as usize].clone()
+    }
+}
 
 struct Interpreter<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
     mir_map: &'a MirMap<'tcx>,
-    // value_stack: Vec<Value>,
-    // call_stack: Vec<Frame>,
     memory: memory::Memory,
-    return_ptr: Option<Pointer>,
+    stack: Vec<Frame>,
 }
 
 impl<'a, 'tcx> Interpreter<'a, 'tcx> {
@@ -121,49 +98,50 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
-            // value_stack: vec![Value::Uninit], // Allocate a spot for the top-level return value.
-            // call_stack: Vec::new(),
             memory: memory::Memory::new(),
-            return_ptr: None,
+            stack: Vec::new(),
         }
     }
 
-    // fn push_stack_frame(&mut self, mir: &Mir, args: &[Value], return_ptr: Option<Pointer>) {
-    //     let frame = Frame {
-    //         return_ptr: return_ptr,
-    //         offset: self.value_stack.len(),
-    //         num_args: mir.arg_decls.len(),
-    //         num_vars: mir.var_decls.len(),
-    //         num_temps: mir.temp_decls.len(),
-    //         num_aggregate_fields: 0,
-    //     };
+    fn push_stack_frame(&mut self, mir: &Mir, args: &[&mir::Operand], return_ptr: Option<Pointer>)
+        -> EvalResult<()>
+    {
+        let num_args = mir.arg_decls.len();
+        let num_vars = mir.var_decls.len();
+        assert_eq!(args.len(), num_args);
 
-    //     self.value_stack.extend(iter::repeat(Value::Uninit).take(frame.size()));
+        let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
+        let var_tys = mir.var_decls.iter().map(|v| v.ty);
+        let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
 
-    //     for (i, arg) in args.iter().enumerate() {
-    //         self.value_stack[frame.arg_offset(i)] = arg.clone();
-    //     }
+        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
+            self.memory.allocate(Repr::from_ty(ty))
+        }).collect();
 
-    //     self.call_stack.push(frame);
-    // }
+        for (dest, operand) in locals[..num_args].iter().zip(args) {
+            let src = try!(self.operand_to_ptr(operand));
+            try!(self.memory.copy(&src, dest, dest.repr.size()));
+        }
 
-    // fn pop_stack_frame(&mut self) {
-    //     let frame = self.call_stack.pop().expect("tried to pop stack frame, but there were none");
-    //     self.value_stack.truncate(frame.offset);
-    // }
+        self.stack.push(Frame { 
+            return_ptr: return_ptr,
+            locals: locals,
+            var_offset: num_args,
+            temp_offset: num_args + num_vars,
+        });
 
-    // fn allocate_aggregate(&mut self, size: usize) -> Pointer {
-    //     let frame = self.call_stack.last_mut().expect("missing call frame");
-    //     frame.num_aggregate_fields += size;
+        Ok(())
+    }
 
-    //     let ptr = Pointer::Stack(self.value_stack.len());
-    //     self.value_stack.extend(iter::repeat(Value::Uninit).take(size));
-    //     ptr
-    // }
+    fn pop_stack_frame(&mut self) {
+        let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
+        // TODO(tsion): Deallocate local variables.
+    }
 
-    fn call(&mut self, mir: &Mir, args: &[Allocation], return_ptr: Option<Pointer>) -> EvalResult<()> {
-        self.return_ptr = return_ptr;
-        // self.push_stack_frame(mir, args, return_ptr);
+    fn call(&mut self, mir: &Mir, args: &[&mir::Operand], return_ptr: Option<Pointer>)
+        -> EvalResult<()>
+    {
+        try!(self.push_stack_frame(mir, args, return_ptr));
         let mut block = mir::START_BLOCK;
 
         loop {
@@ -252,28 +230,23 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             }
         }
 
-        // self.pop_stack_frame();
-
+        self.pop_stack_frame();
         Ok(())
     }
 
     fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue) -> EvalResult<Pointer> {
+        let frame = self.stack.last().expect("no call frames exists");
+
         let ptr = match *lvalue {
-            mir::Lvalue::ReturnPointer =>
-                self.return_ptr.clone().expect("fn has no return pointer"),
-            _ => unimplemented!(),
+            mir::Lvalue::ReturnPointer => frame.return_ptr.clone()
+                .expect("ReturnPointer used in a function with no return value"),
+            mir::Lvalue::Arg(i)  => frame.arg_ptr(i),
+            mir::Lvalue::Var(i)  => frame.var_ptr(i),
+            mir::Lvalue::Temp(i) => frame.temp_ptr(i),
+            ref l => panic!("can't handle lvalue: {:?}", l),
         };
 
         Ok(ptr)
-
-        // let frame = self.call_stack.last().expect("missing call frame");
-
-        // match *lvalue {
-        //     mir::Lvalue::ReturnPointer =>
-        //         frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
-        //     mir::Lvalue::Arg(i)  => Pointer::Stack(frame.arg_offset(i as usize)),
-        //     mir::Lvalue::Var(i)  => Pointer::Stack(frame.var_offset(i as usize)),
-        //     mir::Lvalue::Temp(i) => Pointer::Stack(frame.temp_offset(i as usize)),
 
         //     mir::Lvalue::Projection(ref proj) => {
         //         let base_ptr = self.lvalue_to_ptr(&proj.base);
