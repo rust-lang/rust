@@ -232,11 +232,12 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
 }
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
-    if fty.ret.ty != Type::void(ccx) {
+    if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
         classify_arg_ty(ccx, arg);
     }
 }

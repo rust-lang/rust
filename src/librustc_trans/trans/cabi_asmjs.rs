@@ -13,7 +13,6 @@
 use llvm::{Struct, Array, Attribute};
 use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
-use trans::type_::Type;
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
 
@@ -45,11 +44,12 @@ fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
 }
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
-    if fty.ret.ty != Type::void(ccx) {
+    if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
         classify_arg_ty(ccx, arg);
     }
 }

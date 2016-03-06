@@ -15,7 +15,7 @@ use super::common::*;
 use super::machine::*;
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
-    if fty.ret.ty.kind() == Struct {
+    if !fty.ret.is_ignore() && fty.ret.ty.kind() == Struct {
         // Returning a structure. Most often, this will use
         // a hidden first argument. On some platforms, though,
         // small structs are returned as integers.
@@ -38,13 +38,10 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     }
 
     for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
         if arg.ty.kind() == Struct {
-            if llsize_of_alloc(ccx, arg.ty) == 0 {
-                arg.ignore();
-            } else {
-                arg.make_indirect(ccx);
-                arg.attrs.set(Attribute::ByVal);
-            }
+            arg.make_indirect(ccx);
+            arg.attrs.set(Attribute::ByVal);
         }
     }
 }
