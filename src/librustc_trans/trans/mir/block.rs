@@ -113,9 +113,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Terminator::Return => {
-                let return_ty = bcx.monomorphize(&self.mir.return_ty);
                 bcx.with_block(|bcx| {
-                    base::build_return_block(self.fcx, bcx, return_ty, DebugLoc::None);
+                    self.fcx.build_return_block(bcx, DebugLoc::None);
                 })
             }
 

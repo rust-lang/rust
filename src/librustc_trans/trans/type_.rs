@@ -183,10 +183,6 @@ impl Type {
         Type::struct_(ccx, &[], false)
     }
 
-    pub fn glue_fn(ccx: &CrateContext, t: Type) -> Type {
-        Type::func(&[t], &Type::void(ccx))
-    }
-
     pub fn array(ty: &Type, len: u64) -> Type {
         ty!(llvm::LLVMRustArrayType(ty.to_ref(), len))
     }
@@ -206,7 +202,7 @@ impl Type {
     }
 
     pub fn vtable_ptr(ccx: &CrateContext) -> Type {
-        Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to().ptr_to()
+        Type::func(&[Type::i8p(ccx)], &Type::void(ccx)).ptr_to().ptr_to()
     }
 
     pub fn kind(&self) -> TypeKind {

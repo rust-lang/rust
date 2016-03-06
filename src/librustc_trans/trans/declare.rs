@@ -92,24 +92,19 @@ pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
 pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                             fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
-
-    let f = match fn_type.sty {
-        ty::TyFnDef(_, _, f) | ty::TyFnPtr(f) => f,
-        _ => unreachable!("expected fn type for {:?}, found {:?}", name, fn_type)
-    };
-
-    let sig = ccx.tcx().erase_late_bound_regions(&f.sig);
+    let abi = fn_type.fn_abi();
+    let sig = ccx.tcx().erase_late_bound_regions(fn_type.fn_sig());
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
-    let fty = FnType::new(ccx, f.abi, &sig, &[]);
+    let fty = FnType::new(ccx, abi, &sig, &[]);
     let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.llvm_type(ccx));
 
     if sig.output == ty::FnDiverging {
         llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoReturn);
     }
 
-    if f.abi != Abi::Rust && f.abi != Abi::RustCall {
+    if abi != Abi::Rust && abi != Abi::RustCall {
         attributes::unwind(llfn, false);
     }
 

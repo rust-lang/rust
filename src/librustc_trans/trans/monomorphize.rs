@@ -16,14 +16,12 @@ use middle::infer::normalize_associated_type;
 use middle::subst;
 use middle::subst::{Subst, Substs};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
-use trans::abi::Abi;
 use trans::attributes;
 use trans::base::{push_ctxt};
 use trans::base::trans_fn;
 use trans::base;
 use trans::common::*;
 use trans::declare;
-use trans::foreign;
 use middle::ty::{self, Ty, TyCtxt};
 use trans::Disr;
 use rustc::front::map as hir_map;
@@ -129,15 +127,15 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         });
     match map_node {
         hir_map::NodeItem(&hir::Item {
-            ref attrs, node: hir::ItemFn(ref decl, _, _, abi, _, ref body), ..
+            ref attrs, node: hir::ItemFn(ref decl, _, _, _, _, ref body), ..
         }) |
         hir_map::NodeTraitItem(&hir::TraitItem {
             ref attrs, node: hir::MethodTraitItem(
-                hir::MethodSig { abi, ref decl, .. }, Some(ref body)), ..
+                hir::MethodSig { ref decl, .. }, Some(ref body)), ..
         }) |
         hir_map::NodeImplItem(&hir::ImplItem {
             ref attrs, node: hir::ImplItemKind::Method(
-                hir::MethodSig { abi, ref decl, .. }, ref body), ..
+                hir::MethodSig { ref decl, .. }, ref body), ..
         }) => {
             base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
             attributes::from_fn_attrs(ccx, attrs, lldecl);
@@ -153,13 +151,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
 
             if trans_everywhere || is_first {
-                if abi != Abi::Rust && abi != Abi::RustCall {
-                    foreign::trans_rust_fn_with_foreign_abi(
-                        ccx, decl, body, attrs, lldecl, psubsts, fn_node_id,
-                        Some(&hash));
-                } else {
-                    trans_fn(ccx, decl, body, lldecl, psubsts, fn_node_id, attrs);
-                }
+                trans_fn(ccx, decl, body, lldecl, psubsts, fn_node_id, attrs);
             }
         }
 

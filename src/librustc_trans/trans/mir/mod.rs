@@ -13,9 +13,8 @@ use llvm::{self, ValueRef};
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use trans::base;
-use trans::common::{self, Block, BlockAndBuilder};
+use trans::common::{self, Block, BlockAndBuilder, FunctionContext};
 use trans::expr;
-use trans::type_of;
 
 use self::lvalue::LvalueRef;
 use self::operand::OperandRef;
@@ -77,11 +76,11 @@ enum TempRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
-    let fcx = bcx.fcx();
+pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
+    let bcx = fcx.init(false).build();
     let mir = bcx.mir();
 
-    let mir_blocks = bcx.mir().all_basic_blocks();
+    let mir_blocks = mir.all_basic_blocks();
 
     // Analyze the temps to determine which must be lvalues
     // FIXME
@@ -111,7 +110,7 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
     let args = arg_value_refs(&bcx, mir);
 
     // Allocate a `Block` for every basic block
-    let block_bcxs: Vec<Block<'bcx,'tcx>> =
+    let block_bcxs: Vec<Block<'blk,'tcx>> =
         mir_blocks.iter()
                   .map(|&bb|{
                       // FIXME(#30941) this doesn't handle msvc-style exceptions
@@ -138,6 +137,8 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
     for &bb in &mir_blocks {
         mircx.trans_block(bb);
     }
+
+    fcx.cleanup();
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the
@@ -149,48 +150,41 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
     // FIXME tupled_args? I think I'd rather that mapping is done in MIR land though
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
-    let mut idx = fcx.arg_offset() as c_uint;
-    mir.arg_decls
-       .iter()
-       .enumerate()
-       .map(|(arg_index, arg_decl)| {
-           let arg_ty = bcx.monomorphize(&arg_decl.ty);
-           let llval = if type_of::arg_is_indirect(bcx.ccx(), arg_ty) {
-               // Don't copy an indirect argument to an alloca, the caller
-               // already put it in a temporary alloca and gave it up, unless
-               // we emit extra-debug-info, which requires local allocas :(.
-               // FIXME: lifetimes, debug info
-               let llarg = llvm::get_param(fcx.llfn, idx);
-               idx += 1;
-               llarg
-           } else if common::type_is_fat_ptr(tcx, arg_ty) {
-               // we pass fat pointers as two words, but we want to
-               // represent them internally as a pointer to two words,
-               // so make an alloca to store them in.
-               let lldata = llvm::get_param(fcx.llfn, idx);
-               let llextra = llvm::get_param(fcx.llfn, idx + 1);
-               idx += 2;
-               let (lltemp, dataptr, meta) = bcx.with_block(|bcx| {
-                   let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
-                   (lltemp, expr::get_dataptr(bcx, lltemp), expr::get_meta(bcx, lltemp))
-               });
-               bcx.store(lldata, dataptr);
-               bcx.store(llextra, meta);
-               lltemp
-           } else {
-               // otherwise, arg is passed by value, so make a
-               // temporary and store it there
-               let llarg = llvm::get_param(fcx.llfn, idx);
-               idx += 1;
-               bcx.with_block(|bcx| {
-                   let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
-                   base::store_ty(bcx, llarg, lltemp, arg_ty);
-                   lltemp
-               })
-           };
-           LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
-       })
-       .collect()
+    let mut idx = 0;
+    let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
+        let arg = &fcx.fn_ty.args[idx];
+        idx += 1;
+        let arg_ty = bcx.monomorphize(&arg_decl.ty);
+        let llval = if arg.is_indirect() {
+            // Don't copy an indirect argument to an alloca, the caller
+            // already put it in a temporary alloca and gave it up, unless
+            // we emit extra-debug-info, which requires local allocas :(.
+            // FIXME: lifetimes, debug info
+            let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+            llarg_idx += 1;
+            llarg
+        } else {
+            bcx.with_block(|bcx| {
+                let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
+                if common::type_is_fat_ptr(tcx, arg_ty) {
+                    // we pass fat pointers as two words, but we want to
+                    // represent them internally as a pointer to two words,
+                    // so make an alloca to store them in.
+                    let meta = &fcx.fn_ty.args[idx];
+                    idx += 1;
+                    arg.store_fn_arg(bcx, &mut llarg_idx, expr::get_dataptr(bcx, lltemp));
+                    meta.store_fn_arg(bcx, &mut llarg_idx, expr::get_meta(bcx, lltemp));
+                } else  {
+                    // otherwise, arg is passed by value, so make a
+                    // temporary and store it there
+                    arg.store_fn_arg(bcx, &mut llarg_idx, lltemp);
+                }
+                lltemp
+            })
+        };
+        LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
+    }).collect()
 }
 
 mod analyze;

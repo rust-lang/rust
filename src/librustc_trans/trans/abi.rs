@@ -29,6 +29,8 @@ use trans::type_of;
 use rustc_front::hir;
 use middle::ty::{self, Ty};
 
+use libc::c_uint;
+
 pub use syntax::abi::Abi;
 
 /// The first half of a fat pointer.
@@ -129,6 +131,16 @@ impl ArgType {
         self.kind == ArgKind::Ignore
     }
 
+    /// Get the LLVM type for an lvalue of the original Rust type of
+    /// this argument/return, i.e. the result of `type_of::type_of`.
+    pub fn memory_ty(&self, ccx: &CrateContext) -> Type {
+        if self.original_ty == Type::i1(ccx) {
+            Type::i8(ccx)
+        } else {
+            self.original_ty
+        }
+    }
+
     /// Store a direct/indirect value described by this ArgType into a
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
@@ -155,6 +167,18 @@ impl ArgType {
             }
             Store(bcx, val, dst);
         }
+    }
+
+    pub fn store_fn_arg(&self, bcx: Block, idx: &mut usize, dst: ValueRef) {
+        if self.pad.is_some() {
+            *idx += 1;
+        }
+        if self.is_ignore() {
+            return;
+        }
+        let val = llvm::get_param(bcx.fcx.llfn, *idx as c_uint);
+        *idx += 1;
+        self.store(bcx, val, dst);
     }
 }
 

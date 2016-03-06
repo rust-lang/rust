@@ -1898,8 +1898,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let t_out = node_id_type(bcx, id);
 
     debug!("trans_cast({:?} as {:?})", t_in, t_out);
-    let mut ll_t_in = type_of::arg_type_of(ccx, t_in);
-    let ll_t_out = type_of::arg_type_of(ccx, t_out);
+    let mut ll_t_in = type_of::immediate_type_of(ccx, t_in);
+    let ll_t_out = type_of::immediate_type_of(ccx, t_out);
     // Convert the value to be cast into a ValueRef, either by-ref or
     // by-value as appropriate given its type:
     let mut datum = unpack_datum!(bcx, trans(bcx, expr));
