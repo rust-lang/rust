@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Number {
-    Zero,
-    One(u32)
-}
+#![feature(dotdot_in_tuple_patterns)]
 
 fn main() {
-    let x = Number::Zero;
+    let x;
+
     match x {
-        Number::Zero(inside) => {}, //~ ERROR E0024
-        Number::One(inside) => {},
+        (..) => {} //~ ERROR the type of this value must be known in this context
+        _ => {}
     }
+
+    match 0u8 {
+        (..) => {} //~ ERROR mismatched types
+        _ => {}
+    }
+
+    x = 10;
 }

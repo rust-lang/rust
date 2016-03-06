@@ -77,11 +77,12 @@ This API is completely unstable and subject to change.
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(iter_arith)]
+#![feature(question_mark)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(question_mark)]
+#![feature(type_ascription)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

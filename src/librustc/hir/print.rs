@@ -1736,16 +1736,23 @@ impl<'a> State<'a> {
                     None => (),
                 }
             }
-            PatKind::TupleStruct(ref path, ref args_) => {
+            PatKind::TupleStruct(ref path, ref elts, ddpos) => {
                 self.print_path(path, true, 0)?;
-                match *args_ {
-                    None => word(&mut self.s, "(..)")?,
-                    Some(ref args) => {
-                        self.popen()?;
-                        self.commasep(Inconsistent, &args[..], |s, p| s.print_pat(&p))?;
-                        self.pclose()?;
+                self.popen()?;
+                if let Some(ddpos) = ddpos {
+                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p))?;
+                    if ddpos != 0 {
+                        self.word_space(",")?;
                     }
+                    word(&mut self.s, "..")?;
+                    if ddpos != elts.len() {
+                        word(&mut self.s, ",")?;
+                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p))?;
+                    }
+                } else {
+                    try!(self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p)));
                 }
+                try!(self.pclose());
             }
             PatKind::Path(ref path) => {
                 self.print_path(path, true, 0)?;
@@ -1778,11 +1785,23 @@ impl<'a> State<'a> {
                 space(&mut self.s)?;
                 word(&mut self.s, "}")?;
             }
-            PatKind::Tup(ref elts) => {
+            PatKind::Tuple(ref elts, ddpos) => {
                 self.popen()?;
-                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p))?;
-                if elts.len() == 1 {
-                    word(&mut self.s, ",")?;
+                if let Some(ddpos) = ddpos {
+                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p))?;
+                    if ddpos != 0 {
+                        self.word_space(",")?;
+                    }
+                    word(&mut self.s, "..")?;
+                    if ddpos != elts.len() {
+                        word(&mut self.s, ",")?;
+                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p))?;
+                    }
+                } else {
+                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p))?;
+                    if elts.len() == 1 {
+                        word(&mut self.s, ",")?;
+                    }
                 }
                 self.pclose()?;
             }

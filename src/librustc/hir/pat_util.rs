@@ -21,6 +21,28 @@ use std::cell::RefCell;
 
 pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
 
+#[derive(Clone, Copy)]
+pub struct AjustPos {
+    gap_pos: usize,
+    gap_len: usize,
+}
+
+impl FnOnce<(usize,)> for AjustPos {
+    type Output = usize;
+    extern "rust-call" fn call_once(self, (i,): (usize,)) -> usize {
+        if i < self.gap_pos { i } else { i + self.gap_len }
+    }
+}
+
+// Returns a functional object used to adjust tuple pattern indexes. Example: for 5-tuple and
+// pattern (a, b, .., c) expected_len is 5, actual_len is 3 and gap_pos is Some(2).
+pub fn pat_adjust_pos(expected_len: usize, actual_len: usize, gap_pos: Option<usize>) -> AjustPos {
+    AjustPos {
+        gap_pos: if let Some(gap_pos) = gap_pos { gap_pos } else { expected_len },
+        gap_len: expected_len - actual_len,
+    }
+}
+
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: &RefCell<DefMap>, pat: &hir::Pat) -> PatIdMap {

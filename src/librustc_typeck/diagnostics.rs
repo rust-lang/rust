@@ -62,31 +62,6 @@ Check how many fields the enum was declared with and ensure that your pattern
 uses the same number.
 "##,
 
-E0024: r##"
-This error indicates that a pattern attempted to extract the fields of an enum
-variant with no fields. Here's a tiny example of this error:
-
-```compile_fail
-// This enum has two variants.
-enum Number {
-    // This variant has no fields.
-    Zero,
-    // This variant has one field.
-    One(u32)
-}
-
-// Assuming x is a Number we can pattern match on its contents.
-match x {
-    Number::Zero(inside) => {},
-    Number::One(inside) => {},
-}
-```
-
-The pattern match `Zero(inside)` is incorrect because the `Zero` variant
-contains no fields, yet the `inside` name attempts to bind the first field of
-the enum.
-"##,
-
 E0025: r##"
 Each field of a struct can only be bound once in a pattern. Erroneous code
 example:

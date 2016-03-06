@@ -31,6 +31,7 @@
 #![feature(question_mark)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(type_ascription)]
 
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;

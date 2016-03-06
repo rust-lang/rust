@@ -80,6 +80,7 @@ use ty::adjustment;
 use ty::{self, Ty, TyCtxt};
 
 use hir::{MutImmutable, MutMutable, PatKind};
+use hir::pat_util::pat_adjust_pos;
 use hir;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -1225,31 +1226,40 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // _
           }
 
-          PatKind::TupleStruct(_, None) => {
-            // variant(..)
-          }
-          PatKind::TupleStruct(_, Some(ref subpats)) => {
+          PatKind::TupleStruct(_, ref subpats, ddpos) => {
             match opt_def {
-                Some(Def::Variant(..)) => {
+                Some(Def::Variant(enum_def, def_id)) => {
                     // variant(x, y, z)
+                    let variant = self.tcx().lookup_adt_def(enum_def).variant_with_id(def_id);
+                    let adjust = pat_adjust_pos(variant.fields.len(), subpats.len(), ddpos);
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
 
                         let subcmt =
                             self.cat_imm_interior(
                                 pat, cmt.clone(), subpat_ty,
-                                InteriorField(PositionalField(i)));
+                                InteriorField(PositionalField(adjust(i))));
 
                         self.cat_pattern_(subcmt, &subpat, op)?;
                     }
                 }
                 Some(Def::Struct(..)) => {
+                    let expected_len = match self.pat_ty(&pat) {
+                        Ok(&ty::TyS{sty: ty::TyStruct(adt_def, _), ..}) => {
+                            adt_def.struct_variant().fields.len()
+                        }
+                        ref ty => {
+                            span_bug!(pat.span, "tuple struct pattern unexpected type {:?}", ty);
+                        }
+                    };
+
+                    let adjust = pat_adjust_pos(expected_len, subpats.len(), ddpos);
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
                         let cmt_field =
                             self.cat_imm_interior(
                                 pat, cmt.clone(), subpat_ty,
-                                InteriorField(PositionalField(i)));
+                                InteriorField(PositionalField(adjust(i))));
                         self.cat_pattern_(cmt_field, &subpat, op)?;
                     }
                 }
@@ -1284,14 +1294,19 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          PatKind::Tup(ref subpats) => {
+          PatKind::Tuple(ref subpats, ddpos) => {
             // (p1, ..., pN)
+            let expected_len = match self.pat_ty(&pat) {
+                Ok(&ty::TyS{sty: ty::TyTuple(ref tys), ..}) => tys.len(),
+                ref ty => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
+            };
+            let adjust = pat_adjust_pos(expected_len, subpats.len(), ddpos);
             for (i, subpat) in subpats.iter().enumerate() {
                 let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
                 let subcmt =
                     self.cat_imm_interior(
                         pat, cmt.clone(), subpat_ty,
-                        InteriorField(PositionalField(i)));
+                        InteriorField(PositionalField(adjust(i))));
                 self.cat_pattern_(subcmt, &subpat, op)?;
             }
           }
