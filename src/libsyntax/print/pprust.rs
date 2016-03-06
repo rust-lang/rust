@@ -1030,6 +1030,9 @@ impl<'a> State<'a> {
             ast::TyKind::Infer => {
                 word(&mut self.s, "_")?;
             }
+            ast::TyKind::ImplicitSelf => {
+                unreachable!();
+            }
             ast::TyKind::Mac(ref m) => {
                 self.print_mac(m, token::Paren)?;
             }
