@@ -8,25 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{BasicBlockRef, ValueRef, OperandBundleDef};
-use rustc::middle::{infer, ty};
+use llvm::{self, BasicBlockRef, ValueRef, OperandBundleDef};
+use rustc::middle::ty;
 use rustc::mir::repr as mir;
 use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::base;
 use trans::build;
-use trans::callee::{Callee, Fn, Virtual};
-use trans::common::{self, Block, BlockAndBuilder};
+use trans::callee::{Callee, CalleeData, Fn, Virtual};
+use trans::common::{self, Block, BlockAndBuilder, C_undef};
 use trans::debuginfo::DebugLoc;
 use trans::Disr;
-use trans::foreign;
+use trans::machine::llalign_of_min;
 use trans::meth;
 use trans::type_of;
 use trans::glue;
 use trans::type_::Type;
 
 use super::{MirContext, drop};
-use super::operand::OperandValue::{FatPtr, Immediate, Ref};
+use super::lvalue::LvalueRef;
+use super::operand::OperandValue::{self, FatPtr, Immediate, Ref};
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
@@ -152,115 +153,78 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
-                let debugloc = DebugLoc::None;
-                // The arguments we'll be passing. Plus one to account for outptr, if used.
-                let mut llargs = Vec::with_capacity(args.len() + 1);
-                // Types of the arguments. We do not preallocate, because this vector is only
-                // filled when `is_foreign` is `true` and foreign calls are minority of the cases.
-                let mut arg_tys = Vec::new();
 
-                let (callee, fty) = match callee.ty.sty {
+                let (mut callee, abi, sig) = match callee.ty.sty {
                     ty::TyFnDef(def_id, substs, f) => {
-                        (Callee::def(bcx.ccx(), def_id, substs), f)
+                        (Callee::def(bcx.ccx(), def_id, substs), f.abi, &f.sig)
                     }
                     ty::TyFnPtr(f) => {
                         (Callee {
                             data: Fn(callee.immediate()),
                             ty: callee.ty
-                        }, f)
+                        }, f.abi, &f.sig)
                     }
                     _ => unreachable!("{} is not callable", callee.ty)
                 };
 
                 // We do not translate intrinsics here (they shouldn’t be functions)
-                assert!(fty.abi != Abi::RustIntrinsic && fty.abi != Abi::PlatformIntrinsic);
-                // Foreign-ABI functions are translated differently
-                let is_foreign = fty.abi != Abi::Rust && fty.abi != Abi::RustCall;
+                assert!(abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic);
+
+                let extra_args = &args[sig.0.inputs.len()..];
+                let extra_args = extra_args.iter().map(|op_arg| {
+                    self.mir.operand_ty(bcx.tcx(), op_arg)
+                }).collect::<Vec<_>>();
+                let fn_ty = callee.direct_fn_type(bcx.ccx(), &extra_args);
+
+                // The arguments we'll be passing. Plus one to account for outptr, if used.
+                let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
+                let mut llargs = Vec::with_capacity(arg_count);
 
                 // Prepare the return value destination
-                let (ret_dest_ty, must_copy_dest) = if let Some((ref d, _)) = *destination {
+                let ret_dest = if let Some((ref d, _)) = *destination {
                     let dest = self.trans_lvalue(&bcx, d);
-                    let ret_ty = dest.ty.to_ty(bcx.tcx());
-                    if !is_foreign && type_of::return_uses_outptr(bcx.ccx(), ret_ty) {
+                    if fn_ty.ret.is_indirect() {
                         llargs.push(dest.llval);
-                        (Some((dest, ret_ty)), false)
+                        None
+                    } else if fn_ty.ret.is_ignore() {
+                        None
                     } else {
-                        (Some((dest, ret_ty)), !common::type_is_zero_size(bcx.ccx(), ret_ty))
+                        Some(dest)
                     }
                 } else {
-                    (None, false)
+                    None
                 };
 
                 // Split the rust-call tupled arguments off.
-                let (args, rest) = if fty.abi == Abi::RustCall && !args.is_empty() {
+                let (args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
                     let (tup, args) = args.split_last().unwrap();
-                    // we can reorder safely because of MIR
-                    (args, self.trans_operand_untupled(&bcx, tup))
+                    (args, Some(tup))
                 } else {
-                    (&args[..], vec![])
+                    (&args[..], None)
                 };
 
-                let datum = {
-                    let mut arg_ops = args.iter().map(|arg| {
-                        self.trans_operand(&bcx, arg)
-                    }).chain(rest.into_iter());
+                let mut idx = 0;
+                for arg in args {
+                    let val = self.trans_operand(&bcx, arg).val;
+                    self.trans_argument(&bcx, val, &mut llargs, &fn_ty,
+                                        &mut idx, &mut callee.data);
+                }
+                if let Some(tup) = untuple {
+                    self.trans_arguments_untupled(&bcx, tup, &mut llargs, &fn_ty,
+                                                  &mut idx, &mut callee.data)
+                }
 
-                    // Get the actual pointer we can call.
-                    // This can involve vtable accesses or reification.
-                    let datum = if let Virtual(idx) = callee.data {
-                        assert!(!is_foreign);
-
-                        // Grab the first argument which is a trait object.
-                        let vtable = match arg_ops.next().unwrap().val {
-                            FatPtr(data, vtable) => {
-                                llargs.push(data);
-                                vtable
-                            }
-                            _ => unreachable!("expected FatPtr for Virtual call")
-                        };
-
-                        bcx.with_block(|bcx| {
-                            meth::get_virtual_method(bcx, vtable, idx, callee.ty)
-                        })
-                    } else {
-                        callee.reify(bcx.ccx())
-                    };
-
-                    // Process the rest of the args.
-                    for operand in arg_ops {
-                        match operand.val {
-                            Ref(llval) | Immediate(llval) => llargs.push(llval),
-                            FatPtr(b, e) => {
-                                llargs.push(b);
-                                llargs.push(e);
-                            }
-                        }
-                        if is_foreign {
-                            arg_tys.push(operand.ty);
-                        }
-                    }
-
-                    datum
-                };
-
-                let fn_ty = match datum.ty.sty {
-                    ty::TyFnDef(_, _, f) | ty::TyFnPtr(f) => {
-                        let sig = bcx.tcx().erase_late_bound_regions(&f.sig);
-                        let sig = infer::normalize_associated_type(bcx.tcx(), &sig);
-                        FnType::new(bcx.ccx(), f.abi, &sig, &[])
-                    }
-                    _ => unreachable!("expected fn type")
-                };
+                let fn_ptr = callee.reify(bcx.ccx()).val;
 
                 // Many different ways to call a function handled here
-                match (is_foreign, cleanup, destination) {
+                match (cleanup, destination) {
                     // The two cases below are the only ones to use LLVM’s `invoke`.
-                    (false, &Some(cleanup), &None) => {
+                    (&Some(cleanup), &None) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
-                        let cs = bcx.invoke(datum.val,
-                                            &llargs[..],
+                        let cs = bcx.invoke(fn_ptr,
+                                            &llargs,
                                             unreachable_blk.llbb,
                                             landingpad.llbb(),
                                             cleanup_bundle.as_ref());
@@ -269,22 +233,20 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             self.set_operand_dropped(bcx, op);
                         });
                     },
-                    (false, &Some(cleanup), &Some((_, success))) => {
+                    (&Some(cleanup), &Some((_, success))) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
-                        let invokeret = bcx.invoke(datum.val,
-                                                   &llargs[..],
+                        let invokeret = bcx.invoke(fn_ptr,
+                                                   &llargs,
                                                    self.llblock(success),
                                                    landingpad.llbb(),
                                                    cleanup_bundle.as_ref());
                         fn_ty.apply_attrs_callsite(invokeret);
-                        if must_copy_dest {
-                            let (ret_dest, ret_ty) = ret_dest_ty
-                                .expect("return destination and type not set");
+                        if let Some(ret_dest) = ret_dest {
                             // We translate the copy straight into the beginning of the target
                             // block.
                             self.bcx(success).at_start(|bcx| bcx.with_block( |bcx| {
-                                base::store_ty(bcx, invokeret, ret_dest.llval, ret_ty);
+                                fn_ty.ret.store(bcx, invokeret, ret_dest.llval);
                             }));
                         }
                         self.bcx(success).at_start(|bcx| for op in args {
@@ -294,24 +256,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             self.set_operand_dropped(bcx, op);
                         });
                     },
-                    (false, _, &None) => {
-                        let cs = bcx.call(datum.val,
-                                          &llargs[..],
-                                          cleanup_bundle.as_ref());
+                    (&None, &None) => {
+                        let cs = bcx.call(fn_ptr, &llargs, cleanup_bundle.as_ref());
                         fn_ty.apply_attrs_callsite(cs);
                         // no need to drop args, because the call never returns
                         bcx.unreachable();
                     }
-                    (false, _, &Some((_, target))) => {
-                        let llret = bcx.call(datum.val,
-                                             &llargs[..],
-                                             cleanup_bundle.as_ref());
+                    (&None, &Some((_, target))) => {
+                        let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle.as_ref());
                         fn_ty.apply_attrs_callsite(llret);
-                        if must_copy_dest {
-                            let (ret_dest, ret_ty) = ret_dest_ty
-                                .expect("return destination and type not set");
+                        if let Some(ret_dest) = ret_dest {
                             bcx.with_block(|bcx| {
-                                base::store_ty(bcx, llret, ret_dest.llval, ret_ty);
+                                fn_ty.ret.store(bcx, llret, ret_dest.llval);
                             });
                         }
                         for op in args {
@@ -319,28 +275,129 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                         funclet_br(bcx, self.llblock(target));
                     }
-                    // Foreign functions
-                    (true, _, destination) => {
-                        let (dest, _) = ret_dest_ty
-                            .expect("return destination is not set");
-                        bcx = bcx.map_block(|bcx| {
-                            foreign::trans_native_call(bcx,
-                                                       datum.ty,
-                                                       datum.val,
-                                                       dest.llval,
-                                                       &llargs[..],
-                                                       arg_tys,
-                                                       debugloc)
-                        });
-                        if let Some((_, target)) = *destination {
-                            for op in args {
-                                self.set_operand_dropped(&bcx, op);
-                            }
-                            funclet_br(bcx, self.llblock(target));
-                        }
-                    },
                 }
             }
+        }
+    }
+
+    fn trans_argument(&mut self,
+                      bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                      val: OperandValue,
+                      llargs: &mut Vec<ValueRef>,
+                      fn_ty: &FnType,
+                      next_idx: &mut usize,
+                      callee: &mut CalleeData) {
+        // Treat the values in a fat pointer separately.
+        if let FatPtr(ptr, meta) = val {
+            if *next_idx == 0 {
+                if let Virtual(idx) = *callee {
+                    let llfn = bcx.with_block(|bcx| {
+                        meth::get_virtual_method(bcx, meta, idx)
+                    });
+                    let llty = fn_ty.llvm_type(bcx.ccx()).ptr_to();
+                    *callee = Fn(bcx.pointercast(llfn, llty));
+                }
+            }
+            self.trans_argument(bcx, Immediate(ptr), llargs, fn_ty, next_idx, callee);
+            self.trans_argument(bcx, Immediate(meta), llargs, fn_ty, next_idx, callee);
+            return;
+        }
+
+        let arg = &fn_ty.args[*next_idx];
+        *next_idx += 1;
+
+        // Fill padding with undef value, where applicable.
+        if let Some(ty) = arg.pad {
+            llargs.push(C_undef(ty));
+        }
+
+        if arg.is_ignore() {
+            return;
+        }
+
+        // Force by-ref if we have to load through a cast pointer.
+        let (mut llval, by_ref) = match val {
+            Immediate(llval) if arg.cast.is_some() => {
+                let llscratch = build::AllocaFcx(bcx.fcx(), arg.original_ty, "arg");
+                bcx.store(llval, llscratch);
+                (llscratch, true)
+            }
+            Immediate(llval) => (llval, false),
+            Ref(llval) => (llval, true),
+            FatPtr(_, _) => unreachable!("fat pointers handled above")
+        };
+
+        if by_ref && !arg.is_indirect() {
+            // Have to load the argument, maybe while casting it.
+            if arg.original_ty == Type::i1(bcx.ccx()) {
+                // We store bools as i8 so we need to truncate to i1.
+                llval = bcx.load_range_assert(llval, 0, 2, llvm::False);
+                llval = bcx.trunc(llval, arg.original_ty);
+            } else if let Some(ty) = arg.cast {
+                llval = bcx.load(bcx.pointercast(llval, ty.ptr_to()));
+                let llalign = llalign_of_min(bcx.ccx(), arg.ty);
+                unsafe {
+                    llvm::LLVMSetAlignment(llval, llalign);
+                }
+            } else {
+                llval = bcx.load(llval);
+            }
+        }
+
+        llargs.push(llval);
+    }
+
+    fn trans_arguments_untupled(&mut self,
+                                bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                                operand: &mir::Operand<'tcx>,
+                                llargs: &mut Vec<ValueRef>,
+                                fn_ty: &FnType,
+                                next_idx: &mut usize,
+                                callee: &mut CalleeData) {
+        // FIXME: consider having some optimization to avoid tupling/untupling
+        // (and storing/loading in the case of immediates)
+
+        // avoid trans_operand for pointless copying
+        let lv = match *operand {
+            mir::Operand::Consume(ref lvalue) => self.trans_lvalue(bcx, lvalue),
+            mir::Operand::Constant(ref constant) => {
+                // FIXME: consider being less pessimized
+                if constant.ty.is_nil() {
+                    return;
+                }
+
+                let ty = bcx.monomorphize(&constant.ty);
+                let lv = LvalueRef::alloca(bcx, ty, "__untuple_alloca");
+                let constant = self.trans_constant(bcx, constant);
+                self.store_operand(bcx, lv.llval, constant);
+                lv
+           }
+        };
+
+        let lv_ty = lv.ty.to_ty(bcx.tcx());
+        let result_types = match lv_ty.sty {
+            ty::TyTuple(ref tys) => tys,
+            _ => bcx.tcx().sess.span_bug(
+                self.mir.span,
+                &format!("bad final argument to \"rust-call\" fn {:?}", lv_ty))
+        };
+
+        let base_repr = adt::represent_type(bcx.ccx(), lv_ty);
+        let base = adt::MaybeSizedValue::sized(lv.llval);
+        for (n, &ty) in result_types.iter().enumerate() {
+            let ptr = bcx.with_block(|bcx| {
+                adt::trans_field_ptr(bcx, &base_repr, base, Disr(0), n)
+            });
+            let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
+                let (lldata, llextra) = bcx.with_block(|bcx| {
+                    base::load_fat_ptr(bcx, ptr, ty)
+                });
+                FatPtr(lldata, llextra)
+            } else {
+                // Don't bother loading the value, trans_argument will.
+                Ref(ptr)
+            };
+            self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
         }
     }
 

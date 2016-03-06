@@ -18,7 +18,7 @@ use llvm::{ValueRef, TypeKind};
 use middle::infer;
 use middle::subst;
 use middle::subst::FnSpace;
-use trans::abi::Abi;
+use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -172,6 +172,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                             callee_ty: Ty<'tcx>,
+                                            fn_ty: &FnType,
                                             cleanup_scope: cleanup::CustomScopeIndex,
                                             args: callee::CallArgs<'a, 'tcx>,
                                             dest: expr::Dest,
@@ -396,11 +397,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // Push the arguments.
     let mut llargs = Vec::new();
     bcx = callee::trans_args(bcx,
+                             Abi::RustIntrinsic,
+                             fn_ty,
+                             &mut callee::Intrinsic,
                              args,
-                             callee_ty,
                              &mut llargs,
-                             cleanup::CustomScope(cleanup_scope),
-                             Abi::RustIntrinsic);
+                             cleanup::CustomScope(cleanup_scope));
 
     fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
@@ -973,7 +975,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     if val_ty(llval) != Type::void(ccx) &&
        machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
-        store_ty(bcx, llval, llresult, ret_ty);
+        if let Some(ty) = fn_ty.ret.cast {
+            let ptr = PointerCast(bcx, llresult, ty.ptr_to());
+            let store = Store(bcx, llval, ptr);
+            unsafe {
+                llvm::LLVMSetAlignment(store, type_of::align_of(ccx, ret_ty));
+            }
+        } else {
+            store_ty(bcx, llval, llresult, ret_ty);
+        }
     }
 
     // If we made a temporary stack slot, let's clean it up

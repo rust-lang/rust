@@ -41,29 +41,16 @@ use syntax::codemap::DUMMY_SP;
 // drop_glue pointer, size, align.
 const VTABLE_OFFSET: usize = 3;
 
-/// Extracts a method from a trait object's vtable, at the
-/// specified index, and casts it to the given type.
+/// Extracts a method from a trait object's vtable, at the specified index.
 pub fn get_virtual_method<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       llvtable: ValueRef,
-                                      vtable_index: usize,
-                                      method_ty: Ty<'tcx>)
-                                      -> Datum<'tcx, Rvalue> {
-    let _icx = push_ctxt("meth::get_virtual_method");
-    let ccx = bcx.ccx();
-
+                                      vtable_index: usize)
+                                      -> ValueRef {
     // Load the data pointer from the object.
-    debug!("get_virtual_method(callee_ty={}, vtable_index={}, llvtable={:?})",
-           method_ty, vtable_index, Value(llvtable));
+    debug!("get_virtual_method(vtable_index={}, llvtable={:?})",
+           vtable_index, Value(llvtable));
 
-    let mptr = Load(bcx, GEPi(bcx, llvtable, &[vtable_index + VTABLE_OFFSET]));
-
-    // Replace the self type (&Self or Box<Self>) with an opaque pointer.
-    if let ty::TyFnDef(_, _, fty) = method_ty.sty {
-        let opaque_ty = opaque_method_ty(ccx.tcx(), fty);
-        immediate_rvalue(PointerCast(bcx, mptr, type_of(ccx, opaque_ty)), opaque_ty)
-    } else {
-        immediate_rvalue(mptr, method_ty)
-    }
+    Load(bcx, GEPi(bcx, llvtable, &[vtable_index + VTABLE_OFFSET]))
 }
 
 /// Generate a shim function that allows an object type like `SomeTrait` to
@@ -321,23 +308,6 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             Some(mth)
         })
         .collect()
-}
-
-/// Replace the self type (&Self or Box<Self>) with an opaque pointer.
-fn opaque_method_ty<'tcx>(tcx: &TyCtxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
-                          -> Ty<'tcx> {
-    let mut inputs = method_ty.sig.0.inputs.clone();
-    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(ast::IntTy::I8));
-
-    tcx.mk_fn_ptr(ty::BareFnTy {
-        unsafety: method_ty.unsafety,
-        abi: method_ty.abi,
-        sig: ty::Binder(ty::FnSig {
-            inputs: inputs,
-            output: method_ty.sig.0.output,
-            variadic: method_ty.sig.0.variadic,
-        }),
-    })
 }
 
 #[derive(Debug)]

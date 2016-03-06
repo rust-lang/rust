@@ -9,20 +9,17 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::Ty;
 use rustc::mir::repr as mir;
-use trans::adt;
 use trans::base;
 use trans::common::{self, Block, BlockAndBuilder};
 use trans::datum;
 use trans::value::Value;
-use trans::Disr;
 use trans::glue;
 
 use std::fmt;
 
 use super::{MirContext, TempRef, drop};
-use super::lvalue::LvalueRef;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -188,48 +185,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::store_fat_ptr(bcx, data, extra, lldest, operand.ty);
             }
         }
-    }
-
-    pub fn trans_operand_untupled(&mut self,
-                                  bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                                  operand: &mir::Operand<'tcx>)
-                                  -> Vec<OperandRef<'tcx>>
-    {
-        // FIXME: consider having some optimization to avoid tupling/untupling
-        // (and storing/loading in the case of immediates)
-
-        // avoid trans_operand for pointless copying
-        let lv = match *operand {
-            mir::Operand::Consume(ref lvalue) => self.trans_lvalue(bcx, lvalue),
-            mir::Operand::Constant(ref constant) => {
-                // FIXME: consider being less pessimized
-                if constant.ty.is_nil() {
-                    return vec![];
-                }
-
-                let ty = bcx.monomorphize(&constant.ty);
-                let lv = LvalueRef::alloca(bcx, ty, "__untuple_alloca");
-                let constant = self.trans_constant(bcx, constant);
-                self.store_operand(bcx, lv.llval, constant);
-                lv
-           }
-        };
-
-        let lv_ty = lv.ty.to_ty(bcx.tcx());
-        let result_types = match lv_ty.sty {
-            ty::TyTuple(ref tys) => tys,
-            _ => bcx.tcx().sess.span_bug(
-                self.mir.span,
-                &format!("bad final argument to \"rust-call\" fn {:?}", lv_ty))
-        };
-
-        let base_repr = adt::represent_type(bcx.ccx(), lv_ty);
-        let base = adt::MaybeSizedValue::sized(lv.llval);
-        result_types.iter().enumerate().map(|(n, &ty)| {
-            self.trans_load(bcx, bcx.with_block(|bcx| {
-                adt::trans_field_ptr(bcx, &base_repr, base, Disr(0), n)
-            }), ty)
-        }).collect()
     }
 
     pub fn set_operand_dropped(&mut self,

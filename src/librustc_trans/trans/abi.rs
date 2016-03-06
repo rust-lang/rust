@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
+use trans::base;
+use trans::build::*;
 use trans::common::{type_is_fat_ptr, Block};
 use trans::context::CrateContext;
 use trans::cabi_x86;
@@ -125,6 +127,34 @@ impl ArgType {
 
     pub fn is_ignore(&self) -> bool {
         self.kind == ArgKind::Ignore
+    }
+
+    /// Store a direct/indirect value described by this ArgType into a
+    /// lvalue for the original Rust type of this argument/return.
+    /// Can be used for both storing formal arguments into Rust variables
+    /// or results of call/invoke instructions into their destinations.
+    pub fn store(&self, bcx: Block, mut val: ValueRef, dst: ValueRef) {
+        if self.is_ignore() {
+            return;
+        }
+        if self.is_indirect() {
+            let llsz = llsize_of(bcx.ccx(), self.ty);
+            let llalign = llalign_of_min(bcx.ccx(), self.ty);
+            base::call_memcpy(bcx, dst, val, llsz, llalign as u32);
+        } else if let Some(ty) = self.cast {
+            let store = Store(bcx, val, PointerCast(bcx, dst, ty.ptr_to()));
+            let llalign = llalign_of_min(bcx.ccx(), self.ty);
+            if !bcx.unreachable.get() {
+                unsafe {
+                    llvm::LLVMSetAlignment(store, llalign);
+                }
+            }
+        } else {
+            if self.original_ty == Type::i1(bcx.ccx()) {
+                val = ZExt(bcx, val, Type::i8(bcx.ccx()));
+            }
+            Store(bcx, val, dst);
+        }
     }
 }
 
