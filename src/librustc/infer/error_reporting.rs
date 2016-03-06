@@ -1514,7 +1514,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
             }
         };
         let new_seg = hir::PathSegment {
-            identifier: last_seg.identifier,
+            name: last_seg.name,
             parameters: new_parameters
         };
         let mut new_segs = Vec::new();

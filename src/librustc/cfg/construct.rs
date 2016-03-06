@@ -285,7 +285,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprBreak(label) => {
-                let loop_scope = self.find_scope(expr, label.map(|l| l.node.name));
+                let loop_scope = self.find_scope(expr, label.map(|l| l.node));
                 let b = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
@@ -293,7 +293,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprAgain(label) => {
-                let loop_scope = self.find_scope(expr, label.map(|l| l.node.name));
+                let loop_scope = self.find_scope(expr, label.map(|l| l.node));
                 let a = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, a,
                                       loop_scope, loop_scope.continue_index);

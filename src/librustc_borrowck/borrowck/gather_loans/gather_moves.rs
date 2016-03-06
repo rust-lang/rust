@@ -100,7 +100,7 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let pat_span_path_opt = match move_pat.node {
         PatKind::Ident(_, ref path1, _) => {
             Some(MoveSpanAndPath{span: move_pat.span,
-                                 name: path1.node.name})
+                                 name: path1.node})
         },
         _ => None,
     };

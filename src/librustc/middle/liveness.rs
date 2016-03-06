@@ -1050,7 +1050,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprBreak(opt_label) => {
               // Find which label this break jumps to
-              let sc = self.find_loop_scope(opt_label.map(|l| l.node.name), expr.id, expr.span);
+              let sc = self.find_loop_scope(opt_label.map(|l| l.node), expr.id, expr.span);
 
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAgain(opt_label) => {
               // Find which label this expr continues to
-              let sc = self.find_loop_scope(opt_label.map(|l| l.node.name), expr.id, expr.span);
+              let sc = self.find_loop_scope(opt_label.map(|l| l.node), expr.id, expr.span);
 
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table

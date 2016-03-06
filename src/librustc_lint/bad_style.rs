@@ -277,7 +277,7 @@ impl LateLintPass for NonSnakeCase {
         if let &PatKind::Ident(_, ref path1, _) = &p.node {
             let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
             if let Some(Def::Local(..)) = def {
-                self.check_snake_case(cx, "variable", &path1.node.name.as_str(), Some(p.span));
+                self.check_snake_case(cx, "variable", &path1.node.as_str(), Some(p.span));
             }
         }
     }
@@ -363,7 +363,7 @@ impl LateLintPass for NonUpperCaseGlobals {
         match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
             (&PatKind::Ident(_, ref path1, _), Some(Def::Const(..))) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
-                                                      path1.node.name, p.span);
+                                                      path1.node, p.span);
             }
             _ => {}
         }

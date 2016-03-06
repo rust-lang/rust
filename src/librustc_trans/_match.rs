@@ -482,7 +482,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         loop {
             pat = match pat.node {
                 PatKind::Ident(_, ref path, Some(ref inner)) => {
-                    bound_ptrs.push((path.node.name, val.val));
+                    bound_ptrs.push((path.node, val.val));
                     &inner
                 },
                 _ => break
@@ -520,7 +520,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             match this.node {
                 PatKind::Ident(_, ref path, None) => {
                     if pat_is_binding(&dm.borrow(), &this) {
-                        bound_ptrs.push((path.node.name, val.val));
+                        bound_ptrs.push((path.node, val.val));
                     }
                 }
                 PatKind::Vec(ref before, Some(ref slice), ref after) => {
@@ -528,7 +528,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                         let subslice_val = bind_subslice_pat(
                             bcx, this.id, val,
                             before.len(), after.len());
-                        bound_ptrs.push((path.node.name, subslice_val));
+                        bound_ptrs.push((path.node, subslice_val));
                     }
                 }
                 _ => {}
@@ -1802,7 +1802,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // binding will live and place it into the appropriate
                 // map.
                 bcx = mk_binding_alloca(
-                    bcx, pat.id, path1.node.name, cleanup_scope, (),
+                    bcx, pat.id, path1.node, cleanup_scope, (),
                     "_match::bind_irrefutable_pat",
                     |(), bcx, Datum { val: llval, ty, kind: _ }| {
                         match pat_binding_mode {
