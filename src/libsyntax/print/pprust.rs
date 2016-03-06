@@ -12,7 +12,7 @@ pub use self::AnnNode::*;
 
 use abi::{self, Abi};
 use ast::{self, TokenTree, BlockCheckMode, PatKind};
-use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;
 use attr::ThinAttributesExt;
 use util::parser::AssocOp;
@@ -382,13 +382,12 @@ pub fn fun_to_string(decl: &ast::FnDecl,
                      unsafety: ast::Unsafety,
                      constness: ast::Constness,
                      name: ast::Ident,
-                     opt_explicit_self: Option<&ast::SelfKind>,
                      generics: &ast::Generics)
                      -> String {
     to_string(|s| {
         s.head("")?;
         s.print_fn(decl, unsafety, constness, Abi::Rust, Some(name),
-                   generics, opt_explicit_self, &ast::Visibility::Inherited)?;
+                   generics, &ast::Visibility::Inherited)?;
         s.end()?; // Close the head box
         s.end() // Close the outer box
     })
@@ -414,10 +413,6 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
 
 pub fn lit_to_string(l: &ast::Lit) -> String {
     to_string(|s| s.print_literal(l))
-}
-
-pub fn explicit_self_to_string(explicit_self: &ast::SelfKind) -> String {
-    to_string(|s| s.print_explicit_self(explicit_self, ast::Mutability::Immutable).map(|_| {}))
 }
 
 pub fn variant_to_string(var: &ast::Variant) -> String {
@@ -1005,8 +1000,7 @@ impl<'a> State<'a> {
                                  f.unsafety,
                                  &f.decl,
                                  None,
-                                 &generics,
-                                 None)?;
+                                 &generics)?;
             }
             ast::TyKind::Path(None, ref path) => {
                 self.print_path(path, false, 0)?;
@@ -1054,7 +1048,7 @@ impl<'a> State<'a> {
                 self.print_fn(decl, ast::Unsafety::Normal,
                               ast::Constness::NotConst,
                               Abi::Rust, Some(item.ident),
-                              generics, None, &item.vis)?;
+                              generics, &item.vis)?;
                 self.end()?; // end head-ibox
                 word(&mut self.s, ";")?;
                 self.end() // end the outer fn box
@@ -1182,7 +1176,6 @@ impl<'a> State<'a> {
                     abi,
                     Some(item.ident),
                     typarams,
-                    None,
                     &item.vis
                 )?;
                 word(&mut self.s, " ")?;
@@ -1522,7 +1515,6 @@ impl<'a> State<'a> {
                       m.abi,
                       Some(ident),
                       &m.generics,
-                      None,
                       vis)
     }
 
@@ -2610,29 +2602,25 @@ impl<'a> State<'a> {
         self.end() // close enclosing cbox
     }
 
-    // Returns whether it printed anything
-    fn print_explicit_self(&mut self,
-                           explicit_self: &ast::SelfKind,
-                           mutbl: ast::Mutability) -> io::Result<bool> {
-        self.print_mutability(mutbl)?;
-        match *explicit_self {
-            ast::SelfKind::Static => { return Ok(false); }
-            ast::SelfKind::Value(_) => {
-                word(&mut self.s, "self")?;
+    fn print_explicit_self(&mut self, explicit_self: &ast::ExplicitSelf) -> io::Result<()> {
+        match explicit_self.node {
+            SelfKind::Value(m) => {
+                self.print_mutability(m)?;
+                word(&mut self.s, "self")
             }
-            ast::SelfKind::Region(ref lt, m, _) => {
+            SelfKind::Region(ref lt, m) => {
                 word(&mut self.s, "&")?;
                 self.print_opt_lifetime(lt)?;
                 self.print_mutability(m)?;
-                word(&mut self.s, "self")?;
+                word(&mut self.s, "self")
             }
-            ast::SelfKind::Explicit(ref typ, _) => {
+            SelfKind::Explicit(ref typ, m) => {
+                self.print_mutability(m)?;
                 word(&mut self.s, "self")?;
                 self.word_space(":")?;
-                self.print_type(&typ)?;
+                self.print_type(&typ)
             }
         }
-        return Ok(true);
     }
 
     pub fn print_fn(&mut self,
@@ -2642,7 +2630,6 @@ impl<'a> State<'a> {
                     abi: abi::Abi,
                     name: Option<ast::Ident>,
                     generics: &ast::Generics,
-                    opt_explicit_self: Option<&ast::SelfKind>,
                     vis: &ast::Visibility) -> io::Result<()> {
         self.print_fn_header_info(unsafety, constness, abi, vis)?;
 
@@ -2651,21 +2638,14 @@ impl<'a> State<'a> {
             self.print_ident(name)?;
         }
         self.print_generics(generics)?;
-        self.print_fn_args_and_ret(decl, opt_explicit_self)?;
+        self.print_fn_args_and_ret(decl)?;
         self.print_where_clause(&generics.where_clause)
     }
 
-    pub fn print_fn_args(&mut self, decl: &ast::FnDecl,
-                         _: Option<&ast::SelfKind>,
-                         is_closure: bool) -> io::Result<()> {
-        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, is_closure))
-    }
-
-    pub fn print_fn_args_and_ret(&mut self, decl: &ast::FnDecl,
-                                 opt_explicit_self: Option<&ast::SelfKind>)
+    pub fn print_fn_args_and_ret(&mut self, decl: &ast::FnDecl)
         -> io::Result<()> {
         self.popen()?;
-        self.print_fn_args(decl, opt_explicit_self, false)?;
+        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, false))?;
         if decl.variadic {
             word(&mut self.s, ", ...")?;
         }
@@ -2679,7 +2659,7 @@ impl<'a> State<'a> {
             decl: &ast::FnDecl)
             -> io::Result<()> {
         word(&mut self.s, "|")?;
-        self.print_fn_args(decl, None, true)?;
+        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, true))?;
         word(&mut self.s, "|")?;
 
         if let ast::FunctionRetTy::Default(..) = decl.output {
@@ -2929,17 +2909,14 @@ impl<'a> State<'a> {
         match input.ty.node {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat)?,
             _ => {
-                let (mutbl, invalid) = match input.pat.node {
-                    PatKind::Ident(ast::BindingMode::ByValue(mutbl), ident, _) |
-                    PatKind::Ident(ast::BindingMode::ByRef(mutbl), ident, _) => {
-                        (mutbl, ident.node.name == keywords::Invalid.name())
-                    }
-                    _ => (ast::Mutability::Immutable, false)
-                };
-
                 if let Some(eself) = input.to_self() {
-                    self.print_explicit_self(&eself.node, mutbl)?;
+                    self.print_explicit_self(&eself)?;
                 } else {
+                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.node {
+                        ident.node.name == keywords::Invalid.name()
+                    } else {
+                        false
+                    };
                     if !invalid {
                         self.print_pat(&input.pat)?;
                         word(&mut self.s, ":")?;
@@ -2980,8 +2957,7 @@ impl<'a> State<'a> {
                        unsafety: ast::Unsafety,
                        decl: &ast::FnDecl,
                        name: Option<ast::Ident>,
-                       generics: &ast::Generics,
-                       opt_explicit_self: Option<&ast::SelfKind>)
+                       generics: &ast::Generics)
                        -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
@@ -3002,7 +2978,6 @@ impl<'a> State<'a> {
                       abi,
                       name,
                       &generics,
-                      opt_explicit_self,
                       &ast::Visibility::Inherited)?;
         self.end()
     }
@@ -3126,8 +3101,7 @@ mod tests {
         let generics = ast::Generics::default();
         assert_eq!(fun_to_string(&decl, ast::Unsafety::Normal,
                                  ast::Constness::NotConst,
-                                 abba_ident,
-                                 None, &generics),
+                                 abba_ident, &generics),
                    "fn abba()");
     }
 

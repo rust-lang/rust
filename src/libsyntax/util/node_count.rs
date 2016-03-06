@@ -129,10 +129,6 @@ impl<'v> Visitor<'v> for NodeCounter {
         self.count += 1;
         walk_lifetime_def(self, lifetime)
     }
-    fn visit_explicit_self(&mut self, es: &'v ExplicitSelf) {
-        self.count += 1;
-        walk_explicit_self(self, es)
-    }
     fn visit_mac(&mut self, _mac: &'v Mac) {
         self.count += 1;
         walk_mac(self, _mac)
