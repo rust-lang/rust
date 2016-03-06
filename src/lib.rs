@@ -111,24 +111,30 @@ mod reexport {
 #[plugin_registrar]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn plugin_registrar(reg: &mut Registry) {
-    let conferr = match utils::conf::conf_file(reg.args()) {
-        Ok(Some(file_name)) => {
-            utils::conf::read_conf(&file_name, true)
-        }
-        Ok(None) => {
-            utils::conf::read_conf("Clippy.toml", false)
+    let conf = match utils::conf::conf_file(reg.args()) {
+        Ok(file_name) => {
+            // if the user specified a file, it must exist, otherwise default to `Clippy.toml` but
+            // do not require the file to exist
+            let (ref file_name, must_exist) = if let Some(ref file_name) = file_name {
+                (&**file_name, true)
+            } else {
+                ("Clippy.toml", false)
+            };
+
+            let (conf, errors) = utils::conf::read_conf(&file_name, must_exist);
+
+            // all conf errors are non-fatal, we just use the default conf in case of error
+            for error in errors {
+                reg.sess.struct_err(&format!("error reading Clippy's configuration file: {}", error)).emit();
+            }
+
+            conf
         }
         Err((err, span)) => {
-            reg.sess.struct_span_err(span, err).emit();
-            return;
-        }
-    };
-
-    let conf = match conferr {
-        Ok(conf) => conf,
-        Err(err) => {
-            reg.sess.struct_err(&format!("error reading Clippy's configuration file: {}", err)).emit();
-            return;
+            reg.sess.struct_span_err(span, err)
+                    .span_note(span, "Clippy will use defaulf configuration")
+                    .emit();
+            utils::conf::Conf::default()
         }
     };
 

@@ -157,20 +157,28 @@ define_Conf! {
 
 /// Read the `toml` configuration file. The function will ignore “File not found” errors iif
 /// `!must_exist`, in which case, it will return the default configuration.
-pub fn read_conf(path: &str, must_exist: bool) -> Result<Conf, ConfError> {
+/// In case of error, the function tries to continue as much as possible.
+pub fn read_conf(path: &str, must_exist: bool) -> (Conf, Vec<ConfError>) {
     let mut conf = Conf::default();
+    let mut errors = Vec::new();
 
     let file = match fs::File::open(path) {
         Ok(mut file) => {
             let mut buf = String::new();
-            try!(file.read_to_string(&mut buf));
+
+            if let Err(err) = file.read_to_string(&mut buf) {
+                errors.push(err.into());
+                return (conf, errors);
+            }
+
             buf
         }
         Err(ref err) if !must_exist && err.kind() == io::ErrorKind::NotFound => {
-            return Ok(conf);
+            return (conf, errors);
         }
         Err(err) => {
-            return Err(err.into());
+            errors.push(err.into());
+            return (conf, errors);
         }
     };
 
@@ -178,12 +186,15 @@ pub fn read_conf(path: &str, must_exist: bool) -> Result<Conf, ConfError> {
     let toml = if let Some(toml) = parser.parse() {
         toml
     } else {
-        return Err(ConfError::TomlError(parser.errors));
+        errors.push(ConfError::TomlError(parser.errors));
+        return (conf, errors);
     };
 
     for (key, value) in toml {
-        try!(conf.set(key, value));
+        if let Err(err) = conf.set(key, value) {
+            errors.push(err);
+        }
     }
 
-    Ok(conf)
+    (conf, errors)
 }
