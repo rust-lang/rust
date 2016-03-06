@@ -432,5 +432,9 @@ impl FnType {
                 i += 1;
             }
         }
+
+        if self.cconv != llvm::CCallConv {
+            llvm::SetInstructionCallConv(callsite, self.cconv);
+        }
     }
 }
