@@ -139,11 +139,11 @@ fn relate_item_substs<'a,'tcx:'a,R>(relation: &mut R,
     relate_substs(relation, opt_variances, a_subst, b_subst)
 }
 
-fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
-                               variances: Option<&ty::ItemVariances>,
-                               a_subst: &Substs<'tcx>,
-                               b_subst: &Substs<'tcx>)
-                               -> RelateResult<'tcx, Substs<'tcx>>
+pub fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
+                                   variances: Option<&ty::ItemVariances>,
+                                   a_subst: &Substs<'tcx>,
+                                   b_subst: &Substs<'tcx>)
+                                   -> RelateResult<'tcx, Substs<'tcx>>
     where R: TypeRelation<'a,'tcx>
 {
     let mut substs = Substs::empty();

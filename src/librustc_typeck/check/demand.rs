@@ -39,14 +39,10 @@ pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         sp: Span,
                         expected: Ty<'tcx>,
                         expr: &hir::Expr) {
-    let expr_ty = fcx.expr_ty(expr);
-    debug!("demand::coerce(expected = {:?}, expr_ty = {:?})",
-           expected,
-           expr_ty);
-    let expr_ty = fcx.resolve_type_vars_if_possible(expr_ty);
     let expected = fcx.resolve_type_vars_if_possible(expected);
-    let origin = TypeOrigin::Misc(sp);
-    if let Err(e) = coercion::try(fcx, expr, expr_ty, expected) {
+    if let Err(e) = coercion::try(fcx, expr, expected) {
+        let origin = TypeOrigin::Misc(sp);
+        let expr_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(expr));
         fcx.infcx().report_mismatched_types(origin, expected, expr_ty, e);
     }
 }

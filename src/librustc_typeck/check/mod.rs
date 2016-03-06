@@ -89,7 +89,7 @@ use middle::cstore::LOCAL_CRATE;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::infer;
-use middle::infer::{TypeOrigin, type_variable};
+use middle::infer::{TypeOrigin, TypeTrace, type_variable};
 use middle::pat_util::{self, pat_id_map};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits::{self, report_fulfillment_errors};
@@ -101,6 +101,7 @@ use middle::ty::{MethodCall, MethodCallee};
 use middle::ty::adjustment;
 use middle::ty::error::TypeError;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::relate::TypeRelation;
 use middle::ty::util::Representability;
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
@@ -2080,7 +2081,7 @@ pub fn autoderef<'a, 'b, 'tcx, E, I, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                 // (i.e. it is an inference variable) because `Ty::builtin_deref`
                 // and `try_overloaded_deref` both simply return `None`
                 // in such a case without producing spurious errors.
-                fcx.resolve_type_vars_if_possible(t)
+                fcx.infcx().resolve_type_vars_if_possible(&t)
             }
         };
         if resolved_t.references_error() {
@@ -2164,7 +2165,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait returns a type of `&T`, but the
 /// actual type we assign to the *expression* is `T`. So this function just peels off the return
 /// type by one layer to yield `T`.
-fn make_overloaded_lvalue_return_type<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn make_overloaded_lvalue_return_type<'tcx>(tcx: &TyCtxt<'tcx>,
                                             method: MethodCallee<'tcx>)
                                             -> ty::TypeAndMut<'tcx>
 {
@@ -2834,30 +2835,52 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         check_block_with_expected(fcx, then_blk, expected);
         let then_ty = fcx.node_ty(then_blk.id);
 
-        let branches_ty = match opt_else_expr {
-            Some(ref else_expr) => {
-                check_expr_with_expectation(fcx, &else_expr, expected);
-                let else_ty = fcx.expr_ty(&else_expr);
-                infer::common_supertype(fcx.infcx(),
-                                        TypeOrigin::IfExpression(sp),
-                                        true,
-                                        then_ty,
-                                        else_ty)
-            }
-            None => {
-                infer::common_supertype(fcx.infcx(),
-                                        TypeOrigin::IfExpressionWithNoElse(sp),
-                                        false,
-                                        then_ty,
-                                        fcx.tcx().mk_nil())
-            }
+        let unit = fcx.tcx().mk_nil();
+        let (origin, expected, found, result) =
+        if let Some(else_expr) = opt_else_expr {
+            check_expr_with_expectation(fcx, else_expr, expected);
+            let else_ty = fcx.expr_ty(else_expr);
+            let origin = TypeOrigin::IfExpression(sp);
+
+            // Only try to coerce-unify if we have a then expression
+            // to assign coercions to, otherwise it's () or diverging.
+            let result = if let Some(ref then) = then_blk.expr {
+                let res = coercion::try_find_lub(fcx, origin, || Some(&**then),
+                                                 then_ty, else_expr);
+
+                // In case we did perform an adjustment, we have to update
+                // the type of the block, because old trans still uses it.
+                let adj = fcx.inh.tables.borrow().adjustments.get(&then.id).cloned();
+                if res.is_ok() && adj.is_some() {
+                    fcx.write_ty(then_blk.id, fcx.adjust_expr_ty(then, adj.as_ref()));
+                }
+
+                res
+            } else {
+                fcx.infcx().commit_if_ok(|_| {
+                    let trace = TypeTrace::types(origin, true, then_ty, else_ty);
+                    fcx.infcx().lub(true, trace).relate(&then_ty, &else_ty)
+                })
+            };
+            (origin, then_ty, else_ty, result)
+        } else {
+            let origin = TypeOrigin::IfExpressionWithNoElse(sp);
+            (origin, unit, then_ty,
+             fcx.infcx().eq_types(true, origin, unit, then_ty).map(|_| unit))
         };
 
-        let cond_ty = fcx.expr_ty(cond_expr);
-        let if_ty = if cond_ty.references_error() {
-            fcx.tcx().types.err
-        } else {
-            branches_ty
+        let if_ty = match result {
+            Ok(ty) => {
+                if fcx.expr_ty(cond_expr).references_error() {
+                    fcx.tcx().types.err
+                } else {
+                    ty
+                }
+            }
+            Err(e) => {
+                fcx.infcx().report_mismatched_types(origin, expected, found, e);
+                fcx.tcx().types.err
+            }
         };
 
         fcx.write_ty(id, if_ty);
@@ -3497,23 +3520,30 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         });
 
-        let typ = match uty {
-            Some(uty) => {
-                for e in args {
-                    check_expr_coercable_to_type(fcx, &e, uty);
+        let mut unified = fcx.infcx().next_ty_var();
+        let coerce_to = uty.unwrap_or(unified);
+
+        for (i, e) in args.iter().enumerate() {
+            check_expr_with_hint(fcx, e, coerce_to);
+            let e_ty = fcx.expr_ty(e);
+            let origin = TypeOrigin::Misc(e.span);
+
+            // Special-case the first element, as it has no "previous expressions".
+            let result = if i == 0 {
+                coercion::try(fcx, e, coerce_to)
+            } else {
+                let prev_elems = || args[..i].iter().map(|e| &**e);
+                coercion::try_find_lub(fcx, origin, prev_elems, unified, e)
+            };
+
+            match result {
+                Ok(ty) => unified = ty,
+                Err(e) => {
+                    fcx.infcx().report_mismatched_types(origin, unified, e_ty, e);
                 }
-                uty
             }
-            None => {
-                let t: Ty = fcx.infcx().next_ty_var();
-                for e in args {
-                    check_expr_has_type(fcx, &e, t);
-                }
-                t
-            }
-        };
-        let typ = tcx.mk_array(typ, args.len());
-        fcx.write_ty(id, typ);
+        }
+        fcx.write_ty(id, tcx.mk_array(unified, args.len()));
       }
       hir::ExprRepeat(ref element, ref count_expr) => {
         check_expr_has_type(fcx, &count_expr, tcx.types.usize);

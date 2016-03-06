@@ -15,9 +15,10 @@ use middle::pat_util::pat_is_resolved_const;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
-use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
+use check::{demand, FnCtxt, Expectation};
 use check::{check_expr_with_lvalue_pref};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
+use check::coercion;
 use lint;
 use require_same_types;
 use util::nodemap::FnvHashMap;
@@ -492,54 +493,67 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // of execution reach it, we will panic, so bottom is an appropriate
     // type in that case)
     let expected = expected.adjust_for_branches(fcx);
-    let result_ty = arms.iter().fold(fcx.infcx().next_diverging_ty_var(), |result_ty, arm| {
-        let bty = match expected {
-            // We don't coerce to `()` so that if the match expression is a
-            // statement it's branches can have any consistent type. That allows
-            // us to give better error messages (pointing to a usually better
-            // arm for inconsistent arms or to the whole match when a `()` type
-            // is required).
-            Expectation::ExpectHasType(ety) if ety != fcx.tcx().mk_nil() => {
-                check_expr_coercable_to_type(fcx, &arm.body, ety);
-                ety
+    let mut result_ty = fcx.infcx().next_diverging_ty_var();
+    let coerce_first = match expected {
+        // We don't coerce to `()` so that if the match expression is a
+        // statement it's branches can have any consistent type. That allows
+        // us to give better error messages (pointing to a usually better
+        // arm for inconsistent arms or to the whole match when a `()` type
+        // is required).
+        Expectation::ExpectHasType(ety) if ety != fcx.tcx().mk_nil() => {
+            ety
+        }
+        _ => result_ty
+    };
+    for (i, arm) in arms.iter().enumerate() {
+        if let Some(ref e) = arm.guard {
+            check_expr_has_type(fcx, e, tcx.types.bool);
+        }
+        check_expr_with_expectation(fcx, &arm.body, expected);
+        let arm_ty = fcx.expr_ty(&arm.body);
+
+        if result_ty.references_error() || arm_ty.references_error() {
+            result_ty = tcx.types.err;
+            continue;
+        }
+
+        // Handle the fallback arm of a desugared if-let like a missing else.
+        let is_if_let_fallback = match match_src {
+            hir::MatchSource::IfLetDesugar { contains_else_clause: false } => {
+                i == arms.len() - 1 && arm_ty.is_nil()
             }
-            _ => {
-                check_expr_with_expectation(fcx, &arm.body, expected);
-                fcx.node_ty(arm.body.id)
-            }
+            _ => false
         };
 
-        if let Some(ref e) = arm.guard {
-            check_expr_has_type(fcx, &e, tcx.types.bool);
-        }
-
-        if result_ty.references_error() || bty.references_error() {
-            tcx.types.err
+        let origin = if is_if_let_fallback {
+            TypeOrigin::IfExpressionWithNoElse(expr.span)
         } else {
-            let (origin, expected, found) = match match_src {
-                /* if-let construct without an else block */
-                hir::MatchSource::IfLetDesugar { contains_else_clause }
-                if !contains_else_clause => (
-                    TypeOrigin::IfExpressionWithNoElse(expr.span),
-                    bty,
-                    result_ty,
-                ),
-                _ => (
-                    TypeOrigin::MatchExpressionArm(expr.span, arm.body.span, match_src),
-                    result_ty,
-                    bty,
-                ),
-            };
+            TypeOrigin::MatchExpressionArm(expr.span, arm.body.span, match_src)
+        };
 
-            infer::common_supertype(
-                fcx.infcx(),
-                origin,
-                true,
-                expected,
-                found,
-            )
-        }
-    });
+        let result = if is_if_let_fallback {
+            fcx.infcx().eq_types(true, origin, arm_ty, result_ty).map(|_| arm_ty)
+        } else if i == 0 {
+            // Special-case the first arm, as it has no "previous expressions".
+            coercion::try(fcx, &arm.body, coerce_first)
+        } else {
+            let prev_arms = || arms[..i].iter().map(|arm| &*arm.body);
+            coercion::try_find_lub(fcx, origin, prev_arms, result_ty, &arm.body)
+        };
+
+        result_ty = match result {
+            Ok(ty) => ty,
+            Err(e) => {
+                let (expected, found) = if is_if_let_fallback {
+                    (arm_ty, result_ty)
+                } else {
+                    (result_ty, arm_ty)
+                };
+                fcx.infcx().report_mismatched_types(origin, expected, found, e);
+                fcx.tcx().types.err
+            }
+        };
+    }
 
     fcx.write_ty(expr.id, result_ty);
 }
