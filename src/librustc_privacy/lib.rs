@@ -38,6 +38,7 @@ use rustc_front::intravisit::{self, Visitor};
 
 use rustc::dep_graph::DepNode;
 use rustc::lint;
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::def::{self, Def};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
@@ -498,7 +499,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         let node_id = if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
             node_id
         } else {
-            if self.external_exports.contains(&did) {
+            if self.tcx.sess.cstore.visibility(did) == hir::Public {
                 debug!("privacy - {:?} was externally exported", did);
                 return Allowable;
             }
