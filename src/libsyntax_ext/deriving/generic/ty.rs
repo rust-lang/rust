@@ -15,11 +15,10 @@ pub use self::PtrTy::*;
 pub use self::Ty::*;
 
 use syntax::ast;
-use syntax::ast::{Expr,Generics,Ident};
+use syntax::ast::{Expr, Generics, Ident, SelfKind};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{Span,respan};
-use syntax::parse::token::keywords;
 use syntax::ptr::P;
 
 /// The types of pointers
@@ -258,12 +257,11 @@ impl<'a> LifetimeBounds<'a> {
 
 pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     -> (P<Expr>, ast::ExplicitSelf) {
-    // this constructs a fresh `self` path, which will match the fresh `self` binding
-    // created below.
+    // this constructs a fresh `self` path
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfKind::Value(keywords::SelfValue.ident())))
+            (self_path, respan(span, SelfKind::Value(ast::Mutability::Immutable)))
         }
         Some(ref ptr) => {
             let self_ty = respan(
@@ -271,7 +269,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 match *ptr {
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
-                        ast::SelfKind::Region(lt, mutbl, keywords::SelfValue.ident())
+                        SelfKind::Region(lt, mutbl)
                     }
                     Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition")
                 });

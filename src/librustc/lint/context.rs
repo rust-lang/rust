@@ -1043,11 +1043,6 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         run_lints!(self, check_lifetime_def, early_passes, lt);
     }
 
-    fn visit_explicit_self(&mut self, es: &ast::ExplicitSelf) {
-        run_lints!(self, check_explicit_self, early_passes, es);
-        ast_visit::walk_explicit_self(self, es);
-    }
-
     fn visit_path(&mut self, p: &ast::Path, id: ast::NodeId) {
         run_lints!(self, check_path, early_passes, p, id);
         ast_visit::walk_path(self, p);
