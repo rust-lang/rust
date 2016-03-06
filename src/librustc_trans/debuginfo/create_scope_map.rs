@@ -42,16 +42,13 @@ pub fn create_scope_map(cx: &CrateContext,
                         fn_ast_id: ast::NodeId)
                         -> NodeMap<DIScope> {
     let mut scope_map = NodeMap();
-
-    let def_map = &cx.tcx().def_map;
-
     let mut scope_stack = vec!(ScopeStackEntry { scope_metadata: fn_metadata, name: None });
     scope_map.insert(fn_ast_id, fn_metadata);
 
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for arg in args {
-        pat_util::pat_bindings(def_map, &arg.pat, |_, node_id, _, path1| {
+        pat_util::pat_bindings(&arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
                                                name: Some(path1.node.unhygienize()) });
             scope_map.insert(node_id, fn_metadata);

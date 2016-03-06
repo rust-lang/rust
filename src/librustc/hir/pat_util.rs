@@ -10,14 +10,12 @@
 
 use hir::def::*;
 use hir::def_id::DefId;
+use hir::{self, PatKind};
 use ty::TyCtxt;
 use util::nodemap::FnvHashMap;
-
 use syntax::ast;
-use hir::{self, PatKind};
-use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
+use syntax::codemap::{Span, Spanned, DUMMY_SP};
 
-use std::cell::RefCell;
 use std::iter::{Enumerate, ExactSizeIterator};
 
 pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
@@ -57,9 +55,9 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
 
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.
-pub fn pat_id_map(dm: &RefCell<DefMap>, pat: &hir::Pat) -> PatIdMap {
+pub fn pat_id_map(pat: &hir::Pat) -> PatIdMap {
     let mut map = FnvHashMap();
-    pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
+    pat_bindings(pat, |_bm, p_id, _s, path1| {
         map.insert(path1.node, p_id);
     });
     map
@@ -123,31 +121,14 @@ pub fn pat_is_resolved_const(dm: &DefMap, pat: &hir::Pat) -> bool {
     }
 }
 
-pub fn pat_is_binding(_: &DefMap, pat: &hir::Pat) -> bool {
-    match pat.node {
-        PatKind::Binding(..) => true,
-        _ => false
-    }
-}
-
-pub fn pat_is_binding_or_wild(_: &DefMap, pat: &hir::Pat) -> bool {
-    match pat.node {
-        PatKind::Binding(..) | PatKind::Wild => true,
-        _ => false
-    }
-}
-
-/// Call `it` on every "binding" in a pattern, e.g., on `a` in
+/// Call `f` on every "binding" in a pattern, e.g., on `a` in
 /// `match foo() { Some(a) => (), None => () }`
-pub fn pat_bindings<I>(_: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
-    I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Name>),
+pub fn pat_bindings<F>(pat: &hir::Pat, mut f: F)
+    where F: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Name>),
 {
     pat.walk(|p| {
-        match p.node {
-          PatKind::Binding(binding_mode, ref pth, _) => {
-            it(binding_mode, p.id, p.span, &respan(pth.span, pth.node));
-          }
-          _ => {}
+        if let PatKind::Binding(binding_mode, ref pth, _) = p.node {
+            f(binding_mode, p.id, p.span, pth);
         }
         true
     });
@@ -155,10 +136,10 @@ pub fn pat_bindings<I>(_: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
 
 /// Checks if the pattern contains any patterns that bind something to
 /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
-pub fn pat_contains_bindings(dm: &DefMap, pat: &hir::Pat) -> bool {
+pub fn pat_contains_bindings(pat: &hir::Pat) -> bool {
     let mut contains_bindings = false;
     pat.walk(|p| {
-        if pat_is_binding(dm, p) {
+        if let PatKind::Binding(..) = p.node {
             contains_bindings = true;
             false // there's at least one binding, can short circuit now.
         } else {
@@ -170,18 +151,15 @@ pub fn pat_contains_bindings(dm: &DefMap, pat: &hir::Pat) -> bool {
 
 /// Checks if the pattern contains any `ref` or `ref mut` bindings,
 /// and if yes whether its containing mutable ones or just immutables ones.
-pub fn pat_contains_ref_binding(dm: &RefCell<DefMap>, pat: &hir::Pat) -> Option<hir::Mutability> {
+pub fn pat_contains_ref_binding(pat: &hir::Pat) -> Option<hir::Mutability> {
     let mut result = None;
-    pat_bindings(dm, pat, |mode, _, _, _| {
-        match mode {
-            hir::BindingMode::BindByRef(m) => {
-                // Pick Mutable as maximum
-                match result {
-                    None | Some(hir::MutImmutable) => result = Some(m),
-                    _ => (),
-                }
+    pat_bindings(pat, |mode, _, _, _| {
+        if let hir::BindingMode::BindByRef(m) = mode {
+            // Pick Mutable as maximum
+            match result {
+                None | Some(hir::MutImmutable) => result = Some(m),
+                _ => (),
             }
-            hir::BindingMode::BindByValue(_) => { }
         }
     });
     result
@@ -189,9 +167,9 @@ pub fn pat_contains_ref_binding(dm: &RefCell<DefMap>, pat: &hir::Pat) -> Option<
 
 /// Checks if the patterns for this arm contain any `ref` or `ref mut`
 /// bindings, and if yes whether its containing mutable ones or just immutables ones.
-pub fn arm_contains_ref_binding(dm: &RefCell<DefMap>, arm: &hir::Arm) -> Option<hir::Mutability> {
+pub fn arm_contains_ref_binding(arm: &hir::Arm) -> Option<hir::Mutability> {
     arm.pats.iter()
-            .filter_map(|pat| pat_contains_ref_binding(dm, pat))
+            .filter_map(|pat| pat_contains_ref_binding(pat))
             .max_by_key(|m| match *m {
                 hir::MutMutable => 1,
                 hir::MutImmutable => 0,
@@ -200,14 +178,15 @@ pub fn arm_contains_ref_binding(dm: &RefCell<DefMap>, arm: &hir::Arm) -> Option<
 
 /// Checks if the pattern contains any patterns that bind something to
 /// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
-pub fn pat_contains_bindings_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
+pub fn pat_contains_bindings_or_wild(pat: &hir::Pat) -> bool {
     let mut contains_bindings = false;
     pat.walk(|p| {
-        if pat_is_binding_or_wild(dm, p) {
-            contains_bindings = true;
-            false // there's at least one binding/wildcard, can short circuit now.
-        } else {
-            true
+        match p.node {
+            PatKind::Binding(..) | PatKind::Wild => {
+                contains_bindings = true;
+                false // there's at least one binding/wildcard, can short circuit now.
+            }
+            _ => true
         }
     });
     contains_bindings

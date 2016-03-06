@@ -630,8 +630,6 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             body: &'gcx hir::Block)
                             -> FnCtxt<'a, 'gcx, 'tcx>
 {
-    let tcx = inherited.tcx;
-
     let arg_tys = &fn_sig.inputs;
     let ret_ty = fn_sig.output;
 
@@ -667,19 +665,15 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             fcx.register_old_wf_obligation(arg_ty, input.ty.span, traits::MiscObligation);
 
             // Create type variables for each argument.
-            pat_util::pat_bindings(
-                &tcx.def_map,
-                &input.pat,
-                |_bm, pat_id, sp, _path| {
-                    let var_ty = visit.assign(sp, pat_id, None);
-                    fcx.require_type_is_sized(var_ty, sp,
-                                              traits::VariableType(pat_id));
-                });
+            pat_util::pat_bindings(&input.pat, |_bm, pat_id, sp, _path| {
+                let var_ty = visit.assign(sp, pat_id, None);
+                fcx.require_type_is_sized(var_ty, sp, traits::VariableType(pat_id));
+            });
 
             // Check the pattern.
             let pcx = PatCtxt {
                 fcx: &fcx,
-                map: pat_id_map(&tcx.def_map, &input.pat),
+                map: pat_id_map(&input.pat),
             };
             pcx.check_pat(&input.pat, *arg_ty);
         }
@@ -3932,8 +3926,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
-        let tcx = self.tcx;
-
         let t = self.local_ty(local.span, local.id);
         self.write_ty(local.id, t);
 
@@ -3947,7 +3939,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let pcx = PatCtxt {
             fcx: self,
-            map: pat_id_map(&tcx.def_map, &local.pat),
+            map: pat_id_map(&local.pat),
         };
         pcx.check_pat(&local.pat, t);
         let pat_ty = self.node_ty(local.pat.id);

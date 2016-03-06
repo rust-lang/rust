@@ -456,8 +456,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // Visit the guard expression
                     let guard_exit = self.expr(&guard, guard_start);
 
-                    let this_has_bindings = pat_util::pat_contains_bindings_or_wild(
-                        &self.tcx.def_map.borrow(), &pat);
+                    let this_has_bindings = pat_util::pat_contains_bindings_or_wild(&pat);
 
                     // If both this pattern and the previous pattern
                     // were free of bindings, they must consist only

@@ -1889,11 +1889,8 @@ pub fn create_local_var_metadata(bcx: Block, local: &hir::Local) {
         return;
     }
 
-    let cx = bcx.ccx();
-    let def_map = &cx.tcx().def_map;
     let locals = bcx.fcx.lllocals.borrow();
-
-    pat_util::pat_bindings(def_map, &local.pat, |_, node_id, span, var_name| {
+    pat_util::pat_bindings(&local.pat, |_, node_id, span, var_name| {
         let datum = match locals.get(&node_id) {
             Some(datum) => datum,
             None => {
@@ -2062,7 +2059,6 @@ pub fn create_argument_metadata(bcx: Block, arg: &hir::Arg) {
         return;
     }
 
-    let def_map = &bcx.tcx().def_map;
     let scope_metadata = bcx
                          .fcx
                          .debug_context
@@ -2070,7 +2066,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &hir::Arg) {
                          .fn_metadata;
     let locals = bcx.fcx.lllocals.borrow();
 
-    pat_util::pat_bindings(def_map, &arg.pat, |_, node_id, span, var_name| {
+    pat_util::pat_bindings(&arg.pat, |_, node_id, span, var_name| {
         let datum = match locals.get(&node_id) {
             Some(v) => v,
             None => {
