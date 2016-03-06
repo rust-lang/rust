@@ -67,7 +67,7 @@ use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Local, Pat, PatKind, Path};
-use syntax::ast::{PathSegment, PathParameters, SelfKind, TraitItemKind, TraitRef, Ty, TyKind};
+use syntax::ast::{PathSegment, PathParameters, TraitItemKind, TraitRef, Ty, TyKind};
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -607,7 +607,7 @@ impl<'a, 'v> Visitor<'v> for Resolver<'a> {
             }
             FnKind::Method(_, sig, _) => {
                 self.visit_generics(&sig.generics);
-                MethodRibKind(sig.explicit_self.node == SelfKind::Static)
+                MethodRibKind(!sig.decl.has_self())
             }
             FnKind::Closure => ClosureRibKind(node_id),
         };
@@ -1676,9 +1676,7 @@ impl<'a> Resolver<'a> {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
-                                                          MethodRibKind(
-                                                             sig.explicit_self.node ==
-                                                             SelfKind::Static));
+                                                          MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
                                     });
@@ -2007,9 +2005,7 @@ impl<'a> Resolver<'a> {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
-                                                          MethodRibKind(
-                                                            sig.explicit_self.node ==
-                                                            SelfKind::Static));
+                                                          MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_impl_item(this, impl_item);
                                     });
