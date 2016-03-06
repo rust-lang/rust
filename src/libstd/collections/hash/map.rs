@@ -1732,6 +1732,8 @@ mod test_map {
 
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
+    use super::RandomState;
+    use hash::{Hash, BuildHasher, Hasher};
     use cell::RefCell;
     use rand::{thread_rng, Rng};
 
@@ -2462,6 +2464,12 @@ mod test_map {
         let b = a.clone();
         assert!(a == b);
 
-        assert!(1u32.hash(a.build_hasher()) == 1u32.hash(b.build_hasher()))
+        let mut a_hasher = a.build_hasher();
+        let mut b_hasher = b.build_hasher();
+
+        1u32.hash(&mut a_hasher);
+        1u32.hash(&mut b_hasher);
+
+        assert_eq!(a_hasher.finish(), b_hasher.finish())
     }
 }
