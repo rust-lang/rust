@@ -38,7 +38,6 @@ extern crate rustc_plugin;
 
 use rustc_plugin::Registry;
 
-mod conf;
 pub mod consts;
 #[macro_use]
 pub mod utils;
@@ -112,12 +111,12 @@ mod reexport {
 #[plugin_registrar]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn plugin_registrar(reg: &mut Registry) {
-    let conferr = match conf::conf_file(reg.args()) {
+    let conferr = match utils::conf::conf_file(reg.args()) {
         Ok(Some(file_name)) => {
-            conf::read_conf(&file_name, true)
+            utils::conf::read_conf(&file_name, true)
         }
         Ok(None) => {
-            conf::read_conf("Clippy.toml", false)
+            utils::conf::read_conf("Clippy.toml", false)
         }
         Err((err, span)) => {
             reg.sess.struct_span_err(span, err).emit();
