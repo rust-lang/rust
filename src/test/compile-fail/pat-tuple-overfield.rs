@@ -8,22 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Foo {
-    Bar(i32),
-    Baz
-}
+#![feature(dotdot_in_tuple_patterns)]
 
-struct S;
+struct S(u8, u8, u8);
 
 fn main() {
-    match Foo::Baz {
-        Foo::Bar => {}
-        //~^ ERROR `Foo::Bar` does not name a tuple variant or a tuple struct
+    match (1, 2, 3) {
+        (1, 2, 3, 4) => {} //~ ERROR mismatched types
+        (1, 2, .., 3, 4) => {} //~ ERROR mismatched types
         _ => {}
     }
-
-    match S {
-        S(()) => {}
-        //~^ ERROR `S` does not name a tuple variant or a tuple struct
+    match S(1, 2, 3) {
+        S(1, 2, 3, 4) => {}
+        //~^ ERROR this pattern has 4 fields, but the corresponding struct has 3 fields
+        S(1, 2, .., 3, 4) => {}
+        //~^ ERROR this pattern has 4 fields, but the corresponding struct has 3 fields
+        _ => {}
     }
 }

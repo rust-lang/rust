@@ -20,7 +20,7 @@ fn main() {
           color::rgb(_, _, _) => { }
           color::cmyk(_, _, _, _) => { }
           color::no_color(_) => { }
-          //~^ ERROR this pattern has 1 field, but the corresponding variant has no fields
+          //~^ ERROR `color::no_color` does not name a tuple variant or a tuple struct
         }
     }
 }

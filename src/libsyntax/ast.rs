@@ -569,9 +569,10 @@ pub enum PatKind {
     /// The `bool` is `true` in the presence of a `..`.
     Struct(Path, Vec<Spanned<FieldPat>>, bool),
 
-    /// A tuple struct/variant pattern `Variant(x, y, z)`.
-    /// "None" means a `Variant(..)` pattern where we don't bind the fields to names.
-    TupleStruct(Path, Option<Vec<P<Pat>>>),
+    /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
+    /// If the `..` pattern fragment presents, then `Option<usize>` denotes its position.
+    /// 0 <= position <= subpats.len()
+    TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
 
     /// A path pattern.
     /// Such pattern can be resolved to a unit struct/variant or a constant.
@@ -583,8 +584,10 @@ pub enum PatKind {
     /// PatKind::Path, and the resolver will have to sort that out.
     QPath(QSelf, Path),
 
-    /// A tuple pattern `(a, b)`
-    Tup(Vec<P<Pat>>),
+    /// A tuple pattern `(a, b)`.
+    /// If the `..` pattern fragment presents, then `Option<usize>` denotes its position.
+    /// 0 <= position <= subpats.len()
+    Tuple(Vec<P<Pat>>, Option<usize>),
     /// A `box` pattern
     Box(P<Pat>),
     /// A reference pattern, e.g. `&mut (a, b)`

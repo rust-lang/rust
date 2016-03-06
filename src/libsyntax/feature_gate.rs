@@ -245,6 +245,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // a...b and ...b
     ("inclusive_range_syntax", "1.7.0", Some(28237), Active),
+
+    // Allows `..` in tuple (struct) patterns
+    ("dotdot_in_tuple_patterns", "1.9.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -1024,6 +1027,24 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("box_patterns",
                                   pattern.span,
                                   "box pattern syntax is experimental");
+            }
+            PatKind::Tuple(_, ddpos)
+                    if ddpos.is_some() => {
+                self.gate_feature("dotdot_in_tuple_patterns",
+                                  pattern.span,
+                                  "`..` in tuple patterns is experimental");
+            }
+            PatKind::TupleStruct(_, ref fields, ddpos)
+                    if ddpos.is_some() && !fields.is_empty() => {
+                self.gate_feature("dotdot_in_tuple_patterns",
+                                  pattern.span,
+                                  "`..` in tuple struct patterns is experimental");
+            }
+            PatKind::TupleStruct(_, ref fields, ddpos)
+                    if ddpos.is_none() && fields.is_empty() => {
+                self.context.span_handler.struct_span_err(pattern.span,
+                                                          "nullary enum variants are written with \
+                                                           no trailing `( )`").emit();
             }
             _ => {}
         }

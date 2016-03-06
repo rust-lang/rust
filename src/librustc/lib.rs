@@ -39,6 +39,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(str_char)]
+#![feature(type_ascription)]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;

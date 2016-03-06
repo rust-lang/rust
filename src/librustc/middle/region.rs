@@ -970,8 +970,8 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
                 pats3.iter().any(|p| is_binding_pat(&p))
             }
 
-            PatKind::TupleStruct(_, Some(ref subpats)) |
-            PatKind::Tup(ref subpats) => {
+            PatKind::TupleStruct(_, ref subpats, _) |
+            PatKind::Tuple(ref subpats, _) => {
                 subpats.iter().any(|p| is_binding_pat(&p))
             }
 

@@ -798,7 +798,7 @@ fn any_irrefutable_adt_pat(tcx: &TyCtxt, m: &[Match], col: usize) -> bool {
     m.iter().any(|br| {
         let pat = br.pats[col];
         match pat.node {
-            PatKind::Tup(_) => true,
+            PatKind::Tuple(..) => true,
             PatKind::Struct(..) | PatKind::TupleStruct(..) |
             PatKind::Path(..) | PatKind::Ident(_, _, None) => {
                 match tcx.def_map.borrow().get(&pat.id).unwrap().full_def() {
@@ -1845,7 +1845,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx = bind_irrefutable_pat(bcx, &inner_pat, val, cleanup_scope);
             }
         }
-        PatKind::TupleStruct(_, ref sub_pats) => {
+        PatKind::TupleStruct(_, ref sub_pats, ddpos) => {
             let opt_def = bcx.tcx().def_map.borrow().get(&pat.id).map(|d| d.full_def());
             match opt_def {
                 Some(Def::Variant(enum_id, var_id)) => {
@@ -1855,35 +1855,41 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                     &repr,
                                                     Disr::from(vinfo.disr_val),
                                                     val);
-                    if let Some(ref sub_pat) = *sub_pats {
-                        for (i, &argval) in args.vals.iter().enumerate() {
-                            bcx = bind_irrefutable_pat(
-                                bcx,
-                                &sub_pat[i],
-                                MatchInput::from_val(argval),
-                                cleanup_scope);
-                        }
+                    let adjust = |i| {
+                        let gap = vinfo.fields.len() - sub_pats.len();
+                        if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+                    };
+                    for (i, subpat) in sub_pats.iter().enumerate() {
+                        bcx = bind_irrefutable_pat(
+                            bcx,
+                            subpat,
+                            MatchInput::from_val(args.vals[adjust(i)]),
+                            cleanup_scope);
                     }
                 }
                 Some(Def::Struct(..)) => {
-                    match *sub_pats {
-                        None => {
-                            // This is a unit-like struct. Nothing to do here.
+                    let expected_len = match *ccx.tcx().pat_ty(&pat) {
+                        ty::TyS{sty: ty::TyStruct(adt_def, _), ..} => {
+                            adt_def.struct_variant().fields.len()
                         }
-                        Some(ref elems) => {
-                            // This is the tuple struct case.
-                            let repr = adt::represent_node(bcx, pat.id);
-                            let val = adt::MaybeSizedValue::sized(val.val);
-                            for (i, elem) in elems.iter().enumerate() {
-                                let fldptr = adt::trans_field_ptr(bcx, &repr,
-                                                                  val, Disr(0), i);
-                                bcx = bind_irrefutable_pat(
-                                    bcx,
-                                    &elem,
-                                    MatchInput::from_val(fldptr),
-                                    cleanup_scope);
-                            }
-                        }
+                        ref ty => ccx.tcx().sess.span_bug(pat.span,
+                                        &format!("tuple struct pattern unexpected type {:?}", ty)),
+                    };
+
+                    let adjust = |i| {
+                        let gap = expected_len - sub_pats.len();
+                        if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+                    };
+                    let repr = adt::represent_node(bcx, pat.id);
+                    let val = adt::MaybeSizedValue::sized(val.val);
+                    for (i, elem) in sub_pats.iter().enumerate() {
+                        let fldptr = adt::trans_field_ptr(bcx, &repr,
+                                                          val, Disr(0), adjust(i));
+                        bcx = bind_irrefutable_pat(
+                            bcx,
+                            &elem,
+                            MatchInput::from_val(fldptr),
+                            cleanup_scope);
                     }
                 }
                 _ => {
@@ -1931,16 +1937,28 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                            cleanup_scope);
             }
         }
-        PatKind::Tup(ref elems) => {
-            let repr = adt::represent_node(bcx, pat.id);
-            let val = adt::MaybeSizedValue::sized(val.val);
-            for (i, elem) in elems.iter().enumerate() {
-                let fldptr = adt::trans_field_ptr(bcx, &repr, val, Disr(0), i);
-                bcx = bind_irrefutable_pat(
-                    bcx,
-                    &elem,
-                    MatchInput::from_val(fldptr),
-                    cleanup_scope);
+        PatKind::Tuple(ref elems, ddpos) => {
+            match tcx.node_id_to_type(pat.id).sty {
+                ty::TyTuple(ref tys) => {
+                    let adjust = |i| {
+                        let gap = tys.len() - elems.len();
+                        if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+                    };
+                    let repr = adt::represent_node(bcx, pat.id);
+                    let val = adt::MaybeSizedValue::sized(val.val);
+                    for (i, elem) in elems.iter().enumerate() {
+                        let fldptr = adt::trans_field_ptr(bcx, &repr, val, Disr(0), adjust(i));
+                        bcx = bind_irrefutable_pat(
+                            bcx,
+                            &elem,
+                            MatchInput::from_val(fldptr),
+                            cleanup_scope);
+                    }
+                }
+                ref sty => {
+                    tcx.sess.span_bug(pat.span,
+                        &format!("unexpected type for tuple pattern: {:?}", sty))
+                }
             }
         }
         PatKind::Box(ref inner) => {

@@ -925,10 +925,9 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
                               sub.as_ref().map(|x| lower_pat(lctx, x)))
             }
             PatKind::Lit(ref e) => hir::PatKind::Lit(lower_expr(lctx, e)),
-            PatKind::TupleStruct(ref pth, ref pats) => {
+            PatKind::TupleStruct(ref pth, ref pats, ddpos) => {
                 hir::PatKind::TupleStruct(lower_path(lctx, pth),
-                             pats.as_ref()
-                                 .map(|pats| pats.iter().map(|x| lower_pat(lctx, x)).collect()))
+                        pats.iter().map(|x| lower_pat(lctx, x)).collect(), ddpos)
             }
             PatKind::Path(ref pth) => {
                 hir::PatKind::Path(lower_path(lctx, pth))
@@ -956,8 +955,8 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
                                .collect();
                 hir::PatKind::Struct(pth, fs, etc)
             }
-            PatKind::Tup(ref elts) => {
-                hir::PatKind::Tup(elts.iter().map(|x| lower_pat(lctx, x)).collect())
+            PatKind::Tuple(ref elts, ddpos) => {
+                hir::PatKind::Tuple(elts.iter().map(|x| lower_pat(lctx, x)).collect(), ddpos)
             }
             PatKind::Box(ref inner) => hir::PatKind::Box(lower_pat(lctx, inner)),
             PatKind::Ref(ref inner, mutbl) => {
@@ -1839,7 +1838,7 @@ fn pat_enum(lctx: &LoweringContext,
     let pt = if subpats.is_empty() {
         hir::PatKind::Path(path)
     } else {
-        hir::PatKind::TupleStruct(path, Some(subpats))
+        hir::PatKind::TupleStruct(path, subpats, None)
     };
     pat(lctx, span, pt)
 }
