@@ -631,7 +631,7 @@ pub enum PatKind {
     Struct(Path, Vec<Spanned<FieldPat>>, bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
-    /// If the `..` pattern fragment presents, then `Option<usize>` denotes its position.
+    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// 0 <= position <= subpats.len()
     TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
 
@@ -646,7 +646,7 @@ pub enum PatKind {
     QPath(QSelf, Path),
 
     /// A tuple pattern `(a, b)`.
-    /// If the `..` pattern fragment presents, then `Option<usize>` denotes its position.
+    /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
     /// 0 <= position <= subpats.len()
     Tuple(Vec<P<Pat>>, Option<usize>),
     /// A `box` pattern
