@@ -2216,7 +2216,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
-                    PatKind::Ident(_, ref path1, _) => path1.node.name.as_str(),
+                    PatKind::Ident(_, ref path1, _) => path1.node.as_str(),
                     _ => {
                         bug!("Variable id {} maps to {:?}, not local", id, pat);
                     },

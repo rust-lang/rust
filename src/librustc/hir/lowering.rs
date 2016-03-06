@@ -150,8 +150,8 @@ impl<'a> LoweringContext<'a> {
         self.id_assigner.next_node_id()
     }
 
-    fn str_to_ident(&self, s: &'static str) -> hir::Ident {
-        hir::Ident::from_name(token::gensym(s))
+    fn str_to_ident(&self, s: &'static str) -> Name {
+        token::gensym(s)
     }
 
     fn with_parent_def<T, F>(&mut self, parent_id: NodeId, f: F) -> T
@@ -169,11 +169,8 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
-    fn lower_ident(&mut self, ident: Ident) -> hir::Ident {
-        hir::Ident {
-            name: mtwt::resolve(ident),
-            unhygienic_name: ident.name,
-        }
+    fn lower_ident(&mut self, ident: Ident) -> Name {
+        mtwt::resolve(ident)
     }
 
     fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
@@ -329,10 +326,10 @@ impl<'a> LoweringContext<'a> {
                        .iter()
                        .map(|&PathSegment { identifier, ref parameters }| {
                            hir::PathSegment {
-                               identifier: if maybe_hygienic {
+                               name: if maybe_hygienic {
                                    self.lower_ident(identifier)
                                } else {
-                                   hir::Ident::from_name(identifier.name)
+                                   identifier.name
                                },
                                parameters: self.lower_path_parameters(parameters),
                            }
@@ -1692,7 +1689,7 @@ impl<'a> LoweringContext<'a> {
         self.expr(span, hir::ExprCall(e, args), attrs)
     }
 
-    fn expr_ident(&mut self, span: Span, id: hir::Ident, attrs: ThinAttributes, binding: NodeId)
+    fn expr_ident(&mut self, span: Span, id: Name, attrs: ThinAttributes, binding: NodeId)
                   -> P<hir::Expr> {
         let expr_path = hir::ExprPath(None, self.path_ident(span, id));
         let expr = self.expr(span, expr_path, attrs);
@@ -1760,7 +1757,7 @@ impl<'a> LoweringContext<'a> {
     fn stmt_let(&mut self,
                 sp: Span,
                 mutbl: bool,
-                ident: hir::Ident,
+                ident: Name,
                 ex: P<hir::Expr>,
                 attrs: ThinAttributes)
                 -> (hir::Stmt, NodeId) {
@@ -1834,16 +1831,16 @@ impl<'a> LoweringContext<'a> {
         pat
     }
 
-    fn pat_ident(&mut self, span: Span, ident: hir::Ident) -> P<hir::Pat> {
-        self.pat_ident_binding_mode(span, ident, hir::BindByValue(hir::MutImmutable))
+    fn pat_ident(&mut self, span: Span, name: Name) -> P<hir::Pat> {
+        self.pat_ident_binding_mode(span, name, hir::BindByValue(hir::MutImmutable))
     }
 
-    fn pat_ident_binding_mode(&mut self, span: Span, ident: hir::Ident, bm: hir::BindingMode)
+    fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingMode)
                               -> P<hir::Pat> {
         let pat_ident = hir::PatKind::Ident(bm,
                                             Spanned {
                                                 span: span,
-                                                node: ident,
+                                                node: name,
                                             },
                                             None);
 
@@ -1851,7 +1848,7 @@ impl<'a> LoweringContext<'a> {
 
         let parent_def = self.parent_def;
         let def = self.resolver.definitions().map(|defs| {
-            let def_path_data = DefPathData::Binding(ident.name);
+            let def_path_data = DefPathData::Binding(name);
             let def_index = defs.create_def_with_parent(parent_def, pat.id, def_path_data);
             Def::Local(DefId::local(def_index), pat.id)
         }).unwrap_or(Def::Err);
@@ -1872,36 +1869,36 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn path_ident(&mut self, span: Span, id: hir::Ident) -> hir::Path {
+    fn path_ident(&mut self, span: Span, id: Name) -> hir::Path {
         self.path(span, vec![id])
     }
 
-    fn path(&mut self, span: Span, strs: Vec<hir::Ident>) -> hir::Path {
+    fn path(&mut self, span: Span, strs: Vec<Name>) -> hir::Path {
         self.path_all(span, false, strs, hir::HirVec::new(), hir::HirVec::new(), hir::HirVec::new())
     }
 
-    fn path_global(&mut self, span: Span, strs: Vec<hir::Ident>) -> hir::Path {
+    fn path_global(&mut self, span: Span, strs: Vec<Name>) -> hir::Path {
         self.path_all(span, true, strs, hir::HirVec::new(), hir::HirVec::new(), hir::HirVec::new())
     }
 
     fn path_all(&mut self,
                 sp: Span,
                 global: bool,
-                mut idents: Vec<hir::Ident>,
+                mut names: Vec<Name>,
                 lifetimes: hir::HirVec<hir::Lifetime>,
                 types: hir::HirVec<P<hir::Ty>>,
                 bindings: hir::HirVec<hir::TypeBinding>)
                 -> hir::Path {
-        let last_identifier = idents.pop().unwrap();
-        let mut segments: Vec<hir::PathSegment> = idents.into_iter().map(|ident| {
+        let last_identifier = names.pop().unwrap();
+        let mut segments: Vec<hir::PathSegment> = names.into_iter().map(|name| {
             hir::PathSegment {
-                identifier: ident,
+                name: name,
                 parameters: hir::PathParameters::none(),
            }
         }).collect();
 
         segments.push(hir::PathSegment {
-            identifier: last_identifier,
+            name: last_identifier,
             parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
                 lifetimes: lifetimes,
                 types: types,
@@ -1915,12 +1912,12 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn std_path(&mut self, components: &[&str]) -> Vec<hir::Ident> {
+    fn std_path(&mut self, components: &[&str]) -> Vec<Name> {
         let mut v = Vec::new();
         if let Some(s) = self.crate_root {
-            v.push(hir::Ident::from_name(token::intern(s)));
+            v.push(token::intern(s));
         }
-        v.extend(components.iter().map(|s| hir::Ident::from_name(token::intern(s))));
+        v.extend(components.iter().map(|s| token::intern(s)));
         return v;
     }
 

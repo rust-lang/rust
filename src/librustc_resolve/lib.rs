@@ -1123,7 +1123,7 @@ impl Named for ast::PathSegment {
 
 impl Named for hir::PathSegment {
     fn name(&self) -> Name {
-        self.identifier.name
+        self.name
     }
 }
 

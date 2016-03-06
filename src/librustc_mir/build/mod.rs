@@ -222,7 +222,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             };
             if let Some(hir::map::NodeLocal(pat)) = tcx.map.find(fv.def.var_id()) {
                 if let hir::PatKind::Ident(_, ref ident, _) = pat.node {
-                    decl.debug_name = ident.node.name;
+                    decl.debug_name = ident.node;
                 }
             }
             decl
@@ -335,7 +335,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             if let Some(pat) = pattern {
                 if let hir::PatKind::Ident(_, ref ident, _) = pat.node {
                     if pat_is_binding(&self.hir.tcx().def_map.borrow(), pat) {
-                        name = ident.node.name;
+                        name = ident.node;
                     }
                 }
             }

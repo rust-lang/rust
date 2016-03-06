@@ -200,7 +200,7 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
 
                 // if there are multiple arms, make sure they all agree on
                 // what the type of the binding `x` ought to be
-                if let Some(&canon_id) = self.map.get(&path.node.name) {
+                if let Some(&canon_id) = self.map.get(&path.node) {
                     if canon_id != pat.id {
                         let ct = self.local_ty(pat.span, canon_id);
                         self.demand_eqtype(pat.span, ct, typ);
@@ -212,7 +212,7 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             PatKind::Ident(_, ref path, _) => {
-                let path = hir::Path::from_ident(path.span, path.node);
+                let path = hir::Path::from_name(path.span, path.node);
                 self.check_pat_enum(pat, &path, Some(&[]), expected, false);
             }
             PatKind::TupleStruct(ref path, ref subpats) => {

@@ -117,19 +117,6 @@ pub fn pat_bindings<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
     pat.walk(|p| {
         match p.node {
           PatKind::Ident(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
-            it(binding_mode, p.id, p.span, &respan(pth.span, pth.node.name));
-          }
-          _ => {}
-        }
-        true
-    });
-}
-pub fn pat_bindings_ident<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
-    I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<hir::Ident>),
-{
-    pat.walk(|p| {
-        match p.node {
-          PatKind::Ident(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
             it(binding_mode, p.id, p.span, &respan(pth.span, pth.node));
           }
           _ => {}
@@ -201,7 +188,7 @@ pub fn pat_contains_bindings_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
 pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
     match pat.node {
         PatKind::Ident(hir::BindByValue(_), ref path1, None) => {
-            Some(path1.node.name)
+            Some(path1.node)
         }
         _ => {
             None
@@ -210,8 +197,7 @@ pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
 }
 
 pub fn def_to_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> hir::Path {
-    let name = tcx.item_name(id);
-    hir::Path::from_ident(DUMMY_SP, hir::Ident::from_name(name))
+    hir::Path::from_name(DUMMY_SP, tcx.item_name(id))
 }
 
 /// Return variants that are necessary to exist for the pattern to match.

@@ -97,9 +97,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_name(&mut self, _span: Span, _name: Name) {
         // Nothing to do.
     }
-    fn visit_ident(&mut self, span: Span, ident: Ident) {
-        walk_ident(self, span, ident);
-    }
     fn visit_mod(&mut self, m: &'v Mod, _s: Span, _n: NodeId) {
         walk_mod(self, m)
     }
@@ -209,16 +206,6 @@ pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: 
     for name in opt_name {
         visitor.visit_name(span, name);
     }
-}
-
-pub fn walk_opt_ident<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_ident: Option<Ident>) {
-    for ident in opt_ident {
-        visitor.visit_ident(span, ident);
-    }
-}
-
-pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, ident: Ident) {
-    visitor.visit_name(span, ident.name);
 }
 
 /// Walks the contents of a crate. See also `Crate::visit_all_items`.
@@ -439,7 +426,7 @@ pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'v PathSegment) {
-    visitor.visit_ident(path_span, segment.identifier);
+    visitor.visit_name(path_span, segment.name);
     visitor.visit_path_parameters(path_span, &segment.parameters);
 }
 
@@ -495,7 +482,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             visitor.visit_pat(subpattern)
         }
         PatKind::Ident(_, ref pth1, ref optional_subpattern) => {
-            visitor.visit_ident(pth1.span, pth1.node);
+            visitor.visit_name(pth1.span, pth1.node);
             walk_list!(visitor, visit_pat, optional_subpattern);
         }
         PatKind::Lit(ref expression) => visitor.visit_expr(expression),
@@ -750,14 +737,14 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprWhile(ref subexpression, ref block, opt_ident) => {
+        ExprWhile(ref subexpression, ref block, opt_name) => {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
-            walk_opt_ident(visitor, expression.span, opt_ident)
+            walk_opt_name(visitor, expression.span, opt_name)
         }
-        ExprLoop(ref block, opt_ident) => {
+        ExprLoop(ref block, opt_name) => {
             visitor.visit_block(block);
-            walk_opt_ident(visitor, expression.span, opt_ident)
+            walk_opt_name(visitor, expression.span, opt_name)
         }
         ExprMatch(ref subexpression, ref arms, _) => {
             visitor.visit_expr(subexpression);
@@ -796,9 +783,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             }
             visitor.visit_path(path, expression.id)
         }
-        ExprBreak(ref opt_sp_ident) | ExprAgain(ref opt_sp_ident) => {
-            for sp_ident in opt_sp_ident {
-                visitor.visit_ident(sp_ident.span, sp_ident.node);
+        ExprBreak(ref opt_sp_name) | ExprAgain(ref opt_sp_name) => {
+            for sp_name in opt_sp_name {
+                visitor.visit_name(sp_name.span, sp_name.node);
             }
         }
         ExprRet(ref optional_expression) => {

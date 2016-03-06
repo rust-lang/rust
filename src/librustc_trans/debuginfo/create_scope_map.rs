@@ -51,9 +51,9 @@ pub fn create_scope_map(cx: &CrateContext,
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for arg in args {
-        pat_util::pat_bindings_ident(def_map, &arg.pat, |_, node_id, _, path1| {
+        pat_util::pat_bindings(def_map, &arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
-                                               name: Some(path1.node.unhygienic_name) });
+                                               name: Some(path1.node.unhygienize()) });
             scope_map.insert(node_id, fn_metadata);
         })
     }
@@ -248,7 +248,7 @@ fn walk_pattern(cx: &CrateContext,
             // scope stack and maybe introduce an artificial scope
             if pat_util::pat_is_binding(&def_map.borrow(), &pat) {
 
-                let name = path1.node.unhygienic_name;
+                let name = path1.node.unhygienize();
 
                 // LLVM does not properly generate 'DW_AT_start_scope' fields
                 // for variable DIEs. For this reason we have to introduce
