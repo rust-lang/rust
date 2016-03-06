@@ -1387,8 +1387,6 @@ pub struct MethodSig {
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
-    /// A short form of self argument was used (`self`, `&self` etc, but not `self: TYPE`).
-    pub self_shortcut: bool,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1639,6 +1637,8 @@ pub enum TyKind {
     /// TyKind::Infer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
+    /// Inferred type of a `self` or `&self` argument in a method.
+    ImplicitSelf,
     // A macro in the type position.
     Mac(Mac),
 }
@@ -1696,8 +1696,8 @@ impl Arg {
         if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.node {
             if ident.node.name == keywords::SelfValue.name() {
                 return match self.ty.node {
-                    TyKind::Infer => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::Infer => {
+                    TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
+                    TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::ImplicitSelf => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
                     _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
@@ -1719,7 +1719,7 @@ impl Arg {
     pub fn from_self(eself: ExplicitSelf, eself_ident: SpannedIdent) -> Arg {
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
-            node: TyKind::Infer,
+            node: TyKind::ImplicitSelf,
             span: DUMMY_SP,
         });
         let arg = |mutbl, ty, span| Arg {

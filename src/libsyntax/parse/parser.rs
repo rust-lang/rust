@@ -1310,7 +1310,7 @@ impl<'a> Parser<'a> {
                 let ident = p.parse_ident()?;
                 let mut generics = p.parse_generics()?;
 
-                let (d, self_shortcut) = p.parse_fn_decl_with_self(|p: &mut Parser<'a>|{
+                let d = p.parse_fn_decl_with_self(|p: &mut Parser<'a>|{
                     // This is somewhat dubious; We don't want to allow
                     // argument names to be left off if there is a
                     // definition...
@@ -1324,7 +1324,6 @@ impl<'a> Parser<'a> {
                     decl: d,
                     generics: generics,
                     abi: abi,
-                    self_shortcut: self_shortcut,
                 };
 
                 let body = match p.token {
@@ -4617,7 +4616,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns the parsed optional self argument and whether a self shortcut was used.
-    fn parse_self_arg(&mut self) -> PResult<'a, (Option<Arg>, bool)> {
+    fn parse_self_arg(&mut self) -> PResult<'a, Option<Arg>> {
         let expect_ident = |this: &mut Self| match this.token {
             // Preserve hygienic context.
             token::Ident(ident) => { this.bump(); codemap::respan(this.last_span, ident) }
@@ -4656,7 +4655,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     (SelfKind::Region(Some(lt), Mutability::Mutable), expect_ident(self))
                 } else {
-                    return Ok((None, false));
+                    return Ok(None);
                 }
             }
             token::BinOp(token::Star) => {
@@ -4676,7 +4675,7 @@ impl<'a> Parser<'a> {
                     self.span_err(self.span, "cannot pass `self` by raw pointer");
                     (SelfKind::Value(Mutability::Immutable), expect_ident(self))
                 } else {
-                    return Ok((None, false));
+                    return Ok(None);
                 }
             }
             token::Ident(..) => {
@@ -4703,27 +4702,24 @@ impl<'a> Parser<'a> {
                         (SelfKind::Value(Mutability::Mutable), eself_ident)
                     }
                 } else {
-                    return Ok((None, false));
+                    return Ok(None);
                 }
             }
-            _ => return Ok((None, false)),
+            _ => return Ok(None),
         };
 
-        let self_shortcut = if let SelfKind::Explicit(..) = eself { false } else { true };
         let eself = codemap::respan(mk_sp(eself_lo, self.last_span.hi), eself);
-        Ok((Some(Arg::from_self(eself, eself_ident)), self_shortcut))
+        Ok(Some(Arg::from_self(eself, eself_ident)))
     }
 
     /// Parse the parameter list and result type of a function that may have a `self` parameter.
-    fn parse_fn_decl_with_self<F>(&mut self,
-                                  parse_arg_fn: F)
-                                  -> PResult<'a, (P<FnDecl>, bool)>
+    fn parse_fn_decl_with_self<F>(&mut self, parse_arg_fn: F) -> PResult<'a, P<FnDecl>>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  Arg>,
     {
         self.expect(&token::OpenDelim(token::Paren))?;
 
         // Parse optional self argument
-        let (self_arg, self_shortcut) = self.parse_self_arg()?;
+        let self_arg = self.parse_self_arg()?;
 
         // Parse the rest of the function parameter list.
         let sep = SeqSep::trailing_allowed(token::Comma);
@@ -4745,11 +4741,11 @@ impl<'a> Parser<'a> {
 
         // Parse closing paren and return type.
         self.expect(&token::CloseDelim(token::Paren))?;
-        Ok((P(FnDecl {
+        Ok(P(FnDecl {
             inputs: fn_inputs,
             output: self.parse_ret_ty()?,
             variadic: false
-        }), self_shortcut))
+        }))
     }
 
     // parse the |arg, arg| header on a lambda
@@ -4942,13 +4938,12 @@ impl<'a> Parser<'a> {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
-            let (decl, self_shortcut) = self.parse_fn_decl_with_self(|p| p.parse_arg())?;
+            let decl = self.parse_fn_decl_with_self(|p| p.parse_arg())?;
             generics.where_clause = self.parse_where_clause()?;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
             Ok((ident, inner_attrs, ast::ImplItemKind::Method(ast::MethodSig {
                 generics: generics,
                 abi: abi,
-                self_shortcut: self_shortcut,
                 unsafety: unsafety,
                 constness: constness,
                 decl: decl
