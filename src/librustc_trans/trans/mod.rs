@@ -49,7 +49,6 @@ mod debuginfo;
 mod declare;
 mod disr;
 mod expr;
-mod foreign;
 mod glue;
 mod inline;
 mod intrinsic;
