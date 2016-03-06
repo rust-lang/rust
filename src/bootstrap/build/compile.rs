@@ -83,6 +83,19 @@ pub fn std_link(build: &Build,
                          libdir.join(staticlib("compiler-rt", target))));
     }
     add_to_sysroot(&out_dir, &libdir);
+
+    if target.contains("musl") && (target.contains("x86_64") || target.contains("i686")) {
+        copy_third_party_objects(build, target, &libdir);
+    }
+}
+
+/// Copies the crt(1,i,n).o startup objects
+///
+/// Only required for musl targets that statically link to libc
+fn copy_third_party_objects(build: &Build, target: &str, into: &Path) {
+    for &obj in &["crt1.o", "crti.o", "crtn.o"] {
+        t!(fs::copy(compiler_file(build.cc(target), obj), into.join(obj)));
+    }
 }
 
 /// Build and prepare startup objects like rsbegin.o and rsend.o
