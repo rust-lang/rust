@@ -42,7 +42,6 @@ use rustc::middle::cstore::CrateStore;
 use rustc::middle::def::{self, Def};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::middle::privacy::ExternalExports;
 use rustc::middle::ty::{self, TyCtxt};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 use rustc::front::map as ast_map;
@@ -477,7 +476,6 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
     curitem: ast::NodeId,
     in_foreign: bool,
     parents: NodeMap<ast::NodeId>,
-    external_exports: ExternalExports,
 }
 
 #[derive(Debug)]
@@ -1568,10 +1566,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt,
-                   export_map: &def::ExportMap,
-                   external_exports: ExternalExports)
-                   -> AccessLevels {
+pub fn check_crate(tcx: &TyCtxt, export_map: &def::ExportMap) -> AccessLevels {
     let _task = tcx.dep_graph.in_task(DepNode::Privacy);
 
     let krate = tcx.map.krate();
@@ -1594,7 +1589,6 @@ pub fn check_crate(tcx: &TyCtxt,
         in_foreign: false,
         tcx: tcx,
         parents: visitor.parents,
-        external_exports: external_exports,
     };
     intravisit::walk_crate(&mut visitor, krate);
 
