@@ -213,14 +213,8 @@ impl<'a> NameResolution<'a> {
             None => return,
         };
 
+        if !binding.defined_with(DefModifiers::GLOB_IMPORTED) { return }
         for duplicate_glob in self.duplicate_globs.iter() {
-            // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
-            if !binding.is_import() {
-                if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
-                    if binding.is_import() { continue }
-                }
-            }
-
             report(duplicate_glob, binding);
         }
     }
