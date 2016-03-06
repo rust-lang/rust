@@ -275,7 +275,7 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                 let pat_ty = tcx.mk_tup(element_tys.clone());
                 self.write_ty(pat.id, pat_ty);
                 self.demand_eqtype(pat.span, expected, pat_ty);
-                for (i, elem) in elements.iter().enumerate_and_adjust(expected_len, ddpos) {
+                for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                     self.check_pat(elem, &element_tys[i]);
                 }
             }
