@@ -163,7 +163,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                             cleanup_scope: cleanup::CustomScopeIndex,
                                             args: callee::CallArgs<'a, 'tcx>,
                                             dest: expr::Dest,
-                                            substs: subst::Substs<'tcx>,
+                                            substs: &'tcx subst::Substs<'tcx>,
                                             call_info: NodeIdAndSpan)
                                             -> Result<'blk, 'tcx> {
     let fcx = bcx.fcx;
@@ -364,7 +364,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              callee_ty,
                              &mut llargs,
                              cleanup::CustomScope(cleanup_scope),
-                             false,
                              Abi::RustIntrinsic);
 
     fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
@@ -1397,7 +1396,7 @@ fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
 fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     (bcx: Block<'blk, 'tcx>,
      name: &str,
-     substs: subst::Substs<'tcx>,
+     substs: &'tcx subst::Substs<'tcx>,
      callee_ty: Ty<'tcx>,
      args: Option<&[P<hir::Expr>]>,
      llargs: &[ValueRef],
@@ -1505,11 +1504,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
             None => bcx.sess().span_bug(call_info.span,
                                         "intrinsic call with unexpected argument shape"),
         };
-        let vector = match consts::const_expr(
-            bcx.ccx(),
-            vector,
-            tcx.mk_substs(substs),
-            None,
+        let vector = match consts::const_expr(bcx.ccx(), vector, substs, None,
             consts::TrueConst::Yes, // this should probably help simd error reporting
         ) {
             Ok((vector, _)) => vector,

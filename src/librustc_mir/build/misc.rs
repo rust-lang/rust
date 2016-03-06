@@ -12,7 +12,6 @@
 //! kind of thing.
 
 use build::Builder;
-use hair::*;
 use rustc::middle::ty::Ty;
 use rustc::mir::repr::*;
 use std::u32;
@@ -58,17 +57,5 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 literal: self.hir.usize_literal(value),
             });
         temp
-    }
-
-    pub fn item_ref_operand(&mut self,
-                            span: Span,
-                            item_ref: ItemRef<'tcx>)
-                            -> Operand<'tcx> {
-        let literal = Literal::Item {
-            def_id: item_ref.def_id,
-            kind: item_ref.kind,
-            substs: item_ref.substs,
-        };
-        self.literal_operand(span, item_ref.ty, literal)
     }
 }

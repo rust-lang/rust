@@ -14,7 +14,7 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp, ItemKind,
+use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp,
     TypedConstVal};
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
@@ -27,14 +27,6 @@ use syntax::codemap::Span;
 use self::cx::Cx;
 
 pub mod cx;
-
-#[derive(Clone, Debug)]
-pub struct ItemRef<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub kind: ItemKind,
-    pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
-}
 
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {

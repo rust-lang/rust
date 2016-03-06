@@ -602,14 +602,14 @@ impl<'tcx> TyCtxt<'tcx> {
 #[derive(Debug)]
 pub struct ImplMethod<'tcx> {
     pub method: Rc<ty::Method<'tcx>>,
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
     pub is_provided: bool
 }
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn get_impl_method(&self,
                            impl_def_id: DefId,
-                           substs: Substs<'tcx>,
+                           substs: &'tcx Substs<'tcx>,
                            name: Name)
                            -> ImplMethod<'tcx>
     {
@@ -636,9 +636,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 if meth.name == name {
                     let impl_to_trait_substs = self
                         .make_substs_for_receiver_types(&trait_ref, meth);
+                    let substs = impl_to_trait_substs.subst(self, substs);
                     return ImplMethod {
                         method: meth.clone(),
-                        substs: impl_to_trait_substs.subst(self, &substs),
+                        substs: self.mk_substs(substs),
                         is_provided: true
                     }
                 }

@@ -861,20 +861,10 @@ impl<'tcx> Debug for TypedConstVal<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub enum ItemKind {
-    Constant,
-    /// This is any sort of callable (usually those that have a type of `fn(…) -> …`). This
-    /// includes functions, constructors, but not methods which have their own ItemKind.
-    Function,
-    Method,
-}
-
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Item {
         def_id: DefId,
-        kind: ItemKind,
         substs: &'tcx Substs<'tcx>,
     },
     Value {

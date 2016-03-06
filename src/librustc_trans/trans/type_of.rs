@@ -190,7 +190,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             }
         }
 
-        ty::TyFnDef(..) | ty::TyFnPtr(_) => Type::i8p(cx),
+        ty::TyFnDef(..) => Type::nil(cx),
+        ty::TyFnPtr(_) => Type::i8p(cx),
 
         ty::TyArray(ty, size) => {
             let llty = sizing_type_of(cx, ty);
@@ -395,9 +396,8 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TySlice(ty) => in_memory_type_of(cx, ty),
       ty::TyStr | ty::TyTrait(..) => Type::i8(cx),
 
-      ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
-        // FIXME(#19925) once fn item types are
-        // zero-sized, we'll need to do something here
+      ty::TyFnDef(..) => Type::nil(cx),
+      ty::TyFnPtr(f) => {
         if f.abi == Abi::Rust || f.abi == Abi::RustCall {
             let sig = cx.tcx().erase_late_bound_regions(&f.sig);
             let sig = infer::normalize_associated_type(cx.tcx(), &sig);
