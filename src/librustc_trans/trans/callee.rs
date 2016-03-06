@@ -45,7 +45,6 @@ use trans::declare;
 use trans::expr;
 use trans::glue;
 use trans::inline;
-use trans::foreign;
 use trans::intrinsic;
 use trans::machine::{llalign_of_min, llsize_of_store};
 use trans::meth;
@@ -529,7 +528,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Some(hir_map::NodeForeignItem(&hir::ForeignItem {
             ref attrs, name, node: hir::ForeignItemFn(..), ..
         })) => {
-            (foreign::link_name(name, attrs).to_string(), &attrs[..], None)
+            (imported_name(name, attrs).to_string(), &attrs[..], None)
         }
 
         None => {

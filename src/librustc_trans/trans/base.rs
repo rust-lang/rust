@@ -76,7 +76,6 @@ use trans::datum;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::declare;
 use trans::expr;
-use trans::foreign;
 use trans::glue;
 use trans::intrinsic;
 use trans::machine;
@@ -2311,7 +2310,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 return;
             }
             for fi in &m.items {
-                let lname = foreign::link_name(fi.name, &fi.attrs).to_string();
+                let lname = imported_name(fi.name, &fi.attrs).to_string();
                 ccx.item_symbols().borrow_mut().insert(fi.id, lname);
             }
         }
@@ -2430,6 +2429,16 @@ pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     }
                 }
             }
+        }
+    }
+}
+
+pub fn imported_name(name: ast::Name, attrs: &[ast::Attribute]) -> InternedString {
+    match attr::first_attr_value_str_by_name(attrs, "link_name") {
+        Some(ln) => ln.clone(),
+        None => match weak_lang_items::link_name(attrs) {
+            Some(name) => name,
+            None => name.as_str(),
         }
     }
 }

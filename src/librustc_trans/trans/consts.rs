@@ -19,7 +19,7 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use rustc::front::map as hir_map;
 use trans::{abi, adt, closure, debuginfo, expr, inline, machine};
-use trans::base::{self, exported_name, push_ctxt};
+use trans::base::{self, exported_name, imported_name, push_ctxt};
 use trans::callee::Callee;
 use trans::collector::{self, TransItem};
 use trans::common::{type_is_sized, C_nil, const_get_elt};
@@ -28,7 +28,6 @@ use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, Vari
 use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null};
 use trans::datum::{Datum, Lvalue};
 use trans::declare;
-use trans::foreign;
 use trans::monomorphize::{self, Instance};
 use trans::type_::Type;
 use trans::type_of;
@@ -1029,6 +1028,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
     }
 
     let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
+        let llty = type_of::type_of(ccx, ty);
         match ccx.tcx().map.get(id) {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
@@ -1042,7 +1042,6 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
 
                 // Create the global before evaluating the initializer;
                 // this is necessary to allow recursive statics.
-                let llty = type_of::type_of(ccx, ty);
                 let g = declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
                     ccx.sess().span_fatal(span,
                         &format!("symbol `{}` is already defined", sym))
@@ -1052,9 +1051,63 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                 g
             }
 
-            hir_map::NodeForeignItem(ni @ &hir::ForeignItem {
-                node: hir::ForeignItemStatic(..), ..
-            }) => foreign::register_static(ccx, ni),
+            hir_map::NodeForeignItem(&hir::ForeignItem {
+                ref attrs, name, span, node: hir::ForeignItemStatic(..), ..
+            }) => {
+                let ident = imported_name(name, attrs);
+                let g = if let Some(name) =
+                        attr::first_attr_value_str_by_name(&attrs, "linkage") {
+                    // If this is a static with a linkage specified, then we need to handle
+                    // it a little specially. The typesystem prevents things like &T and
+                    // extern "C" fn() from being non-null, so we can't just declare a
+                    // static and call it a day. Some linkages (like weak) will make it such
+                    // that the static actually has a null value.
+                    let linkage = match base::llvm_linkage_by_name(&name) {
+                        Some(linkage) => linkage,
+                        None => {
+                            ccx.sess().span_fatal(span, "invalid linkage specified");
+                        }
+                    };
+                    let llty2 = match ty.sty {
+                        ty::TyRawPtr(ref mt) => type_of::type_of(ccx, mt.ty),
+                        _ => {
+                            ccx.sess().span_fatal(span, "must have type `*const T` or `*mut T`");
+                        }
+                    };
+                    unsafe {
+                        // Declare a symbol `foo` with the desired linkage.
+                        let g1 = declare::declare_global(ccx, &ident, llty2);
+                        llvm::SetLinkage(g1, linkage);
+
+                        // Declare an internal global `extern_with_linkage_foo` which
+                        // is initialized with the address of `foo`.  If `foo` is
+                        // discarded during linking (for example, if `foo` has weak
+                        // linkage and there are no definitions), then
+                        // `extern_with_linkage_foo` will instead be initialized to
+                        // zero.
+                        let mut real_name = "_rust_extern_with_linkage_".to_string();
+                        real_name.push_str(&ident);
+                        let g2 = declare::define_global(ccx, &real_name, llty).unwrap_or_else(||{
+                            ccx.sess().span_fatal(span,
+                                &format!("symbol `{}` is already defined", ident))
+                        });
+                        llvm::SetLinkage(g2, llvm::InternalLinkage);
+                        llvm::LLVMSetInitializer(g2, g1);
+                        g2
+                    }
+                } else {
+                    // Generate an external declaration.
+                    declare::declare_global(ccx, &ident, llty)
+                };
+
+                for attr in attrs {
+                    if attr.check_name("thread_local") {
+                        llvm::set_thread_local(g, true);
+                    }
+                }
+
+                g
+            }
 
             item => unreachable!("get_static: expected static, found {:?}", item)
         }
