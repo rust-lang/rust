@@ -1668,8 +1668,13 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
             InternalEntry::Occupied { mut elem } => {
                 Some(mem::replace(elem.read_mut().0, key))
             }
-            _ => {
-                None
+            other => {
+                if let Some(Vacant(vacant)) = other.into_entry(key) {
+                    vacant.insert(());
+                    None
+                } else {
+                    unreachable!()
+                }
             }
         }
     }
