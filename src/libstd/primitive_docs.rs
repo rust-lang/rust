@@ -370,7 +370,7 @@ mod prim_slice { }
 /// // story has nineteen bytes
 /// assert_eq!(19, len);
 ///
-/// // We can re-build a str out of ptr and len. This is all unsafe becuase
+/// // We can re-build a str out of ptr and len. This is all unsafe because
 /// // we are responsible for making sure the two components are valid:
 /// let s = unsafe {
 ///     // First, we build a &[u8]...
