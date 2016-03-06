@@ -263,13 +263,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let name = renamed.unwrap_or(item.name);
         match item.node {
             hir::ItemExternCrate(ref p) => {
-                let path = match *p {
-                    None => None,
-                    Some(x) => Some(x.to_string()),
-                };
                 om.extern_crates.push(ExternCrate {
                     name: name,
-                    path: path,
+                    path: p.map(|x|x.to_string()),
                     vis: item.vis,
                     attrs: item.attrs.clone(),
                     whence: item.span,

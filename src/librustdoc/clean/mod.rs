@@ -100,10 +100,7 @@ impl<T: Clean<U>, U> Clean<U> for Rc<T> {
 
 impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     fn clean(&self, cx: &DocContext) -> Option<U> {
-        match self {
-            &None => None,
-            &Some(ref v) => Some(v.clean(cx))
-        }
+        self.as_ref().map(|v| v.clean(cx))
     }
 }
 
@@ -178,9 +175,8 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             };
             let mut tmp = Vec::new();
             for child in &mut m.items {
-                match child.inner {
-                    ModuleItem(..) => {}
-                    _ => continue,
+                if !child.is_mod() {
+                    continue;
                 }
                 let prim = match PrimitiveType::find(&child.attrs) {
                     Some(prim) => prim,
@@ -261,7 +257,7 @@ pub struct Item {
     pub source: Span,
     /// Not everything has a name. E.g., impls
     pub name: Option<String>,
-    pub attrs: Vec<Attribute> ,
+    pub attrs: Vec<Attribute>,
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
     pub def_id: DefId,
@@ -270,51 +266,17 @@ pub struct Item {
 }
 
 impl Item {
-    /// Finds the `doc` attribute as a List and returns the list of attributes
-    /// nested inside.
-    pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
-        for attr in &self.attrs {
-            match *attr {
-                List(ref x, ref list) if "doc" == *x => {
-                    return Some(list);
-                }
-                _ => {}
-            }
-        }
-        return None;
-    }
-
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
-        for attr in &self.attrs {
-            match *attr {
-                NameValue(ref x, ref v) if "doc" == *x => {
-                    return Some(v);
-                }
-                _ => {}
-            }
-        }
-        return None;
+        self.attrs.value("doc")
     }
-
-    pub fn is_hidden_from_doc(&self) -> bool {
-        match self.doc_list() {
-            Some(l) => {
-                for innerattr in l {
-                    match *innerattr {
-                        Word(ref s) if "hidden" == *s => {
-                            return true
-                        }
-                        _ => (),
-                    }
-                }
-            },
-            None => ()
+    pub fn is_crate(&self) -> bool {
+        match self.inner {
+            ModuleItem(Module { items: _, is_crate: true }) => true,
+            _ => false
         }
-        return false;
     }
-
     pub fn is_mod(&self) -> bool {
         match self.inner { ModuleItem(..) => true, _ => false }
     }
@@ -330,29 +292,34 @@ impl Item {
     pub fn is_fn(&self) -> bool {
         match self.inner { FunctionItem(..) => true, _ => false }
     }
+    pub fn is_associated_type(&self) -> bool {
+        match self.inner { AssociatedTypeItem(..) => true, _ => false }
+    }
+    pub fn is_associated_const(&self) -> bool {
+        match self.inner { AssociatedConstItem(..) => true, _ => false }
+    }
+    pub fn is_method(&self) -> bool {
+        match self.inner { MethodItem(..) => true, _ => false }
+    }
+    pub fn is_ty_method(&self) -> bool {
+        match self.inner { TyMethodItem(..) => true, _ => false }
+    }
 
     pub fn stability_class(&self) -> String {
-        match self.stability {
-            Some(ref s) => {
-                let mut base = match s.level {
-                    stability::Unstable => "unstable".to_string(),
-                    stability::Stable => String::new(),
-                };
-                if !s.deprecated_since.is_empty() {
-                    base.push_str(" deprecated");
-                }
-                base
+        self.stability.as_ref().map(|ref s| {
+            let mut base = match s.level {
+                stability::Unstable => "unstable".to_string(),
+                stability::Stable => String::new(),
+            };
+            if !s.deprecated_since.is_empty() {
+                base.push_str(" deprecated");
             }
-            _ => String::new(),
-        }
+            base
+        }).unwrap_or(String::new())
     }
 
     pub fn stable_since(&self) -> Option<&str> {
-        if let Some(ref s) = self.stability {
-            return Some(&s.since[..]);
-        }
-
-        None
+        self.stability.as_ref().map(|s| &s.since[..])
     }
 }
 
@@ -448,10 +415,54 @@ impl Clean<Item> for doctree::Module {
     }
 }
 
+pub trait Attributes {
+    fn has_word(&self, &str) -> bool;
+    fn value<'a>(&'a self, &str) -> Option<&'a str>;
+    fn list_def<'a>(&'a self, &str) -> &'a [Attribute];
+}
+
+impl Attributes for [Attribute] {
+    /// Returns whether the attribute list contains a specific `Word`
+    fn has_word(&self, word: &str) -> bool {
+        for attr in self {
+            if let Word(ref w) = *attr {
+                if word == *w {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Finds an attribute as NameValue and returns the corresponding value found.
+    fn value<'a>(&'a self, name: &str) -> Option<&'a str> {
+        for attr in self {
+            if let NameValue(ref x, ref v) = *attr {
+                if name == *x {
+                    return Some(v);
+                }
+            }
+        }
+        None
+    }
+
+    /// Finds an attribute as List and returns the list of attributes nested inside.
+    fn list_def<'a>(&'a self, name: &str) -> &'a [Attribute] {
+        for attr in self {
+            if let List(ref x, ref list) = *attr {
+                if name == *x {
+                    return &list[..];
+                }
+            }
+        }
+        &[]
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Attribute {
     Word(String),
-    List(String, Vec<Attribute> ),
+    List(String, Vec<Attribute>),
     NameValue(String, String)
 }
 
@@ -494,12 +505,6 @@ impl attr::AttrMetaMethods for Attribute {
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
-    fn span(&self) -> codemap::Span { unimplemented!() }
-}
-impl<'a> attr::AttrMetaMethods for &'a Attribute {
-    fn name(&self) -> InternedString { (**self).name() }
-    fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list(&self) -> Option<&[P<ast::MetaItem>]> { None }
     fn span(&self) -> codemap::Span { unimplemented!() }
 }
 
@@ -711,7 +716,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
                         if let &ty::Region::ReLateBound(_, _) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(lt) = reg.clean(cx) {
-                                late_bounds.push(lt)
+                                late_bounds.push(lt);
                             }
                         }
                     }
@@ -780,8 +785,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
     fn clean(&self, cx: &DocContext) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BrNamed(_, name)) =>
-                Some(Lifetime(name.to_string())),
+            ty::ReLateBound(_, ty::BrNamed(_, name)) => Some(Lifetime(name.to_string())),
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name.clean(cx))),
 
             ty::ReLateBound(..) |
@@ -1151,12 +1155,12 @@ impl<'tcx> Clean<Type> for ty::FnOutput<'tcx> {
 impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
-        let mut names = if let Some(_) = cx.map.as_local_node_id(did) {
+        let mut names = if cx.map.as_local_node_id(did).is_some() {
             vec![].into_iter()
         } else {
             cx.tcx().sess.cstore.method_arg_names(did).into_iter()
         }.peekable();
-        if names.peek().map(|s| &**s) == Some("self") {
+        if let Some("self") = names.peek().map(|s| &s[..]) {
             let _ = names.next();
         }
         FnDecl {
@@ -1524,24 +1528,16 @@ impl PrimitiveType {
     }
 
     fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
-        for attr in attrs {
-            let list = match *attr {
-                List(ref k, ref l) if *k == "doc" => l,
-                _ => continue,
-            };
-            for sub_attr in list {
-                let value = match *sub_attr {
-                    NameValue(ref k, ref v)
-                        if *k == "primitive" => v,
-                    _ => continue,
-                };
-                match PrimitiveType::from_str(value) {
-                    Some(p) => return Some(p),
-                    None => {}
+        for attr in attrs.list_def("doc") {
+            if let NameValue(ref k, ref v) = *attr {
+                if "primitive" == *k {
+                    if let ret@Some(..) = PrimitiveType::from_str(v) {
+                        return ret;
+                    }
                 }
             }
         }
-        return None
+        None
     }
 
     pub fn to_string(&self) -> &'static str {
@@ -1627,15 +1623,9 @@ impl Clean<Type> for hir::Ty {
                 }
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
-            TyPolyTraitRef(ref bounds) => {
-                PolyTraitRef(bounds.clean(cx))
-            },
-            TyInfer => {
-                Infer
-            },
-            TyTypeof(..) => {
-                panic!("Unimplemented type {:?}", self.node)
-            },
+            TyPolyTraitRef(ref bounds) => PolyTraitRef(bounds.clean(cx)),
+            TyInfer => Infer,
+            TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
     }
 }
@@ -2253,7 +2243,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
                 polarity: Some(self.polarity.clean(cx)),
             }),
         });
-        return ret;
+        ret
     }
 }
 
@@ -2393,9 +2383,8 @@ impl Clean<Vec<Item>> for doctree::Import {
             }
             hir::ViewPathSimple(name, ref p) => {
                 if !denied {
-                    match inline::try_inline(cx, self.id, Some(name)) {
-                        Some(items) => return items,
-                        None => {}
+                    if let Some(items) = inline::try_inline(cx, self.id, Some(name)) {
+                        return items;
                     }
                 }
                 (vec![], SimpleImport(name.clean(cx),
@@ -2460,9 +2449,8 @@ impl Clean<Vec<Item>> for hir::ForeignMod {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
         let mut items = self.items.clean(cx);
         for item in &mut items {
-            match item.inner {
-                ForeignFunctionItem(ref mut f) => f.abi = self.abi,
-                _ => {}
+            if let ForeignFunctionItem(ref mut f) = item.inner {
+                f.abi = self.abi;
             }
         }
         items
@@ -2598,11 +2586,7 @@ fn resolve_type(cx: &DocContext,
             };
         }
     };
-    let def = match tcx.def_map.borrow().get(&id) {
-        Some(k) => k.full_def(),
-        None => panic!("unresolved id not in defmap")
-    };
-
+    let def = tcx.def_map.borrow().get(&id).expect("unresolved id not in defmap").full_def();
     debug!("resolve_type: def={:?}", def);
 
     let is_generic = match def {
@@ -2659,7 +2643,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         let t = inline::build_external_trait(cx, tcx, did);
         cx.external_traits.borrow_mut().as_mut().unwrap().insert(did, t);
     }
-    return did;
+    did
 }
 
 fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSource {
@@ -2732,12 +2716,10 @@ impl Clean<Stability> for attr::Stability {
                 _=> "".to_string(),
             },
             reason: {
-                if let Some(ref depr) = self.rustc_depr {
-                    depr.reason.to_string()
-                } else if let attr::Unstable {reason: Some(ref reason), ..} = self.level {
-                    reason.to_string()
-                } else {
-                    "".to_string()
+                match (&self.rustc_depr, &self.level) {
+                    (&Some(ref depr), _) => depr.reason.to_string(),
+                    (&None, &attr::Unstable {reason: Some(ref reason), ..}) => reason.to_string(),
+                    _ => "".to_string(),
                 }
             },
             issue: match self.level {
