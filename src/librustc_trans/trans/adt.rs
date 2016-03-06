@@ -1277,7 +1277,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let scratch = unpack_datum!(bcx, datum::lvalue_scratch_datum(
                 bcx, tcx.dtor_type(), "drop_flag",
                 InitAlloca::Uninit("drop flag itself has no dtor"),
-                cleanup::CustomScope(custom_cleanup_scope), (), |_, bcx, _| {
+                cleanup::CustomScope(custom_cleanup_scope), |bcx, _| {
                     debug!("no-op populate call for trans_drop_flag_ptr on dtor_type={:?}",
                            tcx.dtor_type());
                     bcx
