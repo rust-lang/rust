@@ -29,6 +29,7 @@
 #![feature(collections)]
 #![feature(const_fn)]
 #![feature(enumset)]
+#![feature(fn_traits)]
 #![feature(iter_arith)]
 #![feature(libc)]
 #![feature(nonzero)]
@@ -38,6 +39,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(question_mark)]
+#![feature(unboxed_closures)]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;

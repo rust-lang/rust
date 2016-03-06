@@ -454,11 +454,9 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     match pattern.node {
-        PatKind::TupleStruct(ref path, ref opt_children) => {
+        PatKind::TupleStruct(ref path, ref children, _) => {
             visitor.visit_path(path, pattern.id);
-            if let Some(ref children) = *opt_children {
-                walk_list!(visitor, visit_pat, children);
-            }
+            walk_list!(visitor, visit_pat, children);
         }
         PatKind::Path(ref path) => {
             visitor.visit_path(path, pattern.id);
@@ -474,7 +472,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
                 visitor.visit_pat(&field.node.pat)
             }
         }
-        PatKind::Tup(ref tuple_elements) => {
+        PatKind::Tuple(ref tuple_elements, _) => {
             walk_list!(visitor, visit_pat, tuple_elements);
         }
         PatKind::Box(ref subpattern) |

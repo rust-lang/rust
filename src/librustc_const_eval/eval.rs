@@ -271,10 +271,9 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
-            PatKind::Tup(try!(exprs.iter()
-                                  .map(|expr| const_expr_to_pat(tcx, &expr,
-                                                                pat_id, span))
-                                  .collect())),
+            PatKind::Tuple(try!(exprs.iter()
+                                     .map(|expr| const_expr_to_pat(tcx, &expr, pat_id, span))
+                                     .collect()), None),
 
         hir::ExprCall(ref callee, ref args) => {
             let def = *tcx.def_map.borrow().get(&callee.id).unwrap();
@@ -295,7 +294,7 @@ pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 .map(|expr| const_expr_to_pat(tcx, &**expr,
                                                               pat_id, span))
                                 .collect());
-            PatKind::TupleStruct(path, Some(pats))
+            PatKind::TupleStruct(path, pats, None)
         }
 
         hir::ExprStruct(ref path, ref fields, None) => {
