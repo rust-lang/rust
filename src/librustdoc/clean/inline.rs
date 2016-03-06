@@ -26,7 +26,7 @@ use rustc::middle::const_eval;
 
 use core::DocContext;
 use doctree;
-use clean;
+use clean::{self, Attributes};
 
 use super::{Clean, ToSource};
 
@@ -138,13 +138,10 @@ pub fn load_attrs(cx: &DocContext, tcx: &TyCtxt,
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
-    match cx.tcx_opt() {
-        Some(tcx) => {
-            let fqn = tcx.sess.cstore.extern_item_path(did);
-            let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
-            cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
-        }
-        None => {}
+    if let Some(tcx) = cx.tcx_opt() {
+        let fqn = tcx.sess.cstore.extern_item_path(did);
+        let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
+        cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
     }
 }
 
@@ -230,12 +227,9 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
     tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
 
-    match tcx.inherent_impls.borrow().get(&did) {
-        None => {}
-        Some(i) => {
-            for &did in i.iter() {
-                build_impl(cx, tcx, did, &mut impls);
-            }
+    if let Some(i) = tcx.inherent_impls.borrow().get(&did) {
+        for &did in i.iter() {
+            build_impl(cx, tcx, did, &mut impls);
         }
     }
 
@@ -259,7 +253,7 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 cstore::DlDef(Def::Mod(did)) => {
                     // Don't recurse if this is a #[doc(hidden)] module
-                    if load_attrs(cx, tcx, did).iter().any(|a| is_doc_hidden(a)) {
+                    if load_attrs(cx, tcx, did).list_def("doc").has_word("hidden") {
                         return;
                     }
 
@@ -288,7 +282,7 @@ pub fn build_impl(cx: &DocContext,
     if let Some(ref t) = associated_trait {
         // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
         let trait_attrs = load_attrs(cx, tcx, t.def_id);
-        if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
+        if trait_attrs.list_def("doc").has_word("hidden") {
             return
         }
     }
@@ -428,20 +422,6 @@ pub fn build_impl(cx: &DocContext,
     });
 }
 
-fn is_doc_hidden(a: &clean::Attribute) -> bool {
-    match *a {
-        clean::List(ref name, ref inner) if *name == "doc" => {
-            inner.iter().any(|a| {
-                match *a {
-                    clean::Word(ref s) => *s == "hidden",
-                    _ => false,
-                }
-            })
-        }
-        _ => false
-    }
-}
-
 fn build_module(cx: &DocContext, tcx: &TyCtxt,
                 did: DefId) -> clean::Module {
     let mut items = Vec::new();
@@ -464,9 +444,8 @@ fn build_module(cx: &DocContext, tcx: &TyCtxt,
                 }
                 cstore::DlDef(def) if item.vis == hir::Public => {
                     if !visited.insert(def) { continue }
-                    match try_inline_def(cx, tcx, def) {
-                        Some(i) => items.extend(i),
-                        None => {}
+                    if let Some(i) = try_inline_def(cx, tcx, def) {
+                        items.extend(i)
                     }
                 }
                 cstore::DlDef(..) => {}

@@ -16,7 +16,7 @@ use std::string::String;
 use std::usize;
 use rustc_front::hir;
 
-use clean;
+use clean::{self, Attributes};
 use clean::Item;
 use plugins;
 use fold;
@@ -33,7 +33,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
         }
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
-                if i.is_hidden_from_doc() {
+                if i.attrs.list_def("doc").has_word("hidden") {
                     debug!("found one in strip_hidden; removing");
                     self.stripped.insert(i.def_id);
 
@@ -205,22 +205,19 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             self.fold_item_recur(i)
         };
 
-        match i {
-            Some(i) => {
-                match i.inner {
-                    // emptied modules/impls have no need to exist
-                    clean::ModuleItem(ref m)
-                        if m.items.is_empty() &&
-                           i.doc_value().is_none() => None,
-                    clean::ImplItem(ref i) if i.items.is_empty() => None,
-                    _ => {
-                        self.retained.insert(i.def_id);
-                        Some(i)
-                    }
+        i.and_then(|i| {
+            match i.inner {
+                // emptied modules/impls have no need to exist
+                clean::ModuleItem(ref m)
+                    if m.items.is_empty() &&
+                       i.doc_value().is_none() => None,
+                clean::ImplItem(ref i) if i.items.is_empty() => None,
+                _ => {
+                    self.retained.insert(i.def_id);
+                    Some(i)
                 }
             }
-            None => None,
-        }
+        })
     }
 }
 
@@ -246,8 +243,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
 pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
     struct CommentCleaner;
     impl fold::DocFolder for CommentCleaner {
-        fn fold_item(&mut self, i: Item) -> Option<Item> {
-            let mut i = i;
+        fn fold_item(&mut self, mut i: Item) -> Option<Item> {
             let mut avec: Vec<clean::Attribute> = Vec::new();
             for attr in &i.attrs {
                 match attr {
@@ -271,17 +267,14 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
 pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     struct Collapser;
     impl fold::DocFolder for Collapser {
-        fn fold_item(&mut self, i: Item) -> Option<Item> {
+        fn fold_item(&mut self, mut i: Item) -> Option<Item> {
             let mut docstr = String::new();
-            let mut i = i;
             for attr in &i.attrs {
-                match *attr {
-                    clean::NameValue(ref x, ref s)
-                            if "doc" == *x => {
+                if let clean::NameValue(ref x, ref s) = *attr {
+                    if "doc" == *x {
                         docstr.push_str(s);
                         docstr.push('\n');
-                    },
-                    _ => ()
+                    }
                 }
             }
             let mut a: Vec<clean::Attribute> = i.attrs.iter().filter(|&a| match a {
