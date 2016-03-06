@@ -540,8 +540,10 @@ pub enum PatKind {
     /// Such pattern can be resolved to a unit struct/variant or a constant.
     Path(Path),
 
-    /// A path pattern written in qualified form, i.e. `<T as Trait>::CONST` or `<T>::CONST`.
-    /// Such patterns can only refer to associated constants at the moment.
+    /// An associated const named using the qualified path `<T>::CONST` or
+    /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
+    /// referred to as simply `T::CONST`, in which case they will end up as
+    /// PatKind::Path, and the resolver will have to sort that out.
     QPath(QSelf, Path),
 
     /// A tuple pattern `(a, b)`.
