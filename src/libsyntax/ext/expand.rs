@@ -1128,7 +1128,6 @@ fn expand_and_rename_method(sig: ast::MethodSig, body: P<ast::Block>,
     (ast::MethodSig {
         generics: fld.fold_generics(sig.generics),
         abi: sig.abi,
-        self_shortcut: sig.self_shortcut,
         unsafety: sig.unsafety,
         constness: sig.constness,
         decl: rewritten_fn_decl

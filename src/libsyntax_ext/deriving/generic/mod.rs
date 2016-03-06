@@ -860,8 +860,6 @@ impl<'a> MethodDef<'a> {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
-        // derive doesn't generate `self: TYPE` forms
-        let self_shortcut = explicit_self.is_some();
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 ast::Arg::from_self(explicit_self, respan(trait_.span, keywords::SelfValue.ident()))
@@ -894,7 +892,6 @@ impl<'a> MethodDef<'a> {
             node: ast::ImplItemKind::Method(ast::MethodSig {
                 generics: fn_generics,
                 abi: abi,
-                self_shortcut: self_shortcut,
                 unsafety: unsafety,
                 constness: ast::Constness::NotConst,
                 decl: fn_decl
