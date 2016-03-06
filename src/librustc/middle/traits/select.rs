@@ -2305,7 +2305,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_obligations.append(&mut substs.obligations);
 
         VtableImplData { impl_def_id: impl_def_id,
-                         substs: substs.value,
+                         substs: self.tcx().mk_substs(substs.value),
                          nested: impl_obligations }
     }
 

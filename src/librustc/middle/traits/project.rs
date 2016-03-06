@@ -948,7 +948,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
     for impl_item in &selcx.tcx().impl_items.borrow()[&impl_vtable.impl_def_id] {
         if let ty::TypeTraitItem(ref assoc_ty) = impl_or_trait_items_map[&impl_item.def_id()] {
             if assoc_ty.name == obligation.predicate.item_name {
-                return (assoc_ty.ty.unwrap().subst(selcx.tcx(), &impl_vtable.substs),
+                return (assoc_ty.ty.unwrap().subst(selcx.tcx(), impl_vtable.substs),
                         impl_vtable.nested);
             }
         }

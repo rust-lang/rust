@@ -278,7 +278,7 @@ pub enum Vtable<'tcx, N> {
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
-    pub substs: subst::Substs<'tcx>,
+    pub substs: &'tcx subst::Substs<'tcx>,
     pub nested: Vec<N>
 }
 

@@ -148,11 +148,11 @@ impl<'tcx> Substs<'tcx> {
         Substs { types: types, regions: regions }
     }
 
-    pub fn with_method_from(self,
+    pub fn with_method_from(&self,
                             meth_substs: &Substs<'tcx>)
                             -> Substs<'tcx>
     {
-        let Substs { types, regions } = self;
+        let Substs { types, regions } = self.clone();
         let types = types.with_slice(FnSpace, meth_substs.types.get_slice(FnSpace));
         let regions = regions.map(|r| {
             r.with_slice(FnSpace, meth_substs.regions().get_slice(FnSpace))

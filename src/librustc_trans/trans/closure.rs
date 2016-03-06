@@ -17,7 +17,7 @@ use trans::adt;
 use trans::attributes;
 use trans::base::*;
 use trans::build::*;
-use trans::callee::{self, ArgVals, Callee, TraitItem, MethodData};
+use trans::callee::{self, ArgVals, Callee};
 use trans::cleanup::{CleanupMethods, CustomScope, ScopeId};
 use trans::common::*;
 use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue};
@@ -271,24 +271,8 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     // If the closure is a Fn closure, but a FnOnce is needed (etc),
     // then adapt the self type
-    let closure_kind = ccx.tcx().closure_kind(closure_def_id);
-    trans_closure_adapter_shim(ccx,
-                               closure_def_id,
-                               substs,
-                               closure_kind,
-                               trait_closure_kind,
-                               llfn)
-}
+    let llfn_closure_kind = ccx.tcx().closure_kind(closure_def_id);
 
-fn trans_closure_adapter_shim<'a, 'tcx>(
-    ccx: &'a CrateContext<'a, 'tcx>,
-    closure_def_id: DefId,
-    substs: ty::ClosureSubsts<'tcx>,
-    llfn_closure_kind: ty::ClosureKind,
-    trait_closure_kind: ty::ClosureKind,
-    llfn: ValueRef)
-    -> ValueRef
-{
     let _icx = push_ctxt("trans_closure_adapter_shim");
     let tcx = ccx.tcx();
 
@@ -393,7 +377,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                       &block_arena);
     let mut bcx = init_function(&fcx, false, ret_ty);
 
-    let llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(fcx.llfn);
 
     // the first argument (`self`) will be the (by value) closure env.
     let self_scope = fcx.push_custom_cleanup_scope();
@@ -408,21 +392,17 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     debug!("trans_fn_once_adapter_shim: env_datum={}",
            bcx.val_to_string(env_datum.val));
+    llargs[self_idx] = env_datum.val;
 
     let dest =
         fcx.llretslotptr.get().map(
             |_| expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot")));
 
-    let callee_data = TraitItem(MethodData { llfn: llreffn,
-                                             llself: env_datum.val });
-
-    bcx = callee::trans_call_inner(bcx, DebugLoc::None, |bcx, _| {
-        Callee {
-            bcx: bcx,
-            data: callee_data,
-            ty: llref_fn_ty
-        }
-    }, ArgVals(&llargs[(self_idx + 1)..]), dest).bcx;
+    let callee = Callee {
+        data: callee::Fn(llreffn),
+        ty: llref_fn_ty
+    };
+    bcx = callee.call(bcx, DebugLoc::None, ArgVals(&llargs[self_idx..]), dest).bcx;
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
