@@ -109,6 +109,8 @@ const PASSES: &'static [Pass] = &[
      "concatenates all document attributes into one document attribute"),
     ("strip-private", passes::strip_private,
      "strips all private items from a crate which cannot be seen externally"),
+    ("strip-priv-imports", passes::strip_priv_imports,
+     "strips all private import statements (`use`, `extern crate`) from a crate"),
 ];
 
 const DEFAULT_PASSES: &'static [&'static str] = &[

@@ -106,7 +106,7 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
             retained: &mut retained,
             access_levels: &access_levels,
         };
-        krate = stripper.fold_crate(krate);
+        krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
     }
 
     // strip all private implementations of traits
@@ -144,12 +144,6 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ExternCrateItem(..) | clean::ImportItem(_) => {
-                if i.visibility != Some(hir::Public) {
-                    return None
-                }
-            }
-
             clean::StructFieldItem(..) => {
                 if i.visibility != Some(hir::Public) {
                     return Some(clean::Item {
@@ -170,6 +164,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                     return None;
                 }
             }
+            // handled in the `strip-priv-imports` pass
+            clean::ExternCrateItem(..) | clean::ImportItem(_) => {}
+
             clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
 
             // tymethods/macros have no control over privacy
@@ -239,6 +236,21 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
     }
 }
 
+// This stripper discards all private import statements (`use`, `extern crate`)
+struct ImportStripper;
+impl fold::DocFolder for ImportStripper {
+    fn fold_item(&mut self, i: Item) -> Option<Item> {
+        match i.inner {
+            clean::ExternCrateItem(..) |
+            clean::ImportItem(..) if i.visibility != Some(hir::Public) => None,
+            _ => self.fold_item_recur(i)
+        }
+    }
+}
+
+pub fn strip_priv_imports(krate: clean::Crate)  -> plugins::PluginResult {
+    (ImportStripper.fold_crate(krate), None)
+}
 
 pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
     struct CommentCleaner;
