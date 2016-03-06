@@ -33,7 +33,7 @@ use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 use hir;
 use hir::{Item, Generics, StructField, Variant, PatKind};
 use hir::intravisit::{self, Visitor};
-use hir::pat_util::pat_adjust_pos;
+use hir::pat_util::EnumerateAndAdjustIterator;
 
 use std::mem::replace;
 use std::cmp::Ordering;
@@ -616,9 +616,8 @@ pub fn check_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &hir::Pat,
     match pat.node {
         // Foo(a, b, c)
         PatKind::TupleStruct(_, ref pat_fields, ddpos) => {
-            let adjust = pat_adjust_pos(v.fields.len(), pat_fields.len(), ddpos);
-            for (i, field) in pat_fields.iter().enumerate() {
-                maybe_do_stability_check(tcx, v.fields[adjust(i)].did, field.span, cb)
+            for (i, field) in pat_fields.iter().enumerate_and_adjust(v.fields.len(), ddpos) {
+                maybe_do_stability_check(tcx, v.fields[i].did, field.span, cb)
             }
         }
         // Foo { a, b, c }

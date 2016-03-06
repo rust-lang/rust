@@ -1843,12 +1843,12 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                     &repr,
                                                     Disr::from(vinfo.disr_val),
                                                     val);
-                    let adjust = pat_adjust_pos(vinfo.fields.len(), sub_pats.len(), ddpos);
-                    for (i, subpat) in sub_pats.iter().enumerate() {
+                    for (i, subpat) in sub_pats.iter()
+                                               .enumerate_and_adjust(vinfo.fields.len(), ddpos) {
                         bcx = bind_irrefutable_pat(
                             bcx,
                             subpat,
-                            MatchInput::from_val(args.vals[adjust(i)]),
+                            MatchInput::from_val(args.vals[i]),
                             cleanup_scope);
                     }
                 }
@@ -1862,12 +1862,10 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         }
                     };
 
-                    let adjust = pat_adjust_pos(expected_len, sub_pats.len(), ddpos);
                     let repr = adt::represent_node(bcx, pat.id);
                     let val = adt::MaybeSizedValue::sized(val.val);
-                    for (i, elem) in sub_pats.iter().enumerate() {
-                        let fldptr = adt::trans_field_ptr(bcx, &repr,
-                                                          val, Disr(0), adjust(i));
+                    for (i, elem) in sub_pats.iter().enumerate_and_adjust(expected_len, ddpos) {
+                        let fldptr = adt::trans_field_ptr(bcx, &repr, val, Disr(0), i);
                         bcx = bind_irrefutable_pat(
                             bcx,
                             &elem,
@@ -1923,11 +1921,10 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         PatKind::Tuple(ref elems, ddpos) => {
             match tcx.node_id_to_type(pat.id).sty {
                 ty::TyTuple(ref tys) => {
-                    let adjust = pat_adjust_pos(tys.len(), elems.len(), ddpos);
                     let repr = adt::represent_node(bcx, pat.id);
                     let val = adt::MaybeSizedValue::sized(val.val);
-                    for (i, elem) in elems.iter().enumerate() {
-                        let fldptr = adt::trans_field_ptr(bcx, &repr, val, Disr(0), adjust(i));
+                    for (i, elem) in elems.iter().enumerate_and_adjust(tys.len(), ddpos) {
+                        let fldptr = adt::trans_field_ptr(bcx, &repr, val, Disr(0), i);
                         bcx = bind_irrefutable_pat(
                             bcx,
                             &elem,

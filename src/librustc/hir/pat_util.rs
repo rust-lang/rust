@@ -18,28 +18,40 @@ use hir::{self, PatKind};
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
 
 use std::cell::RefCell;
+use std::iter::{Enumerate, ExactSizeIterator};
 
 pub type PatIdMap = FnvHashMap<ast::Name, ast::NodeId>;
 
-#[derive(Clone, Copy)]
-pub struct AdjustPos {
+pub struct EnumerateAndAdjust<I> {
+    enumerate: Enumerate<I>,
     gap_pos: usize,
     gap_len: usize,
 }
 
-impl FnOnce<(usize,)> for AdjustPos {
-    type Output = usize;
-    extern "rust-call" fn call_once(self, (i,): (usize,)) -> usize {
-        if i < self.gap_pos { i } else { i + self.gap_len }
+impl<I> Iterator for EnumerateAndAdjust<I> where I: Iterator {
+    type Item = (usize, <I as Iterator>::Item);
+
+    fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
+        self.enumerate.next().map(|(i, elem)| {
+            (if i < self.gap_pos { i } else { i + self.gap_len }, elem)
+        })
     }
 }
 
-// Returns a functional object used to adjust tuple pattern indexes. Example: for 5-tuple and
-// pattern (a, b, .., c) expected_len is 5, actual_len is 3 and gap_pos is Some(2).
-pub fn pat_adjust_pos(expected_len: usize, actual_len: usize, gap_pos: Option<usize>) -> AdjustPos {
-    AdjustPos {
-        gap_pos: if let Some(gap_pos) = gap_pos { gap_pos } else { expected_len },
-        gap_len: expected_len - actual_len,
+pub trait EnumerateAndAdjustIterator {
+    fn enumerate_and_adjust(self, expected_len: usize, gap_pos: Option<usize>)
+        -> EnumerateAndAdjust<Self> where Self: Sized;
+}
+
+impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
+    fn enumerate_and_adjust(self, expected_len: usize, gap_pos: Option<usize>)
+            -> EnumerateAndAdjust<Self> where Self: Sized {
+        let actual_len = self.len();
+        EnumerateAndAdjust {
+            enumerate: self.enumerate(),
+            gap_pos: if let Some(gap_pos) = gap_pos { gap_pos } else { expected_len },
+            gap_len: expected_len - actual_len,
+        }
     }
 }
 
