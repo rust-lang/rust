@@ -100,6 +100,10 @@ macro_rules! define_Conf {
                             }
                         },
                     )+
+                    "third-party" => {
+                        // for external tools such as clippy-service
+                        return Ok(());
+                    }
                     _ => {
                         return Err(ConfError::UnknownKey(name));
                     }
