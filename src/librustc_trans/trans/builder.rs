@@ -11,7 +11,7 @@
 #![allow(dead_code)] // FFI wrappers
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
+use llvm::{AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use trans::base;
@@ -841,15 +841,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr(),
                                     args.len() as c_uint, bundle, noname())
         }
-    }
-
-    pub fn call_with_conv(&self, llfn: ValueRef, args: &[ValueRef],
-                          conv: CallConv,
-                          bundle: Option<&OperandBundleDef>) -> ValueRef {
-        self.count_insn("callwithconv");
-        let v = self.call(llfn, args, bundle);
-        llvm::SetInstructionCallConv(v, conv);
-        v
     }
 
     pub fn select(&self, cond: ValueRef, then_val: ValueRef, else_val: ValueRef) -> ValueRef {

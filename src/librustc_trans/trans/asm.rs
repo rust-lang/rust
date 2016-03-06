@@ -10,12 +10,12 @@
 
 //! # Translation of inline assembly.
 
-use llvm;
+use llvm::{self, ValueRef};
 use trans::build::*;
-use trans::callee;
 use trans::common::*;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
+use trans::datum::{Datum, Expr};
 use trans::expr;
 use trans::type_of;
 use trans::type_::Type;
@@ -35,6 +35,29 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 
     let temp_scope = fcx.push_custom_cleanup_scope();
 
+    let take_datum = |mut bcx: Block<'blk, 'tcx>,
+                      arg_datum: Datum<'tcx, Expr>,
+                      llargs: &mut Vec<ValueRef>|
+                      -> Block<'blk, 'tcx> {
+        // Make this an rvalue, since we are going to be
+        // passing ownership.
+        let arg_datum = unpack_datum!(
+            bcx, arg_datum.to_rvalue_datum(bcx, "arg"));
+
+        // Now that arg_datum is owned, get it into the appropriate
+        // mode (ref vs value).
+        let arg_datum = unpack_datum!(
+            bcx, arg_datum.to_appropriate_datum(bcx));
+
+        // Technically, ownership of val passes to the callee.
+        // However, we must cleanup should we panic before the
+        // callee is actually invoked.
+        let val = arg_datum.add_clean(bcx.fcx,
+            cleanup::CustomScope(temp_scope));
+        llargs.push(val);
+        bcx
+    };
+
     let mut ext_inputs = Vec::new();
     let mut ext_constraints = Vec::new();
 
@@ -46,11 +69,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 
         let out_datum = unpack_datum!(bcx, expr::trans(bcx, &out.expr));
         if out.is_indirect {
-            bcx = callee::trans_arg_datum(bcx,
-                                          expr_ty(bcx, &out.expr),
-                                          out_datum,
-                                          cleanup::CustomScope(temp_scope),
-                                          &mut inputs);
+            bcx = take_datum(bcx, out_datum, &mut inputs);
             if out.is_rw {
                 ext_inputs.push(*inputs.last().unwrap());
                 ext_constraints.push(i.to_string());
@@ -59,11 +78,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
             output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
             outputs.push(out_datum.val);
             if out.is_rw {
-                bcx = callee::trans_arg_datum(bcx,
-                                              expr_ty(bcx, &out.expr),
-                                              out_datum,
-                                              cleanup::CustomScope(temp_scope),
-                                              &mut ext_inputs);
+                bcx = take_datum(bcx, out_datum, &mut ext_inputs);
                 ext_constraints.push(i.to_string());
             }
         }
@@ -74,11 +89,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         constraints.push((*c).clone());
 
         let in_datum = unpack_datum!(bcx, expr::trans(bcx, &input));
-        bcx = callee::trans_arg_datum(bcx,
-                                    expr_ty(bcx, &input),
-                                    in_datum,
-                                    cleanup::CustomScope(temp_scope),
-                                    &mut inputs);
+        bcx = take_datum(bcx, in_datum, &mut inputs);
     }
     inputs.extend_from_slice(&ext_inputs[..]);
 

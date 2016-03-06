@@ -12,7 +12,7 @@
 #![allow(non_snake_case)]
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
+use llvm::{AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate};
 use llvm::{ValueRef, BasicBlockRef};
 use trans::common::*;
@@ -918,20 +918,6 @@ pub fn Call(cx: Block,
     debug_loc.apply(cx.fcx);
     let bundle = cx.lpad.get().and_then(|b| b.bundle());
     B(cx).call(fn_, args, bundle)
-}
-
-pub fn CallWithConv(cx: Block,
-                    fn_: ValueRef,
-                    args: &[ValueRef],
-                    conv: CallConv,
-                    debug_loc: DebugLoc)
-                    -> ValueRef {
-    if cx.unreachable.get() {
-        return _UndefReturn(cx, fn_);
-    }
-    debug_loc.apply(cx.fcx);
-    let bundle = cx.lpad.get().and_then(|b| b.bundle());
-    B(cx).call_with_conv(fn_, args, conv, bundle)
 }
 
 pub fn AtomicFence(cx: Block, order: AtomicOrdering, scope: SynchronizationScope) {
