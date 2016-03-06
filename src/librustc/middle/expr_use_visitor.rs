@@ -1043,11 +1043,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 PatKind::Struct(..) | PatKind::TupleStruct(..) |
                 PatKind::Path(..) | PatKind::QPath(..) => {
                     match def_map.get(&pat.id).map(|d| d.full_def()) {
-                        None => {
-                            // no definition found: pat is not a
-                            // struct or enum pattern.
-                        }
-
                         Some(Def::Variant(enum_did, variant_did)) => {
                             let downcast_cmt =
                                 if tcx.lookup_adt_def(enum_did).is_univariant() {
@@ -1083,7 +1078,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                             // `matched_pat` call.
                         }
 
-                        Some(def) => {
+                        def => {
                             // An enum type should never be in a pattern.
                             // Remaining cases are e.g. Def::Fn, to
                             // which identifiers within patterns
