@@ -150,17 +150,18 @@ impl FnType {
                          abi: Abi,
                          sig: &ty::FnSig<'tcx>,
                          extra_args: &[Ty<'tcx>]) -> FnType {
+        let mut fn_ty = FnType::unadjusted(ccx, abi, sig, extra_args);
+        fn_ty.adjust_for_abi(ccx, abi, sig);
+        fn_ty
+    }
+
+    pub fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                abi: Abi,
+                                sig: &ty::FnSig<'tcx>,
+                                extra_args: &[Ty<'tcx>]) -> FnType {
         use self::Abi::*;
         let cconv = match ccx.sess().target.target.adjust_abi(abi) {
-            RustIntrinsic => {
-                // Intrinsics are emitted at the call site
-                ccx.sess().bug("asked to compute FnType of intrinsic");
-            }
-            PlatformIntrinsic => {
-                // Intrinsics are emitted at the call site
-                ccx.sess().bug("asked to compute FnType of platform intrinsic");
-            }
-
+            RustIntrinsic | PlatformIntrinsic |
             Rust | RustCall => llvm::CCallConv,
 
             // It's the ABI's job to select this, not us.
@@ -309,14 +310,20 @@ impl FnType {
             }
         }
 
-        let mut fty = FnType {
+        FnType {
             args: args,
             ret: ret,
             variadic: sig.variadic,
             cconv: cconv
-        };
+        }
+    }
 
-        if abi == Rust || abi == RustCall {
+    pub fn adjust_for_abi<'a, 'tcx>(&mut self,
+                                    ccx: &CrateContext<'a, 'tcx>,
+                                    abi: Abi,
+                                    sig: &ty::FnSig<'tcx>) {
+        if abi == Abi::Rust || abi == Abi::RustCall ||
+           abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             let fixup = |arg: &mut ArgType| {
                 if !arg.ty.is_aggregate() {
                     // Scalars and vectors, always immediate.
@@ -332,49 +339,48 @@ impl FnType {
                     arg.cast = Some(Type::ix(ccx, size * 8));
                 }
             };
-            if fty.ret.ty != Type::void(ccx) {
-                // Fat pointers are returned by-value.
+            // Fat pointers are returned by-value.
+            if !self.ret.is_ignore() {
                 if !type_is_fat_ptr(ccx.tcx(), sig.output.unwrap()) {
-                    fixup(&mut fty.ret);
+                    fixup(&mut self.ret);
                 }
             }
-            for arg in &mut fty.args {
+            for arg in &mut self.args {
+                if arg.is_ignore() { continue; }
                 fixup(arg);
             }
-            if fty.ret.is_indirect() {
-                fty.ret.attrs.set(llvm::Attribute::StructRet);
+            if self.ret.is_indirect() {
+                self.ret.attrs.set(llvm::Attribute::StructRet);
             }
-            return fty;
+            return;
         }
 
         match &ccx.sess().target.target.arch[..] {
-            "x86" => cabi_x86::compute_abi_info(ccx, &mut fty),
+            "x86" => cabi_x86::compute_abi_info(ccx, self),
             "x86_64" => if ccx.sess().target.target.options.is_like_windows {
-                cabi_x86_win64::compute_abi_info(ccx, &mut fty);
+                cabi_x86_win64::compute_abi_info(ccx, self);
             } else {
-                cabi_x86_64::compute_abi_info(ccx, &mut fty);
+                cabi_x86_64::compute_abi_info(ccx, self);
             },
-            "aarch64" => cabi_aarch64::compute_abi_info(ccx, &mut fty),
+            "aarch64" => cabi_aarch64::compute_abi_info(ccx, self),
             "arm" => {
                 let flavor = if ccx.sess().target.target.target_os == "ios" {
                     cabi_arm::Flavor::Ios
                 } else {
                     cabi_arm::Flavor::General
                 };
-                cabi_arm::compute_abi_info(ccx, &mut fty, flavor);
+                cabi_arm::compute_abi_info(ccx, self, flavor);
             },
-            "mips" => cabi_mips::compute_abi_info(ccx, &mut fty),
-            "powerpc" => cabi_powerpc::compute_abi_info(ccx, &mut fty),
-            "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, &mut fty),
-            "asmjs" => cabi_asmjs::compute_abi_info(ccx, &mut fty),
+            "mips" => cabi_mips::compute_abi_info(ccx, self),
+            "powerpc" => cabi_powerpc::compute_abi_info(ccx, self),
+            "powerpc64" => cabi_powerpc64::compute_abi_info(ccx, self),
+            "asmjs" => cabi_asmjs::compute_abi_info(ccx, self),
             a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
         }
 
-        if fty.ret.is_indirect() {
-            fty.ret.attrs.set(llvm::Attribute::StructRet);
+        if self.ret.is_indirect() {
+            self.ret.attrs.set(llvm::Attribute::StructRet);
         }
-
-        fty
     }
 
     pub fn llvm_type(&self, ccx: &CrateContext) -> Type {
