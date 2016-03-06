@@ -492,11 +492,6 @@ enum FieldName {
 }
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
-    // used when debugging
-    fn nodestr(&self, id: ast::NodeId) -> String {
-        self.tcx.map.node_to_string(id).to_string()
-    }
-
     // Determines whether the given definition is public from the point of view
     // of the current item.
     fn def_privacy(&self, did: DefId) -> PrivacyResult {
@@ -604,75 +599,44 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             return Allowable;
         }
 
-        // We now know that there is at least one private member between the
-        // destination and the root.
-        let mut closest_private_id = node_id;
-        loop {
-            debug!("privacy - examining {}", self.nodestr(closest_private_id));
-            let vis = match self.tcx.map.find(closest_private_id) {
-                // If this item is a method, then we know for sure that it's an
-                // actual method and not a static method. The reason for this is
-                // that these cases are only hit in the ExprMethodCall
-                // expression, and ExprCall will have its path checked later
-                // (the path of the trait/impl) if it's a static method.
-                //
-                // With this information, then we can completely ignore all
-                // trait methods. The privacy violation would be if the trait
-                // couldn't get imported, not if the method couldn't be used
-                // (all trait methods are public).
-                //
-                // However, if this is an impl method, then we dictate this
-                // decision solely based on the privacy of the method
-                // invocation.
-                // FIXME(#10573) is this the right behavior? Why not consider
-                //               where the method was defined?
-                Some(ast_map::NodeImplItem(ii)) => {
-                    match ii.node {
-                        hir::ImplItemKind::Const(..) |
-                        hir::ImplItemKind::Method(..) => {
-                            let imp = self.tcx.map
-                                          .get_parent_did(closest_private_id);
-                            match self.tcx.impl_trait_ref(imp) {
-                                Some(..) => return Allowable,
-                                _ if ii.vis == hir::Public => {
-                                    return Allowable
-                                }
-                                _ => ii.vis
-                            }
-                        }
-                        hir::ImplItemKind::Type(_) => return Allowable,
-                    }
+        let vis = match self.tcx.map.find(node_id) {
+            // If this item is a method, then we know for sure that it's an
+            // actual method and not a static method. The reason for this is
+            // that these cases are only hit in the ExprMethodCall
+            // expression, and ExprCall will have its path checked later
+            // (the path of the trait/impl) if it's a static method.
+            //
+            // With this information, then we can completely ignore all
+            // trait methods. The privacy violation would be if the trait
+            // couldn't get imported, not if the method couldn't be used
+            // (all trait methods are public).
+            //
+            // However, if this is an impl method, then we dictate this
+            // decision solely based on the privacy of the method
+            // invocation.
+            Some(ast_map::NodeImplItem(ii)) => {
+                let imp = self.tcx.map.get_parent_did(node_id);
+                match self.tcx.impl_trait_ref(imp) {
+                    Some(..) => hir::Public,
+                    _ => ii.vis,
                 }
-                Some(ast_map::NodeTraitItem(_)) => {
-                    return Allowable;
-                }
+            }
+            Some(ast_map::NodeTraitItem(_)) => hir::Public,
 
-                // This is not a method call, extract the visibility as one
-                // would normally look at it
-                Some(ast_map::NodeItem(it)) => it.vis,
-                Some(ast_map::NodeForeignItem(_)) => {
-                    self.tcx.map.get_foreign_vis(closest_private_id)
-                }
-                Some(ast_map::NodeVariant(..)) => {
-                    hir::Public // need to move up a level (to the enum)
-                }
-                _ => hir::Public,
-            };
-            if vis != hir::Public { break }
-            // if we've reached the root, then everything was allowable and this
-            // access is public.
-            if closest_private_id == ast::CRATE_NODE_ID { return Allowable }
-            closest_private_id = *self.parents.get(&closest_private_id).unwrap();
+            // This is not a method call, extract the visibility as one
+            // would normally look at it
+            Some(ast_map::NodeItem(it)) => it.vis,
+            Some(ast_map::NodeForeignItem(_)) => {
+                self.tcx.map.get_foreign_vis(node_id)
+            }
+            _ => hir::Public,
+        };
+        if vis == hir::Public { return Allowable }
 
-            // If we reached the top, then we were public all the way down and
-            // we can allow this access.
-            if closest_private_id == ast::DUMMY_NODE_ID { return Allowable }
-        }
-        debug!("privacy - closest priv {}", self.nodestr(closest_private_id));
-        if self.private_accessible(closest_private_id) {
+        if self.private_accessible(node_id) {
             Allowable
         } else {
-            DisallowedBy(closest_private_id)
+            DisallowedBy(node_id)
         }
     }
 
@@ -834,8 +798,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
             ty::TraitContainer(trait_def_id) => {
-                self.report_error(self.ensure_public(span, trait_def_id,
-                                                     None, "source trait"));
+                let msg = format!("source trait `{}`", self.tcx.item_path_str(trait_def_id));
+                self.report_error(self.ensure_public(span, trait_def_id, None, &msg));
             }
         }
     }

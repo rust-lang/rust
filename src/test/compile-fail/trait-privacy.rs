@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod m {
-    trait Priv {
-        fn f(&self) {}
+#![feature(rustc_attrs)]
+#![allow(dead_code)]
+
+mod foo {
+    pub use self::bar::T;
+    mod bar {
+        pub trait T {
+            fn f(&self) {}
+        }
+        impl T for () {}
     }
-    impl Priv for super::S {}
-    pub trait Pub: Priv {}
 }
 
-struct S;
-impl m::Pub for S {}
-
-fn g<T: m::Pub>(arg: T) {
-    arg.f(); //~ ERROR: source trait `m::Priv` is private
+fn g() {
+    use foo::T;
+    ().f(); // Check that this does not trigger a privacy error
 }
 
-fn main() {
-    g(S);
-}
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful
