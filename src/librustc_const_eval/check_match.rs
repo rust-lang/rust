@@ -924,7 +924,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 Def::Variant(..) | Def::Struct(..) => {
                     match ddpos {
                         Some(ddpos) => {
-                            let mut pats = args[..ddpos].iter().map(|p| &**p).collect(): Vec<_>;
+                            let mut pats: Vec<_> = args[..ddpos].iter().map(|p| &**p).collect();
                             pats.extend(repeat(DUMMY_WILD_PAT).take(arity - args.len()));
                             pats.extend(args[ddpos..].iter().map(|p| &**p));
                             Some(pats)
@@ -958,7 +958,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         PatKind::Tuple(ref args, Some(ddpos)) => {
-            let mut pats = args[..ddpos].iter().map(|p| &**p).collect(): Vec<_>;
+            let mut pats: Vec<_> = args[..ddpos].iter().map(|p| &**p).collect();
             pats.extend(repeat(DUMMY_WILD_PAT).take(arity - args.len()));
             pats.extend(args[ddpos..].iter().map(|p| &**p));
             Some(pats)
