@@ -13,7 +13,7 @@ use hair::cx::Cx;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_const_eval as const_eval;
 use rustc::hir::def::Def;
-use rustc::hir::pat_util::{pat_is_resolved_const, pat_is_binding};
+use rustc::hir::pat_util::{pat_adjust_pos, pat_is_resolved_const, pat_is_binding};
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc::hir::{self, PatKind};
@@ -148,17 +148,24 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::Tup(ref subpatterns) => {
-                let subpatterns =
-                    subpatterns.iter()
-                               .enumerate()
-                               .map(|(i, subpattern)| FieldPattern {
-                                   field: Field::new(i),
-                                   pattern: self.to_pattern(subpattern),
-                               })
-                               .collect();
+            PatKind::Tuple(ref subpatterns, ddpos) => {
+                match self.cx.tcx.node_id_to_type(pat.id).sty {
+                    ty::TyTuple(ref tys) => {
+                        let adjust = pat_adjust_pos(tys.len(), subpatterns.len(), ddpos);
+                        let subpatterns =
+                            subpatterns.iter()
+                                       .enumerate()
+                                       .map(|(i, subpattern)| FieldPattern {
+                                            field: Field::new(adjust(i)),
+                                            pattern: self.to_pattern(subpattern),
+                                       })
+                                       .collect();
 
-                PatternKind::Leaf { subpatterns: subpatterns }
+                        PatternKind::Leaf { subpatterns: subpatterns }
+                    }
+
+                    ref sty => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", sty),
+                }
             }
 
             PatKind::Ident(bm, ref ident, ref sub)
@@ -208,13 +215,21 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 self.variant_or_leaf(pat, vec![])
             }
 
-            PatKind::TupleStruct(_, ref opt_subpatterns) => {
+            PatKind::TupleStruct(_, ref subpatterns, ddpos) => {
+                let pat_ty = self.cx.tcx.node_id_to_type(pat.id);
+                let adt_def = match pat_ty.sty {
+                    ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
+                    _ => span_bug!(pat.span, "tuple struct pattern not applied to struct or enum"),
+                };
+                let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
+                let variant_def = adt_def.variant_of_def(def);
+
+                let adjust = pat_adjust_pos(variant_def.fields.len(), subpatterns.len(), ddpos);
                 let subpatterns =
-                    opt_subpatterns.iter()
-                                   .flat_map(|v| v.iter())
+                        subpatterns.iter()
                                    .enumerate()
                                    .map(|(i, field)| FieldPattern {
-                                       field: Field::new(i),
+                                       field: Field::new(adjust(i)),
                                        pattern: self.to_pattern(field),
                                    })
                                    .collect();

@@ -2360,7 +2360,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
-                PatKind::TupleStruct(ref path, _) | PatKind::Path(ref path) => {
+                PatKind::TupleStruct(ref path, _, _) | PatKind::Path(ref path) => {
                     // This must be an enum variant, struct or const.
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             None,

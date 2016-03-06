@@ -31,7 +31,7 @@ use std::mem::replace;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::{self, Visitor};
-
+use rustc::hir::pat_util::pat_adjust_pos;
 use rustc::dep_graph::DepNode;
 use rustc::lint;
 use rustc::hir::def::{self, Def};
@@ -488,17 +488,17 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     self.check_field(pattern.span, adt, variant.field_named(field.node.name));
                 }
             }
-
-            // Patterns which bind no fields are allowable (the path is check
-            // elsewhere).
-            PatKind::TupleStruct(_, Some(ref fields)) => {
+            PatKind::TupleStruct(_, ref fields, ddpos) => {
                 match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(def, _) => {
+                        let adjust = pat_adjust_pos(def.struct_variant().fields.len(),
+                                                    fields.len(), ddpos);
                         for (i, field) in fields.iter().enumerate() {
                             if let PatKind::Wild = field.node {
                                 continue
                             }
-                            self.check_field(field.span, def, &def.struct_variant().fields[i]);
+                            self.check_field(field.span, def,
+                                             &def.struct_variant().fields[adjust(i)]);
                         }
                     }
                     ty::TyEnum(..) => {
@@ -506,7 +506,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     }
                     _ => {}
                 }
-
             }
             _ => {}
         }

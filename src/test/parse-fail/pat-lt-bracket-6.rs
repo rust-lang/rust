@@ -9,6 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let Test(&desc[..]) = x; //~ error: expected one of `,` or `@`, found `[`
-    //~^ ERROR expected one of `:`, `;`, `=`, or `@`, found `[`
+    let Test(&desc[..]) = x; //~ ERROR: expected one of `)`, `,`, or `@`, found `[`
 }
