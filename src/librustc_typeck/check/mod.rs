@@ -572,19 +572,17 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if let PatKind::Ident(_, ref path1, _) = p.node {
-            if pat_util::pat_is_binding(&self.fcx.tcx.def_map.borrow(), p) {
-                let var_ty = self.assign(p.span, p.id, None);
+        if let PatKind::Binding(_, ref path1, _) = p.node {
+            let var_ty = self.assign(p.span, p.id, None);
 
-                self.fcx.require_type_is_sized(var_ty, p.span,
-                                               traits::VariableType(p.id));
+            self.fcx.require_type_is_sized(var_ty, p.span,
+                                           traits::VariableType(p.id));
 
-                debug!("Pattern binding {} is assigned to {} with type {:?}",
-                       path1.node,
-                       self.fcx.ty_to_string(
-                           self.fcx.locals.borrow().get(&p.id).unwrap().clone()),
-                       var_ty);
-            }
+            debug!("Pattern binding {} is assigned to {} with type {:?}",
+                   path1.node,
+                   self.fcx.ty_to_string(
+                       self.fcx.locals.borrow().get(&p.id).unwrap().clone()),
+                   var_ty);
         }
         intravisit::walk_pat(self, p);
     }

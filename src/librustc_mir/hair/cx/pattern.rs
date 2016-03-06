@@ -13,7 +13,7 @@ use hair::cx::Cx;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_const_eval as const_eval;
 use rustc::hir::def::Def;
-use rustc::hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const, pat_is_binding};
+use rustc::hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc::hir::{self, PatKind};
@@ -81,7 +81,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 PatternKind::Range { lo: lo, hi: hi }
             },
 
-            PatKind::Path(..) | PatKind::Ident(..) | PatKind::QPath(..)
+            PatKind::Path(..) | PatKind::QPath(..)
                 if pat_is_resolved_const(&self.cx.tcx.def_map.borrow(), pat) =>
             {
                 let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
@@ -167,9 +167,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::Ident(bm, ref ident, ref sub)
-                if pat_is_binding(&self.cx.tcx.def_map.borrow(), pat) =>
-            {
+            PatKind::Binding(bm, ref ident, ref sub) => {
                 let id = match self.binding_map {
                     None => pat.id,
                     Some(ref map) => map[&ident.node],
@@ -210,7 +208,7 @@ impl<'patcx, 'cx, 'gcx, 'tcx> PatCx<'patcx, 'cx, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::Ident(..) | PatKind::Path(..) => {
+            PatKind::Path(..) => {
                 self.variant_or_leaf(pat, vec![])
             }
 

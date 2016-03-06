@@ -99,7 +99,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn pat(&mut self, pat: &hir::Pat, pred: CFGIndex) -> CFGIndex {
         match pat.node {
-            PatKind::Ident(_, _, None) |
+            PatKind::Binding(_, _, None) |
             PatKind::Path(..) |
             PatKind::QPath(..) |
             PatKind::Lit(..) |
@@ -110,7 +110,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             PatKind::Box(ref subpat) |
             PatKind::Ref(ref subpat, _) |
-            PatKind::Ident(_, _, Some(ref subpat)) => {
+            PatKind::Binding(_, _, Some(ref subpat)) => {
                 let subpat_exit = self.pat(&subpat, pred);
                 self.add_ast_node(pat.id, &[subpat_exit])
             }

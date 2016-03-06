@@ -149,8 +149,7 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                 // subtyping doesn't matter here, as the value is some kind of scalar
                 self.demand_eqtype(pat.span, expected, lhs_ty);
             }
-            PatKind::Path(..) | PatKind::Ident(..)
-                    if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
+            PatKind::Path(..) if pat_is_resolved_const(&tcx.def_map.borrow(), pat) => {
                 if let Some(pat_def) = tcx.def_map.borrow().get(&pat.id) {
                     let const_did = pat_def.def_id();
                     let const_scheme = tcx.lookup_item_type(const_did);
@@ -170,8 +169,7 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                     self.write_error(pat.id);
                 }
             }
-            PatKind::Ident(bm, ref path, ref sub)
-                    if pat_is_binding(&tcx.def_map.borrow(), pat) => {
+            PatKind::Binding(bm, ref path, ref sub) => {
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     hir::BindByRef(mutbl) => {
@@ -210,10 +208,6 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                         self.check_pat(&p, expected);
                     }
                 }
-            }
-            PatKind::Ident(_, ref path, _) => {
-                let path = hir::Path::from_name(path.span, path.node);
-                self.check_pat_enum(pat, &path, &[], None, expected, false);
             }
             PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
                 self.check_pat_enum(pat, path, &subpats, ddpos, expected, true);

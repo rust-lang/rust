@@ -466,7 +466,7 @@ impl Pat {
         }
 
         match self.node {
-            PatKind::Ident(_, _, Some(ref p)) => p.walk_(it),
+            PatKind::Binding(_, _, Some(ref p)) => p.walk_(it),
             PatKind::Struct(_, ref fields, _) => {
                 fields.iter().all(|field| field.node.pat.walk_(it))
             }
@@ -484,7 +484,7 @@ impl Pat {
             PatKind::Wild |
             PatKind::Lit(_) |
             PatKind::Range(_, _) |
-            PatKind::Ident(_, _, _) |
+            PatKind::Binding(..) |
             PatKind::Path(..) |
             PatKind::QPath(_, _) => {
                 true
@@ -532,7 +532,7 @@ pub enum PatKind {
     /// which it is. The resolver determines this, and
     /// records this pattern's `NodeId` in an auxiliary
     /// set (of "PatIdents that refer to unit patterns or constants").
-    Ident(BindingMode, Spanned<Name>, Option<P<Pat>>),
+    Binding(BindingMode, Spanned<Name>, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -1144,7 +1144,7 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 
 impl Arg {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Ident(BindByValue(mutbl), name, _) = self.pat.node {
+        if let PatKind::Binding(BindByValue(mutbl), name, _) = self.pat.node {
             if name.node.unhygienize() == keywords::SelfValue.name() {
                 return match self.ty.node {
                     TyInfer => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -1160,7 +1160,7 @@ impl Arg {
     }
 
     pub fn is_self(&self) -> bool {
-        if let PatKind::Ident(_, name, _) = self.pat.node {
+        if let PatKind::Binding(_, name, _) = self.pat.node {
             name.node.unhygienize() == keywords::SelfValue.name()
         } else {
             false

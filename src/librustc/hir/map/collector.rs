@@ -165,7 +165,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
-        let node = if let PatKind::Ident(..) = pat.node {
+        let node = if let PatKind::Binding(..) = pat.node {
             NodeLocal(pat)
         } else {
             NodePat(pat)
