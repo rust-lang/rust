@@ -36,13 +36,13 @@ macro_rules! impl_tuple_slice {
     }
 }
 
-impl_tuple_slice!((T,T), 2);
-impl_tuple_slice!((T,T,T), 3);
-impl_tuple_slice!((T,T,T,T), 4);
-impl_tuple_slice!((T,T,T,T,T), 5);
-impl_tuple_slice!((T,T,T,T,T,T), 6);
-impl_tuple_slice!((T,T,T,T,T,T,T), 7);
-impl_tuple_slice!((T,T,T,T,T,T,T,T), 8);
+impl_tuple_slice!((T, T), 2);
+impl_tuple_slice!((T, T, T), 3);
+impl_tuple_slice!((T, T, T, T), 4);
+impl_tuple_slice!((T, T, T, T, T), 5);
+impl_tuple_slice!((T, T, T, T, T, T), 6);
+impl_tuple_slice!((T, T, T, T, T, T, T), 7);
+impl_tuple_slice!((T, T, T, T, T, T, T, T), 8);
 
 #[test]
 fn test_sliced_tuples() {

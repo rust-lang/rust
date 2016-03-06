@@ -56,21 +56,21 @@ impl Combine for () {
 /// time of the algorithm under control. For more information, see
 /// <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
 #[derive(PartialEq,Clone,Debug)]
-pub struct VarValue<K:UnifyKey> {
-    parent: K,       // if equal to self, this is a root
+pub struct VarValue<K: UnifyKey> {
+    parent: K, // if equal to self, this is a root
     value: K::Value, // value assigned (only relevant to root)
-    rank: u32,       // max depth (only relevant to root)
+    rank: u32, // max depth (only relevant to root)
 }
 
 /// Table of unification keys and their values.
-pub struct UnificationTable<K:UnifyKey> {
+pub struct UnificationTable<K: UnifyKey> {
     /// Indicates the current value of each key.
     values: sv::SnapshotVec<Delegate<K>>,
 }
 
 /// At any time, users may snapshot a unification table.  The changes
 /// made during the snapshot may either be *committed* or *rolled back*.
-pub struct Snapshot<K:UnifyKey> {
+pub struct Snapshot<K: UnifyKey> {
     // Link snapshot to the key type `K` of the table.
     marker: marker::PhantomData<K>,
     snapshot: sv::Snapshot,
@@ -79,15 +79,17 @@ pub struct Snapshot<K:UnifyKey> {
 #[derive(Copy, Clone)]
 struct Delegate<K>(PhantomData<K>);
 
-impl<K:UnifyKey> VarValue<K> {
+impl<K: UnifyKey> VarValue<K> {
     fn new_var(key: K, value: K::Value) -> VarValue<K> {
         VarValue::new(key, value, 0)
     }
 
     fn new(parent: K, value: K::Value, rank: u32) -> VarValue<K> {
-        VarValue { parent: parent, // this is a root
-                   value: value,
-                   rank: rank }
+        VarValue {
+            parent: parent, // this is a root
+            value: value,
+            rank: rank,
+        }
     }
 
     fn redirect(self, to: K) -> VarValue<K> {
@@ -95,7 +97,11 @@ impl<K:UnifyKey> VarValue<K> {
     }
 
     fn root(self, rank: u32, value: K::Value) -> VarValue<K> {
-        VarValue { rank: rank, value: value, ..self }
+        VarValue {
+            rank: rank,
+            value: value,
+            ..self
+        }
     }
 
     /// Returns the key of this node. Only valid if this is a root
@@ -122,18 +128,18 @@ impl<K:UnifyKey> VarValue<K> {
 // other type parameter U, and we have no way to say
 // Option<U>:LatticeValue.
 
-impl<K:UnifyKey> UnificationTable<K> {
+impl<K: UnifyKey> UnificationTable<K> {
     pub fn new() -> UnificationTable<K> {
-        UnificationTable {
-            values: sv::SnapshotVec::new()
-        }
+        UnificationTable { values: sv::SnapshotVec::new() }
     }
 
     /// Starts a new snapshot. Each snapshot must be either
     /// rolled back or committed in a "LIFO" (stack) order.
     pub fn snapshot(&mut self) -> Snapshot<K> {
-        Snapshot { marker: marker::PhantomData::<K>,
-                   snapshot: self.values.start_snapshot() }
+        Snapshot {
+            marker: marker::PhantomData::<K>,
+            snapshot: self.values.start_snapshot(),
+        }
     }
 
     /// Reverses all changes since the last snapshot. Also
@@ -154,9 +160,7 @@ impl<K:UnifyKey> UnificationTable<K> {
         let len = self.values.len();
         let key: K = UnifyKey::from_index(len as u32);
         self.values.push(VarValue::new_var(key, value));
-        debug!("{}: created new key: {:?}",
-               UnifyKey::tag(None::<K>),
-               key);
+        debug!("{}: created new key: {:?}", UnifyKey::tag(None::<K>), key);
         key
     }
 
@@ -179,9 +183,7 @@ impl<K:UnifyKey> UnificationTable<K> {
                 }
                 root
             }
-            None => {
-                value
-            }
+            None => value,
         }
     }
 
@@ -195,8 +197,7 @@ impl<K:UnifyKey> UnificationTable<K> {
     fn set(&mut self, key: K, new_value: VarValue<K>) {
         assert!(self.is_root(key));
 
-        debug!("Updating variable {:?} to {:?}",
-               key, new_value);
+        debug!("Updating variable {:?} to {:?}", key, new_value);
 
         let index = key.index() as usize;
         self.values.set(index, new_value);
@@ -243,17 +244,16 @@ impl<K:UnifyKey> UnificationTable<K> {
     }
 }
 
-impl<K:UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
+impl<K: UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
     type Value = VarValue<K>;
     type Undo = ();
 
     fn reverse(_: &mut Vec<VarValue<K>>, _: ()) {}
 }
 
-///////////////////////////////////////////////////////////////////////////
-// Base union-find algorithm, where we are just making sets
+// # Base union-find algorithm, where we are just making sets
 
-impl<'tcx,K:UnifyKey> UnificationTable<K>
+impl<'tcx, K: UnifyKey> UnificationTable<K>
     where K::Value: Combine
 {
     pub fn union(&mut self, a_id: K, b_id: K) {
@@ -280,35 +280,30 @@ impl<'tcx,K:UnifyKey> UnificationTable<K>
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
+// # Non-subtyping unification
+//
 // Code to handle keys which carry a value, like ints,
 // floats---anything that doesn't have a subtyping relationship we
 // need to worry about.
 
-impl<'tcx,K,V> UnificationTable<K>
-    where K: UnifyKey<Value=Option<V>>,
-          V: Clone+PartialEq+Debug,
+impl<'tcx, K, V> UnificationTable<K>
+    where K: UnifyKey<Value = Option<V>>,
+          V: Clone + PartialEq + Debug
 {
-    pub fn unify_var_var(&mut self,
-                         a_id: K,
-                         b_id: K)
-                         -> Result<(),(V,V)>
-    {
+    pub fn unify_var_var(&mut self, a_id: K, b_id: K) -> Result<(), (V, V)> {
         let node_a = self.get(a_id);
         let node_b = self.get(b_id);
         let a_id = node_a.key();
         let b_id = node_b.key();
 
-        if a_id == b_id { return Ok(()); }
+        if a_id == b_id {
+            return Ok(());
+        }
 
         let combined = {
             match (&node_a.value, &node_b.value) {
-                (&None, &None) => {
-                    None
-                }
-                (&Some(ref v), &None) | (&None, &Some(ref v)) => {
-                    Some(v.clone())
-                }
+                (&None, &None) => None,
+                (&Some(ref v), &None) | (&None, &Some(ref v)) => Some(v.clone()),
                 (&Some(ref v1), &Some(ref v2)) => {
                     if *v1 != *v2 {
                         return Err((v1.clone(), v2.clone()));
@@ -323,11 +318,7 @@ impl<'tcx,K,V> UnificationTable<K>
 
     /// Sets the value of the key `a_id` to `b`. Because simple keys do not have any subtyping
     /// relationships, if `a_id` already has a value, it must be the same as `b`.
-    pub fn unify_var_value(&mut self,
-                           a_id: K,
-                           b: V)
-                           -> Result<(),(V,V)>
-    {
+    pub fn unify_var_value(&mut self, a_id: K, b: V) -> Result<(), (V, V)> {
         let mut node_a = self.get(a_id);
 
         match node_a.value {
@@ -358,7 +349,13 @@ impl<'tcx,K,V> UnificationTable<K>
     pub fn unsolved_variables(&mut self) -> Vec<K> {
         self.values
             .iter()
-            .filter_map(|vv| if vv.value.is_some() { None } else { Some(vv.key()) })
+            .filter_map(|vv| {
+                if vv.value.is_some() {
+                    None
+                } else {
+                    Some(vv.key())
+                }
+            })
             .collect()
     }
 }

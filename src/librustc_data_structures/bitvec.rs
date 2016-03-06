@@ -10,7 +10,7 @@
 
 /// A very simple BitVector type.
 pub struct BitVector {
-    data: Vec<u64>
+    data: Vec<u64>,
 }
 
 impl BitVector {
@@ -40,7 +40,9 @@ impl BitVector {
         for (i, j) in self.data.iter_mut().zip(&all.data) {
             let value = *i;
             *i = value | *j;
-            if value != *i { changed = true; }
+            if value != *i {
+                changed = true;
+            }
         }
         changed
     }
@@ -56,7 +58,7 @@ impl BitVector {
         BitVectorIter {
             iter: self.data.iter(),
             current: 0,
-            idx: 0
+            idx: 0,
         }
     }
 }
@@ -64,7 +66,7 @@ impl BitVector {
 pub struct BitVectorIter<'a> {
     iter: ::std::slice::Iter<'a, u64>,
     current: u64,
-    idx: usize
+    idx: usize,
 }
 
 impl<'a> Iterator for BitVectorIter<'a> {
@@ -108,7 +110,7 @@ impl BitMatrix {
         let u64s_per_elem = u64s(elements);
         BitMatrix {
             elements: elements,
-            vector: vec![0; elements * u64s_per_elem]
+            vector: vec![0; elements * u64s_per_elem],
         }
     }
 
@@ -123,9 +125,9 @@ impl BitMatrix {
         let (start, _) = self.range(source);
         let (word, mask) = word_mask(target);
         let mut vector = &mut self.vector[..];
-        let v1 = vector[start+word];
+        let v1 = vector[start + word];
         let v2 = v1 | mask;
-        vector[start+word] = v2;
+        vector[start + word] = v2;
         v1 != v2
     }
 
@@ -136,7 +138,7 @@ impl BitMatrix {
     pub fn contains(&self, source: usize, target: usize) -> bool {
         let (start, _) = self.range(source);
         let (word, mask) = word_mask(target);
-        (self.vector[start+word] & mask) != 0
+        (self.vector[start + word] & mask) != 0
     }
 
     /// Returns those indices that are reachable from both `a` and
@@ -150,8 +152,12 @@ impl BitMatrix {
         for (base, (i, j)) in (a_start..a_end).zip(b_start..b_end).enumerate() {
             let mut v = self.vector[i] & self.vector[j];
             for bit in 0..64 {
-                if v == 0 { break; }
-                if v & 0x1 != 0 { result.push(base*64 + bit); }
+                if v == 0 {
+                    break;
+                }
+                if v & 0x1 != 0 {
+                    result.push(base * 64 + bit);
+                }
                 v >>= 1;
             }
         }
@@ -170,9 +176,7 @@ impl BitMatrix {
         let (write_start, write_end) = self.range(write);
         let vector = &mut self.vector[..];
         let mut changed = false;
-        for (read_index, write_index) in
-            (read_start..read_end).zip(write_start..write_end)
-        {
+        for (read_index, write_index) in (read_start..read_end).zip(write_start..write_end) {
             let v1 = vector[write_index];
             let v2 = v1 | vector[read_index];
             vector[write_index] = v2;
@@ -204,7 +208,8 @@ fn bitvec_iter_works() {
     bitvec.insert(65);
     bitvec.insert(66);
     bitvec.insert(99);
-    assert_eq!(bitvec.iter().collect::<Vec<_>>(), [1, 10, 19, 62, 63, 64, 65, 66, 99]);
+    assert_eq!(bitvec.iter().collect::<Vec<_>>(),
+               [1, 10, 19, 62, 63, 64, 65, 66, 99]);
 }
 
 #[test]
@@ -217,7 +222,8 @@ fn bitvec_iter_works_2() {
     bitvec.insert(66);
     bitvec.insert(99);
     bitvec.insert(299);
-    assert_eq!(bitvec.iter().collect::<Vec<_>>(), [1, 10, 19, 62, 66, 99, 299]);
+    assert_eq!(bitvec.iter().collect::<Vec<_>>(),
+               [1, 10, 19, 62, 66, 99, 299]);
 
 }
 
