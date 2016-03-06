@@ -1086,11 +1086,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprAssignOp(_, ref l, ref r) => {
-            // see comment on lvalues in
-            // propagate_through_lvalue_components()
-            let succ = self.write_lvalue(&l, succ, ACC_WRITE|ACC_READ);
-            let succ = self.propagate_through_expr(&r, succ);
-            self.propagate_through_lvalue_components(&l, succ)
+            // an overloaded assign op is like a method call
+            if self.ir.tcx.is_method_call(expr.id) {
+                let succ = self.propagate_through_expr(&l, succ);
+                self.propagate_through_expr(&r, succ)
+            } else {
+                // see comment on lvalues in
+                // propagate_through_lvalue_components()
+                let succ = self.write_lvalue(&l, succ, ACC_WRITE|ACC_READ);
+                let succ = self.propagate_through_expr(&r, succ);
+                self.propagate_through_lvalue_components(&l, succ)
+            }
           }
 
           // Uninteresting cases: just propagate in rev exec order
@@ -1410,7 +1416,9 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        this.check_lvalue(&l);
+        if !this.ir.tcx.is_method_call(expr.id) {
+            this.check_lvalue(&l);
+        }
 
         intravisit::walk_expr(this, expr);
       }
