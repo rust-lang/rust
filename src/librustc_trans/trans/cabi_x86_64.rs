@@ -406,7 +406,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
     let mut sse_regs = 8; // XMM0-7
 
-    if fty.ret.ty != Type::void(ccx) {
+    if !fty.ret.is_ignore() {
         x86_64_ty(ccx, &mut fty.ret, |cls| {
             if cls.is_ret_bysret() {
                 // `sret` parameter thus one less register available
@@ -419,6 +419,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     }
 
     for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
         x86_64_ty(ccx, arg, |cls| {
             let needed_int = cls.iter().filter(|&&c| c == Int).count() as isize;
             let needed_sse = cls.iter().filter(|c| c.is_sse()).count() as isize;

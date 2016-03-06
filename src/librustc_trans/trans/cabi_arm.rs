@@ -179,11 +179,12 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType, flavor: Flavor) {
         Flavor::Ios => ios_ty_align as TyAlignFn,
     };
 
-    if fty.ret.ty != Type::void(ccx) {
+    if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret, align_fn);
     }
 
     for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
         classify_arg_ty(ccx, arg, align_fn);
     }
 }

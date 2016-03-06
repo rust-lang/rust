@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use trans::common::{return_type_is_void, type_is_fat_ptr};
+use trans::common::{type_is_fat_ptr, Block};
 use trans::context::CrateContext;
 use trans::cabi_x86;
 use trans::cabi_x86_64;
@@ -20,7 +20,7 @@ use trans::cabi_powerpc;
 use trans::cabi_powerpc64;
 use trans::cabi_mips;
 use trans::cabi_asmjs;
-use trans::machine::{llsize_of_alloc, llsize_of_real};
+use trans::machine::{llalign_of_min, llsize_of, llsize_of_real};
 use trans::type_::Type;
 use trans::type_of;
 
@@ -97,6 +97,8 @@ impl ArgType {
     }
 
     pub fn make_indirect(&mut self, ccx: &CrateContext) {
+        assert_eq!(self.kind, ArgKind::Direct);
+
         // Wipe old attributes, likely not valid through indirection.
         self.attrs = llvm::Attributes::default();
 
@@ -113,6 +115,7 @@ impl ArgType {
     }
 
     pub fn ignore(&mut self) {
+        assert_eq!(self.kind, ArgKind::Direct);
         self.kind = ArgKind::Ignore;
     }
 
@@ -200,39 +203,40 @@ impl FnType {
                 arg.attrs.set(llvm::Attribute::ZExt);
                 arg
             } else {
-                ArgType::new(type_of::type_of(ccx, ty),
-                             type_of::sizing_type_of(ccx, ty))
+                let mut arg = ArgType::new(type_of::type_of(ccx, ty),
+                                           type_of::sizing_type_of(ccx, ty));
+                if llsize_of_real(ccx, arg.ty) == 0 {
+                    arg.ignore();
+                }
+                arg
             }
         };
 
-        let mut ret = match sig.output {
-            ty::FnConverging(ret_ty) if !return_type_is_void(ccx, ret_ty) => {
-                arg_of(ret_ty)
-            }
-            _ => ArgType::new(Type::void(ccx), Type::void(ccx))
+        let ret_ty = match sig.output {
+            ty::FnConverging(ret_ty) => ret_ty,
+            ty::FnDiverging => ccx.tcx().mk_nil()
         };
+        let mut ret = arg_of(ret_ty);
 
-        if let ty::FnConverging(ret_ty) = sig.output {
-            if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
-                // The `noalias` attribute on the return value is useful to a
-                // function ptr caller.
-                if let ty::TyBox(_) = ret_ty.sty {
-                    // `Box` pointer return values never alias because ownership
-                    // is transferred
-                    ret.attrs.set(llvm::Attribute::NoAlias);
-                }
+        if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
+            // The `noalias` attribute on the return value is useful to a
+            // function ptr caller.
+            if let ty::TyBox(_) = ret_ty.sty {
+                // `Box` pointer return values never alias because ownership
+                // is transferred
+                ret.attrs.set(llvm::Attribute::NoAlias);
+            }
 
-                // We can also mark the return value as `dereferenceable` in certain cases
-                match ret_ty.sty {
-                    // These are not really pointers but pairs, (pointer, len)
-                    ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-                    ty::TyBox(ty) => {
-                        let llty = type_of::sizing_type_of(ccx, ty);
-                        let llsz = llsize_of_real(ccx, llty);
-                        ret.attrs.set_dereferenceable(llsz);
-                    }
-                    _ => {}
+            // We can also mark the return value as `dereferenceable` in certain cases
+            match ret_ty.sty {
+                // These are not really pointers but pairs, (pointer, len)
+                ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+                ty::TyBox(ty) => {
+                    let llty = type_of::sizing_type_of(ccx, ty);
+                    let llsz = llsize_of_real(ccx, llty);
+                    ret.attrs.set_dereferenceable(llsz);
                 }
+                _ => {}
             }
         }
 
@@ -318,8 +322,8 @@ impl FnType {
                     // Scalars and vectors, always immediate.
                     return;
                 }
-                let size = llsize_of_alloc(ccx, arg.ty);
-                if size > llsize_of_alloc(ccx, ccx.int_type()) {
+                let size = llsize_of_real(ccx, arg.ty);
+                if size > llsize_of_real(ccx, ccx.int_type()) {
                     arg.make_indirect(ccx);
                 } else if size > 0 {
                     // We want to pass small aggregates as immediates, but using
@@ -376,7 +380,9 @@ impl FnType {
     pub fn llvm_type(&self, ccx: &CrateContext) -> Type {
         let mut llargument_tys = Vec::new();
 
-        let llreturn_ty = if self.ret.is_indirect() {
+        let llreturn_ty = if self.ret.is_ignore() {
+            Type::void(ccx)
+        } else if self.ret.is_indirect() {
             llargument_tys.push(self.ret.original_ty.ptr_to());
             Type::void(ccx)
         } else {
@@ -410,7 +416,9 @@ impl FnType {
 
     pub fn apply_attrs_llfn(&self, llfn: ValueRef) {
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
-        self.ret.attrs.apply_llfn(i, llfn);
+        if !self.ret.is_ignore() {
+            self.ret.attrs.apply_llfn(i, llfn);
+        }
         i += 1;
         for arg in &self.args {
             if !arg.is_ignore() {
@@ -423,7 +431,9 @@ impl FnType {
 
     pub fn apply_attrs_callsite(&self, callsite: ValueRef) {
         let mut i = if self.ret.is_indirect() { 1 } else { 0 };
-        self.ret.attrs.apply_callsite(i, callsite);
+        if !self.ret.is_ignore() {
+            self.ret.attrs.apply_callsite(i, callsite);
+        }
         i += 1;
         for arg in &self.args {
             if !arg.is_ignore() {

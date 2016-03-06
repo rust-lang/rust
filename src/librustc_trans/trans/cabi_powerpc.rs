@@ -141,14 +141,13 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
 }
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
-    if fty.ret.ty != Type::void(ccx) {
-        if !is_reg_ty(fty.ret.ty) {
-            fty.ret.make_indirect(ccx);
-        }
+    if !fty.ret.is_ignore() && !is_reg_ty(fty.ret.ty) {
+        fty.ret.make_indirect(ccx);
     }
 
     let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };
     for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
         classify_arg_ty(ccx, arg, &mut offset);
     }
 }
