@@ -935,9 +935,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             let def_map = &self.tcx().def_map;
             if pat_util::pat_is_binding(&def_map.borrow(), pat) {
                 match pat.node {
-                    PatKind::Ident(hir::BindByRef(_), _, _) =>
+                    PatKind::Binding(hir::BindByRef(_), _, _) =>
                         mode.lub(BorrowingMatch),
-                    PatKind::Ident(hir::BindByValue(_), _, _) => {
+                    PatKind::Binding(hir::BindByValue(_), _, _) => {
                         match copy_or_move(self.mc.infcx, &cmt_pat, PatBindingMove) {
                             Copy => mode.lub(CopyingMatch),
                             Move(_) => mode.lub(MovingMatch),
@@ -989,14 +989,14 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
                 // It is also a borrow or copy/move of the value being matched.
                 match pat.node {
-                    PatKind::Ident(hir::BindByRef(m), _, _) => {
+                    PatKind::Binding(hir::BindByRef(m), _, _) => {
                         if let ty::TyRef(&r, _) = pat_ty.sty {
                             let bk = ty::BorrowKind::from_mutbl(m);
                             delegate.borrow(pat.id, pat.span, cmt_pat,
                                             r, bk, RefBinding);
                         }
                     }
-                    PatKind::Ident(hir::BindByValue(_), _, _) => {
+                    PatKind::Binding(hir::BindByValue(_), _, _) => {
                         let mode = copy_or_move(infcx, &cmt_pat, PatBindingMove);
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
@@ -1057,8 +1057,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             let tcx = infcx.tcx;
 
             match pat.node {
-                PatKind::TupleStruct(..) | PatKind::Path(..) | PatKind::QPath(..) |
-                PatKind::Ident(_, _, None) | PatKind::Struct(..) => {
+                PatKind::Struct(..) | PatKind::TupleStruct(..) |
+                PatKind::Path(..) | PatKind::QPath(..) => {
                     match def_map.get(&pat.id).map(|d| d.full_def()) {
                         None => {
                             // no definition found: pat is not a
@@ -1094,8 +1094,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         }
 
                         Some(Def::Const(..)) |
-                        Some(Def::AssociatedConst(..)) |
-                        Some(Def::Local(..)) => {
+                        Some(Def::AssociatedConst(..)) => {
                             // This is a leaf (i.e. identifier binding
                             // or constant value to match); thus no
                             // `matched_pat` call.
@@ -1121,16 +1120,10 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                PatKind::Ident(_, _, Some(_)) => {
-                    // Do nothing; this is a binding (not an enum
-                    // variant or struct), and the cat_pattern call
-                    // will visit the substructure recursively.
-                }
-
                 PatKind::Wild | PatKind::Tuple(..) | PatKind::Box(..) |
                 PatKind::Ref(..) | PatKind::Lit(..) | PatKind::Range(..) |
-                PatKind::Vec(..) => {
-                    // Similarly, each of these cases does not
+                PatKind::Vec(..) | PatKind::Binding(..) => {
+                    // Each of these cases does not
                     // correspond to an enum variant or struct, so we
                     // do not do any `matched_pat` calls for these
                     // cases either.

@@ -2578,7 +2578,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 
     match p.node {
         PatKind::Wild => "_".to_string(),
-        PatKind::Ident(_, ref p, _) => p.node.to_string(),
+        PatKind::Binding(_, ref p, _) => p.node.to_string(),
         PatKind::TupleStruct(ref p, _, _) | PatKind::Path(ref p) => path_to_string(p),
         PatKind::QPath(..) => panic!("tried to get argument name from PatKind::QPath, \
                                 which is not allowed in function arguments"),

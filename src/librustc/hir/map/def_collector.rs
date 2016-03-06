@@ -396,7 +396,7 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_pat(&mut self, pat: &'ast hir::Pat) {
         let parent_def = self.parent_def;
 
-        if let hir::PatKind::Ident(_, name, _) = pat.node {
+        if let hir::PatKind::Binding(_, name, _) = pat.node {
             let def = self.create_def(pat.id, DefPathData::Binding(name.node));
             self.parent_def = Some(def);
         }

@@ -274,9 +274,9 @@ impl LateLintPass for NonSnakeCase {
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
-        if let &PatKind::Ident(_, ref path1, _) = &p.node {
-            let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-            if let Some(Def::Local(..)) = def {
+        if let &PatKind::Binding(_, ref path1, _) = &p.node {
+            // Exclude parameter names from foreign functions (they have no `Def`)
+            if cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def()).is_some() {
                 self.check_snake_case(cx, "variable", &path1.node.as_str(), Some(p.span));
             }
         }
@@ -360,12 +360,14 @@ impl LateLintPass for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
-        match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
-            (&PatKind::Ident(_, ref path1, _), Some(Def::Const(..))) => {
-                NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
-                                                      path1.node, p.span);
+        if let PatKind::Path(ref path) = p.node {
+            if !path.global && path.segments.len() == 1 && path.segments[0].parameters.is_empty() {
+                if let Some(Def::Const(..)) = cx.tcx.def_map.borrow().get(&p.id)
+                                                                     .map(|d| d.full_def()) {
+                    NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
+                                                          path.segments[0].name, path.span);
+                }
             }
-            _ => {}
         }
     }
 }

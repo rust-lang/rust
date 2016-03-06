@@ -1945,7 +1945,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         Some(hir_map::NodeLocal(pat)) => {
             match pat.node {
-                PatKind::Ident(_, ref path1, _) => {
+                PatKind::Binding(_, ref path1, _) => {
                     path1.node
                 }
                 _ => {
