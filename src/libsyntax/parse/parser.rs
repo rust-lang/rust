@@ -3426,6 +3426,10 @@ impl<'a> Parser<'a> {
                     // `..` needs to be followed by `)` or `, pat`, `..,)` is disallowed.
                     fields.push(self.parse_pat()?);
                 }
+            } else if ddpos.is_some() && self.eat(&token::DotDot) {
+                // Emit a friendly error, ignore `..` and continue parsing
+                self.span_err(self.last_span, "`..` can only be used once per \
+                                               tuple or tuple struct pattern");
             } else {
                 fields.push(self.parse_pat()?);
             }

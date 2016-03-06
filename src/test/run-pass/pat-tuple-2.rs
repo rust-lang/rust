@@ -8,10 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#![feature(dotdot_in_tuple_patterns)]
+
+fn tuple() {
+    let x = (1,);
+    match x {
+        (2, ..) => panic!(),
+        (..) => ()
+    }
+}
+
+fn tuple_struct() {
+    struct S(u8);
+
+    let x = S(1);
+    match x {
+        S(2, ..) => panic!(),
+        S(..) => ()
+    }
+}
 
 fn main() {
-    match 0 {
-        (.., pat, ..) => {} //~ ERROR `..` can only be used once per tuple or tuple struct pattern
-    }
+    tuple();
+    tuple_struct();
 }
