@@ -747,9 +747,6 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprAgain(_) |
         hir::ExprRet(_) |
 
-        // Miscellaneous expressions that could be implemented.
-        hir::ExprRange(..) |
-
         // Expressions with side-effects.
         hir::ExprAssign(..) |
         hir::ExprAssignOp(..) |

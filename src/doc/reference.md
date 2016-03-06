@@ -2277,6 +2277,10 @@ The currently implemented features of the reference compiler are:
                     `#[derive_Foo] #[derive_Bar]`, which can be user-defined syntax
                     extensions.
 
+* `inclusive_range_syntax` - Allows use of the `a...b` and `...b` syntax for inclusive ranges.
+
+* `inclusive_range` - Allows use of the types that represent desugared inclusive ranges.
+
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
@@ -2743,6 +2747,25 @@ The following expressions are equivalent.
 ```
 let x = std::ops::Range {start: 0, end: 10};
 let y = 0..10;
+
+assert_eq!(x, y);
+```
+
+Similarly, the `...` operator will construct an object of one of the
+`std::ops::RangeInclusive` variants.
+
+```
+# #![feature(inclusive_range_syntax)]
+1...2;   // std::ops::RangeInclusive
+...4;    // std::ops::RangeToInclusive
+```
+
+The following expressions are equivalent.
+
+```
+# #![feature(inclusive_range_syntax, inclusive_range)]
+let x = std::ops::RangeInclusive::NonEmpty {start: 0, end: 10};
+let y = 0...10;
 
 assert_eq!(x, y);
 ```

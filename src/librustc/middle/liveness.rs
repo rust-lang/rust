@@ -498,7 +498,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       hir::ExprBlock(..) | hir::ExprAssign(..) | hir::ExprAssignOp(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprInlineAsm(..) | hir::ExprBox(..) |
-      hir::ExprRange(..) | hir::ExprType(..) => {
+      hir::ExprType(..) => {
           intravisit::walk_expr(ir, expr);
       }
     }
@@ -1154,11 +1154,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&l, r_succ)
           }
 
-          hir::ExprRange(ref e1, ref e2) => {
-            let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&e, succ));
-            e1.as_ref().map_or(succ, |e| self.propagate_through_expr(&e, succ))
-          }
-
           hir::ExprBox(ref e) |
           hir::ExprAddrOf(_, ref e) |
           hir::ExprCast(ref e, _) |
@@ -1446,7 +1441,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprClosure(..) | hir::ExprPath(..) | hir::ExprBox(..) |
-      hir::ExprRange(..) | hir::ExprType(..) => {
+      hir::ExprType(..) => {
         intravisit::walk_expr(this, expr);
       }
     }

@@ -1226,6 +1226,24 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
         self
     }
 }
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::Index<ops::RangeInclusive<usize>> for Vec<T> {
+    type Output = [T];
+
+    #[inline]
+    fn index(&self, index: ops::RangeInclusive<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::Index<ops::RangeToInclusive<usize>> for Vec<T> {
+    type Output = [T];
+
+    #[inline]
+    fn index(&self, index: ops::RangeToInclusive<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
@@ -1253,6 +1271,20 @@ impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut [T] {
         self
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::IndexMut<ops::RangeInclusive<usize>> for Vec<T> {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for Vec<T> {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 

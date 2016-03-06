@@ -22,7 +22,6 @@ use rustc::middle::ty::{self, VariantDef, Ty};
 use rustc::mir::repr::*;
 use rustc_front::hir;
 use rustc_front::util as hir_util;
-use syntax::parse::token;
 use syntax::ptr::P;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
@@ -321,38 +320,6 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     closure_id: def_id,
                     substs: &substs,
                     upvars: upvars,
-                }
-            }
-
-            hir::ExprRange(ref start, ref end) => {
-                let range_ty = cx.tcx.expr_ty(self);
-                let (adt_def, substs) = match range_ty.sty {
-                    ty::TyStruct(adt_def, substs) => (adt_def, substs),
-                    _ => {
-                        cx.tcx.sess.span_bug(self.span, "unexpanded ast");
-                    }
-                };
-
-                let field_expr_ref = |s: &'tcx P<hir::Expr>, name: &str| {
-                    let name = token::intern(name);
-                    let index = adt_def.variants[0].index_of_field_named(name).unwrap();
-                    FieldExprRef { name: Field::new(index), expr: s.to_ref() }
-                };
-
-                let start_field = start.as_ref()
-                                       .into_iter()
-                                       .map(|s| field_expr_ref(s, "start"));
-
-                let end_field = end.as_ref()
-                                   .into_iter()
-                                   .map(|e| field_expr_ref(e, "end"));
-
-                ExprKind::Adt {
-                    adt_def: adt_def,
-                    variant_index: 0,
-                    substs: substs,
-                    fields: start_field.chain(end_field).collect(),
-                    base: None,
                 }
             }
 

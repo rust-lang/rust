@@ -1090,10 +1090,6 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             ExprIndex(el, er) => {
                 ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
             }
-            ExprRange(e1, e2) => {
-                ExprRange(e1.map(|x| folder.fold_expr(x)),
-                          e2.map(|x| folder.fold_expr(x)))
-            }
             ExprPath(qself, path) => {
                 let qself = qself.map(|QSelf { ty, position }| {
                     QSelf {

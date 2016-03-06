@@ -1449,15 +1449,6 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&index));
                 try!(word(&mut self.s, "]"));
             }
-            hir::ExprRange(ref start, ref end) => {
-                if let &Some(ref e) = start {
-                    try!(self.print_expr(&e));
-                }
-                try!(word(&mut self.s, ".."));
-                if let &Some(ref e) = end {
-                    try!(self.print_expr(&e));
-                }
-            }
             hir::ExprPath(None, ref path) => {
                 try!(self.print_path(path, true, 0))
             }

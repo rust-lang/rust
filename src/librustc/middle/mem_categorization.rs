@@ -526,7 +526,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           hir::ExprAddrOf(..) | hir::ExprCall(..) |
           hir::ExprAssign(..) | hir::ExprAssignOp(..) |
           hir::ExprClosure(..) | hir::ExprRet(..) |
-          hir::ExprUnary(..) | hir::ExprRange(..) |
+          hir::ExprUnary(..) |
           hir::ExprMethodCall(..) | hir::ExprCast(..) |
           hir::ExprVec(..) | hir::ExprTup(..) | hir::ExprIf(..) |
           hir::ExprBinary(..) | hir::ExprWhile(..) |

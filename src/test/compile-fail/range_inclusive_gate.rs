@@ -8,14 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test range syntax - borrow errors.
+// Make sure that #![feature(inclusive_range)] is required.
+
+#![feature(inclusive_range_syntax)]
+// #![feature(inclusive_range)]
 
 pub fn main() {
-    let r = {
-        let a = 42;
-        let b = 42;
-        &a..&b
-        //~^ ERROR `a` does not live long enough
-        //~^^ ERROR `b` does not live long enough
-    };
+    let _: std::ops::RangeInclusive<_> = { use std::intrinsics; 1 } ... { use std::intrinsics; 2 };
+    //~^ ERROR use of unstable library feature 'inclusive_range'
+    //~^^ ERROR core_intrinsics
+    //~^^^ ERROR core_intrinsics
+    //~^^^^ WARN unused_imports
+    //~^^^^^ WARN unused_imports
 }
+
+

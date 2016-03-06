@@ -86,7 +86,6 @@ use rustc_front::hir;
 use syntax::{ast, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::parse::token;
 use std::mem;
 
 // Destinations
@@ -1059,7 +1058,6 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                            -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_rvalue_dps_unadjusted");
     let mut bcx = bcx;
-    let tcx = bcx.tcx();
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
@@ -1087,59 +1085,6 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                          expr.id,
                          node_id_type(bcx, expr.id),
                          dest)
-        }
-        hir::ExprRange(ref start, ref end) => {
-            // FIXME it is just not right that we are synthesising ast nodes in
-            // trans. Shudder.
-            fn make_field(field_name: &str, expr: P<hir::Expr>) -> hir::Field {
-                hir::Field {
-                    name: codemap::dummy_spanned(token::intern(field_name)),
-                    expr: expr,
-                    span: codemap::DUMMY_SP,
-                }
-            }
-
-            // A range just desugars into a struct.
-            // Note that the type of the start and end may not be the same, but
-            // they should only differ in their lifetime, which should not matter
-            // in trans.
-            let (did, fields, ty_params) = match (start, end) {
-                (&Some(ref start), &Some(ref end)) => {
-                    // Desugar to Range
-                    let fields = vec![make_field("start", start.clone()),
-                                      make_field("end", end.clone())];
-                    (tcx.lang_items.range_struct(), fields, vec![node_id_type(bcx, start.id)])
-                }
-                (&Some(ref start), &None) => {
-                    // Desugar to RangeFrom
-                    let fields = vec![make_field("start", start.clone())];
-                    (tcx.lang_items.range_from_struct(), fields, vec![node_id_type(bcx, start.id)])
-                }
-                (&None, &Some(ref end)) => {
-                    // Desugar to RangeTo
-                    let fields = vec![make_field("end", end.clone())];
-                    (tcx.lang_items.range_to_struct(), fields, vec![node_id_type(bcx, end.id)])
-                }
-                _ => {
-                    // Desugar to RangeFull
-                    (tcx.lang_items.range_full_struct(), vec![], vec![])
-                }
-            };
-
-            if let Some(did) = did {
-                let substs = Substs::new_type(ty_params, vec![]);
-                trans_struct(bcx,
-                             &fields,
-                             None,
-                             expr.span,
-                             expr.id,
-                             tcx.mk_struct(tcx.lookup_adt_def(did),
-                                           tcx.mk_substs(substs)),
-                             dest)
-            } else {
-                tcx.sess.span_bug(expr.span,
-                                  "No lang item for ranges (how did we get this far?)")
-            }
         }
         hir::ExprTup(ref args) => {
             let numbered_fields: Vec<(usize, &hir::Expr)> =
@@ -2625,7 +2570,6 @@ fn expr_kind(tcx: &TyCtxt, expr: &hir::Expr) -> ExprKind {
         hir::ExprCall(..) |
         hir::ExprMethodCall(..) |
         hir::ExprStruct(..) |
-        hir::ExprRange(..) |
         hir::ExprTup(..) |
         hir::ExprIf(..) |
         hir::ExprMatch(..) |

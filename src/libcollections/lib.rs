@@ -40,7 +40,7 @@
 #![feature(fmt_internals)]
 #![feature(fmt_radix)]
 #![feature(heap_api)]
-#![feature(iter_arith)]
+#![feature(inclusive_range)]
 #![feature(iter_arith)]
 #![feature(lang_items)]
 #![feature(nonzero)]

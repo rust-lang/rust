@@ -346,11 +346,6 @@ fn walk_expr(cx: &CrateContext,
             walk_expr(cx, &rhs, scope_stack, scope_map);
         }
 
-        hir::ExprRange(ref start, ref end) => {
-            start.as_ref().map(|e| walk_expr(cx, &e, scope_stack, scope_map));
-            end.as_ref().map(|e| walk_expr(cx, &e, scope_stack, scope_map));
-        }
-
         hir::ExprVec(ref init_expressions) |
         hir::ExprTup(ref init_expressions) => {
             for ie in init_expressions {
