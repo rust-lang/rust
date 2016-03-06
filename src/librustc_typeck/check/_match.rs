@@ -11,7 +11,7 @@
 use hir::def::{self, Def};
 use rustc::infer::{self, InferOk, TypeOrigin};
 use hir::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
-use hir::pat_util::{pat_adjust_pos, pat_is_resolved_const};
+use hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation};
@@ -271,13 +271,12 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
                 }
                 let max_len = cmp::max(expected_len, elements.len());
 
-                let element_tys = (0 .. max_len).map(|_| self.next_ty_var()).collect(): Vec<_>;
+                let element_tys: Vec<_> = (0 .. max_len).map(|_| self.next_ty_var()).collect();
                 let pat_ty = tcx.mk_tup(element_tys.clone());
                 self.write_ty(pat.id, pat_ty);
                 self.demand_eqtype(pat.span, expected, pat_ty);
-                let adjust = pat_adjust_pos(expected_len, elements.len(), ddpos);
-                for i in 0 .. elements.len() {
-                    self.check_pat(&elements[i], &element_tys[adjust(i)]);
+                for (i, elem) in elements.iter().enumerate_and_adjust(expected_len, ddpos) {
+                    self.check_pat(elem, &element_tys[i]);
                 }
             }
             PatKind::Box(ref inner) => {
@@ -734,12 +733,10 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
-        let adjust = pat_adjust_pos(variant.fields.len(), subpats.len(), ddpos);
         if subpats.len() == variant.fields.len() ||
                 subpats.len() < variant.fields.len() && ddpos.is_some() {
-            for (i, subpat) in subpats.iter().enumerate() {
-                let field_ty = self.field_ty(subpat.span,
-                                    &variant.fields[adjust(i)], expected_substs);
+            for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
+                let field_ty = self.field_ty(subpat.span, &variant.fields[i], expected_substs);
                 self.check_pat(&subpat, field_ty);
             }
         } else {
