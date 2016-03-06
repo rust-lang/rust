@@ -452,7 +452,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
         let tcx = self.tcx;
         debug!("regionck::visit_pat(pat={:?})", pat);
-        pat_util::pat_bindings(&tcx.def_map, pat, |_, id, span, _| {
+        pat_util::pat_bindings(pat, |_, id, span, _| {
             // If we have a variable that contains region'd data, that
             // data will be accessible from anywhere that the variable is
             // accessed. We must be wary of loops like this:

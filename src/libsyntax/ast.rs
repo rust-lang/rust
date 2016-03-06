@@ -616,14 +616,10 @@ pub enum PatKind {
     /// Represents a wildcard pattern (`_`)
     Wild,
 
-    /// A `PatKind::Ident` may either be a new bound variable,
-    /// or a unit struct/variant pattern, or a const pattern (in the last two cases
-    /// the third field must be `None`).
-    ///
-    /// In the unit or const pattern case, the parser can't determine
-    /// which it is. The resolver determines this, and
-    /// records this pattern's `NodeId` in an auxiliary
-    /// set (of "PatIdents that refer to unit patterns or constants").
+    /// A `PatKind::Ident` may either be a new bound variable (`ref mut binding @ OPT_SUBPATTERN`),
+    /// or a unit struct/variant pattern, or a const pattern (in the last two cases the third
+    /// field must be `None`). Disambiguation cannot be done with parser alone, so it happens
+    /// during name resolution.
     Ident(BindingMode, SpannedIdent, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
@@ -639,10 +635,8 @@ pub enum PatKind {
     /// Such pattern can be resolved to a unit struct/variant or a constant.
     Path(Path),
 
-    /// An associated const named using the qualified path `<T>::CONST` or
-    /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
-    /// referred to as simply `T::CONST`, in which case they will end up as
-    /// PatKind::Path, and the resolver will have to sort that out.
+    /// A path pattern written in qualified form, i.e. `<T as Trait>::CONST` or `<T>::CONST`.
+    /// Such patterns can only refer to associated constants at the moment.
     QPath(QSelf, Path),
 
     /// A tuple pattern `(a, b)`.

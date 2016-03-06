@@ -10,7 +10,7 @@
 
 use hir::def::{self, Def};
 use rustc::infer::{self, InferOk, TypeOrigin};
-use hir::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
+use hir::pat_util::{PatIdMap, pat_id_map};
 use hir::pat_util::{EnumerateAndAdjustIterator, pat_is_resolved_const};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
@@ -436,23 +436,19 @@ impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::Pat) -> bool {
-        let tcx = self.tcx;
-        if pat_is_binding(&tcx.def_map.borrow(), inner) {
-            let expected = self.shallow_resolve(expected);
-            expected.builtin_deref(true, ty::NoPreference).map_or(true, |mt| match mt.ty.sty {
-                ty::TyTrait(_) => {
+        if let PatKind::Binding(..) = inner.node {
+            if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true, ty::NoPreference) {
+                if let ty::TyTrait(..) = mt.ty.sty {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
-                    span_err!(tcx.sess, span, E0033,
+                    span_err!(self.tcx.sess, span, E0033,
                               "type `{}` cannot be dereferenced",
                               self.ty_to_string(expected));
-                    false
+                    return false
                 }
-                _ => true
-            })
-        } else {
-            true
+            }
         }
+        true
     }
 }
 
@@ -491,7 +487,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         for arm in arms {
             let pcx = PatCtxt {
                 fcx: self,
-                map: pat_id_map(&tcx.def_map, &arm.pats[0]),
+                map: pat_id_map(&arm.pats[0]),
             };
             for p in &arm.pats {
                 pcx.check_pat(&p, discrim_ty);

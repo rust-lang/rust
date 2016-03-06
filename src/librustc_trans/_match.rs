@@ -540,7 +540,6 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 }
 
 fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     dm: &RefCell<DefMap>,
                                      m: &[Match<'a, 'p, 'blk, 'tcx>],
                                      col: usize,
                                      val: MatchInput)
@@ -551,12 +550,13 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Collect all of the matches that can match against anything.
     enter_match(bcx, m, col, val, |pats| {
-        if pat_is_binding_or_wild(&dm.borrow(), &pats[col]) {
-            let mut r = pats[..col].to_vec();
-            r.extend_from_slice(&pats[col + 1..]);
-            Some(r)
-        } else {
-            None
+        match pats[col].node {
+            PatKind::Binding(..) | PatKind::Wild => {
+                let mut r = pats[..col].to_vec();
+                r.extend_from_slice(&pats[col + 1..]);
+                Some(r)
+            }
+            _ => None
         }
     })
 }
@@ -1145,7 +1145,6 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  has_genuine_default: bool) {
     let fcx = bcx.fcx;
     let tcx = bcx.tcx();
-    let dm = &tcx.def_map;
 
     let mut vals_left = vals[0..col].to_vec();
     vals_left.extend_from_slice(&vals[col + 1..]);
@@ -1279,7 +1278,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         C_int(ccx, 0) // Placeholder for when not using a switch
     };
 
-    let defaults = enter_default(else_cx, dm, m, col, val);
+    let defaults = enter_default(else_cx, m, col, val);
     let exhaustive = chk.is_infallible() && defaults.is_empty();
     let len = opts.len();
 
@@ -1509,10 +1508,9 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &hir::Pat,
     // Note that we use the names because each binding will have many ids
     // from the various alternatives.
     let ccx = bcx.ccx();
-    let tcx = bcx.tcx();
     let reassigned = is_discr_reassigned(bcx, discr, body);
     let mut bindings_map = FnvHashMap();
-    pat_bindings(&tcx.def_map, &pat, |bm, p_id, span, path1| {
+    pat_bindings(&pat, |bm, p_id, span, path1| {
         let name = path1.node;
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
@@ -1655,7 +1653,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // create dummy memory for the variables if we have no
         // value to store into them immediately
         let tcx = bcx.tcx();
-        pat_bindings(&tcx.def_map, pat, |_, p_id, _, path1| {
+        pat_bindings(pat, |_, p_id, _, path1| {
             let scope = cleanup::var_scope(tcx, p_id);
             bcx = mk_binding_alloca(
                 bcx, p_id, path1.node, scope, (),

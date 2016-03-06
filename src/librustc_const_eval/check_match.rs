@@ -748,10 +748,9 @@ fn is_useful(cx: &MatchCheckCtxt,
             }).find(|result| result != &NotUseful).unwrap_or(NotUseful)
         } else {
             let matrix = rows.iter().filter_map(|r| {
-                if pat_is_binding_or_wild(&cx.tcx.def_map.borrow(), raw_pat(r[0])) {
-                    Some(r[1..].to_vec())
-                } else {
-                    None
+                match raw_pat(r[0]).node {
+                    PatKind::Binding(..) | PatKind::Wild => Some(r[1..].to_vec()),
+                    _ => None,
                 }
             }).collect();
             match is_useful(cx, &matrix, &v[1..], witness) {
@@ -1089,17 +1088,11 @@ fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F) -> Option<A>
 fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                                    has_guard: bool,
                                    pats: &[P<Pat>]) {
-    let tcx = cx.tcx;
-    let def_map = &tcx.def_map;
     let mut by_ref_span = None;
     for pat in pats {
-        pat_bindings(def_map, &pat, |bm, _, span, _path| {
-            match bm {
-                hir::BindByRef(_) => {
-                    by_ref_span = Some(span);
-                }
-                hir::BindByValue(_) => {
-                }
+        pat_bindings(&pat, |bm, _, span, _path| {
+            if let hir::BindByRef(..) = bm {
+                by_ref_span = Some(span);
             }
         })
     }
@@ -1108,7 +1101,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
-        if sub.map_or(false, |p| pat_contains_bindings(&def_map.borrow(), &p)) {
+        if sub.map_or(false, |p| pat_contains_bindings(&p)) {
             span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings");
         } else if has_guard {
             span_err!(cx.tcx.sess, p.span, E0008, "cannot bind by-move into a pattern guard");
@@ -1123,7 +1116,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     for pat in pats {
         pat.walk(|p| {
             if let PatKind::Binding(hir::BindByValue(..), _, ref sub) = p.node {
-                let pat_ty = tcx.node_id_to_type(p.id);
+                let pat_ty = cx.tcx.node_id_to_type(p.id);
                 //FIXME: (@jroesch) this code should be floated up as well
                 cx.tcx.infer_ctxt(None, Some(cx.param_env.clone()),
                                   ProjectionMode::AnyFinal).enter(|infcx| {
@@ -1199,18 +1192,19 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
     fn visit_pat(&mut self, pat: &Pat) {
-        if !self.bindings_allowed && pat_is_binding(&self.cx.tcx.def_map.borrow(), pat) {
-            span_err!(self.cx.tcx.sess, pat.span, E0303,
-                                      "pattern bindings are not allowed \
-                                       after an `@`");
-        }
-
         match pat.node {
-            PatKind::Binding(_, _, Some(_)) => {
-                let bindings_were_allowed = self.bindings_allowed;
-                self.bindings_allowed = false;
-                intravisit::walk_pat(self, pat);
-                self.bindings_allowed = bindings_were_allowed;
+            PatKind::Binding(_, _, ref subpat) => {
+                if !self.bindings_allowed {
+                    span_err!(self.cx.tcx.sess, pat.span, E0303,
+                              "pattern bindings are not allowed after an `@`");
+                }
+
+                if subpat.is_some() {
+                    let bindings_were_allowed = self.bindings_allowed;
+                    self.bindings_allowed = false;
+                    intravisit::walk_pat(self, pat);
+                    self.bindings_allowed = bindings_were_allowed;
+                }
             }
             _ => intravisit::walk_pat(self, pat),
         }

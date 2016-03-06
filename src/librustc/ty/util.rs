@@ -173,11 +173,11 @@ impl<'tcx> ParameterEnvironment<'tcx> {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn pat_contains_ref_binding(self, pat: &hir::Pat) -> Option<hir::Mutability> {
-        pat_util::pat_contains_ref_binding(&self.def_map, pat)
+        pat_util::pat_contains_ref_binding(pat)
     }
 
     pub fn arm_contains_ref_binding(self, arm: &hir::Arm) -> Option<hir::Mutability> {
-        pat_util::arm_contains_ref_binding(&self.def_map, arm)
+        pat_util::arm_contains_ref_binding(arm)
     }
 
     /// Returns the type of element at index `i` in tuple or tuple-like type `t`.
