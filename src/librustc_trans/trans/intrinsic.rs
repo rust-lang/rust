@@ -350,43 +350,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
-    // For `try` we need some custom control flow
-    if &name[..] == "try" {
-        if let callee::ArgExprs(ref exprs) = args {
-            let (func, data, local_ptr) = if exprs.len() != 3 {
-                ccx.sess().bug("expected three exprs as arguments for \
-                                `try` intrinsic");
-            } else {
-                (&exprs[0], &exprs[1], &exprs[2])
-            };
-
-            // translate arguments
-            let func = unpack_datum!(bcx, expr::trans(bcx, func));
-            let func = unpack_datum!(bcx, func.to_rvalue_datum(bcx, "func"));
-            let data = unpack_datum!(bcx, expr::trans(bcx, data));
-            let data = unpack_datum!(bcx, data.to_rvalue_datum(bcx, "data"));
-            let local_ptr = unpack_datum!(bcx, expr::trans(bcx, local_ptr));
-            let local_ptr = local_ptr.to_rvalue_datum(bcx, "local_ptr");
-            let local_ptr = unpack_datum!(bcx, local_ptr);
-
-            let dest = match dest {
-                expr::SaveIn(d) => d,
-                expr::Ignore => alloc_ty(bcx, tcx.mk_mut_ptr(tcx.types.i8),
-                                         "try_result"),
-            };
-
-            // do the invoke
-            bcx = try_intrinsic(bcx, func.val, data.val, local_ptr.val, dest,
-                                call_debug_location);
-
-            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
-            return Result::new(bcx, dest);
-        } else {
-            ccx.sess().bug("expected two exprs as arguments for \
-                            `try` intrinsic");
-        }
-    }
-
     // save the actual AST arguments for later (some places need to do
     // const-evaluation on them)
     let expr_arguments = match args {
@@ -445,6 +408,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let llval = match (simple, &name[..]) {
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, call_debug_location)
+        }
+        (_, "try") => {
+            bcx = try_intrinsic(bcx, llargs[0], llargs[1], llargs[2], llresult,
+                                call_debug_location);
+            C_nil(ccx)
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
