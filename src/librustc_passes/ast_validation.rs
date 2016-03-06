@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Sanity check AST before lowering it to HIR
+// Validate AST before lowering it to HIR
 //
 // This pass is supposed to catch things that fit into AST data structures,
 // but not permitted by the language. It runs after expansion when AST is frozen,
@@ -24,11 +24,11 @@ use syntax::errors;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 
-struct SanityChecker<'a> {
+struct AstValidator<'a> {
     session: &'a Session,
 }
 
-impl<'a> SanityChecker<'a> {
+impl<'a> AstValidator<'a> {
     fn err_handler(&self) -> &errors::Handler {
         &self.session.parse_sess.span_diagnostic
     }
@@ -57,7 +57,7 @@ impl<'a> SanityChecker<'a> {
     }
 }
 
-impl<'a, 'v> Visitor<'v> for SanityChecker<'a> {
+impl<'a, 'v> Visitor<'v> for AstValidator<'a> {
     fn visit_lifetime(&mut self, lt: &Lifetime) {
         if lt.name.as_str() == "'_" {
             self.session.add_lint(
@@ -72,9 +72,7 @@ impl<'a, 'v> Visitor<'v> for SanityChecker<'a> {
     fn visit_expr(&mut self, expr: &Expr) {
         match expr.node {
             ExprKind::While(_, _, Some(ident)) | ExprKind::Loop(_, Some(ident)) |
-            ExprKind::WhileLet(_, _, _, Some(ident)) | ExprKind::ForLoop(_, _, _, Some(ident)) => {
-                self.check_label(ident, expr.span, expr.id);
-            }
+            ExprKind::WhileLet(_, _, _, Some(ident)) | ExprKind::ForLoop(_, _, _, Some(ident)) |
             ExprKind::Break(Some(ident)) | ExprKind::Again(Some(ident)) => {
                 self.check_label(ident.node, ident.span, expr.id);
             }
@@ -169,5 +167,5 @@ impl<'a, 'v> Visitor<'v> for SanityChecker<'a> {
 }
 
 pub fn check_crate(session: &Session, krate: &Crate) {
-    visit::walk_crate(&mut SanityChecker { session: session }, krate)
+    visit::walk_crate(&mut AstValidator { session: session }, krate)
 }

@@ -246,7 +246,6 @@ dependencies = [
 name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
  "rustc 0.0.0",
  "syntax 0.0.0",
 ]
