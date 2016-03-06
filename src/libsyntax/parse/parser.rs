@@ -20,7 +20,7 @@ use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, Crate, CrateConfig};
 use ast::{Decl, DeclKind};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
-use ast::{Expr, ExprKind};
+use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::{Ident, ImplItem, Item, ItemKind};
@@ -2059,9 +2059,10 @@ impl<'a> Parser<'a> {
 
     pub fn mk_range(&mut self,
                     start: Option<P<Expr>>,
-                    end: Option<P<Expr>>)
+                    end: Option<P<Expr>>,
+                    limits: RangeLimits)
                     -> ast::ExprKind {
-        ExprKind::Range(start, end)
+        ExprKind::Range(start, end, limits)
     }
 
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::ExprKind {
@@ -2899,7 +2900,7 @@ impl<'a> Parser<'a> {
                 LhsExpr::AttributesParsed(attrs) => Some(attrs),
                 _ => None,
             };
-            if self.token == token::DotDot {
+            if self.token == token::DotDot || self.token == token::DotDotDot {
                 return self.parse_prefix_range_expr(attrs);
             } else {
                 try!(self.parse_prefix_expr(attrs))
@@ -2945,32 +2946,32 @@ impl<'a> Parser<'a> {
                                    ExprKind::Type(lhs, rhs), None);
                 continue
             } else if op == AssocOp::DotDot {
-                    // If we didn’t have to handle `x..`, it would be pretty easy to generalise
-                    // it to the Fixity::None code.
-                    //
-                    // We have 2 alternatives here: `x..y` and `x..` The other two variants are
-                    // handled with `parse_prefix_range_expr` call above.
-                    let rhs = if self.is_at_start_of_range_notation_rhs() {
-                        let rhs = self.parse_assoc_expr_with(op.precedence() + 1,
-                                                             LhsExpr::NotYetParsed);
-                        match rhs {
-                            Ok(e) => Some(e),
-                            Err(mut e) => {
-                                e.cancel();
-                                None
-                            }
+                // If we didn’t have to handle `x..`, it would be pretty easy to generalise
+                // it to the Fixity::None code.
+                //
+                // We have 2 alternatives here: `x..y` and `x..` The other two variants are
+                // handled with `parse_prefix_range_expr` call above.
+                let rhs = if self.is_at_start_of_range_notation_rhs() {
+                    let rhs = self.parse_assoc_expr_with(op.precedence() + 1,
+                                                         LhsExpr::NotYetParsed);
+                    match rhs {
+                        Ok(e) => Some(e),
+                        Err(mut e) => {
+                            e.cancel();
+                            None
                         }
-                    } else {
-                        None
-                    };
-                    let (lhs_span, rhs_span) = (lhs_span, if let Some(ref x) = rhs {
-                        x.span
-                    } else {
-                        cur_op_span
-                    });
-                    let r = self.mk_range(Some(lhs), rhs);
-                    lhs = self.mk_expr(lhs_span.lo, rhs_span.hi, r, None);
-                    break
+                    }
+                } else {
+                    None
+                };
+                let (lhs_span, rhs_span) = (lhs.span, if let Some(ref x) = rhs {
+                    x.span
+                } else {
+                    cur_op_span
+                });
+                let r = self.mk_range(Some(lhs), rhs, RangeLimits::HalfOpen);
+                lhs = self.mk_expr(lhs_span.lo, rhs_span.hi, r, None);
+                break
             }
 
             let rhs = try!(match op.fixity() {
@@ -2986,8 +2987,8 @@ impl<'a> Parser<'a> {
                         this.parse_assoc_expr_with(op.precedence() + 1,
                             LhsExpr::NotYetParsed)
                 }),
-                // We currently have no non-associative operators that are not handled above by
-                // the special cases. The code is here only for future convenience.
+                // the only operator handled here is `...` (the other non-associative operators are
+                // special-cased above)
                 Fixity::None => self.with_res(
                     restrictions - Restrictions::RESTRICTION_STMT_EXPR,
                     |this| {
@@ -3028,6 +3029,11 @@ impl<'a> Parser<'a> {
                     let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, aopexpr, None)
                 }
+                AssocOp::DotDotDot => {
+                    let (lhs_span, rhs_span) = (lhs.span, rhs.span);
+                    let r = self.mk_range(Some(lhs), Some(rhs), RangeLimits::Closed);
+                    self.mk_expr(lhs_span.lo, rhs_span.hi, r, None)
+                }
                 AssocOp::As | AssocOp::Colon | AssocOp::DotDot => {
                     self.bug("As, Colon or DotDot branch reached")
                 }
@@ -3059,18 +3065,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse prefix-forms of range notation: `..expr` and `..`
+    /// Parse prefix-forms of range notation: `..expr`, `..`, `...expr`
     fn parse_prefix_range_expr(&mut self,
                                already_parsed_attrs: Option<ThinAttributes>)
                                -> PResult<'a, P<Expr>> {
-        debug_assert!(self.token == token::DotDot);
+        debug_assert!(self.token == token::DotDot || self.token == token::DotDotDot);
+        let tok = self.token.clone();
         let attrs = try!(self.parse_or_use_outer_attributes(already_parsed_attrs));
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         self.bump();
         let opt_end = if self.is_at_start_of_range_notation_rhs() {
-            // RHS must be parsed with more associativity than DotDot.
-            let next_prec = AssocOp::from_token(&token::DotDot).unwrap().precedence() + 1;
+            // RHS must be parsed with more associativity than the dots.
+            let next_prec = AssocOp::from_token(&tok).unwrap().precedence() + 1;
             Some(try!(self.parse_assoc_expr_with(next_prec,
                                                  LhsExpr::NotYetParsed)
             .map(|x|{
@@ -3080,7 +3087,13 @@ impl<'a> Parser<'a> {
          } else {
             None
         };
-        let r = self.mk_range(None, opt_end);
+        let r = self.mk_range(None,
+                              opt_end,
+                              if tok == token::DotDot {
+                                  RangeLimits::HalfOpen
+                              } else {
+                                  RangeLimits::Closed
+                              });
         Ok(self.mk_expr(lo, hi, r, attrs))
     }
 

@@ -65,6 +65,7 @@ use hir;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::iter;
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::ext::mtwt;
@@ -1217,9 +1218,79 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
             ExprKind::Index(ref el, ref er) => {
                 hir::ExprIndex(lower_expr(lctx, el), lower_expr(lctx, er))
             }
-            ExprKind::Range(ref e1, ref e2) => {
-                hir::ExprRange(e1.as_ref().map(|x| lower_expr(lctx, x)),
-                               e2.as_ref().map(|x| lower_expr(lctx, x)))
+            ExprKind::Range(ref e1, ref e2, lims) => {
+                fn make_struct(lctx: &LoweringContext,
+                               ast_expr: &Expr,
+                               path: &[&str],
+                               fields: &[(&str, &P<Expr>)]) -> P<hir::Expr> {
+                    let strs = std_path(lctx, &iter::once(&"ops")
+                                                    .chain(path)
+                                                    .map(|s| *s)
+                                                    .collect::<Vec<_>>());
+
+                    let structpath = path_global(ast_expr.span, strs);
+
+                    let hir_expr = if fields.len() == 0 {
+                        expr_path(lctx,
+                                  structpath,
+                                  ast_expr.attrs.clone())
+                    } else {
+                        expr_struct(lctx,
+                                    ast_expr.span,
+                                    structpath,
+                                    fields.into_iter().map(|&(s, e)| {
+                                        field(token::intern(s),
+                                              signal_block_expr(lctx,
+                                                                hir_vec![],
+                                                                lower_expr(lctx, &**e),
+                                                                e.span,
+                                                                hir::PopUnstableBlock,
+                                                                None),
+                                              ast_expr.span)
+                                    }).collect(),
+                                    None,
+                                    ast_expr.attrs.clone())
+                    };
+
+                    signal_block_expr(lctx,
+                                      hir_vec![],
+                                      hir_expr,
+                                      ast_expr.span,
+                                      hir::PushUnstableBlock,
+                                      None)
+                }
+
+                return cache_ids(lctx, e.id, |lctx| {
+                    use syntax::ast::RangeLimits::*;
+
+                    match (e1, e2, lims) {
+                        (&None,         &None,         HalfOpen) =>
+                            make_struct(lctx, e, &["RangeFull"],
+                                                 &[]),
+
+                        (&Some(ref e1), &None,         HalfOpen) =>
+                            make_struct(lctx, e, &["RangeFrom"],
+                                                 &[("start", e1)]),
+
+                        (&None,         &Some(ref e2), HalfOpen) =>
+                            make_struct(lctx, e, &["RangeTo"],
+                                                 &[("end", e2)]),
+
+                        (&Some(ref e1), &Some(ref e2), HalfOpen) =>
+                            make_struct(lctx, e, &["Range"],
+                                                 &[("start", e1), ("end", e2)]),
+
+                        (&None,         &Some(ref e2), Closed)   =>
+                            make_struct(lctx, e, &["RangeToInclusive"],
+                                                 &[("end", e2)]),
+
+                        (&Some(ref e1), &Some(ref e2), Closed)   =>
+                            make_struct(lctx, e, &["RangeInclusive", "NonEmpty"],
+                                                 &[("start", e1), ("end", e2)]),
+
+                        _ => panic!("impossible range in AST"),
+                    }
+                });
             }
             ExprKind::Path(ref qself, ref path) => {
                 let hir_qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
@@ -1627,6 +1698,17 @@ fn arm(pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
     }
 }
 
+fn field(name: Name, expr: P<hir::Expr>, span: Span) -> hir::Field {
+    hir::Field {
+        name: Spanned {
+            node: name,
+            span: span,
+        },
+        span: span,
+        expr: expr,
+    }
+}
+
 fn expr_break(lctx: &LoweringContext, span: Span,
               attrs: ThinAttributes) -> P<hir::Expr> {
     expr(lctx, span, hir::ExprBreak(None), attrs)
@@ -1674,6 +1756,15 @@ fn expr_block(lctx: &LoweringContext, b: P<hir::Block>,
 fn expr_tuple(lctx: &LoweringContext, sp: Span, exprs: hir::HirVec<P<hir::Expr>>,
               attrs: ThinAttributes) -> P<hir::Expr> {
     expr(lctx, sp, hir::ExprTup(exprs), attrs)
+}
+
+fn expr_struct(lctx: &LoweringContext,
+               sp: Span,
+               path: hir::Path,
+               fields: hir::HirVec<hir::Field>,
+               e: Option<P<hir::Expr>>,
+               attrs: ThinAttributes) -> P<hir::Expr> {
+    expr(lctx, sp, hir::ExprStruct(path, fields, e), attrs)
 }
 
 fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_,

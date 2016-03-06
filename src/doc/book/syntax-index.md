@@ -66,7 +66,8 @@
 * `..` (`..`, `expr..`, `..expr`, `expr..expr`): right-exclusive range literal.
 * `..` (`..expr`): struct literal update syntax.  See [Structs (Update syntax)].
 * `..` (`variant(x, ..)`, `struct_type { x, .. }`): "and the rest" pattern binding.  See [Patterns (Ignoring bindings)].
-* `...` (`expr ... expr`): inclusive range pattern.  See [Patterns (Ranges)].
+* `...` (`...expr`, `expr...expr`) *in an expression*: inclusive range expression. See [Iterators].
+* `...` (`expr...expr`) *in a pattern*: inclusive range pattern.  See [Patterns (Ranges)].
 * `/` (`expr / expr`): arithmetic division.  Overloadable (`Div`).
 * `/=` (`var /= expr`): arithmetic division & assignment.
 * `:` (`pat: type`, `ident: type`): constraints.  See [Variable Bindings], [Functions], [Structs], [Traits].
@@ -205,6 +206,7 @@
 [Functions (Early Returns)]: functions.html#early-returns
 [Functions]: functions.html
 [Generics]: generics.html
+[Iterators]: iterators.html
 [Lifetimes]: lifetimes.html
 [Loops (`for`)]: loops.html#for
 [Loops (`loop`)]: loops.html#loop

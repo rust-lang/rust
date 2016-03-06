@@ -302,10 +302,6 @@ lets_do_this! {
     ShrAssignTraitLangItem,          "shr_assign",              shr_assign_trait;
     IndexTraitLangItem,              "index",                   index_trait;
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
-    RangeStructLangItem,             "range",                   range_struct;
-    RangeFromStructLangItem,         "range_from",              range_from_struct;
-    RangeToStructLangItem,           "range_to",                range_to_struct;
-    RangeFullStructLangItem,         "range_full",              range_full_struct;
 
     UnsafeCellTypeLangItem,          "unsafe_cell",             unsafe_cell_type;
 

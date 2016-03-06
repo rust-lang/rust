@@ -1460,6 +1460,62 @@ mod traits {
             self
         }
     }
+
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
+    impl ops::Index<ops::RangeInclusive<usize>> for str {
+        type Output = str;
+
+        #[inline]
+        fn index(&self, index: ops::RangeInclusive<usize>) -> &str {
+            match index {
+                ops::RangeInclusive::Empty { .. } => "",
+                ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() =>
+                    panic!("attempted to index slice up to maximum usize"),
+                ops::RangeInclusive::NonEmpty { start, end } =>
+                    self.index(start .. end+1)
+            }
+        }
+    }
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
+    impl ops::Index<ops::RangeToInclusive<usize>> for str {
+        type Output = str;
+
+        #[inline]
+        fn index(&self, index: ops::RangeToInclusive<usize>) -> &str {
+            // SNAP 4d3eebf change this to `0...index.end`
+            self.index(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
+        }
+    }
+
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
+    impl ops::IndexMut<ops::RangeInclusive<usize>> for str {
+        #[inline]
+        fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
+            match index {
+                ops::RangeInclusive::Empty { .. } => &mut self[0..0], // `&mut ""` doesn't work
+                ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() =>
+                    panic!("attempted to index str up to maximum usize"),
+                    ops::RangeInclusive::NonEmpty { start, end } =>
+                        self.index_mut(start .. end+1)
+            }
+        }
+    }
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
+    impl ops::IndexMut<ops::RangeToInclusive<usize>> for str {
+        #[inline]
+        fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
+            // SNAP 4d3eebf change this to `0...index.end`
+            self.index_mut(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
+        }
+    }
 }
 
 /// Methods for string slices

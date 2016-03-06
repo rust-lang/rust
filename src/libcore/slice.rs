@@ -533,6 +533,8 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
+// FIXME implement indexing with inclusive ranges
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::Range<usize>> for [T] {
     type Output = [T];
@@ -558,7 +560,7 @@ impl<T> ops::Index<ops::RangeTo<usize>> for [T] {
 
     #[inline]
     fn index(&self, index: ops::RangeTo<usize>) -> &[T] {
-        self.index(ops::Range{ start: 0, end: index.end })
+        self.index(0 .. index.end)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -567,7 +569,7 @@ impl<T> ops::Index<ops::RangeFrom<usize>> for [T] {
 
     #[inline]
     fn index(&self, index: ops::RangeFrom<usize>) -> &[T] {
-        self.index(ops::Range{ start: index.start, end: self.len() })
+        self.index(index.start .. self.len())
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -577,6 +579,32 @@ impl<T> ops::Index<RangeFull> for [T] {
     #[inline]
     fn index(&self, _index: RangeFull) -> &[T] {
         self
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::Index<ops::RangeInclusive<usize>> for [T] {
+    type Output = [T];
+
+    #[inline]
+    fn index(&self, index: ops::RangeInclusive<usize>) -> &[T] {
+        match index {
+            ops::RangeInclusive::Empty { .. } => &[],
+            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() =>
+                panic!("attempted to index slice up to maximum usize"),
+            ops::RangeInclusive::NonEmpty { start, end } =>
+                self.index(start .. end+1)
+        }
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::Index<ops::RangeToInclusive<usize>> for [T] {
+    type Output = [T];
+
+    #[inline]
+    fn index(&self, index: ops::RangeToInclusive<usize>) -> &[T] {
+        // SNAP 4d3eebf change this to `0...index.end`
+        self.index(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
     }
 }
 
@@ -601,7 +629,7 @@ impl<T> ops::IndexMut<ops::Range<usize>> for [T] {
 impl<T> ops::IndexMut<ops::RangeTo<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
-        self.index_mut(ops::Range{ start: 0, end: index.end })
+        self.index_mut(0 .. index.end)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -609,7 +637,7 @@ impl<T> ops::IndexMut<ops::RangeFrom<usize>> for [T] {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
         let len = self.len();
-        self.index_mut(ops::Range{ start: index.start, end: len })
+        self.index_mut(index.start .. len)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -620,6 +648,27 @@ impl<T> ops::IndexMut<RangeFull> for [T] {
     }
 }
 
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::IndexMut<ops::RangeInclusive<usize>> for [T] {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut [T] {
+        match index {
+            ops::RangeInclusive::Empty { .. } => &mut [],
+            ops::RangeInclusive::NonEmpty { end, .. } if end == usize::max_value() =>
+                panic!("attempted to index slice up to maximum usize"),
+            ops::RangeInclusive::NonEmpty { start, end } =>
+                self.index_mut(start .. end+1)
+        }
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for [T] {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut [T] {
+        // SNAP 4d3eebf change this to `0...index.end`
+        self.index_mut(ops::RangeInclusive::NonEmpty { start: 0, end: index.end })
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common traits

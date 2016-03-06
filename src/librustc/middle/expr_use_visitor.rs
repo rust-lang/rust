@@ -398,11 +398,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 }
             }
 
-            hir::ExprRange(ref start, ref end) => {
-                start.as_ref().map(|e| self.consume_expr(&e));
-                end.as_ref().map(|e| self.consume_expr(&e));
-            }
-
             hir::ExprCall(ref callee, ref args) => {    // callee(args)
                 self.walk_callee(expr, &callee);
                 self.consume_exprs(args);

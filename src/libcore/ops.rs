@@ -67,8 +67,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use marker::{Sized, Unsize};
+use cmp::PartialOrd;
 use fmt;
+use convert::From;
+use marker::{Sized, Unsize};
+use num::One;
 
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
@@ -1445,7 +1448,7 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[lang = "range_full"]
+#[cfg_attr(stage0, lang = "range_full")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
@@ -1458,7 +1461,7 @@ impl fmt::Debug for RangeFull {
 
 /// A (half-open) range which is bounded at both ends.
 #[derive(Clone, PartialEq, Eq)]
-#[lang = "range"]
+#[cfg_attr(stage0, lang = "range")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -1478,7 +1481,7 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
 
 /// A range which is only bounded below.
 #[derive(Clone, PartialEq, Eq)]
-#[lang = "range_from"]
+#[cfg_attr(stage0, lang = "range_from")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -1495,7 +1498,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
 
 /// A range which is only bounded above.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[lang = "range_to"]
+#[cfg_attr(stage0, lang = "range_to")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
@@ -1509,6 +1512,90 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
         write!(fmt, "..{:?}", self.end)
     }
 }
+
+/// An inclusive range which is bounded at both ends.
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+pub enum RangeInclusive<Idx> {
+    /// Empty range (iteration has finished)
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
+    Empty {
+        /// The point at which iteration finished
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
+        at: Idx
+    },
+    /// Non-empty range (iteration will yield value(s))
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
+    NonEmpty {
+        /// The lower bound of the range (inclusive).
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
+        start: Idx,
+        /// The upper bound of the range (inclusive).
+        #[unstable(feature = "inclusive_range",
+                   reason = "recently added, follows RFC",
+                   issue = "28237")]
+        end: Idx,
+    },
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use self::RangeInclusive::*;
+
+        match *self {
+            Empty { ref at } => write!(fmt, "[empty range @ {:?}]", at),
+            NonEmpty { ref start, ref end } => write!(fmt, "{:?}...{:?}", start, end),
+        }
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<Idx: PartialOrd + One + Sub<Output=Idx>> From<Range<Idx>> for RangeInclusive<Idx> {
+    fn from(range: Range<Idx>) -> RangeInclusive<Idx> {
+        use self::RangeInclusive::*;
+
+        if range.start < range.end {
+            NonEmpty {
+                start: range.start,
+                end: range.end - Idx::one() // can't underflow because end > start >= MIN
+            }
+        } else {
+            Empty {
+                at: range.start
+            }
+        }
+    }
+}
+
+/// An inclusive range which is only bounded above.
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+pub struct RangeToInclusive<Idx> {
+    /// The upper bound of the range (inclusive)
+    #[unstable(feature = "inclusive_range",
+               reason = "recently added, follows RFC",
+               issue = "28237")]
+    pub end: Idx,
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<Idx: fmt::Debug> fmt::Debug for RangeToInclusive<Idx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "...{:?}", self.end)
+    }
+}
+
+// RangeToInclusive<Idx> cannot impl From<RangeTo<Idx>>
+// because underflow would be possible with (..0).into()
 
 /// The `Deref` trait is used to specify the functionality of dereferencing
 /// operations, like `*v`.

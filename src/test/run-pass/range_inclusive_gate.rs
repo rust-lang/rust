@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test range syntax - borrow errors.
+// Test that you only need the syntax gate if you don't mention the structs.
 
-pub fn main() {
-    let r = {
-        let a = 42;
-        let b = 42;
-        &a..&b
-        //~^ ERROR `a` does not live long enough
-        //~^^ ERROR `b` does not live long enough
-    };
+#![feature(inclusive_range_syntax)]
+
+fn main() {
+    let mut count = 0;
+    for i in 0_usize...10 {
+        assert!(i >= 0 && i <= 10);
+        count += i;
+    }
+    assert_eq!(count, 55);
 }
+
