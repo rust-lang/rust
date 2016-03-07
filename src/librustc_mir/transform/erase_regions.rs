@@ -16,6 +16,7 @@ use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{MirPass, Pass};
+use syntax::ast::NodeId;
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
@@ -123,7 +124,7 @@ pub struct EraseRegions;
 impl Pass for EraseRegions {}
 
 impl<'tcx> MirPass<'tcx> for EraseRegions {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, mir: &mut Mir<'tcx>) {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
         EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }

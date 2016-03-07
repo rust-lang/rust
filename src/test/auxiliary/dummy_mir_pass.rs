@@ -25,11 +25,13 @@ use rustc::middle::ty;
 use rustc::middle::const_eval::ConstVal;
 use rustc_plugin::Registry;
 
+use syntax::ast::NodeId;
+
 struct Pass;
 
 impl transform::Pass for Pass {}
 impl<'tcx> MirPass<'tcx> for Pass {
-    fn run_pass(&mut self, _: &ty::ctxt<'tcx>, mir: &mut Mir<'tcx>) {
+    fn run_pass(&mut self, _: &ty::TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
         Visitor.visit_mir(mir)
     }
 }
