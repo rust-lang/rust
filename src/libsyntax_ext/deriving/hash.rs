@@ -12,7 +12,7 @@ use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, Mutability};
+use syntax::ast::{self, MetaItem, Expr, Mutability};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -81,15 +81,18 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
 
     let fields = match *substr.fields {
         Struct(_, ref fs) => fs,
-        EnumMatching(index, variant, ref fs) => {
-            // Determine the discriminant. We will feed this value to the byte
-            // iteration function.
-            let discriminant = match variant.node.disr_expr {
-                Some(ref d) => d.clone(),
-                None => cx.expr_usize(trait_span, index)
-            };
+        EnumMatching(_, _, ref fs) => {
+            let path = cx.std_path(&["intrinsics", "discriminant_value"]);
+            let call = cx.expr_call_global(
+                trait_span, path, vec![cx.expr_self(trait_span)]);
+            let variant_value = cx.expr_block(P(ast::Block {
+                stmts: vec![],
+                expr: Some(call),
+                id: ast::DUMMY_NODE_ID,
+                rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
+                span: trait_span }));
 
-            stmts.push(call_hash(trait_span, discriminant));
+            stmts.push(call_hash(trait_span, variant_value));
 
             fs
         }
