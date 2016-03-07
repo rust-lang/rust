@@ -19,15 +19,18 @@ use super::Hasher;
 ///
 /// See: http://131002.net/siphash/
 ///
-/// Consider this as a main "general-purpose" hash for all hashtables: it
-/// runs at good speed (competitive with spooky and city) and permits
-/// strong _keyed_ hashing. Key your hashtables from a strong RNG,
-/// such as `rand::Rng`.
+/// This is the default hashing function used by standard library (eg.
+/// `collections::HashMap` uses it by default).
+///
+/// SipHash is a general-purpose hashing function: it runs at a good
+/// speed (competitive with Spooky and City) and permits strong _keyed_
+/// hashing. This lets you key your hashtables from a strong RNG, such
+/// as [`rand::Rng`](https://doc.rust-lang.org/rand/rand/trait.Rng.html).
 ///
 /// Although the SipHash algorithm is considered to be cryptographically
 /// strong, this implementation has not been reviewed for such purposes.
-/// As such, all cryptographic uses of this implementation are strongly
-/// discouraged.
+/// As such, all cryptographic uses of this implementation are _strongly
+/// discouraged_.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SipHasher {
     k0: u64,
