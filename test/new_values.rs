@@ -51,15 +51,15 @@ fn boolean() -> bool {
     true
 }
 
-// #[miri_run(expected = "Int(0)")]
-// fn if_false() -> i32 {
-//     if false { 1 } else { 0 }
-// }
+#[miri_run]
+fn if_false() -> i32 {
+    if false { 1 } else { 0 }
+}
 
-// #[miri_run(expected = "Int(1)")]
-// fn if_true() -> i32 {
-//     if true { 1 } else { 0 }
-// }
+#[miri_run]
+fn if_true() -> i32 {
+    if true { 1 } else { 0 }
+}
 
 // #[miri_run(expected = "Int(2)")]
 // fn call() -> i32 {

@@ -162,7 +162,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             use rustc::mir::repr::Terminator::*;
             match *block_data.terminator() {
                 Return => break,
+
                 Goto { target } => block = target,
+
+                If { ref cond, targets: (then_target, else_target) } => {
+                    let cond_ptr = try!(self.operand_to_ptr(cond));
+                    let cond = try!(self.memory.read_bool(&cond_ptr));
+                    block = if cond { then_target } else { else_target }
+                }
 
                 // Call { ref func, ref args, ref destination, .. } => {
                 //     let ptr = destination.as_ref().map(|&(ref lv, _)| self.lvalue_to_ptr(lv));
@@ -189,15 +196,6 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 //         }
                 //     } else {
                 //         panic!("tried to call a non-function value: {:?}", func_val);
-                //     }
-                // }
-
-                // If { ref cond, targets: (then_target, else_target) } => {
-                //     let cond_ptr = try!(self.operand_to_ptr(cond));
-                //     match self.operand_to_ptr(cond) {
-                //         Value::Bool(true) => block = then_target,
-                //         Value::Bool(false) => block = else_target,
-                //         cond_val => panic!("Non-boolean `if` condition value: {:?}", cond_val),
                 //     }
                 // }
 
