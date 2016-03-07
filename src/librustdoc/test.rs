@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)]
-
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
-use std::dynamic_lib::DynamicLibrary;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -32,6 +29,7 @@ use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
 use rustc_metadata::cstore::CStore;

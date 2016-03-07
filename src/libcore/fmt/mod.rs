@@ -36,18 +36,6 @@ pub enum Alignment {
     Unknown,
 }
 
-#[unstable(feature = "fmt_radix", issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-#[allow(deprecated)]
-pub use self::num::radix;
-#[unstable(feature = "fmt_radix", issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-#[allow(deprecated)]
-pub use self::num::Radix;
-#[unstable(feature = "fmt_radix", issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-#[allow(deprecated)]
-pub use self::num::RadixFmt;
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap};
 
@@ -1561,15 +1549,9 @@ macro_rules! tuple {
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;
-                let mut n = 0;
                 $(
                     builder.field($name);
-                    n += 1;
                 )*
-
-                if n == 1 {
-                    try!(write!(builder.formatter(), ","));
-                }
 
                 builder.finish()
             }

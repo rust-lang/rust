@@ -238,30 +238,6 @@ impl<H> Default for BuildHasherDefault<H> {
     }
 }
 
-// The HashState trait is super deprecated, but it's here to have the blanket
-// impl that goes from HashState -> BuildHasher
-
-/// Deprecated, renamed to `BuildHasher`
-#[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
-           issue = "27713")]
-#[rustc_deprecated(since = "1.7.0", reason = "support moved to std::hash and \
-                                              renamed to BuildHasher")]
-pub trait HashState {
-    /// Type of the hasher that will be created.
-    type Hasher: Hasher;
-
-    /// Creates a new hasher based on the given state of this object.
-    fn hasher(&self) -> Self::Hasher;
-}
-
-#[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
-           issue = "27713")]
-#[allow(deprecated)]
-impl<T: HashState> BuildHasher for T {
-    type Hasher = T::Hasher;
-    fn build_hasher(&self) -> T::Hasher { self.hasher() }
-}
-
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {

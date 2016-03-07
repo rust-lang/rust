@@ -13,25 +13,6 @@
 macro_rules! int_module { ($T:ty, $bits:expr) => (
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
-// calling the `mem::size_of` function.
-#[unstable(feature = "num_bits_bytes",
-           reason = "may want to be an associated function",
-           issue = "27753")]
-#[rustc_deprecated(since = "1.7.0",
-                   reason = "will be replaced via const fn or associated constants")]
-#[allow(missing_docs)]
-pub const BITS : usize = $bits;
-// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
-// calling the `mem::size_of` function.
-#[unstable(feature = "num_bits_bytes",
-           reason = "may want to be an associated function",
-           issue = "27753")]
-#[rustc_deprecated(since = "1.7.0",
-                   reason = "will be replaced via const fn or associated constants")]
-#[allow(missing_docs)]
-pub const BYTES : usize = ($bits / 8);
-
-// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `Bounded::min_value` function.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(missing_docs)]

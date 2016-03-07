@@ -63,6 +63,7 @@ use alloc::boxed::Box;
 use alloc::heap::EMPTY;
 use alloc::raw_vec::RawVec;
 use borrow::ToOwned;
+use borrow::Cow;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
@@ -73,9 +74,6 @@ use core::ops::{Index, IndexMut};
 use core::ops;
 use core::ptr;
 use core::slice;
-
-#[allow(deprecated)]
-use borrow::{Cow, IntoCow};
 
 use super::range::RangeArgument;
 
@@ -967,17 +965,6 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-    #[allow(missing_docs)]
-    #[inline]
-    #[unstable(feature = "vec_push_all",
-               reason = "likely to be replaced by a more optimized extend",
-               issue = "27744")]
-    #[rustc_deprecated(reason = "renamed to extend_from_slice",
-                       since = "1.6.0")]
-    pub fn push_all(&mut self, other: &[T]) {
-        self.extend_from_slice(other)
-    }
-
     /// Appends all elements in a slice to the `Vec`.
     ///
     /// Iterates over the slice `other`, clones each element, and then appends
@@ -1595,22 +1582,6 @@ impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
 impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
-    fn into_cow(self) -> Cow<'a, [T]> {
-        Cow::Owned(self)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
-    fn into_cow(self) -> Cow<'a, [T]> {
-        Cow::Borrowed(self)
     }
 }
 

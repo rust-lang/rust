@@ -150,12 +150,6 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
 
-    #[allow(missing_docs)]
-    #[unstable(feature = "read_exact_old", reason = "recently added",
-               issue = "0")]
-    #[rustc_deprecated(since = "1.6.0", reason = "renamed to UnexpectedEof")]
-    UnexpectedEOF,
-
     /// An error returned when an operation could not be completed because an
     /// "end of file" was reached prematurely.
     ///
@@ -311,7 +305,6 @@ impl fmt::Display for Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for Error {
-    #[allow(deprecated)] // remove with UnexpectedEOF
     fn description(&self) -> &str {
         match self.repr {
             Repr::Os(..) => match self.kind() {
@@ -332,7 +325,6 @@ impl error::Error for Error {
                 ErrorKind::WriteZero => "write zero",
                 ErrorKind::Interrupted => "operation interrupted",
                 ErrorKind::Other => "other os error",
-                ErrorKind::UnexpectedEOF => "unexpected end of file",
                 ErrorKind::UnexpectedEof => "unexpected end of file",
                 ErrorKind::__Nonexhaustive => unreachable!()
             },

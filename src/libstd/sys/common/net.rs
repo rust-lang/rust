@@ -11,15 +11,13 @@
 use prelude::v1::*;
 
 use cmp;
-use ffi::{CStr, CString};
+use ffi::CString;
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{c_int, c_char, c_void};
+use libc::{c_int, c_void};
 use mem;
-#[allow(deprecated)]
-use net::{SocketAddr, Shutdown, IpAddr, Ipv4Addr, Ipv6Addr};
+use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
 use ptr;
-use str::from_utf8;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner, IntoInner};
@@ -151,34 +149,6 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
         try!(cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), ptr::null(),
                                    &mut res)));
         Ok(LookupHost { original: res, cur: res })
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// lookup_addr
-////////////////////////////////////////////////////////////////////////////////
-
-#[allow(deprecated)]
-pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
-    init();
-
-    let saddr = SocketAddr::new(*addr, 0);
-    let (inner, len) = saddr.into_inner();
-    let mut hostbuf = [0 as c_char; c::NI_MAXHOST as usize];
-
-    let data = unsafe {
-        try!(cvt_gai(c::getnameinfo(inner, len,
-                                    hostbuf.as_mut_ptr(),
-                                    c::NI_MAXHOST,
-                                    ptr::null_mut(), 0, 0)));
-
-        CStr::from_ptr(hostbuf.as_ptr())
-    };
-
-    match from_utf8(data.to_bytes()) {
-        Ok(name) => Ok(name.to_owned()),
-        Err(_) => Err(io::Error::new(io::ErrorKind::Other,
-                                     "failed to lookup address information"))
     }
 }
 
