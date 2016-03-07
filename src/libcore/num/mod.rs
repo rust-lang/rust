@@ -41,7 +41,7 @@ use slice::SliceExt;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Default)]
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
-pub mod wrapping;
+mod wrapping;
 
 // All these modules are technically private and only exposed for libcoretest:
 pub mod flt2dec;

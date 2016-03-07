@@ -20,7 +20,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(dynamic_lib)]
 #![feature(libc)]
 #![feature(recover)]
 #![feature(rustc_private)]

@@ -592,15 +592,6 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// Deprecated, renamed to `with_hasher`
-    #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
-               issue = "27713")]
-    #[rustc_deprecated(since = "1.7.0", reason = "renamed to with_hasher")]
-    pub fn with_hash_state(hash_state: S) -> HashMap<K, V, S> {
-        HashMap::with_hasher(hash_state)
-    }
-
     /// Creates an empty HashMap with space for at least `capacity`
     /// elements, using `hasher` to hash the keys.
     ///
@@ -632,17 +623,6 @@ impl<K, V, S> HashMap<K, V, S>
             resize_policy: resize_policy,
             table: RawTable::new(internal_cap),
         }
-    }
-
-    /// Deprecated, renamed to `with_capacity_and_hasher`
-    #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
-               issue = "27713")]
-    #[rustc_deprecated(since = "1.7.0",
-                       reason = "renamed to with_capacity_and_hasher")]
-    pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
-                                        -> HashMap<K, V, S> {
-        HashMap::with_capacity_and_hasher(capacity, hash_state)
     }
 
     /// Returns a reference to the map's hasher.

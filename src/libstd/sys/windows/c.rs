@@ -154,8 +154,6 @@ pub const WSAESHUTDOWN: c_int = 10058;
 pub const WSAETIMEDOUT: c_int = 10060;
 pub const WSAECONNREFUSED: c_int = 10061;
 
-pub const NI_MAXHOST: DWORD = 1025;
-
 pub const MAX_PROTOCOL_CHAIN: DWORD = 7;
 
 pub const TOKEN_READ: DWORD = 0x20008;
@@ -1099,18 +1097,11 @@ extern "system" {
                        hints: *const ADDRINFOA,
                        res: *mut *mut ADDRINFOA) -> c_int;
     pub fn freeaddrinfo(res: *mut ADDRINFOA);
-    pub fn getnameinfo(sa: *const SOCKADDR, salen: c_int,
-                       host: *mut c_char, hostlen: DWORD,
-                       serv: *mut c_char, servlen: DWORD,
-                       flags: c_int) -> c_int;
 
     pub fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
-    pub fn GetModuleHandleExW(dwFlags: DWORD, name: LPCWSTR,
-                              handle: *mut HMODULE) -> BOOL;
+    pub fn FreeLibrary(handle: HMODULE) -> BOOL;
     pub fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
-    pub fn FreeLibrary(handle: HMODULE) -> BOOL;
-    pub fn SetErrorMode(uMode: c_uint) -> c_uint;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
     pub fn CryptAcquireContextA(phProv: *mut HCRYPTPROV,
                                 pszContainer: LPCSTR,
@@ -1175,10 +1166,6 @@ compat_fn! {
                                      _lpszFilePath: LPCWSTR,
                                      _cchFilePath: DWORD,
                                      _dwFlags: DWORD) -> DWORD {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-    }
-    pub fn SetThreadErrorMode(_dwNewMode: DWORD,
-                              _lpOldMode: *mut DWORD) -> c_uint {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
     pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {

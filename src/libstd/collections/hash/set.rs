@@ -200,26 +200,6 @@ impl<T, S> HashSet<T, S>
         self.map.hasher()
     }
 
-    /// Deprecated, renamed to `with_hasher`
-    #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
-               issue = "27713")]
-    #[rustc_deprecated(since = "1.7.0", reason = "renamed to with_hasher")]
-    pub fn with_hash_state(hash_state: S) -> HashSet<T, S> {
-        HashSet::with_hasher(hash_state)
-    }
-
-    /// Deprecated, renamed to `with_capacity_and_hasher`
-    #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
-               issue = "27713")]
-    #[rustc_deprecated(since = "1.7.0",
-                       reason = "renamed to with_capacity_and_hasher")]
-    pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
-                                        -> HashSet<T, S> {
-        HashSet::with_capacity_and_hasher(capacity, hash_state)
-    }
-
     /// Returns the number of elements the set can hold without reallocating.
     ///
     /// # Examples

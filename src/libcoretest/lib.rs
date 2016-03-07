@@ -24,8 +24,6 @@
 #![feature(fixed_size_array)]
 #![feature(float_extras)]
 #![feature(flt2dec)]
-#![feature(fmt_radix)]
-#![feature(iter_arith)]
 #![feature(iter_arith)]
 #![feature(libc)]
 #![feature(nonzero)]
