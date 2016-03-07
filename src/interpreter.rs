@@ -57,8 +57,10 @@ impl fmt::Display for EvalError {
 // }
 
 /// A stack frame.
-#[derive(Debug)]
-struct Frame {
+struct Frame<'a, 'tcx: 'a> {
+    /// The MIR for the fucntion called on this frame.
+    mir: &'a Mir<'tcx>,
+
     /// A pointer for writing the return value of the current call, if it's not a diverging call.
     return_ptr: Option<Pointer>,
 
@@ -74,17 +76,17 @@ struct Frame {
     temp_offset: usize,
 }
 
-impl Frame {
+impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
     fn arg_ptr(&self, i: u32) -> Pointer {
-        self.locals[i as usize].clone()
+        self.locals[i as usize]
     }
 
     fn var_ptr(&self, i: u32) -> Pointer {
-        self.locals[self.var_offset + i as usize].clone()
+        self.locals[self.var_offset + i as usize]
     }
 
     fn temp_ptr(&self, i: u32) -> Pointer {
-        self.locals[self.temp_offset + i as usize].clone()
+        self.locals[self.temp_offset + i as usize]
     }
 }
 
@@ -92,10 +94,10 @@ struct Interpreter<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
     mir_map: &'a MirMap<'tcx>,
     memory: memory::Memory,
-    stack: Vec<Frame>,
+    stack: Vec<Frame<'a, 'tcx>>,
 }
 
-impl<'a, 'tcx> Interpreter<'a, 'tcx> {
+impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         Interpreter {
             tcx: tcx,
@@ -105,27 +107,29 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &Mir, args: &[&mir::Operand], return_ptr: Option<Pointer>)
-        -> EvalResult<()>
-    {
+    fn push_stack_frame(&mut self, mir: &'a Mir<'tcx>, args: &[&mir::Operand<'tcx>],
+                        return_ptr: Option<Pointer>) -> EvalResult<()> {
         let num_args = mir.arg_decls.len();
         let num_vars = mir.var_decls.len();
+        let num_temps = mir.temp_decls.len();
         assert_eq!(args.len(), num_args);
 
-        let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
-        let var_tys = mir.var_decls.iter().map(|v| v.ty);
-        let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
+        let mut locals = Vec::with_capacity(num_args + num_vars + num_temps);
 
-        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
-            self.memory.allocate(Repr::from_ty(ty))
-        }).collect();
-
-        for (dest, operand) in locals[..num_args].iter().zip(args) {
-            let src = try!(self.operand_to_ptr(operand));
-            try!(self.memory.copy(&src, dest, dest.repr.size()));
+        for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
+            let repr = Repr::from_ty(arg_decl.ty);
+            let dest = self.memory.allocate(&repr);
+            let src = try!(self.operand_to_ptr(arg_operand));
+            try!(self.memory.copy(src, dest, repr.size()));
+            locals.push(dest);
         }
 
-        self.stack.push(Frame { 
+        let var_tys = mir.var_decls.iter().map(|v| v.ty);
+        let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
+        locals.extend(var_tys.chain(temp_tys).map(|ty| self.memory.allocate(&Repr::from_ty(ty))));
+
+        self.stack.push(Frame {
+            mir: mir,
             return_ptr: return_ptr,
             locals: locals,
             var_offset: num_args,
@@ -140,9 +144,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         // TODO(tsion): Deallocate local variables.
     }
 
-    fn call(&mut self, mir: &Mir, args: &[&mir::Operand], return_ptr: Option<Pointer>)
-        -> EvalResult<()>
-    {
+    fn call(&mut self, mir: &'a Mir<'tcx>, args: &[&mir::Operand<'tcx>],
+            return_ptr: Option<Pointer>) -> EvalResult<()> {
         try!(self.push_stack_frame(mir, args, return_ptr));
         let mut current_block = mir::START_BLOCK;
 
@@ -153,8 +156,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             for stmt in &block_data.statements {
                 if TRACE_EXECUTION { println!("{:?}", stmt); }
                 let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-                let ptr = try!(self.lvalue_to_ptr(lvalue));
-                try!(self.eval_rvalue_into(rvalue, &ptr));
+                try!(self.eval_assignment(lvalue, rvalue));
             }
 
             if TRACE_EXECUTION { println!("{:?}", block_data.terminator()); }
@@ -167,7 +169,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
                 If { ref cond, targets: (then_target, else_target) } => {
                     let cond_ptr = try!(self.operand_to_ptr(cond));
-                    let cond = try!(self.memory.read_bool(&cond_ptr));
+                    let cond = try!(self.memory.read_bool(cond_ptr));
                     current_block = if cond { then_target } else { else_target };
                 }
 
@@ -232,15 +234,15 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         Ok(())
     }
 
-    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue) -> EvalResult<Pointer> {
-        let frame = self.stack.last().expect("no call frames exists");
+    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
+        let frame = self.current_frame();
 
         use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
-            ReturnPointer => frame.return_ptr.clone()
-                .expect("ReturnPointer used in a function with no return value"),
-            Arg(i)  => frame.arg_ptr(i),
-            Var(i)  => frame.var_ptr(i),
+            ReturnPointer =>
+                frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
+            Arg(i) => frame.arg_ptr(i),
+            Var(i) => frame.var_ptr(i),
             Temp(i) => frame.temp_ptr(i),
             ref l => panic!("can't handle lvalue: {:?}", l),
         };
@@ -283,75 +285,79 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         // }
     }
 
-    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: &Pointer)
-            -> EvalResult<()> {
-        use rustc::mir::repr::BinOp::*;
-        match (&left.repr, &right.repr, &dest.repr) {
-            (&Repr::Int, &Repr::Int, &Repr::Int) => {
-                let l = try!(self.memory.read_int(&left));
-                let r = try!(self.memory.read_int(&right));
-                let n = match bin_op {
-                    Add    => l + r,
-                    Sub    => l - r,
-                    Mul    => l * r,
-                    Div    => l / r,
-                    Rem    => l % r,
-                    BitXor => l ^ r,
-                    BitAnd => l & r,
-                    BitOr  => l | r,
-                    Shl    => l << r,
-                    Shr    => l >> r,
-                    _      => unimplemented!(),
-                    // Eq     => Value::Bool(l == r),
-                    // Lt     => Value::Bool(l < r),
-                    // Le     => Value::Bool(l <= r),
-                    // Ne     => Value::Bool(l != r),
-                    // Ge     => Value::Bool(l >= r),
-                    // Gt     => Value::Bool(l > r),
-                };
-                self.memory.write_int(dest, n)
-            }
-            (l, r, o) =>
-                panic!("unhandled binary operation: {:?}({:?}, {:?}) into {:?}", bin_op, l, r, o),
-        }
-    }
+    // fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: Pointer)
+    //         -> EvalResult<()> {
+    //     use rustc::mir::repr::BinOp::*;
+    //     match (&left.repr, &right.repr, &dest.repr) {
+    //         (&Repr::Int, &Repr::Int, &Repr::Int) => {
+    //             let l = try!(self.memory.read_int(left));
+    //             let r = try!(self.memory.read_int(right));
+    //             let n = match bin_op {
+    //                 Add    => l + r,
+    //                 Sub    => l - r,
+    //                 Mul    => l * r,
+    //                 Div    => l / r,
+    //                 Rem    => l % r,
+    //                 BitXor => l ^ r,
+    //                 BitAnd => l & r,
+    //                 BitOr  => l | r,
+    //                 Shl    => l << r,
+    //                 Shr    => l >> r,
+    //                 _      => unimplemented!(),
+    //                 // Eq     => Value::Bool(l == r),
+    //                 // Lt     => Value::Bool(l < r),
+    //                 // Le     => Value::Bool(l <= r),
+    //                 // Ne     => Value::Bool(l != r),
+    //                 // Ge     => Value::Bool(l >= r),
+    //                 // Gt     => Value::Bool(l > r),
+    //             };
+    //             self.memory.write_int(dest, n)
+    //         }
+    //         (l, r, o) =>
+    //             panic!("unhandled binary operation: {:?}({:?}, {:?}) into {:?}", bin_op, l, r, o),
+    //     }
+    // }
 
-    fn eval_rvalue_into(&mut self, rvalue: &mir::Rvalue, dest: &Pointer) -> EvalResult<()> {
+    fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
+        -> EvalResult<()>
+    {
+        let dest = try!(self.lvalue_to_ptr(lvalue));
+        let dest_ty = self.current_frame().mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
+        let dest_repr = Repr::from_ty(dest_ty);
+
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 let src = try!(self.operand_to_ptr(operand));
-                try!(self.memory.copy(&src, dest, src.repr.size()));
+                self.memory.copy(src, dest, dest_repr.size())
             }
 
-            BinaryOp(bin_op, ref left, ref right) => {
-                let left_ptr = try!(self.operand_to_ptr(left));
-                let right_ptr = try!(self.operand_to_ptr(right));
-                try!(self.eval_binary_op(bin_op, left_ptr, right_ptr, dest));
-            }
+            // BinaryOp(bin_op, ref left, ref right) =>
+            //     self.eval_binary_op(lvalue, bin_op, left, right),
 
-            UnaryOp(un_op, ref operand) => {
-                let ptr = try!(self.operand_to_ptr(operand));
-                let m = try!(self.memory.read_int(&ptr));
-                let n = match (un_op, ptr.repr) {
-                    (mir::UnOp::Not, Repr::Int) => !m,
-                    (mir::UnOp::Neg, Repr::Int) => -m,
-                    (_, ref p) => panic!("unhandled binary operation: {:?}({:?})", un_op, p),
-                };
-                try!(self.memory.write_int(dest, n));
-            }
+            // UnaryOp(un_op, ref operand) => {
+            //     let ptr = try!(self.operand_to_ptr(operand));
+            //     let m = try!(self.memory.read_int(ptr));
+            //     let n = match (un_op, ptr.repr) {
+            //         (mir::UnOp::Not, Repr::Int) => !m,
+            //         (mir::UnOp::Neg, Repr::Int) => -m,
+            //         (_, ref p) => panic!("unhandled binary operation: {:?}({:?})", un_op, p),
+            //     };
+            //     self.memory.write_int(dest, n)
+            // }
 
             Aggregate(mir::AggregateKind::Tuple, ref operands) => {
-                match dest.repr {
+                match dest_repr {
                     Repr::Aggregate { ref fields, .. } => {
                         for (field, operand) in fields.iter().zip(operands) {
                             let src = try!(self.operand_to_ptr(operand));
-                            try!(self.memory.copy(&src, &dest.offset(field.offset), src.repr.size()));
+                            try!(self.memory.copy(src, dest.offset(field.offset),
+                                                  field.repr.size()));
                         }
+                        Ok(())
                     }
 
-                    _ => panic!("attempted to write tuple rvalue '{:?}' into non-aggregate pointer '{:?}'",
-                                rvalue, dest)
+                    _ => unimplemented!(),
                 }
             }
 
@@ -379,11 +385,9 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
             ref r => panic!("can't handle rvalue: {:?}", r),
         }
-
-        Ok(())
     }
 
-    fn operand_to_ptr(&mut self, op: &mir::Operand) -> EvalResult<Pointer> {
+    fn operand_to_ptr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) => self.lvalue_to_ptr(lvalue),
@@ -407,16 +411,16 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         match *const_val {
             Float(_f) => unimplemented!(),
             Int(n) => {
-                let ptr = self.memory.allocate(Repr::Int);
-                try!(self.memory.write_int(&ptr, n));
+                let ptr = self.memory.allocate(&Repr::Int);
+                try!(self.memory.write_int(ptr, n));
                 Ok(ptr)
             }
             Uint(_u)          => unimplemented!(),
             Str(ref _s)       => unimplemented!(),
             ByteStr(ref _bs)  => unimplemented!(),
             Bool(b) => {
-                let ptr = self.memory.allocate(Repr::Bool);
-                try!(self.memory.write_bool(&ptr, b));
+                let ptr = self.memory.allocate(&Repr::Bool);
+                try!(self.memory.write_bool(ptr, b));
                 Ok(ptr)
             },
             Struct(_node_id)  => unimplemented!(),
@@ -425,6 +429,10 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             Array(_, _)       => unimplemented!(),
             Repeat(_, _)      => unimplemented!(),
         }
+    }
+
+    fn current_frame(&self) -> &Frame<'a, 'tcx> {
+        self.stack.last().expect("no call frames exist")
     }
 }
 
@@ -438,10 +446,10 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
 
                 let mut miri = Interpreter::new(tcx, mir_map);
                 let return_ptr = match mir.return_ty {
-                    ty::FnConverging(ty) => Some(miri.memory.allocate(Repr::from_ty(ty))),
+                    ty::FnConverging(ty) => Some(miri.memory.allocate(&Repr::from_ty(ty))),
                     ty::FnDiverging => None,
                 };
-                miri.call(mir, &[], return_ptr.clone()).unwrap();
+                miri.call(mir, &[], return_ptr).unwrap();
 
                 if let Some(ret) = return_ptr {
                     println!("Returned: {:?}\n", miri.memory.get(ret.alloc_id).unwrap());

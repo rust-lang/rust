@@ -21,11 +21,10 @@ pub struct Allocation {
     // TODO(tsion): undef mask
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Pointer {
     pub alloc_id: AllocId,
     pub offset: usize,
-    pub repr: Repr,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -57,11 +56,10 @@ impl Memory {
         id
     }
 
-    pub fn allocate(&mut self, repr: Repr) -> Pointer {
+    pub fn allocate(&mut self, repr: &Repr) -> Pointer {
         Pointer {
             alloc_id: self.allocate_raw(repr.size()),
             offset: 0,
-            repr: repr,
         }
     }
 
@@ -73,19 +71,19 @@ impl Memory {
         self.alloc_map.get_mut(&id.0).ok_or(EvalError::DanglingPointerDeref)
     }
 
-    fn get_bytes(&self, ptr: &Pointer, size: usize) -> EvalResult<&[u8]> {
+    fn get_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
         let alloc = try!(self.get(ptr.alloc_id));
         try!(alloc.check_bytes(ptr.offset, ptr.offset + size));
         Ok(&alloc.bytes[ptr.offset..ptr.offset + size])
     }
 
-    fn get_bytes_mut(&mut self, ptr: &Pointer, size: usize) -> EvalResult<&mut [u8]> {
+    fn get_bytes_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
         let alloc = try!(self.get_mut(ptr.alloc_id));
         try!(alloc.check_bytes(ptr.offset, ptr.offset + size));
         Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
     }
 
-    pub fn copy(&mut self, src: &Pointer, dest: &Pointer, size: usize) -> EvalResult<()> {
+    pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
         let src_bytes = try!(self.get_bytes_mut(src, size)).as_mut_ptr();
         let dest_bytes = try!(self.get_bytes_mut(dest, size)).as_mut_ptr();
 
@@ -103,17 +101,17 @@ impl Memory {
         Ok(())
     }
 
-    pub fn read_int(&self, ptr: &Pointer) -> EvalResult<i64> {
+    pub fn read_int(&self, ptr: Pointer) -> EvalResult<i64> {
         self.get_bytes(ptr, Repr::Int.size()).map(byteorder::NativeEndian::read_i64)
     }
 
-    pub fn write_int(&mut self, ptr: &Pointer, n: i64) -> EvalResult<()> {
+    pub fn write_int(&mut self, ptr: Pointer, n: i64) -> EvalResult<()> {
         let bytes = try!(self.get_bytes_mut(ptr, Repr::Int.size()));
         byteorder::NativeEndian::write_i64(bytes, n);
         Ok(())
     }
 
-    pub fn read_bool(&self, ptr: &Pointer) -> EvalResult<bool> {
+    pub fn read_bool(&self, ptr: Pointer) -> EvalResult<bool> {
         let bytes = try!(self.get_bytes(ptr, 1));
         match bytes[0] {
             0 => Ok(false),
@@ -122,7 +120,7 @@ impl Memory {
         }
     }
 
-    pub fn write_bool(&mut self, ptr: &Pointer, b: bool) -> EvalResult<()> {
+    pub fn write_bool(&mut self, ptr: Pointer, b: bool) -> EvalResult<()> {
         let bytes = try!(self.get_bytes_mut(ptr, 1));
         bytes[0] = b as u8;
         Ok(())
@@ -140,8 +138,9 @@ impl Allocation {
 }
 
 impl Pointer {
-    pub fn offset(&self, i: usize) -> Self {
-        Pointer { offset: self.offset + i, ..self.clone() }
+    pub fn offset(self, i: usize) -> Self {
+        // TODO(tsion): Check for offset out of bounds.
+        Pointer { offset: self.offset + i, ..self }
     }
 }
 
