@@ -150,22 +150,19 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
             for stmt in &block_data.statements {
                 if TRACE_EXECUTION { println!("{:?}", stmt); }
-
-                match stmt.kind {
-                    mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                        let ptr = try!(self.lvalue_to_ptr(lvalue));
-                        try!(self.eval_rvalue_into(rvalue, &ptr));
-                    }
-                }
+                let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
+                let ptr = try!(self.lvalue_to_ptr(lvalue));
+                try!(self.eval_rvalue_into(rvalue, &ptr));
             }
 
             if TRACE_EXECUTION { println!("{:?}", block_data.terminator()); }
 
+            use rustc::mir::repr::Terminator::*;
             match *block_data.terminator() {
-                mir::Terminator::Return => break,
-                mir::Terminator::Goto { target } => block = target,
+                Return => break,
+                Goto { target } => block = target,
 
-                // mir::Terminator::Call { ref func, ref args, ref destination, .. } => {
+                // Call { ref func, ref args, ref destination, .. } => {
                 //     let ptr = destination.as_ref().map(|&(ref lv, _)| self.lvalue_to_ptr(lv));
                 //     let func_val = self.operand_to_ptr(func);
 
@@ -193,7 +190,8 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 //     }
                 // }
 
-                // mir::Terminator::If { ref cond, targets: (then_target, else_target) } => {
+                // If { ref cond, targets: (then_target, else_target) } => {
+                //     let cond_ptr = try!(self.operand_to_ptr(cond));
                 //     match self.operand_to_ptr(cond) {
                 //         Value::Bool(true) => block = then_target,
                 //         Value::Bool(false) => block = else_target,
@@ -201,7 +199,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 //     }
                 // }
 
-                // mir::Terminator::SwitchInt { ref discr, ref values, ref targets, .. } => {
+                // SwitchInt { ref discr, ref values, ref targets, .. } => {
                 //     let discr_val = self.read_lvalue(discr);
 
                 //     let index = values.iter().position(|v| discr_val == self.const_to_ptr(v))
@@ -210,7 +208,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 //     block = targets[index];
                 // }
 
-                // mir::Terminator::Switch { ref discr, ref targets, .. } => {
+                // Switch { ref discr, ref targets, .. } => {
                 //     let discr_val = self.read_lvalue(discr);
 
                 //     if let Value::Adt { variant, .. } = discr_val {
@@ -220,12 +218,12 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 //     }
                 // }
 
-                mir::Terminator::Drop { target, .. } => {
+                Drop { target, .. } => {
                     // TODO: Handle destructors and dynamic drop.
                     block = target;
                 }
 
-                mir::Terminator::Resume => unimplemented!(),
+                Resume => unimplemented!(),
                 _ => unimplemented!(),
             }
         }
@@ -237,12 +235,13 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue) -> EvalResult<Pointer> {
         let frame = self.stack.last().expect("no call frames exists");
 
+        use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
-            mir::Lvalue::ReturnPointer => frame.return_ptr.clone()
+            ReturnPointer => frame.return_ptr.clone()
                 .expect("ReturnPointer used in a function with no return value"),
-            mir::Lvalue::Arg(i)  => frame.arg_ptr(i),
-            mir::Lvalue::Var(i)  => frame.var_ptr(i),
-            mir::Lvalue::Temp(i) => frame.temp_ptr(i),
+            Arg(i)  => frame.arg_ptr(i),
+            Var(i)  => frame.var_ptr(i),
+            Temp(i) => frame.temp_ptr(i),
             ref l => panic!("can't handle lvalue: {:?}", l),
         };
 
@@ -286,28 +285,29 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
     fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: &Pointer)
             -> EvalResult<()> {
+        use rustc::mir::repr::BinOp::*;
         match (&left.repr, &right.repr, &dest.repr) {
             (&Repr::Int, &Repr::Int, &Repr::Int) => {
                 let l = try!(self.memory.read_int(&left));
                 let r = try!(self.memory.read_int(&right));
                 let n = match bin_op {
-                    mir::BinOp::Add    => l + r,
-                    mir::BinOp::Sub    => l - r,
-                    mir::BinOp::Mul    => l * r,
-                    mir::BinOp::Div    => l / r,
-                    mir::BinOp::Rem    => l % r,
-                    mir::BinOp::BitXor => l ^ r,
-                    mir::BinOp::BitAnd => l & r,
-                    mir::BinOp::BitOr  => l | r,
-                    mir::BinOp::Shl    => l << r,
-                    mir::BinOp::Shr    => l >> r,
-                    _                  => unimplemented!(),
-                    // mir::BinOp::Eq     => Value::Bool(l == r),
-                    // mir::BinOp::Lt     => Value::Bool(l < r),
-                    // mir::BinOp::Le     => Value::Bool(l <= r),
-                    // mir::BinOp::Ne     => Value::Bool(l != r),
-                    // mir::BinOp::Ge     => Value::Bool(l >= r),
-                    // mir::BinOp::Gt     => Value::Bool(l > r),
+                    Add    => l + r,
+                    Sub    => l - r,
+                    Mul    => l * r,
+                    Div    => l / r,
+                    Rem    => l % r,
+                    BitXor => l ^ r,
+                    BitAnd => l & r,
+                    BitOr  => l | r,
+                    Shl    => l << r,
+                    Shr    => l >> r,
+                    _      => unimplemented!(),
+                    // Eq     => Value::Bool(l == r),
+                    // Lt     => Value::Bool(l < r),
+                    // Le     => Value::Bool(l <= r),
+                    // Ne     => Value::Bool(l != r),
+                    // Ge     => Value::Bool(l >= r),
+                    // Gt     => Value::Bool(l > r),
                 };
                 self.memory.write_int(dest, n)
             }
@@ -317,19 +317,20 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     }
 
     fn eval_rvalue_into(&mut self, rvalue: &mir::Rvalue, dest: &Pointer) -> EvalResult<()> {
+        use rustc::mir::repr::Rvalue::*;
         match *rvalue {
-            mir::Rvalue::Use(ref operand) => {
+            Use(ref operand) => {
                 let src = try!(self.operand_to_ptr(operand));
                 try!(self.memory.copy(&src, dest, src.repr.size()));
             }
 
-            mir::Rvalue::BinaryOp(bin_op, ref left, ref right) => {
+            BinaryOp(bin_op, ref left, ref right) => {
                 let left_ptr = try!(self.operand_to_ptr(left));
                 let right_ptr = try!(self.operand_to_ptr(right));
                 try!(self.eval_binary_op(bin_op, left_ptr, right_ptr, dest));
             }
 
-            mir::Rvalue::UnaryOp(un_op, ref operand) => {
+            UnaryOp(un_op, ref operand) => {
                 let ptr = try!(self.operand_to_ptr(operand));
                 let m = try!(self.memory.read_int(&ptr));
                 let n = match (un_op, ptr.repr) {
@@ -340,7 +341,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 try!(self.memory.write_int(dest, n));
             }
 
-            mir::Rvalue::Aggregate(mir::AggregateKind::Tuple, ref operands) => {
+            Aggregate(mir::AggregateKind::Tuple, ref operands) => {
                 match dest.repr {
                     Repr::Aggregate { ref fields, .. } => {
                         for (field, operand) in fields.iter().zip(operands) {
@@ -354,11 +355,11 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 }
             }
 
-            // mir::Rvalue::Ref(_region, _kind, ref lvalue) => {
+            // Ref(_region, _kind, ref lvalue) => {
             //     Value::Pointer(self.lvalue_to_ptr(lvalue))
             // }
 
-            // mir::Rvalue::Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, _substs),
+            // Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, _substs),
             //                        ref operands) => {
             //     let max_fields = adt_def.variants
             //         .iter()
@@ -383,14 +384,16 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     }
 
     fn operand_to_ptr(&mut self, op: &mir::Operand) -> EvalResult<Pointer> {
+        use rustc::mir::repr::Operand::*;
         match *op {
-            mir::Operand::Consume(ref lvalue) => self.lvalue_to_ptr(lvalue),
+            Consume(ref lvalue) => self.lvalue_to_ptr(lvalue),
 
-            mir::Operand::Constant(ref constant) => {
+            Constant(ref constant) => {
+                use rustc::mir::repr::Literal::*;
                 match constant.literal {
-                    mir::Literal::Value { ref value } => self.const_to_ptr(value),
+                    Value { ref value } => self.const_to_ptr(value),
 
-                    mir::Literal::Item { def_id, kind, .. } => match kind {
+                    Item { def_id, kind, .. } => match kind {
                         // mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
                         _ => panic!("can't handle item literal: {:?}", constant.literal),
                     },
@@ -400,22 +403,23 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     }
 
     fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {
+        use rustc::middle::const_eval::ConstVal::*;
         match *const_val {
-            const_eval::ConstVal::Float(_f)         => unimplemented!(),
-            const_eval::ConstVal::Int(n) => {
+            Float(_f)         => unimplemented!(),
+            Int(n) => {
                 let ptr = self.memory.allocate(Repr::Int);
                 try!(self.memory.write_int(&ptr, n));
                 Ok(ptr)
             }
-            const_eval::ConstVal::Uint(_u)          => unimplemented!(),
-            const_eval::ConstVal::Str(ref _s)       => unimplemented!(),
-            const_eval::ConstVal::ByteStr(ref _bs)  => unimplemented!(),
-            const_eval::ConstVal::Bool(b)           => unimplemented!(),
-            const_eval::ConstVal::Struct(_node_id)  => unimplemented!(),
-            const_eval::ConstVal::Tuple(_node_id)   => unimplemented!(),
-            const_eval::ConstVal::Function(_def_id) => unimplemented!(),
-            const_eval::ConstVal::Array(_, _)       => unimplemented!(),
-            const_eval::ConstVal::Repeat(_, _)      => unimplemented!(),
+            Uint(_u)          => unimplemented!(),
+            Str(ref _s)       => unimplemented!(),
+            ByteStr(ref _bs)  => unimplemented!(),
+            Bool(b)           => unimplemented!(),
+            Struct(_node_id)  => unimplemented!(),
+            Tuple(_node_id)   => unimplemented!(),
+            Function(_def_id) => unimplemented!(),
+            Array(_, _)       => unimplemented!(),
+            Repeat(_, _)      => unimplemented!(),
         }
     }
 }
