@@ -236,10 +236,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Ok(())
     }
 
-    fn eval_binary_op(
-        &mut self, bin_op: mir::BinOp, left_operand: &mir::Operand<'tcx>,
-        right_operand: &mir::Operand<'tcx>, dest: Pointer
-    ) -> EvalResult<()> {
+    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left_operand: &mir::Operand<'tcx>,
+                      right_operand: &mir::Operand<'tcx>, dest: Pointer) -> EvalResult<()>
+    {
         // FIXME(tsion): Check for non-integer binary operations.
         let left = try!(self.operand_to_ptr(left_operand));
         let right = try!(self.operand_to_ptr(right_operand));
