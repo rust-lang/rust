@@ -20,7 +20,7 @@ use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
             DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
 use string::{StringFormat, rewrite_string};
-use utils::{span_after, span_before, extra_offset, last_line_width, wrap_str, binary_search,
+use utils::{CodeMapSpanUtils, extra_offset, last_line_width, wrap_str, binary_search,
             first_line_width, semicolon_for_stmt};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle};
@@ -39,7 +39,7 @@ impl Rewrite for ast::Expr {
         let result = match self.node {
             ast::Expr_::ExprVec(ref expr_vec) => {
                 rewrite_array(expr_vec.iter().map(|e| &**e),
-                              mk_sp(span_after(self.span, "[", context.codemap), self.span.hi),
+                              mk_sp(context.codemap.span_after(self.span, "["), self.span.hi),
                               context,
                               width,
                               offset)
@@ -332,7 +332,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
                                  |arg| span_lo_for_arg(arg),
                                  |arg| span_hi_for_arg(arg),
                                  |arg| arg.rewrite(context, budget, argument_offset),
-                                 span_after(span, "|", context.codemap),
+                                 context.codemap.span_after(span, "|"),
                                  body.span.lo);
     let item_vec = arg_items.collect::<Vec<_>>();
     let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, horizontal_budget);
@@ -660,9 +660,9 @@ fn rewrite_if_else(context: &RewriteContext,
 
     let if_block_string = try_opt!(if_block.rewrite(context, width, offset));
 
-    let between_if_cond = mk_sp(span_after(span, "if", context.codemap),
+    let between_if_cond = mk_sp(context.codemap.span_after(span, "if"),
                                 pat.map_or(cond.span.lo,
-                                           |_| span_before(span, "let", context.codemap)));
+                                           |_| context.codemap.span_before(span, "let")));
 
     let between_if_cond_comment = extract_comment(between_if_cond, &context, offset, width);
 
@@ -707,17 +707,17 @@ fn rewrite_if_else(context: &RewriteContext,
         };
 
         let between_if_else_block = mk_sp(if_block.span.hi,
-                                          span_before(mk_sp(if_block.span.hi, else_block.span.lo),
-                                                      "else",
-                                                      context.codemap));
+                                          context.codemap.span_before(mk_sp(if_block.span.hi,
+                                                                            else_block.span.lo),
+                                                                      "else"));
         let between_if_else_block_comment = extract_comment(between_if_else_block,
                                                             &context,
                                                             offset,
                                                             width);
 
-        let after_else = mk_sp(span_after(mk_sp(if_block.span.hi, else_block.span.lo),
-                                          "else",
-                                          context.codemap),
+        let after_else = mk_sp(context.codemap
+                                      .span_after(mk_sp(if_block.span.hi, else_block.span.lo),
+                                                  "else"),
                                else_block.span.lo);
         let after_else_comment = extract_comment(after_else, &context, offset, width);
 
@@ -863,9 +863,8 @@ fn rewrite_match(context: &RewriteContext,
     let arm_indent = nested_context.block_indent;
     let arm_indent_str = arm_indent.to_string(context.config);
 
-    let open_brace_pos = span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])),
-                                    "{",
-                                    context.codemap);
+    let open_brace_pos = context.codemap
+                                .span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])), "{");
 
     for (i, arm) in arms.iter().enumerate() {
         // Make sure we get the stuff between arms.
@@ -1275,7 +1274,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         None => return Err(Ordering::Greater),
     };
 
-    let span_lo = span_after(span, "(", context.codemap);
+    let span_lo = context.codemap.span_after(span, "(");
     let span = mk_sp(span_lo, span.hi);
 
     let extra_offset = extra_offset(&callee_str, offset);
@@ -1461,7 +1460,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                      }
                                  }
                              },
-                             span_after(span, "{", context.codemap),
+                             context.codemap.span_after(span, "{"),
                              span.hi);
     let item_vec = items.collect::<Vec<_>>();
 
@@ -1569,7 +1568,7 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
         return items.next().unwrap().rewrite(context, budget, indent).map(|s| format!("({},)", s));
     }
 
-    let list_lo = span_after(span, "(", context.codemap);
+    let list_lo = context.codemap.span_after(span, "(");
     let items = itemize_list(context.codemap,
                              items,
                              ")",

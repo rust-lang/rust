@@ -19,7 +19,7 @@ use syntax::abi;
 use {Indent, Spanned};
 use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{extra_offset, span_after, format_mutability, wrap_str};
+use utils::{CodeMapSpanUtils, extra_offset, format_mutability, wrap_str};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use config::TypeDensity;
 
@@ -183,7 +183,7 @@ fn rewrite_segment(expr_context: bool,
                                  .collect::<Vec<_>>();
 
             let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
-            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "<", context.codemap);
+            let list_lo = context.codemap.span_after(codemap::mk_sp(*span_lo, span_hi), "<");
             let separator = if expr_context {
                 "::"
             } else {
@@ -246,7 +246,7 @@ fn format_function_type<'a, I>(inputs: I,
     let budget = try_opt!(width.checked_sub(2));
     // 1 for (
     let offset = offset + 1;
-    let list_lo = span_after(span, "(", context.codemap);
+    let list_lo = context.codemap.span_after(span, "(");
     let items = itemize_list(context.codemap,
                              inputs,
                              ")",
