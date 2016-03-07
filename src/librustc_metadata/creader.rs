@@ -267,6 +267,11 @@ impl<'a> CrateReader<'a> {
                             .as_ref().map(|s| &**s)
                             .unwrap_or("an old version of rustc")
             );
+
+            span_help!(self.sess, span,
+                       "consider removing the compiled binaries and recompiling \
+                        with your current version of rustc");
+            self.sess.abort_if_errors();
         }
     }
 
