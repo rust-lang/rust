@@ -1,4 +1,4 @@
-#![feature(plugin)]
+#![feature(plugin, inclusive_range_syntax)]
 #![plugin(clippy)]
 
 #![allow(dead_code, no_effect)]
@@ -10,14 +10,44 @@
 fn bar<T>(_: T) {}
 fn foo() -> bool { unimplemented!() }
 
+struct Foo {
+    bar: u8,
+}
+
 #[deny(if_same_then_else)]
 #[deny(match_same_arms)]
 fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
+        Foo { bar: 42 };
+        0..10;
+        ..;
+        0..;
+        ..10;
+        0...10;
         foo();
     }
     else { //~ERROR this `if` has identical blocks
+        Foo { bar: 42 };
+        0..10;
+        ..;
+        0..;
+        ..10;
+        0...10;
         foo();
+    }
+
+    if true {
+        Foo { bar: 42 };
+    }
+    else {
+        Foo { bar: 43 };
+    }
+
+    if true {
+        0..10;
+    }
+    else {
+        0...10;
     }
 
     if true {

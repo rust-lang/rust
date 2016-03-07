@@ -1,4 +1,4 @@
-#![feature(plugin, box_syntax)]
+#![feature(plugin, box_syntax, inclusive_range_syntax)]
 #![plugin(clippy)]
 
 #![deny(no_effect)]
@@ -39,6 +39,7 @@ fn main() {
     5..; //~ERROR statement with no effect
     ..5; //~ERROR statement with no effect
     5..6; //~ERROR statement with no effect
+    5...6; //~ERROR statement with no effect
     [42, 55]; //~ERROR statement with no effect
     [42, 55][1]; //~ERROR statement with no effect
     (42, 55).1; //~ERROR statement with no effect

@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use syntax::ast::{self, LitKind};
+use syntax::ast::{self, LitKind, RangeLimits};
 use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
@@ -40,6 +40,12 @@ pub const LL_PATH: [&'static str; 3] = ["collections", "linked_list", "LinkedLis
 pub const MUTEX_PATH: [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
 pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
+pub const RANGE_FROM_PATH: [&'static str; 3] = ["std", "ops", "RangeFrom"];
+pub const RANGE_FULL_PATH: [&'static str; 3] = ["std", "ops", "RangeFull"];
+pub const RANGE_INCLUSIVE_NON_EMPTY_PATH: [&'static str; 4] = ["std", "ops", "RangeInclusive", "NonEmpty"];
+pub const RANGE_PATH: [&'static str; 3] = ["std", "ops", "Range"];
+pub const RANGE_TO_INCLUSIVE_PATH: [&'static str; 3] = ["std", "ops", "RangeToInclusive"];
+pub const RANGE_TO_PATH: [&'static str; 3] = ["std", "ops", "RangeTo"];
 pub const REGEX_NEW_PATH: [&'static str; 3] = ["regex", "Regex", "new"];
 pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
@@ -672,4 +678,56 @@ pub fn camel_case_from(s: &str) -> usize {
         }
     }
     last_i
+}
+
+/// Represents a range akin to `ast::ExprKind::Range`.
+pub struct UnsugaredRange<'a> {
+    pub start: Option<&'a Expr>,
+    pub end: Option<&'a Expr>,
+    pub limits: RangeLimits,
+}
+
+/// Unsugar a `hir` range.
+pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
+    // To be removed when ranges get stable.
+    fn unwrap_unstable(expr: &Expr) -> &Expr {
+        if let ExprBlock(ref block) = expr.node {
+            if block.rules == BlockCheckMode::PushUnstableBlock || block.rules == BlockCheckMode::PopUnstableBlock {
+                if let Some(ref expr) = block.expr {
+                    return expr;
+                }
+            }
+        }
+
+        expr
+    }
+
+    fn get_field<'a>(name: &str, fields: &'a [Field]) -> Option<&'a Expr> {
+        let expr = &fields.iter()
+                          .find(|field| field.name.node.as_str() == name)
+                          .unwrap_or_else(|| panic!("missing {} field for range", name))
+                          .expr;
+
+        Some(unwrap_unstable(expr))
+    }
+
+    if let ExprStruct(ref path, ref fields, None) = unwrap_unstable(&expr).node {
+        if match_path(path, &RANGE_FROM_PATH) {
+            Some(UnsugaredRange { start: get_field("start", fields), end: None, limits: RangeLimits::HalfOpen })
+        } else if match_path(path, &RANGE_FULL_PATH) {
+            Some(UnsugaredRange { start: None, end: None, limits: RangeLimits::HalfOpen })
+        } else if match_path(path, &RANGE_INCLUSIVE_NON_EMPTY_PATH) {
+            Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::Closed })
+        } else if match_path(path, &RANGE_PATH) {
+            Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::HalfOpen })
+        } else if match_path(path, &RANGE_TO_INCLUSIVE_PATH) {
+            Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::Closed })
+        } else if match_path(path, &RANGE_TO_PATH) {
+            Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::HalfOpen })
+        } else {
+            None
+        }
+    } else {
+        None
+    }
 }

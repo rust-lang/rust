@@ -109,9 +109,6 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 !self.ignore_fn && lname.node == rname.node && ltys.is_empty() && rtys.is_empty() &&
                 self.eq_exprs(largs, rargs)
             }
-            (&ExprRange(ref lb, ref le), &ExprRange(ref rb, ref re)) => {
-                both(lb, rb, |l, r| self.eq_expr(l, r)) && both(le, re, |l, r| self.eq_expr(l, r))
-            }
             (&ExprRepeat(ref le, ref ll), &ExprRepeat(ref re, ref rl)) => self.eq_expr(le, re) && self.eq_expr(ll, rl),
             (&ExprRet(ref l), &ExprRet(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprPath(ref lqself, ref lsubpath), &ExprPath(ref rqself, ref rsubpath)) => {
@@ -383,16 +380,6 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 c.hash(&mut self.s);
                 self.hash_name(&name.node);
                 self.hash_exprs(args);
-            }
-            ExprRange(ref b, ref e) => {
-                let c: fn(_, _) -> _ = ExprRange;
-                c.hash(&mut self.s);
-                if let Some(ref b) = *b {
-                    self.hash_expr(b);
-                }
-                if let Some(ref e) = *e {
-                    self.hash_expr(e);
-                }
             }
             ExprRepeat(ref e, ref l) => {
                 let c: fn(_, _) -> _ = ExprRepeat;
