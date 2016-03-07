@@ -445,8 +445,8 @@ Some functionality is notably absent from this proposal:
 * No support for `SOCK_SEQPACKET` sockets is proposed, as it has not yet been
   implemented. Since it is connection oriented, there will be a socket type
   `UnixSeqPacket` and a listener type `UnixSeqListener`. The naming of the
-  listener is a bit unfortunate, but use `SOCK_SEQPACKET` is rare compared to
-  `SOCK_STREAM` so naming priority can go to that version.
+  listener is a bit unfortunate, but use of `SOCK_SEQPACKET` is rare compared
+  to `SOCK_STREAM` so naming priority can go to that version.
 * Unix sockets support file descriptor and credential transfer, but these will
   not initially be supported as the `sendmsg`/`recvmsg` interface is complex
   and bindings will need some time to prototype.
