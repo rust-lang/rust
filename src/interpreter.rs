@@ -1,21 +1,11 @@
-// TODO(tsion): Remove this.
-#![allow(unused_imports, dead_code, unused_variables)]
-
-use byteorder::{self, ByteOrder};
 use rustc::middle::const_eval;
-use rustc::middle::cstore::CrateStore;
-use rustc::middle::def_id;
 use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::mir_map::MirMap;
-use rustc::mir::repr::{self as mir, Mir};
-use std::collections::HashMap;
+use rustc::mir::repr as mir;
 use std::error::Error;
 use std::fmt;
-use std::iter;
-use syntax::ast::Attribute;
-use syntax::attr::AttrMetaMethods;
 
-use memory::{self, Pointer, Repr, Allocation};
+use memory::{Memory, Pointer, Repr};
 
 const TRACE_EXECUTION: bool = true;
 
@@ -59,7 +49,7 @@ impl fmt::Display for EvalError {
 /// A stack frame.
 struct Frame<'a, 'tcx: 'a> {
     /// The MIR for the fucntion called on this frame.
-    mir: &'a Mir<'tcx>,
+    mir: &'a mir::Mir<'tcx>,
 
     /// A pointer for writing the return value of the current call, if it's not a diverging call.
     return_ptr: Option<Pointer>,
@@ -93,7 +83,7 @@ impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
 struct Interpreter<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
     mir_map: &'a MirMap<'tcx>,
-    memory: memory::Memory,
+    memory: Memory,
     stack: Vec<Frame<'a, 'tcx>>,
 }
 
@@ -102,12 +92,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
-            memory: memory::Memory::new(),
+            memory: Memory::new(),
             stack: Vec::new(),
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &'a Mir<'tcx>, args: &[&mir::Operand<'tcx>],
+    fn push_stack_frame(&mut self, mir: &'a mir::Mir<'tcx>, args: &[&mir::Operand<'tcx>],
                         return_ptr: Option<Pointer>) -> EvalResult<()> {
         let num_args = mir.arg_decls.len();
         let num_vars = mir.var_decls.len();
@@ -146,7 +136,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         // TODO(tsion): Deallocate local variables.
     }
 
-    fn call(&mut self, mir: &'a Mir<'tcx>, args: &[&mir::Operand<'tcx>],
+    fn call(&mut self, mir: &'a mir::Mir<'tcx>, args: &[&mir::Operand<'tcx>],
             return_ptr: Option<Pointer>) -> EvalResult<()> {
         try!(self.push_stack_frame(mir, args, return_ptr));
         let mut current_block = mir::START_BLOCK;
@@ -194,6 +184,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }
 
                 // Call { ref func, ref args, ref destination, .. } => {
+                //     use rustc::middle::cstore::CrateStore;
                 //     let ptr = destination.as_ref().map(|&(ref lv, _)| self.lvalue_to_ptr(lv));
                 //     let func_val = self.operand_to_ptr(func);
 
@@ -357,7 +348,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 match constant.literal {
                     Value { ref value } => self.const_to_ptr(value),
 
-                    Item { def_id, kind, .. } => match kind {
+                    Item { kind, .. } => match kind {
                         // mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
                         _ => panic!("can't handle item literal: {:?}", constant.literal),
                     },
@@ -450,6 +441,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
     for (&id, mir) in &mir_map.map {
         for attr in tcx.map.attrs(id) {
+            use syntax::attr::AttrMetaMethods;
             if attr.check_name("miri_run") {
                 let item = tcx.map.expect_item(id);
 
@@ -468,24 +460,4 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
             }
         }
     }
-}
-
-fn check_expected(actual: &str, attr: &Attribute) -> bool {
-    if let Some(meta_items) = attr.meta_item_list() {
-        for meta_item in meta_items {
-            if meta_item.check_name("expected") {
-                let expected = meta_item.value_str().unwrap();
-
-                if actual == &expected[..] {
-                    println!("Test passed!\n");
-                } else {
-                    println!("Actual value:\t{}\nExpected value:\t{}\n", actual, expected);
-                }
-
-                return true;
-            }
-        }
-    }
-
-    false
 }
