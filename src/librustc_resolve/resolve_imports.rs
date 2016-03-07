@@ -124,8 +124,9 @@ impl ImportDirective {
 #[derive(Clone, Default)]
 /// Records information about the resolution of a name in a module.
 pub struct NameResolution<'a> {
-    /// The number of unresolved single imports that could define the name.
+    /// The number of unresolved single imports of any visibility that could define the name.
     outstanding_references: u32,
+    /// The number of unresolved `pub` single imports that could define the name.
     pub_outstanding_references: u32,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
