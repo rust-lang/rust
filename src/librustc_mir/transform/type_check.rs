@@ -14,16 +14,15 @@
 use rustc::dep_graph::DepNode;
 use rustc::middle::infer::{self, InferCtxt};
 use rustc::middle::traits;
-use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::middle::ty::fold::TypeFoldable;
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
-use rustc::mir::mir_map::MirMap;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::{MirMapPass, Pass};
+use rustc::mir::transform::{MirPass, Pass};
 use rustc::mir::visit::{self, Visitor};
-
-use syntax::codemap::{Span, DUMMY_SP};
 use std::fmt;
+use syntax::ast::NodeId;
+use syntax::codemap::{Span, DUMMY_SP};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -574,29 +573,27 @@ impl TypeckMir {
     }
 }
 
-impl<'tcx> MirMapPass<'tcx> for TypeckMir {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, map: &mut MirMap<'tcx>) {
+impl<'tcx> MirPass<'tcx> for TypeckMir {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, id: NodeId, mir: &mut Mir<'tcx>) {
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-        for (&id, mir) in &mut map.map {
-            let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(id));
-            let param_env = ty::ParameterEnvironment::for_item(tcx, id);
-            let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
-            let mut checker = TypeChecker::new(&infcx);
-            {
-                let mut verifier = TypeVerifier::new(&mut checker, mir);
-                verifier.visit_mir(mir);
-                if verifier.errors_reported {
-                    // don't do further checks to avoid ICEs
-                    continue;
-                }
+        let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(id));
+        let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+        let mut checker = TypeChecker::new(&infcx);
+        {
+            let mut verifier = TypeVerifier::new(&mut checker, mir);
+            verifier.visit_mir(mir);
+            if verifier.errors_reported {
+                // don't do further checks to avoid ICEs
+                return;
             }
-            checker.typeck_mir(mir);
-            checker.verify_obligations(mir);
         }
+        checker.typeck_mir(mir);
+        checker.verify_obligations(mir);
     }
 }
 

@@ -12,6 +12,7 @@ use rustc::middle::const_eval::ConstVal;
 use rustc::middle::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, Pass};
+use syntax::ast::NodeId;
 
 use super::remove_dead_blocks::RemoveDeadBlocks;
 
@@ -101,12 +102,12 @@ impl SimplifyCfg {
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, mir: &mut Mir<'tcx>) {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, id: NodeId, mir: &mut Mir<'tcx>) {
         let mut changed = true;
         while changed {
             changed = self.simplify_branches(mir);
             changed |= self.remove_goto_chains(mir);
-            RemoveDeadBlocks.run_pass(tcx, mir);
+            RemoveDeadBlocks.run_pass(tcx, id, mir);
         }
         // FIXME: Should probably be moved into some kind of pass manager
         mir.basic_blocks.shrink_to_fit();

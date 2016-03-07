@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::DepNode;
 use mir::mir_map::MirMap;
 use mir::repr::Mir;
 use middle::ty::TyCtxt;
+use syntax::ast::NodeId;
 
 /// Various information about pass.
 pub trait Pass {
@@ -26,13 +26,13 @@ pub trait MirMapPass<'tcx>: Pass {
 
 /// A pass which inspects Mir of functions in isolation.
 pub trait MirPass<'tcx>: Pass {
-    fn run_pass(&mut self, cx: &TyCtxt<'tcx>, mir: &mut Mir<'tcx>);
+    fn run_pass(&mut self, cx: &TyCtxt<'tcx>, id: NodeId, mir: &mut Mir<'tcx>);
 }
 
 impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
     fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, map: &mut MirMap<'tcx>) {
-        for (_, mir) in &mut map.map {
-            MirPass::run_pass(self, tcx, mir);
+        for (&id, mir) in &mut map.map {
+            MirPass::run_pass(self, tcx, id, mir);
         }
     }
 }
