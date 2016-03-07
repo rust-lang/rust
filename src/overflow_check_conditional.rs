@@ -37,5 +37,20 @@ impl LateLintPass for OverflowCheckConditional {
         ], {
             span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span, "You are trying to use classic C overflow conditons that will fail in Rust.");
         }}
+
+        if_let_chain! {[
+        let Expr_::ExprBinary(ref op, ref first, ref second) = expr.node,
+        let BinOp_::BiGt = op.node,
+        let Expr_::ExprBinary(ref op2, ref sub1, ref sub2) = first.node,
+        let BinOp_::BiSub = op2.node,
+        let Expr_::ExprPath(_,ref path1) = sub1.node,
+        let Expr_::ExprPath(_, ref path2) = sub2.node,
+        let Expr_::ExprPath(_, ref path3) = second.node,
+        (&path1.segments[0]).identifier == (&path3.segments[0]).identifier || (&path2.segments[0]).identifier == (&path3.segments[0]).identifier,
+        cx.tcx.expr_ty(sub1).is_integral(),
+        cx.tcx.expr_ty(sub2).is_integral()
+        ], {
+            span_lint(cx, OVERFLOW_CHECK_CONDITIONAL, expr.span, "You are trying to use classic C underflow conditons that will fail in Rust.");
+        }}
     }
 }
