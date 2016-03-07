@@ -985,6 +985,34 @@ mod tests {
     }
 
     #[test]
+    fn test_line_buffer_fail_flush() {
+        // Issue #32085
+        struct FailFlushWriter<'a>(&'a mut Vec<u8>);
+
+        impl<'a> Write for FailFlushWriter<'a> {
+            fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+                self.0.extend_from_slice(buf);
+                Ok(buf.len())
+            }
+            fn flush(&mut self) -> io::Result<()> {
+                Err(io::Error::new(io::ErrorKind::Other, "flush failed"))
+            }
+        }
+
+        let mut buf = Vec::new();
+        {
+            let mut writer = LineWriter::new(FailFlushWriter(&mut buf));
+            let to_write = b"abc\ndef";
+            if let Ok(written) = writer.write(to_write) {
+                assert!(written < to_write.len(), "didn't flush on new line");
+                // PASS
+                return;
+            }
+        }
+        assert!(buf.is_empty(), "write returned an error but wrote data");
+    }
+
+    #[test]
     fn test_line_buffer() {
         let mut writer = LineWriter::new(Vec::new());
         writer.write(&[0]).unwrap();
