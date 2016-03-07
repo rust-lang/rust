@@ -117,6 +117,11 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprPath(ref lqself, ref lsubpath), &ExprPath(ref rqself, ref rsubpath)) => {
                 both(lqself, rqself, |l, r| self.eq_qself(l, r)) && self.eq_path(lsubpath, rsubpath)
             }
+            (&ExprStruct(ref lpath, ref lf, ref lo), &ExprStruct(ref rpath, ref rf, ref ro)) => {
+                self.eq_path(lpath, rpath) &&
+                    both(lo, ro, |l, r| self.eq_expr(l, r)) &&
+                    over(lf, rf, |l, r| self.eq_field(l, r))
+            }
             (&ExprTup(ref ltup), &ExprTup(ref rtup)) => self.eq_exprs(ltup, rtup),
             (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => li.node == ri.node && self.eq_expr(le, re),
             (&ExprUnary(lop, ref le), &ExprUnary(rop, ref re)) => lop == rop && self.eq_expr(le, re),
@@ -130,6 +135,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
     fn eq_exprs(&self, left: &[P<Expr>], right: &[P<Expr>]) -> bool {
         over(left, right, |l, r| self.eq_expr(l, r))
+    }
+
+    fn eq_field(&self, left: &Field, right: &Field) -> bool {
+        left.name.node == right.name.node && self.eq_expr(&left.expr, &right.expr)
     }
 
     /// Check whether two patterns are the same.
