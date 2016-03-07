@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Composable external iteration
+//! Composable external iteration.
 //!
 //! If you've found yourself with a collection of some kind, and needed to
 //! perform an operation on the elements of said collection, you'll quickly run

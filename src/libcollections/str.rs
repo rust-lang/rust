@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode string slices
+//! Unicode string slices.
 //!
 //! *[See also the `str` primitive type](../primitive.str.html).*
 
