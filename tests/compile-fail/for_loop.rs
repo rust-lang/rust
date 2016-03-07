@@ -3,6 +3,9 @@
 
 use std::collections::*;
 
+static STATIC: [usize; 4] = [ 0,  1,  8, 16 ];
+const CONST: [usize; 4] = [ 0,  1,  8, 16 ];
+
 #[deny(clippy)]
 fn for_loop_over_option_and_result() {
     let option = Some(1);
@@ -95,6 +98,18 @@ fn main() {
         //~^ ERROR `i` is only used to index `vec`. Consider using `for item in &vec`
         println!("{}", vec[i]);
     }
+
+    // ICE #746
+    for j in 0..4 {
+        //~^ ERROR `j` is only used to index `STATIC`
+        println!("{:?}", STATIC[j]);
+    }
+
+    for j in 0..4 {
+        //~^ ERROR `j` is only used to index `CONST`
+        println!("{:?}", CONST[j]);
+    }
+
     for i in 0..vec.len() {
         //~^ ERROR `i` is used to index `vec`. Consider using `for (i, item) in vec.iter().enumerate()`
         println!("{} {}", vec[i], i);
