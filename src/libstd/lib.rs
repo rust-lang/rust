@@ -230,6 +230,7 @@
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(fnbox)]
+#![feature(fn_traits)]
 #![feature(heap_api)]
 #![feature(hashmap_hasher)]
 #![feature(inclusive_range)]
