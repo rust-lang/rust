@@ -70,18 +70,18 @@ fn if_true() -> i32 {
 //     increment(1)
 // }
 
-// // #[miri_run(expected = "Int(3628800)")]
-// // fn factorial_loop() -> i32 {
-// //     let mut product = 1;
-// //     let mut i = 1;
+// #[miri_run(expected = "Int(3628800)")]
+// fn factorial_loop() -> i32 {
+//     let mut product = 1;
+//     let mut i = 1;
 
-// //     while i <= 10 {
-// //         product *= i;
-// //         i += 1;
-// //     }
+//     while i <= 10 {
+//         product *= i;
+//         i += 1;
+//     }
 
-// //     product
-// // }
+//     product
+// }
 
 // #[miri_run(expected = "Int(3628800)")]
 // fn factorial_recursive() -> i32 {
@@ -96,7 +96,7 @@ fn if_true() -> i32 {
 //     fact(10)
 // }
 
-// #[miri_run(expected = "Int(1)")]
+// #[miri_run]
 // fn match_bool() -> i32 {
 //     let b = true;
 //     match b {
@@ -105,17 +105,17 @@ fn if_true() -> i32 {
 //     }
 // }
 
-// #[miri_run(expected = "Int(20)")]
-// fn match_int() -> i32 {
-//     let n = 2;
-//     match n {
-//         0 => 0,
-//         1 => 10,
-//         2 => 20,
-//         3 => 30,
-//         _ => 100,
-//     }
-// }
+#[miri_run]
+fn match_int() -> i32 {
+    let n = 2;
+    match n {
+        0 => 0,
+        1 => 10,
+        2 => 20,
+        3 => 30,
+        _ => 100,
+    }
+}
 
 // #[miri_run(expected = "Int(1)")]
 // fn one_line_ref() -> i32 {

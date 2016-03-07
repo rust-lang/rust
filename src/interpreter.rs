@@ -171,8 +171,26 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
                 If { ref cond, targets: (then_target, else_target) } => {
                     let cond_ptr = try!(self.operand_to_ptr(cond));
-                    let cond = try!(self.memory.read_bool(cond_ptr));
-                    current_block = if cond { then_target } else { else_target };
+                    let cond_val = try!(self.memory.read_bool(cond_ptr));
+                    current_block = if cond_val { then_target } else { else_target };
+                }
+
+                SwitchInt { ref discr, ref values, ref targets, .. } => {
+                    // FIXME(tsion): Handle non-integer switch types.
+                    let discr_ptr = try!(self.lvalue_to_ptr(discr));
+                    let discr_val = try!(self.memory.read_int(discr_ptr));
+
+                    // Branch to the `otherwise` case by default, if no match is found.
+                    current_block = targets[targets.len() - 1];
+
+                    for (index, val_const) in values.iter().enumerate() {
+                        let ptr = try!(self.const_to_ptr(val_const));
+                        let val = try!(self.memory.read_int(ptr));
+                        if discr_val == val {
+                            current_block = targets[index];
+                            break;
+                        }
+                    }
                 }
 
                 // Call { ref func, ref args, ref destination, .. } => {
@@ -201,15 +219,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 //     } else {
                 //         panic!("tried to call a non-function value: {:?}", func_val);
                 //     }
-                // }
-
-                // SwitchInt { ref discr, ref values, ref targets, .. } => {
-                //     let discr_val = self.read_lvalue(discr);
-
-                //     let index = values.iter().position(|v| discr_val == self.const_to_ptr(v))
-                //         .expect("discriminant matched no values");
-
-                //     current_block = targets[index];
                 // }
 
                 // Switch { ref discr, ref targets, .. } => {

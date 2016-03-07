@@ -159,7 +159,7 @@ impl Repr {
                 Repr::Aggregate { size: size, fields: fields }
             },
 
-            _ => unimplemented!(),
+            ref t => panic!("can't convert type to repr: {:?}", t),
         }
     }
 
