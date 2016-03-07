@@ -285,16 +285,17 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             BinaryOp(bin_op, ref left, ref right) =>
                 self.eval_binary_op(bin_op, left, right, dest),
 
-            // UnaryOp(un_op, ref operand) => {
-            //     let ptr = try!(self.operand_to_ptr(operand));
-            //     let m = try!(self.memory.read_int(ptr));
-            //     let n = match (un_op, ptr.repr) {
-            //         (mir::UnOp::Not, Repr::Int) => !m,
-            //         (mir::UnOp::Neg, Repr::Int) => -m,
-            //         (_, ref p) => panic!("unhandled binary operation: {:?}({:?})", un_op, p),
-            //     };
-            //     self.memory.write_int(dest, n)
-            // }
+            UnaryOp(un_op, ref operand) => {
+                // FIXME(tsion): Check for non-integer operations.
+                let ptr = try!(self.operand_to_ptr(operand));
+                let m = try!(self.memory.read_int(ptr));
+                use rustc::mir::repr::UnOp::*;
+                let n = match un_op {
+                    Not => !m,
+                    Neg => -m,
+                };
+                self.memory.write_int(dest, n)
+            }
 
             Aggregate(mir::AggregateKind::Tuple, ref operands) => {
                 match dest_repr {

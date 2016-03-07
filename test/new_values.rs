@@ -6,10 +6,10 @@ fn ret() -> i32 {
     1
 }
 
-// #[miri_run]
-// fn neg() -> i32 {
-//     -1
-// }
+#[miri_run]
+fn neg() -> i32 {
+    -1
+}
 
 #[miri_run]
 fn add() -> i32 {
