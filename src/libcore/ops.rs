@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Overloadable operators
+//! Overloadable operators.
 //!
 //! Implementing these traits allows you to get an effect similar to
 //! overloading operators.

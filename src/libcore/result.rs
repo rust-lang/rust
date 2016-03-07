@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Error handling with the `Result` type
+//! Error handling with the `Result` type.
 //!
 //! `Result<T, E>` is the type used for returning and propagating
 //! errors. It is an enum with the variants, `Ok(T)`, representing
