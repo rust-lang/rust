@@ -48,17 +48,13 @@ impl Memory {
         Memory { next_id: 0, alloc_map: HashMap::new() }
     }
 
-    pub fn allocate_raw(&mut self, size: usize) -> AllocId {
+    pub fn allocate(&mut self, size: usize) -> Pointer {
         let id = AllocId(self.next_id);
         let alloc = Allocation { bytes: vec![0; size] };
         self.alloc_map.insert(self.next_id, alloc);
         self.next_id += 1;
-        id
-    }
-
-    pub fn allocate(&mut self, repr: &Repr) -> Pointer {
         Pointer {
-            alloc_id: self.allocate_raw(repr.size()),
+            alloc_id: id,
             offset: 0,
         }
     }

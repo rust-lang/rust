@@ -118,7 +118,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
         for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
             let repr = Repr::from_ty(arg_decl.ty);
-            let dest = self.memory.allocate(&repr);
+            let dest = self.memory.allocate(repr.size());
             let src = try!(self.operand_to_ptr(arg_operand));
             try!(self.memory.copy(src, dest, repr.size()));
             locals.push(dest);
@@ -126,7 +126,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
-        locals.extend(var_tys.chain(temp_tys).map(|ty| self.memory.allocate(&Repr::from_ty(ty))));
+        locals.extend(var_tys.chain(temp_tys).map(|ty| {
+            self.memory.allocate(Repr::from_ty(ty).size())
+        }));
 
         self.stack.push(Frame {
             mir: mir,
@@ -411,7 +413,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         match *const_val {
             Float(_f) => unimplemented!(),
             Int(n) => {
-                let ptr = self.memory.allocate(&Repr::Int);
+                let ptr = self.memory.allocate(Repr::Int.size());
                 try!(self.memory.write_int(ptr, n));
                 Ok(ptr)
             }
@@ -419,7 +421,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Str(ref _s)       => unimplemented!(),
             ByteStr(ref _bs)  => unimplemented!(),
             Bool(b) => {
-                let ptr = self.memory.allocate(&Repr::Bool);
+                let ptr = self.memory.allocate(Repr::Bool.size());
                 try!(self.memory.write_bool(ptr, b));
                 Ok(ptr)
             },
@@ -446,7 +448,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
 
                 let mut miri = Interpreter::new(tcx, mir_map);
                 let return_ptr = match mir.return_ty {
-                    ty::FnConverging(ty) => Some(miri.memory.allocate(&Repr::from_ty(ty))),
+                    ty::FnConverging(ty) => Some(miri.memory.allocate(Repr::from_ty(ty).size())),
                     ty::FnDiverging => None,
                 };
                 miri.call(mir, &[], return_ptr).unwrap();
