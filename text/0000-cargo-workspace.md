@@ -117,12 +117,70 @@ emit an error indicating such.
 The conventional layout for a Rust project is to have a `Cargo.toml` at the root
 with the "main project" with dependencies and/or satellite projects underneath.
 Consequently the conventional layout will need no extra configuration to benefit
-from the workspaces proposed in this RFC.
+from the workspaces proposed in this RFC. For example, all of these project
+layouts (with `/` being the root of a repository) will not require any
+configuration to have all crates be members of a workspace:
+
+* An FFI crate with a sub-scrate for FFI bindings
+
+  ```
+  Cargo.toml
+  src/
+  foo-sys/
+    Cargo.toml
+    src/
+  ```
+
+* A crate with multiple in-tree dependencies
+
+  ```
+  Cargo.toml
+  src/
+  dep1/
+    Cargo.toml
+    src/
+  dep2/
+    Cargo.toml
+    src/
+  ```
 
 Projects like the compiler, however, will likely need explicit configuration.
 The `rust` repo conceptually has two workspaces, the standard library and the
 compiler, and these would need to be manually configured with `workspace` and
-`workspace-root` keys amongst all crates.
+`workspace-root` keys amongst all crates. Some examples of layouts that will
+require extra configuration are:
+
+* Trees without any root crate
+
+  ```
+  crate1/
+    Cargo.toml
+    src/
+  crate2/
+    Cargo.toml
+    src/
+  crate3/
+    Cargo.toml
+    src/
+  ```
+
+* Trees with multiple workspaces
+
+  ```
+  ws1/
+    crate1/
+      Cargo.toml
+      src/
+    crate2/
+      Cargo.toml
+      src/
+  ws2/
+    Cargo.toml
+    src/
+    crate3/
+      Cargo.toml
+      src/
+  ```
 
 ### Future Extensions
 
