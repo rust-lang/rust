@@ -27,10 +27,9 @@ use super::Hasher;
 /// hashing. This lets you key your hashtables from a strong RNG, such
 /// as [`rand::Rng`](https://doc.rust-lang.org/rand/rand/trait.Rng.html).
 ///
-/// Although the SipHash algorithm is considered to be cryptographically
-/// strong, this implementation has not been reviewed for such purposes.
-/// As such, all cryptographic uses of this implementation are _strongly
-/// discouraged_.
+/// Although the SipHash algorithm is considered to be generally strong,
+/// it is not intended for cryptographic purposes. As such, all
+/// cryptographic uses of this implementation are _strongly discouraged_.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SipHasher {
     k0: u64,
