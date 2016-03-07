@@ -18,17 +18,17 @@ name = "clippy"
 plugin = true
 
 [dependencies]
-unicode-normalization = "0.1"
-semver = "0.2.1"
 regex-syntax = "0.2.2"
+regex_macros = { version = "0.1.28", optional = true }
+semver = "0.2.1"
+unicode-normalization = "0.1"
 
 [dev-dependencies]
 compiletest_rs = "0.0.11"
-regex = "0.1.47"
-regex_macros = "0.1.28"
 lazy_static = "0.1.15"
+regex = "0.1.47"
 rustc-serialize = "0.3"
 
 [features]
-
 debugging = []
+test-regex_macros = ["regex_macros"]

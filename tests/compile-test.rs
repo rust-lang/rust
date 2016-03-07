@@ -20,7 +20,15 @@ fn run_mode(mode: &'static str) {
 }
 
 #[test]
+#[cfg(not(feature = "test-regex_macros"))]
 fn compile_test() {
     run_mode("run-pass");
     run_mode("compile-fail");
+}
+
+#[test]
+#[cfg(feature = "test-regex_macros")]
+fn compile_test() {
+    run_mode("run-pass-regex_macros");
+    run_mode("compile-fail-regex_macros");
 }

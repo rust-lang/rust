@@ -6,3 +6,6 @@ script:
  - python util/update_lints.py -c
  - cargo build --features debugging
  - cargo test --features debugging
+
+ # only test regex_macros if it compiles
+ - if [[ "$(cargo build --features 'debugging test-regex_macros')" = 101 ]]; then cargo test --features 'debugging test-regex_macros'; fi

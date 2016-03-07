@@ -1,24 +1,14 @@
 #![feature(plugin)]
-#![plugin(clippy, regex_macros)]
+#![plugin(clippy)]
 
 #[macro_use]
 extern crate lazy_static;
-extern crate regex;
 
 use std::collections::HashMap;
 
-#[test]
-#[deny(mut_mut)]
-#[allow(regex_macro)]
-fn test_regex() {
-    let pattern = regex!(r"^(?P<level>[#]+)\s(?P<title>.+)$");
-    assert!(pattern.is_match("# headline"));
-}
-
-#[test]
 #[deny(mut_mut)]
 #[allow(unused_variables, unused_mut)]
-fn test_lazy_static() {
+fn main() {
     lazy_static! {
         static ref MUT_MAP : HashMap<usize, &'static str> = {
             let mut m = HashMap::new();
