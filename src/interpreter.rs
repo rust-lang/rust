@@ -236,89 +236,38 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Ok(())
     }
 
-    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
-        let frame = self.current_frame();
+    fn eval_binary_op(
+        &mut self, bin_op: mir::BinOp, left_operand: &mir::Operand<'tcx>,
+        right_operand: &mir::Operand<'tcx>, dest: Pointer
+    ) -> EvalResult<()> {
+        // FIXME(tsion): Check for non-integer binary operations.
+        let left = try!(self.operand_to_ptr(left_operand));
+        let right = try!(self.operand_to_ptr(right_operand));
+        let l = try!(self.memory.read_int(left));
+        let r = try!(self.memory.read_int(right));
 
-        use rustc::mir::repr::Lvalue::*;
-        let ptr = match *lvalue {
-            ReturnPointer =>
-                frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => frame.arg_ptr(i),
-            Var(i) => frame.var_ptr(i),
-            Temp(i) => frame.temp_ptr(i),
-            ref l => panic!("can't handle lvalue: {:?}", l),
+        use rustc::mir::repr::BinOp::*;
+        let n = match bin_op {
+            Add    => l + r,
+            Sub    => l - r,
+            Mul    => l * r,
+            Div    => l / r,
+            Rem    => l % r,
+            BitXor => l ^ r,
+            BitAnd => l & r,
+            BitOr  => l | r,
+            Shl    => l << r,
+            Shr    => l >> r,
+            _      => unimplemented!(),
+            // Eq     => Value::Bool(l == r),
+            // Lt     => Value::Bool(l < r),
+            // Le     => Value::Bool(l <= r),
+            // Ne     => Value::Bool(l != r),
+            // Ge     => Value::Bool(l >= r),
+            // Gt     => Value::Bool(l > r),
         };
-
-        Ok(ptr)
-
-        //     mir::Lvalue::Projection(ref proj) => {
-        //         let base_ptr = self.lvalue_to_ptr(&proj.base);
-
-        //         match proj.elem {
-        //             mir::ProjectionElem::Field(field, _) => {
-        //                 base_ptr.offset(field.index())
-        //             }
-
-        //             mir::ProjectionElem::Downcast(_, variant) => {
-        //                 let adt_val = self.read_pointer(base_ptr);
-        //                 if let Value::Adt { variant: actual_variant, data_ptr } = adt_val {
-        //                     debug_assert_eq!(variant, actual_variant);
-        //                     data_ptr
-        //                 } else {
-        //                     panic!("Downcast attempted on non-ADT: {:?}", adt_val)
-        //                 }
-        //             }
-
-        //             mir::ProjectionElem::Deref => {
-        //                 let ptr_val = self.read_pointer(base_ptr);
-        //                 if let Value::Pointer(ptr) = ptr_val {
-        //                     ptr
-        //                 } else {
-        //                     panic!("Deref attempted on non-pointer: {:?}", ptr_val)
-        //                 }
-        //             }
-
-        //             mir::ProjectionElem::Index(ref _operand) => unimplemented!(),
-        //             mir::ProjectionElem::ConstantIndex { .. } => unimplemented!(),
-        //         }
-        //     }
-
-        //     _ => unimplemented!(),
-        // }
+        self.memory.write_int(dest, n)
     }
-
-    // fn eval_binary_op(&mut self, bin_op: mir::BinOp, left: Pointer, right: Pointer, dest: Pointer)
-    //         -> EvalResult<()> {
-    //     use rustc::mir::repr::BinOp::*;
-    //     match (&left.repr, &right.repr, &dest.repr) {
-    //         (&Repr::Int, &Repr::Int, &Repr::Int) => {
-    //             let l = try!(self.memory.read_int(left));
-    //             let r = try!(self.memory.read_int(right));
-    //             let n = match bin_op {
-    //                 Add    => l + r,
-    //                 Sub    => l - r,
-    //                 Mul    => l * r,
-    //                 Div    => l / r,
-    //                 Rem    => l % r,
-    //                 BitXor => l ^ r,
-    //                 BitAnd => l & r,
-    //                 BitOr  => l | r,
-    //                 Shl    => l << r,
-    //                 Shr    => l >> r,
-    //                 _      => unimplemented!(),
-    //                 // Eq     => Value::Bool(l == r),
-    //                 // Lt     => Value::Bool(l < r),
-    //                 // Le     => Value::Bool(l <= r),
-    //                 // Ne     => Value::Bool(l != r),
-    //                 // Ge     => Value::Bool(l >= r),
-    //                 // Gt     => Value::Bool(l > r),
-    //             };
-    //             self.memory.write_int(dest, n)
-    //         }
-    //         (l, r, o) =>
-    //             panic!("unhandled binary operation: {:?}({:?}, {:?}) into {:?}", bin_op, l, r, o),
-    //     }
-    // }
 
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
         -> EvalResult<()>
@@ -334,8 +283,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.memory.copy(src, dest, dest_repr.size())
             }
 
-            // BinaryOp(bin_op, ref left, ref right) =>
-            //     self.eval_binary_op(lvalue, bin_op, left, right),
+            BinaryOp(bin_op, ref left, ref right) =>
+                self.eval_binary_op(bin_op, left, right, dest),
 
             // UnaryOp(un_op, ref operand) => {
             //     let ptr = try!(self.operand_to_ptr(operand));
@@ -406,6 +355,57 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
+        let frame = self.current_frame();
+
+        use rustc::mir::repr::Lvalue::*;
+        let ptr = match *lvalue {
+            ReturnPointer =>
+                frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
+            Arg(i) => frame.arg_ptr(i),
+            Var(i) => frame.var_ptr(i),
+            Temp(i) => frame.temp_ptr(i),
+            ref l => panic!("can't handle lvalue: {:?}", l),
+        };
+
+        Ok(ptr)
+
+        //     mir::Lvalue::Projection(ref proj) => {
+        //         let base_ptr = self.lvalue_to_ptr(&proj.base);
+
+        //         match proj.elem {
+        //             mir::ProjectionElem::Field(field, _) => {
+        //                 base_ptr.offset(field.index())
+        //             }
+
+        //             mir::ProjectionElem::Downcast(_, variant) => {
+        //                 let adt_val = self.read_pointer(base_ptr);
+        //                 if let Value::Adt { variant: actual_variant, data_ptr } = adt_val {
+        //                     debug_assert_eq!(variant, actual_variant);
+        //                     data_ptr
+        //                 } else {
+        //                     panic!("Downcast attempted on non-ADT: {:?}", adt_val)
+        //                 }
+        //             }
+
+        //             mir::ProjectionElem::Deref => {
+        //                 let ptr_val = self.read_pointer(base_ptr);
+        //                 if let Value::Pointer(ptr) = ptr_val {
+        //                     ptr
+        //                 } else {
+        //                     panic!("Deref attempted on non-pointer: {:?}", ptr_val)
+        //                 }
+        //             }
+
+        //             mir::ProjectionElem::Index(ref _operand) => unimplemented!(),
+        //             mir::ProjectionElem::ConstantIndex { .. } => unimplemented!(),
+        //         }
+        //     }
+
+        //     _ => unimplemented!(),
+        // }
     }
 
     fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {

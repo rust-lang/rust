@@ -11,10 +11,10 @@ fn ret() -> i32 {
 //     -1
 // }
 
-// #[miri_run]
-// fn add() -> i32 {
-//     1 + 2
-// }
+#[miri_run]
+fn add() -> i32 {
+    1 + 2
+}
 
 #[miri_run]
 fn empty() {}
@@ -34,17 +34,17 @@ fn tuple_5() -> (i32, i32, i32, i32, i32) {
     (1, 2, 3, 4, 5)
 }
 
-// #[miri_run]
-// fn indirect_add() -> i32 {
-//     let x = 1;
-//     let y = 2;
-//     x + y
-// }
+#[miri_run]
+fn indirect_add() -> i32 {
+    let x = 1;
+    let y = 2;
+    x + y
+}
 
-// #[miri_run]
-// fn arith() -> i32 {
-//     3*3 + 4*4
-// }
+#[miri_run]
+fn arith() -> i32 {
+    3*3 + 4*4
+}
 
 #[miri_run]
 fn boolean() -> bool {
