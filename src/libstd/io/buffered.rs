@@ -762,8 +762,10 @@ impl<W: Write> Write for LineWriter<W> {
         match memchr::memrchr(b'\n', buf) {
             Some(i) => {
                 let n = try!(self.inner.write(&buf[..i + 1]));
-                if n != i + 1 { return Ok(n) }
-                try!(self.inner.flush());
+                if n != i + 1 || self.inner.flush().is_err() {
+                    // Do not return errors on partial writes.
+                    return Ok(n);
+                }
                 self.inner.write(&buf[i + 1..]).map(|i| n + i)
             }
             None => self.inner.write(buf),
