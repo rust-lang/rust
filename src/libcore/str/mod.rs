@@ -1645,12 +1645,30 @@ pub trait StrExt {
     fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
 }
 
+// truncate `&str` to length at most equal to `max`
+// return `true` if it were truncated, and the new str.
+fn truncate_to_char_boundary(s: &str, mut max: usize) -> (bool, &str) {
+    if max >= s.len() {
+        (false, s)
+    } else {
+        while !s.is_char_boundary(max) {
+            max -= 1;
+        }
+        (true, &s[..max])
+    }
+}
+
 #[inline(never)]
 #[cold]
 fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
-    assert!(begin <= end);
-    panic!("index {} and/or {} in `{}` do not lie on character boundary",
-          begin, end, s);
+    const MAX_DISPLAY_LENGTH: usize = 256;
+    let (truncated, s) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);
+    let ellipsis = if truncated { "[...]" } else { "" };
+
+    assert!(begin <= end, "begin <= end ({} <= {}) when slicing `{}`{}",
+            begin, end, s, ellipsis);
+    panic!("index {} and/or {} in `{}`{} do not lie on character boundary",
+          begin, end, s, ellipsis);
 }
 
 #[stable(feature = "core", since = "1.6.0")]

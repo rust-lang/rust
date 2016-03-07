@@ -346,6 +346,26 @@ fn test_slice_fail() {
     &"中华Việt Nam"[0..2];
 }
 
+const LOREM_PARAGRAPH: &'static str = "\
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
+ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
+eros. Suspendisse sit amet magna mollis, mollis nunc luctus, imperdiet mi. Integer fringilla non \
+sem ut lacinia. Fusce varius tortor a risus porttitor hendrerit. Morbi mauris dui, ultricies nec \
+tempus vel, gravida nec quam.";
+
+// check the panic includes the prefix of the sliced string
+#[test]
+#[should_panic(expected="Lorem ipsum dolor sit amet")]
+fn test_slice_fail_truncated_1() {
+    &LOREM_PARAGRAPH[..1024];
+}
+// check the truncation in the panic message
+#[test]
+#[should_panic(expected="luctus, im`[...] do not lie on character boundary")]
+fn test_slice_fail_truncated_2() {
+    &LOREM_PARAGRAPH[..1024];
+}
+
 #[test]
 fn test_slice_from() {
     assert_eq!(&"abcd"[0..], "abcd");
