@@ -158,10 +158,6 @@ fn main() {
         println!("{}", i);
     }
 
-    for i in (10..0).rev() { // not an error, this is an established idiom for looping backwards on a range
-        println!("{}", i);
-    }
-
     for i in (10..0).map(|x| x * 2) { // not an error, it can't be known what arbitrary methods do to a range
         println!("{}", i);
     }
