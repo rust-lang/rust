@@ -10,6 +10,7 @@ use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use syntax::ast;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then,
@@ -417,7 +418,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
 
 fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
-    if let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), .. }) = unsugar_range(&arg) {
+    if let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), limits }) = unsugar_range(&arg) {
         // ...and both sides are compile-time constant integers...
         if let Ok(start_idx) = eval_const_expr_partial(&cx.tcx, start, ExprTypeChecked, None) {
             if let Ok(end_idx) = eval_const_expr_partial(&cx.tcx, end, ExprTypeChecked, None) {
@@ -450,7 +451,7 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                                                over this range in reverse",
                                                               format!("({}..{}).rev()` ", end_snippet, start_snippet));
                                        });
-                } else if eq {
+                } else if eq && limits != ast::RangeLimits::Closed {
                     // if they are equal, it's also problematic - this loop
                     // will never run.
                     span_lint(cx,
