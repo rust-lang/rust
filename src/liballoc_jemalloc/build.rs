@@ -111,7 +111,7 @@ fn main() {
     println!("cargo:rustc-link-search=native={}/lib", build_dir.display());
     if target.contains("android") {
         println!("cargo:rustc-link-lib=gcc");
-    } else if !target.contains("windows") {
+    } else if !target.contains("windows") && !target.contains("musl") {
         println!("cargo:rustc-link-lib=pthread");
     }
 }
