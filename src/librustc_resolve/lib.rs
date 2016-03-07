@@ -3233,18 +3233,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let mut found_traits = Vec::new();
+        // Look for the current trait.
+        if let Some((trait_def_id, _)) = self.current_trait_ref {
+            if self.trait_item_map.contains_key(&(name, trait_def_id)) {
+                add_trait_info(&mut found_traits, trait_def_id, name);
+            }
+        }
+
         let mut search_module = self.current_module;
         loop {
-            // Look for the current trait.
-            match self.current_trait_ref {
-                Some((trait_def_id, _)) => {
-                    if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                        add_trait_info(&mut found_traits, trait_def_id, name);
-                    }
-                }
-                None => {} // Nothing to do.
-            }
-
             // Look for trait children.
             let mut search_in_module = |module: Module<'a>| module.for_each_child(|_, ns, binding| {
                 if ns != TypeNS { return }
