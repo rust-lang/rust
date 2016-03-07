@@ -345,9 +345,11 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                                                        .unwrap_or_else(|| unreachable!() /* len == 1 */);
 
                 // ensure that the indexed variable was declared before the loop, see #601
-                let pat_extent = cx.tcx.region_maps.var_scope(pat.id);
-                if cx.tcx.region_maps.is_subscope_of(indexed_extent, pat_extent) {
-                    return;
+                if let Some(indexed_extent) = indexed_extent {
+                    let pat_extent = cx.tcx.region_maps.var_scope(pat.id);
+                    if cx.tcx.region_maps.is_subscope_of(indexed_extent, pat_extent) {
+                        return;
+                    }
                 }
 
                 let starts_at_zero = is_integer_literal(start, 0);
@@ -669,7 +671,7 @@ fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
 struct VarVisitor<'v, 't: 'v> {
     cx: &'v LateContext<'v, 't>, // context reference
     var: Name, // var name to look for as index
-    indexed: HashMap<Name, CodeExtent>, // indexed variables
+    indexed: HashMap<Name, Option<CodeExtent>>, // indexed variables, the extent is None for global
     nonindex: bool, // has the var been used otherwise?
 }
 
@@ -687,9 +689,18 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
                     ], {
                         let def_map = self.cx.tcx.def_map.borrow();
                         if let Some(def) = def_map.get(&seqexpr.id) {
-                            let extent = self.cx.tcx.region_maps.var_scope(def.base_def.var_id());
-                            self.indexed.insert(seqvar.segments[0].identifier.name, extent);
-                            return;  // no need to walk further
+                            match def.base_def {
+                                Def::Local(..) | Def::Upvar(..) => {
+                                    let extent = self.cx.tcx.region_maps.var_scope(def.base_def.var_id());
+                                    self.indexed.insert(seqvar.segments[0].identifier.name, Some(extent));
+                                    return;  // no need to walk further
+                                }
+                                Def::Static(..) | Def::Const(..) => {
+                                    self.indexed.insert(seqvar.segments[0].identifier.name, None);
+                                    return;  // no need to walk further
+                                }
+                                _ => (),
+                            }
                         }
                     }
                 }
