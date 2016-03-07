@@ -22,6 +22,7 @@ const TRACE_EXECUTION: bool = true;
 #[derive(Clone, Debug)]
 pub enum EvalError {
     DanglingPointerDeref,
+    InvalidBool,
     PointerOutOfBounds,
 }
 
@@ -31,6 +32,7 @@ impl Error for EvalError {
     fn description(&self) -> &str {
         match *self {
             EvalError::DanglingPointerDeref => "dangling pointer was dereferenced",
+            EvalError::InvalidBool => "invalid boolean value read",
             EvalError::PointerOutOfBounds => "pointer offset outside bounds of allocation",
         }
     }
@@ -405,7 +407,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
     fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {
         use rustc::middle::const_eval::ConstVal::*;
         match *const_val {
-            Float(_f)         => unimplemented!(),
+            Float(_f) => unimplemented!(),
             Int(n) => {
                 let ptr = self.memory.allocate(Repr::Int);
                 try!(self.memory.write_int(&ptr, n));
@@ -414,7 +416,11 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             Uint(_u)          => unimplemented!(),
             Str(ref _s)       => unimplemented!(),
             ByteStr(ref _bs)  => unimplemented!(),
-            Bool(b)           => unimplemented!(),
+            Bool(b) => {
+                let ptr = self.memory.allocate(Repr::Bool);
+                try!(self.memory.write_bool(&ptr, b));
+                Ok(ptr)
+            },
             Struct(_node_id)  => unimplemented!(),
             Tuple(_node_id)   => unimplemented!(),
             Function(_def_id) => unimplemented!(),

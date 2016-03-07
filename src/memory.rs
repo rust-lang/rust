@@ -36,6 +36,7 @@ pub struct FieldRepr {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Repr {
+    Bool,
     Int,
     Aggregate {
         size: usize,
@@ -103,22 +104,38 @@ impl Memory {
     }
 
     pub fn read_int(&self, ptr: &Pointer) -> EvalResult<i64> {
-        let bytes = try!(self.get_bytes(ptr, Repr::Int.size()));
-        Ok(byteorder::NativeEndian::read_i64(bytes))
+        self.get_bytes(ptr, Repr::Int.size()).map(byteorder::NativeEndian::read_i64)
     }
 
     pub fn write_int(&mut self, ptr: &Pointer, n: i64) -> EvalResult<()> {
         let bytes = try!(self.get_bytes_mut(ptr, Repr::Int.size()));
-        Ok(byteorder::NativeEndian::write_i64(bytes, n))
+        byteorder::NativeEndian::write_i64(bytes, n);
+        Ok(())
+    }
+
+    pub fn read_bool(&self, ptr: &Pointer) -> EvalResult<bool> {
+        let bytes = try!(self.get_bytes(ptr, 1));
+        match bytes[0] {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(EvalError::InvalidBool),
+        }
+    }
+
+    pub fn write_bool(&mut self, ptr: &Pointer, b: bool) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, 1));
+        bytes[0] = b as u8;
+        Ok(())
     }
 }
 
 impl Allocation {
     fn check_bytes(&self, start: usize, end: usize) -> EvalResult<()> {
-        if start >= self.bytes.len() || end > self.bytes.len() {
-            return Err(EvalError::PointerOutOfBounds);
+        if start < self.bytes.len() && end <= self.bytes.len() {
+            Ok(())
+        } else {
+            Err(EvalError::PointerOutOfBounds)
         }
-        Ok(())
     }
 }
 
@@ -132,6 +149,8 @@ impl Repr {
     // TODO(tsion): Cache these outputs.
     pub fn from_ty(ty: ty::Ty) -> Self {
         match ty.sty {
+            ty::TyBool => Repr::Bool,
+
             ty::TyInt(_) => Repr::Int,
 
             ty::TyTuple(ref fields) => {
@@ -151,6 +170,7 @@ impl Repr {
 
     pub fn size(&self) -> usize {
         match *self {
+            Repr::Bool => 1,
             Repr::Int => mem::size_of::<i64>(),
             Repr::Aggregate { size, .. } => size,
         }

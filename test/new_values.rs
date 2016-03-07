@@ -46,6 +46,11 @@ fn arith() -> i32 {
     3*3 + 4*4
 }
 
+#[miri_run]
+fn boolean() -> bool {
+    true
+}
+
 // #[miri_run(expected = "Int(0)")]
 // fn if_false() -> i32 {
 //     if false { 1 } else { 0 }
