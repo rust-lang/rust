@@ -10,10 +10,13 @@ use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use syntax::ast;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
-            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, walk_ptrs_ty};
+            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then,
+            unsugar_range, walk_ptrs_ty};
 use utils::{BTREEMAP_PATH, HASHMAP_PATH, LL_PATH, OPTION_PATH, RESULT_PATH, VEC_PATH};
+use utils::UnsugaredRange;
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index.
 ///
@@ -323,10 +326,9 @@ fn check_for_loop(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &E
 /// Check for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
-    if let ExprRange(Some(ref l), ref r) = arg.node {
+    if let Some(UnsugaredRange { start: Some(ref start), ref end, .. }) = unsugar_range(&arg) {
         // the var must be a single name
         if let PatKind::Ident(_, ref ident, _) = pat.node {
-
             let mut visitor = VarVisitor {
                 cx: cx,
                 var: ident.node.name,
@@ -348,19 +350,19 @@ fn check_for_loop_range(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, ex
                     return;
                 }
 
-                let starts_at_zero = is_integer_literal(l, 0);
+                let starts_at_zero = is_integer_literal(start, 0);
 
                 let skip: Cow<_> = if starts_at_zero {
                     "".into()
                 } else {
-                    format!(".skip({})", snippet(cx, l.span, "..")).into()
+                    format!(".skip({})", snippet(cx, start.span, "..")).into()
                 };
 
-                let take: Cow<_> = if let Some(ref r) = *r {
-                    if is_len_call(&r, &indexed) {
+                let take: Cow<_> = if let Some(ref end) = *end {
+                    if is_len_call(&end, &indexed) {
                         "".into()
                     } else {
-                        format!(".take({})", snippet(cx, r.span, "..")).into()
+                        format!(".take({})", snippet(cx, end.span, "..")).into()
                     }
                 } else {
                     "".into()
@@ -416,27 +418,27 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
 
 fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     // if this for loop is iterating over a two-sided range...
-    if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
+    if let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), limits }) = unsugar_range(&arg) {
         // ...and both sides are compile-time constant integers...
-        if let Ok(start_idx) = eval_const_expr_partial(&cx.tcx, start_expr, ExprTypeChecked, None) {
-            if let Ok(stop_idx) = eval_const_expr_partial(&cx.tcx, stop_expr, ExprTypeChecked, None) {
-                // ...and the start index is greater than the stop index,
+        if let Ok(start_idx) = eval_const_expr_partial(&cx.tcx, start, ExprTypeChecked, None) {
+            if let Ok(end_idx) = eval_const_expr_partial(&cx.tcx, end, ExprTypeChecked, None) {
+                // ...and the start index is greater than the end index,
                 // this loop will never run. This is often confusing for developers
                 // who think that this will iterate from the larger value to the
                 // smaller value.
-                let (sup, eq) = match (start_idx, stop_idx) {
-                    (ConstVal::Int(start_idx), ConstVal::Int(stop_idx)) => {
-                        (start_idx > stop_idx, start_idx == stop_idx)
+                let (sup, eq) = match (start_idx, end_idx) {
+                    (ConstVal::Int(start_idx), ConstVal::Int(end_idx)) => {
+                        (start_idx > end_idx, start_idx == end_idx)
                     }
-                    (ConstVal::Uint(start_idx), ConstVal::Uint(stop_idx)) => {
-                        (start_idx > stop_idx, start_idx == stop_idx)
+                    (ConstVal::Uint(start_idx), ConstVal::Uint(end_idx)) => {
+                        (start_idx > end_idx, start_idx == end_idx)
                     }
                     _ => (false, false),
                 };
 
                 if sup {
-                    let start_snippet = snippet(cx, start_expr.span, "_");
-                    let stop_snippet = snippet(cx, stop_expr.span, "_");
+                    let start_snippet = snippet(cx, start.span, "_");
+                    let end_snippet = snippet(cx, end.span, "_");
 
                     span_lint_and_then(cx,
                                        REVERSE_RANGE_LOOP,
@@ -447,9 +449,9 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                                                               "consider using the following if \
                                                                you are attempting to iterate \
                                                                over this range in reverse",
-                                                              format!("({}..{}).rev()` ", stop_snippet, start_snippet));
+                                                              format!("({}..{}).rev()` ", end_snippet, start_snippet));
                                        });
-                } else if eq {
+                } else if eq && limits != ast::RangeLimits::Closed {
                     // if they are equal, it's also problematic - this loop
                     // will never run.
                     span_lint(cx,

@@ -1,4 +1,4 @@
-#![feature(plugin, step_by)]
+#![feature(plugin, step_by, inclusive_range_syntax)]
 #![plugin(clippy)]
 
 use std::collections::*;
@@ -118,7 +118,17 @@ fn main() {
         println!("{}", vec[i]);
     }
 
+    for i in 0...MAX_LEN {
+        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(MAX_LEN)`
+        println!("{}", vec[i]);
+    }
+
     for i in 5..10 {
+        //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(10).skip(5)`
+        println!("{}", vec[i]);
+    }
+
+    for i in 5...10 {
         //~^ ERROR `i` is only used to index `vec`. Consider using `for item in vec.iter().take(10).skip(5)`
         println!("{}", vec[i]);
     }
@@ -140,6 +150,13 @@ fn main() {
         println!("{}", i);
     }
 
+    for i in 10...0 {
+        //~^ERROR this range is empty so this for loop will never run
+        //~|HELP consider
+        //~|SUGGESTION (0..10).rev()
+        println!("{}", i);
+    }
+
     for i in MAX_LEN..0 { //~ERROR this range is empty so this for loop will never run
         //~|HELP consider
         //~|SUGGESTION (0..MAX_LEN).rev()
@@ -150,15 +167,15 @@ fn main() {
         println!("{}", i);
     }
 
+    for i in 5...5 { // not an error, this is the range with only one element “5”
+        println!("{}", i);
+    }
+
     for i in 0..10 { // not an error, the start index is less than the end index
         println!("{}", i);
     }
 
     for i in -10..0 { // not an error
-        println!("{}", i);
-    }
-
-    for i in (10..0).rev() { // not an error, this is an established idiom for looping backwards on a range
         println!("{}", i);
     }
 

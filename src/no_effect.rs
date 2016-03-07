@@ -23,15 +23,11 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
     match expr.node {
         Expr_::ExprLit(..) |
         Expr_::ExprClosure(..) |
-        Expr_::ExprRange(None, None) |
         Expr_::ExprPath(..) => true,
         Expr_::ExprIndex(ref a, ref b) |
-        Expr_::ExprRange(Some(ref a), Some(ref b)) |
         Expr_::ExprBinary(_, ref a, ref b) => has_no_effect(cx, a) && has_no_effect(cx, b),
         Expr_::ExprVec(ref v) |
         Expr_::ExprTup(ref v) => v.iter().all(|val| has_no_effect(cx, val)),
-        Expr_::ExprRange(Some(ref inner), None) |
-        Expr_::ExprRange(None, Some(ref inner)) |
         Expr_::ExprRepeat(ref inner, _) |
         Expr_::ExprCast(ref inner, _) |
         Expr_::ExprType(ref inner, _) |
@@ -53,6 +49,13 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
                 Some(Def::Struct(..)) |
                 Some(Def::Variant(..)) => args.iter().all(|arg| has_no_effect(cx, arg)),
                 _ => false,
+            }
+        }
+        Expr_::ExprBlock(ref block) => {
+            block.stmts.is_empty() && if let Some(ref expr) = block.expr {
+                has_no_effect(cx, expr)
+            } else {
+                false
             }
         }
         _ => false,

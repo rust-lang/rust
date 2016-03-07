@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
-use utils::{is_integer_literal, match_type, snippet};
+use utils::{is_integer_literal, match_type, snippet, unsugar_range, UnsugaredRange};
 
 /// **What it does:** This lint checks for iterating over ranges with a `.step_by(0)`, which never terminates.
 ///
@@ -47,17 +47,17 @@ impl LateLintPass for StepByZero {
                               instead")
             } else if name.as_str() == "zip" && args.len() == 2 {
                 let iter = &args[0].node;
-                let zip_arg = &args[1].node;
+                let zip_arg = &args[1];
                 if_let_chain! {
                     [
                         // .iter() call
                         let ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = *iter,
                         iter_name.as_str() == "iter",
                         // range expression in .zip() call: 0..x.len()
-                        let ExprRange(Some(ref from), Some(ref to)) = *zip_arg,
-                        is_integer_literal(from, 0),
+                        let Some(UnsugaredRange { start: Some(ref start), end: Some(ref end), .. }) = unsugar_range(zip_arg),
+                        is_integer_literal(start, 0),
                         // .len() call
-                        let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = to.node,
+                        let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = end.node,
                         len_name.as_str() == "len" && len_args.len() == 1,
                         // .iter() and .len() called on same Path
                         let ExprPath(_, Path { segments: ref iter_path, .. }) = iter_args[0].node,
