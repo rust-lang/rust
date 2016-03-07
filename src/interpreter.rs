@@ -144,11 +144,11 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
         -> EvalResult<()>
     {
         try!(self.push_stack_frame(mir, args, return_ptr));
-        let mut block = mir::START_BLOCK;
+        let mut current_block = mir::START_BLOCK;
 
         loop {
-            if TRACE_EXECUTION { println!("Entering block: {:?}", block); }
-            let block_data = mir.basic_block_data(block);
+            if TRACE_EXECUTION { println!("Entering block: {:?}", current_block); }
+            let block_data = mir.basic_block_data(current_block);
 
             for stmt in &block_data.statements {
                 if TRACE_EXECUTION { println!("{:?}", stmt); }
@@ -163,12 +163,12 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
             match *block_data.terminator() {
                 Return => break,
 
-                Goto { target } => block = target,
+                Goto { target } => current_block = target,
 
                 If { ref cond, targets: (then_target, else_target) } => {
                     let cond_ptr = try!(self.operand_to_ptr(cond));
                     let cond = try!(self.memory.read_bool(&cond_ptr));
-                    block = if cond { then_target } else { else_target }
+                    current_block = if cond { then_target } else { else_target };
                 }
 
                 // Call { ref func, ref args, ref destination, .. } => {
@@ -192,7 +192,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 //         self.call(mir, &arg_vals, ptr);
 
                 //         if let Some((_, target)) = *destination {
-                //             block = target;
+                //             current_block = target;
                 //         }
                 //     } else {
                 //         panic!("tried to call a non-function value: {:?}", func_val);
@@ -205,14 +205,14 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
                 //     let index = values.iter().position(|v| discr_val == self.const_to_ptr(v))
                 //         .expect("discriminant matched no values");
 
-                //     block = targets[index];
+                //     current_block = targets[index];
                 // }
 
                 // Switch { ref discr, ref targets, .. } => {
                 //     let discr_val = self.read_lvalue(discr);
 
                 //     if let Value::Adt { variant, .. } = discr_val {
-                //         block = targets[variant];
+                //         current_block = targets[variant];
                 //     } else {
                 //         panic!("Switch on non-Adt value: {:?}", discr_val);
                 //     }
@@ -220,7 +220,7 @@ impl<'a, 'tcx> Interpreter<'a, 'tcx> {
 
                 Drop { target, .. } => {
                     // TODO: Handle destructors and dynamic drop.
-                    block = target;
+                    current_block = target;
                 }
 
                 Resume => unimplemented!(),
