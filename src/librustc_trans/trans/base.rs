@@ -1096,29 +1096,29 @@ pub fn trans_unwind_resume(bcx: Block, lpval: ValueRef) {
     }
 }
 
-
-pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
+pub fn call_memcpy<'bcx, 'tcx>(b: &Builder<'bcx, 'tcx>,
+                               dst: ValueRef,
+                               src: ValueRef,
+                               n_bytes: ValueRef,
+                               align: u32) {
     let _icx = push_ctxt("call_memcpy");
-    let ccx = cx.ccx();
+    let ccx = b.ccx;
     let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
     let memcpy = ccx.get_intrinsic(&key);
-    let src_ptr = PointerCast(cx, src, Type::i8p(ccx));
-    let dst_ptr = PointerCast(cx, dst, Type::i8p(ccx));
-    let size = IntCast(cx, n_bytes, ccx.int_type());
+    let src_ptr = b.pointercast(src, Type::i8p(ccx));
+    let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
+    let size = b.intcast(n_bytes, ccx.int_type());
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
-    Call(cx,
-         memcpy,
-         &[dst_ptr, src_ptr, size, align, volatile],
-         DebugLoc::None);
+    b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
 pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, dst: ValueRef, src: ValueRef, t: Ty<'tcx>) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
 
-    if type_is_zero_size(ccx, t) {
+    if type_is_zero_size(ccx, t) || bcx.unreachable.get() {
         return;
     }
 
@@ -1126,7 +1126,7 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, dst: ValueRef, src: ValueRe
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
-        call_memcpy(bcx, dst, src, llsz, llalign as u32);
+        call_memcpy(&B(bcx), dst, src, llsz, llalign as u32);
     } else if common::type_is_fat_ptr(bcx.tcx(), t) {
         let (data, extra) = load_fat_ptr(bcx, src, t);
         store_fat_ptr(bcx, data, extra, dst, t);
@@ -1746,7 +1746,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 assert_eq!(cast_ty, None);
                 let llsz = llsize_of(self.ccx, self.fn_ty.ret.ty);
                 let llalign = llalign_of_min(self.ccx, self.fn_ty.ret.ty);
-                call_memcpy(ret_cx, get_param(self.llfn, 0),
+                call_memcpy(&B(ret_cx), get_param(self.llfn, 0),
                             retslot, llsz, llalign as u32);
                 RetVoid(ret_cx, ret_debug_location)
             }
