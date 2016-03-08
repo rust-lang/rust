@@ -835,6 +835,7 @@ pub enum MatchSource {
     },
     WhileLetDesugar,
     ForLoopDesugar,
+    TryDesugar,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
