@@ -331,10 +331,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             // These items live in the type namespace.
             ItemTy(..) => {
-                let parent_link = ModuleParentLink(parent, name);
                 let def = Def::TyAlias(self.ast_map.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), false, is_public);
-                self.define(parent, name, TypeNS, (module, sp));
+                self.define(parent, name, TypeNS, (def, sp, modifiers));
                 parent
             }
 
@@ -505,7 +503,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         }
 
         match def {
-            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) | Def::TyAlias(..) => {
+            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {}",
                        final_ident,
                        is_public);
@@ -562,7 +560,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module = self.new_module(parent_link, Some(def), true, is_public);
                 self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
             }
-            Def::AssociatedTy(..) => {
+            Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
                 self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
