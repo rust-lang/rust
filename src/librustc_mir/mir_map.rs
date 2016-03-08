@@ -33,6 +33,7 @@ use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
@@ -181,13 +182,20 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
     let parameter_scope =
         cx.tcx().region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
-    Ok(build::construct(cx,
-                        span,
-                        implicit_arg_tys,
-                        arguments,
-                        parameter_scope,
-                        fn_sig.output,
-                        body))
+    let mut mir = build::construct(cx, span, implicit_arg_tys, arguments,
+                                  parameter_scope, fn_sig.output, body);
+
+    match cx.tcx().node_id_to_type(fn_id).sty {
+        ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
+            // RustCall pseudo-ABI untuples the last argument.
+            if let Some(arg_decl) = mir.arg_decls.last_mut() {
+                arg_decl.spread = true;
+            }
+        }
+        _ => {}
+    }
+
+    Ok(mir)
 }
 
 fn closure_self_ty<'a, 'tcx>(tcx: &TyCtxt<'tcx>,

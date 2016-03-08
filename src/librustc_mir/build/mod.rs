@@ -149,7 +149,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                                                  pattern,
                                                                  &lvalue));
                     }
-                    ArgDecl { ty: ty }
+                    ArgDecl { ty: ty, spread: false }
                 })
                 .collect();
 
