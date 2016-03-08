@@ -34,7 +34,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         debug!("trans_block({:?})", bb);
 
         let mut bcx = self.bcx(bb);
-        let data = self.mir.basic_block_data(bb);
+        let mir = self.mir.clone();
+        let data = mir.basic_block_data(bb);
 
         // MSVC SEH bits
         let (cleanup_pad, cleanup_bundle) = if let Some((cp, cb)) = self.make_cleanup_pad(bb) {

@@ -10,20 +10,41 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
+use middle::ty;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use trans::base;
+use trans::build;
 use trans::common::{self, Block, BlockAndBuilder, FunctionContext};
 use trans::expr;
 
+use std::ops::Deref;
+use std::rc::Rc;
+
 use self::lvalue::LvalueRef;
 use self::operand::OperandRef;
+
+#[derive(Clone)]
+pub enum CachedMir<'mir, 'tcx: 'mir> {
+    Ref(&'mir mir::Mir<'tcx>),
+    Owned(Rc<mir::Mir<'tcx>>)
+}
+
+impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
+    type Target = mir::Mir<'tcx>;
+    fn deref(&self) -> &mir::Mir<'tcx> {
+        match *self {
+            CachedMir::Ref(r) => r,
+            CachedMir::Owned(ref rc) => rc
+        }
+    }
+}
 
 // FIXME DebugLoc is always None right now
 
 /// Master context for translating MIR.
 pub struct MirContext<'bcx, 'tcx:'bcx> {
-    mir: &'bcx mir::Mir<'tcx>,
+    mir: CachedMir<'bcx, 'tcx>,
 
     /// Function context
     fcx: &'bcx common::FunctionContext<'bcx, 'tcx>,
@@ -77,7 +98,7 @@ enum TempRef<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
-    let bcx = fcx.init(false).build();
+    let bcx = fcx.init(false, None).build();
     let mir = bcx.mir();
 
     let mir_blocks = mir.all_basic_blocks();
@@ -85,7 +106,7 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     // Analyze the temps to determine which must be lvalues
     // FIXME
     let lvalue_temps = bcx.with_block(|bcx| {
-      analyze::lvalue_temps(bcx, mir)
+      analyze::lvalue_temps(bcx, &mir)
     });
 
     // Allocate variable and temp allocas
@@ -107,7 +128,7 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                                   TempRef::Operand(None)
                               })
                               .collect();
-    let args = arg_value_refs(&bcx, mir);
+    let args = arg_value_refs(&bcx, &mir);
 
     // Allocate a `Block` for every basic block
     let block_bcxs: Vec<Block<'blk,'tcx>> =

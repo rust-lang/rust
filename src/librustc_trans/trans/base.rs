@@ -77,6 +77,7 @@ use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::declare;
 use trans::expr;
 use trans::glue;
+use trans::inline;
 use trans::intrinsic;
 use trans::machine;
 use trans::machine::{llalign_of_min, llsize_of, llsize_of_real};
@@ -1392,34 +1393,53 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     pub fn new(ccx: &'blk CrateContext<'blk, 'tcx>,
                llfndecl: ValueRef,
                fn_ty: FnType,
-               id: ast::NodeId,
+               def_id: Option<DefId>,
                param_substs: &'tcx Substs<'tcx>,
-               sp: Option<Span>,
                block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
         common::validate_substs(param_substs);
 
-        debug!("FunctionContext::new(path={}, id={}, param_substs={:?})",
-            if id == !0 {
-                "".to_string()
-            } else {
+        let inlined_did = def_id.and_then(|def_id| inline::get_local_instance(ccx, def_id));
+        let inlined_id = inlined_did.and_then(|id| ccx.tcx().map.as_local_node_id(id));
+        let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
+
+        debug!("FunctionContext::new(path={}, def_id={:?}, param_substs={:?})",
+            inlined_id.map_or(String::new(), |id| {
                 ccx.tcx().map.path_to_string(id).to_string()
-            },
-            id,
+            }),
+            def_id,
             param_substs);
 
-        let debug_context = debuginfo::create_function_debug_context(ccx, id,
-                                                                     param_substs,
-                                                                     llfndecl);
-        let (blk_id, cfg) = build_cfg(ccx.tcx(), id);
-        let nested_returns = if let Some(ref cfg) = cfg {
+        let debug_context = debuginfo::create_function_debug_context(ccx,
+            inlined_id.unwrap_or(ast::DUMMY_NODE_ID), param_substs, llfndecl);
+
+        let cfg = inlined_id.map(|id| build_cfg(ccx.tcx(), id));
+        let nested_returns = if let Some((blk_id, Some(ref cfg))) = cfg {
             has_nested_returns(ccx.tcx(), cfg, blk_id)
         } else {
             false
         };
 
+        let check_attrs = |attrs: &[ast::Attribute]| {
+            attrs.iter().any(|item| item.check_name("rustc_mir"))
+        };
+
+        let use_mir = if let Some(id) = local_id {
+            check_attrs(ccx.tcx().map.attrs(id))
+        } else if let Some(def_id) = def_id {
+            check_attrs(&ccx.sess().cstore.item_attrs(def_id))
+        } else {
+            check_attrs(&[])
+        };
+
+        let mir = if use_mir {
+            def_id.and_then(|id| ccx.get_mir(id))
+        } else {
+            None
+        };
+
         FunctionContext {
-            mir: ccx.mir_map().map.get(&id),
+            mir: mir,
             llfn: llfndecl,
             llretslotptr: Cell::new(None),
             param_env: ccx.tcx().empty_parameter_environment(),
@@ -1431,21 +1451,21 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             llupvars: RefCell::new(NodeMap()),
             lldropflag_hints: RefCell::new(DropFlagHintsMap::new()),
             fn_ty: fn_ty,
-            id: id,
             param_substs: param_substs,
-            span: sp,
+            span: inlined_id.and_then(|id| ccx.tcx().map.opt_span(id)),
             block_arena: block_arena,
             lpad_arena: TypedArena::new(),
             ccx: ccx,
             debug_context: debug_context,
             scopes: RefCell::new(Vec::new()),
-            cfg: cfg,
+            cfg: cfg.and_then(|(_, cfg)| cfg)
         }
     }
 
     /// Performs setup on a newly created function, creating the entry
     /// scope block and allocating space for the return pointer.
-    pub fn init(&'blk self, skip_retptr: bool) -> Block<'blk, 'tcx> {
+    pub fn init(&'blk self, skip_retptr: bool, fn_did: Option<DefId>)
+                -> Block<'blk, 'tcx> {
         let entry_bcx = self.new_temp_block("entry-block");
 
         // Use a dummy instruction as the insertion point for all allocas.
@@ -1493,7 +1513,6 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
         // Create the drop-flag hints for every unfragmented path in the function.
         let tcx = self.ccx.tcx();
-        let fn_did = tcx.map.local_def_id(self.id);
         let tables = tcx.tables.borrow();
         let mut hints = self.lldropflag_hints.borrow_mut();
         let fragment_infos = tcx.fragment_infos.borrow();
@@ -1501,7 +1520,8 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         // Intern table for drop-flag hint datums.
         let mut seen = HashMap::new();
 
-        if let Some(fragment_infos) = fragment_infos.get(&fn_did) {
+        let fragment_infos = fn_did.and_then(|did| fragment_infos.get(&did));
+        if let Some(fragment_infos) = fragment_infos {
             for &info in fragment_infos {
 
                 let make_datum = |id| {
@@ -1558,11 +1578,13 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     fn bind_args(&'blk self,
                  args: &[hir::Arg],
                  abi: Abi,
+                 id: ast::NodeId,
                  closure_env: closure::ClosureEnv,
                  arg_scope: cleanup::CustomScopeIndex)
                  -> Block<'blk, 'tcx> {
         let _icx = push_ctxt("FunctionContext::bind_args");
-        let mut bcx = self.init(false);
+        let fn_did = self.ccx.tcx().map.local_def_id(id);
+        let mut bcx = self.init(false, Some(fn_did));
         let arg_scope_id = cleanup::CustomScope(arg_scope);
 
         let mut idx = 0;
@@ -1774,19 +1796,24 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 /// Builds an LLVM function out of a source function.
 ///
 /// If the function closes over its environment a closure will be returned.
-pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                   decl: &hir::FnDecl,
-                                   body: &hir::Block,
-                                   llfndecl: ValueRef,
-                                   param_substs: &'tcx Substs<'tcx>,
-                                   fn_ast_id: ast::NodeId,
-                                   attributes: &[ast::Attribute],
-                                   fn_ty: FnType,
-                                   abi: Abi,
-                                   closure_env: closure::ClosureEnv<'b>) {
+pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               decl: &hir::FnDecl,
+                               body: &hir::Block,
+                               llfndecl: ValueRef,
+                               param_substs: &'tcx Substs<'tcx>,
+                               def_id: DefId,
+                               inlined_id: ast::NodeId,
+                               fn_ty: FnType,
+                               abi: Abi,
+                               closure_env: closure::ClosureEnv) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
-    record_translation_item_as_generated(ccx, fn_ast_id, param_substs);
+    if collector::collecting_debug_information(ccx) {
+        ccx.record_translation_item_as_generated(TransItem::Fn(Instance {
+            def: def_id,
+            params: &param_substs.types
+        }))
+    }
 
     let _icx = push_ctxt("trans_closure");
     attributes::emit_uwtable(llfndecl, true);
@@ -1795,23 +1822,20 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, fn_ast_id,
-                               param_substs, Some(body.span), &arena);
+    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, Some(def_id), param_substs, &arena);
 
-    if attributes.iter().any(|item| item.check_name("rustc_mir")) {
+    if fcx.mir.is_some() {
         return mir::trans_mir(&fcx);
     }
 
     // cleanup scope for the incoming arguments
-    let fn_cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(ccx,
-                                                                             fn_ast_id,
-                                                                             body.span,
-                                                                             true);
+    let fn_cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(
+        ccx, inlined_id, body.span, true);
     let arg_scope = fcx.push_custom_cleanup_scope_with_debug_loc(fn_cleanup_debug_loc);
 
     // Set up arguments to the function.
     debug!("trans_closure: function: {:?}", Value(fcx.llfn));
-    let bcx = fcx.bind_args(&decl.inputs, abi, closure_env, arg_scope);
+    let bcx = fcx.bind_args(&decl.inputs, abi, inlined_id, closure_env, arg_scope);
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
@@ -1862,28 +1886,6 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Insert the mandatory first few basic blocks before lltop.
     fcx.finish(bcx, ret_debug_loc);
-
-    fn record_translation_item_as_generated<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                      node_id: ast::NodeId,
-                                                      param_substs: &'tcx Substs<'tcx>) {
-        if !collector::collecting_debug_information(ccx) {
-            return;
-        }
-
-        let def_id = match ccx.tcx().node_id_to_type(node_id).sty {
-            ty::TyClosure(def_id, _) => def_id,
-            _ => ccx.external_srcs()
-                    .borrow()
-                    .get(&node_id)
-                    .map(|did| *did)
-                    .unwrap_or_else(|| ccx.tcx().map.local_def_id(node_id)),
-        };
-
-        ccx.record_translation_item_as_generated(TransItem::Fn(Instance {
-            def: def_id,
-            params: &param_substs.types,
-        }));
-    }
 }
 
 /// Creates an LLVM function corresponding to a source language function.
@@ -1892,8 +1894,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           body: &hir::Block,
                           llfndecl: ValueRef,
                           param_substs: &'tcx Substs<'tcx>,
-                          id: ast::NodeId,
-                          attrs: &[ast::Attribute]) {
+                          id: ast::NodeId) {
     let _s = StatRecorder::new(ccx, ccx.tcx().map.path_to_string(id).to_string());
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
@@ -1903,13 +1904,18 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
     let abi = fn_ty.fn_abi();
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
+    let def_id = if let Some(&def_id) = ccx.external_srcs().borrow().get(&id) {
+        def_id
+    } else {
+        ccx.tcx().map.local_def_id(id)
+    };
     trans_closure(ccx,
                   decl,
                   body,
                   llfndecl,
                   param_substs,
+                  def_id,
                   id,
-                  attrs,
                   fn_ty,
                   abi,
                   closure::ClosureEnv::NotClosure);
@@ -2001,9 +2007,10 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, ctor_id,
-                               param_substs, None, &arena);
-    let bcx = fcx.init(false);
+    fcx = FunctionContext::new(ccx, llfndecl, fn_ty,
+                               Some(ccx.tcx().map.local_def_id(ctor_id)),
+                               param_substs, &arena);
+    let bcx = fcx.init(false, None);
 
     assert!(!fcx.needs_ret_allocas);
 
@@ -2239,7 +2246,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                     let empty_substs = tcx.mk_substs(Substs::trans_empty());
                     let def_id = tcx.map.local_def_id(item.id);
                     let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
-                    trans_fn(ccx, &decl, &body, llfn, empty_substs, item.id, &item.attrs);
+                    trans_fn(ccx, &decl, &body, llfn, empty_substs, item.id);
                     set_global_section(ccx, llfn, item);
                     update_linkage(ccx,
                                    llfn,
@@ -2278,8 +2285,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                             let empty_substs = tcx.mk_substs(Substs::trans_empty());
                             let def_id = tcx.map.local_def_id(impl_item.id);
                             let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
-                            trans_fn(ccx, &sig.decl, body, llfn, empty_substs,
-                                     impl_item.id, &impl_item.attrs);
+                            trans_fn(ccx, &sig.decl, body, llfn, empty_substs, impl_item.id);
                             update_linkage(ccx, llfn, Some(impl_item.id),
                                 if is_origin {
                                     OriginalTranslation

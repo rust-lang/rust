@@ -33,6 +33,7 @@ use trans::datum;
 use trans::debuginfo::{self, DebugLoc};
 use trans::declare;
 use trans::machine;
+use trans::mir::CachedMir;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::value::Value;
@@ -40,7 +41,6 @@ use middle::ty::{self, Ty, TyCtxt};
 use middle::traits::{self, SelectionContext, ProjectionMode};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
-use rustc::mir::repr::Mir;
 use util::nodemap::NodeMap;
 
 use arena::TypedArena;
@@ -273,7 +273,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // The MIR for this function. At present, this is optional because
     // we only have MIR available for things that are local to the
     // crate.
-    pub mir: Option<&'a Mir<'tcx>>,
+    pub mir: Option<CachedMir<'a, 'tcx>>,
 
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
@@ -325,10 +325,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // Describes the return/argument LLVM types and their ABI handling.
     pub fn_ty: FnType,
 
-    // The NodeId of the function, or -1 if it doesn't correspond to
-    // a user-defined function.
-    pub id: ast::NodeId,
-
     // If this function is being monomorphized, this contains the type
     // substitutions used.
     pub param_substs: &'tcx Substs<'tcx>,
@@ -356,8 +352,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    pub fn mir(&self) -> &'a Mir<'tcx> {
-        self.mir.unwrap()
+    pub fn mir(&self) -> CachedMir<'a, 'tcx> {
+        self.mir.clone().expect("fcx.mir was empty")
     }
 
     pub fn cleanup(&self) {
@@ -584,7 +580,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.lpad.get()
     }
 
-    pub fn mir(&self) -> &'blk Mir<'tcx> {
+    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
         self.fcx.mir()
     }
 
@@ -709,7 +705,7 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         self.bcx.llbb
     }
 
-    pub fn mir(&self) -> &'blk Mir<'tcx> {
+    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
         self.bcx.mir()
     }
 

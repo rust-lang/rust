@@ -34,7 +34,6 @@ use middle::ty::{self, Ty, TyCtxt};
 use session::config::FullDebugInfo;
 
 use syntax::ast;
-use syntax::attr::{ThinAttributes, ThinAttributesExt};
 
 use rustc_front::hir;
 
@@ -43,7 +42,7 @@ use libc::c_uint;
 fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         closure_def_id: DefId,
                                         arg_scope_id: ScopeId,
-                                        freevars: &[ty::Freevar]) {
+                                        id: ast::NodeId) {
     let _icx = push_ctxt("closure::load_closure_environment");
     let kind = kind_for_closure(bcx.ccx(), closure_def_id);
 
@@ -52,7 +51,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Special case for small by-value selfs.
     let llenv = if kind == ty::ClosureKind::FnOnce && !env_arg.is_indirect() {
-        let closure_ty = node_id_type(bcx, bcx.fcx.id);
+        let closure_ty = node_id_type(bcx, id);
         let llenv = rvalue_scratch_datum(bcx, closure_ty, "closure_env").val;
         env_arg.store_fn_arg(bcx, &mut env_idx, llenv);
         llenv
@@ -70,52 +69,52 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         None
     };
 
-    for (i, freevar) in freevars.iter().enumerate() {
-        let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
-                                     closure_expr_id: bcx.fcx.id };
-        let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
-        let mut upvar_ptr = StructGEP(bcx, llenv, i);
-        let captured_by_ref = match upvar_capture {
-            ty::UpvarCapture::ByValue => false,
-            ty::UpvarCapture::ByRef(..) => {
-                upvar_ptr = Load(bcx, upvar_ptr);
-                true
+    bcx.tcx().with_freevars(id, |fv| {
+        for (i, freevar) in fv.iter().enumerate() {
+            let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
+                                        closure_expr_id: id };
+            let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
+            let mut upvar_ptr = StructGEP(bcx, llenv, i);
+            let captured_by_ref = match upvar_capture {
+                ty::UpvarCapture::ByValue => false,
+                ty::UpvarCapture::ByRef(..) => {
+                    upvar_ptr = Load(bcx, upvar_ptr);
+                    true
+                }
+            };
+            let node_id = freevar.def.var_id();
+            bcx.fcx.llupvars.borrow_mut().insert(node_id, upvar_ptr);
+
+            if kind == ty::ClosureKind::FnOnce && !captured_by_ref {
+                let hint = bcx.fcx.lldropflag_hints.borrow().hint_datum(upvar_id.var_id);
+                bcx.fcx.schedule_drop_mem(arg_scope_id,
+                                        upvar_ptr,
+                                        node_id_type(bcx, node_id),
+                                        hint)
             }
-        };
-        let node_id = freevar.def.var_id();
-        bcx.fcx.llupvars.borrow_mut().insert(node_id, upvar_ptr);
 
-        if kind == ty::ClosureKind::FnOnce && !captured_by_ref {
-            let hint = bcx.fcx.lldropflag_hints.borrow().hint_datum(upvar_id.var_id);
-            bcx.fcx.schedule_drop_mem(arg_scope_id,
-                                      upvar_ptr,
-                                      node_id_type(bcx, node_id),
-                                      hint)
+            if let Some(env_pointer_alloca) = env_pointer_alloca {
+                debuginfo::create_captured_var_metadata(
+                    bcx,
+                    node_id,
+                    env_pointer_alloca,
+                    i,
+                    captured_by_ref,
+                    freevar.span);
+            }
         }
-
-        if let Some(env_pointer_alloca) = env_pointer_alloca {
-            debuginfo::create_captured_var_metadata(
-                bcx,
-                node_id,
-                env_pointer_alloca,
-                i,
-                captured_by_ref,
-                freevar.span);
-        }
-    }
+    })
 }
 
-pub enum ClosureEnv<'a> {
+pub enum ClosureEnv {
     NotClosure,
-    Closure(DefId, &'a [ty::Freevar]),
+    Closure(DefId, ast::NodeId),
 }
 
-impl<'a> ClosureEnv<'a> {
+impl ClosureEnv {
     pub fn load<'blk,'tcx>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId) {
-        if let ClosureEnv::Closure(def_id, freevars) = self {
-            if !freevars.is_empty() {
-                load_closure_environment(bcx, def_id, arg_scope, freevars);
-            }
+        if let ClosureEnv::Closure(def_id, id) = self {
+            load_closure_environment(bcx, def_id, arg_scope, id);
         }
     }
 }
@@ -198,8 +197,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                                     body: &hir::Block,
                                     id: ast::NodeId,
                                     closure_def_id: DefId, // (*)
-                                    closure_substs: &'tcx ty::ClosureSubsts<'tcx>,
-                                    closure_expr_attrs: &ThinAttributes)
+                                    closure_substs: &ty::ClosureSubsts<'tcx>)
                                     -> Option<Block<'a, 'tcx>>
 {
     // (*) Note that in the case of inlined functions, the `closure_def_id` will be the
@@ -229,9 +227,6 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
     let function_type = infcx.closure_type(closure_def_id, closure_substs);
 
-    let freevars: Vec<ty::Freevar> =
-        tcx.with_freevars(id, |fv| fv.iter().cloned().collect());
-
     let sig = tcx.erase_late_bound_regions(&function_type.sig);
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
 
@@ -250,11 +245,11 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   body,
                   llfn,
                   param_substs,
+                  closure_def_id,
                   id,
-                  closure_expr_attrs.as_attr_slice(),
                   fn_ty,
                   Abi::RustCall,
-                  ClosureEnv::Closure(closure_def_id, &freevars));
+                  ClosureEnv::Closure(closure_def_id, id));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
@@ -270,21 +265,23 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let repr = adt::represent_type(ccx, node_id_type(bcx, id));
 
     // Create the closure.
-    for (i, freevar) in freevars.iter().enumerate() {
-        let datum = expr::trans_var(bcx, freevar.def);
-        let upvar_slot_dest = adt::trans_field_ptr(
-            bcx, &repr, adt::MaybeSizedValue::sized(dest_addr), Disr(0), i);
-        let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
-                                     closure_expr_id: id };
-        match tcx.upvar_capture(upvar_id).unwrap() {
-            ty::UpvarCapture::ByValue => {
-                bcx = datum.store_to(bcx, upvar_slot_dest);
-            }
-            ty::UpvarCapture::ByRef(..) => {
-                Store(bcx, datum.to_llref(), upvar_slot_dest);
+    tcx.with_freevars(id, |fv| {
+        for (i, freevar) in fv.iter().enumerate() {
+            let datum = expr::trans_var(bcx, freevar.def);
+            let upvar_slot_dest = adt::trans_field_ptr(
+                bcx, &repr, adt::MaybeSizedValue::sized(dest_addr), Disr(0), i);
+            let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
+                                        closure_expr_id: id };
+            match tcx.upvar_capture(upvar_id).unwrap() {
+                ty::UpvarCapture::ByValue => {
+                    bcx = datum.store_to(bcx, upvar_slot_dest);
+                }
+                ty::UpvarCapture::ByRef(..) => {
+                    Store(bcx, datum.to_llref(), upvar_slot_dest);
+                }
             }
         }
-    }
+    });
     adt::trans_set_discr(bcx, &repr, dest_addr, Disr(0));
 
     Some(bcx)
@@ -394,9 +391,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, lloncefn, fn_ty, ast::DUMMY_NODE_ID,
-                               substs.func_substs, None, &block_arena);
-    let mut bcx = fcx.init(false);
+    fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, substs.func_substs, &block_arena);
+    let mut bcx = fcx.init(false, None);
 
 
     // the first argument (`self`) will be the (by value) closure env.

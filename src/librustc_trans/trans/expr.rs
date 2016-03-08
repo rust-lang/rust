@@ -1141,8 +1141,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         body,
                                         expr.id,
                                         def_id,
-                                        substs,
-                                        &expr.attrs).unwrap_or(bcx)
+                                        substs).unwrap_or(bcx)
         }
         hir::ExprCall(ref f, ref args) => {
             let method = bcx.tcx().tables.borrow().method_map.get(&method_call).cloned();
