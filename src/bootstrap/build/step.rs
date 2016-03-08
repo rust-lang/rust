@@ -46,6 +46,7 @@ macro_rules! targets {
             }),
 
             // Various tools that we can build as part of the build.
+            (tool_linkchecker, ToolLinkchecker { stage: u32 }),
             (tool_rustbook, ToolRustbook { stage: u32 }),
 
             // Steps for long-running native builds. Ideally these wouldn't
@@ -71,6 +72,7 @@ macro_rules! targets {
             // Steps for running tests. The 'check' target is just a pseudo
             // target to depend on a bunch of others.
             (check, Check { stage: u32, compiler: Compiler<'a> }),
+            (check_linkcheck, CheckLinkcheck { stage: u32 }),
         }
     }
 }
@@ -200,6 +202,8 @@ fn add_steps<'a>(build: &'a Build,
         }
 
         targets!(add_step);
+
+        panic!("unknown step: {}", step);
     }
 }
 
@@ -273,7 +277,15 @@ impl<'a> Step<'a> {
                      self.doc_std(stage)]
             }
             Source::Check { stage, compiler: _ } => {
-                vec![]
+                vec![self.check_linkcheck(stage)]
+            }
+            Source::CheckLinkcheck { stage } => {
+                vec![self.tool_linkchecker(stage), self.doc(stage)]
+            }
+
+            Source::ToolLinkchecker { stage } => {
+                vec![self.libstd(stage, self.compiler(stage))]
+            }
             Source::ToolRustbook { stage } => {
                 vec![self.librustc(stage, self.compiler(stage))]
             }
