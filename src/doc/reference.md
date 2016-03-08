@@ -1195,7 +1195,8 @@ a = Animal::Cat { name: "Spotty".to_string(), weight: 2.7 };
 In this example, `Cat` is a _struct-like enum variant_,
 whereas `Dog` is simply called an enum variant.
 
-Enums have a discriminant. You can assign them explicitly:
+Each enum value has a _discriminant_ which is an integer associated to it. You
+can specify it explicitly:
 
 ```
 enum Foo {
@@ -1203,10 +1204,15 @@ enum Foo {
 }
 ```
 
-If a discriminant isn't assigned, they start at zero, and add one for each
+The right hand side of the specification is interpreted as an `isize` value,
+but the compiler is allowed to use a smaller type in the actual memory layout.
+The [`repr` attribute](#ffi-attributes) can be added in order to change
+the type of the right hand side and specify the memory layout.
+
+If a discriminant isn't specified, they start at zero, and add one for each
 variant, in order.
 
-You can cast an enum to get this value:
+You can cast an enum to get its discriminant:
 
 ```
 # enum Foo { Bar = 123 }
