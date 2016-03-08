@@ -15,7 +15,7 @@ use codemap::{BytePos, CharPos, CodeMap, Pos};
 use errors;
 use parse::lexer::is_block_doc_comment;
 use parse::lexer::{StringReader, TokenAndSpan};
-use parse::lexer::{is_whitespace, Reader};
+use parse::lexer::{is_pattern_whitespace, Reader};
 use parse::lexer;
 use print::pprust;
 use str::char_at;
@@ -153,7 +153,7 @@ fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader, comments: &mut Vec<Comment>) {
-    while is_whitespace(rdr.curr) && !rdr.is_eof() {
+    while is_pattern_whitespace(rdr.curr) && !rdr.is_eof() {
         if rdr.col == CharPos(0) && rdr.curr_is('\n') {
             push_blank_line_comment(rdr, &mut *comments);
         }

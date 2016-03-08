@@ -51,3 +51,8 @@ pub mod str {
 pub mod derived_property {
     pub use tables::derived_property::{Cased, Case_Ignorable};
 }
+
+// For use in libsyntax
+pub mod property {
+    pub use tables::property::Pattern_White_Space;
+}
