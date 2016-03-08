@@ -115,6 +115,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
                 let projected_ty = bcx.monomorphize(&projected_ty);
+
+                let project_index = |llindex| {
+                    let element = if let ty::TySlice(_) = tr_base.ty.to_ty(tcx).sty {
+                        // Slices already point to the array element type.
+                        bcx.inbounds_gep(tr_base.llval, &[llindex])
+                    } else {
+                        let zero = common::C_uint(bcx.ccx(), 0u64);
+                        bcx.inbounds_gep(tr_base.llval, &[zero, llindex])
+                    };
+                    (element, ptr::null_mut())
+                };
+
                 let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
                         let base_ty = tr_base.ty.to_ty(tcx);
@@ -153,19 +165,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);
-                        let llindex = self.prepare_index(bcx, index.immediate());
-                        let zero = common::C_uint(bcx.ccx(), 0u64);
-                        (bcx.inbounds_gep(tr_base.llval, &[zero, llindex]),
-                         ptr::null_mut())
+                        project_index(self.prepare_index(bcx, index.immediate()))
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
                         let lloffset = common::C_u32(bcx.ccx(), offset);
-                        let llindex = self.prepare_index(bcx, lloffset);
-                        let zero = common::C_uint(bcx.ccx(), 0u64);
-                        (bcx.inbounds_gep(tr_base.llval, &[zero, llindex]),
-                         ptr::null_mut())
+                        project_index(self.prepare_index(bcx, lloffset))
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
@@ -173,10 +179,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let lloffset = common::C_u32(bcx.ccx(), offset);
                         let lllen = self.lvalue_len(bcx, tr_base);
                         let llindex = bcx.sub(lllen, lloffset);
-                        let llindex = self.prepare_index(bcx, llindex);
-                        let zero = common::C_uint(bcx.ccx(), 0u64);
-                        (bcx.inbounds_gep(tr_base.llval, &[zero, llindex]),
-                         ptr::null_mut())
+                        project_index(self.prepare_index(bcx, llindex))
                     }
                     mir::ProjectionElem::Downcast(..) => {
                         (tr_base.llval, tr_base.llextra)
