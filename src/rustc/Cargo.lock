@@ -2,7 +2,6 @@
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
- "rustbook 0.0.0",
  "rustc_back 0.0.0",
  "rustc_driver 0.0.0",
  "rustdoc 0.0.0",
@@ -64,14 +63,6 @@ version = "0.0.0"
 dependencies = [
  "log 0.0.0",
  "serialize 0.0.0",
-]
-
-[[package]]
-name = "rustbook"
-version = "0.0.0"
-dependencies = [
- "rustc_back 0.0.0",
- "rustdoc 0.0.0",
 ]
 
 [[package]]

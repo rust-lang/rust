@@ -298,3 +298,28 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
                          sysroot_dst.join(path.file_name().unwrap())));
     }
 }
+
+/// Build a tool in `src/tools`
+///
+/// This will build the specified tool with the specified `host` compiler in
+/// `stage` into the normal cargo output directory.
+pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
+    println!("Building stage{} tool {} ({})", stage, tool, host);
+
+    let compiler = Compiler::new(stage, host);
+
+    // FIXME: need to clear out previous tool and ideally deps, may require
+    //        isolating output directories or require a pseudo shim step to
+    //        clear out all the info.
+    //
+    //        Maybe when libstd is compiled it should clear out the rustc of the
+    //        corresponding stage?
+    // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
+    // build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
+
+    let mut cargo = build.cargo(stage, &compiler, Mode::Tool, None, "build");
+    cargo.arg("--manifest-path")
+         .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
+    build.run(&mut cargo);
+}
+
