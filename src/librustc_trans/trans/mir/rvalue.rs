@@ -132,6 +132,31 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     },
                     _ => {
+                        // FIXME Shouldn't need to manually trigger closure instantiations.
+                        if let mir::AggregateKind::Closure(def_id, substs) = *kind {
+                            use rustc_front::hir;
+                            use syntax::ast::DUMMY_NODE_ID;
+                            use syntax::codemap::DUMMY_SP;
+                            use syntax::ptr::P;
+                            use trans::closure;
+
+                            closure::trans_closure_expr(closure::Dest::Ignore(bcx.ccx()),
+                                                        &hir::FnDecl {
+                                                            inputs: P::new(),
+                                                            output: hir::NoReturn(DUMMY_SP),
+                                                            variadic: false
+                                                        },
+                                                        &hir::Block {
+                                                            stmts: P::new(),
+                                                            expr: None,
+                                                            id: DUMMY_NODE_ID,
+                                                            rules: hir::DefaultBlock,
+                                                            span: DUMMY_SP
+                                                        },
+                                                        DUMMY_NODE_ID, def_id,
+                                                        &bcx.monomorphize(substs));
+                        }
+
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
