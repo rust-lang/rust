@@ -71,13 +71,21 @@ extern crate std;
 #[cfg(test)]
 extern crate test;
 
+#[doc(no_inline)]
 pub use binary_heap::BinaryHeap;
+#[doc(no_inline)]
 pub use btree_map::BTreeMap;
+#[doc(no_inline)]
 pub use btree_set::BTreeSet;
+#[doc(no_inline)]
 pub use linked_list::LinkedList;
+#[doc(no_inline)]
 pub use enum_set::EnumSet;
+#[doc(no_inline)]
 pub use vec_deque::VecDeque;
+#[doc(no_inline)]
 pub use string::String;
+#[doc(no_inline)]
 pub use vec::Vec;
 
 // Needed for the vec! macro

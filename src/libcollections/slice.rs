@@ -78,7 +78,7 @@
 //! * Further methods that return iterators are `.split()`, `.splitn()`,
 //!   `.chunks()`, `.windows()` and more.
 //!
-//! *[See also the slice primitive type](../primitive.slice.html).*
+//! *[See also the slice primitive type](../../std/primitive.slice.html).*
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Many of the usings in this module are only used in the test configuration.
