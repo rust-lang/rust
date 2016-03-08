@@ -3679,7 +3679,7 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// assert_eq!(iter.is_empty(), true);
     /// ```
-    #[unstable(feature = "peekable_is_empty", issue = "27701")]
+    #[unstable(feature = "peekable_is_empty", issue = "32111")]
     #[inline]
     pub fn is_empty(&mut self) -> bool {
         self.peek().is_none()
