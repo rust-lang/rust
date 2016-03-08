@@ -54,7 +54,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                bcx
            }
 
-            mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, cast_ty) => {
+            mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, cast_ty) => {
                 if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
@@ -67,7 +67,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // this to be eliminated by MIR translation, but
                 // `CoerceUnsized` can be passed by a where-clause,
                 // so the (generic) MIR may not be able to expand it.
-                let operand = self.trans_operand(&bcx, operand);
+                let operand = self.trans_operand(&bcx, source);
                 bcx.with_block(|bcx| {
                     match operand.val {
                         OperandValue::FatPtr(..) => unreachable!(),
@@ -92,6 +92,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
                 });
+                self.set_operand_dropped(&bcx, source);
                 bcx
             }
 
@@ -127,8 +128,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                     adt::trans_field_ptr(bcx, &repr, val, disr, i)
                                 });
                                 self.store_operand(&bcx, lldest_i, op);
-                                self.set_operand_dropped(&bcx, operand);
                             }
+                            self.set_operand_dropped(&bcx, operand);
                         }
                     },
                     _ => {
@@ -166,8 +167,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 // not be structs but arrays.
                                 let dest = bcx.gepi(dest.llval, &[0, i]);
                                 self.store_operand(&bcx, dest, op);
-                                self.set_operand_dropped(&bcx, operand);
                             }
+                            self.set_operand_dropped(&bcx, operand);
                         }
                     }
                 }
@@ -216,8 +217,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
-            mir::Rvalue::Cast(ref kind, ref operand, cast_ty) => {
-                let operand = self.trans_operand(&bcx, operand);
+            mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
+                let operand = self.trans_operand(&bcx, source);
                 debug!("cast operand is {:?}", operand);
                 let cast_ty = bcx.monomorphize(&cast_ty);
 
@@ -250,6 +251,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 // example,
                                 //   &'a fmt::Debug+Send => &'a fmt::Debug,
                                 // and is a no-op at the LLVM level
+                                self.set_operand_dropped(&bcx, source);
                                 operand.val
                             }
                             OperandValue::Immediate(lldata) => {
@@ -258,6 +260,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                     base::unsize_thin_ptr(bcx, lldata,
                                                           operand.ty, cast_ty)
                                 });
+                                self.set_operand_dropped(&bcx, source);
                                 OperandValue::FatPtr(lldata, llextra)
                             }
                             OperandValue::Ref(_) => {
