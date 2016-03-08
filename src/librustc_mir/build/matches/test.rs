@@ -175,9 +175,28 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
 
             TestKind::Eq { ref value, ty } => {
-                let expect = self.literal_operand(test.span, ty.clone(), Literal::Value {
-                    value: value.clone()
-                });
+                // If we're matching against &[u8] with b"...", we need to insert
+                // an unsizing coercion, as the byte string has type &[u8; N].
+                let expect = match *value {
+                    ConstVal::ByteStr(ref bytes) if ty.is_slice() => {
+                        let tcx = self.hir.tcx();
+                        let array_ty = tcx.mk_array(tcx.types.u8, bytes.len());
+                        let ref_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), array_ty);
+                        let array = self.literal_operand(test.span, ref_ty, Literal::Value {
+                            value: value.clone()
+                        });
+
+                        let sliced = self.temp(ty);
+                        self.cfg.push_assign(block, test.span, &sliced,
+                                             Rvalue::Cast(CastKind::Unsize, array, ty));
+                        Operand::Consume(sliced)
+                    }
+                    _ => {
+                        self.literal_operand(test.span, ty, Literal::Value {
+                            value: value.clone()
+                        })
+                    }
+                };
                 let val = Operand::Consume(lvalue.clone());
                 let fail = self.cfg.start_new_block();
                 let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val.clone());
