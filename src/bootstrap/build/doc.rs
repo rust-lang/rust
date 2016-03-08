@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::path::Path;
 use std::fs::{self, File};
 use std::io::prelude::*;
+use std::path::Path;
+use std::process::Command;
 
 use build::{Build, Compiler, Mode};
 use build::util::{up_to_date, cp_r};
@@ -69,7 +70,7 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
         }
 
         let html = out.join(filename).with_extension("html");
-        let rustdoc = build.tool(&compiler, "rustdoc");
+        let rustdoc = build.rustdoc(&compiler);
         if up_to_date(&path, &html) &&
            up_to_date(&footer, &html) &&
            up_to_date(&favicon, &html) &&
@@ -79,7 +80,7 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
             continue
         }
 
-        let mut cmd = build.tool_cmd(&compiler, "rustdoc");
+        let mut cmd = Command::new(&rustdoc);
         cmd.arg("--html-after-content").arg(&footer)
            .arg("--html-before-content").arg(&version_info)
            .arg("--html-in-header").arg(&favicon)
@@ -108,10 +109,9 @@ pub fn std(build: &Build, stage: u32, host: &str, out: &Path) {
     let compiler = Compiler::new(stage, host);
     let out_dir = build.stage_out(stage, host, Mode::Libstd)
                        .join(host).join("doc");
-    let rustdoc = build.tool(&compiler, "rustdoc");
-    if !up_to_date(&rustdoc, &out_dir.join("std/index.html")) {
-        t!(fs::remove_dir_all(&out_dir));
-    }
+    let rustdoc = build.rustdoc(&compiler);
+
+    build.clear_if_dirty(&out_dir, &rustdoc);
 
     let mut cargo = build.cargo(stage, &compiler, Mode::Libstd, Some(host),
                                 "doc");
@@ -127,7 +127,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
     let compiler = Compiler::new(stage, host);
     let out_dir = build.stage_out(stage, host, Mode::Librustc)
                        .join(host).join("doc");
-    let rustdoc = build.tool(&compiler, "rustdoc");
+    let rustdoc = build.rustdoc(&compiler);
     if !up_to_date(&rustdoc, &out_dir.join("rustc/index.html")) {
         t!(fs::remove_dir_all(&out_dir));
     }

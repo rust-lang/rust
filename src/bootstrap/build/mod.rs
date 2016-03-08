@@ -275,7 +275,8 @@ impl Build {
              .env("RUSTC_SYSROOT", self.sysroot(stage, host))
              .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir())
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
-             .env("RUSTDOC", self.tool(compiler, "rustdoc"));
+             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
+             .env("RUSTDOC_REAL", self.rustdoc(compiler));
 
         if let Some(target) = target {
              cargo.env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
@@ -317,11 +318,24 @@ impl Build {
         }
     }
 
-    /// Get the specified tool next to the specified compiler
+    /// Get the specified tool built by the specified compiler
     fn tool(&self, compiler: &Compiler, tool: &str) -> PathBuf {
         self.stage_out(compiler.stage, compiler.host, Mode::Tool)
             .join(self.cargo_dir())
             .join(exe(tool, compiler.host))
+    }
+
+    /// Get the `rustdoc` executable next to the specified compiler
+    fn rustdoc(&self, compiler: &Compiler) -> PathBuf {
+        let root = if compiler.is_snapshot(self) {
+            let mut rustdoc = self.rustc.clone();
+            rustdoc.pop();
+            rustdoc
+        } else {
+            let (stage, host) = (compiler.stage, compiler.host);
+            self.cargo_out(stage - 1, host, Mode::Librustc, host)
+        };
+        root.join(exe("rustdoc", compiler.host))
     }
 
     /// Get a `Command` which is ready to run `tool` in `stage` built for
