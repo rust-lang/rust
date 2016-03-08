@@ -73,8 +73,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 })
             }
             ExprKind::Cast { source } => {
-                let source = unpack!(block = this.as_operand(block, source));
-                block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
+                let source = this.hir.mirror(source);
+                if source.ty == expr.ty {
+                    this.expr_as_rvalue(block, source)
+                } else {
+                    let source = unpack!(block = this.as_operand(block, source));
+                    block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
+                }
             }
             ExprKind::ReifyFnPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, source));
