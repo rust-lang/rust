@@ -58,6 +58,74 @@ use self::Entry::*;
 /// It is a logic error for a key to be modified in such a way that the key's ordering relative to
 /// any other key, as determined by the `Ord` trait, changes while it is in the map. This is
 /// normally only possible through `Cell`, `RefCell`, global state, I/O, or unsafe code.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::BTreeMap;
+///
+/// // type inference lets us omit an explicit type signature (which
+/// // would be `BTreeMap<&str, &str>` in this example).
+/// let mut movie_reviews = BTreeMap::new();
+///
+/// // review some books.
+/// movie_reviews.insert("Office Space",       "Deals with real issues in the workplace.");
+/// movie_reviews.insert("Pulp Fiction",       "Masterpiece.");
+/// movie_reviews.insert("The Godfather",      "Very enjoyable.");
+/// movie_reviews.insert("The Blues Brothers", "Eye lyked it alot.");
+///
+/// // check for a specific one.
+/// if !movie_reviews.contains_key("Les Misérables") {
+///     println!("We've got {} reviews, but Les Misérables ain't one.",
+///              movie_reviews.len());
+/// }
+///
+/// // oops, this review has a lot of spelling mistakes, let's delete it.
+/// movie_reviews.remove("The Blues Brothers");
+///
+/// // look up the values associated with some keys.
+/// let to_find = ["Up!", "Office Space"];
+/// for book in &to_find {
+///     match movie_reviews.get(book) {
+///        Some(review) => println!("{}: {}", book, review),
+///        None => println!("{} is unreviewed.", book)
+///     }
+/// }
+///
+/// // iterate over everything.
+/// for (movie, review) in &movie_reviews {
+///     println!("{}: \"{}\"", movie, review);
+/// }
+/// ```
+///
+/// `BTreeMap` also implements an [`Entry API`](#method.entry), which allows
+/// for more complex methods of getting, setting, updating and removing keys and
+/// their values:
+///
+/// ```
+/// use std::collections::BTreeMap;
+///
+/// // type inference lets us omit an explicit type signature (which
+/// // would be `BTreeMap<&str, u8>` in this example).
+/// let mut player_stats = BTreeMap::new();
+///
+/// fn random_stat_buff() -> u8 {
+///     // could actually return some random value here - let's just return
+///     // some fixed value for now
+///     42
+/// }
+///
+/// // insert a key only if it doesn't already exist
+/// player_stats.entry("health").or_insert(100);
+///
+/// // insert a key using a function that provides a new value only if it
+/// // doesn't already exist
+/// player_stats.entry("defence").or_insert_with(random_stat_buff);
+///
+/// // update a key, guarding against the key possibly not being set
+/// let stat = player_stats.entry("attack").or_insert(100);
+/// *stat += random_stat_buff();
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeMap<K, V> {
     root: node::Root<K, V>,
@@ -276,6 +344,14 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap with a reasonable choice for B.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, isize> = BTreeMap::new();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BTreeMap<K, V> {
         BTreeMap {
