@@ -35,7 +35,7 @@ use trans::type_of::*;
 use trans::value::Value;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
-use syntax::ast::{self, Name};
+use syntax::ast::Name;
 use syntax::codemap::DUMMY_SP;
 
 // drop_glue pointer, size, align.
@@ -95,9 +95,8 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, ast::DUMMY_NODE_ID,
-                               empty_substs, None, &block_arena);
-    let mut bcx = fcx.init(false);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &block_arena);
+    let mut bcx = fcx.init(false, None);
     assert!(!fcx.needs_ret_allocas);
 
 

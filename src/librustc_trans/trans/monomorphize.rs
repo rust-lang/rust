@@ -151,7 +151,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
 
             if trans_everywhere || is_first {
-                trans_fn(ccx, decl, body, lldecl, psubsts, fn_node_id, attrs);
+                trans_fn(ccx, decl, body, lldecl, psubsts, fn_node_id);
             }
         }
 

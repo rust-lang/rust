@@ -1003,8 +1003,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                 body,
                                                 e.id,
                                                 def_id,
-                                                substs,
-                                                &e.attrs);
+                                                substs);
                 }
                 _ =>
                     cx.sess().span_bug(

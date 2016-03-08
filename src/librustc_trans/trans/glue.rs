@@ -41,7 +41,6 @@ use trans::type_::Type;
 use trans::value::Value;
 
 use arena::TypedArena;
-use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -271,10 +270,9 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, ast::DUMMY_NODE_ID,
-                               empty_substs, None, &arena);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &arena);
 
-    let bcx = fcx.init(false);
+    let bcx = fcx.init(false, None);
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
 

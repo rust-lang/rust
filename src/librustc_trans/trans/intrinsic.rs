@@ -1267,12 +1267,11 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         sig: ty::Binder(sig)
     });
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
+    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
     let (fcx, block_arena);
     block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, ast::DUMMY_NODE_ID,
-                               ccx.tcx().mk_substs(Substs::trans_empty()),
-                               None, &block_arena);
-    let bcx = fcx.init(true);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &block_arena);
+    let bcx = fcx.init(true, None);
     trans(bcx);
     fcx.cleanup();
     llfn

@@ -217,7 +217,6 @@ use trans::monomorphize::{self, Instance};
 use util::nodemap::{FnvHashSet, FnvHashMap, DefIdMap};
 
 use std::hash::{Hash, Hasher};
-use std::rc::Rc;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {
@@ -263,14 +262,9 @@ pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("Building translation item graph, beginning at roots");
         let mut visited = FnvHashSet();
         let mut recursion_depths = DefIdMap();
-        let mut mir_cache = DefIdMap();
 
         for root in roots {
-            collect_items_rec(ccx,
-                              root,
-                              &mut visited,
-                              &mut recursion_depths,
-                              &mut mir_cache);
+            collect_items_rec(ccx, root, &mut visited, &mut recursion_depths);
         }
 
         visited
@@ -300,27 +294,11 @@ fn collect_roots<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     roots
 }
 
-#[derive(Clone)]
-enum CachedMir<'mir, 'tcx: 'mir> {
-    Ref(&'mir mir::Mir<'tcx>),
-    Owned(Rc<mir::Mir<'tcx>>)
-}
-
-impl<'mir, 'tcx: 'mir> CachedMir<'mir, 'tcx> {
-    fn get_ref<'a>(&'a self) -> &'a mir::Mir<'tcx> {
-        match *self {
-            CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => &rc,
-        }
-    }
-}
-
 // Collect all monomorphized translation items reachable from `starting_point`
 fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
                                    starting_point: TransItem<'tcx>,
                                    visited: &mut FnvHashSet<TransItem<'tcx>>,
-                                   recursion_depths: &mut DefIdMap<usize>,
-                                   mir_cache: &mut DefIdMap<CachedMir<'a, 'tcx>>) {
+                                   recursion_depths: &mut DefIdMap<usize>) {
     if !visited.insert(starting_point.clone()) {
         // We've been here already, no need to search again.
         return;
@@ -346,11 +324,12 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
 
             // Scan the MIR in order to find function calls, closures, and
             // drop-glue
-            let mir = load_mir(ccx, instance.def, mir_cache);
+            let mir = errors::expect(ccx.sess().diagnostic(), ccx.get_mir(instance.def),
+                || format!("Could not find MIR for function: {}", instance));
 
             let mut visitor = MirNeighborCollector {
                 ccx: ccx,
-                mir: mir.get_ref(),
+                mir: &mir,
                 output: &mut neighbors,
                 param_substs: ccx.tcx().mk_substs(Substs {
                     types: instance.params.clone(),
@@ -358,12 +337,12 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
                 })
             };
 
-            visitor.visit_mir(mir.get_ref());
+            visitor.visit_mir(&mir);
         }
     }
 
     for neighbour in neighbors {
-        collect_items_rec(ccx, neighbour, visited, recursion_depths, mir_cache);
+        collect_items_rec(ccx, neighbour, visited, recursion_depths);
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -371,37 +350,6 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     debug!("END collect_items_rec({})", starting_point.to_string(ccx));
-}
-
-fn load_mir<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
-                          def_id: DefId,
-                          mir_cache: &mut DefIdMap<CachedMir<'a, 'tcx>>)
-                          -> CachedMir<'a, 'tcx> {
-    let mir_not_found_error_message = || {
-        format!("Could not find MIR for function: {}",
-                ccx.tcx().item_path_str(def_id))
-    };
-
-    if def_id.is_local() {
-        let node_id = ccx.tcx().map.as_local_node_id(def_id).unwrap();
-        let mir_opt = ccx.mir_map().map.get(&node_id);
-        let mir = errors::expect(ccx.sess().diagnostic(),
-                             mir_opt,
-                             mir_not_found_error_message);
-        CachedMir::Ref(mir)
-    } else {
-        if let Some(mir) = mir_cache.get(&def_id) {
-            return mir.clone();
-        }
-
-        let mir_opt = ccx.sess().cstore.maybe_get_item_mir(ccx.tcx(), def_id);
-        let mir = errors::expect(ccx.sess().diagnostic(),
-                                 mir_opt,
-                                 mir_not_found_error_message);
-        let cached = CachedMir::Owned(Rc::new(mir));
-        mir_cache.insert(def_id, cached.clone());
-        cached
-    }
 }
 
 fn check_recursion_limit<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
