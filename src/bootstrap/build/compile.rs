@@ -325,4 +325,3 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
          .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
     build.run(&mut cargo);
 }
-
