@@ -270,8 +270,8 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     // If this is an impl of `Fn` or `FnMut` trait, the receiver is `&self`.
     let is_by_ref = match closure_kind {
-        ty::FnClosureKind | ty::FnMutClosureKind => true,
-        ty::FnOnceClosureKind => false,
+        ty::ClosureKind::Fn | ty::ClosureKind::FnMut => true,
+        ty::ClosureKind::FnOnce => false,
     };
     let bare_fn_ty_maybe_ref = if is_by_ref {
         tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), bare_fn_ty)
