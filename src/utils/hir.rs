@@ -55,8 +55,6 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
     }
 
-    // ok, it’s a big function, but mostly one big match with simples cases
-    #[allow(cyclomatic_complexity)]
     pub fn eq_expr(&self, left: &Expr, right: &Expr) -> bool {
         if self.ignore_fn && differing_macro_contexts(left.span, right.span) {
             return false;

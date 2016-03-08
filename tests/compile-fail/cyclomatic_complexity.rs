@@ -1,6 +1,6 @@
 #![feature(plugin, custom_attribute)]
 #![plugin(clippy)]
-#![deny(clippy)]
+#![allow(clippy)]
 #![deny(cyclomatic_complexity)]
 #![allow(unused)]
 
@@ -90,7 +90,7 @@ fn main() { //~ERROR the function has a cyclomatic complexity of 28
 }
 
 #[cyclomatic_complexity = "0"]
-fn kaboom() {  //~ ERROR: the function has a cyclomatic complexity of 8
+fn kaboom() {  //~ ERROR: the function has a cyclomatic complexity of 7
     let n = 0;
     'a: for i in 0..20 {
         'b: for j in i..20 {
@@ -133,6 +133,16 @@ fn bloo() {
         55 | 57 | 59 | 61 | 63 | 65 | 67 | 69 | 71 | 73 => println!("I know borrow-fu"),
         _ => println!("bye"),
     }
+}
+
+#[cyclomatic_complexity = "0"]
+fn lots_of_short_circuits() -> bool { //~ ERROR: the function has a cyclomatic complexity of 1
+    true && false && true && false && true && false && true
+}
+
+#[cyclomatic_complexity = "0"]
+fn lots_of_short_circuits2() -> bool { //~ ERROR: the function has a cyclomatic complexity of 1
+    true || false || true || false || true || false || true
 }
 
 #[cyclomatic_complexity = "0"]
