@@ -1499,6 +1499,13 @@ impl Type {
             _ => None,
         }
     }
+
+    fn def_id(&self) -> Option<DefId> {
+        match *self {
+            ResolvedPath { did, .. } => Some(did),
+            _ => None,
+        }
+    }
 }
 
 impl PrimitiveType {
