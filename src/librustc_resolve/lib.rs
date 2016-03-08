@@ -1874,7 +1874,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                trait_path: &Path,
                                path_depth: usize)
                                -> Result<PathResolution, ()> {
-        if let Some(path_res) = self.resolve_path(id, trait_path, path_depth, TypeNS, true) {
+        if let Some(path_res) = self.resolve_path(id, trait_path, path_depth, TypeNS) {
             if let Def::Trait(_) = path_res.base_def {
                 debug!("(resolving trait) found trait def: {:?}", path_res);
                 Ok(path_res)
@@ -1932,7 +1932,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &hir::WherePredicate::BoundPredicate(_) |
                 &hir::WherePredicate::RegionPredicate(_) => {}
                 &hir::WherePredicate::EqPredicate(ref eq_pred) => {
-                    let path_res = self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS, true);
+                    let path_res = self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS);
                     if let Some(PathResolution { base_def: Def::TyParam(..), .. }) = path_res {
                         self.record_def(eq_pred.id, path_res.unwrap());
                     } else {
@@ -2198,8 +2198,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let resolution = match self.resolve_possibly_assoc_item(ty.id,
                                                                         maybe_qself.as_ref(),
                                                                         path,
-                                                                        TypeNS,
-                                                                        true) {
+                                                                        TypeNS) {
                     // `<T>::a::b::c` is resolved by typeck alone.
                     TypecheckRequired => {
                         // Resolve embedded types.
@@ -2224,7 +2223,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.record_def(ty.id, err_path_resolution());
 
                         // Keep reporting some errors even if they're ignored above.
-                        self.resolve_path(ty.id, path, 0, TypeNS, true);
+                        self.resolve_path(ty.id, path, 0, TypeNS);
 
                         let kind = if maybe_qself.is_some() {
                             "associated type"
@@ -2402,8 +2401,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             None,
                                                                             path,
-                                                                            ValueNS,
-                                                                            false) {
+                                                                            ValueNS) {
                         // The below shouldn't happen because all
                         // qualified paths should be in PatKind::QPath.
                         TypecheckRequired =>
@@ -2475,8 +2473,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             Some(qself),
                                                                             path,
-                                                                            ValueNS,
-                                                                            false) {
+                                                                            ValueNS) {
                         TypecheckRequired => {
                             // All `<T>::CONST` should end up here, and will
                             // require use of the trait map to resolve
@@ -2526,7 +2523,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
 
                 PatKind::Struct(ref path, _, _) => {
-                    match self.resolve_path(pat_id, path, 0, TypeNS, false) {
+                    match self.resolve_path(pat_id, path, 0, TypeNS) {
                         Some(definition) => {
                             self.record_def(pattern.id, definition);
                         }
@@ -2607,8 +2604,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    id: NodeId,
                                    maybe_qself: Option<&hir::QSelf>,
                                    path: &Path,
-                                   namespace: Namespace,
-                                   check_ribs: bool)
+                                   namespace: Namespace)
                                    -> AssocItemResolveResult {
         let max_assoc_types;
 
@@ -2627,14 +2623,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let mut resolution = self.with_no_errors(|this| {
-            this.resolve_path(id, path, 0, namespace, check_ribs)
+            this.resolve_path(id, path, 0, namespace)
         });
         for depth in 1..max_assoc_types {
             if resolution.is_some() {
                 break;
             }
             self.with_no_errors(|this| {
-                resolution = this.resolve_path(id, path, depth, TypeNS, true);
+                resolution = this.resolve_path(id, path, depth, TypeNS);
             });
         }
         if let Some(Def::Mod(_)) = resolution.map(|r| r.base_def) {
@@ -2644,16 +2640,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ResolveAttempt(resolution)
     }
 
-    /// If `check_ribs` is true, checks the local definitions first; i.e.
-    /// doesn't skip straight to the containing module.
     /// Skips `path_depth` trailing segments, which is also reflected in the
     /// returned value. See `middle::def::PathResolution` for more info.
     pub fn resolve_path(&mut self,
                         id: NodeId,
                         path: &Path,
                         path_depth: usize,
-                        namespace: Namespace,
-                        check_ribs: bool)
+                        namespace: Namespace)
                         -> Option<PathResolution> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
@@ -2668,14 +2661,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Try to find a path to an item in a module.
         let last_ident = segments.last().unwrap().identifier;
         if segments.len() <= 1 {
-            let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, true);
+            let unqualified_def = self.resolve_identifier(last_ident, namespace, true);
             return unqualified_def.and_then(|def| self.adjust_local_def(def, span))
                                   .map(|def| {
                                       PathResolution::new(def, path_depth)
                                   });
         }
 
-        let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, false);
+        let unqualified_def = self.resolve_identifier(last_ident, namespace, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
             (Some(d), Some(ref ud)) if d == ud.def => {
@@ -2695,7 +2688,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_identifier(&mut self,
                           identifier: hir::Ident,
                           namespace: Namespace,
-                          check_ribs: bool,
                           record_used: bool)
                           -> Option<LocalDef> {
         if identifier.name == special_idents::invalid.name {
@@ -2711,20 +2703,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        if check_ribs {
-            return self.resolve_identifier_in_local_ribs(identifier, namespace, record_used);
-        }
-
-        // Check the items.
-        let name = identifier.unhygienic_name;
-        match self.resolve_item_in_lexical_scope(name, namespace, record_used) {
-            Success(binding) => binding.def().map(LocalDef::from_def),
-            Failed(Some((span, msg))) => {
-                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
-                None
-            }
-            _ => None,
-        }
+        self.resolve_identifier_in_local_ribs(identifier, namespace, record_used)
     }
 
     // Resolve a local definition, potentially adjusting for closures.
@@ -3104,8 +3083,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let resolution = match self.resolve_possibly_assoc_item(expr.id,
                                                                         maybe_qself.as_ref(),
                                                                         path,
-                                                                        ValueNS,
-                                                                        true) {
+                                                                        ValueNS) {
                     // `<T>::a::b::c` is resolved by typeck alone.
                     TypecheckRequired => {
                         let method_name = path.segments.last().unwrap().identifier.name;
@@ -3165,7 +3143,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // structs, which wouldn't result in this error.)
                     let path_name = path_names_to_string(path, 0);
                     let type_res = self.with_no_errors(|this| {
-                        this.resolve_path(expr.id, path, 0, TypeNS, false)
+                        this.resolve_path(expr.id, path, 0, TypeNS)
                     });
 
                     self.record_def(expr.id, err_path_resolution());
@@ -3186,7 +3164,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         _ => {
                             // Keep reporting some errors even if they're ignored above.
-                            self.resolve_path(expr.id, path, 0, ValueNS, true);
+                            self.resolve_path(expr.id, path, 0, ValueNS);
 
                             let mut method_scope = false;
                             self.value_ribs.iter().rev().all(|rib| {
@@ -3260,7 +3238,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // Resolve the path to the structure it goes to. We don't
                 // check to ensure that the path is actually a structure; that
                 // is checked later during typeck.
-                match self.resolve_path(expr.id, path, 0, TypeNS, false) {
+                match self.resolve_path(expr.id, path, 0, TypeNS) {
                     Some(definition) => self.record_def(expr.id, definition),
                     None => {
                         debug!("(resolving expression) didn't find struct def",);
