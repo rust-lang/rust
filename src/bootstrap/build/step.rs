@@ -168,28 +168,35 @@ fn add_steps<'a>(build: &'a Build,
                  host: &Step<'a>,
                  target: &Step<'a>,
                  targets: &mut Vec<Step<'a>>) {
+    struct Context<'a> {
+        stage: u32,
+        compiler: Compiler<'a>,
+        _dummy: (),
+        host: &'a str,
+    }
     for step in build.flags.step.iter() {
-        let compiler = host.target(&build.config.build).compiler(stage);
-        match &step[..] {
-            "libstd" => targets.push(target.libstd(stage, compiler)),
-            "librustc" => targets.push(target.librustc(stage, compiler)),
-            "libstd-link" => targets.push(target.libstd_link(stage, compiler,
-                                                             host.target)),
-            "librustc-link" => targets.push(target.librustc_link(stage, compiler,
-                                                                 host.target)),
-            "rustc" => targets.push(host.rustc(stage)),
-            "llvm" => targets.push(target.llvm(())),
-            "compiler-rt" => targets.push(target.compiler_rt(())),
-            "doc-style" => targets.push(host.doc_style(stage)),
-            "doc-standalone" => targets.push(host.doc_standalone(stage)),
-            "doc-nomicon" => targets.push(host.doc_nomicon(stage)),
-            "doc-book" => targets.push(host.doc_book(stage)),
-            "doc-std" => targets.push(host.doc_std(stage)),
-            "doc-rustc" => targets.push(host.doc_rustc(stage)),
-            "doc" => targets.push(host.doc(stage)),
-            "check" => targets.push(host.check(stage, compiler)),
-            _ => panic!("unknown build target: `{}`", step),
+
+        // The macro below insists on hygienic access to all local variables, so
+        // we shove them all in a struct and subvert hygiene by accessing struct
+        // fields instead,
+        let cx = Context {
+            stage: stage,
+            compiler: host.target(&build.config.build).compiler(stage),
+            _dummy: (),
+            host: host.target,
+        };
+        macro_rules! add_step {
+            ($(($short:ident, $name:ident { $($arg:ident: $t:ty),* }),)*) => ({$(
+                let name = stringify!($short).replace("_", "-");
+                if &step[..] == &name[..] {
+                    targets.push(target.$short($(cx.$arg),*));
+                    continue
+                }
+                drop(name);
+            )*})
         }
+
+        targets!(add_step);
     }
 }
 
