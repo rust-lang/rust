@@ -20,6 +20,6 @@ fn main() {
     } {
         Foo {
             x: x
-        } => {} //~ ERROR expected one of `.`, `;`, `}`, or an operator, found `=>`
+        } => {} //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `=>`
     }
 }
