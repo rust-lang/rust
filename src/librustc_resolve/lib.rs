@@ -1357,7 +1357,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// On success, returns the resolved module, and the closest *private*
     /// module found to the destination when resolving this path.
     fn resolve_module_path(&mut self,
-                           module_: Module<'a>,
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Span)
@@ -1368,10 +1367,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving module path for import) processing `{}` rooted at `{}`",
                names_to_string(module_path),
-               module_to_string(&module_));
+               module_to_string(self.current_module));
 
         // Resolve the module prefix, if any.
-        let module_prefix_result = self.resolve_module_prefix(module_, module_path);
+        let module_prefix_result = self.resolve_module_prefix(module_path);
 
         let search_module;
         let start_index;
@@ -1413,8 +1412,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        match self.resolve_item_in_lexical_scope(module_,
-                                                                 module_path[0],
+                        match self.resolve_item_in_lexical_scope(module_path[0],
                                                                  TypeNS,
                                                                  true) {
                             Failed(err) => return Failed(err),
@@ -1448,61 +1446,30 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_item_in_lexical_scope(&mut self,
-                                     module_: Module<'a>,
                                      name: Name,
                                      namespace: Namespace,
                                      record_used: bool)
                                      -> ResolveResult<&'a NameBinding<'a>> {
-        debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
-               name,
-               namespace,
-               module_to_string(&module_));
+        // Check the local set of ribs.
+        for i in (0 .. self.get_ribs(namespace).len()).rev() {
+            if let Some(_) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
+                return Failed(None);
+            }
 
-        // Proceed up the scope chain looking for parent modules.
-        let mut search_module = module_;
-        loop {
-            // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module, name, namespace, true, record_used) {
-                Failed(Some((span, msg))) => {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
-                }
-                Failed(None) => (), // Continue up the search chain.
-                Indeterminate => {
-                    // We couldn't see through the higher scope because of an
-                    // unresolved import higher up. Bail.
-
-                    debug!("(resolving item in lexical scope) indeterminate higher scope; bailing");
-                    return Indeterminate;
-                }
-                Success(binding) => {
-                    // We found the module.
-                    debug!("(resolving item in lexical scope) found name in module, done");
+            if let ModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
+                if let Success(binding) = self.resolve_name_in_module(module,
+                                                                      name,
+                                                                      namespace,
+                                                                      true,
+                                                                      record_used) {
                     return Success(binding);
                 }
-            }
-
-            // Go to the next parent.
-            match search_module.parent_link {
-                NoParentLink => {
-                    // No more parents. This module was unresolved.
-                    debug!("(resolving item in lexical scope) unresolved module: no parent module");
-                    return Failed(None);
-                }
-                ModuleParentLink(parent_module_node, _) => {
-                    if search_module.is_normal() {
-                        // We stop the search here.
-                        debug!("(resolving item in lexical scope) unresolved module: not \
-                                searching through module parents");
-                            return Failed(None);
-                    } else {
-                        search_module = parent_module_node;
-                    }
-                }
-                BlockParentLink(parent_module_node, _) => {
-                    search_module = parent_module_node;
-                }
+                // We can only see through anonymous modules
+                if module.def.is_some() { return Failed(None); }
             }
         }
+
+        Failed(None)
     }
 
     /// Returns the nearest normal module parent of the given module.
@@ -1538,9 +1505,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Resolves a "module prefix". A module prefix is one or both of (a) `self::`;
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
-    fn resolve_module_prefix(&mut self,
-                             module_: Module<'a>,
-                             module_path: &[Name])
+    fn resolve_module_prefix(&mut self, module_path: &[Name])
                              -> ResolveResult<ModulePrefixResult<'a>> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
@@ -1549,6 +1514,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             "super" => 0,
             _ => return Success(NoPrefixFound),
         };
+        let module_ = self.current_module;
         let mut containing_module = self.get_nearest_normal_module_parent_or_self(module_);
 
         // Now loop through all the `super`s we find.
@@ -2594,8 +2560,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        name: Name,
                                        span: Span)
                                        -> BareIdentifierPatternResolution {
-        let module = self.current_module;
-        match self.resolve_item_in_lexical_scope(module, name, ValueNS, true) {
+        match self.resolve_item_in_lexical_scope(name, ValueNS, true) {
             Success(binding) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
                        name,
@@ -2754,9 +2719,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Check the items.
-        let module = self.current_module;
         let name = identifier.unhygienic_name;
-        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
+        match self.resolve_item_in_lexical_scope(name, namespace, record_used) {
             Success(binding) => binding.def().map(LocalDef::from_def),
             Failed(Some((span, msg))) => {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -2869,8 +2833,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                   .collect::<Vec<_>>();
 
         let containing_module;
-        let current_module = self.current_module;
-        match self.resolve_module_path(current_module, &module_path, UseLexicalScope, span) {
+        match self.resolve_module_path(&module_path, UseLexicalScope, span) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -3024,7 +2987,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 span: Span,
                                 name_path: &[ast::Name])
                                 -> Option<Module<'a>> {
-            let root = this.current_module;
             let last_name = name_path.last().unwrap();
 
             if name_path.len() == 1 {
@@ -3034,7 +2996,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                .and_then(NameBinding::module)
                 }
             } else {
-                this.resolve_module_path(root, &name_path, UseLexicalScope, span).success()
+                this.resolve_module_path(&name_path, UseLexicalScope, span).success()
             }
         }
 
@@ -3274,10 +3236,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     let name_path = path.segments.iter()
                                                         .map(|seg| seg.identifier.name)
                                                         .collect::<Vec<_>>();
-                                    let current_module = self.current_module;
 
-                                    match self.resolve_module_path(current_module,
-                                                                   &name_path[..],
+                                    match self.resolve_module_path(&name_path[..],
                                                                    UseLexicalScope,
                                                                    expr.span) {
                                         Success(_) => {
