@@ -104,6 +104,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Terminator::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
                 let (otherwise, targets) = targets.split_last().unwrap();
                 let discr = bcx.load(self.trans_lvalue(&bcx, discr).llval);
+                let discr = bcx.with_block(|bcx| base::to_immediate(bcx, discr, switch_ty));
                 let switch = bcx.switch(discr, self.llblock(*otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
                     let llval = self.trans_constval(&bcx, value, switch_ty).immediate();
