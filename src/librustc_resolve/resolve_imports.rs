@@ -143,10 +143,18 @@ impl<'a> NameResolution<'a> {
     fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
         if let Some(old_binding) = self.binding {
             if binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                self.duplicate_globs.push(binding);
+                if binding.def().unwrap() != old_binding.def().unwrap() {
+                    self.duplicate_globs.push(binding);
+                } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) &&
+                          old_binding.is_public() < binding.is_public() {
+                    // We are glob-importing the same item but with greater visibility.
+                    self.binding = Some(binding);
+                }
             } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                self.duplicate_globs.push(old_binding);
                 self.binding = Some(binding);
+                if binding.def().unwrap() != old_binding.def().unwrap() {
+                    self.duplicate_globs.push(old_binding);
+                }
             } else {
                 return Err(old_binding);
             }
@@ -315,11 +323,7 @@ impl<'a> ::ModuleS<'a> {
         // where it might end up getting re-defined via a glob cycle.
         let (new_binding, t) = {
             let mut resolution = &mut *self.resolution(name, ns).borrow_mut();
-            let was_known = resolution.binding().is_some();
-
             let t = update(resolution);
-
-            if was_known { return t; }
             match resolution.binding() {
                 Some(binding) => (binding, t),
                 None => return t,
