@@ -20,6 +20,10 @@ struct Person {
     phone: usize,
 }
 
+// test for hygiene name collisions
+#[derive(Hash)] struct __H__H;
+#[derive(Hash)] enum Collision<__H> { __H { __H__H: __H } }
+
 fn hash<T: Hash>(t: &T) -> u64 {
     let mut s = SipHasher::new_with_keys(0, 0);
     t.hash(&mut s);
