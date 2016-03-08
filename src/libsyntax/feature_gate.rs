@@ -245,6 +245,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // a...b and ...b
     ("inclusive_range_syntax", "1.7.0", Some(28237), Active),
+
+    // `expr?`
+    ("question_mark", "1.9.0", Some(31436), Active)
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -570,6 +573,7 @@ pub struct Features {
     pub staged_api: bool,
     pub stmt_expr_attributes: bool,
     pub deprecated: bool,
+    pub question_mark: bool,
 }
 
 impl Features {
@@ -603,6 +607,7 @@ impl Features {
             staged_api: false,
             stmt_expr_attributes: false,
             deprecated: false,
+            question_mark: false,
         }
     }
 }
@@ -1001,6 +1006,9 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "inclusive range syntax is experimental");
             }
+            ast::ExprKind::Try(..) => {
+                self.gate_feature("question_mark", e.span, "the `?` operator is not stable");
+            }
             _ => {}
         }
         visit::walk_expr(self, e);
@@ -1203,6 +1211,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         staged_api: cx.has_feature("staged_api"),
         stmt_expr_attributes: cx.has_feature("stmt_expr_attributes"),
         deprecated: cx.has_feature("deprecated"),
+        question_mark: cx.has_feature("question_mark"),
     }
 }
 

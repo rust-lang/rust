@@ -2277,6 +2277,10 @@ impl<'a> State<'a> {
                 try!(self.print_inner_attributes_inline(attrs));
                 try!(self.print_expr(&e));
                 try!(self.pclose());
+            },
+            ast::ExprKind::Try(ref e) => {
+                try!(self.print_expr(e));
+                try!(word(&mut self.s, "?"))
             }
         }
         try!(self.ann.post(self, NodeExpr(expr)));

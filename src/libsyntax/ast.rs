@@ -1022,6 +1022,9 @@ pub enum ExprKind {
 
     /// No-op: used solely so we can pretty-print faithfully
     Paren(P<Expr>),
+
+    /// `expr?`
+    Try(P<Expr>),
 }
 
 /// The explicit Self type in a "qualified path". The actual
