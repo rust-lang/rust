@@ -179,7 +179,15 @@ impl Build {
                 DocStandalone { stage } => {
                     doc::standalone(self, stage, target.target, &doc_out);
                 }
-                Doc { .. } => {} // pseudo-step
+                DocStd { stage } => {
+                    doc::std(self, stage, target.target, &doc_out);
+                }
+                DocRustc { stage } => {
+                    doc::rustc(self, stage, target.target, &doc_out);
+                }
+
+                Doc { .. } | // pseudo-steps
+                Check { .. } => {}
             }
         }
     }
