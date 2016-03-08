@@ -12,4 +12,7 @@ type Alias = ();
 use Alias::*; //~ ERROR Not a module
 use std::io::Result::*; //~ ERROR Not a module
 
+trait T {}
+use T::*; //~ ERROR items in traits are not importable
+
 fn main() {}
