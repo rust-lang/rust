@@ -141,14 +141,9 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
 
     let mut cargo = build.cargo(stage, compiler, Mode::Librustc, Some(target),
                                 "build");
-    cargo.arg("--features").arg(build.rustc_features(stage))
+    cargo.arg("--features").arg(build.rustc_features())
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/Cargo.toml"));
-
-    // In stage0 we may not need to build as many executables
-    if stage == 0 {
-        cargo.arg("--bin").arg("rustc");
-    }
 
     // Set some configuration variables picked up by build scripts and
     // the compiler alike

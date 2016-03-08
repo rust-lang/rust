@@ -25,7 +25,7 @@ debug-assertions = false
 [dependencies]
 rustc_back = { path = "../librustc_back" }
 rustc_driver = { path = "../librustc_driver" }
-rustdoc = { path = "../librustdoc", optional = true }
+rustdoc = { path = "../librustdoc" }
 
 [features]
 jemalloc = ["rustc_back/jemalloc"]
