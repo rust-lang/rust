@@ -52,7 +52,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -74,7 +74,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
@@ -96,7 +96,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -114,7 +114,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
@@ -218,7 +218,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl Rem for Wrapping<$t> {
             type Output = Wrapping<$t>;
 
