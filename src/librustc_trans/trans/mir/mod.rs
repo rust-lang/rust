@@ -147,15 +147,47 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               mir: &mir::Mir<'tcx>)
                               -> Vec<LvalueRef<'tcx>> {
-    // FIXME tupled_args? I think I'd rather that mapping is done in MIR land though
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;
     let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
     mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
+        let arg_ty = bcx.monomorphize(&arg_decl.ty);
+        if arg_decl.spread {
+            // This argument (e.g. the last argument in the "rust-call" ABI)
+            // is a tuple that was spread at the ABI level and now we have
+            // to reconstruct it into a tuple local variable, from multiple
+            // individual LLVM function arguments.
+
+            let tupled_arg_tys = match arg_ty.sty {
+                ty::TyTuple(ref tys) => tys,
+                _ => unreachable!("spread argument isn't a tuple?!")
+            };
+
+            let llval = bcx.with_block(|bcx| {
+                let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
+                for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
+                    let dst = build::StructGEP(bcx, lltemp, i);
+                    let arg = &fcx.fn_ty.args[idx];
+                    idx += 1;
+                    if common::type_is_fat_ptr(tcx, tupled_arg_ty) {
+                        // We pass fat pointers as two words, but inside the tuple
+                        // they are the two sub-fields of a single aggregate field.
+                        let meta = &fcx.fn_ty.args[idx];
+                        idx += 1;
+                        arg.store_fn_arg(bcx, &mut llarg_idx, expr::get_dataptr(bcx, dst));
+                        meta.store_fn_arg(bcx, &mut llarg_idx, expr::get_meta(bcx, dst));
+                    } else {
+                        arg.store_fn_arg(bcx, &mut llarg_idx, dst);
+                    }
+                }
+                lltemp
+            });
+            return LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty));
+        }
+
         let arg = &fcx.fn_ty.args[idx];
         idx += 1;
-        let arg_ty = bcx.monomorphize(&arg_decl.ty);
         let llval = if arg.is_indirect() {
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up, unless
