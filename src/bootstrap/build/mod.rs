@@ -178,6 +178,10 @@ impl Build {
                 ToolRustbook { stage } => {
                     compile::tool(self, stage, target.target, "rustbook");
                 }
+                ToolErrorIndex { stage } => {
+                    compile::tool(self, stage, target.target,
+                                  "error_index_generator");
+                }
                 DocBook { stage } => {
                     doc::rustbook(self, stage, target.target, "book", &doc_out);
                 }
@@ -197,6 +201,9 @@ impl Build {
                 }
                 DocRustc { stage } => {
                     doc::rustc(self, stage, target.target, &doc_out);
+                }
+                DocErrorIndex { stage } => {
+                    doc::error_index(self, stage, target.target, &doc_out);
                 }
 
                 CheckLinkcheck { stage } => {

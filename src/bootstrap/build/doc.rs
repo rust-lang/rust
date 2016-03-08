@@ -139,3 +139,16 @@ pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
     build.run(&mut cargo);
     cp_r(&out_dir, out)
 }
+
+pub fn error_index(build: &Build, stage: u32, host: &str, out: &Path) {
+    println!("Documenting stage{} error index ({})", stage, host);
+    let compiler = Compiler::new(stage, host);
+    let mut index = Command::new(build.tool(&compiler, "error_index_generator"));
+    index.arg("html");
+    index.arg(out.join("error-index.html"));
+
+    // FIXME: shouldn't have to pass this env var
+    index.env("CFG_BUILD", &build.config.build);
+
+    build.run(&mut index);
+}
