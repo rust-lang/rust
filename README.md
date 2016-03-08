@@ -8,7 +8,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 130 lints included in this crate:
+There are 131 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -92,6 +92,7 @@ name                                                                            
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)                             | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
 [or_fun_call](https://github.com/Manishearth/rust-clippy/wiki#or_fun_call)                                           | warn    | using any `*or` method when the `*or_else` would do
 [out_of_bounds_indexing](https://github.com/Manishearth/rust-clippy/wiki#out_of_bounds_indexing)                     | deny    | out of bound constant indexing
+[overflow_check_conditional](https://github.com/Manishearth/rust-clippy/wiki#overflow_check_conditional)             | warn    | Using overflow checks which are likely to panic
 [panic_params](https://github.com/Manishearth/rust-clippy/wiki#panic_params)                                         | warn    | missing parameters in `panic!`
 [precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                                             | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
 [print_stdout](https://github.com/Manishearth/rust-clippy/wiki#print_stdout)                                         | allow   | printing on stdout
