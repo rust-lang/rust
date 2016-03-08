@@ -17,6 +17,7 @@ fn u8(f32: f32) {}
 fn f<f64>(f64: f64) {}
 //~^ ERROR user-defined types or type parameters cannot shadow the primitive types
 type u16 = u16; //~ ERROR user-defined types or type parameters cannot shadow the primitive types
+//~^ ERROR unsupported cyclic reference between types/traits detected
 enum u32 {} //~ ERROR user-defined types or type parameters cannot shadow the primitive types
 struct u64; //~ ERROR user-defined types or type parameters cannot shadow the primitive types
 trait bool {} //~ ERROR user-defined types or type parameters cannot shadow the primitive types
