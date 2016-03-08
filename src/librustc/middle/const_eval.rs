@@ -325,7 +325,9 @@ impl ConstVal {
 pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
-            PatKind::Tup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect()),
+            PatKind::Tuple(exprs.iter()
+                              .map(|expr| const_expr_to_pat(tcx, &expr, span))
+                              .collect(), None),
 
         hir::ExprCall(ref callee, ref args) => {
             let def = *tcx.def_map.borrow().get(&callee.id).unwrap();
@@ -343,7 +345,7 @@ pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
                 _ => unreachable!()
             };
             let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &expr, span)).collect();
-            PatKind::TupleStruct(path, Some(pats))
+            PatKind::TupleStruct(path, pats, None)
         }
 
         hir::ExprStruct(ref path, ref fields, None) => {

@@ -2482,17 +2482,23 @@ impl<'a> State<'a> {
                     None => ()
                 }
             }
-            PatKind::TupleStruct(ref path, ref args_) => {
+            PatKind::TupleStruct(ref path, ref elts, ddpos) => {
                 try!(self.print_path(path, true, 0));
-                match *args_ {
-                    None => try!(word(&mut self.s, "(..)")),
-                    Some(ref args) => {
-                        try!(self.popen());
-                        try!(self.commasep(Inconsistent, &args[..],
-                                          |s, p| s.print_pat(&p)));
-                        try!(self.pclose());
+                try!(self.popen());
+                if let Some(ddpos) = ddpos {
+                    try!(self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p)));
+                    if ddpos != 0 {
+                        try!(self.word_space(","));
                     }
+                    try!(word(&mut self.s, ".."));
+                    if ddpos != elts.len() {
+                        try!(word(&mut self.s, ","));
+                        try!(self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p)));
+                    }
+                } else {
+                    try!(self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p)));
                 }
+                try!(self.pclose());
             }
             PatKind::Path(ref path) => {
                 try!(self.print_path(path, true, 0));
@@ -2523,13 +2529,23 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(word(&mut self.s, "}"));
             }
-            PatKind::Tup(ref elts) => {
+            PatKind::Tuple(ref elts, ddpos) => {
                 try!(self.popen());
-                try!(self.commasep(Inconsistent,
-                                   &elts[..],
-                                   |s, p| s.print_pat(&p)));
-                if elts.len() == 1 {
-                    try!(word(&mut self.s, ","));
+                if let Some(ddpos) = ddpos {
+                    try!(self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(&p)));
+                    if ddpos != 0 {
+                        try!(self.word_space(","));
+                    }
+                    try!(word(&mut self.s, ".."));
+                    if ddpos != elts.len() {
+                        try!(word(&mut self.s, ","));
+                        try!(self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p)));
+                    }
+                } else {
+                    try!(self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p)));
+                    if elts.len() == 1 {
+                        try!(word(&mut self.s, ","));
+                    }
                 }
                 try!(self.pclose());
             }

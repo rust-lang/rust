@@ -377,7 +377,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
                 hir::MatchSource::ForLoopDesugar => {
                     // `witnesses[0]` has the form `Some(<head>)`, peel off the `Some`
                     let witness = match witnesses[0].node {
-                        PatKind::TupleStruct(_, Some(ref pats)) => match &pats[..] {
+                        PatKind::TupleStruct(_, ref pats, _) => match &pats[..] {
                             [ref pat] => &**pat,
                             _ => unreachable!(),
                         },
@@ -530,7 +530,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match left_ty.sty {
-        ty::TyTuple(_) => PatKind::Tup(pats.collect()),
+        ty::TyTuple(..) => PatKind::Tuple(pats.collect(), None),
 
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
             let v = adt.variant_of_ctor(ctor);
@@ -551,7 +551,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     PatKind::Struct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
                 }
                 VariantKind::Tuple => {
-                    PatKind::TupleStruct(def_to_path(cx.tcx, v.did), Some(pats.collect()))
+                    PatKind::TupleStruct(def_to_path(cx.tcx, v.did), pats.collect(), None)
                 }
                 VariantKind::Unit => {
                     PatKind::Path(def_to_path(cx.tcx, v.did))
@@ -804,7 +804,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                     vec!(Slice(before.len() + after.len()))
                 }
             },
-        PatKind::Box(_) | PatKind::Tup(_) | PatKind::Ref(..) =>
+        PatKind::Box(..) | PatKind::Tuple(..) | PatKind::Ref(..) =>
             vec!(Single),
         PatKind::Wild =>
             vec!(),
@@ -886,7 +886,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             }
         }
 
-        PatKind::TupleStruct(_, ref args) => {
+        PatKind::TupleStruct(_, ref args, ddpos) => {
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             match def {
                 Def::Const(..) | Def::AssociatedConst(..) =>
@@ -894,10 +894,17 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                                                     been rewritten"),
                 Def::Variant(_, id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => {
-                    Some(match args {
-                        &Some(ref args) => args.iter().map(|p| &**p).collect(),
-                        &None => vec![DUMMY_WILD_PAT; arity],
-                    })
+                    match ddpos {
+                        Some(ddpos) => {
+                            let mut pats = args[..ddpos].iter().map(|p| &**p).collect(): Vec<_>;
+                            pats.extend(repeat(DUMMY_WILD_PAT).take(arity - args.len()));
+                            if ddpos != args.len() {
+                                pats.extend(args[ddpos..].iter().map(|p| &**p));
+                            }
+                            Some(pats)
+                        }
+                        None => Some(args.iter().map(|p| &**p).collect())
+                    }
                 }
                 _ => None
             }
@@ -925,7 +932,15 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             }
         }
 
-        PatKind::Tup(ref args) =>
+        PatKind::Tuple(ref args, Some(ddpos)) => {
+            let mut pats = args[..ddpos].iter().map(|p| &**p).collect(): Vec<_>;
+            pats.extend(repeat(DUMMY_WILD_PAT).take(arity - args.len()));
+            if ddpos != args.len() {
+                pats.extend(args[ddpos..].iter().map(|p| &**p));
+            }
+            Some(pats)
+        }
+        PatKind::Tuple(ref args, None) =>
             Some(args.iter().map(|p| &**p).collect()),
 
         PatKind::Box(ref inner) | PatKind::Ref(ref inner, _) =>

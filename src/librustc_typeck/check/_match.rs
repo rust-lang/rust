@@ -13,7 +13,7 @@ use middle::infer::{self, TypeOrigin};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
 use middle::subst::Substs;
-use middle::ty::{self, Ty, TypeFoldable, LvaluePreference};
+use middle::ty::{self, Ty, TypeFoldable, LvaluePreference, TyTuple};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
 use check::{check_expr_with_lvalue_pref};
@@ -197,13 +197,13 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         PatKind::Ident(_, ref path, _) => {
             let path = hir_util::ident_to_path(path.span, path.node);
-            check_pat_enum(pcx, pat, &path, Some(&[]), expected, false);
+            check_pat_enum(pcx, pat, &path, &[], None, expected, false);
         }
-        PatKind::TupleStruct(ref path, ref subpats) => {
-            check_pat_enum(pcx, pat, path, subpats.as_ref().map(|v| &v[..]), expected, true);
+        PatKind::TupleStruct(ref path, ref subpats, ddpos) => {
+            check_pat_enum(pcx, pat, path, &subpats, ddpos, expected, true);
         }
         PatKind::Path(ref path) => {
-            check_pat_enum(pcx, pat, path, Some(&[]), expected, false);
+            check_pat_enum(pcx, pat, path, &[], None, expected, false);
         }
         PatKind::QPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);
@@ -244,15 +244,26 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         PatKind::Struct(ref path, ref fields, etc) => {
             check_pat_struct(pcx, pat, path, fields, etc, expected);
         }
-        PatKind::Tup(ref elements) => {
-            let element_tys: Vec<_> =
-                (0..elements.len()).map(|_| fcx.infcx().next_ty_var())
-                                        .collect();
+        PatKind::Tuple(ref elements, ddpos) => {
+            let mut expected_len = elements.len();
+            if ddpos.is_some() {
+                // Require known type only when `..` is present
+                if let TyTuple(ref tys) = structurally_resolved_type(fcx, pat.span, expected).sty {
+                    expected_len = tys.len();
+                }
+            }
+            let max_len = cmp::max(expected_len, elements.len());
+
+            let element_tys = (0 .. max_len).map(|_| fcx.infcx().next_ty_var()).collect(): Vec<_>;
             let pat_ty = tcx.mk_tup(element_tys.clone());
             fcx.write_ty(pat.id, pat_ty);
             demand::eqtype(fcx, pat.span, expected, pat_ty);
-            for (element_pat, element_ty) in elements.iter().zip(element_tys) {
-                check_pat(pcx, &element_pat, element_ty);
+            let adjust = |i| {
+                let gap = expected_len - elements.len();
+                if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+            };
+            for i in 0 .. elements.len() {
+                check_pat(pcx, &elements[i], &element_tys[adjust(i)]);
             }
         }
         PatKind::Box(ref inner) => {
@@ -600,7 +611,8 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
 fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                             pat: &hir::Pat,
                             path: &hir::Path,
-                            subpats: Option<&'tcx [P<hir::Pat>]>,
+                            subpats: &'tcx [P<hir::Pat>],
+                            ddpos: Option<usize>,
                             expected: Ty<'tcx>,
                             is_tuple_struct_pat: bool)
 {
@@ -612,13 +624,9 @@ fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         Some(&path_res) if path_res.base_def != Def::Err => path_res,
         _ => {
             fcx.write_error(pat.id);
-
-            if let Some(subpats) = subpats {
-                for pat in subpats {
-                    check_pat(pcx, &pat, tcx.types.err);
-                }
+            for pat in subpats {
+                check_pat(pcx, &pat, tcx.types.err);
             }
-
             return;
         }
     };
@@ -661,10 +669,8 @@ fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         bad_struct_kind_err(tcx.sess, pat, path, is_warning);
         if is_warning { return; }
         fcx.write_error(pat.id);
-        if let Some(subpats) = subpats {
-            for pat in subpats {
-                check_pat(pcx, &pat, tcx.types.err);
-            }
+        for pat in subpats {
+            check_pat(pcx, &pat, tcx.types.err);
         }
     };
 
@@ -701,11 +707,13 @@ fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     };
 
     match (is_tuple_struct_pat, variant.kind()) {
-        (true, ty::VariantKind::Unit) => {
+        (true, ty::VariantKind::Unit) if subpats.is_empty() && ddpos.is_some() => {
             // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
             // is allowed for backward compatibility.
             report_bad_struct_kind(true);
         }
+        (true, ty::VariantKind::Unit) |
+        (false, ty::VariantKind::Tuple) |
         (_, ty::VariantKind::Struct) => {
             report_bad_struct_kind(false);
             return
@@ -713,30 +721,25 @@ fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         _ => {}
     }
 
-    if let Some(subpats) = subpats {
-        if subpats.len() == variant.fields.len() {
-            for (subpat, field) in subpats.iter().zip(&variant.fields) {
-                let field_ty = fcx.field_ty(subpat.span, field, expected_substs);
-                check_pat(pcx, &subpat, field_ty);
-            }
-        } else if variant.fields.is_empty() {
-            span_err!(tcx.sess, pat.span, E0024,
-                      "this pattern has {} field{}, but the corresponding {} has no fields",
-                      subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);
+    let adjust = |i| {
+        let gap = variant.fields.len() - subpats.len();
+        if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+    };
+    if subpats.len() == variant.fields.len() ||
+            subpats.len() < variant.fields.len() && ddpos.is_some() {
+        for (i, subpat) in subpats.iter().enumerate() {
+            let field_ty = fcx.field_ty(subpat.span, &variant.fields[adjust(i)], expected_substs);
+            check_pat(pcx, &subpat, field_ty);
+        }
+    } else {
+        span_err!(tcx.sess, pat.span, E0023,
+                  "this pattern has {} field{}, but the corresponding {} has {} field{}",
+                  subpats.len(), if subpats.len() == 1 {""} else {"s"},
+                  kind_name,
+                  variant.fields.len(), if variant.fields.len() == 1 {""} else {"s"});
 
-            for pat in subpats {
-                check_pat(pcx, &pat, tcx.types.err);
-            }
-        } else {
-            span_err!(tcx.sess, pat.span, E0023,
-                      "this pattern has {} field{}, but the corresponding {} has {} field{}",
-                      subpats.len(), if subpats.len() == 1 {""} else {"s"},
-                      kind_name,
-                      variant.fields.len(), if variant.fields.len() == 1 {""} else {"s"});
-
-            for pat in subpats {
-                check_pat(pcx, &pat, tcx.types.err);
-            }
+        for pat in subpats {
+            check_pat(pcx, &pat, tcx.types.err);
         }
     }
 }

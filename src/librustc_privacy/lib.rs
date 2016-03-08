@@ -895,12 +895,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                      NamedField(field.node.name));
                 }
             }
-
-            // Patterns which bind no fields are allowable (the path is check
-            // elsewhere).
-            PatKind::TupleStruct(_, Some(ref fields)) => {
+            PatKind::TupleStruct(_, ref fields, ddpos) => {
                 match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(def, _) => {
+                        let adjust = |i| {
+                            let gap = def.struct_variant().fields.len() - fields.len();
+                            if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+                        };
                         for (i, field) in fields.iter().enumerate() {
                             if let PatKind::Wild = field.node {
                                 continue
@@ -908,7 +909,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             self.check_field(field.span,
                                              def,
                                              def.struct_variant(),
-                                             UnnamedField(i));
+                                             UnnamedField(adjust(i)));
                         }
                     }
                     ty::TyEnum(..) => {
@@ -916,7 +917,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     }
                     _ => {}
                 }
-
             }
             _ => {}
         }

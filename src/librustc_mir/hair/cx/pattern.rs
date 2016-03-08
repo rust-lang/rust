@@ -130,21 +130,34 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                     ref sty =>
                         self.cx.tcx.sess.span_bug(
                             pat.span,
-                            &format!("unexpanded type for vector pattern: {:?}", sty)),
+                            &format!("unexpected type for vector pattern: {:?}", sty)),
                 }
             }
 
-            PatKind::Tup(ref subpatterns) => {
-                let subpatterns =
-                    subpatterns.iter()
-                               .enumerate()
-                               .map(|(i, subpattern)| FieldPattern {
-                                   field: Field::new(i),
-                                   pattern: self.to_pattern(subpattern),
-                               })
-                               .collect();
+            PatKind::Tuple(ref subpatterns, ddpos) => {
+                match self.cx.tcx.node_id_to_type(pat.id).sty {
+                    ty::TyTuple(ref tys) => {
+                        let adjust = |i| {
+                            let gap = tys.len() - subpatterns.len();
+                            if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+                        };
+                        let subpatterns =
+                            subpatterns.iter()
+                                       .enumerate()
+                                       .map(|(i, subpattern)| FieldPattern {
+                                            field: Field::new(adjust(i)),
+                                            pattern: self.to_pattern(subpattern),
+                                       })
+                                       .collect();
 
-                PatternKind::Leaf { subpatterns: subpatterns }
+                        PatternKind::Leaf { subpatterns: subpatterns }
+                    }
+
+                    ref sty =>
+                        self.cx.tcx.sess.span_bug(
+                            pat.span,
+                            &format!("unexpected type for tuple pattern: {:?}", sty)),
+                }
             }
 
             PatKind::Ident(bm, ref ident, ref sub)
@@ -183,13 +196,28 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 self.variant_or_leaf(pat, vec![])
             }
 
-            PatKind::TupleStruct(_, ref opt_subpatterns) => {
+            PatKind::TupleStruct(_, ref subpatterns, ddpos) => {
+                let pat_ty = self.cx.tcx.node_id_to_type(pat.id);
+                let adt_def = match pat_ty.sty {
+                    ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
+                    _ => {
+                        self.cx.tcx.sess.span_bug(
+                            pat.span,
+                            "tuple struct pattern not applied to struct or enum");
+                    }
+                };
+                let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
+                let variant_def = adt_def.variant_of_def(def);
+
+                let adjust = |i| {
+                    let gap = variant_def.fields.len() - subpatterns.len();
+                    if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+                };
                 let subpatterns =
-                    opt_subpatterns.iter()
-                                   .flat_map(|v| v.iter())
+                        subpatterns.iter()
                                    .enumerate()
                                    .map(|(i, field)| FieldPattern {
-                                       field: Field::new(i),
+                                       field: Field::new(adjust(i)),
                                        pattern: self.to_pattern(field),
                                    })
                                    .collect();

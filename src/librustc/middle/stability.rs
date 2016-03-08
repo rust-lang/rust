@@ -598,10 +598,13 @@ pub fn check_pat(tcx: &TyCtxt, pat: &hir::Pat,
     };
     match pat.node {
         // Foo(a, b, c)
-        // A Variant(..) pattern `PatKind::TupleStruct(_, None)` doesn't have to be recursed into.
-        PatKind::TupleStruct(_, Some(ref pat_fields)) => {
-            for (field, struct_field) in pat_fields.iter().zip(&v.fields) {
-                maybe_do_stability_check(tcx, struct_field.did, field.span, cb)
+        PatKind::TupleStruct(_, ref pat_fields, ddpos) => {
+            let adjust = |i| {
+                let gap = v.fields.len() - pat_fields.len();
+                if ddpos.is_none() || ddpos.unwrap() > i { i } else { i + gap }
+            };
+            for (i, field) in pat_fields.iter().enumerate() {
+                maybe_do_stability_check(tcx, v.fields[adjust(i)].did, field.span, cb)
             }
         }
         // Foo { a, b, c }
