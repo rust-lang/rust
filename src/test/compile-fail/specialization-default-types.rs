@@ -22,7 +22,7 @@ trait Example {
 impl<T> Example for T {
     default type Output = Box<T>;
     default fn generate(self) -> Self::Output {
-        Box::new(self) //~ ERROR
+        Box::new(self) //~ ERROR E0308
     }
 }
 
@@ -32,7 +32,7 @@ impl Example for bool {
 }
 
 fn trouble<T>(t: T) -> Box<T> {
-    Example::generate(t) //~ ERROR
+    Example::generate(t) //~ ERROR E0308
 }
 
 fn weaponize() -> bool {

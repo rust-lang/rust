@@ -870,8 +870,8 @@ fn report_forbidden_specialization(tcx: &ty::ctxt,
 {
     let mut err = struct_span_err!(
         tcx.sess, impl_item.span, E0520,
-        "item `{}` is provided by an implementation that specializes \
-         another, but the item in the parent implementations is not \
+        "item `{}` is provided by an `impl` that specializes \
+         another, but the item in the parent `impl` is not \
          marked `default` and so it cannot be specialized.",
         impl_item.name);
 
