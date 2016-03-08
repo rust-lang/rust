@@ -53,11 +53,19 @@ macro_rules! targets {
             // with braces are unstable so we just pick something that works.
             (llvm, Llvm { _dummy: () }),
             (compiler_rt, CompilerRt { _dummy: () }),
+
+            // Steps for various pieces of documentation that we can generate,
+            // the 'doc' step is just a pseudo target to depend on a bunch of
+            // others.
             (doc, Doc { stage: u32 }),
             (doc_book, DocBook { stage: u32 }),
             (doc_nomicon, DocNomicon { stage: u32 }),
             (doc_style, DocStyle { stage: u32 }),
             (doc_standalone, DocStandalone { stage: u32 }),
+
+            // Steps for running tests. The 'check' target is just a pseudo
+            // target to depend on a bunch of others.
+            (check, Check { stage: u32, compiler: Compiler<'a> }),
         }
     }
 }
@@ -175,6 +183,7 @@ fn add_steps<'a>(build: &'a Build,
             "doc-nomicon" => targets.push(host.doc_nomicon(stage)),
             "doc-book" => targets.push(host.doc_book(stage)),
             "doc" => targets.push(host.doc(stage)),
+            "check" => targets.push(host.check(stage, compiler)),
             _ => panic!("unknown build target: `{}`", step),
         }
     }
@@ -239,6 +248,9 @@ impl<'a> Step<'a> {
             Source::Doc { stage } => {
                 vec![self.doc_book(stage), self.doc_nomicon(stage),
                      self.doc_style(stage), self.doc_standalone(stage)]
+            }
+            Source::Check { stage, compiler: _ } => {
+                vec![]
             }
         }
     }
