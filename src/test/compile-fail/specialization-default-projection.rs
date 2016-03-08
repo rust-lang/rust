@@ -25,10 +25,22 @@ impl Foo for u8 {
 }
 
 fn generic<T>() -> <T as Foo>::Assoc {
-    () //~ ERROR
+    // `T` could be some downstream crate type that specializes (or,
+    // for that matter, `u8`).
+
+    () //~ ERROR E0308
+}
+
+fn monomorphic() -> () {
+    // Even though we know that `()` is not specialized in a
+    // downstream crate, typeck refuses to project here.
+
+    generic::<()>() //~ ERROR E0308
 }
 
 fn main() {
+    // No error here, we CAN project from `u8`, as there is no `default`
+    // in that impl.
     let s: String = generic::<u8>();
-    println!("{}", s); // bad news
+    println!("{}", s); // bad news if this all compiles
 }

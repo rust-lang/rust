@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that specialization must be ungated to use the `default` keyword
+
 trait Foo {
     fn foo(&self);
 }
 
 impl<T> Foo for T {
-    default fn foo(&self) {} //~ ERROR
+    default fn foo(&self) {} //~ ERROR specialization is unstable
 }
 
 fn main() {}

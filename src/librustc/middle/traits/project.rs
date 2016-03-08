@@ -100,21 +100,21 @@ pub enum ProjectionMode {
 }
 
 impl ProjectionMode {
-    pub fn topmost(&self) -> bool {
+    pub fn is_topmost(&self) -> bool {
         match *self {
             ProjectionMode::Topmost => true,
             _ => false,
         }
     }
 
-    pub fn any_final(&self) -> bool {
+    pub fn is_any_final(&self) -> bool {
         match *self {
             ProjectionMode::AnyFinal => true,
             _ => false,
         }
     }
 
-    pub fn any(&self) -> bool {
+    pub fn is_any(&self) -> bool {
         match *self {
             ProjectionMode::Any => true,
             _ => false,
@@ -665,7 +665,7 @@ fn project_type<'cx,'tcx>(
         // In Any (i.e. trans) mode, all projections succeed;
         // otherwise, we need to be sensitive to `default` and
         // specialization.
-        if !selcx.projection_mode().any() {
+        if !selcx.projection_mode().is_any() {
             if let ProjectionTyCandidate::Impl(ref impl_data) = candidate {
                 if let Some(node_item) = assoc_ty_def(selcx,
                                                       impl_data.impl_def_id,
@@ -1116,7 +1116,7 @@ fn assoc_ty_def<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>, impl_def_id: Def
 {
     let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
 
-    if selcx.projection_mode().topmost() {
+    if selcx.projection_mode().is_topmost() {
         let impl_node = specialization_graph::Node::Impl(impl_def_id);
         for item in impl_node.items(selcx.tcx()) {
             if let ty::TypeTraitItem(assoc_ty) = item {
