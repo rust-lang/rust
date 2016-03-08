@@ -17,6 +17,7 @@ use trans::abi;
 use trans::common::{self, BlockAndBuilder, C_bool, C_bytes, C_floating_f64, C_integral,
                     C_str_slice, C_undef};
 use trans::consts;
+use trans::datum;
 use trans::expr;
 use trans::inline;
 use trans::type_of;
@@ -122,7 +123,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let d = bcx.with_block(|bcx| {
                     expr::trans(bcx, expr)
                 });
-                OperandRef::from_rvalue_datum(d.datum.to_rvalue_datum(d.bcx, "").datum)
+
+                let datum = d.datum.to_rvalue_datum(d.bcx, "").datum;
+
+                match datum.kind.mode {
+                    datum::RvalueMode::ByValue => {
+                        OperandRef {
+                            ty: datum.ty,
+                            val: OperandValue::Immediate(datum.val)
+                        }
+                    }
+                    datum::RvalueMode::ByRef => self.trans_load(bcx, datum.val, datum.ty)
+                }
             }
             mir::Literal::Value { ref value } => {
                 self.trans_constval(bcx, value, ty)
