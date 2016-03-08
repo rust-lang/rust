@@ -30,6 +30,7 @@ macro_rules! t {
 
 mod cc;
 mod channel;
+mod check;
 mod clean;
 mod compile;
 mod config;
@@ -171,6 +172,9 @@ impl Build {
                 Rustc { stage } => {
                     compile::assemble_rustc(self, stage, target.target);
                 }
+                ToolLinkchecker { stage } => {
+                    compile::tool(self, stage, target.target, "linkchecker");
+                }
                 ToolRustbook { stage } => {
                     compile::tool(self, stage, target.target, "rustbook");
                 }
@@ -193,6 +197,10 @@ impl Build {
                 }
                 DocRustc { stage } => {
                     doc::rustc(self, stage, target.target, &doc_out);
+                }
+
+                CheckLinkcheck { stage } => {
+                    check::linkcheck(self, stage, target.target);
                 }
 
                 Doc { .. } | // pseudo-steps
