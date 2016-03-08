@@ -48,6 +48,7 @@ macro_rules! targets {
             // Various tools that we can build as part of the build.
             (tool_linkchecker, ToolLinkchecker { stage: u32 }),
             (tool_rustbook, ToolRustbook { stage: u32 }),
+            (tool_error_index, ToolErrorIndex { stage: u32 }),
 
             // Steps for long-running native builds. Ideally these wouldn't
             // actually exist and would be part of build scripts, but for now
@@ -68,6 +69,7 @@ macro_rules! targets {
             (doc_standalone, DocStandalone { stage: u32 }),
             (doc_std, DocStd { stage: u32 }),
             (doc_rustc, DocRustc { stage: u32 }),
+            (doc_error_index, DocErrorIndex { stage: u32 }),
 
             // Steps for running tests. The 'check' target is just a pseudo
             // target to depend on a bunch of others.
@@ -265,6 +267,9 @@ impl<'a> Step<'a> {
             Source::DocStyle { stage } => {
                 vec![self.tool_rustbook(stage)]
             }
+            Source::DocErrorIndex { stage } => {
+                vec![self.tool_error_index(stage)]
+            }
             Source::DocStandalone { stage } => {
                 vec![self.rustc(stage)]
             }
@@ -274,7 +279,8 @@ impl<'a> Step<'a> {
             Source::Doc { stage } => {
                 vec![self.doc_book(stage), self.doc_nomicon(stage),
                      self.doc_style(stage), self.doc_standalone(stage),
-                     self.doc_std(stage)]
+                     self.doc_std(stage),
+                     self.doc_error_index(stage)]
             }
             Source::Check { stage, compiler: _ } => {
                 vec![self.check_linkcheck(stage)]
@@ -286,6 +292,7 @@ impl<'a> Step<'a> {
             Source::ToolLinkchecker { stage } => {
                 vec![self.libstd(stage, self.compiler(stage))]
             }
+            Source::ToolErrorIndex { stage } |
             Source::ToolRustbook { stage } => {
                 vec![self.librustc(stage, self.compiler(stage))]
             }
