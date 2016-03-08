@@ -87,7 +87,7 @@ DEPS_serialize := std log
 DEPS_term := std log
 DEPS_test := std getopts serialize rbml term native:rust_test_helpers
 
-DEPS_syntax := std term serialize log arena libc rustc_bitflags
+DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode
 DEPS_syntax_ext := syntax fmt_macros
 
 DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml rustc_front\
