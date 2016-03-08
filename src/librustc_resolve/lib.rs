@@ -1615,15 +1615,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         intravisit::walk_crate(self, krate);
     }
 
-    fn check_if_primitive_type_name(&self, name: Name, span: Span) {
-        if let Some(_) = self.primitive_type_table.primitive_types.get(&name) {
-            span_err!(self.session,
-                      span,
-                      E0317,
-                      "user-defined types or type parameters cannot shadow the primitive types");
-        }
-    }
-
     fn resolve_item(&mut self, item: &Item) {
         let name = item.name;
 
@@ -1633,8 +1624,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ItemEnum(_, ref generics) |
             ItemTy(_, ref generics) |
             ItemStruct(_, ref generics) => {
-                self.check_if_primitive_type_name(name, item.span);
-
                 self.with_type_parameter_rib(HasTypeParameters(generics, TypeSpace, ItemRibKind),
                                              |this| intravisit::walk_item(this, item));
             }
@@ -1655,8 +1644,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
-                self.check_if_primitive_type_name(name, item.span);
-
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                TypeSpace,
@@ -1691,8 +1678,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     });
                                 }
                                 hir::TypeTraitItem(..) => {
-                                    this.check_if_primitive_type_name(trait_item.name,
-                                                                      trait_item.span);
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
                                         intravisit::walk_trait_item(this, trait_item)
                                     });
@@ -1716,28 +1701,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemUse(ref view_path) => {
-                // check for imports shadowing primitive types
-                let check_rename = |this: &Self, id, name| {
-                    match this.def_map.borrow().get(&id).map(|d| d.full_def()) {
-                        Some(Def::Enum(..)) | Some(Def::TyAlias(..)) | Some(Def::Struct(..)) |
-                        Some(Def::Trait(..)) | None => {
-                            this.check_if_primitive_type_name(name, item.span);
-                        }
-                        _ => {}
-                    }
-                };
-
                 match view_path.node {
-                    hir::ViewPathSimple(name, _) => {
-                        check_rename(self, item.id, name);
-                    }
                     hir::ViewPathList(ref prefix, ref items) => {
-                        for item in items {
-                            if let Some(name) = item.node.rename() {
-                                check_rename(self, item.node.id(), name);
-                            }
-                        }
-
                         // Resolve prefix of an import with empty braces (issue #28388)
                         if items.is_empty() && !prefix.segments.is_empty() {
                             match self.resolve_crate_relative_path(prefix.span,
@@ -1918,9 +1883,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_generics(&mut self, generics: &Generics) {
-        for type_parameter in generics.ty_params.iter() {
-            self.check_if_primitive_type_name(type_parameter.name, type_parameter.span);
-        }
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 &hir::WherePredicate::BoundPredicate(_) |
@@ -2699,7 +2661,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           -> Option<LocalDef> {
         let def = self.resolve_identifier(identifier, namespace, check_ribs, record_used);
         match def {
-            None | Some(LocalDef{def: Def::Mod(..), ..}) => {
+            None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS => {
                 if let Some(&prim_ty) = self.primitive_type_table
                                             .primitive_types
                                             .get(&identifier.unhygienic_name) {
