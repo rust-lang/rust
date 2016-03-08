@@ -12,7 +12,7 @@ use std::path::Path;
 use std::fs::{self, File};
 use std::io::prelude::*;
 
-use build::{Build, Compiler};
+use build::{Build, Compiler, Mode};
 use build::util::{up_to_date, cp_r};
 
 pub fn rustbook(build: &Build, stage: u32, host: &str, name: &str, out: &Path) {
@@ -106,14 +106,14 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
 pub fn std(build: &Build, stage: u32, host: &str, out: &Path) {
     println!("Documenting stage{} std ({})", stage, host);
     let compiler = Compiler::new(stage, host);
-    let out_dir = build.stage_out(stage, host, true)
+    let out_dir = build.stage_out(stage, host, Mode::Libstd)
                        .join(host).join("doc");
     let rustdoc = build.tool(&compiler, "rustdoc");
     if !up_to_date(&rustdoc, &out_dir.join("std/index.html")) {
         t!(fs::remove_dir_all(&out_dir));
     }
 
-    let mut cargo = build.cargo(stage, &compiler, true, host,
+    let mut cargo = build.cargo(stage, &compiler, Mode::Libstd, Some(host),
                                 "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
@@ -125,13 +125,13 @@ pub fn std(build: &Build, stage: u32, host: &str, out: &Path) {
 pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
     println!("Documenting stage{} compiler ({})", stage, host);
     let compiler = Compiler::new(stage, host);
-    let out_dir = build.stage_out(stage, host, false)
+    let out_dir = build.stage_out(stage, host, Mode::Librustc)
                        .join(host).join("doc");
     let rustdoc = build.tool(&compiler, "rustdoc");
     if !up_to_date(&rustdoc, &out_dir.join("rustc/index.html")) {
         t!(fs::remove_dir_all(&out_dir));
     }
-    let mut cargo = build.cargo(stage, &compiler, false, host,
+    let mut cargo = build.cargo(stage, &compiler, Mode::Librustc, Some(host),
                                 "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/Cargo.toml"))
