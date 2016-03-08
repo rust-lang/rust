@@ -174,11 +174,9 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             let bytes = s.len();
                             let llbytes = C_uint(bcx.ccx(), bytes);
                             let llcstr = C_cstr(bcx.ccx(), (*s).clone(), false);
-                            base::call_memcpy(bcx,
-                                              lldest,
-                                              llcstr,
-                                              llbytes,
-                                              1);
+                            if !bcx.unreachable.get() {
+                                base::call_memcpy(&B(bcx), lldest, llcstr, llbytes, 1);
+                            }
                             return bcx;
                         }
                     }

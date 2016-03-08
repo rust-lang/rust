@@ -739,8 +739,11 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let llrust_align = llalign_of_min(ccx, llrust_ret_ty);
             let llalign = cmp::min(llforeign_align, llrust_align);
             debug!("llrust_size={}", llrust_size);
-            base::call_memcpy(bcx, llretptr_i8, llscratch_i8,
-                              C_uint(ccx, llrust_size), llalign as u32);
+
+            if !bcx.unreachable.get() {
+                base::call_memcpy(&B(bcx), llretptr_i8, llscratch_i8,
+                                  C_uint(ccx, llrust_size), llalign as u32);
+            }
             base::call_lifetime_end(bcx, llscratch);
         } else if let Some(llretslot) = opt_llretslot {
             base::store_ty(bcx, llret, llretslot, output.unwrap());
