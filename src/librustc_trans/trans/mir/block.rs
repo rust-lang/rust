@@ -196,7 +196,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 };
 
                 // Split the rust-call tupled arguments off.
-                let (args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
+                let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
                     let (tup, args) = args.split_last().unwrap();
                     (args, Some(tup))
                 } else {
@@ -204,7 +204,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 };
 
                 let mut idx = 0;
-                for arg in args {
+                for arg in first_args {
                     let val = self.trans_operand(&bcx, arg).val;
                     self.trans_argument(&bcx, val, &mut llargs, &fn_ty,
                                         &mut idx, &mut callee.data);
