@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             Categorization::Upvar(mc::Upvar { kind, .. }) => kind,
                             _ => unreachable!()
                         };
-                        if kind == ty::FnClosureKind {
+                        if kind == ty::ClosureKind::Fn {
                             db.span_help(
                                 self.tcx.map.span(upvar_id.closure_expr_id),
                                 "consider changing this closure to take \

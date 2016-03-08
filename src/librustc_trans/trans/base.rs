@@ -216,13 +216,13 @@ pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        -> Ty<'tcx> {
     let closure_kind = ccx.tcx().closure_kind(closure_id);
     match closure_kind {
-        ty::FnClosureKind => {
+        ty::ClosureKind::Fn => {
             ccx.tcx().mk_imm_ref(ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
-        ty::FnMutClosureKind => {
+        ty::ClosureKind::FnMut => {
             ccx.tcx().mk_mut_ref(ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
-        ty::FnOnceClosureKind => fn_ty,
+        ty::ClosureKind::FnOnce => fn_ty,
     }
 }
 

@@ -725,7 +725,7 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             let region = cx.tcx.mk_region(region);
 
             let self_expr = match cx.tcx.closure_kind(cx.tcx.map.local_def_id(closure_expr_id)) {
-                ty::ClosureKind::FnClosureKind => {
+                ty::ClosureKind::Fn => {
                     let ref_closure_ty =
                         cx.tcx.mk_ref(region,
                                    ty::TypeAndMut { ty: closure_ty,
@@ -744,7 +744,7 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                         }
                     }
                 }
-                ty::ClosureKind::FnMutClosureKind => {
+                ty::ClosureKind::FnMut => {
                     let ref_closure_ty =
                         cx.tcx.mk_ref(region,
                                    ty::TypeAndMut { ty: closure_ty,
@@ -763,7 +763,7 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                         }
                     }
                 }
-                ty::ClosureKind::FnOnceClosureKind => {
+                ty::ClosureKind::FnOnce => {
                     Expr {
                         ty: closure_ty,
                         temp_lifetime: temp_lifetime,

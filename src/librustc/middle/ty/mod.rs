@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use self::ImplOrTraitItemId::*;
-pub use self::ClosureKind::*;
 pub use self::Variance::*;
 pub use self::DtorKind::*;
 pub use self::ImplOrTraitItemContainer::*;
@@ -1699,19 +1698,19 @@ pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
     // because the trait Fn is a subtrait of FnMut and so in turn, and
     // hence we order it so that Fn < FnMut < FnOnce.
-    FnClosureKind,
-    FnMutClosureKind,
-    FnOnceClosureKind,
+    Fn,
+    FnMut,
+    FnOnce,
 }
 
 impl ClosureKind {
     pub fn trait_did(&self, cx: &TyCtxt) -> DefId {
         let result = match *self {
-            FnClosureKind => cx.lang_items.require(FnTraitLangItem),
-            FnMutClosureKind => {
+            ClosureKind::Fn => cx.lang_items.require(FnTraitLangItem),
+            ClosureKind::FnMut => {
                 cx.lang_items.require(FnMutTraitLangItem)
             }
-            FnOnceClosureKind => {
+            ClosureKind::FnOnce => {
                 cx.lang_items.require(FnOnceTraitLangItem)
             }
         };
@@ -1725,12 +1724,12 @@ impl ClosureKind {
     /// must also implement `other`.
     pub fn extends(self, other: ty::ClosureKind) -> bool {
         match (self, other) {
-            (FnClosureKind, FnClosureKind) => true,
-            (FnClosureKind, FnMutClosureKind) => true,
-            (FnClosureKind, FnOnceClosureKind) => true,
-            (FnMutClosureKind, FnMutClosureKind) => true,
-            (FnMutClosureKind, FnOnceClosureKind) => true,
-            (FnOnceClosureKind, FnOnceClosureKind) => true,
+            (ClosureKind::Fn, ClosureKind::Fn) => true,
+            (ClosureKind::Fn, ClosureKind::FnMut) => true,
+            (ClosureKind::Fn, ClosureKind::FnOnce) => true,
+            (ClosureKind::FnMut, ClosureKind::FnMut) => true,
+            (ClosureKind::FnMut, ClosureKind::FnOnce) => true,
+            (ClosureKind::FnOnce, ClosureKind::FnOnce) => true,
             _ => false,
         }
     }

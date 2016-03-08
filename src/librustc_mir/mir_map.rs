@@ -252,15 +252,15 @@ fn closure_self_ty<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
     let region = tcx.mk_region(region);
 
     match tcx.closure_kind(tcx.map.local_def_id(closure_expr_id)) {
-        ty::ClosureKind::FnClosureKind =>
+        ty::ClosureKind::Fn =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,
                                         mutbl: hir::MutImmutable }),
-        ty::ClosureKind::FnMutClosureKind =>
+        ty::ClosureKind::FnMut =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,
                                         mutbl: hir::MutMutable }),
-        ty::ClosureKind::FnOnceClosureKind =>
+        ty::ClosureKind::FnOnce =>
             closure_ty
     }
 }
