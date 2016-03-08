@@ -61,7 +61,7 @@ use raw::Slice as RawSlice;
 /// Extension methods for slices.
 #[unstable(feature = "core_slice_ext",
            reason = "stable interface provided by `impl [T]` in later crates",
-           issue = "27701")]
+           issue = "32110")]
 #[allow(missing_docs)] // documented elsewhere
 pub trait SliceExt {
     type Item;
@@ -182,7 +182,7 @@ macro_rules! slice_ref {
 
 #[unstable(feature = "core_slice_ext",
            reason = "stable interface provided by `impl [T]` in later crates",
-           issue = "27701")]
+           issue = "32110")]
 impl<T> SliceExt for [T] {
     type Item = T;
 
