@@ -1311,13 +1311,19 @@ mod traits {
         }
     }
 
+    /// Implements substring slicing with syntax `&self[begin .. end]`.
+    ///
     /// Returns a slice of the given string from the byte range
     /// [`begin`..`end`).
     ///
     /// This operation is `O(1)`.
     ///
-    /// Panics when `begin` and `end` do not point to valid characters
-    /// or point beyond the last character of the string.
+    /// # Panics
+    ///
+    /// Panics if `begin` or `end` does not point to the starting
+    /// byte offset of a character (as defined by `is_char_boundary`).
+    /// Requires that `begin <= end` and `end <= len` where `len` is the
+    /// length of the string.
     ///
     /// # Examples
     ///
@@ -1353,8 +1359,20 @@ mod traits {
         }
     }
 
+    /// Implements mutable substring slicing with syntax
+    /// `&mut self[begin .. end]`.
+    ///
     /// Returns a mutable slice of the given string from the byte range
     /// [`begin`..`end`).
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `begin` or `end` does not point to the starting
+    /// byte offset of a character (as defined by `is_char_boundary`).
+    /// Requires that `begin <= end` and `end <= len` where `len` is the
+    /// length of the string.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::Range<usize>> for str {
         #[inline]
@@ -1370,13 +1388,12 @@ mod traits {
         }
     }
 
-    /// Returns a slice of the string from the beginning to byte
+    /// Implements substring slicing with syntax `&self[.. end]`.
+    ///
+    /// Returns a slice of the string from the beginning to byte offset
     /// `end`.
     ///
-    /// Equivalent to `self[0 .. end]`.
-    ///
-    /// Panics when `end` does not point to a valid character, or is
-    /// out of bounds.
+    /// Equivalent to `&self[0 .. end]`.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeTo<usize>> for str {
         type Output = str;
@@ -1392,8 +1409,12 @@ mod traits {
         }
     }
 
-    /// Returns a mutable slice of the string from the beginning to byte
+    /// Implements mutable substring slicing with syntax `&mut self[.. end]`.
+    ///
+    /// Returns a mutable slice of the string from the beginning to byte offset
     /// `end`.
+    ///
+    /// Equivalent to `&mut self[0 .. end]`.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::RangeTo<usize>> for str {
         #[inline]
@@ -1407,12 +1428,12 @@ mod traits {
         }
     }
 
-    /// Returns a slice of the string from `begin` to its end.
+    /// Implements substring slicing with syntax `&self[begin ..]`.
     ///
-    /// Equivalent to `self[begin .. self.len()]`.
+    /// Returns a slice of the string from byte offset `begin`
+    /// to the end of the string.
     ///
-    /// Panics when `begin` does not point to a valid character, or is
-    /// out of bounds.
+    /// Equivalent to `&self[begin .. len]`.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFrom<usize>> for str {
         type Output = str;
@@ -1428,7 +1449,12 @@ mod traits {
         }
     }
 
-    /// Returns a slice of the string from `begin` to its end.
+    /// Implements mutable substring slicing with syntax `&mut self[begin ..]`.
+    ///
+    /// Returns a mutable slice of the string from byte offset `begin`
+    /// to the end of the string.
+    ///
+    /// Equivalent to `&mut self[begin .. len]`.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::RangeFrom<usize>> for str {
         #[inline]
@@ -1443,6 +1469,12 @@ mod traits {
         }
     }
 
+    /// Implements substring slicing with syntax `&self[..]`.
+    ///
+    /// Returns a slice of the whole string. This operation can
+    /// never panic.
+    ///
+    /// Equivalent to `&self[0 .. len]`.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFull> for str {
         type Output = str;
@@ -1453,6 +1485,12 @@ mod traits {
         }
     }
 
+    /// Implements mutable substring slicing with syntax `&mut self[..]`.
+    ///
+    /// Returns a mutable slice of the whole string. This operation can
+    /// never panic.
+    ///
+    /// Equivalent to `&mut self[0 .. len]`.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::RangeFull> for str {
         #[inline]
