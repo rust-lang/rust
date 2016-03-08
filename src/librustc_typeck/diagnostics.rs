@@ -1133,15 +1133,16 @@ enum Bad {
 }
 ```
 
-Here `X` will have already been assigned the discriminant 0 by the time `Y` is
+Here `X` will have already been specified the discriminant 0 by the time `Y` is
 encountered, so a conflict occurs.
 "##,
 
 E0082: r##"
-The default type for enum discriminants is `isize`, but it can be adjusted by
-adding the `repr` attribute to the enum declaration. This error indicates that
-an integer literal given as a discriminant is not a member of the discriminant
-type. For example:
+When you specify enum discriminants with `=`, the compiler expects `isize`
+values by default. Or you can add the `repr` attibute to the enum declaration
+for an explicit choice of the discriminant type. In either cases, the
+discriminant values must fall within a valid range for the expected type;
+otherwise this error is raised. For example:
 
 ```compile_fail
 #[repr(u8)]
@@ -1152,11 +1153,19 @@ enum Thing {
 ```
 
 Here, 1024 lies outside the valid range for `u8`, so the discriminant for `A` is
-invalid. You may want to change representation types to fix this, or else change
-invalid discriminant values so that they fit within the existing type.
+invalid. Here is another, more subtle example which depends on target word size:
 
-Note also that without a representation manually defined, the compiler will
-optimize by using the smallest integer type possible.
+```compile_fail
+enum DependsOnPointerSize {
+    A = 1 << 32
+}
+```
+
+Here, `1 << 32` is interpreted as an `isize` value. So it is invalid for 32 bit
+target (`target_pointer_width = "32"`) but valid for 64 bit target.
+
+You may want to change representation types to fix this, or else change invalid
+discriminant values so that they fit within the existing type.
 "##,
 
 E0084: r##"
