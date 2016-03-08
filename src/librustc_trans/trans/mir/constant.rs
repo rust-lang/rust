@@ -15,7 +15,7 @@ use rustc_const_eval::ConstInt::*;
 use rustc::mir::repr as mir;
 use trans::abi;
 use trans::common::{self, BlockAndBuilder, C_bool, C_bytes, C_floating_f64, C_integral,
-                    C_str_slice, C_nil, C_undef};
+                    C_str_slice, C_undef};
 use trans::consts;
 use trans::expr;
 use trans::inline;
@@ -85,16 +85,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ConstVal::Integral(InferSigned(v)) => C_integral(llty, v as u64, true),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
-            ConstVal::Struct(id) | ConstVal::Tuple(id) |
-            ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
-                let expr = bcx.tcx().map.expect_expr(id);
-                bcx.with_block(|bcx| {
-                    expr::trans(bcx, expr).datum.val
-                })
-            },
+            ConstVal::Struct(_) | ConstVal::Tuple(_) |
+            ConstVal::Array(..) | ConstVal::Repeat(..) |
+            ConstVal::Function(_) => {
+                unreachable!("MIR must not use {:?} (which refers to a local ID)", cv)
+            }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
             ConstVal::Dummy => unreachable!(),
-            ConstVal::Function(_) => C_nil(ccx)
         }
     }
 
