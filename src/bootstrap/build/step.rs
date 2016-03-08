@@ -45,6 +45,9 @@ macro_rules! targets {
                 host: &'a str
             }),
 
+            // Various tools that we can build as part of the build.
+            (tool_rustbook, ToolRustbook { stage: u32 }),
+
             // Steps for long-running native builds. Ideally these wouldn't
             // actually exist and would be part of build scripts, but for now
             // these are here.
@@ -255,7 +258,9 @@ impl<'a> Step<'a> {
             }
             Source::DocBook { stage } |
             Source::DocNomicon { stage } |
-            Source::DocStyle { stage } |
+            Source::DocStyle { stage } => {
+                vec![self.tool_rustbook(stage)]
+            }
             Source::DocStandalone { stage } => {
                 vec![self.rustc(stage)]
             }
@@ -269,6 +274,8 @@ impl<'a> Step<'a> {
             }
             Source::Check { stage, compiler: _ } => {
                 vec![]
+            Source::ToolRustbook { stage } => {
+                vec![self.librustc(stage, self.compiler(stage))]
             }
         }
     }

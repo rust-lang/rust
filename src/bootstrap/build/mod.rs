@@ -165,6 +165,9 @@ impl Build {
                 Rustc { stage } => {
                     compile::assemble_rustc(self, stage, target.target);
                 }
+                ToolRustbook { stage } => {
+                    compile::tool(self, stage, target.target, "rustbook");
+                }
                 DocBook { stage } => {
                     doc::rustbook(self, stage, target.target, "book", &doc_out);
                 }
@@ -303,15 +306,9 @@ impl Build {
 
     /// Get the specified tool next to the specified compiler
     fn tool(&self, compiler: &Compiler, tool: &str) -> PathBuf {
-        if compiler.is_snapshot(self) {
-            assert!(tool == "rustdoc", "no tools other than rustdoc in stage0");
-            let mut rustdoc = self.rustc.clone();
-            rustdoc.pop();
-            rustdoc.push(exe("rustdoc", &self.config.build));
-            return rustdoc
-        }
-        let (stage, host) = (compiler.stage, compiler.host);
-        self.cargo_out(stage - 1, host, false, host).join(exe(tool, host))
+        self.stage_out(compiler.stage, compiler.host, false)
+            .join(self.cargo_dir())
+            .join(exe(tool, compiler.host))
     }
 
     /// Get a `Command` which is ready to run `tool` in `stage` built for
@@ -322,8 +319,8 @@ impl Build {
         let host = compiler.host;
         let stage = compiler.stage;
         let paths = vec![
-            self.cargo_out(stage - 1, host, true, host).join("deps"),
-            self.cargo_out(stage - 1, host, false, host).join("deps"),
+            self.cargo_out(stage, host, true, host).join("deps"),
+            self.cargo_out(stage, host, false, host).join("deps"),
         ];
         add_lib_path(paths, &mut cmd);
         return cmd
@@ -354,7 +351,6 @@ impl Build {
         }
         if stage > 0 {
             features.push_str(" rustdoc");
-            features.push_str(" rustbook");
         }
         return features
     }
