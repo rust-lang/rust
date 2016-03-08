@@ -36,7 +36,7 @@ use trans::build::*;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::closure;
-use trans::common::{self, Block, Result, NodeIdAndSpan, CrateContext, FunctionContext};
+use trans::common::{self, Block, Result, CrateContext, FunctionContext};
 use trans::common::{C_uint, C_undef};
 use trans::consts;
 use trans::datum::*;
@@ -56,7 +56,6 @@ use trans::Disr;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_front::hir;
 
-use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 use syntax::errors;
 use syntax::ptr::P;
@@ -624,18 +623,9 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             assert!(abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic);
             assert!(dest.is_some());
 
-            let call_info = match debug_loc {
-                DebugLoc::At(id, span) => NodeIdAndSpan { id: id, span: span },
-                DebugLoc::None => {
-                    bcx.sess().bug("No call info for intrinsic call?")
-                }
-            };
-
-            let arg_cleanup_scope = fcx.push_custom_cleanup_scope();
             return intrinsic::trans_intrinsic_call(bcx, callee.ty, &fn_ty,
-                                                   arg_cleanup_scope, args,
-                                                   dest.unwrap(),
-                                                   call_info);
+                                                   args, dest.unwrap(),
+                                                   debug_loc);
         }
         NamedTupleConstructor(disr) => {
             assert!(dest.is_some());

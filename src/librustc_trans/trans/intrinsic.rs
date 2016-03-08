@@ -47,7 +47,7 @@ use syntax::parse::token;
 
 use rustc::lint;
 use rustc::session::Session;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
 
@@ -173,10 +173,9 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                             callee_ty: Ty<'tcx>,
                                             fn_ty: &FnType,
-                                            cleanup_scope: cleanup::CustomScopeIndex,
                                             args: callee::CallArgs<'a, 'tcx>,
                                             dest: expr::Dest,
-                                            call_info: NodeIdAndSpan)
+                                            call_debug_location: DebugLoc)
                                             -> Result<'blk, 'tcx> {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -195,7 +194,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let ret_ty = sig.output;
     let name = tcx.item_name(def_id).as_str();
 
-    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
+    let span = match call_debug_location {
+        DebugLoc::At(_, span) => span,
+        DebugLoc::None => fcx.span.unwrap_or(DUMMY_SP)
+    };
+
+    let cleanup_scope = fcx.push_custom_cleanup_scope();
 
     // For `transmute` we can just trans the input expr directly into dest
     if name == "transmute" {
@@ -644,7 +648,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     },
                 None => {
                     span_invalid_monomorphization_error(
-                        tcx.sess, call_info.span,
+                        tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
                                   expected basic integer type, found `{}`", name, sty));
                         C_null(llret_ty)
@@ -656,7 +660,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         (_, "return_address") => {
             if !fcx.fn_ty.ret.is_indirect() {
-                span_err!(tcx.sess, call_info.span, E0510,
+                span_err!(tcx.sess, span, E0510,
                           "invalid use of `return_address` intrinsic: function \
                            does not use out pointer");
                 C_null(Type::i8p(ccx))
@@ -684,7 +688,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                    &llargs,
                                    ret_ty, llret_ty,
                                    call_debug_location,
-                                   call_info)
+                                   span)
         }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
@@ -1404,7 +1408,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
      ret_ty: Ty<'tcx>,
      llret_ty: Type,
      call_debug_location: DebugLoc,
-     call_info: NodeIdAndSpan) -> ValueRef
+     span: Span) -> ValueRef
 {
     // macros for error handling:
     macro_rules! emit_error {
@@ -1413,7 +1417,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         };
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
-                bcx.sess(), call_info.span,
+                bcx.sess(), span,
                 &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
                                  $msg),
                          name, $($fmt)*));
@@ -1482,7 +1486,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     if name.starts_with("simd_shuffle") {
         let n: usize = match name["simd_shuffle".len()..].parse() {
             Ok(n) => n,
-            Err(_) => tcx.sess.span_bug(call_info.span,
+            Err(_) => tcx.sess.span_bug(span,
                                         "bad `simd_shuffle` instruction only caught in trans?")
         };
 
@@ -1502,14 +1506,14 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
         let vector = match args {
             Some(args) => &args[2],
-            None => bcx.sess().span_bug(call_info.span,
+            None => bcx.sess().span_bug(span,
                                         "intrinsic call with unexpected argument shape"),
         };
         let vector = match consts::const_expr(bcx.ccx(), vector, substs, None,
             consts::TrueConst::Yes, // this should probably help simd error reporting
         ) {
             Ok((vector, _)) => vector,
-            Err(err) => bcx.sess().span_fatal(call_info.span, &err.description()),
+            Err(err) => bcx.sess().span_fatal(span, &err.description()),
         };
 
         let indices: Option<Vec<_>> = (0..n)
@@ -1652,7 +1656,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         simd_or: TyUint, TyInt => Or;
         simd_xor: TyUint, TyInt => Xor;
     }
-    bcx.sess().span_bug(call_info.span, "unknown SIMD intrinsic");
+    bcx.sess().span_bug(span, "unknown SIMD intrinsic");
 }
 
 // Returns the width of an int TypeVariant, and if it's signed or not

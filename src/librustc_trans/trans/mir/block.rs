@@ -15,11 +15,11 @@ use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::base;
 use trans::build;
-use trans::callee::{Callee, CalleeData, Fn, Virtual};
+use trans::callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
 use trans::common::{self, Block, BlockAndBuilder, C_undef};
 use trans::debuginfo::DebugLoc;
 use trans::Disr;
-use trans::machine::llalign_of_min;
+use trans::machine::{llalign_of_min, llbitsize_of_real};
 use trans::meth;
 use trans::type_of;
 use trans::glue;
@@ -27,6 +27,7 @@ use trans::type_::Type;
 
 use super::{MirContext, drop};
 use super::lvalue::LvalueRef;
+use super::operand::OperandRef;
 use super::operand::OperandValue::{self, FatPtr, Immediate, Ref};
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
@@ -168,8 +169,51 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => unreachable!("{} is not callable", callee.ty)
                 };
 
-                // We do not translate intrinsics here (they shouldn’t be functions)
-                assert!(abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic);
+                // Handle intrinsics old trans wants Expr's for, ourselves.
+                let intrinsic = match (&callee.ty.sty, &callee.data) {
+                    (&ty::TyFnDef(def_id, _, _), &Intrinsic) => {
+                        Some(bcx.tcx().item_name(def_id).as_str())
+                    }
+                    _ => None
+                };
+                let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
+
+                if intrinsic == Some("move_val_init") {
+                    let &(_, target) = destination.as_ref().unwrap();
+                    // The first argument is a thin destination pointer.
+                    let llptr = self.trans_operand(&bcx, &args[0]).immediate();
+                    let val = self.trans_operand(&bcx, &args[1]);
+                    self.store_operand(&bcx, llptr, val);
+                    self.set_operand_dropped(&bcx, &args[1]);
+                    funclet_br(bcx, self.llblock(target));
+                    return;
+                }
+
+                if intrinsic == Some("transmute") {
+                    let &(ref dest, target) = destination.as_ref().unwrap();
+                    let dst = self.trans_lvalue(&bcx, dest);
+                    let mut val = self.trans_operand(&bcx, &args[0]);
+                    if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
+                        let llouttype = type_of::type_of(bcx.ccx(), dst.ty.to_ty(bcx.tcx()));
+                        let out_type_size = llbitsize_of_real(bcx.ccx(), llouttype);
+                        if out_type_size != 0 {
+                            // FIXME #19925 Remove this hack after a release cycle.
+                            let f = Callee::def(bcx.ccx(), def_id, substs);
+                            let datum = f.reify(bcx.ccx());
+                            val = OperandRef {
+                                val: OperandValue::Immediate(datum.val),
+                                ty: datum.ty
+                            };
+                        }
+                    }
+
+                    let llty = type_of::type_of(bcx.ccx(), val.ty);
+                    let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
+                    self.store_operand(&bcx, cast_ptr, val);
+                    self.set_operand_dropped(&bcx, &args[0]);
+                    funclet_br(bcx, self.llblock(target));
+                    return;
+                }
 
                 let extra_args = &args[sig.0.inputs.len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
@@ -215,7 +259,44 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                   &mut idx, &mut callee.data)
                 }
 
-                let fn_ptr = callee.reify(bcx.ccx()).val;
+                let fn_ptr = match callee.data {
+                    NamedTupleConstructor(_) => {
+                        // FIXME translate this like mir::Rvalue::Aggregate.
+                        callee.reify(bcx.ccx()).val
+                    }
+                    Intrinsic => {
+                        use trans::callee::ArgVals;
+                        use trans::expr::{Ignore, SaveIn};
+                        use trans::intrinsic::trans_intrinsic_call;
+
+                        let (dest, llargs) = if fn_ty.ret.is_indirect() {
+                            (SaveIn(llargs[0]), &llargs[1..])
+                        } else if let Some(dest) = ret_dest {
+                            (SaveIn(dest.llval), &llargs[..])
+                        } else {
+                            (Ignore, &llargs[..])
+                        };
+
+                        bcx.with_block(|bcx| {
+                            let res = trans_intrinsic_call(bcx, callee.ty, &fn_ty,
+                                                           ArgVals(llargs), dest,
+                                                           DebugLoc::None);
+                            let bcx = res.bcx.build();
+                            if let Some((_, target)) = *destination {
+                                for op in args {
+                                    self.set_operand_dropped(&bcx, op);
+                                }
+                                funclet_br(bcx, self.llblock(target));
+                            } else {
+                                // trans_intrinsic_call already used Unreachable.
+                                // bcx.unreachable();
+                            }
+                        });
+                        return;
+                    }
+                    Fn(f) => f,
+                    Virtual(_) => unreachable!("Virtual fn ptr not extracted")
+                };
 
                 // Many different ways to call a function handled here
                 if let Some(cleanup) = cleanup.map(|bb| self.bcx(bb)) {
