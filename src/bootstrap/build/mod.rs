@@ -379,13 +379,10 @@ impl Build {
     }
 
     /// Get the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, stage: u32) -> String {
+    fn rustc_features(&self) -> String {
         let mut features = String::new();
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
-        }
-        if stage > 0 {
-            features.push_str(" rustdoc");
         }
         return features
     }

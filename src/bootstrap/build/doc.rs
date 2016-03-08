@@ -135,7 +135,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
                                 "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/Cargo.toml"))
-         .arg("--features").arg(build.rustc_features(stage));
+         .arg("--features").arg(build.rustc_features());
     build.run(&mut cargo);
     cp_r(&out_dir, out)
 }
