@@ -51,19 +51,21 @@ impl CyclomaticComplexity {
         let mut helper = CCHelper {
             match_arms: 0,
             divergence: 0,
+            short_circuits: 0,
             tcx: &cx.tcx,
         };
         helper.visit_block(block);
         let CCHelper {
             match_arms,
             divergence,
+            short_circuits,
             ..
         } = helper;
 
-        if cc + divergence < match_arms {
-            report_cc_bug(cx, cc, match_arms, divergence, span);
+        if cc + divergence < match_arms + short_circuits {
+            report_cc_bug(cx, cc, match_arms, divergence, short_circuits, span);
         } else {
-            let rust_cc = cc + divergence - match_arms;
+            let rust_cc = cc + divergence - match_arms - short_circuits;
             if rust_cc > self.limit.limit() {
                 span_help_and_lint(cx,
                                    CYCLOMATIC_COMPLEXITY,
@@ -105,6 +107,7 @@ impl LateLintPass for CyclomaticComplexity {
 struct CCHelper<'a, 'tcx: 'a> {
     match_arms: u64,
     divergence: u64,
+    short_circuits: u64, // && and ||
     tcx: &'a ty::TyCtxt<'tcx>,
 }
 
@@ -128,29 +131,38 @@ impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
                 }
             }
             ExprClosure(..) => {}
+            ExprBinary(op, _, _) => {
+                walk_expr(self, e);
+                match op.node {
+                    BiAnd | BiOr => self.short_circuits += 1,
+                    _ => {},
+                }
+            }
             _ => walk_expr(self, e),
         }
     }
 }
 
 #[cfg(feature="debugging")]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, span: Span) {
+fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {
     cx.sess().span_bug(span,
                        &format!("Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
-                                 div = {}. Please file a bug report.",
+                                 div = {}, shorts = {}. Please file a bug report.",
                                 cc,
                                 narms,
-                                div));;
+                                div,
+                                shorts));;
 }
 #[cfg(not(feature="debugging"))]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, span: Span) {
+fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {
     if cx.current_level(CYCLOMATIC_COMPLEXITY) != Level::Allow {
         cx.sess().span_note_without_error(span,
                                           &format!("Clippy encountered a bug calculating cyclomatic complexity \
                                                     (hide this message with `#[allow(cyclomatic_complexity)]`): cc \
-                                                    = {}, arms = {}, div = {}. Please file a bug report.",
+                                                    = {}, arms = {}, div = {}, shorts = {}. Please file a bug report.",
                                                    cc,
                                                    narms,
-                                                   div));
+                                                   div,
+                                                   shorts));
     }
 }
