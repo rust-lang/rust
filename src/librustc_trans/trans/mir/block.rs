@@ -218,63 +218,74 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let fn_ptr = callee.reify(bcx.ccx()).val;
 
                 // Many different ways to call a function handled here
-                match (cleanup, destination) {
-                    // The two cases below are the only ones to use LLVM’s `invoke`.
-                    (&Some(cleanup), &None) => {
-                        let cleanup = self.bcx(cleanup);
-                        let landingpad = self.make_landing_pad(cleanup);
-                        let unreachable_blk = self.unreachable_block();
-                        let cs = bcx.invoke(fn_ptr,
-                                            &llargs,
-                                            unreachable_blk.llbb,
-                                            landingpad.llbb(),
-                                            cleanup_bundle.as_ref());
-                        fn_ty.apply_attrs_callsite(cs);
-                        landingpad.at_start(|bcx| for op in args {
-                            self.set_operand_dropped(bcx, op);
-                        });
-                    },
-                    (&Some(cleanup), &Some((_, success))) => {
-                        let cleanup = self.bcx(cleanup);
-                        let landingpad = self.make_landing_pad(cleanup);
-                        let invokeret = bcx.invoke(fn_ptr,
-                                                   &llargs,
-                                                   self.llblock(success),
-                                                   landingpad.llbb(),
-                                                   cleanup_bundle.as_ref());
-                        fn_ty.apply_attrs_callsite(invokeret);
+                if let Some(cleanup) = cleanup.map(|bb| self.bcx(bb)) {
+                    // We translate the copy into a temporary block. The temporary block is
+                    // necessary because the current block has already been terminated (by
+                    // `invoke`) and we cannot really translate into the target block
+                    // because:
+                    //  * The target block may have more than a single precedesor;
+                    //  * Some LLVM insns cannot have a preceeding store insn (phi,
+                    //    cleanuppad), and adding/prepending the store now may render
+                    //    those other instructions invalid.
+                    //
+                    // NB: This approach still may break some LLVM code. For example if the
+                    // target block starts with a `phi` (which may only match on immediate
+                    // precedesors), it cannot know about this temporary block thus
+                    // resulting in an invalid code:
+                    //
+                    // this:
+                    //     …
+                    //     %0 = …
+                    //     %1 = invoke to label %temp …
+                    // temp:
+                    //     store ty %1, ty* %dest
+                    //     br label %actualtargetblock
+                    // actualtargetblock:            ; preds: %temp, …
+                    //     phi … [%this, …], [%0, …] ; ERROR: phi requires to match only on
+                    //                               ; immediate precedesors
+
+                    let ret_bcx = if destination.is_some() {
+                        self.fcx.new_block("", None)
+                    } else {
+                        self.unreachable_block()
+                    };
+                    let landingpad = self.make_landing_pad(cleanup);
+
+                    let invokeret = bcx.invoke(fn_ptr,
+                                               &llargs,
+                                               ret_bcx.llbb,
+                                               landingpad.llbb(),
+                                               cleanup_bundle.as_ref());
+                    fn_ty.apply_attrs_callsite(invokeret);
+
+                    landingpad.at_start(|bcx| for op in args {
+                        self.set_operand_dropped(bcx, op);
+                    });
+
+                    if let Some((_, target)) = *destination {
+                        let ret_bcx = ret_bcx.build();
                         if let Some(ret_dest) = ret_dest {
-                            // We translate the copy straight into the beginning of the target
-                            // block.
-                            self.bcx(success).at_start(|bcx| bcx.with_block( |bcx| {
-                                fn_ty.ret.store(bcx, invokeret, ret_dest.llval);
-                            }));
+                            fn_ty.ret.store(&ret_bcx, invokeret, ret_dest.llval);
                         }
-                        self.bcx(success).at_start(|bcx| for op in args {
-                            self.set_operand_dropped(bcx, op);
-                        });
-                        landingpad.at_start(|bcx| for op in args {
-                            self.set_operand_dropped(bcx, op);
-                        });
-                    },
-                    (&None, &None) => {
-                        let cs = bcx.call(fn_ptr, &llargs, cleanup_bundle.as_ref());
-                        fn_ty.apply_attrs_callsite(cs);
-                        // no need to drop args, because the call never returns
-                        bcx.unreachable();
+                        for op in args {
+                            self.set_operand_dropped(&ret_bcx, op);
+                        }
+                        ret_bcx.br(self.llblock(target));
                     }
-                    (&None, &Some((_, target))) => {
-                        let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle.as_ref());
-                        fn_ty.apply_attrs_callsite(llret);
+                } else {
+                    let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle.as_ref());
+                    fn_ty.apply_attrs_callsite(llret);
+                    if let Some((_, target)) = *destination {
                         if let Some(ret_dest) = ret_dest {
-                            bcx.with_block(|bcx| {
-                                fn_ty.ret.store(bcx, llret, ret_dest.llval);
-                            });
+                            fn_ty.ret.store(&bcx, llret, ret_dest.llval);
                         }
                         for op in args {
                             self.set_operand_dropped(&bcx, op);
                         }
                         funclet_br(bcx, self.llblock(target));
+                    } else {
+                        // no need to drop args, because the call never returns
+                        bcx.unreachable();
                     }
                 }
             }
