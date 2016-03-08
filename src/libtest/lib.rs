@@ -42,8 +42,6 @@
 #![feature(staged_api)]
 
 extern crate getopts;
-extern crate serialize;
-extern crate serialize as rustc_serialize;
 extern crate term;
 extern crate libc;
 
@@ -56,7 +54,6 @@ use self::NamePadding::*;
 use self::OutputLocation::*;
 
 use stats::Stats;
-use serialize::Encodable;
 use std::boxed::FnBox;
 use term::Terminal;
 
@@ -215,7 +212,7 @@ pub struct TestDescAndFn {
     pub testfn: TestFn,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Copy)]
+#[derive(Clone, PartialEq, Debug, Copy)]
 pub struct Metric {
     value: f64,
     noise: f64,

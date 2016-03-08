@@ -49,16 +49,17 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := libc std flate arena term \
-                 serialize getopts collections test rand \
-                 log graphviz core rbml alloc \
+TARGET_CRATES := libc std term \
+                 getopts collections test rand \
+                 core alloc \
                  rustc_unicode rustc_bitflags \
 		 alloc_system alloc_jemalloc
 RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_front rustc_platform_intrinsics \
                 rustc_plugin rustc_metadata rustc_passes
-HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros
+HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros \
+		flate arena graphviz rbml log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
@@ -84,8 +85,8 @@ DEPS_log := std
 DEPS_num := std
 DEPS_rbml := std log serialize
 DEPS_serialize := std log
-DEPS_term := std log
-DEPS_test := std getopts serialize rbml term native:rust_test_helpers
+DEPS_term := std
+DEPS_test := std getopts term native:rust_test_helpers
 
 DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode
 DEPS_syntax_ext := syntax fmt_macros

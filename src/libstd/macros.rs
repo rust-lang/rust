@@ -173,18 +173,6 @@ macro_rules! select {
     })
 }
 
-// When testing the standard library, we link to the liblog crate to get the
-// logging macros. In doing so, the liblog crate was linked against the real
-// version of libstd, and uses a different std::fmt module than the test crate
-// uses. To get around this difference, we redefine the log!() macro here to be
-// just a dumb version of what it should be.
-#[cfg(test)]
-macro_rules! log {
-    ($lvl:expr, $($args:tt)*) => (
-        if log_enabled!($lvl) { println!($($args)*) }
-    )
-}
-
 #[cfg(test)]
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
