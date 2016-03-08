@@ -62,6 +62,8 @@ macro_rules! targets {
             (doc_nomicon, DocNomicon { stage: u32 }),
             (doc_style, DocStyle { stage: u32 }),
             (doc_standalone, DocStandalone { stage: u32 }),
+            (doc_std, DocStd { stage: u32 }),
+            (doc_rustc, DocRustc { stage: u32 }),
 
             // Steps for running tests. The 'check' target is just a pseudo
             // target to depend on a bunch of others.
@@ -182,6 +184,8 @@ fn add_steps<'a>(build: &'a Build,
             "doc-standalone" => targets.push(host.doc_standalone(stage)),
             "doc-nomicon" => targets.push(host.doc_nomicon(stage)),
             "doc-book" => targets.push(host.doc_book(stage)),
+            "doc-std" => targets.push(host.doc_std(stage)),
+            "doc-rustc" => targets.push(host.doc_rustc(stage)),
             "doc" => targets.push(host.doc(stage)),
             "check" => targets.push(host.check(stage, compiler)),
             _ => panic!("unknown build target: `{}`", step),
@@ -239,15 +243,22 @@ impl<'a> Step<'a> {
                 vec![self.llvm(()).target(&build.config.build)]
             }
             Source::Llvm { _dummy } => Vec::new(),
+            Source::DocStd { stage } => {
+                vec![self.libstd(stage, self.compiler(stage))]
+            }
             Source::DocBook { stage } |
             Source::DocNomicon { stage } |
             Source::DocStyle { stage } |
             Source::DocStandalone { stage } => {
                 vec![self.rustc(stage)]
             }
+            Source::DocRustc { stage } => {
+                vec![self.doc_std(stage)]
+            }
             Source::Doc { stage } => {
                 vec![self.doc_book(stage), self.doc_nomicon(stage),
-                     self.doc_style(stage), self.doc_standalone(stage)]
+                     self.doc_style(stage), self.doc_standalone(stage),
+                     self.doc_std(stage)]
             }
             Source::Check { stage, compiler: _ } => {
                 vec![]
