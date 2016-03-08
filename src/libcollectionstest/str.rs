@@ -626,8 +626,6 @@ fn vec_str_conversions() {
     while i < n1 {
         let a: u8 = s1.as_bytes()[i];
         let b: u8 = s2.as_bytes()[i];
-        debug!("{}", a);
-        debug!("{}", b);
         assert_eq!(a, b);
         i += 1;
     }
