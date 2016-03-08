@@ -34,8 +34,40 @@ fn main() {
     let cake: i32; //~ NOTE: existing binding defined here
     let cakes: i32;
     let coke: i32; //~ ERROR: name is too similar
+
+    match 5 {
+        cheese @ 1 => {},
+        rabbit => panic!(),
+    }
+    let cheese: i32;
+    match (42, 43) {
+        (cheese1, 1) => {},
+        (cheese2, 2) => panic!(),
+        _ => println!(""),
+    }
 }
 
+#[derive(Clone, Debug)]
+enum MaybeInst {
+    Split,
+    Split1(usize),
+    Split2(usize),
+}
+
+struct InstSplit {
+    uiae: usize,
+}
+
+impl MaybeInst {
+    fn fill(&mut self) {
+        let filled = match *self {
+            MaybeInst::Split1(goto1) => panic!(1),
+            MaybeInst::Split2(goto2) => panic!(2),
+            _ => unimplemented!(),
+        };
+        unimplemented!()
+    }
+}
 
 fn bla() {
     let a: i32;
@@ -45,16 +77,16 @@ fn bla() {
             let cdefg: i32;
             let blar: i32;
         }
-        { //~ ERROR: scope contains 5 bindings whose name are just one char
-            let e: i32;
+        {
+            let e: i32; //~ ERROR: 5th binding whose name is just one char
         }
-        { //~ ERROR: scope contains 6 bindings whose name are just one char
-            let e: i32;
-            let f: i32;
+        {
+            let e: i32; //~ ERROR: 5th binding whose name is just one char
+            let f: i32; //~ ERROR: 6th binding whose name is just one char
         }
         match 5 {
             1 => println!(""),
-            e => panic!(), //~ ERROR: scope contains 5 bindings whose name are just one char
+            e => panic!(), //~ ERROR: 5th binding whose name is just one char
         }
         match 5 {
             1 => println!(""),

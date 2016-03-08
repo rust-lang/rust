@@ -76,13 +76,23 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
         }
         let count = interned_name.chars().count();
         if count < 3 {
-            if count == 1 {
-                let c = interned_name.chars().next().expect("already checked");
-                // make sure we ignore shadowing
-                if !self.0.single_char_names.contains(&c) {
-                    self.0.single_char_names.push(c);
-                }
+            if count != 1 {
+                return;
             }
+            let c = interned_name.chars().next().expect("already checked");
+            // make sure we ignore shadowing
+            if self.0.single_char_names.contains(&c) {
+                return;
+            }
+            self.0.single_char_names.push(c);
+            if self.0.single_char_names.len() < self.0.lint.max_single_char_names {
+                return;
+            }
+            span_lint(self.0.cx,
+                      MANY_SINGLE_CHAR_NAMES,
+                      span,
+                      &format!("{}th binding whose name is just one char",
+                               self.0.single_char_names.len()));
             return;
         }
         for &allow in WHITELIST {
@@ -157,39 +167,33 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
 }
 
 impl<'a, 'b> SimilarNamesLocalVisitor<'a, 'b> {
-    fn check_single_char_count(&self, span: Span) {
-        if self.single_char_names.len() < self.lint.max_single_char_names {
-            return;
-        }
-        span_lint(self.cx,
-                  MANY_SINGLE_CHAR_NAMES,
-                  span,
-                  &format!("scope contains {} bindings whose name are just one char",
-                           self.single_char_names.len()));
+    /// ensure scoping rules work
+    fn apply<F: for<'c> Fn(&'c mut Self)>(&mut self, f: F) {
+        let n = self.names.len();
+        let single_char_count = self.single_char_names.len();
+        f(self);
+        self.names.truncate(n);
+        self.single_char_names.truncate(single_char_count);
     }
 }
 
 impl<'v, 'a, 'b> visit::Visitor<'v> for SimilarNamesLocalVisitor<'a, 'b> {
     fn visit_local(&mut self, local: &'v Local) {
-        SimilarNamesNameVisitor(self).visit_local(local)
+        if let Some(ref init) = local.init {
+            self.apply(|this| visit::walk_expr(this, &**init));
+        }
+        // add the pattern after the expression because the bindings aren't available yet in the init expression
+        SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
     }
     fn visit_block(&mut self, blk: &'v Block) {
-        // ensure scoping rules work
-        let n = self.names.len();
-        let single_char_count = self.single_char_names.len();
-        visit::walk_block(self, blk);
-        self.names.truncate(n);
-        self.check_single_char_count(blk.span);
-        self.single_char_names.truncate(single_char_count);
+        self.apply(|this| visit::walk_block(this, blk));
     }
     fn visit_arm(&mut self, arm: &'v Arm) {
-        let n = self.names.len();
-        let single_char_count = self.single_char_names.len();
-        // just go through the first pattern, as either all patterns bind the same bindings or rustc would have errored much earlier
-        SimilarNamesNameVisitor(self).visit_pat(&arm.pats[0]);
-        self.names.truncate(n);
-        self.check_single_char_count(arm.body.span);
-        self.single_char_names.truncate(single_char_count);
+        self.apply(|this| {
+            // just go through the first pattern, as either all patterns bind the same bindings or rustc would have errored much earlier
+            SimilarNamesNameVisitor(this).visit_pat(&arm.pats[0]);
+            this.apply(|this| visit::walk_expr(this, &arm.body));
+        });
     }
     fn visit_item(&mut self, _: &'v Item) {
         // do nothing

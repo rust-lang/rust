@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#![allow(many_single_char_names)]
 #![deny(overflow_check_conditional)]
 
 fn main() {
