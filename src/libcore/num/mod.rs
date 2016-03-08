@@ -2179,8 +2179,8 @@ impl usize {
 /// This `enum` is used as the return type for [`f32::classify()`] and [`f64::classify()`]. See
 /// their documentation for more.
 ///
-/// [`f32::classify()`]: ../primitive.f32.html#method.classify
-/// [`f64::classify()`]: ../primitive.f64.html#method.classify
+/// [`f32::classify()`]: ../../std/primitive.f32.html#method.classify
+/// [`f64::classify()`]: ../../std/primitive.f64.html#method.classify
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum FpCategory {
@@ -2411,7 +2411,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
 /// This error is used as the error type for the `from_str_radix()` functions
 /// on the primitive integer types, such as [`i8::from_str_radix()`].
 ///
-/// [`i8::from_str_radix()`]: ../std/primitive.i8.html#method.from_str_radix
+/// [`i8::from_str_radix()`]: ../../std/primitive.i8.html#method.from_str_radix
 #[derive(Debug, Clone, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError { kind: IntErrorKind }

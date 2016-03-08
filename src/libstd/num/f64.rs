@@ -206,7 +206,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
-    /// [floating-point]: ../../../../../reference.html#machine-types
+    /// [floating-point]: ../reference.html#machine-types
     #[unstable(feature = "float_extras", reason = "signature is undecided",
                issue = "27752")]
     #[inline]
