@@ -114,6 +114,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
+                let projected_ty = bcx.monomorphize(&projected_ty);
                 let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
                         let base_ty = tr_base.ty.to_ty(tcx);
