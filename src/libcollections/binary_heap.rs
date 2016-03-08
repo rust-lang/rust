@@ -167,6 +167,49 @@ use vec::{self, Vec};
 /// item's ordering relative to any other item, as determined by the `Ord`
 /// trait, changes while it is in the heap. This is normally only possible
 /// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::BinaryHeap;
+///
+/// // type inference lets us omit an explicit type signature (which
+/// // would be `BinaryHeap<i32>` in this example).
+/// let mut heap = BinaryHeap::new();
+///
+/// // We can use peek to look at the next item in the heap. In this case,
+/// // there's no items in there yet so we get None.
+/// assert_eq!(heap.peek(), None);
+///
+/// // Let's add some scores...
+/// heap.push(1);
+/// heap.push(5);
+/// heap.push(2);
+///
+/// // Now peek shows the most important item in the heap.
+/// assert_eq!(heap.peek(), Some(&5));
+///
+/// // We can check the length of a heap.
+/// assert_eq!(heap.len(), 3);
+///
+/// // We can iterate over the items in the heap, although they are returned in
+/// // a random order.
+/// for x in heap.iter() {
+///     println!("{}", x);
+/// }
+///
+/// // If we instead pop these scores, they should come back in order.
+/// assert_eq!(heap.pop(), Some(5));
+/// assert_eq!(heap.pop(), Some(2));
+/// assert_eq!(heap.pop(), Some(1));
+/// assert_eq!(heap.pop(), None);
+///
+/// // We can clear the heap of any remaining items.
+/// heap.clear();
+///
+/// // The heap should now be empty.
+/// assert!(heap.is_empty())
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
@@ -331,6 +374,17 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Discards as much additional capacity as possible.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap: BinaryHeap<i32> = BinaryHeap::with_capacity(100);
+    ///
+    /// assert!(heap.capacity() >= 100);
+    /// heap.shrink_to_fit();
+    /// assert!(heap.capacity() == 0);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
@@ -571,12 +625,36 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Returns the length of the binary heap.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::from(vec![1, 3]);
+    ///
+    /// assert_eq!(heap.len(), 2);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
     /// Checks if the binary heap is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::new();
+    ///
+    /// assert!(heap.is_empty());
+    ///
+    /// heap.push(3);
+    /// heap.push(5);
+    /// heap.push(1);
+    ///
+    /// assert!(!heap.is_empty());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -585,6 +663,21 @@ impl<T: Ord> BinaryHeap<T> {
     /// Clears the binary heap, returning an iterator over the removed elements.
     ///
     /// The elements are removed in arbitrary order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::from(vec![1, 3]);
+    ///
+    /// assert!(!heap.is_empty());
+    ///
+    /// for x in heap.drain() {
+    ///     println!("{}", x);
+    /// }
+    ///
+    /// assert!(heap.is_empty());
+    /// ```
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<T> {
@@ -592,6 +685,19 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Drops all items from the binary heap.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::from(vec![1, 3]);
+    ///
+    /// assert!(!heap.is_empty());
+    ///
+    /// heap.clear();
+    ///
+    /// assert!(heap.is_empty());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.drain();
