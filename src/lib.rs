@@ -63,6 +63,7 @@ pub mod escape;
 pub mod eta_reduction;
 pub mod format;
 pub mod formatting;
+pub mod functions;
 pub mod identity_op;
 pub mod if_not_else;
 pub mod items_after_statements;
@@ -211,6 +212,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
     reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
+    reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -263,6 +265,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         format::USELESS_FORMAT,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
+        functions::TOO_MANY_ARGUMENTS,
         identity_op::IDENTITY_OP,
         if_not_else::IF_NOT_ELSE,
         items_after_statements::ITEMS_AFTER_STATEMENTS,

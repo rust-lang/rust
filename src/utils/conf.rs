@@ -150,7 +150,7 @@ define_Conf! {
     /// Lint: CYCLOMATIC_COMPLEXITY. The maximum cyclomatic complexity a function can have
     ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25 => u64),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
-    ("too-many-arguments-threshold", too_many_arguments_threshold, 6 => u64),
+    ("too-many-arguments-threshold", too_many_arguments_threshold, 7 => u64),
     /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
     ("type-complexity-threshold", type_complexity_threshold, 250 => u64),
 }
