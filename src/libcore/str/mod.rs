@@ -1561,7 +1561,7 @@ mod traits {
 #[doc(hidden)]
 #[unstable(feature = "core_str_ext",
            reason = "stable interface provided by `impl str` in later crates",
-           issue = "27701")]
+           issue = "32110")]
 pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
