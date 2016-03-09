@@ -78,20 +78,6 @@ enum Enum {
     Second(bool)
 }
 
-fn vectors_with_nested_enums() {
-    let x: &'static [Enum] = &[Enum::First, Enum::Second(false)];
-    match x {
-    //~^ ERROR non-exhaustive patterns: `[Second(true), Second(false)]` not covered
-        [] => (),
-        [_] => (),
-        [Enum::First, _] => (),
-        [Enum::Second(true), Enum::First] => (),
-        [Enum::Second(true), Enum::Second(true)] => (),
-        [Enum::Second(false), _] => (),
-        [_, _, tail.., _] => ()
-    }
-}
-
 fn missing_nil() {
     match ((), false) {
     //~^ ERROR non-exhaustive patterns: `((), false)` not covered

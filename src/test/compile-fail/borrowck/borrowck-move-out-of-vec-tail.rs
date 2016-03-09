@@ -25,12 +25,12 @@ pub fn main() {
     );
     let x: &[Foo] = &x;
     match x {
-        [_, tail..] => {
+        [_, tail..] => { //~ ERROR slice patterns are badly broken
             match tail {
-                [Foo { string: a }, //~ ERROR cannot move out of borrowed content
+                [Foo { string: a }, //# ERROR cannot move out of borrowed content
                  Foo { string: b }] => {
-                    //~^^ NOTE attempting to move value to here
-                    //~^^ NOTE and here
+                    //#^^ NOTE attempting to move value to here
+                    //#^^ NOTE and here
                 }
                 _ => {
                     unreachable!();

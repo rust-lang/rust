@@ -11,7 +11,7 @@
 #![feature(slice_patterns)]
 
 fn main() {
-    match "foo".to_string() {
+    match "foo" {
         ['f', 'o', ..] => {} //~ ERROR mismatched types
         _ => { }
     }

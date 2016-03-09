@@ -13,6 +13,6 @@
 fn main() {
     let x = [1, 2, 3, 4, 5];
     match x {
-        [1, 2, xs..] => {} //~ ERROR slice pattern syntax is experimental
+        [1, 2, 3, 4, xs] => {} //~ ERROR slice pattern syntax is experimental
     }
 }

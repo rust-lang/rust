@@ -35,7 +35,7 @@ fn main() {
     assert_eq!(d, "baz");
 
     let out = bar("baz", "foo");
-    let [a, xs.., d] = out;
+    let [a, xs.., d] = out; //~ ERROR slice patterns are badly broken
     assert_eq!(a, "baz");
     assert_eq!(xs, ["foo", "foo"]);
     assert_eq!(d, "baz");

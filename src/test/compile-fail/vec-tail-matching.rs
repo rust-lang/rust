@@ -31,6 +31,7 @@ pub fn main() {
 
             match tail {
                 [Foo { .. }, _, Foo { .. }, _tail..] => {
+                //~^ ERROR slice patterns are badly broken
                     unreachable!();
                 }
                 [Foo { string: ref a }, Foo { string: ref b }] => {

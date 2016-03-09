@@ -20,7 +20,7 @@ fn foldl<T, U, F>(values: &[T],
     F: FnMut(U, &T) -> U,
 {
     match values {
-        [ref head, tail..] =>
+        [ref head, tail..] => //~ ERROR slice patterns are badly broken
             foldl(tail, function(initial, head), function),
         [] => initial.clone()
     }
@@ -34,7 +34,7 @@ fn foldr<T, U, F>(values: &[T],
     F: FnMut(&T, U) -> U,
 {
     match values {
-        [head.., ref tail] =>
+        [head.., ref tail] => //~ ERROR slice patterns are badly broken
             foldr(head, function(tail, initial), function),
         [] => initial.clone()
     }

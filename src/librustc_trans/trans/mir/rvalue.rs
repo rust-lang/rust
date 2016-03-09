@@ -145,25 +145,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 bcx
             }
 
-            mir::Rvalue::Slice { ref input, from_start, from_end } => {
-                let ccx = bcx.ccx();
-                let input = self.trans_lvalue(&bcx, input);
-                let (llbase, lllen) = bcx.with_block(|bcx| {
-                    tvec::get_base_and_len(bcx,
-                                           input.llval,
-                                           input.ty.to_ty(bcx.tcx()))
-                });
-                let llbase1 = bcx.gepi(llbase, &[from_start]);
-                let adj = common::C_uint(ccx, from_start + from_end);
-                let lllen1 = bcx.sub(lllen, adj);
-                let (lladdrdest, llmetadest) = bcx.with_block(|bcx| {
-                    (expr::get_dataptr(bcx, dest.llval), expr::get_meta(bcx, dest.llval))
-                });
-                bcx.store(llbase1, lladdrdest);
-                bcx.store(lllen1, llmetadest);
-                bcx
-            }
-
             mir::Rvalue::InlineAsm(ref inline_asm) => {
                 bcx.map_block(|bcx| {
                     asm::trans_inline_asm(bcx, inline_asm)
@@ -432,7 +413,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Use(..) |
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) |
-            mir::Rvalue::Slice { .. } |
             mir::Rvalue::InlineAsm(..) => {
                 bcx.tcx().sess.bug(&format!("cannot generate operand from rvalue {:?}", rvalue));
             }
@@ -557,7 +537,6 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
         mir::Rvalue::Use(..) | // (**)
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) |
-        mir::Rvalue::Slice { .. } |
         mir::Rvalue::InlineAsm(..) =>
             false,
     }

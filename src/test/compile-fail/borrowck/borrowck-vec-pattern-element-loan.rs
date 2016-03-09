@@ -13,9 +13,9 @@
 
 fn a<'a>() -> &'a [isize] {
     let vec = vec!(1, 2, 3, 4);
-    let vec: &[isize] = &vec; //~ ERROR does not live long enough
+    let vec: &[isize] = &vec; //# ERROR does not live long enough
     let tail = match vec {
-        [_, tail..] => tail,
+        [_, tail..] => tail, //~ ERROR slice patterns are badly broken
         _ => panic!("a")
     };
     tail
@@ -23,9 +23,9 @@ fn a<'a>() -> &'a [isize] {
 
 fn b<'a>() -> &'a [isize] {
     let vec = vec!(1, 2, 3, 4);
-    let vec: &[isize] = &vec; //~ ERROR does not live long enough
+    let vec: &[isize] = &vec; //# ERROR does not live long enough
     let init = match vec {
-        [init.., _] => init,
+        [init.., _] => init, //~ ERROR slice patterns are badly broken
         _ => panic!("b")
     };
     init
@@ -33,9 +33,9 @@ fn b<'a>() -> &'a [isize] {
 
 fn c<'a>() -> &'a [isize] {
     let vec = vec!(1, 2, 3, 4);
-    let vec: &[isize] = &vec; //~ ERROR does not live long enough
+    let vec: &[isize] = &vec; //# ERROR does not live long enough
     let slice = match vec {
-        [_, slice.., _] => slice,
+        [_, slice.., _] => slice, //~ ERROR slice patterns are badly broken
         _ => panic!("c")
     };
     slice

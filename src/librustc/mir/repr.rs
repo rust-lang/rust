@@ -663,17 +663,6 @@ pub enum Rvalue<'tcx> {
     /// away after type-checking and before lowering.
     Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
 
-    /// Generates a slice of the form `&input[from_start..L-from_end]`
-    /// where `L` is the length of the slice. This is only created by
-    /// slice pattern matching, so e.g. a pattern of the form `[x, y,
-    /// .., z]` might create a slice with `from_start=2` and
-    /// `from_end=1`.
-    Slice {
-        input: Lvalue<'tcx>,
-        from_start: usize,
-        from_end: usize,
-    },
-
     InlineAsm(InlineAsm),
 }
 
@@ -760,9 +749,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Box(ref t) => write!(fmt, "Box({:?})", t),
             InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
-            Slice { ref input, from_start, from_end } =>
-                write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
-
             Ref(_, borrow_kind, ref lv) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",

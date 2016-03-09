@@ -252,15 +252,6 @@ macro_rules! make_mir_visitor {
                         }
                     }
 
-                    Rvalue::Slice { ref $($mutability)* input,
-                                    from_start,
-                                    from_end } => {
-                        self.visit_lvalue(input, LvalueContext::Slice {
-                            from_start: from_start,
-                            from_end: from_end,
-                        });
-                    }
-
                     Rvalue::InlineAsm(_) => {
                     }
                 }
