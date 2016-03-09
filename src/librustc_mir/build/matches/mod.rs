@@ -584,7 +584,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     Rvalue::Ref(region, borrow_kind, binding.source),
             };
 
-            self.cfg.push_assign(block, binding.span, &Lvalue::Var(var_index), rvalue);
+            let scope_id = self.innermost_scope_id();
+            self.cfg.push_assign(block, scope_id, binding.span,
+                                 &Lvalue::Var(var_index), rvalue);
         }
     }
 

@@ -146,6 +146,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         lvalue: &Lvalue<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
+        let scope_id = self.innermost_scope_id();
         match test.kind {
             TestKind::Switch { adt_def } => {
                 let num_enum_variants = self.hir.num_variants(adt_def);
@@ -189,7 +190,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         if let ty::TyArray(_, _) = mt.ty.sty {
                             ty = tcx.mk_imm_ref(region, tcx.mk_slice(tcx.types.u8));
                             let val_slice = self.temp(ty);
-                            self.cfg.push_assign(block, test.span, &val_slice,
+                            self.cfg.push_assign(block, scope_id, test.span, &val_slice,
                                                  Rvalue::Cast(CastKind::Unsize, val, ty));
                             val = Operand::Consume(val_slice);
                         }
@@ -204,7 +205,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     });
 
                     let slice = self.temp(ty);
-                    self.cfg.push_assign(block, test.span, &slice,
+                    self.cfg.push_assign(block, scope_id, test.span, &slice,
                                          Rvalue::Cast(CastKind::Unsize, array, ty));
                     Operand::Consume(slice)
                 } else {
@@ -268,13 +269,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let (actual, result) = (self.temp(usize_ty), self.temp(bool_ty));
 
                 // actual = len(lvalue)
-                self.cfg.push_assign(block, test.span, &actual, Rvalue::Len(lvalue.clone()));
+                self.cfg.push_assign(block, scope_id, test.span, &actual, Rvalue::Len(lvalue.clone()));
 
                 // expected = <N>
-                let expected = self.push_usize(block, test.span, len);
+                let expected = self.push_usize(block, scope_id, test.span, len);
 
                 // result = actual == expected OR result = actual < expected
                 self.cfg.push_assign(block,
+                                     scope_id,
                                      test.span,
                                      &result,
                                      Rvalue::BinaryOp(op,
@@ -305,7 +307,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let result = self.temp(bool_ty);
 
         // result = op(left, right)
-        self.cfg.push_assign(block, span, &result, Rvalue::BinaryOp(op, left, right));
+        let scope_id = self.innermost_scope_id();
+        self.cfg.push_assign(block, scope_id, span, &result,
+                             Rvalue::BinaryOp(op, left, right));
 
         // branch based on result
         let target_block = self.cfg.start_new_block();

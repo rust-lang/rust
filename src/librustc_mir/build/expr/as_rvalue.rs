@@ -33,6 +33,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         debug!("expr_as_rvalue(block={:?}, expr={:?})", block, expr);
 
         let this = self;
+        let scope_id = this.innermost_scope_id();
         let expr_span = expr.span;
 
         match expr.kind {
@@ -75,7 +76,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let value = this.hir.mirror(value);
                 let result = this.temp(expr.ty);
                 // to start, malloc some memory of suitable type (thus far, uninitialized):
-                this.cfg.push_assign(block, expr_span, &result, Rvalue::Box(value.ty));
+                this.cfg.push_assign(block, scope_id, expr_span, &result, Rvalue::Box(value.ty));
                 this.in_scope(value_extents, block, |this, _| {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.schedule_box_free(expr_span, value_extents, &result, value.ty);

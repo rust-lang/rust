@@ -464,13 +464,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
         let (file, line) = self.span_to_fileline_args(span);
         let elems = vec![Operand::Constant(file), Operand::Constant(line)];
+        let scope_id = self.innermost_scope_id();
         // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
         // icache with cold branch code), however to achieve that we either have to rely on rvalue
         // promotion or have some way, in MIR, to create constants.
-        self.cfg.push_assign(block, span, &tuple, // tuple = (file_arg, line_arg);
+        self.cfg.push_assign(block, scope_id, span, &tuple, // tuple = (file_arg, line_arg);
                              Rvalue::Aggregate(AggregateKind::Tuple, elems));
         // FIXME: is this region really correct here?
-        self.cfg.push_assign(block, span, &tuple_ref, // tuple_ref = &tuple;
+        self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
         self.cfg.terminate(block, Terminator::Call {
@@ -505,13 +506,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let elems = vec![Operand::Constant(message),
                          Operand::Constant(file),
                          Operand::Constant(line)];
+        let scope_id = self.innermost_scope_id();
         // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
         // icache with cold branch code), however to achieve that we either have to rely on rvalue
         // promotion or have some way, in MIR, to create constants.
-        self.cfg.push_assign(block, span, &tuple, // tuple = (message_arg, file_arg, line_arg);
+        self.cfg.push_assign(block, scope_id, span, &tuple, // tuple = (message_arg, file_arg, line_arg);
                              Rvalue::Aggregate(AggregateKind::Tuple, elems));
         // FIXME: is this region really correct here?
-        self.cfg.push_assign(block, span, &tuple_ref, // tuple_ref = &tuple;
+        self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
         self.cfg.terminate(block, Terminator::Call {

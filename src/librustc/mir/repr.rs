@@ -458,6 +458,7 @@ impl<'tcx> Terminator<'tcx> {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Statement<'tcx> {
     pub span: Span,
+    pub scope: ScopeId,
     pub kind: StatementKind<'tcx>,
 }
 
@@ -474,6 +475,7 @@ impl<'tcx> Debug for Statement<'tcx> {
         }
     }
 }
+
 ///////////////////////////////////////////////////////////////////////////
 // Lvalues
 
