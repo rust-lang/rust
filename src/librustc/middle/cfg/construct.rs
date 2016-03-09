@@ -354,19 +354,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.straightline(expr, pred, Some(&**e).into_iter())
             }
 
-            hir::ExprInlineAsm(ref inline_asm) => {
-                let inputs = inline_asm.inputs.iter();
-                let outputs = inline_asm.outputs.iter();
-                let post_inputs = self.exprs(inputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} input:{:?}", expr.id, a);
-                    let &(_, ref expr) = a;
-                    &**expr
-                }), pred);
-                let post_outputs = self.exprs(outputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
-                    &*a.expr
-                }), post_inputs);
-                self.add_ast_node(expr.id, &[post_outputs])
+            hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+                let post_outputs = self.exprs(outputs.iter().map(|e| &**e), pred);
+                let post_inputs = self.exprs(inputs.iter().map(|e| &**e), post_outputs);
+                self.add_ast_node(expr.id, &[post_inputs])
             }
 
             hir::ExprClosure(..) |

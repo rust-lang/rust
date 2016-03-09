@@ -680,7 +680,11 @@ pub enum Rvalue<'tcx> {
         from_end: usize,
     },
 
-    InlineAsm(InlineAsm),
+    InlineAsm {
+        asm: InlineAsm,
+        outputs: Vec<Lvalue<'tcx>>,
+        inputs: Vec<Operand<'tcx>>
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -765,7 +769,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Box(ref t) => write!(fmt, "Box({:?})", t),
-            InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
+            InlineAsm { ref asm, ref outputs, ref inputs } => {
+                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
+            }
             Slice { ref input, from_start, from_end } =>
                 write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
 

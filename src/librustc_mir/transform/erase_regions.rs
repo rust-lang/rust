@@ -82,7 +82,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
             Rvalue::BinaryOp(_, _, _) |
             Rvalue::UnaryOp(_, _) |
             Rvalue::Slice { input: _, from_start: _, from_end: _ } |
-            Rvalue::InlineAsm(_) => {},
+            Rvalue::InlineAsm {..} => {},
 
             Rvalue::Repeat(_, ref mut value) => value.ty = self.tcx.erase_regions(&value.ty),
             Rvalue::Ref(ref mut region, _, _) => *region = ty::ReStatic,
