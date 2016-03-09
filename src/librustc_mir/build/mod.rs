@@ -192,7 +192,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      ast_block: &'tcx hir::Block)
                      -> BlockAnd<Vec<ArgDecl<'tcx>>>
     {
-        self.in_scope(argument_extent, block, |this| {
+        self.in_scope(argument_extent, block, |this, argument_scope_id| {
             // to start, translate the argument patterns and collect the argument types.
             let implicits = implicit_arguments.into_iter().map(|ty| (ty, None));
             let explicits = explicit_arguments.into_iter().map(|(ty, pat)| (ty, Some(pat)));
@@ -205,7 +205,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     if let Some(pattern) = pattern {
                         let pattern = this.hir.irrefutable_pat(pattern);
                         unpack!(block = this.lvalue_into_pattern(block,
-                                                                 argument_extent,
+                                                                 argument_scope_id,
                                                                  pattern,
                                                                  &lvalue));
                     }

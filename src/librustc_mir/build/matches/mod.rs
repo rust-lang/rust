@@ -16,7 +16,6 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::middle::const_eval::ConstVal;
-use rustc::middle::region::CodeExtent;
 use rustc::middle::ty::{AdtDef, Ty};
 use rustc::mir::repr::*;
 use hair::*;
@@ -42,9 +41,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // suitable extent for all of the bindings in this match. It's
         // easiest to do this up front because some of these arms may
         // be unreachable or reachable multiple times.
-        let var_extent = self.extent_of_innermost_scope();
+        let var_scope_id = self.innermost_scope_id();
         for arm in &arms {
-            self.declare_bindings(var_extent, &arm.patterns[0]);
+            self.declare_bindings(var_scope_id, &arm.patterns[0]);
         }
 
         let mut arm_blocks = ArmBlocks {
@@ -106,7 +105,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             var_extent: CodeExtent, // lifetime of vars
+                             var_scope_id: ScopeId, // lifetime of vars
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
@@ -118,7 +117,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                    var,
                                    ty,
                                    subpattern: None } => {
-                let index = self.declare_binding(var_extent,
+                let index = self.declare_binding(var_scope_id,
                                                  mutability,
                                                  name,
                                                  var,
@@ -131,19 +130,19 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
         let lvalue = unpack!(block = self.as_lvalue(block, initializer));
         self.lvalue_into_pattern(block,
-                                 var_extent,
+                                 var_scope_id,
                                  irrefutable_pat,
                                  &lvalue)
     }
 
     pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
-                               var_extent: CodeExtent,
+                               var_scope_id: ScopeId,
                                irrefutable_pat: Pattern<'tcx>,
                                initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()> {
         // first, creating the bindings
-        self.declare_bindings(var_extent, &irrefutable_pat);
+        self.declare_bindings(var_scope_id, &irrefutable_pat);
 
         // create a dummy candidate
         let mut candidate = Candidate {
@@ -170,29 +169,29 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         block.unit()
     }
 
-    pub fn declare_bindings(&mut self, var_extent: CodeExtent, pattern: &Pattern<'tcx>) {
+    pub fn declare_bindings(&mut self, var_scope_id: ScopeId, pattern: &Pattern<'tcx>) {
         match *pattern.kind {
             PatternKind::Binding { mutability, name, mode: _, var, ty, ref subpattern } => {
-                self.declare_binding(var_extent, mutability, name, var, ty, pattern.span);
+                self.declare_binding(var_scope_id, mutability, name, var, ty, pattern.span);
                 if let Some(subpattern) = subpattern.as_ref() {
-                    self.declare_bindings(var_extent, subpattern);
+                    self.declare_bindings(var_scope_id, subpattern);
                 }
             }
             PatternKind::Array { ref prefix, ref slice, ref suffix } |
             PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
                 for subpattern in prefix.iter().chain(slice).chain(suffix) {
-                    self.declare_bindings(var_extent, subpattern);
+                    self.declare_bindings(var_scope_id, subpattern);
                 }
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {
             }
             PatternKind::Deref { ref subpattern } => {
-                self.declare_bindings(var_extent, subpattern);
+                self.declare_bindings(var_scope_id, subpattern);
             }
             PatternKind::Leaf { ref subpatterns } |
             PatternKind::Variant { ref subpatterns, .. } => {
                 for subpattern in subpatterns {
-                    self.declare_bindings(var_extent, &subpattern.pattern);
+                    self.declare_bindings(var_scope_id, &subpattern.pattern);
                 }
             }
         }
@@ -590,7 +589,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     }
 
     fn declare_binding(&mut self,
-                       var_extent: CodeExtent,
+                       var_scope_id: ScopeId,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
@@ -598,17 +597,20 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                        span: Span)
                        -> u32
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, var_extent={:?}, span={:?})",
-               var_id, name, var_ty, var_extent, span);
+        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, var_scope_id={:?}, span={:?})",
+               var_id, name, var_ty, var_scope_id, span);
 
         let index = self.var_decls.len();
         self.var_decls.push(VarDecl::<'tcx> {
+            scope: var_scope_id,
             mutability: mutability,
             name: name,
             ty: var_ty.clone(),
+            span: span,
         });
         let index = index as u32;
-        self.schedule_drop(span, var_extent, &Lvalue::Var(index), var_ty);
+        let extent = self.scope_auxiliary[var_scope_id.index()].extent;
+        self.schedule_drop(span, extent, &Lvalue::Var(index), var_ty);
         self.var_indices.insert(var_id, index);
 
         debug!("declare_binding: index={:?}", index);

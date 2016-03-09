@@ -30,7 +30,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let this = self;
 
         if let ExprKind::Scope { extent, value } = expr.kind {
-            return this.in_scope(extent, block, |this| this.as_temp(block, value));
+            return this.in_scope(extent, block, |this, _| this.as_temp(block, value));
         }
 
         let expr_ty = expr.ty.clone();

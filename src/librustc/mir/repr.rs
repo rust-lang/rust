@@ -159,6 +159,8 @@ pub struct VarDecl<'tcx> {
     pub mutability: Mutability,
     pub name: Name,
     pub ty: Ty<'tcx>,
+    pub scope: ScopeId, // scope in which variable was declared
+    pub span: Span, // span where variable was declared
 }
 
 /// A "temp" is a temporary that we place on the stack. They are
