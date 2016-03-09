@@ -43,23 +43,23 @@
 * `!` (`!expr`): bitwise or logical complement.  Overloadable (`Not`).
 * `!=` (`var != expr`): nonequality comparison.  Overloadable (`PartialEq`).
 * `%` (`expr % expr`): arithmetic remainder.  Overloadable (`Rem`).
-* `%=` (`var %= expr`): arithmetic remainder & assignment.
+* `%=` (`var %= expr`): arithmetic remainder & assignment. Overloadable (`RemAssign`).
 * `&` (`expr & expr`): bitwise and.  Overloadable (`BitAnd`).
 * `&` (`&expr`): borrow.  See [References and Borrowing].
 * `&` (`&type`, `&mut type`, `&'a type`, `&'a mut type`): borrowed pointer type.  See [References and Borrowing].
-* `&=` (`var &= expr`): bitwise and & assignment.
+* `&=` (`var &= expr`): bitwise and & assignment. Overloadable (`BitAndAssign`).
 * `&&` (`expr && expr`): logical and.
 * `*` (`expr * expr`): arithmetic multiplication.  Overloadable (`Mul`).
 * `*` (`*expr`): dereference.
 * `*` (`*const type`, `*mut type`): raw pointer.  See [Raw Pointers].
-* `*=` (`var *= expr`): arithmetic multiplication & assignment.
+* `*=` (`var *= expr`): arithmetic multiplication & assignment. Overloadable (`MulAssign`).
 * `+` (`expr + expr`): arithmetic addition.  Overloadable (`Add`).
 * `+` (`trait + trait`, `'a + trait`): compound type constraint.  See [Traits (Multiple Trait Bounds)].
-* `+=` (`var += expr`): arithmetic addition & assignment.
+* `+=` (`var += expr`): arithmetic addition & assignment. Overloadable (`AddAssign`).
 * `,`: argument and element separator.  See [Attributes], [Functions], [Structs], [Generics], [Match], [Closures], [Crates and Modules (Importing Modules with `use`)].
 * `-` (`expr - expr`): arithmetic subtraction.  Overloadable (`Sub`).
 * `-` (`- expr`): arithmetic negation.  Overloadable (`Neg`).
-* `-=` (`var -= expr`): arithmetic subtraction & assignment.
+* `-=` (`var -= expr`): arithmetic subtraction & assignment. Overloadable (`SubAssign`).
 * `->` (`fn(…) -> type`, `|…| -> type`): function and closure return type.  See [Functions], [Closures].
 * `-> !` (`fn(…) -> !`, `|…| -> !`): diverging function or closure. See [Diverging Functions].
 * `.` (`expr.ident`): member access.  See [Structs], [Method Syntax].
@@ -69,14 +69,14 @@
 * `...` (`...expr`, `expr...expr`) *in an expression*: inclusive range expression. See [Iterators].
 * `...` (`expr...expr`) *in a pattern*: inclusive range pattern.  See [Patterns (Ranges)].
 * `/` (`expr / expr`): arithmetic division.  Overloadable (`Div`).
-* `/=` (`var /= expr`): arithmetic division & assignment.
+* `/=` (`var /= expr`): arithmetic division & assignment. Overloadable (`DivAssign`).
 * `:` (`pat: type`, `ident: type`): constraints.  See [Variable Bindings], [Functions], [Structs], [Traits].
 * `:` (`ident: expr`): struct field initializer.  See [Structs].
 * `:` (`'a: loop {…}`): loop label.  See [Loops (Loops Labels)].
 * `;`: statement and item terminator.
 * `;` (`[…; len]`): part of fixed-size array syntax.  See [Primitive Types (Arrays)].
 * `<<` (`expr << expr`): left-shift.  Overloadable (`Shl`).
-* `<<=` (`var <<= expr`): left-shift & assignment.
+* `<<=` (`var <<= expr`): left-shift & assignment. Overloadable (`ShlAssign`).
 * `<` (`expr < expr`): less-than comparison.  Overloadable (`PartialOrd`).
 * `<=` (`var <= expr`): less-than or equal-to comparison.  Overloadable (`PartialOrd`).
 * `=` (`var = expr`, `ident = type`): assignment/equivalence.  See [Variable Bindings], [`type` Aliases], generic parameter defaults.
@@ -85,14 +85,14 @@
 * `>` (`expr > expr`): greater-than comparison.  Overloadable (`PartialOrd`).
 * `>=` (`var >= expr`): greater-than or equal-to comparison.  Overloadable (`PartialOrd`).
 * `>>` (`expr >> expr`): right-shift.  Overloadable (`Shr`).
-* `>>=` (`var >>= expr`): right-shift & assignment.
+* `>>=` (`var >>= expr`): right-shift & assignment. Overloadable (`ShrAssign`).
 * `@` (`ident @ pat`): pattern binding.  See [Patterns (Bindings)].
 * `^` (`expr ^ expr`): bitwise exclusive or.  Overloadable (`BitXor`).
-* `^=` (`var ^= expr`): bitwise exclusive or & assignment.
+* `^=` (`var ^= expr`): bitwise exclusive or & assignment. Overloadable (`BitXorAssign`).
 * `|` (`expr | expr`): bitwise or.  Overloadable (`BitOr`).
 * `|` (`pat | pat`): pattern alternatives.  See [Patterns (Multiple patterns)].
 * `|` (`|…| expr`): closures.  See [Closures].
-* `|=` (`var |= expr`): bitwise or & assignment.
+* `|=` (`var |= expr`): bitwise or & assignment. Overloadable (`BitOrAssign`).
 * `||` (`expr || expr`): logical or.
 * `_`: "ignored" pattern binding.  See [Patterns (Ignoring bindings)].
 
