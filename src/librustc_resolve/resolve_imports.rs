@@ -98,9 +98,6 @@ impl ImportDirective {
         if let GlobImport = self.subclass {
             modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
         }
-        if self.is_prelude {
-            modifiers = modifiers | DefModifiers::PRELUDE;
-        }
 
         NameBinding {
             kind: NameBindingKind::Import {
@@ -252,7 +249,8 @@ impl<'a> ::ModuleS<'a> {
             }
         }
 
-        resolution.result(true)
+        self.prelude.borrow().map(|prelude| prelude.resolve_name(name, ns, false))
+                             .unwrap_or(Failed(None))
     }
 
     // Define the name or return the existing binding if there is a collision.
@@ -616,6 +614,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
 
+        if directive.is_prelude {
+            *module_.prelude.borrow_mut() = Some(target_module);
+            return Success(());
+        }
+
         // Add to target_module's glob_importers and module_'s resolved_globs
         target_module.glob_importers.borrow_mut().push((module_, directive));
         match *module_.resolved_globs.borrow_mut() {
@@ -676,13 +679,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                       name);
                     let lint = lint::builtin::PRIVATE_IN_PUBLIC;
                     self.resolver.session.add_lint(lint, id, binding.span.unwrap(), msg);
-                }
-            }
-
-            // We can always use methods from the prelude traits
-            for glob_binding in resolution.duplicate_globs.iter() {
-                if glob_binding.defined_with(DefModifiers::PRELUDE) {
-                    module.shadowed_traits.borrow_mut().push(glob_binding);
                 }
             }
         }
