@@ -118,6 +118,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         MatchPair {
             lvalue: lvalue,
             pattern: pattern,
+            slice_len_checked: false,
         }
     }
 }
