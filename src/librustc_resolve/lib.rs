@@ -932,8 +932,7 @@ bitflags! {
         // Variants are considered `PUBLIC`, but some of them live in private enums.
         // We need to track them to prohibit reexports like `pub use PrivEnum::Variant`.
         const PRIVATE_VARIANT = 1 << 2,
-        const PRELUDE = 1 << 3,
-        const GLOB_IMPORTED = 1 << 4,
+        const GLOB_IMPORTED = 1 << 3,
     }
 }
 
