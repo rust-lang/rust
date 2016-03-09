@@ -176,7 +176,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 hir::ExprPath(..) => {
                     match bcx.def(expr.id) {
                         Def::Const(did) | Def::AssociatedConst(did) => {
-                            let empty_substs = bcx.tcx().mk_substs(Substs::trans_empty());
+                            let empty_substs = bcx.tcx().mk_substs(Substs::empty());
                             let const_expr = consts::get_const_expr(bcx.ccx(), did, expr,
                                                                     empty_substs);
                             // Temporarily get cleanup scopes out of the way,

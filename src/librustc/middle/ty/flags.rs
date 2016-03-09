@@ -194,13 +194,8 @@ impl FlagComputation {
 
     fn add_substs(&mut self, substs: &subst::Substs) {
         self.add_tys(substs.types.as_slice());
-        match substs.regions {
-            subst::ErasedRegions => {}
-            subst::NonerasedRegions(ref regions) => {
-                for &r in regions {
-                    self.add_region(r);
-                }
-            }
+        for &r in &substs.regions {
+            self.add_region(r);
         }
     }
 

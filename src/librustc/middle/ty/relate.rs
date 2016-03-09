@@ -14,7 +14,7 @@
 //! type equality, etc.
 
 use middle::def_id::DefId;
-use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
+use middle::subst::{ParamSpace, Substs};
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
@@ -156,23 +156,15 @@ pub fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
         substs.types.replace(space, tps);
     }
 
-    match (&a_subst.regions, &b_subst.regions) {
-        (&ErasedRegions, _) | (_, &ErasedRegions) => {
-            substs.regions = ErasedRegions;
-        }
-
-        (&NonerasedRegions(ref a), &NonerasedRegions(ref b)) => {
-            for &space in &ParamSpace::all() {
-                let a_regions = a.get_slice(space);
-                let b_regions = b.get_slice(space);
-                let r_variances = variances.map(|v| v.regions.get_slice(space));
-                let regions = relate_region_params(relation,
-                                                   r_variances,
-                                                   a_regions,
-                                                   b_regions)?;
-                substs.mut_regions().replace(space, regions);
-            }
-        }
+    for &space in &ParamSpace::all() {
+        let a_regions = a_subst.regions.get_slice(space);
+        let b_regions = b_subst.regions.get_slice(space);
+        let r_variances = variances.map(|v| v.regions.get_slice(space));
+        let regions = relate_region_params(relation,
+                                           r_variances,
+                                           a_regions,
+                                           b_regions)?;
+        substs.regions.replace(space, regions);
     }
 
     Ok(substs)

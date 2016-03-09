@@ -81,7 +81,7 @@ fn parameters_for_type_shallow<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
 }
 
 fn parameters_for_regions_in_substs(substs: &subst::Substs) -> Vec<Parameter> {
-    substs.regions()
+    substs.regions
           .iter()
           .filter_map(|r| parameters_for_region(r))
           .collect()

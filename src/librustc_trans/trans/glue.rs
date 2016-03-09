@@ -267,7 +267,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let _s = StatRecorder::new(ccx, format!("drop {:?}", t));
 
-    let empty_substs = tcx.mk_substs(Substs::trans_empty());
+    let empty_substs = ccx.tcx().mk_substs(Substs::empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &arena);
@@ -358,7 +358,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: tcx.lang_items.drop_trait().unwrap(),
-        substs: tcx.mk_substs(Substs::trans_empty().with_self_ty(t))
+        substs: tcx.mk_substs(Substs::empty().with_self_ty(t))
     });
     let vtbl = match fulfill_obligation(bcx.ccx(), DUMMY_SP, trait_ref) {
         traits::VtableImpl(data) => data,

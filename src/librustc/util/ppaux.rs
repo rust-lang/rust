@@ -104,17 +104,9 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     };
 
     if verbose {
-        match substs.regions {
-            subst::ErasedRegions => {
-                start_or_continue(f, "<", ", ")?;
-                write!(f, "..")?;
-            }
-            subst::NonerasedRegions(ref regions) => {
-                for region in regions {
-                    start_or_continue(f, "<", ", ")?;
-                    write!(f, "{:?}", region)?;
-                }
-            }
+        for region in &substs.regions {
+            start_or_continue(f, "<", ", ")?;
+            write!(f, "{:?}", region)?;
         }
         for &ty in &substs.types {
             start_or_continue(f, "<", ", ")?;
@@ -136,23 +128,18 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
         }
     }
 
-    match substs.regions {
-        subst::ErasedRegions => { }
-        subst::NonerasedRegions(ref regions) => {
-            for &r in regions {
-                start_or_continue(f, "<", ", ")?;
-                let s = r.to_string();
-                if s.is_empty() {
-                    // This happens when the value of the region
-                    // parameter is not easily serialized. This may be
-                    // because the user omitted it in the first place,
-                    // or because it refers to some block in the code,
-                    // etc. I'm not sure how best to serialize this.
-                    write!(f, "'_")?;
-                } else {
-                    write!(f, "{}", s)?;
-                }
-            }
+    for &r in &substs.regions {
+        start_or_continue(f, "<", ", ")?;
+        let s = r.to_string();
+        if s.is_empty() {
+            // This happens when the value of the region
+            // parameter is not easily serialized. This may be
+            // because the user omitted it in the first place,
+            // or because it refers to some block in the code,
+            // etc. I'm not sure how best to serialize this.
+            write!(f, "'_")?;
+        } else {
+            write!(f, "{}", s)?;
         }
     }
 
@@ -390,15 +377,6 @@ impl<'tcx> fmt::Debug for subst::Substs<'tcx> {
 impl<'tcx> fmt::Debug for ty::ItemSubsts<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ItemSubsts({:?})", self.substs)
-    }
-}
-
-impl fmt::Debug for subst::RegionSubsts {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            subst::ErasedRegions => write!(f, "erased"),
-            subst::NonerasedRegions(ref regions) => write!(f, "{:?}", regions)
-        }
     }
 }
 
