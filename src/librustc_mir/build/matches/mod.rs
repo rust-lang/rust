@@ -238,6 +238,13 @@ pub struct MatchPair<'pat, 'tcx:'pat> {
 
     // ... must match this pattern.
     pattern: &'pat Pattern<'tcx>,
+
+    // HACK(eddyb) This is used to toggle whether a Slice pattern
+    // has had its length checked. This is only necessary because
+    // the "rest" part of the pattern right now has type &[T] and
+    // as such, it requires an Rvalue::Slice to be generated.
+    // See RFC 495 / issue #23121 for the eventual (proper) solution.
+    slice_len_checked: bool
 }
 
 #[derive(Clone, Debug, PartialEq)]

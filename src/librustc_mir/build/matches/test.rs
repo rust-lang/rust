@@ -75,7 +75,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 }
             }
 
-            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
+            PatternKind::Slice { ref prefix, ref slice, ref suffix }
+                    if !match_pair.slice_len_checked => {
                 let len = prefix.len() + suffix.len();
                 let op = if slice.is_some() {
                     BinOp::Ge
@@ -89,6 +90,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
 
             PatternKind::Array { .. } |
+            PatternKind::Slice { .. } |
             PatternKind::Wild |
             PatternKind::Binding { .. } |
             PatternKind::Leaf { .. } |
@@ -413,9 +415,26 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 }
             }
 
-            TestKind::Eq { .. } |
-            TestKind::Range { .. } |
+            // If we are performing a length check, then this
+            // informs slice patterns, but nothing else.
             TestKind::Len { .. } => {
+                let pattern_test = self.test(&match_pair);
+                match *match_pair.pattern.kind {
+                    PatternKind::Slice { .. } if pattern_test.kind == test.kind => {
+                        let mut new_candidate = candidate.clone();
+
+                        // Set up the MatchKind to simplify this like an array.
+                        new_candidate.match_pairs[match_pair_index]
+                                     .slice_len_checked = true;
+                        resulting_candidates[0].push(new_candidate);
+                        true
+                    }
+                    _ => false
+                }
+            }
+
+            TestKind::Eq { .. } |
+            TestKind::Range { .. } => {
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here
