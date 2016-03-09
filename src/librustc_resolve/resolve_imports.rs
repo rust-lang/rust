@@ -125,18 +125,17 @@ pub struct NameResolution<'a> {
 
 impl<'a> NameResolution<'a> {
     fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
-        match self.binding {
-            Some(old_binding) if !old_binding.defined_with(DefModifiers::PRELUDE) => {
-                if binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                    self.duplicate_globs.push(binding);
-                } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                    self.duplicate_globs.push(old_binding);
-                    self.binding = Some(binding);
-                } else {
-                    return Err(old_binding);
-                }
+        if let Some(old_binding) = self.binding {
+            if binding.defined_with(DefModifiers::GLOB_IMPORTED) {
+                self.duplicate_globs.push(binding);
+            } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) {
+                self.duplicate_globs.push(old_binding);
+                self.binding = Some(binding);
+            } else {
+                return Err(old_binding);
             }
-            _ => self.binding = Some(binding),
+        } else {
+            self.binding = Some(binding);
         }
 
         Ok(())
@@ -160,7 +159,6 @@ impl<'a> NameResolution<'a> {
     fn try_result(&self, allow_private_imports: bool)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
         match self.result(allow_private_imports) {
-            Success(binding) if binding.defined_with(DefModifiers::PRELUDE) => None,
             Failed(_) => None,
             result @ _ => Some(result),
         }
@@ -192,8 +190,6 @@ impl<'a> NameResolution<'a> {
         };
 
         for duplicate_glob in self.duplicate_globs.iter() {
-            if duplicate_glob.defined_with(DefModifiers::PRELUDE) { continue }
-
             // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
             if !binding.is_import() {
                 if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
@@ -360,7 +356,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // resolution for it so that later resolve stages won't complain.
         if let SingleImport { target, .. } = e.import_directive.subclass {
             let dummy_binding = self.resolver.arenas.alloc_name_binding(NameBinding {
-                modifiers: DefModifiers::PRELUDE,
+                modifiers: DefModifiers::GLOB_IMPORTED,
                 kind: NameBindingKind::Def(Def::Err),
                 span: None,
             });
