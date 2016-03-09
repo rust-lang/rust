@@ -137,7 +137,10 @@ fn match_bool() {
 fn ref_pats() {
     {
         let v = &Some(0);
-        match v {  //~ERROR dereference the expression: `match *v { ...`
+        match v {
+            //~^ERROR add `&` to all patterns
+            //~|HELP instead of
+            //~|SUGGESTION `match *v { .. }`
             &Some(v) => println!("{:?}", v),
             &None => println!("none"),
         }
@@ -147,13 +150,19 @@ fn ref_pats() {
         }
     }
     let tup =& (1, 2);
-    match tup {  //~ERROR dereference the expression: `match *tup { ...`
+    match tup {
+        //~^ERROR add `&` to all patterns
+        //~|HELP instead of
+        //~|SUGGESTION `match *tup { .. }`
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
     }
     // special case: using & both in expr and pats
     let w = Some(0);
-    match &w {  //~ERROR use `match w { ...`
+    match &w {
+        //~^ERROR add `&` to both
+        //~|HELP try
+        //~|SUGGESTION `match w { .. }`
         &Some(v) => println!("{:?}", v),
         &None => println!("none"),
     }
@@ -164,12 +173,18 @@ fn ref_pats() {
     }
 
     let a = &Some(0);
-    if let &None = a { //~ERROR dereference the expression: `if let ... = *a {`
+    if let &None = a {
+        //~^ERROR add `&` to all patterns
+        //~|HELP instead of
+        //~|SUGGESTION `if let ... = *a { .. }`
         println!("none");
     }
 
     let b = Some(0);
-    if let &None = &b { //~ERROR use `if let ... = b {`
+    if let &None = &b {
+        //~^ERROR add `&` to both
+        //~|HELP try
+        //~|SUGGESTION `if let ... = b { .. }`
         println!("none");
     }
 }
