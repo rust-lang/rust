@@ -349,7 +349,8 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
             if let Some(sp) = resolver.ast_map.span_if_local(did) {
                 err.span_note(sp, "constant defined here");
             }
-            if let Success(binding) = resolver.current_module.resolve_name(name, ValueNS, true) {
+            if let Some(binding) = resolver.current_module
+                                           .resolve_name_in_lexical_scope(name, ValueNS) {
                 if binding.is_import() {
                     err.span_note(binding.span.unwrap(), "constant imported here");
                 }
@@ -1536,13 +1537,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               module: Module<'a>,
                               name: Name,
                               namespace: Namespace,
-                              allow_private_imports: bool,
+                              use_lexical_scope: bool,
                               record_used: bool)
                               -> ResolveResult<&'a NameBinding<'a>> {
         debug!("(resolving name in module) resolving `{}` in `{}`", name, module_to_string(module));
 
         build_reduced_graph::populate_module_if_necessary(self, module);
-        module.resolve_name(name, namespace, allow_private_imports).and_then(|binding| {
+        match use_lexical_scope {
+            true => module.resolve_name_in_lexical_scope(name, namespace)
+                          .map(Success).unwrap_or(Failed(None)),
+            false => module.resolve_name(name, namespace, false),
+        }.and_then(|binding| {
             if record_used {
                 self.record_use(name, namespace, binding);
             }
@@ -2961,7 +2966,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if name_path.len() == 1 {
                 match this.primitive_type_table.primitive_types.get(last_name) {
                     Some(_) => None,
-                    None => this.current_module.resolve_name(*last_name, TypeNS, true).success()
+                    None => this.current_module.resolve_name_in_lexical_scope(*last_name, TypeNS)
                                                .and_then(NameBinding::module)
                 }
             } else {
@@ -3018,7 +3023,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Look for a method in the current self type's impl module.
         if let Some(module) = get_module(self, path.span, &name_path) {
-            if let Success(binding) = module.resolve_name(name, ValueNS, true) {
+            if let Some(binding) = module.resolve_name_in_lexical_scope(name, ValueNS) {
                 if let Some(Def::Method(did)) = binding.def() {
                     if is_static_method(self, did) {
                         return StaticMethod(path_names_to_string(&path, 0));

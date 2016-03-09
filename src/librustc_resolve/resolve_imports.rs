@@ -239,8 +239,16 @@ impl<'a> ::ModuleS<'a> {
             }
         }
 
-        self.prelude.borrow().map(|prelude| prelude.resolve_name(name, ns, false))
-                             .unwrap_or(Failed(None))
+        Failed(None)
+    }
+
+    // Invariant: this may not be called until import resolution is complete.
+    pub fn resolve_name_in_lexical_scope(&self, name: Name, ns: Namespace)
+                                         -> Option<&'a NameBinding<'a>> {
+        self.resolutions.borrow().get(&(name, ns)).and_then(|resolution| resolution.binding)
+            .or_else(|| self.prelude.borrow().and_then(|prelude| {
+                prelude.resolve_name(name, ns, false).success()
+            }))
     }
 
     // Define the name or return the existing binding if there is a collision.
