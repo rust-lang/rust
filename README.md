@@ -236,7 +236,7 @@ And, in your `main.rs` or `lib.rs`:
 ```
 
 ## Configuration
-Some lints can be configured in a `Clippy.toml` file. It contains basic `variable = value` mapping eg.
+Some lints can be configured in a `clippy.toml` file. It contains basic `variable = value` mapping eg.
 
 ```toml
 blacklisted-names = ["toto", "tata", "titi"]

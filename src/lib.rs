@@ -114,12 +114,12 @@ mod reexport {
 pub fn plugin_registrar(reg: &mut Registry) {
     let conf = match utils::conf::conf_file(reg.args()) {
         Ok(file_name) => {
-            // if the user specified a file, it must exist, otherwise default to `Clippy.toml` but
+            // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
             // do not require the file to exist
             let (ref file_name, must_exist) = if let Some(ref file_name) = file_name {
                 (&**file_name, true)
             } else {
-                ("Clippy.toml", false)
+                ("clippy.toml", false)
             };
 
             let (conf, errors) = utils::conf::read_conf(&file_name, must_exist);
