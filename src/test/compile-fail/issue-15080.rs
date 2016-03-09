@@ -11,17 +11,19 @@
 
 #![feature(slice_patterns)]
 
+// move this to run-pass when slice-patterns work
+
 fn main() {
     let mut x: &[_] = &[1, 2, 3, 4];
 
     let mut result = vec!();
     loop {
         x = match x {
-            [1, n, 3, rest..] => {
+            [1, n, 3, rest..] => { //~ ERROR slice patterns are badly broken
                 result.push(n);
                 rest
             }
-            [n, rest..] => {
+            [n, rest..] => { //~ ERROR slice patterns are badly broken
                 result.push(n);
                 rest
             }

@@ -11,6 +11,8 @@
 
 #![feature(slice_patterns)]
 
+// move this to run-pass when slice-patterns work
+
 fn main() {
     assert_eq!(count_members(&[1, 2, 3, 4]), 4);
 }
@@ -20,5 +22,6 @@ fn count_members(v: &[usize]) -> usize {
         []         => 0,
         [_]        => 1,
         [_x, xs..] => 1 + count_members(xs)
+        //~^ ERROR slice patterns are badly broken
     }
 }

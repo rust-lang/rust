@@ -17,7 +17,7 @@ fn a() {
     let mut vec = [box 1, box 2, box 3];
     match vec {
         [box ref _a, _, _] => {
-            vec[0] = box 4; //~ ERROR cannot assign
+            vec[0] = box 4; //# ERROR cannot assign
         }
     }
 }
@@ -26,8 +26,8 @@ fn b() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_b..] => {
-            vec[0] = box 4; //~ ERROR cannot assign
+        [_b..] => { //~ ERROR slice patterns are badly broken
+            vec[0] = box 4; //# ERROR cannot assign
         }
     }
 }
@@ -36,8 +36,9 @@ fn c() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_a,         //~ ERROR cannot move out
-         _b..] => {  //~^ NOTE attempting to move value to here
+        [_a,         //# ERROR cannot move out
+         _b..] => {  //#^ NOTE attempting to move value to here
+            //~^ ERROR slice patterns are badly broken
 
             // Note: `_a` is *moved* here, but `b` is borrowing,
             // hence illegal.
@@ -47,32 +48,33 @@ fn c() {
         }
         _ => {}
     }
-    let a = vec[0]; //~ ERROR cannot move out
+    let a = vec[0]; //# ERROR cannot move out
 }
 
 fn d() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_a..,     //~ ERROR cannot move out
-         _b] => {} //~ NOTE attempting to move value to here
+        [_a..,     //# ERROR cannot move out
+         _b] => {} //# NOTE attempting to move value to here
+        //~^^ ERROR slice patterns are badly broken
         _ => {}
     }
-    let a = vec[0]; //~ ERROR cannot move out
+    let a = vec[0]; //# ERROR cannot move out
 }
 
 fn e() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_a, _b, _c] => {}  //~ ERROR cannot move out
-        //~^ NOTE attempting to move value to here
-        //~^^ NOTE and here
-        //~^^^ NOTE and here
+        [_a, _b, _c] => {}  //# ERROR cannot move out
+        //#^ NOTE attempting to move value to here
+        //#^^ NOTE and here
+        //#^^^ NOTE and here
         _ => {}
     }
-    let a = vec[0]; //~ ERROR cannot move out
-    //~^ NOTE attempting to move value to here
+    let a = vec[0]; //# ERROR cannot move out
+    //#^ NOTE attempting to move value to here
 }
 
 fn main() {}

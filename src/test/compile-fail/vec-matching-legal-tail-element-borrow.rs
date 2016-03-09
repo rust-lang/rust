@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(slice_patterns)]
 
-fn main() {
-    let x = [(), ()];
-
-    // The subslice used to go out of bounds for zero-sized array items, check that this doesn't
-    // happen anymore
-    match x {
-        [_, y..] => assert_eq!(&x[1] as *const (), &y[0] as *const ())
+pub fn main() {
+    let x = &[1, 2, 3, 4, 5];
+    let x: &[isize] = &[1, 2, 3, 4, 5];
+    if !x.is_empty() {
+        let el = match x {
+            [1, ref tail..] => &tail[0],
+            //~^ ERROR slice patterns are badly broken
+            _ => unreachable!()
+        };
+        println!("{}", *el);
     }
 }

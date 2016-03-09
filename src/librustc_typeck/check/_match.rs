@@ -335,6 +335,11 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &elt, inner_ty);
             }
             if let Some(ref slice) = *slice {
+                if slice.node != PatKind::Wild {
+                    tcx.sess.span_err(slice.span,
+                                      "multi-element slice patterns are badly broken");
+                }
+
                 let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                 let mutbl = expected_ty.builtin_deref(true, ty::NoPreference)
                     .map_or(hir::MutImmutable, |mt| mt.mutbl);

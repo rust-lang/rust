@@ -14,10 +14,11 @@ fn main() {
     let mut a = [1, 2, 3, 4];
     let t = match a {
         [1, 2, tail..] => tail,
+        //~^ ERROR slice patterns are badly broken
         _ => unreachable!()
     };
     println!("t[0]: {}", t[0]);
-    a[2] = 0; //~ ERROR cannot assign to `a[..]` because it is borrowed
+    a[2] = 0; //# ERROR cannot assign to `a[..]` because it is borrowed
     println!("t[0]: {}", t[0]);
     t[0];
 }

@@ -16,6 +16,8 @@ fn main() {
         [] => 0,
         [a,b,c] => 3,
         [a, rest..] => a,
-        [10,a, rest..] => 10 //~ ERROR: unreachable pattern
+        //~^ ERROR slice patterns are badly broken
+        [10,a, rest..] => 10 //# ERROR: unreachable pattern
+        //~^ ERROR slice patterns are badly broken
     };
 }

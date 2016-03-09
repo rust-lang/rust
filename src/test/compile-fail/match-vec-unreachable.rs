@@ -15,7 +15,7 @@ fn main() {
     let x: &[(isize, isize)] = &x;
     match x {
         [a, (2, 3), _] => (),
-        [(1, 2), (2, 3), b] => (), //~ ERROR unreachable pattern
+        [(1, 2), (2, 3), b] => (), //# ERROR unreachable pattern
         _ => ()
     }
 
@@ -25,7 +25,7 @@ fn main() {
     let x: &[String] = &x;
     match x {
         [a, _, _, ..] => { println!("{}", a); }
-        [_, _, _, _, _] => { } //~ ERROR unreachable pattern
+        [_, _, _, _, _] => { } //# ERROR unreachable pattern
         _ => { }
     }
 
@@ -33,7 +33,8 @@ fn main() {
     let x: &[char] = &x;
     match x {
         ['a', 'b', 'c', _tail..] => {}
-        ['a', 'b', 'c'] => {} //~ ERROR unreachable pattern
+        //~^ ERROR slice patterns are badly broken
+        ['a', 'b', 'c'] => {} //# ERROR unreachable pattern
         _ => {}
     }
 }

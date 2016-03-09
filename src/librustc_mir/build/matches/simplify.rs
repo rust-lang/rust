@@ -61,7 +61,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// possible, Err is returned and no changes are made to
     /// candidate.
     fn simplify_match_pair<'pat>(&mut self,
-                                 mut block: BasicBlock,
+                                 block: BasicBlock,
                                  match_pair: MatchPair<'pat, 'tcx>,
                                  candidate: &mut Candidate<'pat, 'tcx>)
                                  -> Result<BasicBlock, MatchPair<'pat, 'tcx>> {
@@ -96,12 +96,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
 
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
-                unpack!(block = self.prefix_suffix_slice(&mut candidate.match_pairs,
-                                                         block,
-                                                         match_pair.lvalue.clone(),
-                                                         prefix,
-                                                         slice.as_ref(),
-                                                         suffix));
+                if let Some(ref slice) = *slice {
+                    match *slice.kind {
+                        PatternKind::Wild => {},
+                        _ => panic!("bad slice pattern {:?}", slice)
+                    }
+                }
+                self.prefix_suffix(&mut candidate.match_pairs,
+                                   match_pair.lvalue.clone(),
+                                   prefix,
+                                   suffix);
                 Ok(block)
             }
 
