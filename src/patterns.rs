@@ -15,16 +15,16 @@ use lists::{format_item_list, itemize_list};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use types::rewrite_path;
 
-use syntax::ast::{BindingMode, Pat, Pat_, FieldPat};
+use syntax::ast::{BindingMode, Pat, PatKind, FieldPat};
 
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
-            Pat_::PatBox(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, width, offset),
-            Pat_::PatIdent(binding_mode, ident, ref sub_pat) => {
+            PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, width, offset),
+            PatKind::Ident(binding_mode, ident, ref sub_pat) => {
                 let (prefix, mutability) = match binding_mode {
-                    BindingMode::BindByRef(mutability) => ("ref ", mutability),
-                    BindingMode::BindByValue(mutability) => ("", mutability),
+                    BindingMode::ByRef(mutability) => ("ref ", mutability),
+                    BindingMode::ByValue(mutability) => ("", mutability),
                 };
                 let mut_infix = format_mutability(mutability);
                 let id_str = ident.node.to_string();
@@ -43,31 +43,32 @@ impl Rewrite for Pat {
                 let result = format!("{}{}{}{}", prefix, mut_infix, id_str, sub_pat);
                 wrap_str(result, context.config.max_width, width, offset)
             }
-            Pat_::PatWild => {
+            PatKind::Wild => {
                 if 1 <= width {
                     Some("_".to_owned())
                 } else {
                     None
                 }
             }
-            Pat_::PatQPath(ref q_self, ref path) => {
+            PatKind::QPath(ref q_self, ref path) => {
                 rewrite_path(context, true, Some(q_self), path, width, offset)
             }
-            Pat_::PatRange(ref lhs, ref rhs) => {
+            PatKind::Range(ref lhs, ref rhs) => {
                 rewrite_pair(&**lhs, &**rhs, "", "...", "", context, width, offset)
             }
-            Pat_::PatRegion(ref pat, mutability) => {
+            PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
                 rewrite_unary_prefix(context, &prefix, &**pat, width, offset)
             }
-            Pat_::PatTup(ref items) => {
+            PatKind::Tup(ref items) => {
                 rewrite_tuple(context,
                               items.iter().map(|x| &**x),
                               self.span,
                               width,
                               offset)
             }
-            Pat_::PatEnum(ref path, ref pat_vec) => {
+            PatKind::Path(ref path) => rewrite_path(context, true, None, path, width, offset),
+            PatKind::TupleStruct(ref path, ref pat_vec) => {
                 let path_str = try_opt!(rewrite_path(context, true, None, path, width, offset));
 
                 match *pat_vec {
@@ -97,8 +98,8 @@ impl Rewrite for Pat {
                     None => Some(format!("{}(..)", path_str)),
                 }
             }
-            Pat_::PatLit(ref expr) => expr.rewrite(context, width, offset),
-            Pat_::PatVec(ref prefix, ref slice_pat, ref suffix) => {
+            PatKind::Lit(ref expr) => expr.rewrite(context, width, offset),
+            PatKind::Vec(ref prefix, ref slice_pat, ref suffix) => {
                 // Rewrite all the sub-patterns.
                 let prefix = prefix.iter().map(|p| p.rewrite(context, width, offset));
                 let slice_pat = slice_pat.as_ref().map(|p| {
@@ -118,7 +119,7 @@ impl Rewrite for Pat {
                 let result = format!("[{}]", pats.join(", "));
                 wrap_str(result, context.config.max_width, width, offset)
             }
-            Pat_::PatStruct(ref path, ref fields, elipses) => {
+            PatKind::Struct(ref path, ref fields, elipses) => {
                 let path = try_opt!(rewrite_path(context, true, None, path, width, offset));
 
                 let (elipses_str, terminator) = if elipses {
@@ -167,7 +168,7 @@ impl Rewrite for Pat {
                 }
             }
             // FIXME(#819) format pattern macros.
-            Pat_::PatMac(..) => {
+            PatKind::Mac(..) => {
                 wrap_str(context.snippet(self.span),
                          context.config.max_width,
                          width,

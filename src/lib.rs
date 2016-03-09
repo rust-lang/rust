@@ -26,13 +26,15 @@ extern crate diff;
 extern crate term;
 
 use syntax::ast;
-use syntax::codemap::{mk_sp, Span};
-use syntax::diagnostic::{EmitterWriter, Handler};
+use syntax::codemap::{mk_sp, CodeMap, Span};
+use syntax::errors::Handler;
+use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::parse::{self, ParseSess};
 
 use std::io::stdout;
 use std::ops::{Add, Sub};
 use std::path::Path;
+use std::rc::Rc;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -367,15 +369,23 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 
 pub fn format_string(input: String, config: &Config) -> FileMap {
     let path = "stdin";
-    let mut parse_session = ParseSess::new();
+    let codemap = Rc::new(CodeMap::new());
+
+    let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
+                                                None,
+                                                true,
+                                                false,
+                                                codemap.clone());
+    let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
+
     let krate = parse::parse_crate_from_source_str(path.to_owned(),
                                                    input,
                                                    Vec::new(),
                                                    &parse_session);
 
     // Suppress error output after parsing.
-    let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
-    parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
+    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
+    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
     // FIXME: we still use a FileMap even though we only have
     // one file, because fmt_lines requires a FileMap
@@ -393,12 +403,20 @@ pub fn format_string(input: String, config: &Config) -> FileMap {
 }
 
 pub fn format(file: &Path, config: &Config) -> FileMap {
-    let mut parse_session = ParseSess::new();
+    let codemap = Rc::new(CodeMap::new());
+
+    let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
+                                                None,
+                                                true,
+                                                false,
+                                                codemap.clone());
+    let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
+
     let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
 
     // Suppress error output after parsing.
-    let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
-    parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
+    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
+    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
     let mut file_map = fmt_ast(&krate, &parse_session, file, config);
 
