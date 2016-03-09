@@ -864,7 +864,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     check_bare_fn(ccx, &sig.decl, body, id, span, fty, param_env);
 }
 
-fn report_forbidden_specialization(tcx: &ty::ctxt,
+fn report_forbidden_specialization(tcx: &TyCtxt,
                                    impl_item: &hir::ImplItem,
                                    parent_impl: DefId)
 {
@@ -887,7 +887,7 @@ fn report_forbidden_specialization(tcx: &ty::ctxt,
     err.emit();
 }
 
-fn check_specialization_validity<'tcx>(tcx: &ty::ctxt<'tcx>, trait_def: &ty::TraitDef<'tcx>,
+fn check_specialization_validity<'tcx>(tcx: &TyCtxt<'tcx>, trait_def: &ty::TraitDef<'tcx>,
                                        impl_id: DefId, impl_item: &hir::ImplItem)
 {
     let ancestors = trait_def.ancestors(impl_id);

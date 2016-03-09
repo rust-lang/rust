@@ -478,7 +478,7 @@ pub struct ImplMethod<'tcx> {
 }
 
 /// Locates the applicable definition of a method, given its name.
-pub fn get_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn get_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
                              impl_def_id: DefId,
                              substs: Substs<'tcx>,
                              name: Name)

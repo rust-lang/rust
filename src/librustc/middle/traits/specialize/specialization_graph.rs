@@ -17,7 +17,7 @@ use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::traits::{self, ProjectionMode};
-use middle::ty::{self, ImplOrTraitItem, TraitDef, TypeFoldable};
+use middle::ty::{self, TyCtxt, ImplOrTraitItem, TraitDef, TypeFoldable};
 use syntax::ast::Name;
 use util::nodemap::DefIdMap;
 
@@ -57,7 +57,7 @@ impl Graph {
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
     pub fn insert<'a, 'tcx>(&mut self,
-                            tcx: &'a ty::ctxt<'tcx>,
+                            tcx: &'a TyCtxt<'tcx>,
                             impl_def_id: DefId)
                             -> Result<(), Overlap<'a, 'tcx>> {
         assert!(impl_def_id.is_local());
@@ -177,7 +177,7 @@ impl Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items<'a, 'tcx>(&self, tcx: &'a ty::ctxt<'tcx>) -> NodeItems<'a, 'tcx> {
+    pub fn items<'a, 'tcx>(&self, tcx: &'a TyCtxt<'tcx>) -> NodeItems<'a, 'tcx> {
         match *self {
             Node::Impl(impl_def_id) => {
                 NodeItems::Impl {
@@ -207,7 +207,7 @@ impl Node {
 /// An iterator over the items defined within a trait or impl.
 pub enum NodeItems<'a, 'tcx: 'a> {
     Impl {
-        tcx: &'a ty::ctxt<'tcx>,
+        tcx: &'a TyCtxt<'tcx>,
         items: cell::Ref<'a, Vec<ty::ImplOrTraitItemId>>,
         idx: usize,
     },
@@ -319,7 +319,7 @@ impl<'a, 'tcx> Iterator for ConstDefs<'a, 'tcx> {
 impl<'a, 'tcx> Ancestors<'a, 'tcx> {
     /// Search the items from the given ancestors, returning each type definition
     /// with the given name.
-    pub fn type_defs(self, tcx: &'a ty::ctxt<'tcx>, name: Name) -> TypeDefs<'a, 'tcx> {
+    pub fn type_defs(self, tcx: &'a TyCtxt<'tcx>, name: Name) -> TypeDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {
@@ -340,7 +340,7 @@ impl<'a, 'tcx> Ancestors<'a, 'tcx> {
 
     /// Search the items from the given ancestors, returning each fn definition
     /// with the given name.
-    pub fn fn_defs(self, tcx: &'a ty::ctxt<'tcx>, name: Name) -> FnDefs<'a, 'tcx> {
+    pub fn fn_defs(self, tcx: &'a TyCtxt<'tcx>, name: Name) -> FnDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {
@@ -361,7 +361,7 @@ impl<'a, 'tcx> Ancestors<'a, 'tcx> {
 
     /// Search the items from the given ancestors, returning each const
     /// definition with the given name.
-    pub fn const_defs(self, tcx: &'a ty::ctxt<'tcx>, name: Name) -> ConstDefs<'a, 'tcx> {
+    pub fn const_defs(self, tcx: &'a TyCtxt<'tcx>, name: Name) -> ConstDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {

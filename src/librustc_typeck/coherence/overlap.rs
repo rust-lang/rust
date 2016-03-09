@@ -15,7 +15,6 @@
 use middle::cstore::CrateStore;
 use middle::traits;
 use middle::ty::{self, TyCtxt};
-use middle::infer;
 use syntax::ast;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
