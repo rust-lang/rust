@@ -73,11 +73,11 @@ impl ConstInt {
             (_, InferSigned(_))
             | (_, Infer(_)) => return other.infer(self).map(|(b, a)| (a, b)),
 
-            (Infer(a @ 0...as_u64::I8MAX), I8(_)) => I8(a as i8),
-            (Infer(a @ 0...as_u64::I16MAX), I16(_)) => I16(a as i16),
-            (Infer(a @ 0...as_u64::I32MAX), I32(_)) => I32(a as i32),
+            (Infer(a @ 0...as_u64::I8MAX), I8(_)) => I8(a as i64 as i8),
+            (Infer(a @ 0...as_u64::I16MAX), I16(_)) => I16(a as i64 as i16),
+            (Infer(a @ 0...as_u64::I32MAX), I32(_)) => I32(a as i64 as i32),
             (Infer(a @ 0...as_u64::I64MAX), I64(_)) => I64(a as i64),
-            (Infer(a @ 0...as_u64::I32MAX), Isize(Is32(_))) => Isize(Is32(a as i32)),
+            (Infer(a @ 0...as_u64::I32MAX), Isize(Is32(_))) => Isize(Is32(a as i64 as i32)),
             (Infer(a @ 0...as_u64::I64MAX), Isize(Is64(_))) => Isize(Is64(a as i64)),
             (Infer(a @ 0...as_u64::U8MAX), U8(_)) => U8(a as u8),
             (Infer(a @ 0...as_u64::U16MAX), U16(_)) => U16(a as u16),
