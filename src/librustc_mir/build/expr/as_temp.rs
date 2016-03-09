@@ -55,7 +55,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let expr_span = expr.span;
                 let lvalue = unpack!(block = this.as_lvalue(block, expr));
                 let rvalue = Rvalue::Use(Operand::Consume(lvalue));
-                this.cfg.push_assign(block, expr_span, &temp, rvalue);
+                let scope_id = this.innermost_scope_id();
+                this.cfg.push_assign(block, scope_id, expr_span, &temp, rvalue);
             }
             _ => {
                 unpack!(block = this.into(&temp, block, expr));

@@ -36,6 +36,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // just use the name `this` uniformly
         let this = self;
         let expr_span = expr.span;
+        let scope_id = this.innermost_scope_id();
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
@@ -63,7 +64,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 } else {
                     // Body of the `if` expression without an `else` clause must return `()`, thus
                     // we implicitly generate a `else {}` if it is not specified.
-                    this.cfg.push_assign_unit(else_block, expr_span, destination);
+                    let scope_id = this.innermost_scope_id();
+                    this.cfg.push_assign_unit(else_block, scope_id, expr_span, destination);
                     else_block
                 };
 
@@ -104,7 +106,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 });
 
                 this.cfg.push_assign_constant(
-                    true_block, expr_span, destination,
+                    true_block, scope_id, expr_span, destination,
                     Constant {
                         span: expr_span,
                         ty: this.hir.bool_ty(),
@@ -112,7 +114,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     });
 
                 this.cfg.push_assign_constant(
-                    false_block, expr_span, destination,
+                    false_block, scope_id, expr_span, destination,
                     Constant {
                         span: expr_span,
                         ty: this.hir.bool_ty(),
@@ -178,7 +180,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // If the loop may reach its exit_block, we assign an empty tuple to the
                 // destination to keep the MIR well-formed.
                 if might_break {
-                    this.cfg.push_assign_unit(exit_block, expr_span, destination);
+                    this.cfg.push_assign_unit(exit_block, scope_id, expr_span, destination);
                 }
                 exit_block.unit()
             }
@@ -189,7 +191,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let rhs = unpack!(block = this.as_operand(block, rhs));
                 let lhs = unpack!(block = this.as_lvalue(block, lhs));
                 unpack!(block = this.build_drop(block, lhs.clone()));
-                this.cfg.push_assign(block, expr_span, &lhs, Rvalue::Use(rhs));
+                this.cfg.push_assign(block, scope_id, expr_span, &lhs, Rvalue::Use(rhs));
                 block.unit()
             }
             ExprKind::AssignOp { op, lhs, rhs } => {
@@ -208,7 +210,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
-                this.cfg.push_assign(block, expr_span, &lhs,
+                this.cfg.push_assign(block, scope_id, expr_span, &lhs,
                                      Rvalue::BinaryOp(op,
                                                       Operand::Consume(lhs.clone()),
                                                       rhs));
@@ -229,7 +231,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 block = match value {
                     Some(value) => unpack!(this.into(&Lvalue::ReturnPointer, block, value)),
                     None => {
-                        this.cfg.push_assign_unit(block, expr_span, &Lvalue::ReturnPointer);
+                        this.cfg.push_assign_unit(block, scope_id, expr_span, &Lvalue::ReturnPointer);
                         block
                     }
                 };
@@ -293,7 +295,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 });
 
                 let rvalue = unpack!(block = this.as_rvalue(block, expr));
-                this.cfg.push_assign(block, expr_span, destination, rvalue);
+                this.cfg.push_assign(block, scope_id, expr_span, destination, rvalue);
                 block.unit()
             }
         }

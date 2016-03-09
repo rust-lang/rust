@@ -34,6 +34,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         debug!("expr_as_lvalue(block={:?}, expr={:?})", block, expr);
 
         let this = self;
+        let scope_id = this.innermost_scope_id();
         let expr_span = expr.span;
         match expr.kind {
             ExprKind::Scope { extent, value } => {
@@ -58,9 +59,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 // bounds check:
                 let (len, lt) = (this.temp(usize_ty.clone()), this.temp(bool_ty));
-                this.cfg.push_assign(block, expr_span, // len = len(slice)
+                this.cfg.push_assign(block, scope_id, expr_span, // len = len(slice)
                                      &len, Rvalue::Len(slice.clone()));
-                this.cfg.push_assign(block, expr_span, // lt = idx < len
+                this.cfg.push_assign(block, scope_id, expr_span, // lt = idx < len
                                      &lt, Rvalue::BinaryOp(BinOp::Lt,
                                                            idx.clone(),
                                                            Operand::Consume(len.clone())));

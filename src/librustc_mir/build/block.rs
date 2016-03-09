@@ -71,7 +71,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 unpack!(block = this.into(destination, block, expr));
             } else {
                 // FIXME(#31472)
-                this.cfg.push_assign_unit(block, span, destination);
+                let scope_id = this.innermost_scope_id();
+                this.cfg.push_assign_unit(block, scope_id, span, destination);
             }
             // Finally, we pop all the let scopes before exiting out from the scope of block
             // itself.
