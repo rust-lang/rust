@@ -121,6 +121,8 @@ impl Ipv4Addr {
     }
 
     /// Returns true if the address appears to be globally routable.
+    /// See [iana-ipv4-special-registry][ipv4-sr].
+    /// [ipv4-sr]: http://goo.gl/RaZ7lg
     ///
     /// The following return false:
     ///
@@ -129,9 +131,10 @@ impl Ipv4Addr {
     /// - the link-local address (169.254.0.0/16)
     /// - the broadcast address (255.255.255.255/32)
     /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
+    /// - the unspecified address (0.0.0.0)
     pub fn is_global(&self) -> bool {
         !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
-        !self.is_broadcast() && !self.is_documentation()
+        !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
     }
 
     /// Returns true if this is a multicast address.
@@ -725,22 +728,22 @@ mod tests {
         }
 
         //    address                unspec loopbk privt  linloc global multicast brdcast doc
-        check(&[0, 0, 0, 0],         true,  false, false, false, true,  false,    false,  false);
-        check(&[0, 0, 0, 1],         false, false, false, false, true,  false,    false,  false);
-        check(&[1, 0, 0, 0],         false, false, false, false, true,  false,    false,  false);
-        check(&[10, 9, 8, 7],        false, false, true,  false, false, false,    false,  false);
-        check(&[127, 1, 2, 3],       false, true,  false, false, false, false,    false,  false);
-        check(&[172, 31, 254, 253],  false, false, true,  false, false, false,    false,  false);
-        check(&[169, 254, 253, 242], false, false, false, true,  false, false,    false,  false);
-        check(&[192, 0, 2, 183],     false, false, false, false, false, false,    false,  true);
-        check(&[192, 1, 2, 183],     false, false, false, false, true,  false,    false,  false);
-        check(&[192, 168, 254, 253], false, false, true,  false, false, false,    false,  false);
-        check(&[198, 51, 100, 0],    false, false, false, false, false, false,    false,  true);
-        check(&[203, 0, 113, 0],     false, false, false, false, false, false,    false,  true);
-        check(&[203, 2, 113, 0],     false, false, false, false, true,  false,    false,  false);
-        check(&[224, 0, 0, 0],       false, false, false, false, true,  true,     false,  false);
-        check(&[239, 255, 255, 255], false, false, false, false, true,  true,     false,  false);
-        check(&[255, 255, 255, 255], false, false, false, false, false, false,    true,   false);
+        check(&[0, 0, 0, 0],         true,  false, false, false, false,  false,    false,  false);
+        check(&[0, 0, 0, 1],         false, false, false, false, true,   false,    false,  false);
+        check(&[1, 0, 0, 0],         false, false, false, false, true,   false,    false,  false);
+        check(&[10, 9, 8, 7],        false, false, true,  false, false,  false,    false,  false);
+        check(&[127, 1, 2, 3],       false, true,  false, false, false,  false,    false,  false);
+        check(&[172, 31, 254, 253],  false, false, true,  false, false,  false,    false,  false);
+        check(&[169, 254, 253, 242], false, false, false, true,  false,  false,    false,  false);
+        check(&[192, 0, 2, 183],     false, false, false, false, false,  false,    false,  true);
+        check(&[192, 1, 2, 183],     false, false, false, false, true,   false,    false,  false);
+        check(&[192, 168, 254, 253], false, false, true,  false, false,  false,    false,  false);
+        check(&[198, 51, 100, 0],    false, false, false, false, false,  false,    false,  true);
+        check(&[203, 0, 113, 0],     false, false, false, false, false,  false,    false,  true);
+        check(&[203, 2, 113, 0],     false, false, false, false, true,   false,    false,  false);
+        check(&[224, 0, 0, 0],       false, false, false, false, true,   true,     false,  false);
+        check(&[239, 255, 255, 255], false, false, false, false, true,   true,     false,  false);
+        check(&[255, 255, 255, 255], false, false, false, false, false,  false,    true,   false);
     }
 
     #[test]
