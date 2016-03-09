@@ -347,10 +347,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
-    /// let mut map: BTreeMap<&str, isize> = BTreeMap::new();
+    /// let mut map = BTreeMap::new();
+    ///
+    /// // entries can now be inserted into the empty map
+    /// a.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BTreeMap<K, V> {
@@ -363,6 +368,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Clears the map, removing all values.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -384,6 +391,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -408,6 +417,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -427,6 +438,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -460,6 +473,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -490,6 +505,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -518,6 +535,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Thus range(Unbounded, Unbounded) will yield the whole collection.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// #![feature(btree_range, collections_bound)]
@@ -591,6 +610,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Thus range(Unbounded, Unbounded) will yield the whole collection.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// #![feature(btree_range, collections_bound)]
@@ -666,6 +687,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1275,6 +1298,8 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1304,6 +1329,8 @@ impl<K, V> BTreeMap<K, V> {
     /// Gets a mutable iterator over the entries of the map, sorted by key.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1338,6 +1365,8 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1356,6 +1385,8 @@ impl<K, V> BTreeMap<K, V> {
     /// Gets an iterator over the values of the map, in order by key.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1376,6 +1407,8 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1392,6 +1425,8 @@ impl<K, V> BTreeMap<K, V> {
     /// Returns true if the map contains no elements.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
