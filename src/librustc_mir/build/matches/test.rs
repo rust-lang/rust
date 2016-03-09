@@ -174,33 +174,78 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 targets
             }
 
-            TestKind::Eq { ref value, ty } => {
-                // If we're matching against &[u8] with b"...", we need to insert
-                // an unsizing coercion, as the byte string has type &[u8; N].
-                let expect = match *value {
-                    ConstVal::ByteStr(ref bytes) if ty.is_slice() => {
-                        let tcx = self.hir.tcx();
-                        let array_ty = tcx.mk_array(tcx.types.u8, bytes.len());
-                        let ref_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), array_ty);
-                        let array = self.literal_operand(test.span, ref_ty, Literal::Value {
-                            value: value.clone()
-                        });
+            TestKind::Eq { ref value, mut ty } => {
+                let mut val = Operand::Consume(lvalue.clone());
 
-                        let sliced = self.temp(ty);
-                        self.cfg.push_assign(block, test.span, &sliced,
-                                             Rvalue::Cast(CastKind::Unsize, array, ty));
-                        Operand::Consume(sliced)
+                // If we're using b"..." as a pattern, we need to insert an
+                // unsizing coercion, as the byte string has the type &[u8; N].
+                let expect = if let ConstVal::ByteStr(ref bytes) = *value {
+                    let tcx = self.hir.tcx();
+
+                    // Unsize the lvalue to &[u8], too, if necessary.
+                    if let ty::TyRef(region, mt) = ty.sty {
+                        if let ty::TyArray(_, _) = mt.ty.sty {
+                            ty = tcx.mk_imm_ref(region, tcx.mk_slice(tcx.types.u8));
+                            let val_slice = self.temp(ty);
+                            self.cfg.push_assign(block, test.span, &val_slice,
+                                                 Rvalue::Cast(CastKind::Unsize, val, ty));
+                            val = Operand::Consume(val_slice);
+                        }
                     }
-                    _ => {
-                        self.literal_operand(test.span, ty, Literal::Value {
-                            value: value.clone()
-                        })
-                    }
+
+                    assert!(ty.is_slice());
+
+                    let array_ty = tcx.mk_array(tcx.types.u8, bytes.len());
+                    let array_ref = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), array_ty);
+                    let array = self.literal_operand(test.span, array_ref, Literal::Value {
+                        value: value.clone()
+                    });
+
+                    let slice = self.temp(ty);
+                    self.cfg.push_assign(block, test.span, &slice,
+                                         Rvalue::Cast(CastKind::Unsize, array, ty));
+                    Operand::Consume(slice)
+                } else {
+                    self.literal_operand(test.span, ty, Literal::Value {
+                        value: value.clone()
+                    })
                 };
-                let val = Operand::Consume(lvalue.clone());
+
+                // Use PartialEq::eq for &str and &[u8] slices, instead of BinOp::Eq.
                 let fail = self.cfg.start_new_block();
-                let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val.clone());
-                vec![block, fail]
+                if let ty::TyRef(_, mt) = ty.sty {
+                    assert!(ty.is_slice());
+                    let eq_def_id = self.hir.tcx().lang_items.eq_trait().unwrap();
+                    let ty = mt.ty;
+                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, vec![ty]);
+
+                    let bool_ty = self.hir.bool_ty();
+                    let eq_result = self.temp(bool_ty);
+                    let eq_block = self.cfg.start_new_block();
+                    let cleanup = self.diverge_cleanup();
+                    self.cfg.terminate(block, Terminator::Call {
+                        func: Operand::Constant(Constant {
+                            span: test.span,
+                            ty: mty,
+                            literal: method
+                        }),
+                        args: vec![val, expect],
+                        destination: Some((eq_result.clone(), eq_block)),
+                        cleanup: cleanup,
+                    });
+
+                    // check the result
+                    let block = self.cfg.start_new_block();
+                    self.cfg.terminate(eq_block, Terminator::If {
+                        cond: Operand::Consume(eq_result),
+                        targets: (block, fail),
+                    });
+
+                    vec![block, fail]
+                } else {
+                    let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val);
+                    vec![block, fail]
+                }
             }
 
             TestKind::Range { ref lo, ref hi, ty } => {

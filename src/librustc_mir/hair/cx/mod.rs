@@ -19,7 +19,9 @@ use hair::*;
 use rustc::mir::repr::*;
 
 use rustc::middle::const_eval::{self, ConstVal};
+use rustc::middle::def_id::DefId;
 use rustc::middle::infer::InferCtxt;
+use rustc::middle::subst::{Subst, Substs};
 use rustc::middle::ty::{self, Ty, TyCtxt};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -94,6 +96,34 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
                 _ => Some(Literal::Value { value: v })
             }
         })
+    }
+
+    pub fn trait_method(&mut self,
+                        trait_def_id: DefId,
+                        method_name: &str,
+                        self_ty: Ty<'tcx>,
+                        params: Vec<Ty<'tcx>>)
+                        -> (Ty<'tcx>, Literal<'tcx>) {
+        let method_name = token::intern(method_name);
+        let substs = Substs::new_trait(params, vec![], self_ty);
+        for trait_item in self.tcx.trait_items(trait_def_id).iter() {
+            match *trait_item {
+                ty::ImplOrTraitItem::MethodTraitItem(ref method) => {
+                    if method.name == method_name {
+                        let method_ty = self.tcx.lookup_item_type(method.def_id);
+                        let method_ty = method_ty.ty.subst(self.tcx, &substs);
+                        return (method_ty, Literal::Item {
+                            def_id: method.def_id,
+                            substs: self.tcx.mk_substs(substs),
+                        });
+                    }
+                }
+                ty::ImplOrTraitItem::ConstTraitItem(..) |
+                ty::ImplOrTraitItem::TypeTraitItem(..) => {}
+            }
+        }
+
+        self.tcx.sess.bug(&format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
     }
 
     pub fn num_variants(&mut self, adt_def: ty::AdtDef<'tcx>) -> usize {
