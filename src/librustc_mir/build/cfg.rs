@@ -13,7 +13,7 @@
 
 //! Routines for manipulating the control-flow graph.
 
-use build::CFG;
+use build::{CFG, Location};
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
@@ -41,6 +41,11 @@ impl<'tcx> CFG<'tcx> {
     pub fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
         debug!("push({:?}, {:?})", block, statement);
         self.block_data_mut(block).statements.push(statement);
+    }
+
+    pub fn current_location(&mut self, block: BasicBlock) -> Location {
+        let index = self.block_data(block).statements.len();
+        Location { block: block, statement_index: index }
     }
 
     pub fn push_assign(&mut self,

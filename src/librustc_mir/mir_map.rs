@@ -19,7 +19,7 @@
 extern crate syntax;
 extern crate rustc_front;
 
-use build;
+use build::{self, MirPlusPlus};
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
@@ -182,8 +182,14 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
     let parameter_scope =
         cx.tcx().region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
-    let mut mir = build::construct(cx, span, implicit_arg_tys, arguments,
-                                  parameter_scope, fn_sig.output, body);
+    let MirPlusPlus { mut mir, scope_auxiliary: _ } =
+        build::construct(cx,
+                         span,
+                         implicit_arg_tys,
+                         arguments,
+                         parameter_scope,
+                         fn_sig.output,
+                         body);
 
     match cx.tcx().node_id_to_type(fn_id).sty {
         ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {

@@ -21,8 +21,26 @@ use syntax::codemap::Span;
 pub struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
     cfg: CFG<'tcx>,
+
+    // the current set of scopes, updated as we traverse;
+    // see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
+
+    // for each scope, a span of blocks that defines it;
+    // we track these for use in region and borrow checking,
+    // but these are liable to get out of date once optimization
+    // begins. They are also hopefully temporary, and will be
+    // no longer needed when we adopt graph-based regions.
+    scope_auxiliary: Vec<ScopeAuxiliary>,
+
+    // the current set of loops; see the `scope` module for more
+    // details
     loop_scopes: Vec<scope::LoopScope>,
+
+    // the vector of all scopes that we have created thus far;
+    // we track this for debuginfo later
+    scope_data_vec: ScopeDataVec,
+
     var_decls: Vec<VarDecl<'tcx>>,
     var_indices: FnvHashMap<ast::NodeId, u32>,
     temp_decls: Vec<TempDecl<'tcx>>,
@@ -31,6 +49,42 @@ pub struct Builder<'a, 'tcx: 'a> {
 
 struct CFG<'tcx> {
     basic_blocks: Vec<BasicBlockData<'tcx>>,
+}
+
+/// For each scope, we track the extent (from the HIR) and a
+/// single-entry-multiple-exit subgraph that contains all the
+/// statements/terminators within it.
+///
+/// This information is separated out from the main `ScopeData`
+/// because it is short-lived. First, the extent contains node-ids,
+/// so it cannot be saved and re-loaded. Second, any optimization will mess up
+/// the dominator/postdominator information.
+///
+/// The intention is basically to use this information to do
+/// regionck/borrowck and then throw it away once we are done.
+pub struct ScopeAuxiliary {
+    /// extent of this scope from the MIR.
+    pub extent: CodeExtent,
+
+    /// "entry point": dominator of all nodes in the scope
+    pub dom: Location,
+
+    /// "exit points": mutual postdominators of all nodes in the scope
+    pub postdoms: Vec<Location>,
+}
+
+pub struct Location {
+    /// the location is within this block
+    pub block: BasicBlock,
+
+    /// the location is the start of the this statement; or, if `statement_index`
+    /// == num-statements, then the start of the terminator.
+    pub statement_index: usize,
+}
+
+pub struct MirPlusPlus<'tcx> {
+    pub mir: Mir<'tcx>,
+    pub scope_auxiliary: Vec<ScopeAuxiliary>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -86,13 +140,15 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                           argument_extent: CodeExtent,
                           return_ty: FnOutput<'tcx>,
                           ast_block: &'tcx hir::Block)
-                          -> Mir<'tcx> {
+                          -> MirPlusPlus<'tcx> {
     let cfg = CFG { basic_blocks: vec![] };
 
     let mut builder = Builder {
         hir: hir,
         cfg: cfg,
         scopes: vec![],
+        scope_data_vec: ScopeDataVec::new(),
+        scope_auxiliary: vec![],
         loop_scopes: vec![],
         temp_decls: vec![],
         var_decls: vec![],
@@ -113,13 +169,17 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
     builder.cfg.terminate(block, Terminator::Goto { target: END_BLOCK });
     builder.cfg.terminate(END_BLOCK, Terminator::Return);
 
-    Mir {
-        basic_blocks: builder.cfg.basic_blocks,
-        var_decls: builder.var_decls,
-        arg_decls: arg_decls,
-        temp_decls: builder.temp_decls,
-        return_ty: return_ty,
-        span: span
+    MirPlusPlus {
+        mir: Mir {
+            basic_blocks: builder.cfg.basic_blocks,
+            scopes: builder.scope_data_vec,
+            var_decls: builder.var_decls,
+            arg_decls: arg_decls,
+            temp_decls: builder.temp_decls,
+            return_ty: return_ty,
+            span: span
+        },
+        scope_auxiliary: builder.scope_auxiliary,
     }
 }
 

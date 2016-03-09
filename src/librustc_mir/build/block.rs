@@ -51,7 +51,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         }));
                     }
                     StmtKind::Let { remainder_scope, init_scope, pattern, initializer } => {
-                        this.push_scope(remainder_scope);
+                        this.push_scope(remainder_scope, block);
                         let_extent_stack.push(remainder_scope);
                         unpack!(block = this.in_scope(init_scope, block, move |this| {
                             // FIXME #30046                              ^~~~
