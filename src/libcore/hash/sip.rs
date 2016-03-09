@@ -19,13 +19,13 @@ use super::Hasher;
 ///
 /// See: http://131002.net/siphash/
 ///
-/// This is the default hashing function used by standard library (eg.
-/// `collections::HashMap` uses it by default).
+/// This is currently the default hashing function used by standard library
+/// (eg. `collections::HashMap` uses it by default).
 ///
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
-/// hashing. This lets you key your hashtables from a strong RNG, such
-/// as [`rand::Rng`](https://doc.rust-lang.org/rand/rand/trait.Rng.html).
+/// hashing. This lets you key your hashtables from a strong RNG, such as
+/// [`rand::os::OsRng`](https://doc.rust-lang.org/rand/rand/os/struct.OsRng.html).
 ///
 /// Although the SipHash algorithm is considered to be generally strong,
 /// it is not intended for cryptographic purposes. As such, all
