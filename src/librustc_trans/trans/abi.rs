@@ -10,9 +10,8 @@
 
 use llvm::{self, ValueRef};
 use trans::base;
-use trans::build::B;
 use trans::builder::Builder;
-use trans::common::{type_is_fat_ptr, Block};
+use trans::common::{type_is_fat_ptr, BlockAndBuilder};
 use trans::context::CrateContext;
 use trans::cabi_x86;
 use trans::cabi_x86_64;
@@ -169,18 +168,16 @@ impl ArgType {
         }
     }
 
-    pub fn store_fn_arg(&self, bcx: Block, idx: &mut usize, dst: ValueRef) {
+    pub fn store_fn_arg(&self, bcx: &BlockAndBuilder, idx: &mut usize, dst: ValueRef) {
         if self.pad.is_some() {
             *idx += 1;
         }
         if self.is_ignore() {
             return;
         }
-        let val = llvm::get_param(bcx.fcx.llfn, *idx as c_uint);
+        let val = llvm::get_param(bcx.fcx().llfn, *idx as c_uint);
         *idx += 1;
-        if !bcx.unreachable.get() {
-            self.store(&B(bcx), val, dst);
-        }
+        self.store(bcx, val, dst);
     }
 }
 

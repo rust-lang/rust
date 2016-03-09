@@ -688,6 +688,10 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     // Methods delegated to bcx
 
+    pub fn is_unreachable(&self) -> bool {
+        self.bcx.unreachable.get()
+    }
+
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
         self.bcx.ccx()
     }

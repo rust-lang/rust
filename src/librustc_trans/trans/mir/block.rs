@@ -26,7 +26,7 @@ use trans::glue;
 use trans::type_::Type;
 
 use super::{MirContext, drop};
-use super::lvalue::LvalueRef;
+use super::lvalue::{LvalueRef, load_fat_ptr};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{self, FatPtr, Immediate, Ref};
 
@@ -478,13 +478,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let base_repr = adt::represent_type(bcx.ccx(), lv_ty);
         let base = adt::MaybeSizedValue::sized(lv.llval);
         for (n, &ty) in result_types.iter().enumerate() {
-            let ptr = bcx.with_block(|bcx| {
-                adt::trans_field_ptr(bcx, &base_repr, base, Disr(0), n)
-            });
+            let ptr = adt::trans_field_ptr_builder(bcx, &base_repr, base, Disr(0), n);
             let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
-                let (lldata, llextra) = bcx.with_block(|bcx| {
-                    base::load_fat_ptr(bcx, ptr, ty)
-                });
+                let (lldata, llextra) = load_fat_ptr(bcx, ptr);
                 FatPtr(lldata, llextra)
             } else {
                 // Don't bother loading the value, trans_argument will.

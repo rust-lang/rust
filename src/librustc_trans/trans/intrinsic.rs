@@ -430,7 +430,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "size_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let (llsize, _) = glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
+                let (llsize, _) =
+                    glue::size_and_align_of_dst(&bcx.build(), tp_ty, llargs[1]);
                 llsize
             } else {
                 let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -444,7 +445,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "min_align_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let (_, llalign) = glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
+                let (_, llalign) =
+                    glue::size_and_align_of_dst(&bcx.build(), tp_ty, llargs[1]);
                 llalign
             } else {
                 C_uint(ccx, type_of::align_of(ccx, tp_ty))

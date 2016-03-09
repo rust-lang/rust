@@ -53,7 +53,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llenv = if kind == ty::ClosureKind::FnOnce && !env_arg.is_indirect() {
         let closure_ty = node_id_type(bcx, id);
         let llenv = rvalue_scratch_datum(bcx, closure_ty, "closure_env").val;
-        env_arg.store_fn_arg(bcx, &mut env_idx, llenv);
+        env_arg.store_fn_arg(&bcx.build(), &mut env_idx, llenv);
         llenv
     } else {
         get_param(bcx.fcx.llfn, env_idx as c_uint)
@@ -410,7 +410,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                                                 InitAlloca::Dropped,
                                                 self_scope_id, |bcx, llval| {
             let mut llarg_idx = self_idx;
-            env_arg.store_fn_arg(bcx, &mut llarg_idx, llval);
+            env_arg.store_fn_arg(&bcx.build(), &mut llarg_idx, llval);
             bcx.fcx.schedule_lifetime_end(self_scope_id, llval);
             bcx
         })).val
