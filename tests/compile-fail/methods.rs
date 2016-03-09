@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(clippy, clippy_pedantic)]
-#![allow(unused, print_stdout, non_ascii_literal)]
+#![allow(unused, print_stdout, non_ascii_literal, new_without_default)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -26,6 +26,25 @@ impl T {
     fn new(self) {}
     //~^ ERROR methods called `new` usually take no self
     //~| ERROR methods called `new` usually return `Self`
+}
+
+struct Lt<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt<'a> {
+    // The lifetime is different, but that’s irrelevant, see #734
+    #[allow(needless_lifetimes)]
+    pub fn new<'b>(s: &'b str) -> Lt<'b> { unimplemented!() }
+}
+
+struct Lt2<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt2<'a> {
+    // The lifetime is different, but that’s irrelevant, see #734
+    pub fn new(s: &str) -> Lt2 { unimplemented!() }
 }
 
 #[derive(Clone,Copy)]

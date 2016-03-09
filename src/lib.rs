@@ -77,6 +77,7 @@ pub mod mutex_atomic;
 pub mod needless_bool;
 pub mod needless_features;
 pub mod needless_update;
+pub mod new_without_default;
 pub mod no_effect;
 pub mod open_options;
 pub mod overflow_check_conditional;
@@ -94,6 +95,7 @@ pub mod temporary_assignment;
 pub mod transmute;
 pub mod types;
 pub mod unicode;
+pub mod unused_label;
 pub mod vec;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -175,6 +177,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box swap::Swap);
     reg.register_early_lint_pass(box if_not_else::IfNotElse);
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
+    reg.register_late_lint_pass(box unused_label::UnusedLabel);
+    reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
 
     reg.register_lint_group("clippy_pedantic", vec![
         enum_glob_use::ENUM_GLOB_USE,
@@ -283,6 +287,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         needless_features::UNSTABLE_AS_MUT_SLICE,
         needless_features::UNSTABLE_AS_SLICE,
         needless_update::NEEDLESS_UPDATE,
+        new_without_default::NEW_WITHOUT_DEFAULT,
         no_effect::NO_EFFECT,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
@@ -309,6 +314,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
+        unused_label::UNUSED_LABEL,
         vec::USELESS_VEC,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);

@@ -264,7 +264,7 @@ pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
 /// Check whether a type implements a trait.
 /// See also `get_trait_def_id`.
 pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, trait_id: DefId,
-                                  ty_params: Option<Vec<ty::Ty<'tcx>>>)
+                                  ty_params: Vec<ty::Ty<'tcx>>)
                                   -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
@@ -274,7 +274,7 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
                                                      trait_id,
                                                      0,
                                                      ty,
-                                                     ty_params.unwrap_or_default());
+                                                     ty_params);
 
     traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
 }
@@ -730,4 +730,21 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
     } else {
         None
     }
+}
+
+/// Convenience function to get the return type of a function or `None` if the function diverges.
+pub fn return_ty(fun: ty::Ty) -> Option<ty::Ty> {
+    if let ty::FnConverging(ret_ty) = fun.fn_sig().skip_binder().output {
+        Some(ret_ty)
+    } else {
+        None
+    }
+}
+
+/// Check if two types are the same.
+// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
+// not for type parameters.
+pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> bool {
+    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None);
+    infcx.can_equate(&cx.tcx.erase_regions(&a), &cx.tcx.erase_regions(&b)).is_ok()
 }
