@@ -144,20 +144,9 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     pub fn parse_substs(&mut self) -> subst::Substs<'tcx> {
-        let regions = self.parse_region_substs();
+        let regions = self.parse_vec_per_param_space(|this| this.parse_region());
         let types = self.parse_vec_per_param_space(|this| this.parse_ty());
         subst::Substs { types: types, regions: regions }
-    }
-
-    fn parse_region_substs(&mut self) -> subst::RegionSubsts {
-        match self.next() {
-            'e' => subst::ErasedRegions,
-            'n' => {
-                subst::NonerasedRegions(
-                    self.parse_vec_per_param_space(|this| this.parse_region()))
-            }
-            _ => panic!("parse_bound_region: bad input")
-        }
     }
 
     fn parse_bound_region(&mut self) -> ty::BoundRegion {

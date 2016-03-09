@@ -102,14 +102,6 @@ pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         specialization_graph::Node::Trait(..) => source_trait_ref.substs.clone(),
     };
 
-    // retain erasure mode
-    // NB: this must happen before inheriting method generics below
-    let target_substs = if source_substs.regions.is_erased() {
-        target_substs.erase_regions()
-    } else {
-        target_substs
-    };
-
     // directly inherent the method generics, since those do not vary across impls
     infcx.tcx.mk_substs(target_substs.with_method_from_subst(source_substs))
 }

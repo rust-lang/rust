@@ -505,11 +505,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 assert_eq!(m.generics.types.get_slice(subst::TypeSpace).len(),
                            trait_ref.substs.types.get_slice(subst::TypeSpace).len());
                 assert_eq!(m.generics.regions.get_slice(subst::TypeSpace).len(),
-                           trait_ref.substs.regions().get_slice(subst::TypeSpace).len());
+                           trait_ref.substs.regions.get_slice(subst::TypeSpace).len());
                 assert_eq!(m.generics.types.get_slice(subst::SelfSpace).len(),
                            trait_ref.substs.types.get_slice(subst::SelfSpace).len());
                 assert_eq!(m.generics.regions.get_slice(subst::SelfSpace).len(),
-                           trait_ref.substs.regions().get_slice(subst::SelfSpace).len());
+                           trait_ref.substs.regions.get_slice(subst::SelfSpace).len());
             }
 
             // Because this trait derives from a where-clause, it
@@ -1194,7 +1194,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // method yet. So create fresh variables here for those too,
         // if there are any.
         assert_eq!(substs.types.len(subst::FnSpace), 0);
-        assert_eq!(substs.regions().len(subst::FnSpace), 0);
+        assert_eq!(substs.regions.len(subst::FnSpace), 0);
 
         if self.mode == Mode::Path {
             return impl_ty;

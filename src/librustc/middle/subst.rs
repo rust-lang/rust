@@ -11,7 +11,6 @@
 // Type substitutions.
 
 pub use self::ParamSpace::*;
-pub use self::RegionSubsts::*;
 
 use middle::cstore;
 use middle::def_id::DefId;
@@ -34,16 +33,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Substs<'tcx> {
     pub types: VecPerParamSpace<Ty<'tcx>>,
-    pub regions: RegionSubsts,
-}
-
-/// Represents the values to use when substituting lifetime parameters.
-/// If the value is `ErasedRegions`, then this subst is occurring during
-/// trans, and all region parameters will be replaced with `ty::ReStatic`.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub enum RegionSubsts {
-    ErasedRegions,
-    NonerasedRegions(VecPerParamSpace<ty::Region>)
+    pub regions: VecPerParamSpace<ty::Region>,
 }
 
 impl<'tcx> Substs<'tcx> {
@@ -51,7 +41,7 @@ impl<'tcx> Substs<'tcx> {
                r: VecPerParamSpace<ty::Region>)
                -> Substs<'tcx>
     {
-        Substs { types: t, regions: NonerasedRegions(r) }
+        Substs { types: t, regions: r }
     }
 
     pub fn new_type(t: Vec<Ty<'tcx>>,
@@ -71,32 +61,15 @@ impl<'tcx> Substs<'tcx> {
                     VecPerParamSpace::new(r, Vec::new(), Vec::new()))
     }
 
-    pub fn erased(t: VecPerParamSpace<Ty<'tcx>>) -> Substs<'tcx>
-    {
-        Substs { types: t, regions: ErasedRegions }
-    }
-
     pub fn empty() -> Substs<'tcx> {
         Substs {
             types: VecPerParamSpace::empty(),
-            regions: NonerasedRegions(VecPerParamSpace::empty()),
-        }
-    }
-
-    pub fn trans_empty() -> Substs<'tcx> {
-        Substs {
-            types: VecPerParamSpace::empty(),
-            regions: ErasedRegions
+            regions: VecPerParamSpace::empty(),
         }
     }
 
     pub fn is_noop(&self) -> bool {
-        let regions_is_noop = match self.regions {
-            ErasedRegions => false, // may be used to canonicalize
-            NonerasedRegions(ref regions) => regions.is_empty(),
-        };
-
-        regions_is_noop && self.types.is_empty()
+        self.regions.is_empty() && self.types.is_empty()
     }
 
     pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
@@ -115,26 +88,9 @@ impl<'tcx> Substs<'tcx> {
     }
 
     pub fn erase_regions(self) -> Substs<'tcx> {
-        let Substs { types, regions: _ } = self;
-        Substs { types: types, regions: ErasedRegions }
-    }
-
-    /// Since ErasedRegions are only to be used in trans, most of the compiler can use this method
-    /// to easily access the set of region substitutions.
-    pub fn regions<'a>(&'a self) -> &'a VecPerParamSpace<ty::Region> {
-        match self.regions {
-            ErasedRegions => panic!("Erased regions only expected in trans"),
-            NonerasedRegions(ref r) => r
-        }
-    }
-
-    /// Since ErasedRegions are only to be used in trans, most of the compiler can use this method
-    /// to easily access the set of region substitutions.
-    pub fn mut_regions<'a>(&'a mut self) -> &'a mut VecPerParamSpace<ty::Region> {
-        match self.regions {
-            ErasedRegions => panic!("Erased regions only expected in trans"),
-            NonerasedRegions(ref mut r) => r
-        }
+        let Substs { types, regions } = self;
+        let regions = regions.map(|_| ty::ReStatic);
+        Substs { types: types, regions: regions }
     }
 
     pub fn with_method(self,
@@ -144,7 +100,7 @@ impl<'tcx> Substs<'tcx> {
     {
         let Substs { types, regions } = self;
         let types = types.with_slice(FnSpace, &m_types);
-        let regions = regions.map(|r| r.with_slice(FnSpace, &m_regions));
+        let regions = regions.with_slice(FnSpace, &m_regions);
         Substs { types: types, regions: regions }
     }
 
@@ -154,27 +110,23 @@ impl<'tcx> Substs<'tcx> {
     {
         let Substs { types, regions } = self.clone();
         let types = types.with_slice(FnSpace, meth_substs.types.get_slice(FnSpace));
-        let regions = regions.map(|r| {
-            r.with_slice(FnSpace, meth_substs.regions().get_slice(FnSpace))
-        });
+        let regions = regions.with_slice(FnSpace, meth_substs.regions.get_slice(FnSpace));
         Substs { types: types, regions: regions }
     }
 
     pub fn with_method_from_subst(self, other: &Substs<'tcx>) -> Substs<'tcx> {
         let Substs { types, regions } = self;
         let types = types.with_slice(FnSpace, other.types.get_slice(FnSpace));
-        let regions = regions.map(|r| {
-            r.with_slice(FnSpace, other.regions().get_slice(FnSpace))
-        });
+        let regions = regions.with_slice(FnSpace, other.regions.get_slice(FnSpace));
         Substs { types: types, regions: regions }
     }
 
     /// Creates a trait-ref out of this substs, ignoring the FnSpace substs
     pub fn to_trait_ref(&self, tcx: &TyCtxt<'tcx>, trait_id: DefId)
                         -> ty::TraitRef<'tcx> {
-        let Substs { mut types, regions } = self.clone();
+        let Substs { mut types, mut regions } = self.clone();
         types.truncate(FnSpace, 0);
-        let regions = regions.map(|mut r| { r.truncate(FnSpace, 0); r });
+        regions.truncate(FnSpace, 0);
 
         ty::TraitRef {
             def_id: trait_id,
@@ -209,24 +161,6 @@ impl<'tcx> Decodable for &'tcx Substs<'tcx> {
         });
 
         Ok(substs)
-    }
-}
-
-impl RegionSubsts {
-    pub fn map<F>(self, op: F) -> RegionSubsts where
-        F: FnOnce(VecPerParamSpace<ty::Region>) -> VecPerParamSpace<ty::Region>,
-    {
-        match self {
-            ErasedRegions => ErasedRegions,
-            NonerasedRegions(r) => NonerasedRegions(op(r))
-        }
-    }
-
-    pub fn is_erased(&self) -> bool {
-        match *self {
-            ErasedRegions => true,
-            NonerasedRegions(_) => false,
-        }
     }
 }
 
@@ -664,26 +598,22 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         // the specialized routine `ty::replace_late_regions()`.
         match r {
             ty::ReEarlyBound(data) => {
-                match self.substs.regions {
-                    ErasedRegions => ty::ReStatic,
-                    NonerasedRegions(ref regions) =>
-                        match regions.opt_get(data.space, data.index as usize) {
-                            Some(&r) => {
-                                self.shift_region_through_binders(r)
-                            }
-                            None => {
-                                let span = self.span.unwrap_or(DUMMY_SP);
-                                self.tcx().sess.span_bug(
-                                    span,
-                                    &format!("Type parameter out of range \
-                                              when substituting in region {} (root type={:?}) \
-                                              (space={:?}, index={})",
-                                             data.name,
-                                             self.root_ty,
-                                             data.space,
-                                             data.index));
-                            }
-                        }
+                match self.substs.regions.opt_get(data.space, data.index as usize) {
+                    Some(&r) => {
+                        self.shift_region_through_binders(r)
+                    }
+                    None => {
+                        let span = self.span.unwrap_or(DUMMY_SP);
+                        self.tcx().sess.span_bug(
+                            span,
+                            &format!("Region parameter out of range \
+                                      when substituting in region {} (root type={:?}) \
+                                      (space={:?}, index={})",
+                                     data.name,
+                                     self.root_ty,
+                                     data.space,
+                                     data.index));
+                    }
                 }
             }
             _ => r

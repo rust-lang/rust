@@ -144,10 +144,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // duplicate declarations
     let tcx = ccx.tcx();
     let substs = tcx.erase_regions(substs);
-    let instance = Instance {
-        def: closure_id,
-        params: &substs.func_substs.types
-    };
+    let instance = Instance::new(closure_id, &substs.func_substs);
 
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         debug!("get_or_create_closure_declaration(): found closure {:?}: {:?}",

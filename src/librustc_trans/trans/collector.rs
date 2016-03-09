@@ -241,7 +241,7 @@ impl<'tcx> Hash for TransItem<'tcx> {
             TransItem::Fn(instance) => {
                 1u8.hash(s);
                 instance.def.hash(s);
-                (instance.params as *const _ as usize).hash(s);
+                (instance.substs as *const _ as usize).hash(s);
             }
             TransItem::Static(node_id) => {
                 2u8.hash(s);
@@ -285,7 +285,6 @@ fn collect_roots<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             mode: mode,
             output: &mut roots,
             enclosing_item: None,
-            trans_empty_substs: ccx.tcx().mk_substs(Substs::trans_empty()),
         };
 
         ccx.tcx().map.krate().visit_all_items(&mut visitor);
@@ -331,10 +330,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
                 ccx: ccx,
                 mir: &mir,
                 output: &mut neighbors,
-                param_substs: ccx.tcx().mk_substs(Substs {
-                    types: instance.params.clone(),
-                    regions: subst::ErasedRegions
-                })
+                param_substs: instance.substs
             };
 
             visitor.visit_mir(&mir);
@@ -437,7 +433,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let exchange_malloc_fn_trans_item =
                     create_fn_trans_item(self.ccx,
                                          exchange_malloc_fn_def_id,
-                                         &Substs::trans_empty(),
+                                         &Substs::empty(),
                                          self.param_substs);
 
                 self.output.push(exchange_malloc_fn_trans_item);
@@ -569,8 +565,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let exchange_free_fn_trans_item =
             create_fn_trans_item(ccx,
                                  exchange_free_fn_def_id,
-                                 &Substs::trans_empty(),
-                                 &Substs::trans_empty());
+                                 &Substs::empty(),
+                                 &Substs::empty());
 
         output.push(exchange_free_fn_trans_item);
     }
@@ -592,7 +588,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    .unwrap();
 
         let self_type_substs = ccx.tcx().mk_substs(
-            Substs::trans_empty().with_self_ty(ty));
+            Substs::empty().with_self_ty(ty));
 
         let trait_ref = ty::TraitRef {
             def_id: drop_trait_def_id,
@@ -608,7 +604,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let trans_item = create_fn_trans_item(ccx,
                                                   destructor_did,
                                                   substs,
-                                                  &Substs::trans_empty());
+                                                  &Substs::empty());
             output.push(trans_item);
         }
     }
@@ -875,10 +871,9 @@ fn create_fn_trans_item<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                            fn_substs);
     let concrete_substs = ccx.tcx().erase_regions(&concrete_substs);
 
-    let trans_item = TransItem::Fn(Instance {
-        def: def_id,
-        params: &ccx.tcx().mk_substs(concrete_substs).types,
-    });
+    let trans_item =
+        TransItem::Fn(Instance::new(def_id,
+                                    &ccx.tcx().mk_substs(concrete_substs)));
 
     return trans_item;
 }
@@ -914,7 +909,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 Some(create_fn_trans_item(ccx,
                                                           impl_method.method.def_id,
                                                           &impl_method.substs,
-                                                          &Substs::trans_empty()))
+                                                          &Substs::empty()))
                             } else {
                                 None
                             }
@@ -938,7 +933,6 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
     enclosing_item: Option<&'tcx hir::Item>,
-    trans_empty_substs: &'tcx Substs<'tcx>
 }
 
 impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
@@ -962,7 +956,6 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                 if self.mode == TransItemCollectionMode::Eager {
                     create_trans_items_for_default_impls(self.ccx,
                                                          item,
-                                                         self.trans_empty_substs,
                                                          self.output);
                 }
             }
@@ -1049,7 +1042,6 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
 
 fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                   item: &'tcx hir::Item,
-                                                  trans_empty_substs: &'tcx Substs<'tcx>,
                                                   output: &mut Vec<TransItem<'tcx>>) {
     match item.node {
         hir::ItemImpl(_,
@@ -1098,10 +1090,11 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     }
 
                     if can_have_local_instance(ccx, default_impl.def_id) {
+                        let empty_substs = ccx.tcx().mk_substs(ccx.tcx().erase_regions(mth.substs));
                         let item = create_fn_trans_item(ccx,
                                                         default_impl.def_id,
                                                         callee_substs,
-                                                        trans_empty_substs);
+                                                        empty_substs);
                         output.push(item);
                     }
                 }
@@ -1328,7 +1321,7 @@ fn push_instance_as_string<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      instance: Instance<'tcx>,
                                      output: &mut String) {
     push_item_name(ccx, instance.def, output);
-    push_type_params(ccx, instance.params, &[], output);
+    push_type_params(ccx, &instance.substs.types, &[], output);
 }
 
 fn def_id_to_string(ccx: &CrateContext, def_id: DefId) -> String {
@@ -1386,7 +1379,7 @@ impl<'tcx> TransItem<'tcx> {
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                          instance.def,
-                         instance.params as *const _ as usize)
+                         instance.substs as *const _ as usize)
             }
             TransItem::Static(id) => {
                 format!("Static({:?})", id)

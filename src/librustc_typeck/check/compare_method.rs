@@ -180,7 +180,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         trait_to_impl_substs
         .subst(tcx, impl_to_skol_substs)
         .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                     impl_to_skol_substs.regions().get_slice(subst::FnSpace).to_vec());
+                     impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 
@@ -439,7 +439,7 @@ pub fn compare_const_impl<'tcx>(tcx: &TyCtxt<'tcx>,
         trait_to_impl_substs
         .subst(tcx, impl_to_skol_substs)
         .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                     impl_to_skol_substs.regions().get_slice(subst::FnSpace).to_vec());
+                     impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
     debug!("compare_const_impl: trait_to_skol_substs={:?}",
            trait_to_skol_substs);
 

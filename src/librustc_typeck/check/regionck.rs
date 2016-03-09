@@ -1496,7 +1496,7 @@ pub fn substs_wf_in_scope<'a,'tcx>(rcx: &mut Rcx<'a,'tcx>,
 
     let origin = infer::ParameterInScope(origin, expr_span);
 
-    for &region in substs.regions() {
+    for &region in &substs.regions {
         rcx.fcx.mk_subr(origin.clone(), expr_region, region);
     }
 
@@ -1624,7 +1624,7 @@ fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     // edges, which winds up enforcing the same condition.
     let needs_infer = {
         projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
-            projection_ty.trait_ref.substs.regions().iter().any(|r| r.needs_infer())
+            projection_ty.trait_ref.substs.regions.iter().any(|r| r.needs_infer())
     };
     if env_bounds.is_empty() && needs_infer {
         debug!("projection_must_outlive: no declared bounds");
@@ -1633,7 +1633,7 @@ fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
             type_must_outlive(rcx, origin.clone(), component_ty, region);
         }
 
-        for &r in projection_ty.trait_ref.substs.regions() {
+        for &r in &projection_ty.trait_ref.substs.regions {
             rcx.fcx.mk_subr(origin.clone(), region, r);
         }
 
@@ -1650,7 +1650,7 @@ fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
         let unique_bound = env_bounds[0];
         debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
-        if projection_ty.trait_ref.substs.regions()
+        if projection_ty.trait_ref.substs.regions
                                          .iter()
                                          .any(|r| env_bounds.contains(r))
         {
