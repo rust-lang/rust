@@ -91,7 +91,7 @@ pub fn run(input: &str,
 
     let mut cfg = config::build_configuration(&sess);
     cfg.extend(config::parse_cfgspecs(cfgs.clone()));
-    let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
     let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");

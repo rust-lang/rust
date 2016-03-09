@@ -18,7 +18,7 @@ extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_resolve;
-extern crate syntax;
+#[macro_use] extern crate syntax;
 
 use std::ffi::{CStr, CString};
 use std::mem::transmute;
@@ -230,7 +230,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let id = "input".to_string();
 
-        let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+        let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
 
         let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None)
             .expect("phase_2 returned `None`");

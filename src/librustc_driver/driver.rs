@@ -48,12 +48,10 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::ast::{self, NodeIdAssigner};
-use syntax::attr;
-use syntax::attr::AttrMetaMethods;
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::diagnostics;
 use syntax::fold::Folder;
-use syntax::parse;
-use syntax::parse::token;
+use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
 use syntax::visit;
 use syntax;
@@ -86,7 +84,13 @@ pub fn compile_input(sess: &Session,
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
         let (outputs, expanded_crate, id) = {
-            let krate = phase_1_parse_input(sess, cfg, input);
+            let krate = match phase_1_parse_input(sess, cfg, input) {
+                Ok(krate) => krate,
+                Err(mut parse_error) => {
+                    parse_error.emit();
+                    return Err(1);
+                }
+            };
 
             controller_entry_point!(after_parse,
                                     sess,
@@ -415,17 +419,20 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     }
 }
 
-pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input) -> ast::Crate {
+pub fn phase_1_parse_input<'a>(sess: &'a Session,
+                               cfg: ast::CrateConfig,
+                               input: &Input)
+                               -> PResult<'a, ast::Crate> {
     // These may be left in an incoherent state after a previous compile.
     // `clear_tables` and `get_ident_interner().clear()` can be used to free
     // memory, but they do not restore the initial state.
     syntax::ext::mtwt::reset_tables();
     token::reset_ident_interner();
 
-    let krate = time(sess.time_passes(), "parsing", || {
+    let krate = try!(time(sess.time_passes(), "parsing", || {
         match *input {
             Input::File(ref file) => {
-                parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
+                parse::parse_crate_from_file(file, cfg.clone(), &sess.parse_sess)
             }
             Input::Str(ref src) => {
                 parse::parse_crate_from_source_str(anon_src().to_string(),
@@ -434,7 +441,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
                                                    &sess.parse_sess)
             }
         }
-    });
+    }));
 
     if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));
@@ -449,7 +456,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         syntax::show_span::run(sess.diagnostic(), s, &krate);
     }
 
-    krate
+    Ok(krate)
 }
 
 fn count_nodes(krate: &ast::Crate) -> usize {
