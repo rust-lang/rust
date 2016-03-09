@@ -8,7 +8,7 @@ use std::cmp::Ordering;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
-use utils::{match_type, snippet, span_lint, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
+use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 
 /// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice.
 ///
@@ -309,18 +309,26 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
     if has_only_ref_pats(arms) {
         if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
             let template = match_template(cx, expr.span, source, "", inner);
-            span_lint(cx,
-                      MATCH_REF_PATS,
-                      expr.span,
-                      &format!("you don't need to add `&` to both the expression and the patterns: use `{}`",
-                               template));
+            span_lint_and_then(cx,
+                               MATCH_REF_PATS,
+                               expr.span,
+                               "you don't need to add `&` to both the expression and the patterns",
+                               |db| {
+                                   db.span_suggestion(expr.span,
+                                                      "try",
+                                                      template);
+                               });
         } else {
             let template = match_template(cx, expr.span, source, "*", ex);
-            span_lint(cx,
-                      MATCH_REF_PATS,
-                      expr.span,
-                      &format!("instead of prefixing all patterns with `&`, you can dereference the expression: `{}`",
-                               template));
+            span_lint_and_then(cx,
+                               MATCH_REF_PATS,
+                               expr.span,
+                               "you don't need to add `&` to all patterns",
+                               |db| {
+                                   db.span_suggestion(expr.span,
+                                                      "instead of prefixing all patterns with `&`, you can dereference the expression",
+                                                      template);
+                               });
         }
     }
 }
@@ -435,10 +443,11 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
 fn match_template(cx: &LateContext, span: Span, source: MatchSource, op: &str, expr: &Expr) -> String {
     let expr_snippet = snippet(cx, expr.span, "..");
     match source {
-        MatchSource::Normal => format!("match {}{} {{ ...", op, expr_snippet),
-        MatchSource::IfLetDesugar { .. } => format!("if let ... = {}{} {{", op, expr_snippet),
-        MatchSource::WhileLetDesugar => format!("while let ... = {}{} {{", op, expr_snippet),
+        MatchSource::Normal => format!("match {}{} {{ .. }}", op, expr_snippet),
+        MatchSource::IfLetDesugar { .. } => format!("if let .. = {}{} {{ .. }}", op, expr_snippet),
+        MatchSource::WhileLetDesugar => format!("while let .. = {}{} {{ .. }}", op, expr_snippet),
         MatchSource::ForLoopDesugar => cx.sess().span_bug(span, "for loop desugared to match with &-patterns!"),
+        MatchSource::TryDesugar => cx.sess().span_bug(span, "`?` operator desugared to match with &-patterns!")
     }
 }
 
