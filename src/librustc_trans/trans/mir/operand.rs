@@ -19,6 +19,7 @@ use trans::glue;
 
 use std::fmt;
 
+use super::lvalue::load_fat_ptr;
 use super::{MirContext, TempRef, drop};
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -94,14 +95,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         let val = match datum::appropriate_rvalue_mode(bcx.ccx(), ty) {
             datum::ByValue => {
-                bcx.with_block(|bcx| {
-                    OperandValue::Immediate(base::load_ty(bcx, llval, ty))
-                })
+                OperandValue::Immediate(base::load_ty_builder(bcx, llval, ty))
             }
             datum::ByRef if common::type_is_fat_ptr(bcx.tcx(), ty) => {
-                let (lldata, llextra) = bcx.with_block(|bcx| {
-                    base::load_fat_ptr(bcx, llval, ty)
-                });
+                let (lldata, llextra) = load_fat_ptr(bcx, llval);
                 OperandValue::FatPtr(lldata, llextra)
             }
             datum::ByRef => OperandValue::Ref(llval)

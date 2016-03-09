@@ -1065,6 +1065,15 @@ pub fn num_args(r: &Repr, discr: Disr) -> usize {
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                                    val: MaybeSizedValue, discr: Disr, ix: usize) -> ValueRef {
+    trans_field_ptr_builder(&bcx.build(), r, val, discr, ix)
+}
+
+/// Access a field, at a point when the value's case is known.
+pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
+                                           r: &Repr<'tcx>,
+                                           val: MaybeSizedValue,
+                                           discr: Disr, ix: usize)
+                                           -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
@@ -1087,13 +1096,15 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
             // The contents of memory at this pointer can't matter, but use
             // the value that's "reasonable" in case of pointer comparison.
-            PointerCast(bcx, val.value, ty.ptr_to())
+            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
+            bcx.pointercast(val.value, ty.ptr_to())
         }
         RawNullablePointer { nndiscr, nnty, .. } => {
             assert_eq!(ix, 0);
             assert_eq!(discr, nndiscr);
             let ty = type_of::type_of(bcx.ccx(), nnty);
-            PointerCast(bcx, val.value, ty.ptr_to())
+            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
+            bcx.pointercast(val.value, ty.ptr_to())
         }
         StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             assert_eq!(discr, nndiscr);
@@ -1102,33 +1113,39 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     }
 }
 
-pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, val: MaybeSizedValue,
-                                    ix: usize, needs_cast: bool) -> ValueRef {
+fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
+                                st: &Struct<'tcx>, val: MaybeSizedValue,
+                                ix: usize, needs_cast: bool) -> ValueRef {
     let ccx = bcx.ccx();
+    let fty = st.fields[ix];
+    let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
+    if bcx.is_unreachable() {
+        return C_undef(ll_fty.ptr_to());
+    }
+
     let ptr_val = if needs_cast {
         let fields = st.fields.iter().map(|&ty| {
             type_of::in_memory_type_of(ccx, ty)
         }).collect::<Vec<_>>();
         let real_ty = Type::struct_(ccx, &fields[..], st.packed);
-        PointerCast(bcx, val.value, real_ty.ptr_to())
+        bcx.pointercast(val.value, real_ty.ptr_to())
     } else {
         val.value
     };
 
-    let fty = st.fields[ix];
     // Simple case - we can just GEP the field
     //   * First field - Always aligned properly
     //   * Packed struct - There is no alignment padding
     //   * Field is sized - pointer is properly aligned already
     if ix == 0 || st.packed || type_is_sized(bcx.tcx(), fty) {
-        return StructGEP(bcx, ptr_val, ix);
+        return bcx.struct_gep(ptr_val, ix);
     }
 
     // If the type of the last field is [T] or str, then we don't need to do
     // any adjusments
     match fty.sty {
         ty::TySlice(..) | ty::TyStr => {
-            return StructGEP(bcx, ptr_val, ix);
+            return bcx.struct_gep(ptr_val, ix);
         }
         _ => ()
     }
@@ -1137,7 +1154,7 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     if !val.has_meta() {
         debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
                ix, Value(ptr_val));
-        return StructGEP(bcx, ptr_val, ix);
+        return bcx.struct_gep(ptr_val, ix);
     }
 
     let dbloc = DebugLoc::None;
@@ -1178,22 +1195,21 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     //   (unaligned offset + (align - 1)) & -align
 
     // Calculate offset
-    let align_sub_1 = Sub(bcx, align, C_uint(bcx.ccx(), 1u64), dbloc);
-    let offset = And(bcx,
-                     Add(bcx, unaligned_offset, align_sub_1, dbloc),
-                     Neg(bcx, align, dbloc),
-                     dbloc);
+    dbloc.apply(bcx.fcx());
+    let align_sub_1 = bcx.sub(align, C_uint(bcx.ccx(), 1u64));
+    let offset = bcx.and(bcx.add(unaligned_offset, align_sub_1),
+                         bcx.neg(align));
 
     debug!("struct_field_ptr: DST field offset: {:?}", Value(offset));
 
     // Cast and adjust pointer
-    let byte_ptr = PointerCast(bcx, ptr_val, Type::i8p(bcx.ccx()));
-    let byte_ptr = GEP(bcx, byte_ptr, &[offset]);
+    let byte_ptr = bcx.pointercast(ptr_val, Type::i8p(bcx.ccx()));
+    let byte_ptr = bcx.gep(byte_ptr, &[offset]);
 
     // Finally, cast back to the type expected
     let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
     debug!("struct_field_ptr: Field type is {:?}", ll_fty);
-    PointerCast(bcx, byte_ptr, ll_fty.ptr_to())
+    bcx.pointercast(byte_ptr, ll_fty.ptr_to())
 }
 
 pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
@@ -1284,7 +1300,8 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 }
             ));
             bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
-                let ptr = struct_field_ptr(variant_cx, st, MaybeSizedValue::sized(value),
+                let ptr = struct_field_ptr(&variant_cx.build(), st,
+                                           MaybeSizedValue::sized(value),
                                            (st.fields.len() - 1), false);
                 datum::Datum::new(ptr, ptr_ty, datum::Lvalue::new("adt::trans_drop_flag_ptr"))
                     .store_to(variant_cx, scratch.val)

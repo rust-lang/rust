@@ -911,8 +911,16 @@ pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, t: Ty<'
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
 pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
-    if cx.unreachable.get() || type_is_zero_size(cx.ccx(), t) {
+    if cx.unreachable.get() {
         return C_undef(type_of::type_of(cx.ccx(), t));
+    }
+    load_ty_builder(&B(cx), ptr, t)
+}
+
+pub fn load_ty_builder<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
+    let ccx = b.ccx;
+    if type_is_zero_size(ccx, t) {
+        return C_undef(type_of::type_of(ccx, t));
     }
 
     unsafe {
@@ -920,24 +928,26 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) ->
         if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
             let val = llvm::LLVMGetInitializer(global);
             if !val.is_null() {
-                return to_immediate(cx, val, t);
+                if t.is_bool() {
+                    return llvm::LLVMConstTrunc(val, Type::i1(ccx).to_ref());
+                }
+                return val;
             }
         }
     }
 
-    let val = if t.is_bool() {
-        LoadRangeAssert(cx, ptr, 0, 2, llvm::False)
+    if t.is_bool() {
+        b.trunc(b.load_range_assert(ptr, 0, 2, llvm::False), Type::i1(ccx))
     } else if t.is_char() {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
-        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
-    } else if (t.is_region_ptr() || t.is_unique()) && !common::type_is_fat_ptr(cx.tcx(), t) {
-        LoadNonNull(cx, ptr)
+        b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False)
+    } else if (t.is_region_ptr() || t.is_unique()) &&
+              !common::type_is_fat_ptr(ccx.tcx(), t) {
+        b.load_nonnull(ptr)
     } else {
-        Load(cx, ptr)
-    };
-
-    to_immediate(cx, val, t)
+        b.load(ptr)
+    }
 }
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
@@ -1644,13 +1654,14 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                                                                    uninit_reason,
                                                                    arg_scope_id, |bcx, dst| {
                         debug!("FunctionContext::bind_args: {:?}: {:?}", hir_arg, arg_ty);
+                        let b = &bcx.build();
                         if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                             let meta = &self.fn_ty.args[idx];
                             idx += 1;
-                            arg.store_fn_arg(bcx, &mut llarg_idx, expr::get_dataptr(bcx, dst));
-                            meta.store_fn_arg(bcx, &mut llarg_idx, expr::get_meta(bcx, dst));
+                            arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, dst));
+                            meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, dst));
                         } else {
-                            arg.store_fn_arg(bcx, &mut llarg_idx, dst);
+                            arg.store_fn_arg(b, &mut llarg_idx, dst);
                         }
                         bcx
                     }))
@@ -1672,13 +1683,14 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                     for (j, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
                         let dst = StructGEP(bcx, llval, j);
                         let arg = &self.fn_ty.args[idx];
+                        let b = &bcx.build();
                         if common::type_is_fat_ptr(bcx.tcx(), tupled_arg_ty) {
                             let meta = &self.fn_ty.args[idx];
                             idx += 1;
-                            arg.store_fn_arg(bcx, &mut llarg_idx, expr::get_dataptr(bcx, dst));
-                            meta.store_fn_arg(bcx, &mut llarg_idx, expr::get_meta(bcx, dst));
+                            arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, dst));
+                            meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, dst));
                         } else {
-                            arg.store_fn_arg(bcx, &mut llarg_idx, dst);
+                            arg.store_fn_arg(b, &mut llarg_idx, dst);
                         }
                     }
                     bcx
@@ -2024,13 +2036,14 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let lldestptr = adt::trans_field_ptr(bcx, &repr, dest_val, Disr::from(disr), i);
             let arg = &fcx.fn_ty.args[arg_idx];
             arg_idx += 1;
+            let b = &bcx.build();
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 let meta = &fcx.fn_ty.args[arg_idx];
                 arg_idx += 1;
-                arg.store_fn_arg(bcx, &mut llarg_idx, expr::get_dataptr(bcx, lldestptr));
-                meta.store_fn_arg(bcx, &mut llarg_idx, expr::get_meta(bcx, lldestptr));
+                arg.store_fn_arg(b, &mut llarg_idx, expr::get_dataptr(bcx, lldestptr));
+                meta.store_fn_arg(b, &mut llarg_idx, expr::get_meta(bcx, lldestptr));
             } else {
-                arg.store_fn_arg(bcx, &mut llarg_idx, lldestptr);
+                arg.store_fn_arg(b, &mut llarg_idx, lldestptr);
             }
         }
         adt::trans_set_discr(bcx, &repr, dest, disr);

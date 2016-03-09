@@ -371,7 +371,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
 
-pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
+                                         t: Ty<'tcx>, info: ValueRef)
                                          -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
@@ -384,6 +385,10 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
         let size = C_uint(bcx.ccx(), size);
         let align = C_uint(bcx.ccx(), align);
         return (size, align);
+    }
+    if bcx.is_unreachable() {
+        let llty = Type::int(bcx.ccx());
+        return (C_undef(llty), C_undef(llty));
     }
     match t.sty {
         ty::TyStruct(def, substs) => {
@@ -407,8 +412,6 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let field_ty = monomorphize::field_ty(bcx.tcx(), substs, last_field);
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
-            let dbloc = DebugLoc::None;
-
             // FIXME (#26403, #27023): We should be adding padding
             // to `sized_size` (to accommodate the `unsized_align`
             // required of the unsized field that follows) before
@@ -417,14 +420,14 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             // here. But this is where the add would go.)
 
             // Return the sum of sizes and max of aligns.
-            let mut size = Add(bcx, sized_size, unsized_size, dbloc);
+            let mut size = bcx.add(sized_size, unsized_size);
 
             // Issue #27023: If there is a drop flag, *now* we add 1
             // to the size.  (We can do this without adding any
             // padding because drop flags do not have any alignment
             // constraints.)
             if sizing_type.needs_drop_flag() {
-                size = Add(bcx, size, C_uint(bcx.ccx(), 1_u64), dbloc);
+                size = bcx.add(size, C_uint(bcx.ccx(), 1_u64));
             }
 
             // Choose max of two known alignments (combined value must
@@ -435,14 +438,9 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
                     // pick the correct alignment statically.
                     C_uint(ccx, std::cmp::max(sized_align, unsized_align))
                 }
-                _ => Select(bcx,
-                            ICmp(bcx,
-                                 llvm::IntUGT,
-                                 sized_align,
-                                 unsized_align,
-                                 dbloc),
-                            sized_align,
-                            unsized_align)
+                _ => bcx.select(bcx.icmp(llvm::IntUGT, sized_align, unsized_align),
+                                sized_align,
+                                unsized_align)
             };
 
             // Issue #27023: must add any necessary padding to `size`
@@ -456,19 +454,18 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             //
             //   `(size + (align-1)) & -align`
 
-            let addend = Sub(bcx, align, C_uint(bcx.ccx(), 1_u64), dbloc);
-            let size = And(
-                bcx, Add(bcx, size, addend, dbloc), Neg(bcx, align, dbloc), dbloc);
+            let addend = bcx.sub(align, C_uint(bcx.ccx(), 1_u64));
+            let size = bcx.and(bcx.add(size, addend), bcx.neg(align));
 
             (size, align)
         }
         ty::TyTrait(..) => {
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
-            let info = PointerCast(bcx, info, Type::int(bcx.ccx()).ptr_to());
-            let size_ptr = GEPi(bcx, info, &[1]);
-            let align_ptr = GEPi(bcx, info, &[2]);
-            (Load(bcx, size_ptr), Load(bcx, align_ptr))
+            let info = bcx.pointercast(info, Type::int(bcx.ccx()).ptr_to());
+            let size_ptr = bcx.gepi(info, &[1]);
+            let align_ptr = bcx.gepi(info, &[2]);
+            (bcx.load(size_ptr), bcx.load(align_ptr))
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(bcx.tcx());
@@ -477,7 +474,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
             let unit_align = llalign_of_min(bcx.ccx(), llunit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size), DebugLoc::None),
+            (bcx.mul(info, C_uint(bcx.ccx(), unit_size)),
              C_uint(bcx.ccx(), unit_align))
         }
         _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}", t))
@@ -522,7 +519,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                     let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
                     let info = expr::get_meta(bcx, v0);
                     let info = Load(bcx, info);
-                    let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
+                    let (llsize, llalign) =
+                        size_and_align_of_dst(&bcx.build(), content_ty, info);
 
                     // `Box<ZeroSizeType>` does not allocate.
                     let needs_free = ICmp(bcx,

@@ -12,8 +12,10 @@ use llvm::ValueRef;
 use rustc::middle::ty::{self, Ty, TypeFoldable};
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
+use trans::abi;
 use trans::adt;
 use trans::base;
+use trans::builder::Builder;
 use trans::common::{self, BlockAndBuilder};
 use trans::consts;
 use trans::machine;
@@ -52,6 +54,18 @@ impl<'tcx> LvalueRef<'tcx> {
         drop::drop_fill(bcx, lltemp, ty);
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
+}
+
+pub fn get_meta(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
+}
+
+pub fn get_dataptr(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
+}
+
+pub fn load_fat_ptr(b: &Builder, fat_ptr: ValueRef) -> (ValueRef, ValueRef) {
+    (b.load(get_dataptr(b, fat_ptr)), b.load(get_meta(b, fat_ptr)))
 }
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
@@ -130,14 +144,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
                         let base_ty = tr_base.ty.to_ty(tcx);
-                        bcx.with_block(|bcx| {
-                            if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
-                                (base::load_ty(bcx, tr_base.llval, base_ty),
-                                 ptr::null_mut())
-                            } else {
-                                base::load_fat_ptr(bcx, tr_base.llval, base_ty)
-                            }
-                        })
+                        if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
+                            (base::load_ty_builder(bcx, tr_base.llval, base_ty),
+                             ptr::null_mut())
+                        } else {
+                            load_fat_ptr(bcx, tr_base.llval)
+                        }
                     }
                     mir::ProjectionElem::Field(ref field, _) => {
                         let base_ty = tr_base.ty.to_ty(tcx);
@@ -153,9 +165,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         } else {
                             adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
                         };
-                        let llprojected = bcx.with_block(|bcx| {
-                            adt::trans_field_ptr(bcx, &base_repr, base, Disr(discr), field.index())
-                        });
+                        let llprojected = adt::trans_field_ptr_builder(bcx, &base_repr, base,
+                                                                       Disr(discr), field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
                         } else {
