@@ -49,7 +49,7 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate rbml;
-pub extern crate rustc_llvm as llvm;
+extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_front;
 extern crate rustc_data_structures;
