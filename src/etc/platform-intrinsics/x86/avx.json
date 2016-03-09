@@ -16,6 +16,13 @@
             "args": ["s8SPc"]
         },
         {
+            "intrinsic": "256_cmp_{0.data_type}",
+            "width": [256],
+            "llvm": "cmp.{1.data_type}.256",
+            "ret": "f(32-64)",
+            "args": ["0", "0", "s8S"]
+        },
+        {
             "intrinsic": "256_cvtepi32_pd",
             "width": [256],
             "llvm": "cvtdq2.pd.256",
