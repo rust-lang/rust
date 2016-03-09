@@ -192,7 +192,7 @@ impl<'tcx> TraitDef<'tcx> {
     /// overlap information if the impl overlaps but does not specialize an
     /// existing impl.
     pub fn add_impl_for_specialization<'a>(&self,
-                                           tcx: &'a ctxt<'tcx>,
+                                           tcx: &'a TyCtxt<'tcx>,
                                            impl_def_id: DefId)
                                            -> Result<(), traits::Overlap<'a, 'tcx>> {
         assert!(impl_def_id.is_local());

@@ -34,7 +34,6 @@ use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
-use middle::traits;
 
 use rustc_const_eval::ConstInt;
 

@@ -28,6 +28,7 @@ use rustc::mir::mir_map::MirMap;
 use rustc::middle::infer;
 use rustc::middle::region::CodeExtentData;
 use rustc::middle::traits::ProjectionMode;
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc_front::hir;
