@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, get_type_id)]
 #![allow(dead_code)]
 
 mod foo {
@@ -24,6 +24,11 @@ mod foo {
 fn g() {
     use foo::T;
     ().f(); // Check that this does not trigger a privacy error
+}
+
+fn f() {
+    let error = ::std::thread::spawn(|| {}).join().unwrap_err();
+    error.get_type_id(); // Regression test for #21670
 }
 
 #[rustc_error]

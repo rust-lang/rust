@@ -289,7 +289,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     };
-                    self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent, name);
                     let def = Def::Mod(def_id);
                     let module = self.new_extern_crate_module(parent_link, def, is_public, item.id);
@@ -495,15 +494,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             modifiers = modifiers | DefModifiers::IMPORTABLE;
         }
 
-        let is_exported = is_public &&
-                          match new_parent.def_id() {
-            None => true,
-            Some(did) => self.external_exports.contains(&did),
-        };
-        if is_exported {
-            self.external_exports.insert(def.def_id());
-        }
-
         match def {
             Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) | Def::TyAlias(..) => {
                 debug!("(building reduced graph for external crate) building module {} {}",
@@ -552,10 +542,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                            trait_item_name);
 
                     self.trait_item_map.insert((trait_item_name, def_id), trait_item_def.def_id());
-
-                    if is_exported {
-                        self.external_exports.insert(trait_item_def.def_id());
-                    }
                 }
 
                 let parent_link = ModuleParentLink(new_parent, name);
