@@ -223,8 +223,8 @@ fn execute() -> i32 {
                                                                       file.display()));
                     if let Some(path) = path_tmp.as_ref() {
                         msg!("Using rustfmt config file {} for {}",
-                                 path.display(),
-                                 file.display());
+                             path.display(),
+                             file.display());
                     }
                     config = config_tmp;
                 }
