@@ -350,10 +350,14 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                            "the `#[rustc_move_fragments]` attribute \
                                             is just used for rustc unit tests \
                                             and will never be stable")),
-    ("rustc_mir", Normal, Gated("rustc_attrs",
-                                "the `#[rustc_mir]` attribute \
-                                 is just used for rustc unit tests \
-                                 and will never be stable")),
+    ("rustc_mir", Whitelisted, Gated("rustc_attrs",
+                                     "the `#[rustc_mir]` attribute \
+                                      is just used for rustc unit tests \
+                                      and will never be stable")),
+    ("rustc_no_mir", Whitelisted, Gated("rustc_attrs",
+                                        "the `#[rustc_no_mir]` attribute \
+                                         is just used to make tests pass \
+                                         and will never be stable")),
 
     ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),

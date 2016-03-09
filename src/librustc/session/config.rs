@@ -663,6 +663,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print the result of the translation item collection pass"),
     mir_opt_level: Option<usize> = (None, parse_opt_uint,
           "set the MIR optimization level (0-3)"),
+    orbit: bool = (false, parse_bool,
+          "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }
 
 pub fn default_lib_output() -> CrateType {
