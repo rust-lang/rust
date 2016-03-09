@@ -18,7 +18,7 @@ use rustc::mir::repr as mir;
 use trans::asm;
 use trans::base;
 use trans::callee::Callee;
-use trans::common::{self, BlockAndBuilder, Result};
+use trans::common::{self, C_uint, BlockAndBuilder, Result};
 use trans::debuginfo::DebugLoc;
 use trans::declare;
 use trans::adt;
@@ -176,13 +176,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Slice { ref input, from_start, from_end } => {
                 let ccx = bcx.ccx();
                 let input = self.trans_lvalue(&bcx, input);
-                let (llbase, lllen) = bcx.with_block(|bcx| {
-                    tvec::get_base_and_len(bcx,
-                                           input.llval,
-                                           input.ty.to_ty(bcx.tcx()))
-                });
-                let llbase1 = bcx.gepi(llbase, &[from_start]);
-                let adj = common::C_uint(ccx, from_start + from_end);
+                let ty = input.ty.to_ty(bcx.tcx());
+                let (llbase1, lllen) = match ty.sty {
+                    ty::TyArray(_, n) => {
+                        (bcx.gepi(input.llval, &[0, from_start]), C_uint(ccx, n))
+                    }
+                    ty::TySlice(_) | ty::TyStr => {
+                        (bcx.gepi(input.llval, &[from_start]), input.llextra)
+                    }
+                    _ => unreachable!("cannot slice {}", ty)
+                };
+                let adj = C_uint(ccx, from_start + from_end);
                 let lllen1 = bcx.sub(lllen, adj);
                 bcx.store(llbase1, get_dataptr(&bcx, dest.llval));
                 bcx.store(lllen1, get_meta(&bcx, dest.llval));
@@ -443,7 +447,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let llty = type_of::type_of(bcx.ccx(), content_ty);
                 let llsize = machine::llsize_of(bcx.ccx(), llty);
                 let align = type_of::align_of(bcx.ccx(), content_ty);
-                let llalign = common::C_uint(bcx.ccx(), align);
+                let llalign = C_uint(bcx.ccx(), align);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);
                 let mut llval = None;
