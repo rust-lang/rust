@@ -141,26 +141,20 @@ impl<'a> NameResolution<'a> {
         Ok(())
     }
 
-    // Returns the resolution of the name assuming no more globs will define it.
-    fn result(&self, allow_private_imports: bool) -> ResolveResult<&'a NameBinding<'a>> {
-        match self.binding {
-            Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) => Success(binding),
-            // If we don't allow private imports and no public imports can define the name, fail.
-            _ if !allow_private_imports && self.pub_outstanding_references == 0 &&
-                 !self.binding.map(NameBinding::is_public).unwrap_or(false) => Failed(None),
-            _ if self.outstanding_references > 0 => Indeterminate,
-            Some(binding) => Success(binding),
-            None => Failed(None),
-        }
-    }
-
     // Returns Some(the resolution of the name), or None if the resolution depends
     // on whether more globs can define the name.
     fn try_result(&self, allow_private_imports: bool)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
-        match self.result(allow_private_imports) {
-            Failed(_) => None,
-            result @ _ => Some(result),
+        match self.binding {
+            Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) =>
+                Some(Success(binding)),
+            // If (1) we don't allow private imports, (2) no public single import can define the
+            // name, and (3) no public glob has defined the name, the resolution depends on globs.
+            _ if !allow_private_imports && self.pub_outstanding_references == 0 &&
+                 !self.binding.map(NameBinding::is_public).unwrap_or(false) => None,
+            _ if self.outstanding_references > 0 => Some(Indeterminate),
+            Some(binding) => Some(Success(binding)),
+            None => None,
         }
     }
 
