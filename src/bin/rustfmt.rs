@@ -28,6 +28,15 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
+macro_rules! msg(
+    ($($arg:tt)*) => (
+        match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
+            Ok(_) => {},
+            Err(x) => panic!("Unable to write to stderr: {}", x),
+        }
+    )
+);
+
 /// Rustfmt operations.
 enum Operation {
     /// Format files and their child modules.
@@ -203,7 +212,7 @@ fn execute() -> i32 {
                 path = path_tmp;
             };
             if let Some(path) = path.as_ref() {
-                println!("Using rustfmt config file {}", path.display());
+                msg!("Using rustfmt config file {}", path.display());
             }
             for file in files {
                 // Check the file directory if the config-path could not be read or not provided
@@ -213,7 +222,7 @@ fn execute() -> i32 {
                                                                        for {}",
                                                                       file.display()));
                     if let Some(path) = path_tmp.as_ref() {
-                        println!("Using rustfmt config file {} for {}",
+                        msg!("Using rustfmt config file {} for {}",
                                  path.display(),
                                  file.display());
                     }
