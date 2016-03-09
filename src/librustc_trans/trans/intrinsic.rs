@@ -22,7 +22,7 @@ use trans::adt;
 use trans::attributes;
 use trans::base::*;
 use trans::build::*;
-use trans::callee;
+use trans::callee::{self, Callee};
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
@@ -45,6 +45,7 @@ use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
 
+use rustc::lint;
 use rustc::session::Session;
 use syntax::codemap::Span;
 
@@ -125,29 +126,41 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                                                transmute_restriction.substituted_to);
         let from_type_size = machine::llbitsize_of_real(ccx, llfromtype);
         let to_type_size = machine::llbitsize_of_real(ccx, lltotype);
+
+        if let ty::TyFnDef(..) = transmute_restriction.substituted_from.sty {
+            if to_type_size == machine::llbitsize_of_real(ccx, ccx.int_type()) {
+                // FIXME #19925 Remove this warning after a release cycle.
+                lint::raw_emit_lint(&ccx.tcx().sess,
+                                    &ccx.tcx().sess.lint_store.borrow(),
+                                    lint::builtin::TRANSMUTE_FROM_FN_ITEM_TYPES,
+                                    (lint::Warn, lint::LintSource::Default),
+                                    Some(transmute_restriction.span),
+                                    &format!("`{}` is now zero-sized and has to be cast \
+                                              to a pointer before transmuting to `{}`",
+                                             transmute_restriction.substituted_from,
+                                             transmute_restriction.substituted_to));
+                continue;
+            }
+        }
         if from_type_size != to_type_size {
             last_failing_id = Some(transmute_restriction.id);
 
             if transmute_restriction.original_from != transmute_restriction.substituted_from {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
                     &format!("transmute called with differently sized types: \
-                              {} (could be {} bit{}) to {} (could be {} bit{})",
+                              {} (could be {} bits) to {} (could be {} bits)",
                              transmute_restriction.original_from,
-                             from_type_size as usize,
-                             if from_type_size == 1 {""} else {"s"},
+                             from_type_size,
                              transmute_restriction.original_to,
-                             to_type_size as usize,
-                             if to_type_size == 1 {""} else {"s"}));
+                             to_type_size));
             } else {
                 span_transmute_size_error(ccx.sess(), transmute_restriction.span,
                     &format!("transmute called with differently sized types: \
-                              {} ({} bit{}) to {} ({} bit{})",
+                              {} ({} bits) to {} ({} bits)",
                              transmute_restriction.original_from,
-                             from_type_size as usize,
-                             if from_type_size == 1 {""} else {"s"},
+                             from_type_size,
                              transmute_restriction.original_to,
-                             to_type_size as usize,
-                             if to_type_size == 1 {""} else {"s"}));
+                             to_type_size));
             }
         }
     }
@@ -179,6 +192,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let foreign_item = tcx.map.expect_foreign_item(node);
     let name = foreign_item.name.as_str();
 
+    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
+
     // For `transmute` we can just trans the input expr directly into dest
     if name == "transmute" {
         let llret_ty = type_of::type_of(ccx, ret_ty.unwrap());
@@ -193,6 +208,27 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
                 let in_type_size = machine::llbitsize_of_real(ccx, llintype);
                 let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
+
+                if let ty::TyFnDef(def_id, substs, _) = in_type.sty {
+                    if out_type_size != 0 {
+                        // FIXME #19925 Remove this hack after a release cycle.
+                        let _ = unpack_datum!(bcx, expr::trans(bcx, &arg_exprs[0]));
+                        let llfn = Callee::def(ccx, def_id, substs, in_type).reify(ccx).val;
+                        let llfnty = val_ty(llfn);
+                        let llresult = match dest {
+                            expr::SaveIn(d) => d,
+                            expr::Ignore => alloc_ty(bcx, out_type, "ret")
+                        };
+                        Store(bcx, llfn, PointerCast(bcx, llresult, llfnty.ptr_to()));
+                        if dest == expr::Ignore {
+                            bcx = glue::drop_ty(bcx, llresult, out_type,
+                                                call_debug_location);
+                        }
+                        fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
+                        fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
+                        return Result::new(bcx, llresult);
+                    }
+                }
 
                 // This should be caught by the intrinsicck pass
                 assert_eq!(in_type_size, out_type_size);
@@ -310,8 +346,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             ccx.sess().bug("expected two exprs as arguments for `move_val_init` intrinsic");
         }
     }
-
-    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
 
     // For `try` we need some custom control flow
     if &name[..] == "try" {
