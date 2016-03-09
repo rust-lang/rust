@@ -1431,7 +1431,9 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         };
 
         let check_attrs = |attrs: &[ast::Attribute]| {
-            attrs.iter().any(|item| item.check_name("rustc_mir"))
+            let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
+            let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
+            default_to_mir ^ attrs.iter().any(|item| item.check_name(invert))
         };
 
         let use_mir = if let Some(id) = local_id {
@@ -1449,13 +1451,13 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         };
 
         FunctionContext {
+            needs_ret_allocas: nested_returns && mir.is_none(),
             mir: mir,
             llfn: llfndecl,
             llretslotptr: Cell::new(None),
             param_env: ccx.tcx().empty_parameter_environment(),
             alloca_insert_pt: Cell::new(None),
             llreturn: Cell::new(None),
-            needs_ret_allocas: nested_returns,
             landingpad_alloca: Cell::new(None),
             lllocals: RefCell::new(NodeMap()),
             llupvars: RefCell::new(NodeMap()),
