@@ -1287,6 +1287,9 @@ pub fn check_crate(tcx: &TyCtxt, access_levels: &AccessLevels) {
     }
 
     *tcx.node_lint_levels.borrow_mut() = cx.node_levels.into_inner();
+
+    // Put the lint store back in the session.
+    mem::replace(&mut *tcx.sess.lint_store.borrow_mut(), cx.lints);
 }
 
 pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
