@@ -63,6 +63,8 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
     }
 
     fn to_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
+        let mut ty = self.cx.tcx.node_id_to_type(pat.id);
+
         let kind = match pat.node {
             PatKind::Wild => PatternKind::Wild,
 
@@ -169,6 +171,17 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                     hir::BindByRef(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByRef(region.unwrap(), BorrowKind::Shared)),
                 };
+
+                // A ref x pattern is the same node used for x, and as such it has
+                // x's type, which is &T, where we want T (the type being matched).
+                if let hir::BindByRef(_) = bm {
+                    if let ty::TyRef(_, mt) = ty.sty {
+                        ty = mt.ty;
+                    } else {
+                        unreachable!("`ref {}` has wrong type {}", ident.node, ty);
+                    }
+                }
+
                 PatternKind::Binding {
                     mutability: mutability,
                     mode: mode,
@@ -233,8 +246,6 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 self.cx.tcx.sess.span_bug(pat.span, "unexpanded macro or bad constant etc");
             }
         };
-
-        let ty = self.cx.tcx.node_id_to_type(pat.id);
 
         Pattern {
             span: pat.span,
@@ -312,22 +323,5 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                                           &format!("inappropriate def for pattern: {:?}", def));
             }
         }
-    }
-}
-
-impl<'tcx> FieldPattern<'tcx> {
-    pub fn field_ty(&self) -> Ty<'tcx> {
-        debug!("field_ty({:?},ty={:?})", self, self.pattern.ty);
-        let r = match *self.pattern.kind {
-            PatternKind::Binding { mode: BindingMode::ByRef(..), ..} => {
-                match self.pattern.ty.sty {
-                    ty::TyRef(_, mt) => mt.ty,
-                    _ => unreachable!()
-                }
-            }
-            _ => self.pattern.ty
-        };
-        debug!("field_ty -> {:?}", r);
-        r
     }
 }
