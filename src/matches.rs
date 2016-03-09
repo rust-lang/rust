@@ -439,6 +439,7 @@ fn match_template(cx: &LateContext, span: Span, source: MatchSource, op: &str, e
         MatchSource::IfLetDesugar { .. } => format!("if let ... = {}{} {{", op, expr_snippet),
         MatchSource::WhileLetDesugar => format!("while let ... = {}{} {{", op, expr_snippet),
         MatchSource::ForLoopDesugar => cx.sess().span_bug(span, "for loop desugared to match with &-patterns!"),
+        MatchSource::TryDesugar => cx.sess().span_bug(span, "`?` operator desugared to match with &-patterns!")
     }
 }
 
