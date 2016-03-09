@@ -351,15 +351,9 @@ impl<'v> Visitor<'v> for LifeSeeder {
             }
             hir::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
-                    match impl_item.node {
-                        hir::ImplItemKind::Const(..) |
-                        hir::ImplItemKind::Method(..) => {
-                            if opt_trait.is_some() ||
-                                    has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
-                                self.worklist.push(impl_item.id);
-                            }
-                        }
-                        hir::ImplItemKind::Type(_) => {}
+                    if opt_trait.is_some() ||
+                            has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
+                        self.worklist.push(impl_item.id);
                     }
                 }
             }
