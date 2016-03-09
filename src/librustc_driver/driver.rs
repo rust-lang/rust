@@ -768,7 +768,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         freevars,
         export_map,
         trait_map,
-        external_exports,
         glob_map,
     } = time(time_passes,
              "resolution",
@@ -829,9 +828,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         analysis.access_levels =
             time(time_passes, "privacy checking", || {
-                rustc_privacy::check_crate(tcx,
-                                           &analysis.export_map,
-                                           external_exports)
+                rustc_privacy::check_crate(tcx, &analysis.export_map)
             });
 
         // Do not move this check past lint

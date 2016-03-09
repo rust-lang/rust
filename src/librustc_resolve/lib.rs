@@ -55,10 +55,9 @@ use rustc::middle::cstore::{CrateStore, DefLike, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
-use rustc::middle::privacy::ExternalExports;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
+use rustc::util::nodemap::{NodeMap, FnvHashMap};
 
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
@@ -1093,7 +1092,6 @@ pub struct Resolver<'a, 'tcx: 'a> {
     freevars_seen: NodeMap<NodeMap<usize>>,
     export_map: ExportMap,
     trait_map: TraitMap,
-    external_exports: ExternalExports,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
@@ -1184,7 +1182,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: NodeMap(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
-            external_exports: DefIdSet(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
@@ -3716,7 +3713,6 @@ pub struct CrateMap {
     pub freevars: FreevarMap,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
-    pub external_exports: ExternalExports,
     pub glob_map: Option<GlobMap>,
 }
 
@@ -3754,7 +3750,6 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
         freevars: resolver.freevars,
         export_map: resolver.export_map,
         trait_map: resolver.trait_map,
-        external_exports: resolver.external_exports,
         glob_map: if resolver.make_glob_map {
             Some(resolver.glob_map)
         } else {

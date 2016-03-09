@@ -545,6 +545,10 @@ pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
     })
 }
 
+pub fn get_visibility(cdata: Cmd, id: DefIndex) -> hir::Visibility {
+    item_visibility(cdata.lookup_item(id))
+}
+
 pub fn get_repr_attrs(cdata: Cmd, id: DefIndex) -> Vec<attr::ReprAttr> {
     let item = cdata.lookup_item(id);
     match reader::maybe_get_doc(item, tag_items_data_item_repr).map(|doc| {
