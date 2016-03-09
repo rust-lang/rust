@@ -246,6 +246,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -263,6 +265,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::with_capacity(10);
@@ -277,6 +281,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// arbitrary order.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -295,6 +301,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -315,6 +323,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// Returns the number of elements the binary heap can hold without reallocating.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -340,6 +350,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -361,6 +373,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -376,6 +390,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// Discards as much additional capacity as possible.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -394,6 +410,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// is empty.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -418,6 +436,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -439,6 +459,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// an optimized fashion.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// #![feature(binary_heap_extras)]
@@ -478,6 +500,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// #![feature(binary_heap_extras)]
     ///
@@ -508,6 +532,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 7]);
@@ -527,6 +553,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// (ascending) order.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -628,6 +656,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::from(vec![1, 3]);
@@ -642,6 +672,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// Checks if the binary heap is empty.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -666,6 +698,8 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::from(vec![1, 3]);
@@ -687,6 +721,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// Drops all items from the binary heap.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
@@ -914,6 +950,8 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
     /// after calling this.
     ///
     /// # Examples
+    ///
+    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BinaryHeap;
