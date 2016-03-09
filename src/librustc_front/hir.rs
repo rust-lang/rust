@@ -793,8 +793,8 @@ pub enum Expr_ {
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
-    /// Output of the `asm!()` macro
-    ExprInlineAsm(InlineAsm),
+    /// Inline assembly (from `asm!`), with its outputs and inputs.
+    ExprInlineAsm(InlineAsm, Vec<P<Expr>>, Vec<P<Expr>>),
 
     /// A struct literal expression.
     ///
@@ -978,7 +978,6 @@ pub enum Ty_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
     pub constraint: InternedString,
-    pub expr: P<Expr>,
     pub is_rw: bool,
     pub is_indirect: bool,
 }
@@ -988,7 +987,7 @@ pub struct InlineAsm {
     pub asm: InternedString,
     pub asm_str_style: StrStyle,
     pub outputs: HirVec<InlineAsmOutput>,
-    pub inputs: HirVec<(InternedString, P<Expr>)>,
+    pub inputs: HirVec<InternedString>,
     pub clobbers: HirVec<InternedString>,
     pub volatile: bool,
     pub alignstack: bool,

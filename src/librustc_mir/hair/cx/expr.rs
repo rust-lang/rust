@@ -337,8 +337,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 convert_path_expr(cx, self)
             }
 
-            hir::ExprInlineAsm(ref asm) => {
-                ExprKind::InlineAsm { asm: asm }
+            hir::ExprInlineAsm(ref asm, ref outputs, ref inputs) => {
+                ExprKind::InlineAsm {
+                    asm: asm,
+                    outputs: outputs.to_ref(),
+                    inputs: inputs.to_ref()
+                }
             }
 
             // Now comes the rote stuff:

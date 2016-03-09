@@ -1037,8 +1037,18 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 trans_assign_op(bcx, expr, op, &dst, &src)
             }
         }
-        hir::ExprInlineAsm(ref a) => {
-            asm::trans_inline_asm(bcx, a)
+        hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
+            let outputs = outputs.iter().map(|output| {
+                let out_datum = unpack_datum!(bcx, trans(bcx, output));
+                unpack_datum!(bcx, out_datum.to_lvalue_datum(bcx, "out", expr.id))
+            }).collect();
+            let inputs = inputs.iter().map(|input| {
+                let input = unpack_datum!(bcx, trans(bcx, input));
+                let input = unpack_datum!(bcx, input.to_rvalue_datum(bcx, "in"));
+                input.to_llscalarish(bcx)
+            }).collect();
+            asm::trans_inline_asm(bcx, a, outputs, inputs);
+            bcx
         }
         _ => {
             bcx.tcx().sess.span_bug(

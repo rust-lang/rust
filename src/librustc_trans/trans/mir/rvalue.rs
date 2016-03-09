@@ -19,6 +19,7 @@ use trans::asm;
 use trans::base;
 use trans::callee::Callee;
 use trans::common::{self, C_uint, BlockAndBuilder, Result};
+use trans::datum::{Datum, Lvalue};
 use trans::debuginfo::DebugLoc;
 use trans::declare;
 use trans::adt;
@@ -193,10 +194,25 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 bcx
             }
 
-            mir::Rvalue::InlineAsm(ref inline_asm) => {
-                bcx.map_block(|bcx| {
-                    asm::trans_inline_asm(bcx, inline_asm)
-                })
+            mir::Rvalue::InlineAsm { ref asm, ref outputs, ref inputs } => {
+                let outputs = outputs.iter().map(|output| {
+                    let lvalue = self.trans_lvalue(&bcx, output);
+                    Datum::new(lvalue.llval, lvalue.ty.to_ty(bcx.tcx()),
+                               Lvalue::new("out"))
+                }).collect();
+
+                let input_vals = inputs.iter().map(|input| {
+                    self.trans_operand(&bcx, input).immediate()
+                }).collect();
+
+                bcx.with_block(|bcx| {
+                    asm::trans_inline_asm(bcx, asm, outputs, input_vals);
+                });
+
+                for input in inputs {
+                    self.set_operand_dropped(&bcx, input);
+                }
+                bcx
             }
 
             _ => {
@@ -472,7 +488,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) |
             mir::Rvalue::Slice { .. } |
-            mir::Rvalue::InlineAsm(..) => {
+            mir::Rvalue::InlineAsm { .. } => {
                 bcx.tcx().sess.bug(&format!("cannot generate operand from rvalue {:?}", rvalue));
             }
         }
@@ -596,7 +612,7 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) |
         mir::Rvalue::Slice { .. } |
-        mir::Rvalue::InlineAsm(..) =>
+        mir::Rvalue::InlineAsm { .. } =>
             false,
     }
 
