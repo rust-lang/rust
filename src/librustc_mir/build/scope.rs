@@ -208,11 +208,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self, extent: CodeExtent, mut block: BasicBlock, f: F) -> BlockAnd<R>
-        where F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>
+        where F: FnOnce(&mut Builder<'a, 'tcx>, ScopeId) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        self.push_scope(extent, block);
-        let rv = unpack!(block = f(self));
+        let id = self.push_scope(extent, block);
+        let rv = unpack!(block = f(self, id));
         unpack!(block = self.pop_scope(extent, block));
         debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
         block.and(rv)
@@ -222,7 +222,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) {
+    pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) -> ScopeId {
         debug!("push_scope({:?})", extent);
         let parent_id = self.scopes.last().map(|s| s.id);
         let id = ScopeId::new(self.scope_data_vec.vec.len());
@@ -240,6 +240,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             dom: self.cfg.current_location(entry),
             postdoms: vec![]
         });
+        id
     }
 
     /// Pops a scope, which should have extent `extent`, adding any
@@ -319,6 +320,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            .next()
             }
         }.unwrap_or_else(|| hir.span_bug(span, "no enclosing loop scope found?"))
+    }
+
+    pub fn innermost_scope_id(&self) -> ScopeId {
+        self.scopes.last().map(|scope| scope.id).unwrap()
     }
 
     pub fn extent_of_innermost_scope(&self) -> CodeExtent {
