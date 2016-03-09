@@ -89,7 +89,7 @@ use std::thread;
 use rustc::session::{early_error, early_warn};
 
 use syntax::ast;
-use syntax::parse;
+use syntax::parse::{self, PResult};
 use syntax::errors;
 use syntax::errors::emitter::Emitter;
 use syntax::diagnostics;
@@ -531,7 +531,19 @@ impl RustcDefaultCalls {
             return Compilation::Continue;
         }
 
-        let attrs = input.map(|input| parse_crate_attrs(sess, input));
+        let attrs = match input {
+            None => None,
+            Some(input) => {
+                let result = parse_crate_attrs(sess, input);
+                match result {
+                    Ok(attrs) => Some(attrs),
+                    Err(mut parse_error) => {
+                        parse_error.emit();
+                        return Compilation::Stop;
+                    }
+                }
+            }
+        };
         for req in &sess.opts.prints {
             match *req {
                 PrintRequest::TargetList => {
@@ -977,8 +989,8 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     Some(matches)
 }
 
-fn parse_crate_attrs(sess: &Session, input: &Input) -> Vec<ast::Attribute> {
-    let result = match *input {
+fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
+    match *input {
         Input::File(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile, Vec::new(), &sess.parse_sess)
         }
@@ -988,8 +1000,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) -> Vec<ast::Attribute> {
                                                      Vec::new(),
                                                      &sess.parse_sess)
         }
-    };
-    result.into_iter().collect()
+    }
 }
 
 /// Run a procedure which will detect panics in the compiler and print nicer

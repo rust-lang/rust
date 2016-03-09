@@ -686,7 +686,7 @@ pub fn pretty_print_input(sess: Session,
                           ppm: PpMode,
                           opt_uii: Option<UserIdentifiedItem>,
                           ofile: Option<PathBuf>) {
-    let krate = driver::phase_1_parse_input(&sess, cfg, input);
+    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, input));
 
     let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
         let mut fold = ReplaceBodyWithLoop::new();

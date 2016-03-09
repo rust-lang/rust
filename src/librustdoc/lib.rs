@@ -43,7 +43,7 @@ extern crate rustc_back;
 extern crate rustc_front;
 extern crate rustc_metadata;
 extern crate serialize;
-extern crate syntax;
+#[macro_use] extern crate syntax;
 extern crate test as testing;
 extern crate rustc_unicode;
 #[macro_use] extern crate log;
