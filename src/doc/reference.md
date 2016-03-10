@@ -3328,6 +3328,10 @@ The primitive types are the following:
 * The boolean type `bool` with values `true` and `false`.
 * The machine types (integer and floating-point).
 * The machine-dependent integer types.
+* Arrays
+* Tuples
+* Slices
+* Function pointers
 
 #### Machine types
 
