@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Add constructor and getter functions to `std::net::Ipv6Addr` that are
+Add constructor and conversion functions for `std::net::Ipv6Addr` that are
 oriented around octets.
 
 # Motivation
@@ -25,29 +25,43 @@ by `std::net::Ipv6Addr`.
 # Detailed design
 [design]: #detailed-design
 
-Two functions would be added to `impl std::net::Ipv6Addr`:
+The following method would be added to `impl std::net::Ipv6Addr`:
 
 ```
-pub fn from_octets(octets: &[u8; 16]) -> Ipv6Addr {
-	let mut addr: c::in6_addr = unsafe { std::mem::zeroed() };
-	addr.s6_addr = *octets;
-	Ipv6Addr { inner: addr }
+pub fn octets(&self) -> [u8; 16] {
+	self.inner.s6_addr
 }
-pub fn octets(&self) -> &[u8; 16] {
-	&self.inner.s6_addr
+```
+
+The following `From` trait would be implemented:
+
+```
+impl From<[u8; 16]> for Ipv6Addr {
+	fn from(octets: [u8; 16]) -> Ipv6Addr {
+		let mut addr: c::in6_addr = unsafe { std::mem::zeroed() };
+		addr.s6_addr = octets;
+		Ipv6Addr { inner: addr }
+	}
+}
+```
+
+For consistency, the following `From` trait would be
+implemented for `Ipv4Addr`:
+
+```
+impl From<[u8; 4]> for Ipv4Addr {
+	fn from(octets: [u8; 4]) -> Ipv4Addr {
+		Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
+	}
 }
 ```
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-It adds additional functions to the `Ipv6Addr` API, which increases cognitive load
+It adds additional functions to the API, which increases cognitive load
 and maintenance burden.  That said, the functions are conceptually very simple
 and their implementations short.
-
-Returning a reference from `octets` ties the interface to the internal representation
-of `Ipv6Addr`, which is currently `[u8; 16]`.  It would not be possible to change `Ipv6Addr`
-to use a different representation without changing the return type of `octets` to be a non-reference.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -58,12 +72,6 @@ respect to byte ordering) to convert between `Ipv6Addr` and the on-wire
 representation of IPv6 addresses.  Or they will use their alternative
 implementations of `Ipv6Addr`, fragmenting the ecosystem.
 
-`octets` could return a non-reference to avoid tying the interface to the
-internal representation.  However, it seems unlikely that the internal
-representation would ever be anything besides a `[u8; 16]`.
-
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should `octets` return a reference?  Pro: avoid a copy.  Con: ties the interface to the internal
-representation, which is presently `[u8; 16]`.
