@@ -58,11 +58,14 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                     return;
                 }
                 let fn_ty = cx.tcx.expr_ty(caller);
-                if let ty::TyBareFn(_, fn_ty) = fn_ty.sty {
+                match fn_ty.sty {
                     // Is it an unsafe function? They don't implement the closure traits
-                    if fn_ty.unsafety == Unsafety::Unsafe {
-                        return;
+                    ty::TyFnDef(_, _, fn_ty) | ty::TyFnPtr(fn_ty) => {
+                        if fn_ty.unsafety == Unsafety::Unsafe {
+                            return;
+                        }
                     }
+                    _ => (),
                 }
                 for (ref a1, ref a2) in decl.inputs.iter().zip(args) {
                     if let PatKind::Ident(_, ident, _) = a1.pat.node {

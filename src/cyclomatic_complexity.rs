@@ -124,13 +124,14 @@ impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
             ExprCall(ref callee, _) => {
                 walk_expr(self, e);
                 let ty = self.tcx.node_id_to_type(callee.id);
-                if let ty::TyBareFn(_, ty) = ty.sty {
-                    if ty.sig.skip_binder().output.diverges() {
+                match ty.sty {
+                    ty::TyFnDef(_, _, ty) | ty::TyFnPtr(ty) if ty.sig.skip_binder().output.diverges() => {
                         self.divergence += 1;
                     }
+                    _ => (),
                 }
             }
-            ExprClosure(..) => {}
+            ExprClosure(..) => (),
             ExprBinary(op, _, _) => {
                 walk_expr(self, e);
                 match op.node {
