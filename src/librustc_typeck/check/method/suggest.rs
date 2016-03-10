@@ -141,7 +141,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if !static_sources.is_empty() {
                 err.fileline_note(
                     span,
-                    "found defined static methods, maybe a `self` is missing?");
+                    "found the following associated functions; to be used as \
+                     methods, functions must have a `self` parameter");
 
                 report_candidates(fcx, &mut err, span, item_name, static_sources);
             }
