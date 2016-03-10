@@ -22,6 +22,7 @@ use middle::def_id::DefId;
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
+use syntax::attr::ThinAttributesExt;
 use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
 
@@ -718,6 +719,8 @@ impl<'ast> Map<'ast> {
             Some(NodeTraitItem(ref ti)) => Some(&ti.attrs[..]),
             Some(NodeImplItem(ref ii)) => Some(&ii.attrs[..]),
             Some(NodeVariant(ref v)) => Some(&v.node.attrs[..]),
+            Some(NodeExpr(ref e)) => Some(e.attrs.as_attr_slice()),
+            Some(NodeStmt(ref s)) => Some(s.node.attrs()),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             Some(NodeStructCtor(_)) => {
