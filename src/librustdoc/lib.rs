@@ -108,7 +108,8 @@ const PASSES: &'static [Pass] = &[
     ("collapse-docs", passes::collapse_docs,
      "concatenates all document attributes into one document attribute"),
     ("strip-private", passes::strip_private,
-     "strips all private items from a crate which cannot be seen externally"),
+     "strips all private items from a crate which cannot be seen externally, \
+      implies strip-priv-imports"),
     ("strip-priv-imports", passes::strip_priv_imports,
      "strips all private import statements (`use`, `extern crate`) from a crate"),
 ];
