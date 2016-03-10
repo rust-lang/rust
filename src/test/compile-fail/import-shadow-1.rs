@@ -13,7 +13,7 @@
 #![no_implicit_prelude]
 
 use foo::*;
-use bar::*; //~ERROR a type named `Baz` has already been imported in this module
+use bar::*;
 
 mod foo {
     pub type Baz = isize;
@@ -23,8 +23,6 @@ mod bar {
     pub type Baz = isize;
 }
 
-mod qux {
-    pub use bar::Baz;
+fn main() {
+    Baz; //~ ERROR
 }
-
-fn main() {}
