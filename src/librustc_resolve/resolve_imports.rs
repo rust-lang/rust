@@ -124,8 +124,10 @@ impl ImportDirective {
 #[derive(Clone, Default)]
 /// Records information about the resolution of a name in a module.
 pub struct NameResolution<'a> {
-    /// The number of unresolved single imports that could define the name.
-    outstanding_references: usize,
+    /// The number of unresolved single imports of any visibility that could define the name.
+    outstanding_references: u32,
+    /// The number of unresolved `pub` single imports that could define the name.
+    pub_outstanding_references: u32,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
     duplicate_globs: Vec<&'a NameBinding<'a>>,
@@ -151,9 +153,12 @@ impl<'a> NameResolution<'a> {
     }
 
     // Returns the resolution of the name assuming no more globs will define it.
-    fn result(&self) -> ResolveResult<&'a NameBinding<'a>> {
+    fn result(&self, allow_private_imports: bool) -> ResolveResult<&'a NameBinding<'a>> {
         match self.binding {
             Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) => Success(binding),
+            // If we don't allow private imports and no public imports can define the name, fail.
+            _ if !allow_private_imports && self.pub_outstanding_references == 0 &&
+                 !self.binding.map(NameBinding::is_public).unwrap_or(false) => Failed(None),
             _ if self.outstanding_references > 0 => Indeterminate,
             Some(binding) => Success(binding),
             None => Failed(None),
@@ -162,8 +167,9 @@ impl<'a> NameResolution<'a> {
 
     // Returns Some(the resolution of the name), or None if the resolution depends
     // on whether more globs can define the name.
-    fn try_result(&self) -> Option<ResolveResult<&'a NameBinding<'a>>> {
-        match self.result() {
+    fn try_result(&self, allow_private_imports: bool)
+                  -> Option<ResolveResult<&'a NameBinding<'a>>> {
+        match self.result(allow_private_imports) {
             Success(binding) if binding.defined_with(DefModifiers::PRELUDE) => None,
             Failed(_) => None,
             result @ _ => Some(result),
@@ -200,7 +206,7 @@ impl<'a> ::ModuleS<'a> {
         };
 
         let resolution = resolutions.get(&(name, ns)).cloned().unwrap_or_default();
-        if let Some(result) = resolution.try_result() {
+        if let Some(result) = resolution.try_result(allow_private_imports) {
             // If the resolution doesn't depend on glob definability, check privacy and return.
             return result.and_then(|binding| {
                 let allowed = allow_private_imports || !binding.is_import() || binding.is_public();
@@ -234,7 +240,7 @@ impl<'a> ::ModuleS<'a> {
             }
         }
 
-        resolution.result()
+        resolution.result(true)
     }
 
     // Define the name or return the existing binding if there is a collision.
@@ -246,15 +252,26 @@ impl<'a> ::ModuleS<'a> {
         })
     }
 
-    pub fn increment_outstanding_references_for(&self, name: Name, ns: Namespace) {
+    pub fn increment_outstanding_references_for(&self, name: Name, ns: Namespace, is_public: bool) {
         let mut resolutions = self.resolutions.borrow_mut();
-        resolutions.entry((name, ns)).or_insert_with(Default::default).outstanding_references += 1;
+        let resolution = resolutions.entry((name, ns)).or_insert_with(Default::default);
+        resolution.outstanding_references += 1;
+        if is_public {
+            resolution.pub_outstanding_references += 1;
+        }
     }
 
-    fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace) {
-        self.update_resolution(name, ns, |resolution| match resolution.outstanding_references {
-            0 => panic!("No more outstanding references!"),
-            ref mut outstanding_references => *outstanding_references -= 1,
+    fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace, is_public: bool) {
+        let decrement_references = |count: &mut _| {
+            assert!(*count > 0);
+            *count -= 1;
+        };
+
+        self.update_resolution(name, ns, |resolution| {
+            decrement_references(&mut resolution.outstanding_references);
+            if is_public {
+                decrement_references(&mut resolution.pub_outstanding_references);
+            }
         })
     }
 
@@ -265,11 +282,11 @@ impl<'a> ::ModuleS<'a> {
     {
         let mut resolutions = self.resolutions.borrow_mut();
         let resolution = resolutions.entry((name, ns)).or_insert_with(Default::default);
-        let was_success = resolution.try_result().and_then(ResolveResult::success).is_some();
+        let was_success = resolution.try_result(false).and_then(ResolveResult::success).is_some();
 
         let t = update(resolution);
         if !was_success {
-            if let Some(Success(binding)) = resolution.try_result() {
+            if let Some(Success(binding)) = resolution.try_result(false) {
                 self.define_in_glob_importers(name, ns, binding);
             }
         }
@@ -460,10 +477,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             let mut resolve_in_ns = |ns, determined: bool| {
                 // Temporarily count the directive as determined so that the resolution fails
                 // (as opposed to being indeterminate) when it can only be defined by the directive.
-                if !determined { module_.decrement_outstanding_references_for(target, ns) }
+                if !determined {
+                    module_.decrement_outstanding_references_for(target, ns, directive.is_public)
+                }
                 let result =
                     self.resolver.resolve_name_in_module(target_module, source, ns, false, true);
-                if !determined { module_.increment_outstanding_references_for(target, ns) }
+                if !determined {
+                    module_.increment_outstanding_references_for(target, ns, directive.is_public)
+                }
                 result
             };
             (resolve_in_ns(ValueNS, value_determined.get()),
@@ -494,7 +515,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     self.report_conflict(target, ns, &directive.import(binding, None), old_binding);
                 }
             }
-            module_.decrement_outstanding_references_for(target, ns);
+            module_.decrement_outstanding_references_for(target, ns, directive.is_public);
         }
 
         match (&value_result, &type_result) {
@@ -601,7 +622,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         for (&(name, ns), resolution) in target_module.resolutions.borrow().iter() {
-            if let Some(Success(binding)) = resolution.try_result() {
+            if let Some(Success(binding)) = resolution.try_result(false) {
                 if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
                     let _ = module_.try_define_child(name, ns, directive.import(binding, None));
                 }
