@@ -58,8 +58,30 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
         Output::Console(ref c) => c.get().raw(),
         Output::Pipe(ref p) => return p.get().write(data),
     };
+    // As with stdin on windows, stdout often can't handle writes of large
+    // sizes. For an example, see #14940. For this reason, don't try to
+    // write the entire output buffer on windows.
+    //
+    // For some other references, it appears that this problem has been
+    // encountered by others [1] [2]. We choose the number 8K just because
+    // libuv does the same.
+    //
+    // [1]: https://tahoe-lafs.org/trac/tahoe-lafs/ticket/1232
+    // [2]: http://www.mail-archive.com/log4net-dev@logging.apache.org/msg00661.html
+    const OUT_MAX: usize = 8192;
+    let data_len;
     let utf16 = match str::from_utf8(data).ok() {
-        Some(utf8) => utf8.encode_utf16().collect::<Vec<u16>>(),
+        Some(mut utf8) => {
+            if utf8.len() > OUT_MAX {
+                let mut new_len = OUT_MAX;
+                while !utf8.is_char_boundary(new_len) {
+                    new_len -= 1;
+                }
+                utf8 = &utf8[..new_len];
+            }
+            data_len = utf8.len();
+            utf8.encode_utf16().collect::<Vec<u16>>()
+        }
         None => return Err(invalid_encoding()),
     };
     let mut written = 0;
@@ -74,7 +96,7 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     // FIXME if this only partially writes the utf16 buffer then we need to
     //       figure out how many bytes of `data` were actually written
     assert_eq!(written as usize, utf16.len());
-    Ok(data.len())
+    Ok(data_len)
 }
 
 impl Stdin {
