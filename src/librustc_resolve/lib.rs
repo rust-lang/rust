@@ -1548,7 +1548,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match use_lexical_scope {
             true => module.resolve_name_in_lexical_scope(name, namespace)
                           .map(Success).unwrap_or(Failed(None)),
-            false => module.resolve_name(name, namespace, false),
+            false => {
+                let allow_private_imports = module.is_ancestor_of(self.current_module);
+                module.resolve_name(name, namespace, allow_private_imports)
+            }
         }.and_then(|binding| {
             if record_used {
                 self.record_use(name, namespace, binding);

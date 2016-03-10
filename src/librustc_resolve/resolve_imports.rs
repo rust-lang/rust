@@ -74,7 +74,7 @@ impl<'a> ImportDirective<'a> {
               -> NameBinding<'a> {
         let mut modifiers = match self.is_public && binding.is_public() {
             true => DefModifiers::PUBLIC | DefModifiers::IMPORTABLE,
-            false => DefModifiers::empty(),
+            false => DefModifiers::IMPORTABLE,
         };
         if let GlobImport = self.subclass {
             modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
