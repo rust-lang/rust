@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(issue = "0", feature = "windows_handle")]
+
+use prelude::v1::*;
+
 use cmp;
-use io::ErrorKind;
+use io::{ErrorKind, Read};
 use io;
 use mem;
 use ops::Deref;
 use ptr;
 use sys::c;
 use sys::cvt;
+use sys_common::io::read_to_end_uninitialized;
 use u32;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
@@ -37,6 +42,20 @@ unsafe impl Sync for RawHandle {}
 impl Handle {
     pub fn new(handle: c::HANDLE) -> Handle {
         Handle(RawHandle::new(handle))
+    }
+
+    pub fn new_event(manual: bool, init: bool) -> io::Result<Handle> {
+        unsafe {
+            let event = c::CreateEventW(0 as *mut _,
+                                        manual as c::BOOL,
+                                        init as c::BOOL,
+                                        0 as *const _);
+            if event.is_null() {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(Handle::new(event))
+            }
+        }
     }
 
     pub fn into_raw(self) -> c::HANDLE {
@@ -87,6 +106,64 @@ impl RawHandle {
         }
     }
 
+    pub unsafe fn read_overlapped(&self,
+                                  buf: &mut [u8],
+                                  overlapped: *mut c::OVERLAPPED)
+                                  -> io::Result<Option<usize>> {
+        let len = cmp::min(buf.len(), <c::DWORD>::max_value() as usize) as c::DWORD;
+        let mut amt = 0;
+        let res = cvt({
+            c::ReadFile(self.0, buf.as_ptr() as c::LPVOID,
+                        len, &mut amt, overlapped)
+        });
+        match res {
+            Ok(_) => Ok(Some(amt as usize)),
+            Err(e) => {
+                if e.raw_os_error() == Some(c::ERROR_IO_PENDING as i32) {
+                    Ok(None)
+                } else if e.raw_os_error() == Some(c::ERROR_BROKEN_PIPE as i32) {
+                    Ok(Some(0))
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+
+    pub fn overlapped_result(&self,
+                             overlapped: *mut c::OVERLAPPED,
+                             wait: bool) -> io::Result<usize> {
+        unsafe {
+            let mut bytes = 0;
+            let wait = if wait {c::TRUE} else {c::FALSE};
+            let res = cvt({
+                c::GetOverlappedResult(self.raw(), overlapped, &mut bytes, wait)
+            });
+            match res {
+                Ok(_) => Ok(bytes as usize),
+                Err(e) => {
+                    if e.raw_os_error() == Some(c::ERROR_HANDLE_EOF as i32) ||
+                       e.raw_os_error() == Some(c::ERROR_BROKEN_PIPE as i32) {
+                        Ok(0)
+                    } else {
+                        Err(e)
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn cancel_io(&self) -> io::Result<()> {
+        unsafe {
+            cvt(c::CancelIo(self.raw())).map(|_| ())
+        }
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+        (&mut me).read_to_end(buf)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let mut amt = 0;
         // WriteFile takes a DWORD (u32) for the length so it only supports
@@ -109,5 +186,15 @@ impl RawHandle {
                             options)
         }));
         Ok(Handle::new(ret))
+    }
+}
+
+impl<'a> Read for &'a RawHandle {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
