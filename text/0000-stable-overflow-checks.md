@@ -52,4 +52,13 @@ overflow checks.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-None.
+Cargo might also add a profile option like
+
+```toml
+[profile.dev]
+overflow-checks = true
+```
+
+This may also be accomplished by Cargo's pending support for passing
+arbitrary flags to rustc.
+
