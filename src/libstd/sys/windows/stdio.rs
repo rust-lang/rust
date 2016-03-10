@@ -69,8 +69,7 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     // [1]: https://tahoe-lafs.org/trac/tahoe-lafs/ticket/1232
     // [2]: http://www.mail-archive.com/log4net-dev@logging.apache.org/msg00661.html
     const OUT_MAX: usize = 8192;
-    let data_len;
-    let utf16 = match str::from_utf8(data).ok() {
+    let (utf16, data_len) = match str::from_utf8(data).ok() {
         Some(mut utf8) => {
             if utf8.len() > OUT_MAX {
                 let mut new_len = OUT_MAX;
@@ -79,8 +78,7 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
                 }
                 utf8 = &utf8[..new_len];
             }
-            data_len = utf8.len();
-            utf8.encode_utf16().collect::<Vec<u16>>()
+            (utf8.encode_utf16().collect::<Vec<u16>>(), utf8.len())
         }
         None => return Err(invalid_encoding()),
     };
