@@ -72,7 +72,7 @@ impl<'a> ImportDirective<'a> {
     // this returns the binding for the name this directive defines in that namespace.
     fn import(&self, binding: &'a NameBinding<'a>, privacy_error: Option<Box<PrivacyError<'a>>>)
               -> NameBinding<'a> {
-        let mut modifiers = match self.is_public {
+        let mut modifiers = match self.is_public && binding.is_public() {
             true => DefModifiers::PUBLIC | DefModifiers::IMPORTABLE,
             false => DefModifiers::empty(),
         };
@@ -334,9 +334,11 @@ impl<'a> ::ModuleS<'a> {
     }
 
     fn define_in_glob_importers(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
-        if !binding.defined_with(DefModifiers::PUBLIC | DefModifiers::IMPORTABLE) { return }
+        if !binding.defined_with(DefModifiers::IMPORTABLE) { return }
         for &(importer, directive) in self.glob_importers.borrow_mut().iter() {
-            let _ = importer.try_define_child(name, ns, directive.import(binding, None));
+            if binding.is_public() || self.is_ancestor_of(importer) {
+                let _ = importer.try_define_child(name, ns, directive.import(binding, None));
+            }
         }
     }
 }
@@ -658,8 +660,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         let bindings = target_module.resolutions.borrow().iter().filter_map(|(name, resolution)| {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
+        let allow_private_names = target_module.is_ancestor_of(module_);
         for ((name, ns), binding) in bindings {
-            if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
+            if !binding.defined_with(DefModifiers::IMPORTABLE) { continue }
+            if allow_private_names || binding.is_public() {
                 let _ = module_.try_define_child(name, ns, directive.import(binding, None));
             }
         }
