@@ -410,29 +410,28 @@ impl<D: BitDenotation> DataflowState<D> {
         bb: &repr::BasicBlockData,
         on_return: OnReturn) where OnReturn: Fn(&D, &mut [usize], &repr::Lvalue)
     {
-        let term = if let Some(ref term) = bb.terminator { term } else { return };
-        match *term {
-            repr::Terminator::Return |
-            repr::Terminator::Resume => {}
-            repr::Terminator::Goto { ref target } |
-            repr::Terminator::Drop { ref target, value: _, unwind: None } => {
+        match bb.terminator().kind {
+            repr::TerminatorKind::Return |
+            repr::TerminatorKind::Resume => {}
+            repr::TerminatorKind::Goto { ref target } |
+            repr::TerminatorKind::Drop { ref target, value: _, unwind: None } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
             }
-            repr::Terminator::Drop { ref target, value: _, unwind: Some(ref unwind) } => {
+            repr::TerminatorKind::Drop { ref target, value: _, unwind: Some(ref unwind) } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
             }
-            repr::Terminator::If { ref targets, .. } => {
+            repr::TerminatorKind::If { ref targets, .. } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, &targets.0);
                 self.propagate_bits_into_entry_set_for(in_out, changed, &targets.1);
             }
-            repr::Terminator::Switch { ref targets, .. } |
-            repr::Terminator::SwitchInt { ref targets, .. } => {
+            repr::TerminatorKind::Switch { ref targets, .. } |
+            repr::TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 }
             }
-            repr::Terminator::Call { ref cleanup, ref destination, func: _, args: _ } => {
+            repr::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
                 if let Some(ref unwind) = *cleanup {
                     self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
                 }

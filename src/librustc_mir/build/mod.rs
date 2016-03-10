@@ -166,8 +166,8 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                                                           argument_extent,
                                                           ast_block));
 
-    builder.cfg.terminate(block, Terminator::Goto { target: END_BLOCK });
-    builder.cfg.terminate(END_BLOCK, Terminator::Return);
+    builder.cfg.terminate(block, TerminatorKind::Goto { target: END_BLOCK });
+    builder.cfg.terminate(END_BLOCK, TerminatorKind::Return);
 
     MirPlusPlus {
         mir: Mir {

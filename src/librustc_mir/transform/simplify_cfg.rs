@@ -30,8 +30,8 @@ impl SimplifyCfg {
             let mut seen: Vec<BasicBlock> = Vec::with_capacity(8);
 
             while mir.basic_block_data(target).statements.is_empty() {
-                match mir.basic_block_data(target).terminator {
-                    Some(Terminator::Goto { target: next }) => {
+                match mir.basic_block_data(target).terminator().kind {
+                    TerminatorKind::Goto { target: next } => {
                         if seen.contains(&next) {
                             return None;
                         }
@@ -71,27 +71,27 @@ impl SimplifyCfg {
         for bb in mir.all_basic_blocks() {
             let basic_block = mir.basic_block_data_mut(bb);
             let mut terminator = basic_block.terminator_mut();
-            *terminator = match *terminator {
-                Terminator::If { ref targets, .. } if targets.0 == targets.1 => {
+            terminator.kind = match terminator.kind {
+                TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
                     changed = true;
-                    Terminator::Goto { target: targets.0 }
+                    TerminatorKind::Goto { target: targets.0 }
                 }
 
-                Terminator::If { ref targets, cond: Operand::Constant(Constant {
+                TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
                     literal: Literal::Value {
                         value: ConstVal::Bool(cond)
                     }, ..
                 }) } => {
                     changed = true;
                     if cond {
-                        Terminator::Goto { target: targets.0 }
+                        TerminatorKind::Goto { target: targets.0 }
                     } else {
-                        Terminator::Goto { target: targets.1 }
+                        TerminatorKind::Goto { target: targets.1 }
                     }
                 }
 
-                Terminator::SwitchInt { ref targets, .. }  if targets.len() == 1 => {
-                    Terminator::Goto { target: targets[0] }
+                TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
+                    TerminatorKind::Goto { target: targets[0] }
                 }
                 _ => continue
             }

@@ -53,7 +53,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let mut then_block = this.cfg.start_new_block();
                 let mut else_block = this.cfg.start_new_block();
-                this.cfg.terminate(block, Terminator::If {
+                this.cfg.terminate(block, TerminatorKind::If {
                     cond: operand,
                     targets: (then_block, else_block)
                 });
@@ -70,8 +70,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 };
 
                 let join_block = this.cfg.start_new_block();
-                this.cfg.terminate(then_block, Terminator::Goto { target: join_block });
-                this.cfg.terminate(else_block, Terminator::Goto { target: join_block });
+                this.cfg.terminate(then_block, TerminatorKind::Goto { target: join_block });
+                this.cfg.terminate(else_block, TerminatorKind::Goto { target: join_block });
 
                 join_block.unit()
             }
@@ -97,10 +97,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     LogicalOp::And => (else_block, false_block),
                     LogicalOp::Or => (true_block, else_block),
                 };
-                this.cfg.terminate(block, Terminator::If { cond: lhs, targets: blocks });
+                this.cfg.terminate(block, TerminatorKind::If { cond: lhs, targets: blocks });
 
                 let rhs = unpack!(else_block = this.as_operand(else_block, rhs));
-                this.cfg.terminate(else_block, Terminator::If {
+                this.cfg.terminate(else_block, TerminatorKind::If {
                     cond: rhs,
                     targets: (true_block, false_block)
                 });
@@ -121,8 +121,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         literal: this.hir.false_literal(),
                     });
 
-                this.cfg.terminate(true_block, Terminator::Goto { target: join_block });
-                this.cfg.terminate(false_block, Terminator::Goto { target: join_block });
+                this.cfg.terminate(true_block, TerminatorKind::Goto { target: join_block });
+                this.cfg.terminate(false_block, TerminatorKind::Goto { target: join_block });
 
                 join_block.unit()
             }
@@ -146,7 +146,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let exit_block = this.cfg.start_new_block();
 
                 // start the loop
-                this.cfg.terminate(block, Terminator::Goto { target: loop_block });
+                this.cfg.terminate(block, TerminatorKind::Goto { target: loop_block });
 
                 let might_break = this.in_loop_scope(loop_block, exit_block, move |this| {
                     // conduct the test, if necessary
@@ -159,7 +159,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         let cond = unpack!(loop_block_end = this.as_operand(loop_block, cond_expr));
                         body_block = this.cfg.start_new_block();
                         this.cfg.terminate(loop_block_end,
-                                           Terminator::If {
+                                           TerminatorKind::If {
                                                cond: cond,
                                                targets: (body_block, exit_block)
                                            });
@@ -175,7 +175,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     let tmp = this.get_unit_temp();
                     // Execute the body, branching back to the test.
                     let body_block_end = unpack!(this.into(&tmp, body_block, body));
-                    this.cfg.terminate(body_block_end, Terminator::Goto { target: loop_block });
+                    this.cfg.terminate(body_block_end, TerminatorKind::Goto { target: loop_block });
                 });
                 // If the loop may reach its exit_block, we assign an empty tuple to the
                 // destination to keep the MIR well-formed.
@@ -254,7 +254,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let success = this.cfg.start_new_block();
                 let cleanup = this.diverge_cleanup();
-                this.cfg.terminate(block, Terminator::Call {
+                this.cfg.terminate(block, TerminatorKind::Call {
                     func: fun,
                     args: args,
                     cleanup: cleanup,

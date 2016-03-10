@@ -295,7 +295,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 .postdoms
                 .push(self.cfg.current_location(block));
         }
-        self.cfg.terminate(block, Terminator::Goto { target: target });
+        self.cfg.terminate(block, TerminatorKind::Goto { target: target });
     }
 
     // Finding scopes
@@ -432,7 +432,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn build_drop(&mut self, block: BasicBlock, value: Lvalue<'tcx>) -> BlockAnd<()> {
         let next_target = self.cfg.start_new_block();
         let diverge_target = self.diverge_cleanup();
-        self.cfg.terminate(block, Terminator::Drop {
+        self.cfg.terminate(block, TerminatorKind::Drop {
             value: value,
             target: next_target,
             unwind: diverge_target,
@@ -474,7 +474,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, Terminator::Call {
+        self.cfg.terminate(block, TerminatorKind::Call {
             func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref), index, len],
             destination: None,
@@ -516,7 +516,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, Terminator::Call {
+        self.cfg.terminate(block, TerminatorKind::Call {
             func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref)],
             cleanup: cleanup,
@@ -575,7 +575,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
             earlier_scopes.iter().rev().flat_map(|s| s.cached_block()).next()
         });
         let next = cfg.start_new_block();
-        cfg.terminate(block, Terminator::Drop {
+        cfg.terminate(block, TerminatorKind::Drop {
             value: drop_data.value.clone(),
             target: next,
             unwind: on_diverge
@@ -600,7 +600,7 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
     for drop_data in scope.drops.iter_mut().rev() {
         if let Some(cached_block) = drop_data.cached_block {
             if let Some((previous_block, previous_value)) = previous {
-                cfg.terminate(previous_block, Terminator::Drop {
+                cfg.terminate(previous_block, TerminatorKind::Drop {
                     value: previous_value,
                     target: cached_block,
                     unwind: None
@@ -613,7 +613,7 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
             let block = cfg.start_new_cleanup_block();
             drop_data.cached_block = Some(block);
             if let Some((previous_block, previous_value)) = previous {
-                cfg.terminate(previous_block, Terminator::Drop {
+                cfg.terminate(previous_block, TerminatorKind::Drop {
                     value: previous_value,
                     target: block,
                     unwind: None
@@ -628,7 +628,7 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
     // Prepare the end target for this chain.
     let mut target = target.unwrap_or_else(||{
         let b = cfg.start_new_cleanup_block();
-        cfg.terminate(b, Terminator::Resume);
+        cfg.terminate(b, TerminatorKind::Resume);
         b
     });
 
@@ -646,7 +646,7 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
 
     if let Some((previous_block, previous_value)) = previous {
         // Finally, branch into that just-built `target` from the `previous_block`.
-        cfg.terminate(previous_block, Terminator::Drop {
+        cfg.terminate(previous_block, TerminatorKind::Drop {
             value: previous_value,
             target: target,
             unwind: None
@@ -662,14 +662,15 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
 fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
                     unit_temp: Lvalue<'tcx>,
                     data: &FreeData<'tcx>,
-                    target: BasicBlock) -> Terminator<'tcx> {
+                    target: BasicBlock)
+                    -> TerminatorKind<'tcx> {
     let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
                        .unwrap_or_else(|e| tcx.sess.fatal(&e));
     let substs = tcx.mk_substs(Substs::new(
         VecPerParamSpace::new(vec![], vec![], vec![data.item_ty]),
         VecPerParamSpace::new(vec![], vec![], vec![])
     ));
-    Terminator::Call {
+    TerminatorKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,
             ty: tcx.lookup_item_type(free_func).ty.subst(tcx, substs),

@@ -11,7 +11,7 @@
 
 use rustc::middle::ty;
 use rustc::mir::repr::{self, Mir, BasicBlock, Lvalue, Rvalue};
-use rustc::mir::repr::{StatementKind, Terminator};
+use rustc::mir::repr::{StatementKind, TerminatorKind};
 use rustc::util::nodemap::FnvHashMap;
 
 use std::cell::{Cell};
@@ -577,50 +577,48 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
             }
         }
 
-        if let Some(ref term) = bb_data.terminator {
-            match *term {
-                Terminator::Goto { target: _ } | Terminator::Resume => { }
+        match bb_data.terminator().kind {
+            TerminatorKind::Goto { target: _ } | TerminatorKind::Resume => { }
 
-                Terminator::Return => {
-                    let source = Location { block: bb,
-                                            index: bb_data.statements.len() };
-                    let lval = &Lvalue::ReturnPointer.deref();
-                    bb_ctxt.on_move_out_lval(SK::Return, lval, source);
+            TerminatorKind::Return => {
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                let lval = &Lvalue::ReturnPointer.deref();
+                bb_ctxt.on_move_out_lval(SK::Return, lval, source);
+            }
+
+            TerminatorKind::If { ref cond, targets: _ } => {
+                // The `cond` is always of (copyable) type `bool`,
+                // so there will never be anything to move.
+                let _ = cond;
+            }
+
+            TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
+            TerminatorKind::Switch { adt_def: _, targets: _, ref discr } => {
+                // The `discr` is not consumed; that is instead
+                // encoded on specific match arms (and for
+                // SwitchInt`, it is always a copyable integer
+                // type anyway).
+                let _ = discr;
+            }
+
+            TerminatorKind::Drop { value: ref lval, target: _, unwind: _ } => {
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
+            }
+
+            TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                bb_ctxt.on_operand(SK::CallFn, func, source);
+                for arg in args {
+                    bb_ctxt.on_operand(SK::CallArg, arg, source);
                 }
-
-                Terminator::If { ref cond, targets: _ } => {
-                    // The `cond` is always of (copyable) type `bool`,
-                    // so there will never be anything to move.
-                    let _ = cond;
-                }
-
-                Terminator::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
-                Terminator::Switch { adt_def: _, targets: _, ref discr } => {
-                    // The `discr` is not consumed; that is instead
-                    // encoded on specific match arms (and for
-                    // SwitchInt`, it is always a copyable integer
-                    // type anyway).
-                    let _ = discr;
-                }
-
-                Terminator::Drop { value: ref lval, target: _, unwind: _ } => {
-                    let source = Location { block: bb,
-                                            index: bb_data.statements.len() };
-                    bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
-                }
-
-                Terminator::Call { ref func, ref args, ref destination, cleanup: _ } => {
-                    let source = Location { block: bb,
-                                            index: bb_data.statements.len() };
-                    bb_ctxt.on_operand(SK::CallFn, func, source);
-                    for arg in args {
-                        bb_ctxt.on_operand(SK::CallArg, arg, source);
-                    }
-                    if let Some((ref destination, _bb)) = *destination {
-                        // Create MovePath for `destination`, then
-                        // discard returned index.
-                        bb_ctxt.builder.move_path_for(destination);
-                    }
+                if let Some((ref destination, _bb)) = *destination {
+                    // Create MovePath for `destination`, then
+                    // discard returned index.
+                    bb_ctxt.builder.move_path_for(destination);
                 }
             }
         }

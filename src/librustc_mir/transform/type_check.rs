@@ -376,15 +376,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         term: &Terminator<'tcx>) {
         debug!("check_terminator: {:?}", term);
         let tcx = self.tcx();
-        match *term {
-            Terminator::Goto { .. } |
-            Terminator::Resume |
-            Terminator::Return |
-            Terminator::Drop { .. } => {
+        match term.kind {
+            TerminatorKind::Goto { .. } |
+            TerminatorKind::Resume |
+            TerminatorKind::Return |
+            TerminatorKind::Drop { .. } => {
                 // no checks needed for these
             }
 
-            Terminator::If { ref cond, .. } => {
+            TerminatorKind::If { ref cond, .. } => {
                 let cond_ty = mir.operand_ty(tcx, cond);
                 match cond_ty.sty {
                     ty::TyBool => {}
@@ -393,7 +393,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Terminator::SwitchInt { ref discr, switch_ty, .. } => {
+            TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
                 let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
                 if let Err(terr) = self.mk_subty(self.last_span, discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
@@ -406,7 +406,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            Terminator::Switch { ref discr, adt_def, ref targets } => {
+            TerminatorKind::Switch { ref discr, adt_def, ref targets } => {
                 let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
                 match discr_ty.sty {
                     ty::TyEnum(def, _)
@@ -418,7 +418,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Terminator::Call { ref func, ref args, ref destination, .. } => {
+            TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
                 let func_ty = mir.operand_ty(tcx, func);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let func_ty = match func_ty.sty {
