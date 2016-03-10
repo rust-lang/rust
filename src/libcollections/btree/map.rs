@@ -355,7 +355,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     ///
     /// // entries can now be inserted into the empty map
-    /// a.insert(1, "a");
+    /// map.insert(1, "a");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BTreeMap<K, V> {
