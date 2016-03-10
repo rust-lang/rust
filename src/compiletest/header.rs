@@ -31,6 +31,8 @@ pub struct TestProps {
     pub pp_exact: Option<PathBuf>,
     // Modules from aux directory that should be compiled
     pub aux_builds: Vec<String> ,
+    // Environment settings to use for compiling
+    pub rustc_env: Vec<(String,String)> ,
     // Environment settings to use during execution
     pub exec_env: Vec<(String,String)> ,
     // Lines to check if they appear in the expected debugger output
@@ -77,6 +79,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         pp_exact: pp_exact,
         aux_builds: aux_builds,
         revisions: vec![],
+        rustc_env: vec![],
         exec_env: exec_env,
         check_lines: check_lines,
         build_aux_docs: build_aux_docs,
@@ -153,8 +156,12 @@ pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>
             props.aux_builds.push(ab);
         }
 
-        if let Some(ee) = parse_exec_env(ln) {
+        if let Some(ee) = parse_env(ln, "exec-env") {
             props.exec_env.push(ee);
+        }
+
+        if let Some(ee) = parse_env(ln, "rustc-env") {
+            props.rustc_env.push(ee);
         }
 
         if let Some(cl) =  parse_check_line(ln) {
@@ -372,8 +379,8 @@ fn parse_pretty_compare_only(line: &str) -> bool {
     parse_name_directive(line, "pretty-compare-only")
 }
 
-fn parse_exec_env(line: &str) -> Option<(String, String)> {
-    parse_name_value_directive(line, "exec-env").map(|nv| {
+fn parse_env(line: &str, name: &str) -> Option<(String, String)> {
+    parse_name_value_directive(line, name).map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv
                                       .splitn(2, '=')
