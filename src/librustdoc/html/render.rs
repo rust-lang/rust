@@ -1454,7 +1454,7 @@ impl<'a> Item<'a> {
         // has anchors for the line numbers that we're linking to.
         } else if self.item.def_id.is_local() {
             self.cx.local_sources.get(&PathBuf::from(&self.item.source.filename)).map(|path| {
-                format!("{root}src/{krate}/{path}.html#{href}",
+                format!("{root}src/{krate}/{path}#{href}",
                         root = self.cx.root_path,
                         krate = self.cx.layout.krate,
                         path = path,
