@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, rustc_attrs, platform_intrinsics)]
+
+// ignore-pretty : (#23623) problems when  ending with // comments
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -50,6 +52,7 @@ macro_rules! all_eq {
     }}
 }
 
+#[rustc_no_mir] // FIXME #27840 MIR doesn't handle shuffle constants.
 fn main() {
     let x2 = i32x2(20, 21);
     let x3 = i32x3(30, 31, 32);

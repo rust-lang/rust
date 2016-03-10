@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty : (#23623) problems when  ending with // comments
+
 // error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
 // compile-flags: -C debug-assertions
 
+#![feature(rustc_attrs)]
+#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let _x = 42u8 - (42u8 + 1);
 }

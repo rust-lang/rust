@@ -1264,6 +1264,7 @@ mod tests {
     }
 
     #[test]
+    #[rustc_no_mir] // FIXME #27840 MIR NAN ends up negative.
     fn test_integer_decode() {
         assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
         assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));

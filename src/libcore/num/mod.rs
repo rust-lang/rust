@@ -1008,6 +1008,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
+        #[cfg_attr(not(stage0), rustc_no_mir)] // FIXME #29769 MIR overflow checking is TBD.
         pub fn pow(self, mut exp: u32) -> Self {
             let mut base = self;
             let mut acc = Self::one();
@@ -1049,6 +1050,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
+        #[cfg_attr(not(stage0), rustc_no_mir)] // FIXME #29769 MIR overflow checking is TBD.
         pub fn abs(self) -> Self {
             if self.is_negative() {
                 // Note that the #[inline] above means that the overflow
@@ -2013,6 +2015,7 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
+        #[cfg_attr(not(stage0), rustc_no_mir)] // FIXME #29769 MIR overflow checking is TBD.
         pub fn pow(self, mut exp: u32) -> Self {
             let mut base = self;
             let mut acc = Self::one();
