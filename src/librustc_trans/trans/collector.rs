@@ -542,14 +542,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         debug!("visiting operand {:?}", *operand);
 
         let callee = match *operand {
-            mir::Operand::Constant(mir::Constant {
-                literal: mir::Literal::Item {
-                    def_id,
-                    kind,
-                    substs
-                },
-                ..
-            }) if is_function_or_method(kind) => Some((def_id, substs)),
+            mir::Operand::Constant(mir::Constant { ty: &ty::TyS {
+                sty: ty::TyFnDef(def_id, substs, _), ..
+            }, .. }) => Some((def_id, substs)),
             _ => None
         };
 
@@ -588,25 +583,18 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         self.super_operand(operand);
 
-        fn is_function_or_method(item_kind: mir::ItemKind) -> bool {
-            match item_kind {
-                mir::ItemKind::Constant => false,
-                mir::ItemKind::Function |
-                mir::ItemKind::Method   => true
-            }
-        }
-
         fn can_result_in_trans_item<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                               def_id: DefId)
                                               -> bool {
             if !match ccx.tcx().lookup_item_type(def_id).ty.sty {
-                ty::TyBareFn(Some(def_id), _) => {
-                    // Some constructors also have type TyBareFn but they are
+                ty::TyFnDef(def_id, _, _) => {
+                    // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
-                    // translation item.
+                    // translation item. Same for FFI functions.
                     match ccx.tcx().map.get_if_local(def_id) {
                         Some(hir_map::NodeVariant(_))    |
-                        Some(hir_map::NodeStructCtor(_)) => false,
+                        Some(hir_map::NodeStructCtor(_)) |
+                        Some(hir_map::NodeForeignItem(_)) => false,
                         Some(_) => true,
                         None => {
                             ccx.sess().cstore.variant_kind(def_id).is_none()
@@ -689,7 +677,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         if can_have_local_instance(ccx, destructor_did) {
             let trans_item = create_fn_trans_item(ccx,
                                                   destructor_did,
-                                                  ccx.tcx().mk_substs(substs),
+                                                  substs,
                                                   &Substs::trans_empty());
             output.push(trans_item);
         }
@@ -697,17 +685,18 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Finally add the types of nested values
     match ty.sty {
-        ty::TyBool       |
-        ty::TyChar       |
-        ty::TyInt(_)     |
-        ty::TyUint(_)    |
-        ty::TyStr        |
-        ty::TyFloat(_)   |
-        ty::TyRawPtr(_)  |
-        ty::TyRef(..)    |
-        ty::TyBareFn(..) |
-        ty::TySlice(_)   |
-        ty::TyTrait(_)   => {
+        ty::TyBool      |
+        ty::TyChar      |
+        ty::TyInt(_)    |
+        ty::TyUint(_)   |
+        ty::TyStr       |
+        ty::TyFloat(_)  |
+        ty::TyRawPtr(_) |
+        ty::TyRef(..)   |
+        ty::TyFnDef(..) |
+        ty::TyFnPtr(_)  |
+        ty::TySlice(_)  |
+        ty::TyTrait(_)  => {
             /* nothing to do */
         }
         ty::TyStruct(ref adt_def, substs) |
@@ -831,9 +820,9 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         {
             let callee_substs = impl_substs.with_method_from(&rcvr_substs);
             let impl_method = tcx.get_impl_method(impl_did,
-                                                  callee_substs,
+                                                  tcx.mk_substs(callee_substs),
                                                   trait_method.name);
-            Some((impl_method.method.def_id, tcx.mk_substs(impl_method.substs)))
+            Some((impl_method.method.def_id, impl_method.substs))
         }
         // If we have a closure or a function pointer, we will also encounter
         // the concrete closure/function somewhere else (during closure or fn
@@ -991,10 +980,9 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                         // create translation items
                         .filter_map(|impl_method| {
                             if can_have_local_instance(ccx, impl_method.method.def_id) {
-                                let substs = ccx.tcx().mk_substs(impl_method.substs);
                                 Some(create_fn_trans_item(ccx,
                                                           impl_method.method.def_id,
-                                                          substs,
+                                                          impl_method.substs,
                                                           &Substs::trans_empty()))
                             } else {
                                 None
@@ -1173,12 +1161,12 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     // The substitutions we have are on the impl, so we grab
                     // the method type from the impl to substitute into.
                     let mth = tcx.get_impl_method(impl_def_id,
-                                                  callee_substs.clone(),
+                                                  callee_substs,
                                                   default_impl.name);
 
                     assert!(mth.is_provided);
 
-                    let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
+                    let predicates = mth.method.predicates.predicates.subst(tcx, mth.substs);
                     if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
                         continue;
                     }
@@ -1289,7 +1277,8 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              &trait_data.bounds.projection_bounds,
                              output);
         },
-        ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
+        ty::TyFnDef(_, _, &ty::BareFnTy{ unsafety, abi, ref sig } ) |
+        ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }

@@ -503,7 +503,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ty: self.hir.tcx().lookup_item_type(funcdid).ty,
             literal: Literal::Item {
                 def_id: funcdid,
-                kind: ItemKind::Function,
                 substs: self.hir.tcx().mk_substs(Substs::empty())
             }
         }
@@ -641,7 +640,6 @@ fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
             ty: tcx.lookup_item_type(free_func).ty.subst(tcx, substs),
             literal: Literal::Item {
                 def_id: free_func,
-                kind: ItemKind::Function,
                 substs: substs
             }
         }),

@@ -356,27 +356,18 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         &unsized_args
     };
 
-    bcx = callee::trans_call_inner(bcx, DebugLoc::None, |bcx, _| {
-        let trait_ref = ty::Binder(ty::TraitRef {
-            def_id: tcx.lang_items.drop_trait().unwrap(),
-            substs: tcx.mk_substs(Substs::trans_empty().with_self_ty(t))
-        });
-        let vtbl = match fulfill_obligation(bcx.ccx(), DUMMY_SP, trait_ref) {
-            traits::VtableImpl(data) => data,
-            _ => tcx.sess.bug(&format!("dtor for {:?} is not an impl???", t))
-        };
-        let dtor_did = def.destructor().unwrap();
-        let datum = callee::trans_fn_ref_with_substs(bcx.ccx(),
-                                                     dtor_did,
-                                                     ExprId(0),
-                                                     bcx.fcx.param_substs,
-                                                     vtbl.substs);
-        callee::Callee {
-            bcx: bcx,
-            data: callee::Fn(datum.val),
-            ty: datum.ty
-        }
-    }, callee::ArgVals(args), Some(expr::Ignore)).bcx;
+    let trait_ref = ty::Binder(ty::TraitRef {
+        def_id: tcx.lang_items.drop_trait().unwrap(),
+        substs: tcx.mk_substs(Substs::trans_empty().with_self_ty(t))
+    });
+    let vtbl = match fulfill_obligation(bcx.ccx(), DUMMY_SP, trait_ref) {
+        traits::VtableImpl(data) => data,
+        _ => tcx.sess.bug(&format!("dtor for {:?} is not an impl???", t))
+    };
+    let dtor_did = def.destructor().unwrap();
+    bcx = callee::Callee::ptr(callee::trans_fn_ref_with_substs(
+            bcx.ccx(), dtor_did, None, vtbl.substs))
+        .call(bcx, DebugLoc::None, callee::ArgVals(args), Some(expr::Ignore)).bcx;
 
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }

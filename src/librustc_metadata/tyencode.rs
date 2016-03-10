@@ -135,12 +135,13 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         ty::TyStr => {
             write!(w, "v");
         }
-        ty::TyBareFn(Some(def_id), f) => {
+        ty::TyFnDef(def_id, substs, f) => {
             write!(w, "F");
             write!(w, "{}|", (cx.ds)(def_id));
+            enc_substs(w, cx, substs);
             enc_bare_fn_ty(w, cx, f);
         }
-        ty::TyBareFn(None, f) => {
+        ty::TyFnPtr(f) => {
             write!(w, "G");
             enc_bare_fn_ty(w, cx, f);
         }

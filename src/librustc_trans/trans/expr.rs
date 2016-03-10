@@ -56,9 +56,10 @@ use llvm::{self, ValueRef, TypeKind};
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
 use middle::subst::Substs;
-use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
+use trans::{_match, adt, asm, base, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
+use trans::callee::{Callee, ArgExprs, ArgOverloadedCall, ArgOverloadedOp};
 use trans::cleanup::{self, CleanupMethods, DropHintMethods};
 use trans::common::*;
 use trans::datum::*;
@@ -66,7 +67,6 @@ use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::declare;
 use trans::glue;
 use trans::machine;
-use trans::meth;
 use trans::tvec;
 use trans::type_of;
 use trans::Disr;
@@ -85,7 +85,6 @@ use rustc_front::hir;
 
 use syntax::{ast, codemap};
 use syntax::parse::token::InternedString;
-use syntax::ptr::P;
 use std::mem;
 
 // Destinations
@@ -349,11 +348,7 @@ fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     match adjustment {
-        AdjustReifyFnPointer => {
-            // FIXME(#19925) once fn item types are
-            // zero-sized, we'll need to return true here
-            false
-        }
+        AdjustReifyFnPointer => true,
         AdjustUnsafeFnPointer | AdjustMutToConstPointer => {
             // purely a type-level thing
             false
@@ -388,8 +383,15 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            adjustment);
     match adjustment {
         AdjustReifyFnPointer => {
-            // FIXME(#19925) once fn item types are
-            // zero-sized, we'll need to do something here
+            match datum.ty.sty {
+                ty::TyFnDef(def_id, substs, _) => {
+                    datum = Callee::def(bcx.ccx(), def_id, substs, datum.ty)
+                        .reify(bcx.ccx()).to_expr_datum();
+                }
+                _ => {
+                    unreachable!("{} cannot be reified to a fn ptr", datum.ty)
+                }
+            }
         }
         AdjustUnsafeFnPointer | AdjustMutToConstPointer => {
             // purely a type-level thing
@@ -492,8 +494,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 (val, None)
             };
 
-            let info = unsized_info(bcx.ccx(), inner_source, inner_target,
-                                    old_info, bcx.fcx.param_substs);
+            let info = unsized_info(bcx.ccx(), inner_source, inner_target, old_info);
 
             // Compute the base pointer. This doesn't change the pointer value,
             // but merely its type.
@@ -785,15 +786,10 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let index_expr_debug_loc = index_expr.debug_loc();
 
     // Check for overloaded index.
-    let method_ty = ccx.tcx()
-                       .tables
-                       .borrow()
-                       .method_map
-                       .get(&method_call)
-                       .map(|method| method.ty);
-    let elt_datum = match method_ty {
-        Some(method_ty) => {
-            let method_ty = monomorphize_type(bcx, method_ty);
+    let method = ccx.tcx().tables.borrow().method_map.get(&method_call).cloned();
+    let elt_datum = match method {
+        Some(method) => {
+            let method_ty = monomorphize_type(bcx, method.ty);
 
             let base_datum = unpack_datum!(bcx, trans(bcx, base));
 
@@ -811,19 +807,16 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 Some(elt_tm) => elt_tm.ty,
             };
 
-            // Overloaded. Evaluate `trans_overloaded_op`, which will
-            // invoke the user's index() method, which basically yields
-            // a `&T` pointer.  We can then proceed down the normal
-            // path (below) to dereference that `&T`.
+            // Overloaded. Invoke the index() method, which basically
+            // yields a `&T` pointer.  We can then proceed down the
+            // normal path (below) to dereference that `&T`.
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_index_elt");
-            unpack_result!(bcx,
-                           trans_overloaded_op(bcx,
-                                               index_expr,
-                                               method_call,
-                                               base_datum,
-                                               Some((ix_datum, idx.id)),
-                                               Some(SaveIn(scratch.val)),
-                                               false));
+
+            bcx = Callee::method(bcx, method)
+                .call(bcx, index_expr_debug_loc,
+                      ArgOverloadedOp(base_datum, Some(ix_datum)),
+                      Some(SaveIn(scratch.val))).bcx;
+
             let datum = scratch.to_expr_datum();
             let lval = Lvalue::new("expr::trans_index overload");
             if type_is_sized(bcx.tcx(), elt_ty) {
@@ -899,24 +892,18 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_def_lvalue");
     match def {
-        Def::Fn(..) | Def::Method(..) |
-        Def::Struct(..) | Def::Variant(..) => {
-            let datum = trans_def_fn_unadjusted(bcx.ccx(), ref_expr, def,
-                                                bcx.fcx.param_substs);
-            DatumBlock::new(bcx, datum.to_expr_datum())
-        }
         Def::Static(did, _) => {
             let const_ty = expr_ty(bcx, ref_expr);
             let val = get_static_val(bcx.ccx(), did, const_ty);
             let lval = Lvalue::new("expr::trans_def");
             DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr(lval)))
         }
-        Def::Const(_) | Def::AssociatedConst(_) => {
-            bcx.sess().span_bug(ref_expr.span,
-                "constant expression should not reach expr::trans_def")
+        Def::Local(..) | Def::Upvar(..) => {
+            DatumBlock::new(bcx, trans_local_var(bcx, def).to_expr_datum())
         }
         _ => {
-            DatumBlock::new(bcx, trans_local_var(bcx, def).to_expr_datum())
+            bcx.sess().span_bug(ref_expr.span,
+                &format!("{:?} should not reach expr::trans_def", def))
         }
     }
 }
@@ -1024,17 +1011,18 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         hir::ExprAssignOp(op, ref dst, ref src) => {
-            let has_method_map = bcx.tcx()
-                                    .tables
-                                    .borrow()
-                                    .method_map
-                                    .contains_key(&MethodCall::expr(expr.id));
+            let method = bcx.tcx().tables
+                                  .borrow()
+                                  .method_map
+                                  .get(&MethodCall::expr(expr.id)).cloned();
 
-            if has_method_map {
+            if let Some(method) = method {
                 let dst = unpack_datum!(bcx, trans(bcx, &dst));
                 let src_datum = unpack_datum!(bcx, trans(bcx, &src));
-                trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), dst,
-                                    Some((src_datum, src.id)), None, false).bcx
+
+                Callee::method(bcx, method)
+                    .call(bcx, expr.debug_loc(),
+                          ArgOverloadedOp(dst, Some(src_datum)), None).bcx
             } else {
                 trans_assign_op(bcx, expr, op, &dst, &src)
             }
@@ -1060,6 +1048,9 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+
+    // Entry into the method table if this is an overloaded call/op.
+    let method_call = MethodCall::expr(expr.id);
 
     match expr.node {
         hir::ExprType(ref e, _) => {
@@ -1144,47 +1135,54 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         &expr.attrs).unwrap_or(bcx)
         }
         hir::ExprCall(ref f, ref args) => {
-            if bcx.tcx().is_method_call(expr.id) {
-                trans_overloaded_call(bcx,
-                                      expr,
-                                      &f,
-                                      &args[..],
-                                      Some(dest))
+            let method = bcx.tcx().tables.borrow().method_map.get(&method_call).cloned();
+            let (callee, args) = if let Some(method) = method {
+                let mut all_args = vec![&**f];
+                all_args.extend(args.iter().map(|e| &**e));
+
+                (Callee::method(bcx, method), ArgOverloadedCall(all_args))
             } else {
-                callee::trans_call(bcx,
-                                   expr,
-                                   &f,
-                                   callee::ArgExprs(&args[..]),
-                                   dest)
-            }
+                let f = unpack_datum!(bcx, trans(bcx, f));
+                (match f.ty.sty {
+                    ty::TyFnDef(def_id, substs, _) => {
+                        Callee::def(bcx.ccx(), def_id, substs, f.ty)
+                    }
+                    ty::TyFnPtr(_) => {
+                        let f = unpack_datum!(bcx,
+                            f.to_rvalue_datum(bcx, "callee"));
+                        Callee::ptr(f)
+                    }
+                    _ => {
+                        bcx.tcx().sess.span_bug(expr.span,
+                            &format!("type of callee is not a fn: {}", f.ty));
+                    }
+                }, ArgExprs(&args))
+            };
+            callee.call(bcx, expr.debug_loc(), args, Some(dest)).bcx
         }
         hir::ExprMethodCall(_, _, ref args) => {
-            callee::trans_method_call(bcx,
-                                      expr,
-                                      &args[0],
-                                      callee::ArgExprs(&args[..]),
-                                      dest)
+            Callee::method_call(bcx, method_call)
+                .call(bcx, expr.debug_loc(), ArgExprs(&args), Some(dest)).bcx
         }
-        hir::ExprBinary(op, ref lhs, ref rhs) => {
+        hir::ExprBinary(op, ref lhs, ref rhs_expr) => {
             // if not overloaded, would be RvalueDatumExpr
             let lhs = unpack_datum!(bcx, trans(bcx, &lhs));
-            let rhs_datum = unpack_datum!(bcx, trans(bcx, &rhs));
-            trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), lhs,
-                                Some((rhs_datum, rhs.id)), Some(dest),
-                                !rustc_front::util::is_by_value_binop(op.node)).bcx
+            let mut rhs = unpack_datum!(bcx, trans(bcx, &rhs_expr));
+            if !rustc_front::util::is_by_value_binop(op.node) {
+                rhs = unpack_datum!(bcx, auto_ref(bcx, rhs, rhs_expr));
+            }
+
+            Callee::method_call(bcx, method_call)
+                .call(bcx, expr.debug_loc(),
+                      ArgOverloadedOp(lhs, Some(rhs)), Some(dest)).bcx
         }
-        hir::ExprUnary(op, ref subexpr) => {
+        hir::ExprUnary(_, ref subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
             let arg = unpack_datum!(bcx, trans(bcx, &subexpr));
-            trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id),
-                                arg, None, Some(dest), !rustc_front::util::is_by_value_unop(op)).bcx
-        }
-        hir::ExprIndex(ref base, ref idx) => {
-            // if not overloaded, would be RvalueDatumExpr
-            let base = unpack_datum!(bcx, trans(bcx, &base));
-            let idx_datum = unpack_datum!(bcx, trans(bcx, &idx));
-            trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), base,
-                                Some((idx_datum, idx.id)), Some(dest), true).bcx
+
+            Callee::method_call(bcx, method_call)
+                .call(bcx, expr.debug_loc(),
+                      ArgOverloadedOp(arg, None), Some(dest)).bcx
         }
         hir::ExprCast(..) => {
             // Trait casts used to come this way, now they should be coercions.
@@ -1218,26 +1216,22 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Ignore => { return bcx; }
     };
 
+    let ty = expr_ty(bcx, ref_expr);
+    if let ty::TyFnDef(..) = ty.sty {
+        // Zero-sized function or ctor.
+        return bcx;
+    }
+
     match def {
         Def::Variant(tid, vid) => {
             let variant = bcx.tcx().lookup_adt_def(tid).variant_with_id(vid);
-            if let ty::VariantKind::Tuple = variant.kind() {
-                // N-ary variant.
-                let llfn = callee::trans_fn_ref(bcx.ccx(), vid,
-                                                ExprId(ref_expr.id),
-                                                bcx.fcx.param_substs).val;
-                Store(bcx, llfn, lldest);
-                return bcx;
-            } else {
-                // Nullary variant.
-                let ty = expr_ty(bcx, ref_expr);
-                let repr = adt::represent_type(bcx.ccx(), ty);
-                adt::trans_set_discr(bcx, &repr, lldest, Disr::from(variant.disr_val));
-                return bcx;
-            }
+            // Nullary variant.
+            let ty = expr_ty(bcx, ref_expr);
+            let repr = adt::represent_type(bcx.ccx(), ty);
+            adt::trans_set_discr(bcx, &repr, lldest, Disr::from(variant.disr_val));
+            bcx
         }
         Def::Struct(..) => {
-            let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
                 ty::TyStruct(def, _) if def.has_dtor() => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
@@ -1251,41 +1245,6 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(ref_expr.span, &format!(
                 "Non-DPS def {:?} referened by {}",
                 def, bcx.node_id_to_string(ref_expr.id)));
-        }
-    }
-}
-
-pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                         ref_expr: &hir::Expr,
-                                         def: Def,
-                                         param_substs: &'tcx Substs<'tcx>)
-                                         -> Datum<'tcx, Rvalue> {
-    let _icx = push_ctxt("trans_def_datum_unadjusted");
-
-    match def {
-        Def::Fn(did) |
-        Def::Struct(did) | Def::Variant(_, did) => {
-            callee::trans_fn_ref(ccx, did, ExprId(ref_expr.id), param_substs)
-        }
-        Def::Method(method_did) => {
-            match ccx.tcx().impl_or_trait_item(method_did).container() {
-                ty::ImplContainer(_) => {
-                    callee::trans_fn_ref(ccx, method_did,
-                                         ExprId(ref_expr.id),
-                                         param_substs)
-                }
-                ty::TraitContainer(trait_did) => {
-                    meth::trans_static_method_callee(ccx, method_did,
-                                                     trait_did, ref_expr.id,
-                                                     param_substs)
-                }
-            }
-        }
-        _ => {
-            ccx.tcx().sess.span_bug(ref_expr.span, &format!(
-                    "trans_def_fn_unadjusted invoked on: {:?} for {:?}",
-                    def,
-                    ref_expr));
         }
     }
 }
@@ -1898,51 +1857,6 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   expr: &hir::Expr,
-                                   method_call: MethodCall,
-                                   lhs: Datum<'tcx, Expr>,
-                                   rhs: Option<(Datum<'tcx, Expr>, ast::NodeId)>,
-                                   dest: Option<Dest>,
-                                   autoref: bool)
-                                   -> Result<'blk, 'tcx> {
-    callee::trans_call_inner(bcx,
-                             expr.debug_loc(),
-                             |bcx, arg_cleanup_scope| {
-                                meth::trans_method_callee(bcx,
-                                                          method_call,
-                                                          None,
-                                                          arg_cleanup_scope)
-                             },
-                             callee::ArgOverloadedOp(lhs, rhs, autoref),
-                             dest)
-}
-
-fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                         expr: &hir::Expr,
-                                         callee: &'a hir::Expr,
-                                         args: &'a [P<hir::Expr>],
-                                         dest: Option<Dest>)
-                                         -> Block<'blk, 'tcx> {
-    debug!("trans_overloaded_call {}", expr.id);
-    let method_call = MethodCall::expr(expr.id);
-    let mut all_args = vec!(callee);
-    all_args.extend(args.iter().map(|e| &**e));
-    unpack_result!(bcx,
-                   callee::trans_call_inner(bcx,
-                                            expr.debug_loc(),
-                                            |bcx, arg_cleanup_scope| {
-                                                meth::trans_method_callee(
-                                                    bcx,
-                                                    method_call,
-                                                    None,
-                                                    arg_cleanup_scope)
-                                            },
-                                            callee::ArgOverloadedCall(all_args),
-                                            dest));
-    bcx
-}
-
 pub fn cast_is_noop<'tcx>(tcx: &TyCtxt<'tcx>,
                           expr: &hir::Expr,
                           t_in: Ty<'tcx>,
@@ -2179,18 +2093,12 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
 
     // Check for overloaded deref.
-    let method_ty = ccx.tcx()
-                       .tables
-                       .borrow()
-                       .method_map
-                       .get(&method_call).map(|method| method.ty);
+    let method = ccx.tcx().tables.borrow().method_map.get(&method_call).cloned();
+    let datum = match method {
+        Some(method) => {
+            let method_ty = monomorphize_type(bcx, method.ty);
 
-    let datum = match method_ty {
-        Some(method_ty) => {
-            let method_ty = monomorphize_type(bcx, method_ty);
-
-            // Overloaded. Evaluate `trans_overloaded_op`, which will
-            // invoke the user's deref() method, which basically
+            // Overloaded. Invoke the deref() method, which basically
             // converts from the `Smaht<T>` pointer that we have into
             // a `&T` pointer.  We can then proceed down the normal
             // path (below) to dereference that `&T`.
@@ -2205,9 +2113,10 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 ccx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
-            unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
-                                                    datum, None, Some(SaveIn(scratch.val)),
-                                                    false));
+            bcx = Callee::method(bcx, method)
+                .call(bcx, expr.debug_loc(),
+                      ArgOverloadedOp(datum, None),
+                      Some(SaveIn(scratch.val))).bcx;
             scratch.to_expr_datum()
         }
         None => {
@@ -2524,17 +2433,12 @@ fn expr_kind(tcx: &TyCtxt, expr: &hir::Expr) -> ExprKind {
     match expr.node {
         hir::ExprPath(..) => {
             match tcx.resolve_expr(expr) {
-                Def::Struct(..) | Def::Variant(..) => {
-                    if let ty::TyBareFn(..) = tcx.node_id_to_type(expr.id).sty {
-                        // ctor function
-                        ExprKind::RvalueDatum
-                    } else {
-                        ExprKind::RvalueDps
-                    }
+                // Put functions and ctors with the ADTs, as they
+                // are zero-sized, so DPS is the cheapest option.
+                Def::Struct(..) | Def::Variant(..) |
+                Def::Fn(..) | Def::Method(..) => {
+                    ExprKind::RvalueDps
                 }
-
-                // Fn pointers are just scalar values.
-                Def::Fn(..) | Def::Method(..) => ExprKind::RvalueDatum,
 
                 // Note: there is actually a good case to be made that
                 // DefArg's, particularly those of immediate type, ought to

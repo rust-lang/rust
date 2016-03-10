@@ -37,16 +37,9 @@ use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: DefId,
-                                psubsts: &'tcx subst::Substs<'tcx>,
-                                ref_id: Option<ast::NodeId>)
+                                psubsts: &'tcx subst::Substs<'tcx>)
                                 -> (ValueRef, Ty<'tcx>, bool) {
-    debug!("monomorphic_fn(\
-            fn_id={:?}, \
-            real_substs={:?}, \
-            ref_id={:?})",
-           fn_id,
-           psubsts,
-           ref_id);
+    debug!("monomorphic_fn(fn_id={:?}, real_substs={:?})", fn_id, psubsts);
 
     assert!(!psubsts.types.needs_infer() && !psubsts.types.has_param_types());
 

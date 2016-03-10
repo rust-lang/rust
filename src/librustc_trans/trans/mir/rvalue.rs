@@ -15,6 +15,7 @@ use rustc::mir::repr as mir;
 
 use trans::asm;
 use trans::base;
+use trans::callee::Callee;
 use trans::common::{self, BlockAndBuilder, Result};
 use trans::debuginfo::DebugLoc;
 use trans::declare;
@@ -193,9 +194,20 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let cast_ty = bcx.monomorphize(&cast_ty);
 
                 let val = match *kind {
-                    mir::CastKind::ReifyFnPointer |
+                    mir::CastKind::ReifyFnPointer => {
+                        match operand.ty.sty {
+                            ty::TyFnDef(def_id, substs, _) => {
+                                OperandValue::Immediate(
+                                    Callee::def(bcx.ccx(), def_id, substs, operand.ty)
+                                        .reify(bcx.ccx()).val)
+                            }
+                            _ => {
+                                unreachable!("{} cannot be reified to a fn ptr", operand.ty)
+                            }
+                        }
+                    }
                     mir::CastKind::UnsafeFnPointer => {
-                        // these are no-ops at the LLVM level
+                        // this is a no-op at the LLVM level
                         operand.val
                     }
                     mir::CastKind::Unsize => {

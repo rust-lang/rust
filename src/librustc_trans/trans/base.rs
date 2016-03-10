@@ -195,16 +195,14 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_ty: Ty<'tcx>,
                                 name: &str,
-                                did: DefId)
+                                attrs: &[ast::Attribute])
                                 -> ValueRef {
     if let Some(n) = ccx.externs().borrow().get(name) {
         return *n;
     }
 
     let f = declare::declare_rust_fn(ccx, name, fn_ty);
-
-    let attrs = ccx.sess().cstore.item_attrs(did);
-    attributes::from_fn_attrs(ccx, &attrs[..], f);
+    attributes::from_fn_attrs(ccx, &attrs, f);
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
     f
@@ -390,7 +388,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => bcx.sess().bug("compare_scalar_types: must be a comparison operator"),
             }
         }
-        ty::TyBareFn(..) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
+        ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
             ICmp(bcx,
                  bin_op_to_icmp_predicate(bcx.ccx(), op, false),
                  lhs,
@@ -621,8 +619,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
 pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 source: Ty<'tcx>,
                                 target: Ty<'tcx>,
-                                old_info: Option<ValueRef>,
-                                param_substs: &'tcx Substs<'tcx>)
+                                old_info: Option<ValueRef>)
                                 -> ValueRef {
     let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
@@ -641,7 +638,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                 def_id: principal.def_id(),
                 substs: substs,
             });
-            consts::ptrcast(meth::get_vtable(ccx, trait_ref, param_substs),
+            consts::ptrcast(meth::get_vtable(ccx, trait_ref),
                             Type::vtable_ptr(ccx))
         }
         _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {:?} -> {:?}",
@@ -668,7 +665,7 @@ pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             assert!(common::type_is_sized(bcx.tcx(), a));
             let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), b).ptr_to();
             (PointerCast(bcx, src, ptr_ty),
-             unsized_info(bcx.ccx(), a, b, None, bcx.fcx.param_substs))
+             unsized_info(bcx.ccx(), a, b, None))
         }
         _ => bcx.sess().bug("unsize_thin_ptr: called on bad types"),
     }
@@ -900,29 +897,31 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     did: DefId,
-                                     t: Ty<'tcx>)
-                                     -> ValueRef {
-    let name = ccx.sess().cstore.item_symbol(did);
-    match t.sty {
-        ty::TyBareFn(_, ref fn_ty) => {
-            match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
-                Abi::Rust | Abi::RustCall => {
-                    get_extern_rust_fn(ccx, t, &name[..], did)
-                }
+pub fn get_extern_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               def_id: DefId)
+                               -> datum::Datum<'tcx, datum::Rvalue> {
+    let name = ccx.sess().cstore.item_symbol(def_id);
+    let attrs = ccx.sess().cstore.item_attrs(def_id);
+    let ty = ccx.tcx().lookup_item_type(def_id).ty;
+    match ty.sty {
+        ty::TyFnDef(_, _, fty) => {
+            let abi = fty.abi;
+            let fty = infer::normalize_associated_type(ccx.tcx(), fty);
+            let ty = ccx.tcx().mk_fn_ptr(fty);
+            let llfn = match ccx.sess().target.target.adjust_abi(abi) {
                 Abi::RustIntrinsic | Abi::PlatformIntrinsic => {
-                    ccx.sess().bug("unexpected intrinsic in trans_external_path")
+                    ccx.sess().bug("unexpected intrinsic in get_extern_fn")
+                }
+                Abi::Rust | Abi::RustCall => {
+                    get_extern_rust_fn(ccx, ty, &name, &attrs)
                 }
                 _ => {
-                    let attrs = ccx.sess().cstore.item_attrs(did);
-                    foreign::register_foreign_item_fn(ccx, fn_ty.abi, t, &name, &attrs)
+                    foreign::register_foreign_item_fn(ccx, abi, ty, &name, &attrs)
                 }
-            }
+            };
+            datum::immediate_rvalue(llfn, ty)
         }
-        _ => {
-            get_extern_const(ccx, did, t)
-        }
+        _ => unreachable!("get_extern_fn: expected fn item type, found {}", ty)
     }
 }
 
@@ -2610,7 +2609,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          node_id: ast::NodeId,
                          node_type: Ty<'tcx>)
                          -> ValueRef {
-    if let ty::TyBareFn(_, ref f) = node_type.sty {
+    if let ty::TyFnDef(_, _, ref f) = node_type.sty {
         if f.abi != Abi::Rust && f.abi != Abi::RustCall {
             ccx.sess().span_bug(sp,
                                 &format!("only the `{}` or `{}` calling conventions are valid \
@@ -2685,8 +2684,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                                                                .as_local_node_id(start_def_id) {
                     get_item_val(ccx, start_node_id)
                 } else {
-                    let start_fn_type = ccx.tcx().lookup_item_type(start_def_id).ty;
-                    trans_external_path(ccx, start_def_id, start_fn_type)
+                    get_extern_fn(ccx, start_def_id).val
                 };
                 let args = {
                     let opaque_rust_main =
@@ -2915,7 +2913,7 @@ fn register_method(ccx: &CrateContext,
 
     let sym = exported_name(ccx, id, mty, &attrs);
 
-    if let ty::TyBareFn(_, ref f) = mty.sty {
+    if let ty::TyFnDef(_, _, ref f) = mty.sty {
         let llfn = if f.abi == Abi::Rust || f.abi == Abi::RustCall {
             register_fn(ccx, span, sym, id, mty)
         } else {

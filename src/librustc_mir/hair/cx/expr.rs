@@ -61,7 +61,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     let method = method_callee(cx, self, ty::MethodCall::expr(self.id));
 
                     let sig = match method.ty.sty {
-                        ty::TyBareFn(_, fn_ty) => &fn_ty.sig,
+                        ty::TyFnDef(_, _, fn_ty) => &fn_ty.sig,
                         _ => cx.tcx.sess.span_bug(self.span, "type of method is not an fn")
                     };
 
@@ -581,7 +581,6 @@ fn method_callee<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
         kind: ExprKind::Literal {
             literal: Literal::Item {
                 def_id: callee.def_id,
-                kind: ItemKind::Method,
                 substs: callee.substs,
             },
         },
@@ -618,14 +617,13 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
     let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(expr.id).substs);
     // Otherwise there may be def_map borrow conflicts
     let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
-    let (def_id, kind) = match def {
+    let def_id = match def {
         // A regular function.
-        Def::Fn(def_id) => (def_id, ItemKind::Function),
-        Def::Method(def_id) => (def_id, ItemKind::Method),
+        Def::Fn(def_id) | Def::Method(def_id) => def_id,
         Def::Struct(def_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A tuple-struct constructor. Should only be reached if not called in the same
             // expression.
-            ty::TyBareFn(..) => (def_id, ItemKind::Function),
+            ty::TyFnDef(..) => def_id,
             // A unit struct which is used as a value. We return a completely different ExprKind
             // here to account for this special case.
             ty::TyStruct(adt_def, substs) => return ExprKind::Adt {
@@ -640,7 +638,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
         Def::Variant(enum_id, variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A variant constructor. Should only be reached if not called in the same
             // expression.
-            ty::TyBareFn(..) => (variant_id, ItemKind::Function),
+            ty::TyFnDef(..) => variant_id,
             // A unit variant, similar special case to the struct case above.
             ty::TyEnum(adt_def, substs) => {
                 debug_assert!(adt_def.did == enum_id);
@@ -660,7 +658,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
             if let Some(v) = cx.try_const_eval_literal(expr) {
                 return ExprKind::Literal { literal: v };
             } else {
-                (def_id, ItemKind::Constant)
+                def_id
             }
         }
 
@@ -677,7 +675,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
                 &format!("def `{:?}` not yet implemented", def)),
     };
     ExprKind::Literal {
-        literal: Literal::Item { def_id: def_id, kind: kind, substs: substs }
+        literal: Literal::Item { def_id: def_id, substs: substs }
     }
 }
 

@@ -139,11 +139,11 @@ fn relate_item_substs<'a,'tcx:'a,R>(relation: &mut R,
     relate_substs(relation, opt_variances, a_subst, b_subst)
 }
 
-fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
-                               variances: Option<&ty::ItemVariances>,
-                               a_subst: &Substs<'tcx>,
-                               b_subst: &Substs<'tcx>)
-                               -> RelateResult<'tcx, Substs<'tcx>>
+pub fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
+                                   variances: Option<&ty::ItemVariances>,
+                                   a_subst: &Substs<'tcx>,
+                                   b_subst: &Substs<'tcx>)
+                                   -> RelateResult<'tcx, Substs<'tcx>>
     where R: TypeRelation<'a,'tcx>
 {
     let mut substs = Substs::empty();
@@ -568,11 +568,19 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             }
         }
 
-        (&ty::TyBareFn(a_opt_def_id, a_fty), &ty::TyBareFn(b_opt_def_id, b_fty))
-            if a_opt_def_id == b_opt_def_id =>
+        (&ty::TyFnDef(a_def_id, a_substs, a_fty),
+         &ty::TyFnDef(b_def_id, b_substs, b_fty))
+            if a_def_id == b_def_id =>
+        {
+            let substs = try!(relate_substs(relation, None, a_substs, b_substs));
+            let fty = try!(relation.relate(a_fty, b_fty));
+            Ok(tcx.mk_fn_def(a_def_id, tcx.mk_substs(substs), fty))
+        }
+
+        (&ty::TyFnPtr(a_fty), &ty::TyFnPtr(b_fty)) =>
         {
             let fty = try!(relation.relate(a_fty, b_fty));
-            Ok(tcx.mk_fn(a_opt_def_id, tcx.mk_bare_fn(fty)))
+            Ok(tcx.mk_fn_ptr(fty))
         }
 
         (&ty::TyProjection(ref a_data), &ty::TyProjection(ref b_data)) =>

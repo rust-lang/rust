@@ -479,7 +479,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
             Ok(())
         }
 
-        ty::TyBareFn(..) => {
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
             // FIXME(#26656): this type is always destruction-safe, but
             // it implicitly witnesses Self: Fn, which can be false.
             Ok(())

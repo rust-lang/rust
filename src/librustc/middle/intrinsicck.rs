@@ -12,7 +12,7 @@ use dep_graph::DepNode;
 use middle::def::Def;
 use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, EnumeratedItems};
-use middle::ty::{TransmuteRestriction, TyCtxt, TyBareFn};
+use middle::ty::{TransmuteRestriction, TyCtxt};
 use middle::ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
@@ -53,7 +53,7 @@ struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         let intrinsic = match self.tcx.lookup_item_type(def_id).ty.sty {
-            ty::TyBareFn(_, ref bfty) => bfty.abi == RustIntrinsic,
+            ty::TyFnDef(_, _, ref bfty) => bfty.abi == RustIntrinsic,
             _ => return false
         };
         intrinsic && self.tcx.item_name(def_id).as_str() == "transmute"
@@ -238,7 +238,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
                 Def::Fn(did) if self.def_id_is_transmute(did) => {
                     let typ = self.tcx.node_id_to_type(expr.id);
                     match typ.sty {
-                        TyBareFn(_, ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
+                        ty::TyFnDef(_, _, ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
                             if let ty::FnConverging(to) = bare_fn_ty.sig.0.output {
                                 let from = bare_fn_ty.sig.0.inputs[0];
                                 self.check_transmute(expr.span, from, to, expr.id);

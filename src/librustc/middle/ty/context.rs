@@ -41,7 +41,6 @@ use std::borrow::Borrow;
 use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::special_idents;
@@ -734,8 +733,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn print_debug_stats(&self) {
         sty_debug_print!(
             self,
-            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyBareFn, TyTrait,
-            TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
+            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyTrait, TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
@@ -792,12 +791,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Create an unsafe fn ty based on a safe fn ty.
     pub fn safe_to_unsafe_fn_ty(&self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
         assert_eq!(bare_fn.unsafety, hir::Unsafety::Normal);
-        let unsafe_fn_ty_a = self.mk_bare_fn(ty::BareFnTy {
+        self.mk_fn_ptr(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: bare_fn.abi,
             sig: bare_fn.sig.clone()
-        });
-        self.mk_fn(None, unsafe_fn_ty_a)
+        })
     }
 
     pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
@@ -946,26 +944,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(TyBool)
     }
 
-    pub fn mk_fn(&self,
-                 opt_def_id: Option<DefId>,
-                 fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyBareFn(opt_def_id, fty))
+    pub fn mk_fn_def(&self, def_id: DefId,
+                     substs: &'tcx Substs<'tcx>,
+                     fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnDef(def_id, substs, self.mk_bare_fn(fty)))
     }
 
-    pub fn mk_ctor_fn(&self,
-                      def_id: DefId,
-                      input_tys: &[Ty<'tcx>],
-                      output: Ty<'tcx>) -> Ty<'tcx> {
-        let input_args = input_tys.iter().cloned().collect();
-        self.mk_fn(Some(def_id), self.mk_bare_fn(BareFnTy {
-            unsafety: hir::Unsafety::Normal,
-            abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: input_args,
-                output: ty::FnConverging(output),
-                variadic: false
-            })
-        }))
+    pub fn mk_fn_ptr(&self, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnPtr(self.mk_bare_fn(fty)))
     }
 
     pub fn mk_trait(&self,

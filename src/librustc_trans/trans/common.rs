@@ -1228,7 +1228,7 @@ pub enum ExprOrMethodCall {
 pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 node: ExprOrMethodCall,
                                 param_substs: &subst::Substs<'tcx>)
-                                -> subst::Substs<'tcx> {
+                                -> &'tcx subst::Substs<'tcx> {
     let tcx = ccx.tcx();
 
     let substs = match node {
@@ -1245,9 +1245,9 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               node, substs));
     }
 
-    monomorphize::apply_param_substs(tcx,
-                                     param_substs,
-                                     &substs.erase_regions())
+    ccx.tcx().mk_substs(monomorphize::apply_param_substs(tcx,
+                                                         param_substs,
+                                                         &substs.erase_regions()))
 }
 
 pub fn langcall(bcx: Block,
@@ -1277,7 +1277,7 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("inlined_variant_def: ctor_ty={:?} inlined_vid={:?}", ctor_ty,
            inlined_vid);
     let adt_def = match ctor_ty.sty {
-        ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
             output: ty::FnConverging(ty), ..
         }), ..}) => ty,
         _ => ctor_ty

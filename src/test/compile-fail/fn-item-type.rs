@@ -11,23 +11,37 @@
 // Test that the types of distinct fn items are not compatible by
 // default. See also `run-pass/fn-item-type-*.rs`.
 
-fn foo(x: isize) -> isize { x * 2 }
-fn bar(x: isize) -> isize { x * 4 }
+fn foo<T>(x: isize) -> isize { x * 2 }
+fn bar<T>(x: isize) -> isize { x * 4 }
 
 fn eq<T>(x: T, y: T) { }
 
-fn main() {
-    let f = if true { foo } else { bar };
-    //~^ ERROR if and else have incompatible types
-    //~| expected `fn(isize) -> isize {foo}`
-    //~| found `fn(isize) -> isize {bar}`
-    //~| expected fn item,
-    //~| found a different fn item
+trait Foo { fn foo() { /* this is a default fn */ } }
+impl<T> Foo for T { /* `foo` is still default here */ }
 
-    eq(foo, bar);
+fn main() {
+    eq(foo::<u8>, bar::<u8>);
     //~^ ERROR mismatched types
-    //~|  expected `fn(isize) -> isize {foo}`
-    //~|  found `fn(isize) -> isize {bar}`
+    //~|  expected `fn(isize) -> isize {foo::<u8>}`
+    //~|  found `fn(isize) -> isize {bar::<u8>}`
     //~|  expected fn item
     //~|  found a different fn item
+
+    eq(foo::<u8>, foo::<i8>);
+    //~^ ERROR mismatched types
+    //~|  expected `fn(isize) -> isize {foo::<u8>}`
+    //~|  found `fn(isize) -> isize {foo::<i8>}`
+
+    eq(bar::<String>, bar::<Vec<u8>>);
+    //~^ ERROR mismatched types
+    //~|  expected `fn(isize) -> isize {bar::<collections::string::String>}`
+    //~|  found `fn(isize) -> isize {bar::<collections::vec::Vec<u8>>}`
+    //~|  expected struct `collections::string::String`
+    //~|  found struct `collections::vec::Vec`
+
+    // Make sure we distinguish between trait methods correctly.
+    eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
+    //~^ ERROR mismatched types
+    //~|  expected `fn() {Foo::foo}`
+    //~|  found `fn() {Foo::foo}`
 }

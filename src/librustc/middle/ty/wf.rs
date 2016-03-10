@@ -354,8 +354,8 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                     // WFedness.)
                 }
 
-                ty::TyBareFn(..) => {
-                    // let the loop iterator into the argument/return
+                ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                    // let the loop iterate into the argument/return
                     // types appearing in the fn signature
                 }
 

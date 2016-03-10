@@ -514,9 +514,12 @@ impl<'tcx> TyCtxt<'tcx> {
                         region(state, *r);
                         mt(state, m);
                     }
-                    TyBareFn(opt_def_id, ref b) => {
+                    TyFnDef(def_id, _, _) => {
                         byte!(14);
-                        hash!(opt_def_id);
+                        hash!(def_id);
+                    }
+                    TyFnPtr(ref b) => {
+                        byte!(15);
                         hash!(b.unsafety);
                         hash!(b.abi);
                         fn_sig(state, &b.sig);
@@ -599,14 +602,14 @@ impl<'tcx> TyCtxt<'tcx> {
 #[derive(Debug)]
 pub struct ImplMethod<'tcx> {
     pub method: Rc<ty::Method<'tcx>>,
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
     pub is_provided: bool
 }
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn get_impl_method(&self,
                            impl_def_id: DefId,
-                           substs: Substs<'tcx>,
+                           substs: &'tcx Substs<'tcx>,
                            name: Name)
                            -> ImplMethod<'tcx>
     {
@@ -633,9 +636,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 if meth.name == name {
                     let impl_to_trait_substs = self
                         .make_substs_for_receiver_types(&trait_ref, meth);
+                    let substs = impl_to_trait_substs.subst(self, substs);
                     return ImplMethod {
                         method: meth.clone(),
-                        substs: impl_to_trait_substs.subst(self, &substs),
+                        substs: self.mk_substs(substs),
                         is_provided: true
                     }
                 }
@@ -677,7 +681,7 @@ impl<'tcx> ty::TyS<'tcx> {
         // Fast-path for primitive types
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyRawPtr(..) | TyBareFn(..) | TyRef(_, TypeAndMut {
+            TyRawPtr(..) | TyFnDef(..) | TyFnPtr(_) | TyRef(_, TypeAndMut {
                 mutbl: hir::MutImmutable, ..
             }) => Some(false),
 
@@ -719,7 +723,7 @@ impl<'tcx> ty::TyS<'tcx> {
         // Fast-path for primitive types
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyBareFn(..) |
+            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
             TyArray(..) | TyTuple(..) | TyClosure(..) => Some(true),
 
             TyStr | TyTrait(..) | TySlice(_) => Some(false),

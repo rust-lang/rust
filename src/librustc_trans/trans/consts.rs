@@ -28,6 +28,7 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
+use trans::callee::Callee;
 use trans::collector::{self, TransItem};
 use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
@@ -211,7 +212,7 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let arg_ids = args.iter().map(|arg| arg.pat.id);
     let fn_args = arg_ids.zip(arg_vals.iter().cloned()).collect();
 
-    let substs = ccx.tcx().mk_substs(node_id_substs(ccx, node, param_substs));
+    let substs = node_id_substs(ccx, node, param_substs);
     match fn_like.body().expr {
         Some(ref expr) => {
             const_expr(ccx, &expr, substs, Some(&fn_args), trueconst).map(|(res, _)| res)
@@ -355,8 +356,16 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let opt_adj = cx.tcx().tables.borrow().adjustments.get(&e.id).cloned();
     match opt_adj {
         Some(AdjustReifyFnPointer) => {
-            // FIXME(#19925) once fn item types are
-            // zero-sized, we'll need to do something here
+            match ety.sty {
+                ty::TyFnDef(def_id, substs, _) => {
+                    let datum = Callee::def(cx, def_id, substs, ety).reify(cx);
+                    llconst = datum.val;
+                    ety_adjusted = datum.ty;
+                }
+                _ => {
+                    unreachable!("{} cannot be reified to a fn ptr", ety)
+                }
+            }
         }
         Some(AdjustUnsafeFnPointer) | Some(AdjustMutToConstPointer) => {
             // purely a type-level thing
@@ -413,8 +422,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     .expect("consts: unsizing got non-pointer target type").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
                 let base = ptrcast(base, ptr_ty);
-                let info = base::unsized_info(cx, pointee_ty, unsized_ty,
-                                              old_info, param_substs);
+                let info = base::unsized_info(cx, pointee_ty, unsized_ty, old_info);
 
                 if old_info.is_none() {
                     let prev_const = cx.const_unsized().borrow_mut()
@@ -894,9 +902,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         cx.sess().span_bug(e.span, "const fn argument not found")
                     }
                 }
-                Def::Fn(..) | Def::Method(..) => {
-                    expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
-                }
+                Def::Fn(..) | Def::Method(..) => C_nil(cx),
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                     load_const(cx, try!(get_const_val(cx, def_id, e, param_substs)),
                                ety)
@@ -908,23 +914,14 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             let repr = adt::represent_type(cx, ety);
                             adt::trans_const(cx, &repr, Disr::from(vinfo.disr_val), &[])
                         }
-                        ty::VariantKind::Tuple => {
-                            expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
-                        }
+                        ty::VariantKind::Tuple => C_nil(cx),
                         ty::VariantKind::Struct => {
                             cx.sess().span_bug(e.span, "path-expr refers to a dict variant!")
                         }
                     }
                 }
-                Def::Struct(..) => {
-                    if let ty::TyBareFn(..) = ety.sty {
-                        // Tuple struct.
-                        expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
-                    } else {
-                        // Unit struct.
-                        C_null(type_of::type_of(cx, ety))
-                    }
-                }
+                // Unit struct or ctor.
+                Def::Struct(..) => C_null(type_of::type_of(cx, ety)),
                 _ => {
                     cx.sess().span_bug(e.span, "expected a const, fn, struct, \
                                                 or variant def")

@@ -380,10 +380,11 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'F' => {
                 let def_id = self.parse_def();
-                return tcx.mk_fn(Some(def_id), tcx.mk_bare_fn(self.parse_bare_fn_ty()));
+                let substs = self.tcx.mk_substs(self.parse_substs());
+                return tcx.mk_fn_def(def_id, substs, self.parse_bare_fn_ty());
             }
             'G' => {
-                return tcx.mk_fn(None, tcx.mk_bare_fn(self.parse_bare_fn_ty()));
+                return tcx.mk_fn_ptr(self.parse_bare_fn_ty());
             }
             '#' => {
                 // This is a hacky little caching scheme. The idea is that if we encode

@@ -82,7 +82,7 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         autoderef(fcx,
                   callee_expr.span,
                   original_callee_ty,
-                  Some(callee_expr),
+                  || Some(callee_expr),
                   UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
                   |adj_ty, idx| {
@@ -130,7 +130,7 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // If the callee is a bare function or a closure, then we're all set.
     match structurally_resolved_type(fcx, callee_expr.span, adjusted_ty).sty {
-        ty::TyBareFn(..) => {
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
             fcx.write_autoderef_adjustment(callee_expr.id, autoderefs);
             return Some(CallStep::Builtin);
         }
@@ -225,7 +225,8 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let error_fn_sig;
 
     let fn_sig = match callee_ty.sty {
-        ty::TyBareFn(_, &ty::BareFnTy {ref sig, ..}) => {
+        ty::TyFnDef(_, _, &ty::BareFnTy {ref sig, ..}) |
+        ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => {
             sig
         }
         _ => {
