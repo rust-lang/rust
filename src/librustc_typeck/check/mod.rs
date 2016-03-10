@@ -107,7 +107,7 @@ use session::{CompileIncomplete, Session};
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, NodeMap};
+use util::nodemap::{DefIdMap, DefIdSet, FnvHashSet, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::rc::Rc;
@@ -2201,9 +2201,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Collect all unsolved type, integral and floating point variables.
             let defaults_to_apply = self.inh.infcx.candidates_for_defaulting();
 
-            let mut has_user_default = HashSet::new();
-            let mut has_literal_fallback = HashSet::new();
-            let mut is_diverging = HashSet::new();
+            let mut has_user_default = FnvHashSet();
+            let mut has_literal_fallback = FnvHashSet();
+            let mut is_diverging = FnvHashSet();
 
             // Examine all unsolved variables, and narrow them to the set that have applicable
             // defaults. We want to process any unsolved variables that have either an explicit
@@ -2232,9 +2232,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // If there are no more fallbacks to apply at this point we have applied all possible
             // defaults and type inference will procede as normal.
-            if has_user_default.len() == 0 &&
-               has_literal_fallback.len() == 0 &&
-               is_diverging.len() == 0 {
+            if
+                has_user_default.is_empty() &&
+                has_literal_fallback.is_empty() &&
+                is_diverging.is_empty()
+            {
                 break;
             }
 
@@ -2343,9 +2345,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             conflict: &(Ty<'tcx>, type_variable::UserDefault<'tcx>))
             -> Option<type_variable::UserDefault<'tcx>> {
         // Ensure that we apply the conflicting default first
-        let mut unbound_tyvars = Vec::with_capacity(tys_with_defaults.len() + 1);
-        unbound_tyvars.push(conflict);
-        unbound_tyvars.extend(tys_with_defaults.iter());
+        let unbound_tyvars: Vec<_> = Some(conflict).chain(tys_with_defaults).collect();
 
         let mut result = None;
         // We run the same code as above applying defaults in order, this time when
