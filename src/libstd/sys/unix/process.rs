@@ -216,7 +216,7 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
-    pub fn spawn(&mut self, default: Stdio)
+    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
@@ -225,7 +225,7 @@ impl Command {
                                       "nul byte found in provided data"));
         }
 
-        let (ours, theirs) = try!(self.setup_io(default));
+        let (ours, theirs) = try!(self.setup_io(default, needs_stdin));
         let (input, output) = try!(sys::pipe::anon_pipe());
 
         let pid = unsafe {
@@ -298,7 +298,7 @@ impl Command {
                                   "nul byte found in provided data")
         }
 
-        match self.setup_io(default) {
+        match self.setup_io(default, true) {
             Ok((_, theirs)) => unsafe { self.do_exec(theirs) },
             Err(e) => e,
         }
@@ -408,8 +408,11 @@ impl Command {
     }
 
 
-    fn setup_io(&self, default: Stdio) -> io::Result<(StdioPipes, ChildPipes)> {
-        let stdin = self.stdin.as_ref().unwrap_or(&default);
+    fn setup_io(&self, default: Stdio, needs_stdin: bool)
+                -> io::Result<(StdioPipes, ChildPipes)> {
+        let null = Stdio::Null;
+        let default_stdin = if needs_stdin {&default} else {&null};
+        let stdin = self.stdin.as_ref().unwrap_or(default_stdin);
         let stdout = self.stdout.as_ref().unwrap_or(&default);
         let stderr = self.stderr.as_ref().unwrap_or(&default);
         let (their_stdin, our_stdin) = try!(stdin.to_child_stdio(true));
@@ -648,7 +651,7 @@ mod tests {
             cmd.stdin(Stdio::MakePipe);
             cmd.stdout(Stdio::MakePipe);
 
-            let (mut cat, mut pipes) = t!(cmd.spawn(Stdio::Null));
+            let (mut cat, mut pipes) = t!(cmd.spawn(Stdio::Null, true));
             let stdin_write = pipes.stdin.take().unwrap();
             let stdout_read = pipes.stdout.take().unwrap();
 

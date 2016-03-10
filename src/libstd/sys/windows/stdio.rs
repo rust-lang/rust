@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(issue = "0", feature = "windows_stdio")]
+
 use prelude::v1::*;
 use io::prelude::*;
 
@@ -18,6 +20,7 @@ use sync::Mutex;
 use sys::c;
 use sys::cvt;
 use sys::handle::Handle;
+use sys_common::io::read_to_end_uninitialized;
 
 pub struct NoClose(Option<Handle>);
 
@@ -112,6 +115,22 @@ impl Stdin {
 
         // MemReader shouldn't error here since we just filled it
         utf8.read(buf)
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+        (&mut me).read_to_end(buf)
+    }
+}
+
+#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
+impl<'a> Read for &'a Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 
