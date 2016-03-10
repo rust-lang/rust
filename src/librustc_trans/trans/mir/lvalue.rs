@@ -16,7 +16,7 @@ use trans::abi;
 use trans::adt;
 use trans::base;
 use trans::builder::Builder;
-use trans::common::{self, BlockAndBuilder};
+use trans::common::{self, BlockAndBuilder, C_uint};
 use trans::consts;
 use trans::machine;
 use trans::mir::drop;
@@ -181,13 +181,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
-                        let lloffset = common::C_u32(bcx.ccx(), offset);
+                        let lloffset = C_uint(bcx.ccx(), offset);
                         project_index(self.prepare_index(bcx, lloffset))
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
                                                          min_length: _ } => {
-                        let lloffset = common::C_u32(bcx.ccx(), offset);
+                        let lloffset = C_uint(bcx.ccx(), offset);
                         let lllen = self.lvalue_len(bcx, tr_base);
                         let llindex = bcx.sub(lllen, lloffset);
                         project_index(self.prepare_index(bcx, llindex))
