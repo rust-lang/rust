@@ -927,7 +927,7 @@ pub enum ExprKind {
     Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
     Unary(UnOp, P<Expr>),
-    /// A literal (For example: `1u8`, `"foo"`)
+    /// A literal (For example: `1`, `"foo"`)
     Lit(P<Lit>),
     /// A cast (`foo as f64`)
     Cast(P<Expr>, P<Ty>),
@@ -1016,7 +1016,7 @@ pub enum ExprKind {
 
     /// An array literal constructed from one repeated element.
     ///
-    /// For example, `[1u8; 5]`. The first expression is the element
+    /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     Repeat(P<Expr>, P<Expr>),
 
@@ -1288,7 +1288,7 @@ pub enum LitKind {
     Byte(u8),
     /// A character literal (`'a'`)
     Char(char),
-    /// An integer literal (`1u8`)
+    /// An integer literal (`1`)
     Int(u64, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
     Float(InternedString, FloatTy),

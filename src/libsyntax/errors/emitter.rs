@@ -663,7 +663,7 @@ fn stderr_isatty() -> bool {
     type DWORD = u32;
     type BOOL = i32;
     type HANDLE = *mut u8;
-    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
+    const STD_ERROR_HANDLE: DWORD = -12 as DWORD;
     extern "system" {
         fn GetStdHandle(which: DWORD) -> HANDLE;
         fn GetConsoleMode(hConsoleHandle: HANDLE,
