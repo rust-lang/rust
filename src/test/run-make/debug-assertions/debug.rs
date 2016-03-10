@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs)]
 #![deny(warnings)]
 
 use std::env;
@@ -36,6 +37,7 @@ fn debug_assert() {
 }
 
 fn overflow() {
+    #[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
     fn add(a: u8, b: u8) -> u8 { a + b }
 
     add(200u8, 200u8);

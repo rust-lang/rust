@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs, unsafe_no_drop_flag)]
 
-#![feature(unsafe_no_drop_flag)]
+// ignore-pretty : (#23623) problems when  ending with // comments
 
 static mut destructions : isize = 3;
 
+#[rustc_no_mir] // FIXME #29855 MIR doesn't handle all drops correctly.
 pub fn foo() {
     #[unsafe_no_drop_flag]
     struct Foo;
