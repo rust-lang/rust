@@ -127,14 +127,14 @@ pub enum TypeVariants<'tcx> {
     /// `&a mut T` or `&'a T`.
     TyRef(&'tcx Region, TypeAndMut<'tcx>),
 
-    /// If the def-id is Some(_), then this is the type of a specific
-    /// fn item. Otherwise, if None(_), it is a fn pointer type.
-    ///
-    /// FIXME: Conflating function pointers and the type of a
-    /// function is probably a terrible idea; a function pointer is a
-    /// value with a specific type, but a function can be polymorphic
-    /// or dynamically dispatched.
-    TyBareFn(Option<DefId>, &'tcx BareFnTy<'tcx>),
+    /// The anonymous type of a function declaration/definition. Each
+    /// function has a unique type.
+    TyFnDef(DefId, &'tcx Substs<'tcx>, &'tcx BareFnTy<'tcx>),
+
+    /// A pointer to a function.  Written as `fn() -> i32`.
+    /// FIXME: This is currently also used to represent the callee of a method;
+    /// see ty::MethodCallee etc.
+    TyFnPtr(&'tcx BareFnTy<'tcx>),
 
     /// A trait, defined with `trait`.
     TyTrait(Box<TraitTy<'tcx>>),
@@ -1029,7 +1029,7 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             TyBool | TyChar | TyInt(_) | TyFloat(_) | TyUint(_) |
             TyInfer(IntVar(_)) | TyInfer(FloatVar(_)) |
-            TyBareFn(..) | TyRawPtr(_) => true,
+            TyFnDef(..) | TyFnPtr(_) | TyRawPtr(_) => true,
             _ => false
         }
     }
@@ -1076,20 +1076,6 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_char(&self) -> bool {
         match self.sty {
             TyChar => true,
-            _ => false
-        }
-    }
-
-    pub fn is_bare_fn(&self) -> bool {
-        match self.sty {
-            TyBareFn(..) => true,
-            _ => false
-        }
-    }
-
-    pub fn is_bare_fn_item(&self) -> bool {
-        match self.sty {
-            TyBareFn(Some(_), _) => true,
             _ => false
         }
     }
@@ -1154,7 +1140,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
         match self.sty {
-            TyBareFn(_, ref f) => &f.sig,
+            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => &f.sig,
             _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
@@ -1162,7 +1148,7 @@ impl<'tcx> TyS<'tcx> {
     /// Returns the ABI of the given function.
     pub fn fn_abi(&self) -> abi::Abi {
         match self.sty {
-            TyBareFn(_, ref f) => f.abi,
+            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => f.abi,
             _ => panic!("Ty::fn_abi() called on non-fn type"),
         }
     }
@@ -1178,7 +1164,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn is_fn(&self) -> bool {
         match self.sty {
-            TyBareFn(..) => true,
+            TyFnDef(..) | TyFnPtr(_) => true,
             _ => false
         }
     }
@@ -1224,7 +1210,8 @@ impl<'tcx> TyS<'tcx> {
             TyProjection(ref data) => {
                 data.trait_ref.substs.regions().as_slice().to_vec()
             }
-            TyBareFn(..) |
+            TyFnDef(..) |
+            TyFnPtr(_) |
             TyBool |
             TyChar |
             TyInt(_) |

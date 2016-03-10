@@ -27,7 +27,7 @@ use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
 use middle::ty::{TyParam, TyRawPtr};
 use middle::ty::{TyRef, TyStruct, TyTrait, TyTuple};
 use middle::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
-use middle::ty::{TyUint, TyClosure, TyBox, TyBareFn};
+use middle::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use middle::ty::TyProjection;
 use middle::ty::util::CopyImplementationError;
 use middle::free_region::FreeRegionMap;
@@ -67,8 +67,8 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-        TyStr | TyArray(..) | TySlice(..) | TyBareFn(..) | TyTuple(..) |
-        TyParam(..) | TyError |
+        TyStr | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
+        TyTuple(..) | TyParam(..) | TyError |
         TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
             None
         }
@@ -385,11 +385,12 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
 
+            let origin = TypeOrigin::Misc(span);
             let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
                 if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
-                    infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
-                                                  target, &ty::error::TypeError::Mutability);
+                    infcx.report_mismatched_types(origin, mk_ptr(mt_b.ty),
+                                                  target, ty::error::TypeError::Mutability);
                 }
                 (mt_a.ty, mt_b.ty, unsize_trait, None)
             };
@@ -418,7 +419,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                         return;
                     }
 
-                    let origin = TypeOrigin::Misc(span);
                     let fields = &def_a.struct_variant().fields;
                     let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
                         let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));

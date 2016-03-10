@@ -161,7 +161,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::TySlice(..) |
             ty::TyRawPtr(..) |
             ty::TyRef(..) |
-            ty::TyBareFn(..) |
+            ty::TyFnDef(..) |
+            ty::TyFnPtr(_) |
             ty::TyTrait(..) |
             ty::TyStruct(..) |
             ty::TyClosure(..) |

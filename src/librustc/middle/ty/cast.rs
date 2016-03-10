@@ -69,7 +69,7 @@ impl<'tcx> CastTy<'tcx> {
                 Some(CastTy::Int(IntTy::CEnum)),
             ty::TyRawPtr(ref mt) => Some(CastTy::Ptr(mt)),
             ty::TyRef(_, ref mt) => Some(CastTy::RPtr(mt)),
-            ty::TyBareFn(..) => Some(CastTy::FnPtr),
+            ty::TyFnPtr(..) => Some(CastTy::FnPtr),
             _ => None,
         }
     }

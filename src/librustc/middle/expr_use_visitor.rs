@@ -556,7 +556,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                callee, callee_ty);
         let call_scope = self.tcx().region_maps.node_extent(call.id);
         match callee_ty.sty {
-            ty::TyBareFn(..) => {
+            ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                 self.consume_expr(callee);
             }
             ty::TyError => { }

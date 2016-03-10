@@ -430,7 +430,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let fn_type = monomorphize::apply_param_substs(cx.tcx(), param_substs, &fn_type);
 
         let (sig, abi) = match fn_type.sty {
-            ty::TyBareFn(_, ref barefnty) => {
+            ty::TyFnDef(_, _, ref barefnty) | ty::TyFnPtr(ref barefnty) => {
                 let sig = cx.tcx().erase_late_bound_regions(&barefnty.sig);
                 let sig = infer::normalize_associated_type(cx.tcx(), &sig);
                 (sig, barefnty.abi)

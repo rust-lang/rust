@@ -150,26 +150,6 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     Type::func(&atys[..], &lloutputtype)
 }
 
-// Given a function type and a count of ty params, construct an llvm type
-pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) -> Type {
-    match fty.sty {
-        ty::TyBareFn(_, ref f) => {
-            // FIXME(#19925) once fn item types are
-            // zero-sized, we'll need to do something here
-            if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-                let sig = cx.tcx().erase_late_bound_regions(&f.sig);
-                let sig = infer::normalize_associated_type(cx.tcx(), &sig);
-                type_of_rust_fn(cx, None, &sig, f.abi)
-            } else {
-                foreign::lltype_for_foreign_fn(cx, fty)
-            }
-        }
-        _ => {
-            cx.sess().bug("type_of_fn_from_ty given non-closure, non-bare-fn")
-        }
-    }
-}
-
 // A "sizing type" is an LLVM type, the size and alignment of which are
 // guaranteed to be equivalent to what you would get out of `type_of()`. It's
 // useful because:
@@ -210,7 +190,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             }
         }
 
-        ty::TyBareFn(..) => Type::i8p(cx),
+        ty::TyFnDef(..) => Type::nil(cx),
+        ty::TyFnPtr(_) => Type::i8p(cx),
 
         ty::TyArray(ty, size) => {
             let llty = sizing_type_of(cx, ty);
@@ -415,8 +396,15 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TySlice(ty) => in_memory_type_of(cx, ty),
       ty::TyStr | ty::TyTrait(..) => Type::i8(cx),
 
-      ty::TyBareFn(..) => {
-          type_of_fn_from_ty(cx, t).ptr_to()
+      ty::TyFnDef(..) => Type::nil(cx),
+      ty::TyFnPtr(f) => {
+        if f.abi == Abi::Rust || f.abi == Abi::RustCall {
+            let sig = cx.tcx().erase_late_bound_regions(&f.sig);
+            let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+            type_of_rust_fn(cx, None, &sig, f.abi).ptr_to()
+        } else {
+            foreign::lltype_for_foreign_fn(cx, t).ptr_to()
+        }
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),
       ty::TyTuple(..) => {

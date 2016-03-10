@@ -50,7 +50,6 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                           expr_ty(bcx, &out.expr),
                                           out_datum,
                                           cleanup::CustomScope(temp_scope),
-                                          callee::DontAutorefArg,
                                           &mut inputs);
             if out.is_rw {
                 ext_inputs.push(*inputs.last().unwrap());
@@ -64,7 +63,6 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                               expr_ty(bcx, &out.expr),
                                               out_datum,
                                               cleanup::CustomScope(temp_scope),
-                                              callee::DontAutorefArg,
                                               &mut ext_inputs);
                 ext_constraints.push(i.to_string());
             }
@@ -80,7 +78,6 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     expr_ty(bcx, &input),
                                     in_datum,
                                     cleanup::CustomScope(temp_scope),
-                                    callee::DontAutorefArg,
                                     &mut inputs);
     }
     inputs.extend_from_slice(&ext_inputs[..]);

@@ -9,72 +9,27 @@
 // except according to those terms.
 
 use llvm::{BasicBlockRef, ValueRef, OperandBundleDef};
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty;
 use rustc::mir::repr as mir;
 use syntax::abi::Abi;
 use trans::adt;
 use trans::attributes;
 use trans::base;
 use trans::build;
+use trans::callee::{Callee, Fn, Virtual};
 use trans::common::{self, Block, BlockAndBuilder};
 use trans::debuginfo::DebugLoc;
 use trans::Disr;
 use trans::foreign;
+use trans::meth;
 use trans::type_of;
 use trans::glue;
 use trans::type_::Type;
 
 use super::{MirContext, drop};
 use super::operand::OperandValue::{FatPtr, Immediate, Ref};
-use super::operand::OperandRef;
-
-#[derive(PartialEq, Eq)]
-enum AbiStyle {
-    Foreign,
-    RustCall,
-    Rust
-}
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
-    fn abi_style(&self, fn_ty: Ty<'tcx>) -> AbiStyle {
-        if let ty::TyBareFn(_, ref f) = fn_ty.sty {
-            // We do not translate intrinsics here (they shouldn’t be functions)
-            assert!(f.abi != Abi::RustIntrinsic && f.abi != Abi::PlatformIntrinsic);
-
-            match f.abi {
-                Abi::Rust => AbiStyle::Rust,
-                Abi::RustCall => AbiStyle::RustCall,
-                _ => AbiStyle::Foreign
-            }
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn arg_operands(&mut self,
-                    bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                    abi_style: AbiStyle,
-                    args: &[mir::Operand<'tcx>])
-                    -> Vec<OperandRef<'tcx>>
-    {
-        match abi_style {
-            AbiStyle::Foreign | AbiStyle::Rust => {
-                args.iter().map(|arg| self.trans_operand(bcx, arg)).collect()
-            }
-            AbiStyle::RustCall => match args.split_last() {
-                None => vec![],
-                Some((tup, self_ty)) => {
-                    // we can reorder safely because of MIR
-                    let untupled_args = self.trans_operand_untupled(bcx, tup);
-                    self_ty
-                        .iter().map(|arg| self.trans_operand(bcx, arg))
-                        .chain(untupled_args.into_iter())
-                        .collect()
-                }
-            }
-        }
-    }
-
     pub fn trans_block(&mut self, bb: mir::BasicBlock) {
         debug!("trans_block({:?})", bb);
 
@@ -197,9 +152,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {
-                // Create the callee. This will always be a fn ptr and hence a kind of scalar.
+                // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
-                let attrs = attributes::from_fn_type(bcx.ccx(), callee.ty);
                 let debugloc = DebugLoc::None;
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
                 let mut llargs = Vec::with_capacity(args.len() + 1);
@@ -207,9 +161,23 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // filled when `is_foreign` is `true` and foreign calls are minority of the cases.
                 let mut arg_tys = Vec::new();
 
+                let (callee, fty) = match callee.ty.sty {
+                    ty::TyFnDef(def_id, substs, f) => {
+                        (Callee::def(bcx.ccx(), def_id, substs, callee.ty), f)
+                    }
+                    ty::TyFnPtr(f) => {
+                        (Callee {
+                            data: Fn(callee.immediate()),
+                            ty: callee.ty
+                        }, f)
+                    }
+                    _ => unreachable!("{} is not callable", callee.ty)
+                };
+
+                // We do not translate intrinsics here (they shouldn’t be functions)
+                assert!(fty.abi != Abi::RustIntrinsic && fty.abi != Abi::PlatformIntrinsic);
                 // Foreign-ABI functions are translated differently
-                let abi_style = self.abi_style(callee.ty);
-                let is_foreign = abi_style == AbiStyle::Foreign;
+                let is_foreign = fty.abi != Abi::Rust && fty.abi != Abi::RustCall;
 
                 // Prepare the return value destination
                 let (ret_dest_ty, must_copy_dest) = if let Some((ref d, _)) = *destination {
@@ -225,19 +193,58 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     (None, false)
                 };
 
-                // Process the rest of the args.
-                for operand in self.arg_operands(&bcx, abi_style, args) {
-                    match operand.val {
-                        Ref(llval) | Immediate(llval) => llargs.push(llval),
-                        FatPtr(b, e) => {
-                            llargs.push(b);
-                            llargs.push(e);
+                // Split the rust-call tupled arguments off.
+                let (args, rest) = if fty.abi == Abi::RustCall && !args.is_empty() {
+                    let (tup, args) = args.split_last().unwrap();
+                    // we can reorder safely because of MIR
+                    (args, self.trans_operand_untupled(&bcx, tup))
+                } else {
+                    (&args[..], vec![])
+                };
+
+                let datum = {
+                    let mut arg_ops = args.iter().map(|arg| {
+                        self.trans_operand(&bcx, arg)
+                    }).chain(rest.into_iter());
+
+                    // Get the actual pointer we can call.
+                    // This can involve vtable accesses or reification.
+                    let datum = if let Virtual(idx) = callee.data {
+                        assert!(!is_foreign);
+
+                        // Grab the first argument which is a trait object.
+                        let vtable = match arg_ops.next().unwrap().val {
+                            FatPtr(data, vtable) => {
+                                llargs.push(data);
+                                vtable
+                            }
+                            _ => unreachable!("expected FatPtr for Virtual call")
+                        };
+
+                        bcx.with_block(|bcx| {
+                            meth::get_virtual_method(bcx, vtable, idx, callee.ty)
+                        })
+                    } else {
+                        callee.reify(bcx.ccx())
+                    };
+
+                    // Process the rest of the args.
+                    for operand in arg_ops {
+                        match operand.val {
+                            Ref(llval) | Immediate(llval) => llargs.push(llval),
+                            FatPtr(b, e) => {
+                                llargs.push(b);
+                                llargs.push(e);
+                            }
+                        }
+                        if is_foreign {
+                            arg_tys.push(operand.ty);
                         }
                     }
-                    if is_foreign {
-                        arg_tys.push(operand.ty);
-                    }
-                }
+
+                    datum
+                };
+                let attrs = attributes::from_fn_type(bcx.ccx(), datum.ty);
 
                 // Many different ways to call a function handled here
                 match (is_foreign, cleanup, destination) {
@@ -246,7 +253,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
                         let unreachable_blk = self.unreachable_block();
-                        bcx.invoke(callee.immediate(),
+                        bcx.invoke(datum.val,
                                    &llargs[..],
                                    unreachable_blk.llbb,
                                    landingpad.llbb(),
@@ -259,7 +266,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     (false, &Some(cleanup), &Some((_, success))) => {
                         let cleanup = self.bcx(cleanup);
                         let landingpad = self.make_landing_pad(cleanup);
-                        let invokeret = bcx.invoke(callee.immediate(),
+                        let invokeret = bcx.invoke(datum.val,
                                                    &llargs[..],
                                                    self.llblock(success),
                                                    landingpad.llbb(),
@@ -282,7 +289,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         });
                     },
                     (false, _, &None) => {
-                        bcx.call(callee.immediate(),
+                        bcx.call(datum.val,
                                  &llargs[..],
                                  cleanup_bundle.as_ref(),
                                  Some(attrs));
@@ -290,7 +297,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         bcx.unreachable();
                     }
                     (false, _, &Some((_, target))) => {
-                        let llret = bcx.call(callee.immediate(),
+                        let llret = bcx.call(datum.val,
                                              &llargs[..],
                                              cleanup_bundle.as_ref(),
                                              Some(attrs));
@@ -312,8 +319,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             .expect("return destination is not set");
                         bcx = bcx.map_block(|bcx| {
                             foreign::trans_native_call(bcx,
-                                                       callee.ty,
-                                                       callee.immediate(),
+                                                       datum.ty,
+                                                       datum.val,
                                                        dest.llval,
                                                        &llargs[..],
                                                        arg_tys,

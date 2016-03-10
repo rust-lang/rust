@@ -255,9 +255,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let type_scheme = fcx.tcx().lookup_item_type(fcx.tcx().map.local_def_id(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span, free_substs, &type_scheme.ty);
             let bare_fn_ty = match item_ty.sty {
-                ty::TyBareFn(_, ref bare_fn_ty) => bare_fn_ty,
+                ty::TyFnDef(_, _, ref bare_fn_ty) => bare_fn_ty,
                 _ => {
-                    this.tcx().sess.span_bug(item.span, "Fn item without bare fn type");
+                    this.tcx().sess.span_bug(item.span, "Fn item without fn type");
                 }
             };
 

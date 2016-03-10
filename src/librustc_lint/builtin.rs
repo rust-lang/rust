@@ -1065,7 +1065,7 @@ impl LateLintPass for MutableTransmutes {
                 }
                 let typ = cx.tcx.node_id_to_type(expr.id);
                 match typ.sty {
-                    ty::TyBareFn(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
+                    ty::TyFnDef(_, _, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         if let ty::FnConverging(to) = bare_fn.sig.0.output {
                             let from = bare_fn.sig.0.inputs[0];
                             return Some((&from.sty, &to.sty));
@@ -1079,7 +1079,7 @@ impl LateLintPass for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
             match cx.tcx.lookup_item_type(def_id).ty.sty {
-                ty::TyBareFn(_, ref bfty) if bfty.abi == RustIntrinsic => (),
+                ty::TyFnDef(_, _, ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
             cx.tcx.with_path(def_id, |path| match path.last() {

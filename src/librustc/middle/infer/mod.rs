@@ -454,7 +454,7 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          -> UnitResult<'tcx>
 {
     debug!("mk_eqty({:?} <: {:?})", a, b);
-    cx.commit_if_ok(|_| cx.eq_types(a_is_expected, origin, a, b))
+    cx.eq_types(a_is_expected, origin, a, b)
 }
 
 pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -466,7 +466,7 @@ pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 {
     debug!("mk_eq_trait_refs({:?} <: {:?})",
            a, b);
-    cx.commit_if_ok(|_| cx.eq_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+    cx.eq_trait_refs(a_is_expected, origin, a, b)
 }
 
 pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -478,7 +478,7 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 {
     debug!("mk_sub_poly_trait_refs({:?} <: {:?})",
            a, b);
-    cx.commit_if_ok(|_| cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+    cx.sub_poly_trait_refs(a_is_expected, origin, a, b)
 }
 
 fn expected_found<T>(a_is_expected: bool,
@@ -1351,18 +1351,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn report_mismatched_types(&self,
-                                   span: Span,
+                                   origin: TypeOrigin,
                                    expected: Ty<'tcx>,
                                    actual: Ty<'tcx>,
-                                   err: &TypeError<'tcx>) {
+                                   err: TypeError<'tcx>) {
         let trace = TypeTrace {
-            origin: TypeOrigin::Misc(span),
+            origin: origin,
             values: Types(ExpectedFound {
                 expected: expected,
                 found: actual
             })
         };
-        self.report_and_explain_type_error(trace, err);
+        self.report_and_explain_type_error(trace, &err);
     }
 
     pub fn report_conflicting_default_types(&self,

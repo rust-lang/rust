@@ -856,7 +856,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 if let Def::Struct(..) = self.tcx.resolve_expr(expr) {
                     let expr_ty = self.tcx.expr_ty(expr);
                     let def = match expr_ty.sty {
-                        ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
                             output: ty::FnConverging(ty), ..
                         }), ..}) => ty,
                         _ => expr_ty

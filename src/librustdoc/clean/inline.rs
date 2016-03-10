@@ -164,7 +164,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &TyCtxt,
 fn build_external_function(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::Function {
     let t = tcx.lookup_item_type(did);
     let (decl, style, abi) = match t.ty.sty {
-        ty::TyBareFn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
+        ty::TyFnDef(_, _, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
 

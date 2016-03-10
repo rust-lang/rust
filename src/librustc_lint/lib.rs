@@ -171,6 +171,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "RFC 218 <https://github.com/rust-lang/rfcs/blob/\
                         master/text/0218-empty-struct-with-braces.md>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(TRANSMUTE_FROM_FN_ITEM_TYPES),
+            reference: "issue #19925 <https://github.com/rust-lang/rust/issues/19925>",
+        },
         ]);
 
     // We have one lint pass defined specially

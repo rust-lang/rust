@@ -10,45 +10,27 @@
 
 
 use check::{coercion, FnCtxt};
-use middle::ty::{self, Ty};
-use middle::infer::{self, TypeOrigin};
+use middle::ty::Ty;
+use middle::infer::TypeOrigin;
 
-use std::result::Result::{Err, Ok};
 use syntax::codemap::Span;
 use rustc_front::hir;
 
 // Requires that the two types unify, and prints an error message if
 // they don't.
 pub fn suptype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
-                         ty_expected: Ty<'tcx>, ty_actual: Ty<'tcx>) {
-    suptype_with_fn(fcx, sp, false, ty_expected, ty_actual,
-        |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
-}
-
-/// As `suptype`, but call `handle_err` if unification for subtyping fails.
-pub fn suptype_with_fn<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
-                                    sp: Span,
-                                    b_is_expected: bool,
-                                    ty_a: Ty<'tcx>,
-                                    ty_b: Ty<'tcx>,
-                                    handle_err: F) where
-    F: FnOnce(Span, Ty<'tcx>, Ty<'tcx>, &ty::error::TypeError<'tcx>),
-{
-    // n.b.: order of actual, expected is reversed
-    match infer::mk_subty(fcx.infcx(), b_is_expected, TypeOrigin::Misc(sp),
-                          ty_b, ty_a) {
-      Ok(()) => { /* ok */ }
-      Err(ref err) => {
-          handle_err(sp, ty_a, ty_b, err);
-      }
+                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
+    let origin = TypeOrigin::Misc(sp);
+    if let Err(e) = fcx.infcx().sub_types(false, origin, actual, expected) {
+        fcx.infcx().report_mismatched_types(origin, expected, actual, e);
     }
 }
 
 pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
-    match infer::mk_eqty(fcx.infcx(), false, TypeOrigin::Misc(sp), actual, expected) {
-        Ok(()) => { /* ok */ }
-        Err(ref err) => { fcx.report_mismatched_types(sp, expected, actual, err); }
+    let origin = TypeOrigin::Misc(sp);
+    if let Err(e) = fcx.infcx().eq_types(false, origin, actual, expected) {
+        fcx.infcx().report_mismatched_types(origin, expected, actual, e);
     }
 }
 
@@ -57,16 +39,10 @@ pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         sp: Span,
                         expected: Ty<'tcx>,
                         expr: &hir::Expr) {
-    let expr_ty = fcx.expr_ty(expr);
-    debug!("demand::coerce(expected = {:?}, expr_ty = {:?})",
-           expected,
-           expr_ty);
-    let expr_ty = fcx.resolve_type_vars_if_possible(expr_ty);
     let expected = fcx.resolve_type_vars_if_possible(expected);
-    match coercion::mk_assignty(fcx, expr, expr_ty, expected) {
-      Ok(()) => { /* ok */ }
-      Err(ref err) => {
-        fcx.report_mismatched_types(sp, expected, expr_ty, err);
-      }
+    if let Err(e) = coercion::try(fcx, expr, expected) {
+        let origin = TypeOrigin::Misc(sp);
+        let expr_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(expr));
+        fcx.infcx().report_mismatched_types(origin, expected, expr_ty, e);
     }
 }

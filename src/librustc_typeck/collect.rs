@@ -543,6 +543,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               sig, untransformed_rcvr_ty);
 
     let def_id = ccx.tcx.map.local_def_id(id);
+    let substs = ccx.tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
+
     let ty_method = ty::Method::new(name,
                                     ty_generics,
                                     ty_generic_predicates,
@@ -552,8 +554,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     def_id,
                                     container);
 
-    let fty = ccx.tcx.mk_fn(Some(def_id),
-                            ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
+    let fty = ccx.tcx.mk_fn_def(def_id, substs, ty_method.fty.clone());
     debug!("method {} (id {}) has type {:?}",
             name, id, fty);
     ccx.tcx.register_item_type(def_id, TypeScheme {
@@ -715,17 +716,13 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             tcx.register_item_type(def_id,
                                    TypeScheme { generics: ty_generics.clone(),
                                                 ty: selfty });
-            if let &Some(ref ast_trait_ref) = opt_trait_ref {
-                tcx.impl_trait_refs.borrow_mut().insert(
-                    def_id,
-                    Some(astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
-                                                             &ExplicitRscope,
-                                                             ast_trait_ref,
-                                                             Some(selfty)))
-                        );
-            } else {
-                tcx.impl_trait_refs.borrow_mut().insert(def_id, None);
-            }
+            let trait_ref = opt_trait_ref.as_ref().map(|ast_trait_ref| {
+                astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
+                                                    &ExplicitRscope,
+                                                    ast_trait_ref,
+                                                    Some(selfty))
+            });
+            tcx.impl_trait_refs.borrow_mut().insert(def_id, trait_ref);
 
             enforce_impl_params_are_constrained(tcx, generics, &mut ty_predicates, def_id);
             tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
@@ -902,7 +899,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             }
 
             if !struct_def.is_struct() {
-                convert_variant_ctor(tcx, struct_def.id(), variant, scheme, predicates);
+                convert_variant_ctor(ccx, struct_def.id(), variant, scheme, predicates);
             }
         },
         hir::ItemTy(_, ref generics) => {
@@ -920,11 +917,12 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     }
 }
 
-fn convert_variant_ctor<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
+fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                   ctor_id: ast::NodeId,
                                   variant: ty::VariantDef<'tcx>,
                                   scheme: ty::TypeScheme<'tcx>,
                                   predicates: ty::GenericPredicates<'tcx>) {
+    let tcx = ccx.tcx;
     let ctor_ty = match variant.kind() {
         VariantKind::Unit | VariantKind::Struct => scheme.ty,
         VariantKind::Tuple => {
@@ -933,9 +931,17 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
                 .iter()
                 .map(|field| field.unsubst_ty())
                 .collect();
-            tcx.mk_ctor_fn(tcx.map.local_def_id(ctor_id),
-                           &inputs[..],
-                           scheme.ty)
+            let def_id = tcx.map.local_def_id(ctor_id);
+            let substs = tcx.mk_substs(mk_item_substs(ccx, &scheme.generics));
+            tcx.mk_fn_def(def_id, substs, ty::BareFnTy {
+                unsafety: hir::Unsafety::Normal,
+                abi: abi::Abi::Rust,
+                sig: ty::Binder(ty::FnSig {
+                    inputs: inputs,
+                    output: ty::FnConverging(scheme.ty),
+                    variadic: false
+                })
+            })
         }
     };
     write_ty_to_tcx(tcx, ctor_id, ctor_ty);
@@ -961,7 +967,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // Convert the ctor, if any. This also registers the variant as
         // an item.
         convert_variant_ctor(
-            ccx.tcx,
+            ccx,
             variant.node.data.id(),
             ty_variant,
             scheme.clone(),
@@ -1436,7 +1442,9 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
             let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
-            let ty = tcx.mk_fn(Some(ccx.tcx.map.local_def_id(it.id)), tcx.mk_bare_fn(tofd));
+            let def_id = ccx.tcx.map.local_def_id(it.id);
+            let substs = tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
+            let ty = tcx.mk_fn_def(def_id, substs, tofd);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         hir::ItemTy(ref t, ref generics) => {
@@ -1556,7 +1564,9 @@ fn compute_type_scheme_of_foreign_item<'a, 'tcx>(
 {
     match it.node {
         hir::ForeignItemFn(ref fn_decl, ref generics) => {
-            compute_type_scheme_of_foreign_fn_decl(ccx, fn_decl, generics, abi)
+            compute_type_scheme_of_foreign_fn_decl(
+                ccx, ccx.tcx.map.local_def_id(it.id),
+                fn_decl, generics, abi)
         }
         hir::ForeignItemStatic(ref t, _) => {
             ty::TypeScheme {
@@ -2107,6 +2117,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
 
 fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     ccx: &CrateCtxt<'a, 'tcx>,
+    id: DefId,
     decl: &hir::FnDecl,
     ast_generics: &hir::Generics,
     abi: abi::Abi)
@@ -2140,14 +2151,14 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
             ty::FnDiverging
     };
 
-    let t_fn = ccx.tcx.mk_fn(None,
-        ccx.tcx.mk_bare_fn(ty::BareFnTy {
-            abi: abi,
-            unsafety: hir::Unsafety::Unsafe,
-            sig: ty::Binder(ty::FnSig {inputs: input_tys,
-                                       output: output,
-                                       variadic: decl.variadic}),
-        }));
+    let substs = ccx.tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
+    let t_fn = ccx.tcx.mk_fn_def(id, substs, ty::BareFnTy {
+        abi: abi,
+        unsafety: hir::Unsafety::Unsafe,
+        sig: ty::Binder(ty::FnSig {inputs: input_tys,
+                                    output: output,
+                                    variadic: decl.variadic}),
+    });
 
     ty::TypeScheme {
         generics: ty_generics,
