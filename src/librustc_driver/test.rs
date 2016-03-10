@@ -113,7 +113,10 @@ fn test_env<F>(source_string: &str,
                                        Rc::new(CodeMap::new()), cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let krate_config = Vec::new();
-    let input = config::Input::Str(source_string.to_string());
+    let input = config::Input::Str {
+        name: driver::anon_src(),
+        input: source_string.to_string(),
+    };
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input).unwrap();
     let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, "test", None)
                     .expect("phase 2 aborted");

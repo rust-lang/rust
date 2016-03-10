@@ -182,7 +182,10 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), as_test_harness, opts);
-    let input = config::Input::Str(test.to_string());
+    let input = config::Input::Str {
+        name: driver::anon_src(),
+        input: test.to_owned(),
+    };
     let mut outputs = HashMap::new();
     outputs.insert(OutputType::Exe, None);
 

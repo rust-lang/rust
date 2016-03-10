@@ -231,7 +231,6 @@ pub fn compile_input(sess: &Session,
     Ok(())
 }
 
-
 /// The name used for source code that doesn't originate in a file
 /// (e.g. source from stdin or a string)
 pub fn anon_src() -> String {
@@ -242,7 +241,7 @@ pub fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
         Input::File(ref ifile) => ifile.to_str().unwrap().to_string(),
-        Input::Str(_) => anon_src(),
+        Input::Str { ref name, .. } => name.clone(),
     }
 }
 
@@ -434,9 +433,9 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
             Input::File(ref file) => {
                 parse::parse_crate_from_file(file, cfg.clone(), &sess.parse_sess)
             }
-            Input::Str(ref src) => {
-                parse::parse_crate_from_source_str(anon_src().to_string(),
-                                                   src.to_string(),
+            Input::Str { ref input, ref name } => {
+                parse::parse_crate_from_source_str(name.clone(),
+                                                   input.clone(),
                                                    cfg.clone(),
                                                    &sess.parse_sess)
             }
