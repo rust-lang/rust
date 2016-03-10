@@ -450,6 +450,7 @@ static ASCII_UPPERCASE_MAP: [u8; 256] = [
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use prelude::v1::*;
     use super::*;
     use char::from_u32;

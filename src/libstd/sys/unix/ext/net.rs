@@ -731,6 +731,7 @@ impl IntoRawFd for UnixDatagram {
 
 #[cfg(test)]
 mod test {
+    #[allow(unused_imports)]
     use prelude::v1::*;
     use thread;
     use io;

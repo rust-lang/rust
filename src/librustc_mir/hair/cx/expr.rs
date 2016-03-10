@@ -21,6 +21,7 @@ use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
 use rustc::hir::pat_util;
 use rustc::ty::{self, VariantDef, Ty};
+#[allow(unused_imports)]
 use rustc::mir::repr::*;
 use rustc::hir;
 use syntax::ptr::P;

@@ -525,6 +525,7 @@ impl<'a, T: ToSocketAddrs + ?Sized> ToSocketAddrs for &'a T {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use prelude::v1::*;
     use net::*;
     use net::test::{tsa, sa6, sa4};

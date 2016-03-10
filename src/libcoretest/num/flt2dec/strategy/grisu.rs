@@ -10,6 +10,7 @@
 
 use std::{i16, f64};
 use super::super::*;
+#[allow(unused_imports)]
 use core::num::flt2dec::*;
 use core::num::flt2dec::strategy::grisu::*;
 

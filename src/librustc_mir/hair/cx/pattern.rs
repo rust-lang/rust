@@ -15,6 +15,7 @@ use rustc_const_eval as const_eval;
 use rustc::hir::def::Def;
 use rustc::hir::pat_util::{pat_is_resolved_const, pat_is_binding};
 use rustc::ty::{self, Ty};
+#[allow(unused_imports)]
 use rustc::mir::repr::*;
 use rustc::hir::{self, PatKind};
 use syntax::ast;
