@@ -475,9 +475,9 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
                     Some(Def::AssociatedConst(did)) |
-                    Some(Def::Const(did)) => match lookup_const_by_id(self.tcx, did,
-                                                                    Some(pat.id), None) {
-                        Some((const_expr, _const_ty)) => {
+                    Some(Def::Const(did)) => {
+                        let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
+                        if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
                             const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
 
                                 if let Some(ref mut renaming_map) = self.renaming_map {
@@ -487,14 +487,13 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
 
                                 new_pat
                             })
-                        }
-                        None => {
+                        } else {
                             self.failed = true;
                             span_err!(self.tcx.sess, pat.span, E0158,
                                 "statics cannot be referenced in patterns");
                             pat
                         }
-                    },
+                    }
                     _ => noop_fold_pat(pat, self)
                 }
             }
