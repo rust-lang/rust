@@ -737,7 +737,7 @@ pub enum Expr_ {
     ExprBinary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
     ExprUnary(UnOp, P<Expr>),
-    /// A literal (For example: `1u8`, `"foo"`)
+    /// A literal (For example: `1`, `"foo"`)
     ExprLit(P<Lit>),
     /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
@@ -804,7 +804,7 @@ pub enum Expr_ {
 
     /// A vector literal constructed from one repeated element.
     ///
-    /// For example, `[1u8; 5]`. The first expression is the element
+    /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, P<Expr>),
 }
