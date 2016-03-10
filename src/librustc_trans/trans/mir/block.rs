@@ -410,7 +410,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, by_ref) = match val {
-            Immediate(llval) if arg.cast.is_some() => {
+            Immediate(llval) if arg.is_indirect() || arg.cast.is_some() => {
                 let llscratch = build::AllocaFcx(bcx.fcx(), arg.original_ty, "arg");
                 bcx.store(llval, llscratch);
                 (llscratch, true)
