@@ -93,9 +93,8 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
 
     let (which, line) = if follow {
         assert!(adjusts == 0, "use either //~| or //~^, not both.");
-        let line = last_nonfollow_error.unwrap_or_else(|| {
-            panic!("encountered //~| without preceding //~^ line.")
-        });
+        let line = last_nonfollow_error.expect("encountered //~| without \
+                                                preceding //~^ line.");
         (FollowPrevious(line), line)
     } else {
         let which =
