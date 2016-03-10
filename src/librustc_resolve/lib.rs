@@ -2616,6 +2616,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Try to find a path to an item in a module.
         let last_ident = segments.last().unwrap().identifier;
+        // Resolve a single identifier with fallback to primitive types
+        let resolve_identifier_with_fallback = |this: &mut Self, record_used| {
+            let def = this.resolve_identifier(last_ident, namespace, record_used);
+            match def {
+                None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS =>
+                    this.primitive_type_table
+                        .primitive_types
+                        .get(&last_ident.unhygienic_name)
+                        .map_or(def, |prim_ty| Some(LocalDef::from_def(Def::PrimTy(*prim_ty)))),
+                _ => def
+            }
+        };
+
         if segments.len() == 1 {
             // In `a(::assoc_item)*` `a` cannot be a module. If `a` does resolve to a module we
             // don't report an error right away, but try to fallback to a primitive type.
@@ -2623,20 +2636,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             //
             // use std::u8; // bring module u8 in scope
             // fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
-            //     u8::MAX // OK, resolves to associated constant <u8>::MAX,
-            //             // not to non-existent std::u8::MAX
+            //     u8::max_value() // OK, resolves to associated function <u8>::max_value,
+            //                     // not to non-existent std::u8::max_value
             // }
             //
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
-            let unqualified_def = self.resolve_identifier_with_fallback(last_ident, namespace, true);
-            return unqualified_def.and_then(|def| self.adjust_local_def(def, span))
-                                  .map(|def| {
-                                      PathResolution::new(def, path_depth)
-                                  });
+            let unqualified_def = resolve_identifier_with_fallback(self, true);
+            return unqualified_def.and_then(|def| self.adjust_local_def(def, span)).map(mk_res);
         }
 
-        let unqualified_def = self.resolve_identifier_with_fallback(last_ident, namespace, false);
+        let unqualified_def = resolve_identifier_with_fallback(self, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
             (Some(d), Some(ref ud)) if d == ud.def => {
@@ -2650,28 +2660,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         def.map(mk_res)
-    }
-
-    // Resolve a single identifier with fallback to primitive types
-    fn resolve_identifier_with_fallback(&mut self,
-                          identifier: hir::Ident,
-                          namespace: Namespace,
-                          check_ribs: bool,
-                          record_used: bool)
-                          -> Option<LocalDef> {
-        let def = self.resolve_identifier(identifier, namespace, check_ribs, record_used);
-        match def {
-            None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS => {
-                if let Some(&prim_ty) = self.primitive_type_table
-                                            .primitive_types
-                                            .get(&identifier.unhygienic_name) {
-                    Some(LocalDef::from_def(Def::PrimTy(prim_ty)))
-                } else {
-                    def
-                }
-            }
-            _ => def
-        }
     }
 
     // Resolve a single identifier
