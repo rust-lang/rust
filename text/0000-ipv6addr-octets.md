@@ -1,4 +1,4 @@
-- Feature Name: ipv6addr_octets_interface
+- Feature Name: ipaddr_octet_arrays
 - Start Date: 2016-02-12
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -6,8 +6,8 @@
 # Summary
 [summary]: #summary
 
-Add constructor and conversion functions for `std::net::Ipv6Addr` that are
-oriented around octets.
+Add constructor and conversion functions for `std::net::Ipv6Addr` and
+`std::net::Ipv4Addr` that are oriented around arrays of octets.
 
 # Motivation
 [motivation]: #motivation
@@ -55,6 +55,8 @@ impl From<[u8; 4]> for Ipv4Addr {
 	}
 }
 ```
+
+Note: `Ipv4Addr` already has an `octets` method that returns a `[u8; 4]`.
 
 # Drawbacks
 [drawbacks]: #drawbacks
