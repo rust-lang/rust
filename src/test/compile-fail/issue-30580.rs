@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that we do not see uninformative region-related errors
+// when we get some basic type-checking failure. See #30580.
+
 pub struct Foo { a: u32 }
 pub struct Pass<'a, 'tcx: 'a>(&'a mut &'a (), &'a &'tcx ());
 
