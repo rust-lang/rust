@@ -138,52 +138,54 @@ macro_rules! make_mir_visitor {
             fn super_terminator(&mut self,
                                 block: BasicBlock,
                                 terminator: &$($mutability)* Terminator<'tcx>) {
-                match *terminator {
-                    Terminator::Goto { target } => {
+                match terminator.kind {
+                    TerminatorKind::Goto { target } => {
                         self.visit_branch(block, target);
                     }
 
-                    Terminator::If { ref $($mutability)* cond,
-                                     ref $($mutability)* targets } => {
+                    TerminatorKind::If { ref $($mutability)* cond,
+                                         ref $($mutability)* targets } => {
                         self.visit_operand(cond);
                         for &target in targets.as_slice() {
                             self.visit_branch(block, target);
                         }
                     }
 
-                    Terminator::Switch { ref $($mutability)* discr,
-                                         adt_def: _,
-                                         ref targets } => {
+                    TerminatorKind::Switch { ref $($mutability)* discr,
+                                             adt_def: _,
+                                             ref targets } => {
                         self.visit_lvalue(discr, LvalueContext::Inspect);
                         for &target in targets {
                             self.visit_branch(block, target);
                         }
                     }
 
-                    Terminator::SwitchInt { ref $($mutability)* discr,
-                                            switch_ty: _,
-                                            values: _,
-                                            ref targets } => {
+                    TerminatorKind::SwitchInt { ref $($mutability)* discr,
+                                                switch_ty: _,
+                                                values: _,
+                                                ref targets } => {
                         self.visit_lvalue(discr, LvalueContext::Inspect);
                         for &target in targets {
                             self.visit_branch(block, target);
                         }
                     }
 
-                    Terminator::Resume |
-                    Terminator::Return => {
+                    TerminatorKind::Resume |
+                    TerminatorKind::Return => {
                     }
 
-                    Terminator::Drop { ref $($mutability)* value, target, unwind } => {
+                    TerminatorKind::Drop { ref $($mutability)* value,
+                                           target,
+                                           unwind } => {
                         self.visit_lvalue(value, LvalueContext::Drop);
                         self.visit_branch(block, target);
                         unwind.map(|t| self.visit_branch(block, t));
                     }
 
-                    Terminator::Call { ref $($mutability)* func,
-                                       ref $($mutability)* args,
-                                       ref $($mutability)* destination,
-                                       cleanup } => {
+                    TerminatorKind::Call { ref $($mutability)* func,
+                                           ref $($mutability)* args,
+                                           ref $($mutability)* destination,
+                                           cleanup } => {
                         self.visit_operand(func);
                         for arg in args {
                             self.visit_operand(arg);

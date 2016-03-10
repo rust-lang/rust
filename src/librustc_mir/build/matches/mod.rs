@@ -97,7 +97,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         for (arm_index, arm_body) in arm_bodies.into_iter().enumerate() {
             let mut arm_block = arm_blocks.blocks[arm_index];
             unpack!(arm_block = self.into(destination, arm_block, arm_body));
-            self.cfg.terminate(arm_block, Terminator::Goto { target: end_block });
+            self.cfg.terminate(arm_block, TerminatorKind::Goto { target: end_block });
         }
 
         end_block.unit()
@@ -383,7 +383,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         } else {
             let join_block = self.cfg.start_new_block();
             for block in otherwise {
-                self.cfg.terminate(block, Terminator::Goto { target: join_block });
+                self.cfg.terminate(block, TerminatorKind::Goto { target: join_block });
             }
             join_block
         }
@@ -555,11 +555,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             // guard, this block is simply unreachable
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
-            self.cfg.terminate(block, Terminator::If { cond: cond,
+            self.cfg.terminate(block, TerminatorKind::If { cond: cond,
                                                        targets: (arm_block, otherwise)});
             Some(otherwise)
         } else {
-            self.cfg.terminate(block, Terminator::Goto { target: arm_block });
+            self.cfg.terminate(block, TerminatorKind::Goto { target: arm_block });
             None
         }
     }

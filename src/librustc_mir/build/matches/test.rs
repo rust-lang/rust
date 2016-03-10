@@ -153,7 +153,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let target_blocks: Vec<_> =
                     (0..num_enum_variants).map(|_| self.cfg.start_new_block())
                                           .collect();
-                self.cfg.terminate(block, Terminator::Switch {
+                self.cfg.terminate(block, TerminatorKind::Switch {
                     discr: lvalue.clone(),
                     adt_def: adt_def,
                     targets: target_blocks.clone()
@@ -168,7 +168,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            .map(|_| self.cfg.start_new_block())
                            .chain(Some(otherwise))
                            .collect();
-                self.cfg.terminate(block, Terminator::SwitchInt {
+                self.cfg.terminate(block, TerminatorKind::SwitchInt {
                     discr: lvalue.clone(),
                     switch_ty: switch_ty,
                     values: options.clone(),
@@ -286,7 +286,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // branch based on result
                 let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
                                                  self.cfg.start_new_block()];
-                self.cfg.terminate(block, Terminator::If {
+                self.cfg.terminate(block, TerminatorKind::If {
                     cond: Operand::Consume(result),
                     targets: (target_blocks[0], target_blocks[1])
                 });
@@ -313,7 +313,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         // branch based on result
         let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, Terminator::If {
+        self.cfg.terminate(block, TerminatorKind::If {
             cond: Operand::Consume(result),
             targets: (target_block, fail_block)
         });
