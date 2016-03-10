@@ -107,7 +107,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// use std::thread;
 ///
 /// fn main() {
-///     let numbers: Vec<_> = (0..100u32).collect();
+///     let numbers: Vec<_> = (0..100).collect();
 ///     let shared_numbers = Arc::new(numbers);
 ///
 ///     for _ in 0..10 {
@@ -1118,7 +1118,7 @@ mod tests {
 
     #[test]
     fn test_strong_count() {
-        let a = Arc::new(0u32);
+        let a = Arc::new(0);
         assert!(Arc::strong_count(&a) == 1);
         let w = Arc::downgrade(&a);
         assert!(Arc::strong_count(&a) == 1);
@@ -1135,7 +1135,7 @@ mod tests {
 
     #[test]
     fn test_weak_count() {
-        let a = Arc::new(0u32);
+        let a = Arc::new(0);
         assert!(Arc::strong_count(&a) == 1);
         assert!(Arc::weak_count(&a) == 0);
         let w = Arc::downgrade(&a);
@@ -1161,7 +1161,7 @@ mod tests {
 
     #[test]
     fn show_arc() {
-        let a = Arc::new(5u32);
+        let a = Arc::new(5);
         assert_eq!(format!("{:?}", a), "5");
     }
 
