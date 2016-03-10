@@ -1386,7 +1386,7 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
     compose_and_run(config,
                     testpaths,
                     args,
-                    Vec::new(),
+                    props.rustc_env.clone(),
                     &config.compile_lib_path,
                     Some(aux_dir.to_str().unwrap()),
                     input)
