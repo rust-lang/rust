@@ -667,8 +667,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         match subclass {
             SingleImport { target, .. } => {
-                module_.increment_outstanding_references_for(target, ValueNS);
-                module_.increment_outstanding_references_for(target, TypeNS);
+                module_.increment_outstanding_references_for(target, ValueNS, is_public);
+                module_.increment_outstanding_references_for(target, TypeNS, is_public);
             }
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the
