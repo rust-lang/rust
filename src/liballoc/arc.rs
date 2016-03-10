@@ -201,10 +201,11 @@ impl<T> Arc<T> {
         Arc { _ptr: unsafe { Shared::new(Box::into_raw(x)) } }
     }
 
-    /// Unwraps the contained value if the `Arc<T>` has only one strong reference.
-    /// This will succeed even if there are outstanding weak references.
+    /// Unwraps the contained value if the `Arc<T>` has exactly one strong reference.
     ///
     /// Otherwise, an `Err` is returned with the same `Arc<T>`.
+    ///
+    /// This will succeed even if there are outstanding weak references.
     ///
     /// # Examples
     ///

@@ -224,10 +224,11 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Unwraps the contained value if the `Rc<T>` has only one strong reference.
-    /// This will succeed even if there are outstanding weak references.
+    /// Unwraps the contained value if the `Rc<T>` has exactly one strong reference.
     ///
     /// Otherwise, an `Err` is returned with the same `Rc<T>`.
+    ///
+    /// This will succeed even if there are outstanding weak references.
     ///
     /// # Examples
     ///
